@@ -10,12 +10,14 @@ import { z } from "zod";
 
 import { makeScript } from "./helpers";
 
+const EmailSchema = z
+  .string()
+  .email()
+  .transform((email) => email.toLowerCase());
 const MergeFileSchema = z.array(
   z.object({
-    email: z
-      .string()
-      .email()
-      .transform((email) => email.toLowerCase()),
+    _comment: z.string().min(1),
+    email: EmailSchema,
     sIdToKeep: z.string().min(1),
   })
 );
@@ -25,6 +27,7 @@ type Member = Awaited<ReturnType<typeof getMembers>>["members"][number];
 
 interface MergeRecord {
   primaryEmail: string;
+  expectedOldEmail: string;
   oldUserId: string;
 }
 
@@ -42,12 +45,18 @@ interface BlockedRecord extends MergeRecord {
   reason: string;
 }
 
-function getEmailDomain(email: string) {
-  const parts = email.split("@");
-  if (parts.length !== 2 || !parts[1]) {
-    throw new Error(`Invalid user email: ${email}`);
+function parseComment(comment: string) {
+  const match = comment.match(
+    /^(\S+) → (\S+) \| status: (active|inactive|pending)$/
+  );
+  const oldEmail = match?.[1];
+  const primaryEmail = match?.[2];
+  if (!oldEmail || !primaryEmail) {
+    throw new Error(`Invalid mapping comment: ${comment}`);
   }
-  return parts[1].toLowerCase();
+  return z
+    .object({ oldEmail: EmailSchema, primaryEmail: EmailSchema })
+    .parse({ oldEmail, primaryEmail });
 }
 
 async function loadRecords(filePath: string) {
@@ -56,7 +65,11 @@ async function loadRecords(filePath: string) {
   const primaryEmails = new Set<string>();
   const oldUserIds = new Set<string>();
 
-  return inputRecords.map(({ email, sIdToKeep }) => {
+  return inputRecords.map(({ _comment, email, sIdToKeep }) => {
+    const { oldEmail, primaryEmail } = parseComment(_comment);
+    if (primaryEmail !== email) {
+      throw new Error(`Comment primary email does not match: ${email}`);
+    }
     if (primaryEmails.has(email)) {
       throw new Error(`Duplicate primary email: ${email}`);
     }
@@ -66,9 +79,13 @@ async function loadRecords(filePath: string) {
     primaryEmails.add(email);
     oldUserIds.add(sIdToKeep);
 
-    // The issue mapping names this field sIdToKeep, but identifies the old account whose data
-    // must move to the newly provisioned account at `email`.
-    return { primaryEmail: email, oldUserId: sIdToKeep };
+    // The issue mapping names this field sIdToKeep, but its comment identifies it as the old
+    // account whose data must move to the newly provisioned account at `email`.
+    return {
+      primaryEmail: email,
+      expectedOldEmail: oldEmail,
+      oldUserId: sIdToKeep,
+    };
   });
 }
 
@@ -106,8 +123,6 @@ function buildPairs(
   duplicateEmails: Set<string>,
   triggerCountByEditor: Map<number, number>,
   ssoUserIds: Set<string>,
-  oldDomain: string,
-  newDomain: string,
   activeAdminCount: number
 ) {
   const pairs: MergePair[] = [];
@@ -124,12 +139,10 @@ function buildPairs(
     const primaryMembership = primaryUser?.workspaces[0];
     let reason: string | null = null;
 
-    if (getEmailDomain(record.primaryEmail) !== newDomain) {
-      reason = "Primary email is not on the expected new domain.";
-    } else if (!oldUser) {
+    if (!oldUser) {
       reason = "Old user is not a current or former workspace member.";
-    } else if (getEmailDomain(oldUser.email) !== oldDomain) {
-      reason = "Mapped old user is not on the expected old domain.";
+    } else if (oldUser.email.toLowerCase() !== record.expectedOldEmail) {
+      reason = "Mapped old user email does not match the issue mapping.";
     } else if (duplicateEmails.has(record.primaryEmail)) {
       reason = "Multiple active workspace members have the primary email.";
     } else if (!primaryUser) {
@@ -184,12 +197,7 @@ function buildPairs(
   return { pairs, blocked };
 }
 
-async function preflight(
-  auth: Authenticator,
-  records: MergeRecord[],
-  oldDomain: string,
-  newDomain: string
-) {
+async function preflight(auth: Authenticator, records: MergeRecord[]) {
   const { members } = await getMembers(auth);
   const { memberById, primaryByEmail, duplicateEmails, activeAdminCount } =
     indexMembers(members);
@@ -221,8 +229,6 @@ async function preflight(
     duplicateEmails,
     triggerCountByEditor,
     ssoUserIds,
-    oldDomain,
-    newDomain,
     activeAdminCount
   );
   // Memberships are fetched in one query using the workspace/user/startAt index.
@@ -235,6 +241,7 @@ async function preflight(
     if (scheduledMemberships.has(pair.oldUserModelId)) {
       blocked.push({
         primaryEmail: pair.primaryEmail,
+        expectedOldEmail: pair.expectedOldEmail,
         oldUserId: pair.oldUserId,
         reason: "Old user has a scheduled membership change.",
       });
@@ -278,16 +285,6 @@ makeScript(
       type: "string" as const,
       demandOption: true,
     },
-    oldDomain: {
-      describe: "Expected domain of mapped old identities",
-      type: "string" as const,
-      demandOption: true,
-    },
-    newDomain: {
-      describe: "Expected domain of primary identities",
-      type: "string" as const,
-      demandOption: true,
-    },
     userId: {
       describe: "Old user sId to process as a canary",
       type: "string" as const,
@@ -298,17 +295,9 @@ makeScript(
       default: false,
     },
   },
-  async (
-    { workspaceId, file, oldDomain, newDomain, userId, all, execute },
-    logger
-  ) => {
+  async ({ workspaceId, file, userId, all, execute }, logger) => {
     if ((!userId && !all) || (userId && all)) {
       throw new Error("Pass exactly one of --userId or --all.");
-    }
-    const expectedOldDomain = oldDomain.toLowerCase();
-    const expectedNewDomain = newDomain.toLowerCase();
-    if (expectedOldDomain === expectedNewDomain) {
-      throw new Error("Old and new domains must differ.");
     }
 
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -325,12 +314,7 @@ makeScript(
     }
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const { readyPairs, blocked } = await preflight(
-      auth,
-      selectedRecords,
-      expectedOldDomain,
-      expectedNewDomain
-    );
+    const { readyPairs, blocked } = await preflight(auth, selectedRecords);
 
     logger.info(
       {
@@ -352,12 +336,7 @@ makeScript(
     }
 
     for (const pair of readyPairs) {
-      const currentPreflight = await preflight(
-        auth,
-        [pair],
-        expectedOldDomain,
-        expectedNewDomain
-      );
+      const currentPreflight = await preflight(auth, [pair]);
       if (currentPreflight.blocked.length > 0) {
         logger.error(
           { pair, blocked: currentPreflight.blocked },
