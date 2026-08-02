@@ -1,9 +1,9 @@
-import type { AuthenticatorType } from "@app/lib/auth";
 import { launchStoreAgentMessageConsumptionAttributionWorkflow } from "@app/temporal/analytics_queue/client";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import { storeAgentMessageConsumptionAttributionV2Signal } from "@app/temporal/analytics_queue/signals";
 import { storeAgentMessageConsumptionAttributionV2Workflow } from "@app/temporal/analytics_queue/workflows";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -26,11 +26,17 @@ describe("launchStoreAgentMessageConsumptionAttributionWorkflow", () => {
   });
 
   it("signals the replay-safe V2 workflow for every finalize", async () => {
-    const authType = { workspaceId: "w_test" } as AuthenticatorType;
-    const agentLoopArgs = {
+    const { authenticator } = await createResourceTest({});
+    const authType = authenticator.toJSON();
+    const agentLoopArgs: AgentLoopArgs = {
       agentMessageId: "agent_message_test",
+      agentMessageVersion: 0,
       conversationId: "conversation_test",
-    } as AgentLoopArgs;
+      conversationTitle: null,
+      conversationBranchId: null,
+      userMessageId: "user_message_test",
+      userMessageVersion: 0,
+    };
 
     const first = await launchStoreAgentMessageConsumptionAttributionWorkflow({
       authType,
