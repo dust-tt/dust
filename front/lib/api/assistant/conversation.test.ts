@@ -3193,7 +3193,54 @@ describe("editUserMessage", () => {
     vi.clearAllMocks();
   });
 
-  it("should preserve agent mentions when editing a user message", async () => {
+  it("should preserve the agent mention when editing a user message", async () => {
+    const mentions: MentionType[] = [
+      {
+        configurationId: agentConfig1.sId,
+      } satisfies AgentMention,
+    ];
+
+    const result = await editUserMessage(auth, {
+      conversationResource,
+      message: originalUserMessage,
+      content: `Edited message with @${agentConfig1.name}`,
+      mentions,
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has mentions
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(1);
+
+      // Verify userMessage has richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(1);
+
+      // Verify the mention is an agent mention for the right agent
+      const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
+      expect(agentMentions.length).toBe(1);
+      expect(agentMentions[0].id).toBe(agentConfig1.sId);
+
+      // Verify the mention is stored in the database for the edited message
+      const mentionsInDb = await MentionModel.findAll({
+        where: {
+          messageId: userMessage.id,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(mentionsInDb.length).toBe(1);
+      expect(mentionsInDb[0].agentConfigurationId).toBe(agentConfig1.sId);
+
+      // Verify launchAgentLoopWorkflow was called for the agent mention
+      expect(launchAgentLoopWorkflow).toHaveBeenCalled();
+    }
+  });
+
+  it("should create an agent message per mention when editing with several agents", async () => {
     const mentions: MentionType[] = [
       {
         configurationId: agentConfig1.sId,
@@ -3211,44 +3258,58 @@ describe("editUserMessage", () => {
       skipToolsValidation: false,
     });
 
+    // Several agent mentions are only logged, the public API still relies on them.
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const { userMessage } = result.value;
+      const { userMessage, agentMessages } = result.value;
 
-      // Verify userMessage has mentions
-      expect(userMessage.mentions).toBeDefined();
-      expect(userMessage.mentions.length).toBe(2);
+      expect(agentMessages.length).toBe(2);
 
-      // Verify userMessage has richMentions
-      expect(userMessage.richMentions).toBeDefined();
-      expect(userMessage.richMentions.length).toBe(2);
-
-      // Verify all mentions are agent mentions
       const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
-      expect(agentMentions.length).toBe(2);
-
-      // Verify the agent configurations match
-      const mentionedAgentIds = agentMentions.map((m) => m.id);
-      expect(mentionedAgentIds).toContain(agentConfig1.sId);
-      expect(mentionedAgentIds).toContain(agentConfig2.sId);
-
-      // Verify mentions are stored in the database for the edited message
-      const mentionsInDb = await MentionModel.findAll({
-        where: {
-          messageId: userMessage.id,
-          workspaceId: workspace.id,
-        },
-      });
-      expect(mentionsInDb.length).toBe(2);
-      const agentConfigIdsInDb = mentionsInDb
-        .map((m) => m.agentConfigurationId)
-        .filter((id): id is string => id !== null);
-      expect(agentConfigIdsInDb).toContain(agentConfig1.sId);
-      expect(agentConfigIdsInDb).toContain(agentConfig2.sId);
-
-      // Verify launchAgentLoopWorkflow was called for agent mentions
-      expect(launchAgentLoopWorkflow).toHaveBeenCalled();
+      expect(agentMentions.map((m) => m.id).sort()).toEqual(
+        [agentConfig1.sId, agentConfig2.sId].sort()
+      );
     }
+  });
+
+  it("should not create agent messages when editing a message that already has agent replies", async () => {
+    // An agent reply after the original message means the edit creates no agent messages.
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const postResult = await postUserMessage(auth, {
+      conversationResource,
+      content: `Hello @${agentConfig1.name}`,
+      mentions: [{ configurationId: agentConfig1.sId } satisfies AgentMention],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+      skipDustAutoMention: true,
+    });
+    expect(postResult.isOk()).toBe(true);
+    vi.clearAllMocks();
+
+    const result = await editUserMessage(auth, {
+      conversationResource,
+      message: originalUserMessage,
+      content: `Edited message with @${agentConfig1.name} and @${agentConfig2.name}`,
+      mentions: [
+        { configurationId: agentConfig1.sId } satisfies AgentMention,
+        { configurationId: agentConfig2.sId } satisfies AgentMention,
+      ],
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.agentMessages.length).toBe(0);
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 
   it("should preserve user mentions when editing a user message", async () => {

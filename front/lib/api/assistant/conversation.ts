@@ -1202,6 +1202,21 @@ export async function editUserMessage(
     }
   }
 
+  // Multiple agent mentions are still accepted (the public API relies on them), we only track
+  // them while we move to a single mention per message.
+  const agentMentionCount = mentions.filter(isAgentMention).length;
+  if (agentMentionCount > 1) {
+    logger.warn(
+      {
+        agentMentionCount,
+        conversationId: conversation.sId,
+        messageId: message.sId,
+        workspaceId: owner.sId,
+      },
+      "Editing a user message with multiple agent mentions."
+    );
+  }
+
   const resolvedUserMentions = await resolveUserMentions(auth, {
     mentions,
     conversation,
