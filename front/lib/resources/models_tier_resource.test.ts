@@ -18,7 +18,7 @@ describe("ModelsTierResource permissions", () => {
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
-    group = await GroupFactory.regularAuto(workspace, "tier-users");
+    group = await GroupFactory.regularManual(workspace, "tier-users");
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
 
@@ -72,6 +72,22 @@ describe("ModelsTierResource permissions", () => {
     await ModelsTierResource.clearGroupMaxAllowedTier(auth, {
       groupId: group.sId,
     });
+    expect(await ModelsTierResource.listGroupAllowedTierNames(auth)).toEqual(
+      []
+    );
+  });
+
+  it("rejects a group tier override on a regular_auto group", async () => {
+    const autoGroup = await GroupFactory.regularAuto(workspace, "auto");
+
+    const result = await ModelsTierResource.setGroupMaxAllowedTier(auth, {
+      groupId: autoGroup.sId,
+      tierName: "premium",
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_request_error");
+    }
     expect(await ModelsTierResource.listGroupAllowedTierNames(auth)).toEqual(
       []
     );
