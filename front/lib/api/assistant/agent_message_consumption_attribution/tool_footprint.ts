@@ -30,9 +30,9 @@ export interface ToolFootprintMeasurement {
 }
 
 /**
- * One tool call to measure: the enriched action for the result the model ingested, and the raw
- * arguments string the model emitted for the call. The arguments come straight from the resource
- * rather than the serialized action, so they exclude the inputs Dust injects afterwards.
+ * One tool call to measure: the enriched action used to render the result, and the raw arguments
+ * string the model emitted for the call. The arguments come straight from the resource rather than
+ * the serialized action, so they exclude the inputs Dust injects afterwards.
  */
 export interface ToolCallFootprintInput {
   action: AgentMCPActionWithOutputType;
@@ -46,19 +46,18 @@ export function toolCallFootprintTexts({
   return {
     // The tool call as the model emitted it: its name plus the arguments it generated.
     callText: `${action.functionCallName}\n${functionCallArguments}`,
-    // The exact text the model saw for the result, shared with conversation rendering so the
-    // estimate never drifts from what was actually sent. Image content is not counted here: it is
-    // priced under a separate tile-based model, out of scope for text tokenization.
+    // The result's model-rendered text, shared with conversation rendering so the estimate tracks
+    // what would be sent. Image content is not counted here because it uses separate tile pricing.
     resultText: renderToolResultForModelAsText(action),
   };
 }
 
 /**
  * Measures, for each action, how many tokens the model spent emitting the tool call and how many the
- * returned result occupied in the following prompt. Results are order-aligned with `actions`.
+ * returned result would occupy if carried into a later prompt. Results stay aligned with `toolCalls`.
  *
  * Uses the exact tokenizer of the run's model through core, the same path conversation rendering
- * uses to size messages, so the counts (_almost_) match what the provider billed rather than a heuristic.
+ * uses to size messages, so the counts closely match provider tokenization rather than a heuristic.
  */
 export async function measureToolCallFootprints(
   auth: Authenticator,

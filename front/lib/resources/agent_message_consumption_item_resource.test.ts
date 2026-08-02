@@ -15,7 +15,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const ATTRIBUTION_VERSION = 1;
 
@@ -192,6 +192,7 @@ describe("AgentMessageConsumptionItemResource", () => {
   it("inserts an already-final tool without a prior pending row", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);
+    const findAllSpy = vi.spyOn(AgentMessageConsumptionItemModel, "findAll");
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation: context.conversation,
@@ -200,6 +201,8 @@ describe("AgentMessageConsumptionItemResource", () => {
       records: [completedTool(context.action, context.runUsageModelId)],
       pendingToolItems: [],
     });
+    expect(findAllSpy).not.toHaveBeenCalled();
+    findAllSpy.mockRestore();
 
     const tools = await listTools(auth, context.agentMessageModelId);
     expect(tools).toHaveLength(1);
@@ -222,9 +225,7 @@ describe("AgentMessageConsumptionItemResource", () => {
       agentMessageModelId: context.agentMessageModelId,
       attributionVersion: ATTRIBUTION_VERSION,
       records: [],
-      pendingToolItems: [
-        pendingTool(context.action, context.runUsageModelId),
-      ],
+      pendingToolItems: [pendingTool(context.action, context.runUsageModelId)],
     });
 
     const afterFirstPass = await listTools(auth, context.agentMessageModelId);
@@ -240,7 +241,12 @@ describe("AgentMessageConsumptionItemResource", () => {
       conversation: context.conversation,
       agentMessageModelId: context.agentMessageModelId,
       attributionVersion: ATTRIBUTION_VERSION,
-      records: [completedTool(context.action, context.runUsageModelId)],
+      records: [
+        {
+          ...completedTool(context.action, context.runUsageModelId),
+          outputTokensCount: 99,
+        },
+      ],
       pendingToolItems: [],
     });
 
@@ -249,11 +255,53 @@ describe("AgentMessageConsumptionItemResource", () => {
     expect(afterSettle[0]).toMatchObject({
       itemKey: `tool-action:${context.action.id}`,
       inputTokensCount: 40,
+      // The output footprint was already known when the pending row was created.
       outputTokensCount: 12,
       grossAttributedCreditAmountMicro: 2_000_000,
       directCreditAmountMicro: 1_000_000,
       completedAt: expect.any(Date),
     });
+  });
+
+  it("keeps completed tool evidence immutable on a re-finalize", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const context = await setupMessageWithEvidence(auth, workspace);
+    const original = completedTool(context.action, context.runUsageModelId);
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation: context.conversation,
+      agentMessageModelId: context.agentMessageModelId,
+      attributionVersion: ATTRIBUTION_VERSION,
+      records: [original],
+      pendingToolItems: [],
+    });
+    const [before] = await listTools(auth, context.agentMessageModelId);
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation: context.conversation,
+      agentMessageModelId: context.agentMessageModelId,
+      attributionVersion: ATTRIBUTION_VERSION,
+      records: [
+        {
+          ...original,
+          inputTokensCount: 41,
+          outputTokensCount: 13,
+          grossAttributedCreditAmountMicro: 3_000_000,
+          directCreditAmountMicro: 2_000_000,
+        },
+      ],
+      pendingToolItems: [],
+    });
+
+    const [after] = await listTools(auth, context.agentMessageModelId);
+    expect(after).toMatchObject({
+      inputTokensCount: 40,
+      outputTokensCount: 12,
+      grossAttributedCreditAmountMicro: 2_000_000,
+      directCreditAmountMicro: 1_000_000,
+    });
+    expect(after.completedAt).toEqual(before.completedAt);
+    expect(after.updatedAt).toEqual(before.updatedAt);
   });
 
   it("does not regress a completed tool back to pending", async () => {
@@ -274,15 +322,46 @@ describe("AgentMessageConsumptionItemResource", () => {
       agentMessageModelId: context.agentMessageModelId,
       attributionVersion: ATTRIBUTION_VERSION,
       records: [],
-      pendingToolItems: [
-        pendingTool(context.action, context.runUsageModelId),
-      ],
+      pendingToolItems: [pendingTool(context.action, context.runUsageModelId)],
     });
 
     const tools = await listTools(auth, context.agentMessageModelId);
     expect(tools).toHaveLength(1);
     expect(tools[0]).toMatchObject({
       inputTokensCount: 40,
+      directCreditAmountMicro: 1_000_000,
+      completedAt: expect.any(Date),
+    });
+  });
+
+  it("keeps final evidence when pending and completed passes race", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const context = await setupMessageWithEvidence(auth, workspace);
+
+    await Promise.all([
+      AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: ATTRIBUTION_VERSION,
+        records: [completedTool(context.action, context.runUsageModelId)],
+        pendingToolItems: [],
+      }),
+      AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: ATTRIBUTION_VERSION,
+        records: [],
+        pendingToolItems: [
+          pendingTool(context.action, context.runUsageModelId),
+        ],
+      }),
+    ]);
+
+    const tools = await listTools(auth, context.agentMessageModelId);
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({
+      inputTokensCount: 40,
+      outputTokensCount: 12,
       directCreditAmountMicro: 1_000_000,
       completedAt: expect.any(Date),
     });

@@ -209,6 +209,114 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   /**
+   * Bulk-inserts final tools, then completes only conflicting rows that are still pending. The
+   * insert waits on concurrent writes to the unique action identity, so the following lookup sees
+   * the settled conflict state without requiring a lock or allowing a stale pending write to win.
+   *
+   * // TODO(2026-08-01 flav): Revisit based on how often it happens.
+   * A resumed approval pass resubmits facts from earlier passes. PostgreSQL allocates sequence
+   * values before detecting conflicts, so this can leave gaps in the primary key sequence. We
+   * accept that tradeoff to keep this write race-safe without a pre-read. The agent loop resumes
+   * only after every tool awaiting approval has been approved, so parallel approvals produce one
+   * resumed pass rather than one pass per tool.
+   */
+  private static async insertOrCompleteToolRecords(
+    auth: Authenticator,
+    {
+      conversationModelId,
+      agentMessageModelId,
+      attributionVersion,
+      records,
+      now,
+      transaction,
+    }: {
+      conversationModelId: ModelId;
+      agentMessageModelId: ModelId;
+      attributionVersion: number;
+      records: CompletedToolConsumptionItem[];
+      now: Date;
+      transaction: Transaction;
+    }
+  ): Promise<void> {
+    const insertedRows = await this.model.bulkCreate(
+      records.map((record) =>
+        this.creationAttributes(auth, {
+          conversationModelId,
+          agentMessageModelId,
+          attributionVersion,
+          record,
+          now,
+        })
+      ),
+      {
+        ignoreDuplicates: true,
+        returning: ["id"],
+        transaction,
+        // Sequelize disables validation by default for bulkCreate.
+        validate: true,
+      }
+    );
+
+    // PostgreSQL returns an ID only for rows inserted by ON CONFLICT DO NOTHING. Most passes create
+    // final tools directly, so they finish without the pending-row lookup below.
+    if (insertedRows.every((row) => Boolean(row.id))) {
+      return;
+    }
+
+    const recordByActionModelId = new Map(
+      records.map((record) => [record.action.id, record])
+    );
+    const pendingRows = await this.model.findAll({
+      attributes: ["id", "agentMCPActionId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessageModelId,
+        attributionVersion,
+        agentMCPActionId: { [Op.in]: [...recordByActionModelId.keys()] },
+        itemType: "tool",
+        completedAt: { [Op.is]: null },
+      },
+      transaction,
+    });
+
+    for (const pendingRow of pendingRows) {
+      const actionModelId = pendingRow.agentMCPActionId;
+      assert(
+        actionModelId !== null,
+        "A pending tool row must reference an action"
+      );
+      const record = recordByActionModelId.get(actionModelId);
+      assert(
+        record,
+        "A pending tool row must have matching completion evidence"
+      );
+
+      await this.model.update(
+        {
+          itemType: "tool",
+          agentMCPActionId: actionModelId,
+          inputTokensCount: record.inputTokensCount,
+          grossAttributedCreditAmountMicro:
+            record.grossAttributedCreditAmountMicro,
+          directCreditAmountMicro: record.directCreditAmountMicro,
+          completedAt: now,
+        },
+        {
+          where: {
+            id: pendingRow.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            agentMessageId: agentMessageModelId,
+            attributionVersion,
+            itemType: "tool",
+            completedAt: { [Op.is]: null },
+          },
+          transaction,
+        }
+      );
+    }
+  }
+
+  /**
    * Writes one message's attribution breakdown for a single pass, idempotently and atomically.
    * Callers pass the whole desired set and this reconciles it in one transaction, so the materializer
    * never coordinates a read then separate inserts and updates.
@@ -216,9 +324,8 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
    * Three write shapes, one per identity class:
    * - Model buckets and already-final tools with no prior row are inserted, first write wins, so a
    *   re-finalize with the same identity is a no-op.
-   * - A final tool is upserted on its (message, version, itemKey) identity, so a row a previous pass
-   *   left pending, because the tool was still blocked then, is completed in place here rather than
-   *   skipped by the insert.
+   * - A final tool is upserted on its (message, version, itemKey) identity only while the existing
+   *   row is pending. This completes an approval-spanning tool without changing a completed fact.
    * - A still-blocked tool is inserted pending and never overwrites an existing row, so a completed
    *   row from a concurrent pass is not regressed to pending.
    */
@@ -290,40 +397,14 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       }
 
       if (completedToolRecords.length > 0) {
-        // Final tools: insert the row, or complete one an earlier pass left pending, in a single
-        // upsert on the message-version-itemKey identity. This is what lands an approved-after-pause
-        // tool that the insert above would skip.
-        await this.model.bulkCreate(
-          completedToolRecords.map((record) =>
-            this.creationAttributes(auth, {
-              conversationModelId: conversation.id,
-              agentMessageModelId,
-              attributionVersion,
-              record,
-              now,
-            })
-          ),
-          {
-            updateOnDuplicate: [
-              "runUsageId",
-              "inputTokensCount",
-              "outputTokensCount",
-              "grossAttributedCreditAmountMicro",
-              "directCreditAmountMicro",
-              "completedAt",
-              "updatedAt",
-            ],
-            conflictAttributes: [
-              "workspaceId",
-              "agentMessageId",
-              "attributionVersion",
-              "itemKey",
-            ],
-            returning: false,
-            transaction: t,
-            validate: true,
-          }
-        );
+        await this.insertOrCompleteToolRecords(auth, {
+          conversationModelId: conversation.id,
+          agentMessageModelId,
+          attributionVersion,
+          records: completedToolRecords,
+          now,
+          transaction: t,
+        });
       }
 
       if (pendingToolItems.length > 0) {
@@ -342,6 +423,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
             ignoreDuplicates: true,
             returning: false,
             transaction: t,
+            // Sequelize disables validation by default for bulkCreate.
             validate: true,
           }
         );
