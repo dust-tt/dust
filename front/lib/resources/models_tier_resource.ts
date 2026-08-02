@@ -342,6 +342,14 @@ export class ModelsTierResource {
     if (groupRes.isErr()) {
       return groupRes;
     }
+    if (!isModelTierOverrideGroupKind(groupRes.value.kind)) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "Model tier overrides only apply to provisioned or manual groups."
+        )
+      );
+    }
 
     await this.clearGroupTierGrants(auth, groupRes.value);
     await this.grantToGroup(auth, {
