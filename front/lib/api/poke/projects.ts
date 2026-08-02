@@ -1,7 +1,16 @@
 import type { ProjectKnowledgeFromConnectorItem } from "@app/lib/api/projects/context";
 import type { ProjectWithAdminMetadata } from "@app/lib/api/projects/list";
+import type { StoredSandboxFunctionCallError } from "@app/lib/resources/sandbox_function_invocation_resource";
+import type {
+  SandboxFunctionInvocationOrigin,
+  SandboxFunctionInvocationStatus,
+  SandboxFunctionMCPActionType,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import type { PodMetadataType } from "@app/types/project_metadata";
 import type { PodTaskType } from "@app/types/project_task";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type PokeProjectType = ProjectWithAdminMetadata;
 
@@ -46,4 +55,54 @@ export type PokePodFunction = {
 
 export type PokeListProjectPodFunctions = {
   items: PokePodFunction[];
+};
+
+export type PokePodFunctionDetails = PokePodFunction & {
+  fileId: string;
+  userIdentity: SandboxFunctionUserIdentityPolicy | null;
+  inputSchema: JSONSchema;
+  outputSchema: JSONSchema;
+};
+
+export type PokeGetPodFunction = {
+  podFunction: PokePodFunctionDetails;
+};
+
+export type PokeGetPodFunctionSource = {
+  source: string;
+};
+
+export type PokePodFunctionInvocation = {
+  sId: string;
+  status: SandboxFunctionInvocationStatus;
+  origin: SandboxFunctionInvocationOrigin | null;
+  user: string | null;
+  createdAt: string;
+  updatedAt: string;
+  mcpActionCount: number;
+};
+
+export type PokeListPodFunctionInvocations = {
+  items: PokePodFunctionInvocation[];
+};
+
+export type PokePodFunctionMCPAction = SandboxFunctionMCPActionType & {
+  mcpServerViewId: string | null;
+  mcpServerName: string | null;
+  hasOutput: boolean;
+};
+
+export type PokePodFunctionInvocationDetails = PokePodFunctionInvocation & {
+  input: unknown;
+  result: unknown;
+  error: StoredSandboxFunctionCallError | null;
+  mcpActions: PokePodFunctionMCPAction[];
+};
+
+export type PokeGetPodFunctionInvocation = {
+  invocation: PokePodFunctionInvocationDetails;
+};
+
+export type PokeGetPodFunctionMCPActionOutput = {
+  output: CallToolResult["content"] | null;
 };

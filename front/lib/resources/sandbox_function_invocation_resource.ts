@@ -3,6 +3,11 @@ import {
   getPodSandboxFunctionsMountPoint,
   podDatabaseExecEnvVars,
 } from "@app/lib/api/files/mount_path";
+import type {
+  PokePodFunctionInvocation,
+  PokePodFunctionInvocationDetails,
+  PokePodFunctionMCPAction,
+} from "@app/lib/api/poke/projects";
 import {
   generateExecId,
   generateSandboxFunctionInvocationToken,
@@ -67,7 +72,25 @@ const GCS_CONCURRENCY = 4;
 const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
 const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
 
-type SandboxFunctionInvocationReadAccess = "viewer" | "system";
+// "admin" reads every invocation of the function without resolving a workspace user: poke
+// operators are dust superusers, not members of the workspace they inspect, so "viewer" would
+// find no user and return nothing. Kept distinct from "system", which is reserved for paths that
+// already validated a server-owned invocation token.
+type SandboxFunctionInvocationReadAccess = "viewer" | "system" | "admin";
+
+// A listing row: the DB columns only, without the invocation's GCS blob. `baseFetch` always
+// hydrates the blob, and an unhydrated resource reports `input: undefined` rather than "not
+// loaded", so a listing that skipped the download could not hand back resources without breaking
+// that invariant. Callers that need a payload fetch the one invocation they care about.
+export type SandboxFunctionInvocationRow = {
+  sId: string;
+  status: SandboxFunctionInvocationStatus;
+  origin: SandboxFunctionInvocationOrigin | null;
+  userId: ModelId | null;
+  createdAt: Date;
+  updatedAt: Date;
+  mcpActionCount: number;
+};
 
 // `code` is not narrowed to `SandboxFunctionCallErrorCode`: it is forwarded from whatever
 // classified the failure (runner, API error type, front), and a code introduced by a newer deploy
@@ -78,7 +101,9 @@ const StoredCallErrorSchema = z.object({
   status: z.number().optional(),
 });
 
-type StoredSandboxFunctionCallError = z.infer<typeof StoredCallErrorSchema>;
+export type StoredSandboxFunctionCallError = z.infer<
+  typeof StoredCallErrorSchema
+>;
 
 const InvocationDataBaseSchema = z.object({
   input: z.unknown().optional(),
@@ -656,6 +681,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         break;
       }
       case "system":
+      case "admin":
         viewerModelId = undefined;
         break;
       default:
@@ -741,6 +767,55 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
   }
 
+  // Newest-first page of listing rows, no GCS read. See `SandboxFunctionInvocationRow`.
+  static async listRows(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+      limit,
+      statuses,
+      origins,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+      limit: number;
+      statuses?: SandboxFunctionInvocationStatus[];
+      origins?: SandboxFunctionInvocationOrigin[];
+    }
+  ): Promise<SandboxFunctionInvocationRow[]> {
+    const invocations = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sandboxFunctionId: sandboxFunction.id,
+        ...(statuses && statuses.length > 0 ? { status: statuses } : {}),
+        ...(origins && origins.length > 0 ? { origin: origins } : {}),
+      },
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      limit,
+    });
+
+    const mcpActionCounts =
+      await SandboxFunctionMCPActionResource.countByInvocationModelIds(
+        auth,
+        invocations.map((invocation) => invocation.id)
+      );
+
+    return invocations.map((invocation) => ({
+      sId: this.modelIdToSId({
+        id: invocation.id,
+        workspaceId: invocation.workspaceId,
+      }),
+      status: invocation.status,
+      origin: invocation.origin,
+      userId: invocation.userId,
+      createdAt: invocation.createdAt,
+      updatedAt: invocation.updatedAt,
+      mcpActionCount: mcpActionCounts.get(invocation.id) ?? 0,
+    }));
+  }
+
   static async deleteAllForSandboxFunction(
     sandboxFunction: SandboxFunctionResource,
     { transaction }: { transaction?: Transaction } = {}
@@ -794,6 +869,49 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  // Poke's listing shape. Static because the listing works off rows rather than resources (see
+  // `SandboxFunctionInvocationRow`), and both entry points must produce the same shape.
+  static rowToPokeJSON(
+    row: SandboxFunctionInvocationRow,
+    user: UserResource | null
+  ): PokePodFunctionInvocation {
+    return {
+      sId: row.sId,
+      status: row.status,
+      origin: row.origin,
+      user: user ? user.fullName() : null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      mcpActionCount: row.mcpActionCount,
+    };
+  }
+
+  // The listing shape plus the GCS-backed payload this resource carries once hydrated, and the
+  // MCP actions the caller resolved for it.
+  toPokeJSON(
+    user: UserResource | null,
+    mcpActions: PokePodFunctionMCPAction[]
+  ): PokePodFunctionInvocationDetails {
+    return {
+      ...SandboxFunctionInvocationResource.rowToPokeJSON(
+        {
+          sId: this.sId,
+          status: this.status,
+          origin: this.origin,
+          userId: this.userId,
+          createdAt: this.createdAt,
+          updatedAt: this.updatedAt,
+          mcpActionCount: mcpActions.length,
+        },
+        user
+      ),
+      input: this.input,
+      result: this.result,
+      error: this.error ?? null,
+      mcpActions,
+    };
   }
 
   toJSON(): SandboxFunctionInvocationType {
