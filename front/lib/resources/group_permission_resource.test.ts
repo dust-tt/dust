@@ -446,6 +446,38 @@ describe("GroupPermissionResource", () => {
       expect(await group[0].isMember(user)).toBe(true);
     });
 
+    it("is idempotent for a repeat grant to the same user", async () => {
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+
+      const spec = {
+        user: user.toJSON(),
+        grantType: "reader" as const,
+        resourceType: "space" as const,
+        resourceId: 42,
+      };
+      await GroupPermissionResource.grantToUser(auth, spec);
+      const repeat = await GroupPermissionResource.grantToUser(auth, spec);
+      expect(repeat.isOk()).toBe(true);
+
+      const grants = await GroupPermissionResource.listForGroups(auth, {
+        groupModelIds: (
+          await GroupResource.listAllWorkspaceGroups(auth, {
+            groupKinds: ["regular_auto"],
+          })
+        ).map((group) => group.id),
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 42,
+      });
+      expect(grants).toHaveLength(1);
+
+      const [backingGroup] = await GroupResource.fetchByModelIds(auth, [
+        grants[0].groupId,
+      ]);
+      expect(await backingGroup.getMemberCount(auth)).toBe(1);
+    });
+
     it("reuses the existing regular_auto group for a second user", async () => {
       const user1 = await UserFactory.basic();
       const user2 = await UserFactory.basic();

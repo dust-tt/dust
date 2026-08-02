@@ -254,7 +254,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         user,
         transaction: t,
       });
-      if (addResult.isErr()) {
+      // Repeat grant for the same user: the desired end state already holds, stay idempotent.
+      if (addResult.isErr() && addResult.error.code !== "user_already_member") {
         return addResult;
       }
 
