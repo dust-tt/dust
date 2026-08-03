@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "kind": "string",
-    "awu_credits": "string"
+    "awu_credits": "string",
+    "expires_at": "string"
   }
 }

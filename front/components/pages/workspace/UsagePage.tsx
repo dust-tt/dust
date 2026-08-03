@@ -62,6 +62,7 @@ import {
   useBulkSetUserSpendLimit,
   useMembersUsage,
   useUpdateMemberSeatType,
+  useUpdateUserSpendLimit,
 } from "@app/lib/swr/memberships";
 import {
   useGroupAllowedModelTiers,
@@ -339,31 +340,71 @@ export function UsagePage() {
     },
     []
   );
-  const handleEditLimitRequest = useCallback(
+  const handleSetCreditAmountRequest = useCallback(
     (request: MembershipUpgradeRequestType) => {
       setPendingApproveRequestId(request.sId);
       setEditSpendLimitMember(memberFromUpgradeRequest(request));
     },
     []
   );
-  const handleApproveOnModalSaved = useCallback(() => {
+  // Shared by every way a request can be approved (seat / credit-amount
+  // modal saved, or the one-click "Allow unlimited spend" action) — resolves
+  // the request itself, independent of whatever already updated the seat or
+  // spend limit.
+  const resolveRequestApproved = useCallback(
+    async (requestId: string): Promise<void> => {
+      const request = upgradeRequests.find((r) => r.sId === requestId);
+      await doResolveUpgradeRequest({
+        requestId,
+        requesterName: request?.requester.name ?? "Member",
+        status: "approved",
+      });
+    },
+    [upgradeRequests, doResolveUpgradeRequest]
+  );
+  const handleApproveOnModalSaved = useCallback(async () => {
     if (!pendingApproveRequestId) {
       return;
     }
     const requestId = pendingApproveRequestId;
-    const request = upgradeRequests.find((r) => r.sId === requestId);
     setRequestResolving(requestId, true);
-    void doResolveUpgradeRequest({
-      requestId,
-      requesterName: request?.requester.name ?? "Member",
-      status: "approved",
-    }).finally(() => setRequestResolving(requestId, false));
-  }, [
-    pendingApproveRequestId,
-    upgradeRequests,
-    doResolveUpgradeRequest,
-    setRequestResolving,
-  ]);
+    try {
+      await resolveRequestApproved(requestId);
+    } finally {
+      setRequestResolving(requestId, false);
+    }
+  }, [pendingApproveRequestId, resolveRequestApproved, setRequestResolving]);
+  const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
+    workspaceId: owner.sId,
+  });
+  const handleAllowUnlimitedSpendRequest = useCallback(
+    async (request: MembershipUpgradeRequestType) => {
+      const confirmed = await confirm({
+        title: "Allow unlimited spend",
+        message: `Allow ${request.requester.name} to consume from the workspace credit pool without a spend limit?`,
+        validateLabel: "Allow unlimited spend",
+        validateVariant: "primary",
+      });
+      if (!confirmed) {
+        return;
+      }
+      setRequestResolving(request.sId, true);
+      try {
+        const member = memberFromUpgradeRequest(request);
+        const body = await doUpdateSpendLimit({
+          memberId: member.sId,
+          memberName: member.name,
+          limit: { kind: "unlimited" },
+        });
+        if (body) {
+          await resolveRequestApproved(request.sId);
+        }
+      } finally {
+        setRequestResolving(request.sId, false);
+      }
+    },
+    [confirm, doUpdateSpendLimit, resolveRequestApproved, setRequestResolving]
+  );
   const handleDenyRequest = useCallback(
     async (request: MembershipUpgradeRequestType) => {
       const confirmed = await confirm({
@@ -1140,9 +1181,11 @@ export function UsagePage() {
                       requests={filteredUpgradeRequests}
                       isLoading={isUpgradeRequestsLoading}
                       seatPlans={seatPlans}
+                      isEnterprise={isEnterprise}
                       pendingRequestIds={resolvingRequestIds}
                       onUpgradePlan={handleUpgradePlanRequest}
-                      onEditLimit={handleEditLimitRequest}
+                      onAllowUnlimitedSpend={handleAllowUnlimitedSpendRequest}
+                      onSetCreditAmount={handleSetCreditAmountRequest}
                       onDeny={handleDenyRequest}
                     />
                   )}
@@ -1229,6 +1272,7 @@ export function UsagePage() {
         }}
         member={editSpendLimitMember}
         owner={owner}
+        forceOverride={pendingApproveRequestId !== null}
         onSavingChange={handleUsagePendingChange}
         onSaved={handleApproveOnModalSaved}
       />

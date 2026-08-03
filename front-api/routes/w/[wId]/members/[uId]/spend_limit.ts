@@ -27,6 +27,16 @@ const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
       .int()
       .min(MIN_USER_SPEND_LIMIT_AWU_CREDITS)
       .max(MAX_USER_SPEND_LIMIT_AWU_CREDITS),
+    // Epoch ms at which the override auto-reverts to unlimited.
+    // Omitted/null means it never expires.
+    expiresAt: z
+      .number()
+      .int()
+      .positive()
+      .refine((value) => value > Date.now(), {
+        message: "expiresAt must be in the future.",
+      })
+      .nullish(),
   }),
 ]);
 
