@@ -22,6 +22,7 @@ import type {
   SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
@@ -40,7 +41,7 @@ export function useSkill(options: {
   withRelations: true;
   disabled?: boolean;
 }): {
-  skill: GetSkillWithRelationsResponseBody["skill"] | null;
+  skill: SkillWithRelationsType | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
@@ -51,7 +52,7 @@ export function useSkill(options: {
   withRelations?: false;
   disabled?: boolean;
 }): {
-  skill: GetSkillResponseBody["skill"] | null;
+  skill: SkillType | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
@@ -67,10 +68,7 @@ export function useSkill({
   withRelations?: boolean;
   disabled?: boolean;
 }): {
-  skill:
-    | GetSkillResponseBody["skill"]
-    | GetSkillWithRelationsResponseBody["skill"]
-    | null;
+  skill: SkillType | SkillWithRelationsType | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
