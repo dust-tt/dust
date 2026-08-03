@@ -64,13 +64,13 @@ function getTableRows({
   onClick,
   onRemoveMemberClick,
   currentUserId,
-  allowRemoveAnyMember,
+  allowRemoveSelfAndProvisionedUsers,
 }: {
   allUsers: SearchMemberWithWorkspaceType[];
   onClick: (user: SearchMemberWithWorkspaceType) => void;
   onRemoveMemberClick?: (user: SearchMemberWithWorkspaceType) => void;
   currentUserId: string;
-  allowRemoveAnyMember: boolean;
+  allowRemoveSelfAndProvisionedUsers: boolean;
 }): RowData[] {
   return allUsers.map((user) => {
     const fullUser = isFullUserType(user);
@@ -86,7 +86,8 @@ function getTableRows({
       groups: user.workspace.groups ?? [],
       isCurrentUser,
       canRemove:
-        allowRemoveAnyMember || (!isCurrentUser && origin !== "provisioned"),
+        allowRemoveSelfAndProvisionedUsers ||
+        (!isCurrentUser && origin !== "provisioned"),
       onClick: () => onClick(user),
       onRemoveMemberClick: () => onRemoveMemberClick?.(user),
       origin,
@@ -177,7 +178,7 @@ const memberColumns = [
 ];
 
 interface MembersListProps {
-  allowRemoveAnyMember?: boolean;
+  allowRemoveSelfAndProvisionedUsers?: boolean;
   currentUser: UserType | null;
   membersData: MembersData;
   onRowClick: (user: SearchMemberWithWorkspaceType) => void;
@@ -188,7 +189,7 @@ interface MembersListProps {
 }
 
 export function MembersList({
-  allowRemoveAnyMember = false,
+  allowRemoveSelfAndProvisionedUsers = false,
   currentUser,
   membersData,
   onRowClick,
@@ -213,14 +214,14 @@ export function MembersList({
       onClick: onRowClick,
       onRemoveMemberClick,
       currentUserId: currentUser?.sId ?? "current-user-not-loaded",
-      allowRemoveAnyMember,
+      allowRemoveSelfAndProvisionedUsers,
     });
   }, [
     members,
     onRowClick,
     onRemoveMemberClick,
     currentUser?.sId,
-    allowRemoveAnyMember,
+    allowRemoveSelfAndProvisionedUsers,
   ]);
 
   return (

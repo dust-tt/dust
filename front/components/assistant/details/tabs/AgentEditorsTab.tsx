@@ -36,7 +36,7 @@ export function AgentEditorsTab({
   return (
     <div className="flex flex-col gap-4">
       <MembersList
-        allowRemoveAnyMember
+        allowRemoveSelfAndProvisionedUsers
         currentUser={user}
         membersData={{
           members: editors.map((user) => ({
