@@ -1290,6 +1290,40 @@ describe("softDeleteUserMessageAndReplies", () => {
     expect(updated.value.content[1].length).toBe(agentRankVersionsBefore);
   });
 
+  it("refuses to delete a version that was edited under it", async () => {
+    const firstUser = conversation.content
+      .flat()
+      .find((m): m is UserMessageType => isUserMessageType(m));
+    if (!firstUser) {
+      throw new Error("No user message found");
+    }
+
+    // Edit first, which writes v+1 at the same rank. The stale v0 handle below can now never be
+    // deleted: its placeholder would land on the rank/version the edit already took, and replaying
+    // the request re-derives the same collision, so retrying it forever would be pointless.
+    const edited = await editUserMessage(auth, {
+      conversationResource,
+      message: firstUser,
+      content: "Edited before the delete lands",
+      mentions: [],
+      skipToolsValidation: false,
+    });
+    expect(edited.isOk()).toBe(true);
+
+    const result = await softDeleteUserMessageAndReplies(auth, {
+      message: firstUser,
+      conversationResource: await fetchConversationResource(
+        auth,
+        conversation.sId
+      ),
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("message_already_edited");
+    }
+  });
+
   it("signals gracefullyStopAgentLoop when the cascaded agent reply is still running", async () => {
     // ConversationFactory creates agent messages with status "created" by default, which
     // simulates a mid-stream reply being orphaned by the user-message delete.

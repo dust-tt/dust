@@ -1,6 +1,7 @@
 import {
   isWriteConflictError,
   retryOnWriteConflict,
+  WriteConflictError,
 } from "@app/lib/utils/sql_utils";
 import { DatabaseError, UniqueConstraintError } from "sequelize";
 import { describe, expect, it, vi } from "vitest";
@@ -60,7 +61,7 @@ describe("retryOnWriteConflict", () => {
     expect(run).toHaveBeenCalledTimes(2);
   });
 
-  it("gives up after the attempt budget and rethrows the last conflict", async () => {
+  it("gives up after the attempt budget and reports it as a write conflict", async () => {
     const lastError = new UniqueConstraintError({});
     const run = vi
       .fn()
@@ -68,8 +69,16 @@ describe("retryOnWriteConflict", () => {
       .mockRejectedValueOnce(new UniqueConstraintError({}))
       .mockRejectedValueOnce(lastError);
 
-    await expect(retryOnWriteConflict(run)).rejects.toBe(lastError);
+    // Distinct from the driver error so the HTTP boundary can answer 503 rather than 500, with the
+    // underlying conflict kept for the logs.
+    const thrown = await retryOnWriteConflict(run).catch((e: unknown) => e);
+
     expect(run).toHaveBeenCalledTimes(3);
+    expect(thrown).toBeInstanceOf(WriteConflictError);
+    if (thrown instanceof WriteConflictError) {
+      expect(thrown.attempts).toBe(3);
+      expect(thrown.conflict).toBe(lastError);
+    }
   });
 
   it("rethrows anything that is not a write conflict", async () => {

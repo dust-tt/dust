@@ -737,6 +737,7 @@ export const CONVERSATION_ERROR_TYPES = [
   "user_already_participant",
   "message_not_found",
   "message_deletion_not_authorized",
+  "message_already_edited",
   "conversation_context_usage_not_found",
 ] as const;
 
