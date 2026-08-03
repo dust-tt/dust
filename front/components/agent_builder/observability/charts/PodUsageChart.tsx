@@ -72,9 +72,12 @@ export function PodUsageChart({
       percent: toPercent(bucket.count),
     }));
 
-  const othersCount = podBuckets
-    .slice(MAX_PODS_DISPLAYED)
-    .reduce((acc, bucket) => acc + bucket.count, 0);
+  // Pods beyond the displayed top N, plus messages the backend aggregation
+  // truncated past its own bucket cap (otherPodsCount).
+  const othersCount =
+    podBuckets
+      .slice(MAX_PODS_DISPLAYED)
+      .reduce((acc, bucket) => acc + bucket.count, 0) + podUsage.otherPodsCount;
 
   const data: PodChartDatum[] = [
     ...topPods,

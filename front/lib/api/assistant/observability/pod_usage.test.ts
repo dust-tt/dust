@@ -13,13 +13,18 @@ vi.mock("@app/lib/api/elasticsearch", async (importActual) => {
   return { ...actual, searchAnalytics: vi.fn() };
 });
 
-function stubEsBuckets(buckets: { key: string; doc_count: number }[]) {
+function stubEsBuckets(
+  buckets: { key: string; doc_count: number }[],
+  sumOtherDocCount: number = 0
+) {
   const response: estypes.SearchResponse<never> = {
     took: 1,
     timed_out: false,
     _shards: { total: 1, successful: 1, failed: 0, skipped: 0 },
     hits: { hits: [] },
-    aggregations: { by_space: { buckets } },
+    aggregations: {
+      by_space: { buckets, sum_other_doc_count: sumOtherDocCount },
+    },
   };
   vi.mocked(searchAnalytics).mockResolvedValue(new Ok(response));
 }
@@ -50,9 +55,34 @@ describe("fetchPodUsageBreakdown", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toEqual([
+      expect(result.value).toEqual({
+        buckets: [
+          { podId: pod.sId, name: pod.name, count: 12 },
+          { podId: null, name: null, count: 10 },
+        ],
+        otherPodsCount: 0,
+      });
+    }
+  });
+
+  it("surfaces the aggregation's truncated-tail count as otherPodsCount", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    const pod = await SpaceFactory.project(workspace);
+
+    stubEsBuckets([{ key: pod.sId, doc_count: 12 }], 805);
+
+    const result = await fetchPodUsageBreakdown(auth, {
+      bool: { filter: [] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.otherPodsCount).toBe(805);
+      expect(result.value.buckets).toEqual([
         { podId: pod.sId, name: pod.name, count: 12 },
-        { podId: null, name: null, count: 10 },
       ]);
     }
   });
@@ -76,7 +106,10 @@ describe("fetchPodUsageBreakdown", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value.map((b) => b.podId)).toEqual([podB.sId, podA.sId]);
+      expect(result.value.buckets.map((b) => b.podId)).toEqual([
+        podB.sId,
+        podA.sId,
+      ]);
     }
   });
 
@@ -93,7 +126,7 @@ describe("fetchPodUsageBreakdown", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toEqual([]);
+      expect(result.value).toEqual({ buckets: [], otherPodsCount: 0 });
     }
   });
 });

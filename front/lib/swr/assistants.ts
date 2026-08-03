@@ -1021,7 +1021,7 @@ export function useAgentPodUsage(params: {
   );
 
   return {
-    podUsage: data ?? { total: 0, buckets: emptyArray() },
+    podUsage: data ?? { total: 0, buckets: emptyArray(), otherPodsCount: 0 },
     isPodUsageLoading: !error && !data && !disabled,
     isPodUsageError: error,
     isPodUsageValidating: isValidating,
