@@ -3,7 +3,7 @@ import { renderConversationForModel } from "@app/lib/api/assistant/conversation_
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import {
   type EnabledSkill,
-  renderAvailableSkillsUserMessage,
+  renderEquippedSkillsUserMessage,
 } from "@app/lib/api/assistant/skills_rendering";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -338,9 +338,7 @@ export async function sendBatchCallToLlm(
     const { enabledSkills, equippedSkills } = input;
 
     const leadingMessages = equippedSkills
-      ? removeNulls([
-          renderAvailableSkillsUserMessage(equippedSkills, "system"),
-        ])
+      ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
       : [];
 
     const modelConversationRes = await renderConversationForModel(auth, {
