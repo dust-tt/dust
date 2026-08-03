@@ -4,6 +4,7 @@ import {
 } from "@connectors/api/webhooks/slack/created_channel";
 import { handleDeprecatedChatBot } from "@connectors/api/webhooks/slack/deprecated_bot";
 import type {
+  SlackWebhookEvent,
   SlackWebhookReqBody,
   SlackWebhookResBody,
 } from "@connectors/api/webhooks/slack/utils";
@@ -29,6 +30,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { SlackChannelModel } from "@connectors/lib/models/slack";
+import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -37,6 +39,29 @@ import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import { DustAPI, removeNulls } from "@dust-tt/client";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
+
+// Answers Slack before doing the Slack API work, otherwise they retry the HTTP
+// request. `handleDeprecatedChatBot` used to own that response.
+async function notifyDeprecatedBot(
+  res: Response<SlackWebhookResBody>,
+  event: SlackWebhookEvent,
+  teamId: string,
+  logger: Logger
+) {
+  res.status(200).send();
+
+  if (!event.channel || !event.ts) {
+    logger.info("Ignoring event without a channel or a timestamp");
+    return;
+  }
+
+  await handleDeprecatedChatBot({
+    logger,
+    slackChannel: event.channel,
+    slackMessageTs: event.ts,
+    slackTeamId: teamId,
+  });
+}
 
 const _webhookSlackAPIHandler = async (
   req: Request<
@@ -108,7 +133,7 @@ const _webhookSlackAPIHandler = async (
     try {
       switch (event.type) {
         case "app_mention": {
-          await handleDeprecatedChatBot(req, res, logger);
+          await notifyDeprecatedBot(res, event, teamId, logger);
           break;
         }
         /**
@@ -177,7 +202,7 @@ const _webhookSlackAPIHandler = async (
               return res.status(200).send();
             }
             // Message from an actual user (a human)
-            await handleDeprecatedChatBot(req, res, logger);
+            await notifyDeprecatedBot(res, event, teamId, logger);
             break;
           } else if (
             event.channel_type === "channel" ||
@@ -499,7 +524,8 @@ const _webhookSlackAPIHandler = async (
         case "channel_created": {
           if (isChannelCreatedEvent(event)) {
             const onChannelCreationRes = await onChannelCreation({
-              event,
+              channelId: event.channel.id,
+              contextTeamId: event.channel.context_team_id,
               logger,
               provider: "slack",
             });

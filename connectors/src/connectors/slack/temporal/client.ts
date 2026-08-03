@@ -8,11 +8,15 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
 import { Err, Ok, removeNulls } from "@dust-tt/client";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 
 import { getWeekStart } from "../lib/utils";
 import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
-import type { JoinChannelUseCaseType } from "./workflows";
+import type {
+  JoinChannelUseCaseType,
+  SlackWebhookEventPayload,
+} from "./workflows";
 import {
   joinChannelWorkflow,
   joinChannelWorkflowId,
@@ -20,6 +24,8 @@ import {
   migrateChannelsFromLegacyBotToNewBotWorkflowId,
   slackGarbageCollectorWorkflow,
   slackGarbageCollectorWorkflowId,
+  slackWebhookEventWorkflow,
+  slackWebhookEventWorkflowId,
   syncOneMessageDebounced,
   syncOneMessageDebouncedWorkflowId,
   syncOneThreadDebounced,
@@ -29,6 +35,45 @@ import {
 } from "./workflows";
 
 const logger = mainLogger.child({ provider: "slack" });
+
+/**
+ * Starts one workflow per Slack webhook event. Start-only on purpose: this runs
+ * at Slack webhook rate, so it must never touch the database or the Slack API.
+ * Everything the event needs is resolved workflow side.
+ */
+export async function launchSlackWebhookEventWorkflow(
+  teamId: string,
+  eventId: string,
+  event: SlackWebhookEventPayload
+) {
+  const client = await getTemporalClient();
+
+  const workflowId = slackWebhookEventWorkflowId(eventId);
+  try {
+    await client.workflow.start(slackWebhookEventWorkflow, {
+      args: [teamId, event],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+    });
+
+    return new Ok(workflowId);
+  } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      // Slack redelivered an event we are already handling.
+      logger.info(
+        { teamId, eventType: event.type, workflowId },
+        "Slack webhook event already queued"
+      );
+      return new Ok(workflowId);
+    }
+
+    logger.error(
+      { error: e, teamId, eventType: event.type, workflowId },
+      "Failed launchSlackWebhookEventWorkflow"
+    );
+    return new Err(normalizeError(e));
+  }
+}
 
 export async function launchSlackSyncWorkflow(
   connectorId: ModelId,
@@ -281,6 +326,16 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
     );
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      // A collection is already running for that connector, which is what the
+      // caller wants.
+      logger.info(
+        { connectorId, workflowId },
+        "slackGarbageCollector workflow already running."
+      );
+      return new Ok(workflowId);
+    }
+
     logger.error(
       {
         workflowId,
