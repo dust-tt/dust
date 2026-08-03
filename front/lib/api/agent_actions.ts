@@ -1,8 +1,12 @@
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
-import type { AgentsUsageType } from "@app/types/data_source";
+import type {
+  SkillUsageType,
+  UsedBySkillType,
+} from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
 import { QueryTypes } from "sequelize";
 
@@ -10,7 +14,7 @@ import { QueryTypes } from "sequelize";
 // If it is a problem, let's add caching
 const DISABLE_QUERIES = false;
 
-export type MCPServersUsageByAgent = Record<string, AgentsUsageType>;
+export type MCPServersUsage = Record<string, SkillUsageType>;
 
 interface MCPServerUsageRow {
   internalMCPServerId: string | null;
@@ -19,6 +23,8 @@ interface MCPServerUsageRow {
   sIds: string[];
   pictureUrls: string[];
 }
+
+type UsageVisibility = "all" | "accessible";
 
 /**
  * Returns the list of agent IDs visible to the current user (used for
@@ -33,16 +39,18 @@ async function getVisibleAgentIds(auth: Authenticator): Promise<ModelId[]> {
 }
 
 /**
- * Builds the visibility WHERE clause and query replacements depending on
- * whether the caller is an admin or a regular user.
+ * Builds the visibility WHERE clause and query replacements.
  */
-async function buildVisibilityFilter(auth: Authenticator): Promise<{
+async function buildVisibilityFilter(
+  auth: Authenticator,
+  visibility: UsageVisibility
+): Promise<{
   clause: string;
   params: Record<string, unknown>;
 }> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  if (auth.isAdmin()) {
+  if (visibility === "all") {
     return {
       clause: `ac."status" = 'active' AND ac."workspaceId" = :workspace_id`,
       params: { workspace_id: workspaceId },
@@ -65,7 +73,7 @@ async function buildVisibilityFilter(auth: Authenticator): Promise<{
 function rowToUsageEntry(
   row: MCPServerUsageRow,
   workspaceId: ModelId
-): { key: string; usage: AgentsUsageType } {
+): { key: string; usage: SkillUsageType } {
   const key =
     row.internalMCPServerId ||
     remoteMCPServerNameToSId({
@@ -82,32 +90,68 @@ function rowToUsageEntry(
         name: row.names[index],
         pictureUrl: row.pictureUrls[index],
       })),
+      skills: [],
     },
   };
 }
 
+async function fetchSkillsByMCPServer(
+  auth: Authenticator,
+  visibility: UsageVisibility
+): Promise<Map<string, UsedBySkillType[]>> {
+  const skills = await SkillResource.listByWorkspace(auth, {
+    status: "active",
+    withInstructions: false,
+    withTools: true,
+    withFileAttachments: false,
+  });
+
+  const skillsByMCPServer = new Map<string, UsedBySkillType[]>();
+  for (const skill of skills) {
+    if (
+      visibility === "accessible" &&
+      skill.availability === "editors" &&
+      !skill.canWrite(auth)
+    ) {
+      continue;
+    }
+
+    const usedBySkill: UsedBySkillType = {
+      sId: skill.sId,
+      name: skill.name,
+      icon: skill.icon,
+    };
+    for (const mcpServerId of new Set(
+      skill.mcpServerViews.map((view) => view.mcpServerId)
+    )) {
+      const usedBySkills = skillsByMCPServer.get(mcpServerId) ?? [];
+      usedBySkills.push(usedBySkill);
+      skillsByMCPServer.set(mcpServerId, usedBySkills);
+    }
+  }
+
+  for (const usedBySkills of skillsByMCPServer.values()) {
+    usedBySkills.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return skillsByMCPServer;
+}
+
 export async function getToolsUsage(
   auth: Authenticator
-): Promise<MCPServersUsageByAgent> {
-  const owner = auth.workspace();
-
-  // This condition is critical it checks that we can identify the workspace and that the current
-  // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
-  // be possible to access data sources without being authenticated.
-  if (!owner || !auth.isUser()) {
-    return {};
-  }
+): Promise<MCPServersUsage> {
+  const owner = auth.getNonNullableWorkspace();
 
   if (DISABLE_QUERIES) {
     return {};
   }
 
+  const visibility: UsageVisibility = auth.isAdmin() ? "all" : "accessible";
   const replicaDb = getFrontReplicaDbConnection();
-
-  const { clause, params } = await buildVisibilityFilter(auth);
+  const { clause, params } = await buildVisibilityFilter(auth, visibility);
 
   // biome-ignore lint/plugin/noRawSql: Read-only analytics query on replica.
-  const rows = await replicaDb.query<MCPServerUsageRow>(
+  const rowsPromise = replicaDb.query<MCPServerUsageRow>(
     `
     SELECT
       msv."internalMCPServerId",
@@ -125,11 +169,30 @@ export async function getToolsUsage(
     `,
     { replacements: params, type: QueryTypes.SELECT }
   );
+  const [rows, skillsByMCPServer] = await Promise.all([
+    rowsPromise,
+    fetchSkillsByMCPServer(auth, visibility),
+  ]);
 
-  const result: MCPServersUsageByAgent = {};
+  const result: MCPServersUsage = {};
   for (const row of rows) {
     const { key, usage } = rowToUsageEntry(row, owner.id);
     result[key] = usage;
   }
+
+  for (const [mcpServerId, skills] of skillsByMCPServer) {
+    const usage = result[mcpServerId];
+    if (usage) {
+      usage.skills = skills;
+      usage.count += skills.length;
+    } else {
+      result[mcpServerId] = {
+        count: skills.length,
+        agents: [],
+        skills,
+      };
+    }
+  }
+
   return result;
 }
