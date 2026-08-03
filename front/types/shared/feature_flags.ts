@@ -1,4 +1,19 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  allow_sso: {
+    description:
+      "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
+    stage: "on_demand",
+  },
+  allow_scim: {
+    description:
+      "Allow this workspace to configure SCIM user provisioning, independently of the plan's isSCIMAllowed flag. Enable on demand.",
+    stage: "on_demand",
+  },
+  live_speech_to_text: {
+    description:
+      "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
+    stage: "dust_only",
+  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
@@ -6,6 +21,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   anthropic_vertex_fallback: {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
+    stage: "dust_only",
+  },
+  anthropic_cache_diagnostics: {
+    description:
+      "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
     stage: "dust_only",
   },
   use_vertex_for_supported_models: {
@@ -26,9 +46,13 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
     stage: "dust_only",
   },
-  dust_agent_gpt_5_5_default: {
+  dust_agent_gpt_5_6_luna_default: {
     description:
-      "Use GPT 5.5 (medium reasoning) as the default model for the @dust agent",
+      "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
+    stage: "on_demand",
+  },
+  dust_agent_sonnet_5_default: {
+    description: "Use Claude Sonnet 5 as the default model for the @dust agent",
     stage: "dust_only",
   },
   notion_private_integration: {
@@ -43,6 +67,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Claude 4.5 Opus model in the agent builder",
     stage: "on_demand",
   },
+  claude_fable_5_feature: {
+    description:
+      "Access to Claude Fable 5 model (served through the EAP Anthropic key)",
+    stage: "dust_only",
+  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
@@ -52,29 +81,20 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Fireworks new model",
     stage: "on_demand",
   },
-  deepseek_r1_global_agent_feature: {
-    description: "Access to DeepSeek R1 model as global agent",
-    stage: "on_demand",
-  },
   dev_mcp_actions: {
     description: "MCP tools currently in development",
+    stage: "dust_only",
+  },
+  exa_people_and_company: {
+    description: "Access to Exa MCP server (search_people, search_companies)",
     stage: "dust_only",
   },
   disable_run_logs: {
     description: "Disable logging of agent runs",
     stage: "dust_only",
   },
-  disallow_agent_creation_to_users: {
-    description:
-      "Prevent users from creating agents, allowing only admins and builders",
-    stage: "on_demand",
-  },
-  restrict_agents_publishing: {
-    description: "Restrict publishing agents to builders and admins",
-    stage: "on_demand",
-  },
-  restrict_agents_publishing_to_admins: {
-    description: "Restrict publishing agents to admins only",
+  disable_computer_feature: {
+    description: "Disable all Computer sandbox features for this workspace",
     stage: "on_demand",
   },
   google_sheets_tool: {
@@ -89,20 +109,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Allow indexing of private Slack channels",
     stage: "on_demand",
   },
-  labs_mcp_actions_dashboard: {
-    description: "MCP actions dashboard in Labs section",
-    stage: "on_demand",
-  },
   labs_transcripts: {
     description: "Transcript feature (Labs)",
     stage: "on_demand",
   },
   openai_o1_feature: {
     description: "Access to OpenAI o1 model",
-    stage: "on_demand",
-  },
-  openai_o1_high_reasoning_feature: {
-    description: "Access to OpenAI o1 high reasoning model",
     stage: "on_demand",
   },
   openai_usage_mcp: {
@@ -132,6 +144,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
     stage: "on_demand",
   },
+  usage_page_read_only: {
+    description:
+      "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
+    stage: "on_demand",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
@@ -140,27 +157,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
   },
-  gemini_3_1_pro_feature: {
-    description: "Access to Gemini 3.1 Pro model in the agent builder",
-    stage: "on_demand",
-  },
-  hootl_subscriptions: {
-    description: "Subscription feature for Schedule & Triggers.",
-    stage: "dust_only",
-  },
   slack_enhanced_default_agent: {
     description:
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
     stage: "on_demand",
-  },
-  slideshow: {
-    description: "Slideshow MCP tool",
-    stage: "dust_only",
-  },
-  frames_skill_v2: {
-    description:
-      "Use the merged Frames skill v2 prose for every agent in the workspace. Temporary, remove after global rollout.",
-    stage: "dust_only",
   },
   slack_message_splitting: {
     description:
@@ -170,10 +170,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
-  },
-  nested_skills: {
-    description: "Enable nested skills",
-    stage: "dust_only",
   },
   power_bi_mcp: {
     description: "Power BI MCP tool for querying semantic models and DAX",
@@ -193,19 +189,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
-  sandbox_tools: {
-    description:
-      "Computer MCP tool for executing code in isolated Linux containers (sandbox)",
-    stage: "dust_only",
+  servicenow_tool: {
+    description: "ServiceNow MCP tool",
+    stage: "on_demand",
   },
-  sandbox_dsbx_tools: {
-    description:
-      "Programmatic access to MCP tools from inside the Computer (sandbox) via the dsbx CLI",
-    stage: "dust_only",
+  workday_mcp: {
+    description: "Workday MCP tool",
+    stage: "on_demand",
   },
-  sandbox_workspace_admin: {
-    description:
-      "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
+  sandbox_functions: {
+    description: "Enable Pod Function invocation endpoints",
     stage: "dust_only",
   },
   run_tools_from_prompt: {
@@ -216,25 +209,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable slack notifications",
     stage: "dust_only",
   },
-  anthropic_reasoning_token_count: {
-    description:
-      "After a response from Anthropic, make an additional API call to get the reasoning token count for better usage tracking",
-    // Not really on_demand but we want to be able to enable it for customers
-    stage: "on_demand",
-  },
   reinforced_agents: {
     description:
-      "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",
+      "Enable self-improvement (background analysis of conversations to suggest improvements to skills).",
     stage: "dust_only",
   },
-  reinforcement_ui: {
+  self_improvement_beta_tester: {
     description:
-      "Enable the reinforcement suggestions UI panel in the Skills Builder.",
-    stage: "dust_only",
-  },
-  self_improving_skills_report_usage: {
-    description:
-      "Report reinforcement LLM costs to Metronome, ES analytics, and programmatic usage tracking.",
+      "Self-improvement runs for free: consumption is not reported to billing (Metronome or programmatic usage).",
     stage: "dust_only",
   },
   collapsible_messages: {
@@ -245,19 +227,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
   },
-  metronome_billing: {
+  legacy_billing: {
     description:
-      "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
+      "Force this workspace to use legacy Stripe billing, bypassing Metronome credit-priced plans regardless of the global kill switch.",
     stage: "dust_only",
-  },
-  clari_copilot_mcp: {
-    description:
-      "Enable the Clari Copilot MCP server for call transcript and summary access.",
-    stage: "on_demand",
   },
   plan_mode: {
     description:
-      "Enable the Plan Mode skill: agents maintain a live plan.md for non-trivial tasks, with an optional human-approval checkpoint.",
+      "Enable the Plan Mode skill: agents maintain a live plan.md for genuinely multi-step tasks, with an optional human-approval checkpoint.",
     stage: "dust_only",
   },
   allow_old_notion_mcp: {
@@ -285,38 +262,57 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
     stage: "on_demand",
   },
-  deferred_conversation_creation: {
+  restricted_spaces_in_input_bar: {
     description:
-      "Create conversations in two steps (conversation first, first message in background) for faster navigation to the conversation page",
+      "Allow users to explicitly select Spaces from the conversation input bar.",
     stage: "dust_only",
-  },
-  conversation_search_indexing: {
-    description: "Enable ES indexing of conversations on mutation (write path)",
-    stage: "dust_only",
-  },
-  conversation_search_read: {
-    description:
-      "Enable ES-backed conversation listing in the sidebar (read path)",
-    stage: "dust_only",
-  },
-  new_file_explorer: {
-    description:
-      "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
-    stage: "dust_only",
-  },
-  user_settings_v2: {
-    description: "Enable the new user settings v2 experience",
-    stage: "dust_only",
-  },
-  force_us_api_url: {
-    description:
-      "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
-      "as its backend for this workspace",
-    stage: "on_demand",
   },
   disable_formatting_prompt: {
     description:
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
+    stage: "dust_only",
+  },
+  workspace_default_agent: {
+    description:
+      "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
+    stage: "on_demand",
+  },
+  whitelabel_frames: {
+    description:
+      "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
+    stage: "on_demand",
+  },
+  models_picker: {
+    description:
+      "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
+    stage: "dust_only",
+  },
+  activation_skill: {
+    description: "Enable the Activation skill for agentic user activation pods",
+    stage: "dust_only",
+  },
+  activation_scheduler: {
+    description: "Enable the per-workspace Activation scheduler workflow",
+    stage: "dust_only",
+  },
+  group_permissions_shadow: {
+    description:
+      "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
+    stage: "dust_only",
+  },
+  user_memory: {
+    description:
+      "Enable the user_memory internal MCP server: agents can store and retrieve per-user memory in a user-scoped filesystem.",
+    stage: "dust_only",
+  },
+  similar_agents_check: {
+    description:
+      "Warn users about similar existing agents before they create a duplicate in the agent builder.",
+    stage: "dust_only",
+  },
+  enforce_user_spend_limit_rate_cap: {
+    description:
+      "Enable the per-user spend-cap backup: record per-user AWU usage into the Redis fixed-window counter and enforce it at message send (blocks with user_cap_reached). When off, usage is neither recorded nor enforced.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
@@ -339,6 +335,15 @@ export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
+
+const DISABLE_COMPUTER_FEATURE =
+  "disable_computer_feature" as const satisfies WhitelistableFeature;
+
+export function isComputerFeatureEnabled(
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  return !featureFlags.includes(DISABLE_COMPUTER_FEATURE);
+}
 
 export function isWhitelistableFeature(
   feature: unknown

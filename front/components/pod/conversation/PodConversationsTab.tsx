@@ -1,3 +1,4 @@
+import { ActivationNextSteps } from "@app/components/assistant/conversation/ActivationNextSteps";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
@@ -11,19 +12,24 @@ import { usePodUnreadConversationIds } from "@app/hooks/conversations";
 import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
+import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type {
-  ConversationWithoutContentType,
-  LightConversationType,
-} from "@app/types/assistant/conversation";
+import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
+import type { GetSpaceResponseBody } from "@app/types/api/spaces";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
-import type { UserType, WorkspaceType } from "@app/types/user";
+import {
+  resolveDefaultAgentId,
+  type UserType,
+  type WorkspaceType,
+} from "@app/types/user";
 import {
   Button,
   ButtonsSwitch,
@@ -52,7 +58,7 @@ type GroupLabel =
 interface PodConversationsTabProps {
   owner: WorkspaceType;
   user: UserType;
-  conversations: LightConversationType[];
+  conversations: PodConversationListItemType[];
   isConversationsLoading: boolean;
   hasMore: boolean;
   loadMore: () => void;
@@ -65,7 +71,9 @@ interface PodConversationsTabProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
+    selectedMCPServerViewIds?: string[],
+    selectedSpaceIds?: string[],
+    modelSelection?: ModelSelectionType
   ) => Promise<Result<undefined, any>>;
   onNavigateToTasks: () => void;
 }
@@ -86,6 +94,7 @@ export function PodConversationsTab({
   onNavigateToTasks,
 }: PodConversationsTabProps) {
   const { isEditor } = podInfo;
+  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -95,6 +104,25 @@ export function PodConversationsTab({
   });
   const { unreadConversationIds } = usePodUnreadConversationIds({
     workspaceId: owner.sId,
+    podId: podInfo.sId,
+  });
+  // This pod's default agent, applied to new conversations started here. Resolved
+  // downstream in `useHandleMentions`, falling back to @dust.
+  const { podMetadata, isPodMetadataLoading } = usePodMetadata({
+    workspaceId: owner.sId,
+    podId: podInfo.sId,
+  });
+
+  // Unless a pod default is explicitly set, fall back to the workspace-wide default
+  // agent. The final fallback to @dust happens in `useHandleMentions`.
+  const defaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
+  });
+
+  const { defaultSkills, isDefaultSkillsLoading } = usePodDefaultSkills({
+    owner,
     podId: podInfo.sId,
   });
 
@@ -124,13 +152,13 @@ export function PodConversationsTab({
     initialSearchText: "",
   });
 
-  const conversationsByDate: Record<GroupLabel, LightConversationType[]> =
+  const conversationsByDate: Record<GroupLabel, PodConversationListItemType[]> =
     useMemo(() => {
       return conversations.length
         ? (getGroupConversationsByDate({
             conversations,
             titleFilter: "",
-          }) as Record<GroupLabel, LightConversationType[]>)
+          }) as Record<GroupLabel, PodConversationListItemType[]>)
         : ({} as Record<GroupLabel, typeof conversations>);
     }, [conversations]);
 
@@ -168,22 +196,24 @@ export function PodConversationsTab({
         >
           <div className="flex w-full flex-col gap-3">
             <PodPinnedBanner owner={owner} podInfo={podInfo} />
-            <div className="flex items-center gap-2">
+            <div className="flex w-full justify-center">
+              <ActivationNextSteps owner={owner} podId={podInfo.sId} />
+            </div>
+            <div className="flex w-full items-center justify-center gap-2">
               <h2
                 className={cn(
-                  "heading-2xl text-foreground dark:text-foreground-night",
-                  podInfo.archivedAt &&
-                    "text-muted-foreground dark:text-muted-foreground-night"
+                  "heading-2xl text-foreground",
+                  podInfo.archivedAt && "text-muted-foreground"
                 )}
               >
                 {greeting}
               </h2>
               {podInfo.archivedAt && (
-                <Chip size="xs" color="rose" label="Archived" />
+                <Chip size="xs" color="warning" label="Archived" />
               )}
             </div>
             {podInfo.archivedAt ? (
-              <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
+              <div className="mx-auto flex w-full flex-col py-4 md:max-w-conversation">
                 <EmptyCTA
                   message="This Pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
                   action={null}
@@ -198,6 +228,10 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 placeholder={`Get work done in ${podInfo.name}`}
+                defaultAgentId={defaultAgentId}
+                isDefaultAgentLoading={isPodMetadataLoading}
+                defaultSkills={defaultSkills}
+                isDefaultSkillsLoading={isDefaultSkillsLoading}
               />
             ) : (
               <PodJoinCTA
@@ -255,18 +289,18 @@ export function PodConversationsTab({
                         return (
                           <div
                             className={cn(
-                              "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
-                              selected && "bg-gray-100 dark:bg-gray-700"
+                              "cursor-pointer px-3 py-2 hover:bg-primary-50",
+                              selected && "bg-primary-100"
                             )}
                             onClick={() => navigateToConversation(conversation)}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0 flex-1 truncate">
-                                <div className="text-sm font-medium text-foreground dark:text-foreground-night">
+                                <div className="text-sm font-medium text-foreground">
                                   {conversationLabel}
                                 </div>
                               </div>
-                              <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                              <div className="shrink-0 text-xs text-muted-foreground">
                                 {time}
                               </div>
                             </div>
@@ -349,7 +383,7 @@ export function PodConversationsTab({
                               .toSorted((a, b) => b.updated - a.updated)
                               .map((conversation) => (
                                 <PodConversationListItem
-                                  key={conversation.sId}
+                                  key={conversation.id}
                                   conversation={conversation}
                                   owner={owner}
                                 />

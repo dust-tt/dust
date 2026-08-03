@@ -3,7 +3,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getFastestWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type { BuilderSuggestionInputType } from "@app/types/api/internal/assistant";
+import type { BuilderSuggestionInputType } from "@app/types/api/assistant";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

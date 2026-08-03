@@ -15,6 +15,7 @@ export type PokeDowngradeWorkspaceResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/downgrade.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   async (ctx): HandlerResult<PokeDowngradeWorkspaceResponseBody> => {

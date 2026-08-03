@@ -26,16 +26,16 @@ function NavList<T extends string>({
   onSelect: (item: T) => void;
 }) {
   return (
-    <div className="s-flex s-flex-col s-gap-0.5 s-overflow-auto s-p-2">
+    <div className="flex flex-col gap-0.5 overflow-auto p-2">
       {items.map((item) => (
         <button
           key={item}
           onClick={() => onSelect(item)}
           className={[
-            "s-flex s-w-full s-items-center s-rounded-md s-px-3 s-py-2 s-text-left s-text-sm s-transition-colors",
+            "flex w-full items-center rounded-md px-3 py-2 text-left text-sm transition-colors",
             item === selected
-              ? "s-bg-primary-100 s-font-medium s-text-primary-900 dark:s-bg-primary-900/30 dark:s-text-primary-100"
-              : "s-text-foreground hover:s-bg-structure-100 dark:s-text-foreground-night dark:hover:s-bg-structure-100-night",
+              ? "bg-primary-100 font-medium text-primary-900"
+              : "text-foreground hover:bg-structure-100",
           ].join(" ")}
         >
           {item}

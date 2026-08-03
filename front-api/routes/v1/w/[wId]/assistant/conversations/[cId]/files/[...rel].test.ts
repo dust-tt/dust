@@ -10,6 +10,14 @@ import { honoApp } from "@front-api/app";
 import { PassThrough } from "stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// devModeConstants reads localStorage at module load. jsdom does not always
+// have localStorage initialized when mock factories evaluate, which crashes
+// tests whose mocked libs transitively import AuthContext. Stub it here.
+vi.mock("@app/components/dev/devModeConstants", () => ({
+  DEV_MODE_STORAGE_KEY: "dust_dev_mode",
+  DEV_MODE_ACTIVE: false,
+}));
+
 const { mockGetFileContentType, mockCreateReadStream } = vi.hoisted(() => ({
   mockGetFileContentType: vi.fn(),
   mockCreateReadStream: vi.fn(),
@@ -106,6 +114,21 @@ describe("GET /api/v1/w/:wId/assistant/conversations/:cId/files/:rel", () => {
     );
   });
 
+  it("should resolve canonical conversation-scoped paths", async () => {
+    const { workspace, key, conversation } = await setup();
+
+    const response = await getFile(workspace, key, conversation.sId, [
+      `conversation-${conversation.sId}`,
+      "results",
+      "report.csv",
+    ]);
+
+    expect(response.status).toBe(200);
+    expect(mockGetFileContentType).toHaveBeenCalledWith(
+      `w/${workspace.sId}/conversations/${conversation.sId}/files/results/report.csv`
+    );
+  });
+
   it("should return 404 when GCS file does not exist", async () => {
     mockGetFileContentType.mockResolvedValue(new Err(new Error("not found")));
     const { workspace, key, conversation } = await setup();
@@ -172,5 +195,21 @@ describe("GET /api/v1/w/:wId/assistant/conversations/:cId/files/:rel", () => {
     ]);
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("should reject a canonical path for another conversation", async () => {
+    const { workspace, key, conversation } = await setup();
+    const response = await getFile(workspace, key, conversation.sId, [
+      "conversation-other",
+      "chart.png",
+    ]);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Access denied: path is outside conversation scope.",
+      },
+    });
   });
 });

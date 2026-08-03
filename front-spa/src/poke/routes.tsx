@@ -1,3 +1,4 @@
+import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
 import { AssistantInstructionsPage } from "@dust-tt/front/components/poke/pages/AssistantInstructionsPage";
@@ -32,7 +33,6 @@ import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/Template
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
 import { WebhookSourceDetailsPage } from "@dust-tt/front/components/poke/pages/WebhookSourceDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
-import Custom404 from "@dust-tt/front/pages/404";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { PokePage } from "@spa/poke/layouts/PokePage";

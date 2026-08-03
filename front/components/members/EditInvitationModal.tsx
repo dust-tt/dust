@@ -1,14 +1,18 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { ROLES_DATA } from "@app/components/members/Roles";
+import {
+  getRoleDescription,
+  ROLE_PROVISIONING_GROUPS_LABEL,
+} from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
-  MovingMailIcon,
+  Mail01,
   Page,
   Sheet,
   SheetContainer,
@@ -16,9 +20,25 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useState } from "react";
+
+function getInvitationRoleMessage({
+  isRoleManagedByProvisioning,
+  role,
+}: {
+  isRoleManagedByProvisioning: boolean;
+  role: ActiveRoleType;
+}): string {
+  if (isRoleManagedByProvisioning) {
+    return `This invitation's role is managed by your identity provider through group provisioning (${ROLE_PROVISIONING_GROUPS_LABEL}). Role changes must be made in your identity provider.`;
+  }
+
+  return `The role defines the rights of a member for the workspace. ${getRoleDescription(
+    role
+  )}`;
+}
 
 export function EditInvitationModal({
   owner,
@@ -36,6 +56,11 @@ export function EditInvitationModal({
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
+  // Managers cannot revoke or resend invitations targeting the admin role
+  // (matches the server-side escalation guard); only admins can.
+  const canManageAdminInvitation =
+    invitation?.initialRole !== "admin" || isAdmin(owner);
+
   const { roleProvisioningStatus } = useProvisioningStatus({
     workspaceId: owner.sId,
   });
@@ -43,7 +68,15 @@ export function EditInvitationModal({
   // Check if this invitation's role would be managed by provisioning groups
   const isRoleManagedByProvisioning =
     (roleProvisioningStatus.hasAdminGroup && selectedRole === "admin") ||
+    (roleProvisioningStatus.hasManagerGroup && selectedRole === "manager") ||
     (roleProvisioningStatus.hasBuilderGroup && selectedRole === "builder");
+
+  const roleMessage = invitation
+    ? getInvitationRoleMessage({
+        isRoleManagedByProvisioning,
+        role: invitation.initialRole,
+      })
+    : "";
 
   useEffect(() => {
     if (invitation) {
@@ -84,7 +117,7 @@ export function EditInvitationModal({
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
                 <Page.H variant="h6">{invitation.inviteEmail}</Page.H>
-                <div className="text-muted-foreground dark:text-muted-foreground-night">
+                <div className="text-muted-foreground">
                   Invitation sent on{" "}
                   {new Date(invitation.createdAt).toLocaleDateString()}
                   {invitation.isExpired && (
@@ -95,57 +128,48 @@ export function EditInvitationModal({
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="heading-base text-foreground dark:text-foreground-night">
-                    Role:
-                  </div>
+                  <div className="heading-base text-foreground">Role:</div>
                   <RoleDropDown
                     selectedRole={selectedRole}
                     onChange={setSelectedRole}
                     disabled={isRoleManagedByProvisioning}
                   />
                 </div>
-                <div className="text-muted-foreground dark:text-muted-foreground-night">
-                  {isRoleManagedByProvisioning ? (
-                    "This invitation's role is managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
-                  ) : (
-                    <>
-                      The role defines the rights of a member for the workspace.{" "}
-                      {ROLES_DATA[invitation.initialRole].description}
-                    </>
-                  )}
-                </div>
+                <div className="text-muted-foreground">{roleMessage}</div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="primary"
-                  label="Send invitation again"
-                  icon={MovingMailIcon}
-                  onClick={async () => {
-                    await sendInvitations({
-                      owner,
-                      emails: [invitation.inviteEmail],
-                      invitationRole: selectedRole,
-                      sendNotification,
-                      isNewInvitation: false,
-                    });
-                  }}
-                />
-                <Button
-                  variant="warning"
-                  label="Revoke invitation"
-                  icon={XMarkIcon}
-                  disabled={owner.ssoEnforced}
-                  onClick={async () => {
-                    await updateInvitation({
-                      invitation,
-                      owner,
-                      sendNotification,
-                      confirm,
-                    });
-                  }}
-                />
-              </div>
+              {canManageAdminInvitation && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    label="Send invitation again"
+                    icon={Mail01}
+                    onClick={async () => {
+                      await sendInvitations({
+                        owner,
+                        emails: [invitation.inviteEmail],
+                        invitationRole: selectedRole,
+                        sendNotification,
+                        isNewInvitation: false,
+                      });
+                    }}
+                  />
+                  <Button
+                    variant="warning"
+                    label="Revoke invitation"
+                    icon={XClose}
+                    disabled={owner.ssoEnforced}
+                    onClick={async () => {
+                      await updateInvitation({
+                        invitation,
+                        owner,
+                        sendNotification,
+                        confirm,
+                      });
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </SheetContainer>

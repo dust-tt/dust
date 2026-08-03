@@ -110,6 +110,22 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     expect(updated?.agentFacingDescription).toBe(skill.agentFacingDescription);
   });
 
+  it("allows a workspace admin to update reinforcement for a skill they do not edit", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "admin",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      reinforcement: "off",
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updated?.reinforcement).toBe("off");
+  });
+
   it("accepts each valid reinforcement mode", async () => {
     for (const mode of ["auto", "on", "off"] as const) {
       const { workspace, skill, requestUserAuth } = await setupTest({
@@ -140,7 +156,7 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "app_auth_error",
-        message: "Only editors can modify this skill.",
+        message: "Only admins and editors can modify this skill.",
       },
     });
   });
@@ -221,6 +237,39 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     expect(updated?.selfImprovementCostsCapMicroUsd).toBeNull();
   });
 
+  it("updates selfImprovementCostsCapAwuCredits", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      selfImprovementCostsCapAwuCredits: 2_500,
+    });
+
+    expect(response.status).toBe(200);
+    const updated = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updated?.selfImprovementCostsCapAwuCredits).toBe(2_500);
+    // The microUSD cap is independent and untouched.
+    expect(updated?.selfImprovementCostsCapMicroUsd).toBeNull();
+  });
+
+  it("sets selfImprovementCostsCapAwuCredits to null (use default)", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    // First set a custom cap.
+    await skill.updateSelfImprovementCostsCapAwuCredits(1_000);
+
+    const response = await patch(workspace, skill.sId, {
+      selfImprovementCostsCapAwuCredits: null,
+    });
+
+    expect(response.status).toBe(200);
+    const updated = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updated?.selfImprovementCostsCapAwuCredits).toBeNull();
+  });
+
   it("updates multiple fields in a single request", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
@@ -230,6 +279,7 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
       reinforcement: "off",
       selfImprovementLock: true,
       selfImprovementCostsCapMicroUsd: 5_000_000,
+      selfImprovementCostsCapAwuCredits: 500,
     });
 
     expect(response.status).toBe(200);
@@ -237,6 +287,7 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     expect(updated?.reinforcement).toBe("off");
     expect(updated?.selfImprovementLock).toBe(true);
     expect(updated?.selfImprovementCostsCapMicroUsd).toBe(5_000_000);
+    expect(updated?.selfImprovementCostsCapAwuCredits).toBe(500);
   });
 
   it("returns 403 when a non-admin tries to set selfImprovementLock", async () => {
@@ -271,6 +322,19 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     expect(response.status).toBe(403);
   });
 
+  it("returns 403 when a non-admin tries to set the per-skill AWU credits cap", async () => {
+    const { workspace, skill } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "builder",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      selfImprovementCostsCapAwuCredits: 500,
+    });
+
+    expect(response.status).toBe(403);
+  });
+
   it("returns 403 when a non-admin tries to flip reinforcement on a locked skill", async () => {
     const { workspace, skill } = await setupTest({
       skillOwnerRole: "builder",
@@ -299,6 +363,16 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
 
     const response = await patch(workspace, skill.sId, {
       selfImprovementCostsCapMicroUsd: -1,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects negative AWU credits cap values", async () => {
+    const { workspace, skill } = await setupTest({ requestUserRole: "admin" });
+
+    const response = await patch(workspace, skill.sId, {
+      selfImprovementCostsCapAwuCredits: -1,
     });
 
     expect(response.status).toBe(400);

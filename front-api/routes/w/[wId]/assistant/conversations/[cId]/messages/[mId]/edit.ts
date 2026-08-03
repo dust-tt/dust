@@ -1,8 +1,7 @@
 import { editUserMessage } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isUserMessageType } from "@app/types/assistant/conversation";
-import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -28,6 +27,65 @@ const PostEditRequestBodySchema = z.object({
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/edit.
 const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit:
+ *   post:
+ *     summary: Edit a message
+ *     description: Edit the content and mentions of an existing user message in a conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *               - mentions
+ *             properties:
+ *               content:
+ *                 type: string
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/PrivateMention'
+ *     responses:
+ *       200:
+ *         description: Successfully edited message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   $ref: '#/components/schemas/PrivateUserMessage'
+ *       401:
+ *         description: Unauthorized
+ */
 
 app.post(
   "/",
@@ -67,24 +125,35 @@ app.post(
       });
     }
 
-    const branchId = messageRes.value.getBranchId() ?? null;
-
-    const conversationRes = await getConversation(
-      auth,
-      conversationId,
-      false,
-      branchId
-    );
-
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const messageModel = messageRes.value;
+    if (!messageModel.userMessage) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "The message you're trying to edit does not exist or is not an user message.",
+        },
+      });
     }
 
-    const conversation = conversationRes.value;
+    const renderRes = await batchRenderMessages(
+      auth,
+      conversationResource,
+      [messageModel],
+      "full"
+    );
+    if (renderRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to render message.",
+        },
+      });
+    }
 
-    const message = conversation.content
-      .flat()
-      .find((m) => m.sId === messageId);
+    const message = renderRes.value[0];
     if (!message || !isUserMessageType(message)) {
       return apiError(ctx, {
         status_code: 400,
@@ -99,7 +168,7 @@ app.post(
     const { content, mentions } = ctx.req.valid("json");
 
     const editedMessageRes = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message,
       content,
       mentions,

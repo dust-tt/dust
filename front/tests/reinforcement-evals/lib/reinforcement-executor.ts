@@ -2,22 +2,42 @@ import {
   formatAvailableTools,
   formatMcpDescription,
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
-import { getLLM } from "@app/lib/api/llm";
+import {
+  getBatchLLM,
+  getStreamLLM,
+  legacyModelIdToModel,
+} from "@app/lib/api/llm";
 import type { LLM } from "@app/lib/api/llm/llm";
+import {
+  selectPreferredBatchEndpointForWorkspace,
+  selectPreferredStreamEndpointForWorkspace,
+} from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { BatchResultWithRunIds } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameters,
+  LLMStreamParameters,
+} from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
+import type { EndpointConfig, Where } from "@app/lib/llms/types/filter";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import { buildSkillAggregationPrompt } from "@app/lib/reinforcement/aggregate_suggestions";
 import { buildSkillAnalysisPrompt } from "@app/lib/reinforcement/analyze_conversation";
 import { MAX_REINFORCED_ANALYSIS_STEPS } from "@app/lib/reinforcement/constants";
+import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import {
   buildReinforcedSkillsLLMParams,
   classifySkillToolCalls,
 } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
-import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
+import {
+  DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
+  isExploratoryToolName,
+} from "@app/lib/reinforcement/types";
 import { buildContinuationMessages } from "@app/lib/reinforcement/utils";
 import {
   BATCH_POLL_INTERVAL_MS,
@@ -38,6 +58,8 @@ import {
   type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 
 function makeSkillType(config: MockSkillConfig): SkillType {
@@ -61,6 +83,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     reinforcement: "auto",
     selfImprovementLock: false,
     selfImprovementCostsCapMicroUsd: null,
+    selfImprovementCostsCapAwuCredits: null,
     requestedSpaceIds: [],
     tools: (config.tools ?? []).map((t) => ({
       id: 0,
@@ -85,12 +108,42 @@ function makeSkillType(config: MockSkillConfig): SkillType {
       },
       oAuthUseCase: null,
       editedByUser: null,
+      isRestrictedToSkills: false,
     })),
     fileAttachments: [],
     canWrite: false,
-    isExtendable: false,
+    canAdministrate: false,
     isDefault: false,
-    extendedSkillId: null,
+    availability: "workspace_users",
+  };
+}
+
+/**
+ * Build the effective workspace context by merging the test case's skill configs
+ * into workspaceContext.skillConfigs, so describe_skill can resolve them.
+ */
+function buildEffectiveWorkspaceContext(testCase: TestCase): WorkspaceContext {
+  const testSkillConfigs = isAnalysisTestCase(testCase)
+    ? testCase.skillConfigs
+    : [testCase.skillConfig];
+
+  const existingSkillIds = new Set(
+    (testCase.workspaceContext.skillConfigs ?? []).map((s) => s.sId)
+  );
+  const newSkillConfigs = testSkillConfigs.filter(
+    (s) => !existingSkillIds.has(s.sId)
+  );
+
+  if (newSkillConfigs.length === 0) {
+    return testCase.workspaceContext;
+  }
+
+  return {
+    ...testCase.workspaceContext,
+    skillConfigs: [
+      ...(testCase.workspaceContext.skillConfigs ?? []),
+      ...newSkillConfigs,
+    ],
   };
 }
 
@@ -101,16 +154,13 @@ function buildPromptForTestCase(testCase: TestCase): {
   if (isAnalysisTestCase(testCase)) {
     const skillTypes = testCase.skillConfigs.map(makeSkillType);
     const conversationText = buildConversationText(testCase.conversation);
-    return buildSkillAnalysisPrompt(conversationText, skillTypes, {
-      useInlineTools: testCase.useInlineTools,
-    });
+    return buildSkillAnalysisPrompt(conversationText, skillTypes);
   }
   const skillType = makeSkillType(testCase.skillConfig);
   return buildSkillAggregationPrompt(
     skillType,
     testCase.syntheticSuggestions,
-    testCase.existingSuggestions ?? { pending: [], rejected: [] },
-    { useInlineTools: testCase.useInlineTools }
+    testCase.existingSuggestions ?? { pending: [], rejected: [] }
   );
 }
 
@@ -184,6 +234,10 @@ function simulateExploratoryTool(
   args: Record<string, unknown>,
   workspaceContext: WorkspaceContext
 ): string {
+  if (!isExploratoryToolName(toolName)) {
+    throw new Error(`Unknown exploratory tool: ${toolName}`);
+  }
+
   switch (toolName) {
     case "get_available_tools":
       return formatAvailableTools(workspaceContext.tools);
@@ -204,6 +258,19 @@ function simulateExploratoryTool(
         mcpId,
         mockDescriptionToFormatInput(mcpName, desc)
       );
+    }
+    case DESCRIBE_SKILL_TOOL_NAME: {
+      const skillId = args["skillId"];
+      if (!isString(skillId)) {
+        return "Error: skillId parameter is required";
+      }
+      const skillConfig = workspaceContext.skillConfigs?.find(
+        (s) => s.sId === skillId
+      );
+      if (!skillConfig) {
+        return `Skill not found: ${skillId}`;
+      }
+      return formatSkillContext(makeSkillType(skillConfig));
     }
     case "search_knowledge": {
       const nodes = workspaceContext.searchKnowledgeNodes ?? [];
@@ -226,7 +293,7 @@ function simulateExploratoryTool(
       return JSON.stringify({ dataSourceViews, nodes }, null, 2);
     }
     default:
-      return `Unknown exploratory tool: ${toolName}`;
+      assertNever(toolName);
   }
 }
 
@@ -304,21 +371,94 @@ async function executeMultiStep(
   return { toolCalls: allToolCalls, responseText: lastResponseText };
 }
 
-async function getLLMInstance(auth: Authenticator): Promise<LLM> {
+async function getBatchLLMInstance(
+  auth: Authenticator,
+  credentials: LLMCredentialsType,
+  model: Model
+): Promise<LLM> {
+  const filter: Where<EndpointConfig> = {
+    model: { eq: model },
+  };
+  const endpoint = await selectPreferredBatchEndpointForWorkspace(auth, filter);
+
+  if (!endpoint) {
+    throw new Error(
+      `Failed to get endpoint for reinforcement eval (batch model: ${model})`
+    );
+  }
+
+  const llmParameters: LLMParameters<DustBatchEndpointConstructor> = {
+    credentials,
+    modelInfo: { endpoint },
+    bypassFeatureFlag: true,
+  };
+
+  const llm = await getBatchLLM(auth, llmParameters);
+  if (!llm) {
+    throw new Error(
+      `Failed to initialize LLM for reinforcement eval (batch model: ${model})`
+    );
+  }
+
+  return llm;
+}
+
+async function getStreamLLMInstance(
+  auth: Authenticator,
+  credentials: LLMCredentialsType,
+  model: Model
+): Promise<LLM<DustStreamEndpointConstructor>> {
+  const filter: Where<EndpointConfig> = {
+    model: { eq: model },
+  };
+  const endpoint = await selectPreferredStreamEndpointForWorkspace(
+    auth,
+    filter
+  );
+
+  if (!endpoint) {
+    throw new Error(
+      `Failed to get endpoint for reinforcement eval (stream model: ${model})`
+    );
+  }
+
+  const llmParameters: LLMParameters<DustStreamEndpointConstructor> = {
+    credentials,
+    modelInfo: { endpoint },
+    bypassFeatureFlag: true,
+  };
+
+  const llm = await getStreamLLM(auth, llmParameters);
+  if (!llm) {
+    throw new Error(
+      `Failed to initialize LLM for reinforcement eval (stream model: ${model})`
+    );
+  }
+
+  return llm;
+}
+
+async function getLLMInstance(
+  auth: Authenticator,
+  surface: "stream" | "batch" = "stream"
+): Promise<LLM> {
+  const model = legacyModelIdToModel(MODEL_ID);
+  if (!model) {
+    throw new Error(`Unknown model for reinforcement eval: ${MODEL_ID}`);
+  }
+
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const llm = await getLLM(auth, {
-    credentials,
-    modelId: MODEL_ID,
-    bypassFeatureFlag: true,
-  });
-  if (!llm) {
-    throw new Error(
-      `Failed to initialize LLM for reinforcement eval (model: ${MODEL_ID})`
-    );
+
+  switch (surface) {
+    case "stream":
+      return getStreamLLMInstance(auth, credentials, model);
+    case "batch":
+      return getBatchLLMInstance(auth, credentials, model);
+    default:
+      assertNever(surface);
   }
-  return llm;
 }
 
 export async function executeReinforced(
@@ -330,14 +470,12 @@ export async function executeReinforced(
   const operationType = isAggregationTestCase(testCase)
     ? "reinforcement_aggregate_suggestions"
     : "reinforcement_analyze_conversation";
-  const params = buildReinforcedSkillsLLMParams(prompt, operationType, {
-    useInlineTools: testCase.useInlineTools,
-  });
+  const params = buildReinforcedSkillsLLMParams(prompt, operationType);
 
   return executeMultiStep(
     llm,
     params,
-    testCase.workspaceContext,
+    buildEffectiveWorkspaceContext(testCase),
     testCase.scenarioId
   );
 }
@@ -369,11 +507,11 @@ export async function executeBatch(
   auth: Authenticator,
   testCases: CategorizedTestCase[]
 ): Promise<Map<string, ExecutionResult>> {
-  const llm = await getLLMInstance(auth);
+  const llm = await getLLMInstance(auth, "batch");
 
-  const testCaseById = new Map<string, CategorizedTestCase>();
+  const effectiveContextById = new Map<string, WorkspaceContext>();
   for (const tc of testCases) {
-    testCaseById.set(tc.scenarioId, tc);
+    effectiveContextById.set(tc.scenarioId, buildEffectiveWorkspaceContext(tc));
   }
 
   // Build initial params for all test cases.
@@ -385,9 +523,7 @@ export async function executeBatch(
       : "reinforcement_analyze_conversation";
     pendingParams.set(
       tc.scenarioId,
-      buildReinforcedSkillsLLMParams(prompt, operationType, {
-        useInlineTools: tc.useInlineTools,
-      })
+      buildReinforcedSkillsLLMParams(prompt, operationType)
     );
   }
 
@@ -423,13 +559,13 @@ export async function executeBatch(
           );
         }
         // Simulate tool responses and prepare continuation params.
-        const tc = testCaseById.get(scenarioId)!;
+        const effectiveContext = effectiveContextById.get(scenarioId)!;
         const toolResultsMap: Record<string, string> = {};
         for (const toolCall of exploratoryToolCalls) {
           toolResultsMap[toolCall.id] = simulateExploratoryTool(
             toolCall.name,
             toolCall.arguments,
-            tc.workspaceContext
+            effectiveContext
           );
         }
         if (VERBOSE) {

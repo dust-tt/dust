@@ -1,12 +1,12 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 
-import payment from "./payment";
+import businessActivation from "./business-activation";
 import preparePayment from "./prepare-payment";
 
 // Mounted at /api/w/:wId/subscriptions/checkout.
 const app = workspaceApp();
 
-app.route("/payment", payment);
+app.route("/business-activation", businessActivation);
 app.route("/prepare-payment", preparePayment);
 
 export default app;

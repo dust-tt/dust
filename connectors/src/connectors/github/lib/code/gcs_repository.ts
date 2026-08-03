@@ -7,8 +7,8 @@ import {
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
-import type { Bucket, File } from "@google-cloud/storage";
-import { Storage } from "@google-cloud/storage";
+import type { ApiError, Bucket, File } from "@google-cloud/storage";
+import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
 import chunk from "lodash/chunk";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
@@ -25,6 +25,14 @@ const STREAM_THRESHOLD_BYTES = 2 * 1024 * 1024; // 2MB - files smaller than this
 const SMALL_FILE_UPLOAD_MAX_RETRIES = 3;
 const SMALL_FILE_UPLOAD_BASE_DELAY_MS = 500;
 const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
+const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
+
+function isRetryableGCSError(err: ApiError): boolean {
+  return (
+    RETRYABLE_ERR_FN_DEFAULT(err) ||
+    GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX.test(err.message)
+  );
+}
 
 // Files are faster to upsert than directories, so we can afford to have more files per index file.
 const FILES_PER_INDEX = 4000; // Files per index file.
@@ -70,6 +78,10 @@ export class GCSRepositoryManager {
       keyFilename: isDevelopment()
         ? connectorsConfig.getServiceAccount()
         : undefined,
+      retryOptions: {
+        maxRetries: SMALL_FILE_UPLOAD_MAX_RETRIES,
+        retryableErrorFn: isRetryableGCSError,
+      },
     });
     this.bucket = this.storage.bucket(
       connectorsConfig.getDustTmpSyncBucketName()

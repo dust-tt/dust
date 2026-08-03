@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "sandbox_provider_id": "string",
+    "conversation_id": "string",
     "domain": "string",
     "added": "string",
     "reason": "string",

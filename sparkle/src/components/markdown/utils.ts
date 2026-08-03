@@ -1,6 +1,30 @@
 import type { Element } from "hast";
+import type { ComponentType, MemoExoticComponent } from "react";
 
 export type MarkdownNode = Element;
+
+export function getPlainMarkdownBlock<P>(
+  optimizedBlock: MemoExoticComponent<ComponentType<P>>
+): ComponentType<P> {
+  const plain = (
+    optimizedBlock as MemoExoticComponent<ComponentType<P>> & {
+      type?: ComponentType<P>;
+    }
+  ).type;
+
+  return plain ?? optimizedBlock;
+}
+
+export function pickMarkdownBlock<P>(
+  optimizedBlock: MemoExoticComponent<ComponentType<P>>,
+  optimizeForStreaming: boolean
+): ComponentType<P> {
+  if (optimizeForStreaming) {
+    return optimizedBlock as unknown as ComponentType<P>;
+  }
+
+  return getPlainMarkdownBlock(optimizedBlock);
+}
 
 export function sameNodePosition(
   prev?: MarkdownNode,
@@ -59,12 +83,14 @@ export function sanitizeContent(str: string): string {
     str += "`";
   }
 
-  // (2) Hide incomplete text directives during streaming.
-  // Incomplete = trailing :directive[... without ] or :directive[...]{... without }
+  // (2) Hide incomplete directives during streaming.
+  // Incomplete = trailing :directive[... without ], :directive[...]{... without },
+  // or :directive{... without }.
   // Uses $ (end of string, no m flag) so only the last streamed tokens are affected.
   str = str
-    .replace(/:[\w]+\[[^\]]*$/, "")
-    .replace(/:[\w]+\[[^\]]*\]\{[^}]*$/, "");
+    .replace(/:{1,3}[\w-]+\[[^\]\n]*$/, "")
+    .replace(/:{1,3}[\w-]+\[[^\]\n]*\]\{[^}\n]*$/, "")
+    .replace(/:{1,2}[\w-]+\{[^}\n]*$/, "");
 
   return str;
 }

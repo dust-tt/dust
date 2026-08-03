@@ -43,7 +43,6 @@ interface InputBarAttachmentsProps {
   owner: LightWorkspaceType;
   files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
-  conversationId?: string | null;
   disable?: boolean;
 }
 
@@ -51,7 +50,6 @@ export function InputBarAttachments({
   owner,
   files,
   nodes,
-  conversationId,
   disable = false,
 }: InputBarAttachmentsProps) {
   const { spaces } = useSpaces({
@@ -153,15 +151,13 @@ export function InputBarAttachments({
   }
 
   return (
-    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
+    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
       {allAttachments.map((attachment, index) => {
         const attachmentCitation = attachmentToAttachmentCitation(attachment);
         return (
           <AttachmentCitation
             key={index}
-            owner={owner}
             attachmentCitation={attachmentCitation}
-            conversationId={conversationId}
           />
         );
       })}

@@ -1,15 +1,13 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const OUTLOOK_TOOL_NAME = "outlook" as const;
 
-export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
-  get_messages: {
+export const OUTLOOK_TOOLS_METADATA = [
+  {
+    name: "get_messages",
     description:
-      "Get messages from Outlook inbox. Supports search queries to filter messages and filter by folder name.",
+      "Get message metadata and previews from Outlook. Returns subject, sender, date, and a short bodyPreview snippet (~255 chars) — NOT the full body. If the task requires reading the actual content of any email, you MUST call get_message_body for each message after this call.",
     schema: {
       search: z
         .string()
@@ -51,8 +49,11 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching messages",
       done: "Fetch messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_folders: {
+  {
+    name: "list_folders",
     description:
       "List mail folders in an Outlook mailbox. Returns the immediate children of the specified folder path, or top-level folders when no path is given. Use this to discover the full folder hierarchy before calling get_messages with a subfolder path.",
     schema: {
@@ -76,10 +77,72 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Listing folders",
       done: "List folders",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_attachments: {
+  {
+    name: "list_attachments",
     description:
-      "Get all attachments from an Outlook message. Lists attachments and downloads their content, making them available in the conversation.",
+      "List attachments on an Outlook message, returning metadata only (id, name, contentType, size, isInline). Use this first to see what attachments exist, then call get_attachment for each one you want to retrieve. Inline attachments (embedded images, signatures) are excluded by default.",
+    schema: {
+      messageId: z
+        .string()
+        .describe("The ID of the message (from get_messages)"),
+      includeInline: z
+        .boolean()
+        .optional()
+        .describe(
+          "Include inline attachments such as embedded images and signatures. Defaults to false."
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing attachments",
+      done: "List attachments",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "get_attachment",
+    description:
+      "Retrieve a single attachment from an Outlook message by its attachment ID. Works for any file size — for large attachments (>4MB) where the list call returns no inline content, this tool fetches via a dedicated download endpoint. Call list_attachments first to get attachment IDs.",
+    schema: {
+      messageId: z
+        .string()
+        .describe("The ID of the message (from get_messages)"),
+      attachmentId: z
+        .string()
+        .describe("The ID of the attachment (from list_attachments)"),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Downloading attachment",
+      done: "Download attachment",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "get_attachments",
+    description:
+      "Get all attachments from an Outlook message at once. For better control over large attachments, prefer list_attachments followed by individual get_attachment calls instead.",
     schema: {
       messageId: z
         .string()
@@ -100,8 +163,11 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Getting Outlook attachments",
       done: "Get Outlook attachments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_drafts: {
+  {
+    name: "get_drafts",
     description:
       "Get draft emails from Outlook. Returns a limited number of drafts by default to avoid overwhelming responses.",
     schema: {
@@ -133,100 +199,125 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching drafts",
       done: "Fetch drafts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_draft: {
-    description: `Create a new email draft in Outlook.
+  {
+    name: "create_draft",
+    description: `Create a new email draft in Outlook, or a reply draft to an existing message.
 - The draft will be saved in the user's Outlook account and can be reviewed and sent later.
-- The draft will include proper email headers and formatting`,
+- The draft will include proper email headers and formatting.`,
     schema: {
-      to: z.array(z.string()).describe("The email addresses of the recipients"),
-      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
+      to: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
+        ),
+      cc: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The CC email addresses (optional, acts as override if replyToMessageId is set)."
+        ),
       bcc: z
         .array(z.string())
         .optional()
-        .describe("The email addresses to BCC"),
+        .describe(
+          "The BCC email addresses (optional, acts as override if replyToMessageId is set)."
+        ),
       replyTo: z
         .array(z.string())
         .optional()
         .describe(
           "Reply-to email addresses. Replies will go to these addresses instead of the sender."
         ),
-      subject: z.string().describe("The subject line of the email"),
-      contentType: z
-        .string()
-        .default("text")
-        .describe("The content type of the email (text or html)."),
-      body: z.string().describe("The body of the email"),
-      importance: z
+      subject: z
         .string()
         .optional()
-        .describe("The importance level of the email"),
+        .describe(
+          "The subject line of the email (required if replyToMessageId is not set, must be omitted if replyToMessageId is set)."
+        ),
+      contentType: z
+        .enum(["text", "html"])
+        .optional()
+        .describe(
+          "The content type of the email body (required if replyToMessageId is not set, must be omitted if replyToMessageId is set (forced to html for replies))."
+        ),
+      body: z.string().describe("The body of the email"),
+      importance: z
+        .enum(["low", "normal", "high"])
+        .optional()
+        .describe("The importance level of the email."),
+      replyToMessageId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. The ID of the message to reply to. If provided, the draft will be created as a reply in the existing thread, with proper threading headers and the original message quoted."
+        ),
+      replyAll: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to reply to all recipients. Only used when replyToMessageId is set. Defaults to false."
+        ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to create the draft in (e.g. 'support@company.com'). " +
+            "Leave empty to create the draft in your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
     },
     stake: "medium",
     displayLabels: {
       running: "Creating draft",
       done: "Create draft",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  delete_draft: {
+  {
+    name: "delete_draft",
     description: "Delete a draft email from Outlook.",
     schema: {
       messageId: z.string().describe("The ID of the draft to delete"),
       subject: z.string().describe("The subject of the draft to delete"),
       to: z.array(z.string()).describe("The email addresses of the recipients"),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox containing the draft. Omit to use the authenticated user's mailbox."
+        ),
     },
     stake: "low",
     displayLabels: {
       running: "Deleting draft",
       done: "Delete draft",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_reply_draft: {
-    description: `Create a reply draft to an existing email in Outlook.
-- The draft will be saved in the user's Outlook account and can be reviewed and sent later.
-- The reply will be properly formatted with the original message quoted.
-- The draft will include proper email headers and threading information.`,
-    schema: {
-      messageId: z.string().describe("The ID of the message to reply to"),
-      body: z.string().describe("The body of the reply email"),
-      contentType: z
-        .string()
-        .optional()
-        .describe(
-          "The content type of the email (text or html). Defaults to html."
-        ),
-      replyAll: z
-        .boolean()
-        .optional()
-        .describe("Whether to reply to all recipients. Defaults to false."),
-      to: z
-        .array(z.string())
-        .optional()
-        .describe("Override the To recipients for the reply."),
-      cc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the CC recipients for the reply."),
-      bcc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the BCC recipients for the reply."),
-    },
-    stake: "medium",
-    displayLabels: {
-      running: "Creating reply draft",
-      done: "Create reply draft",
-    },
-  },
-  send_mail: {
+  {
+    name: "send_mail",
     description: `Send an email directly via Outlook.
 - The email will be sent immediately without creating a draft.
 - Use this when all required fields are known.`,
     schema: {
       to: z
         .array(z.string())
-        .min(1)
-        .describe("The email addresses of the recipients"),
+        .optional()
+        .describe(
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
+        ),
       cc: z.array(z.string()).optional().describe("The email addresses to CC"),
       bcc: z
         .array(z.string())
@@ -238,17 +329,55 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Reply-to email addresses. Replies will go to these addresses instead of the sender."
         ),
-      subject: z.string().describe("The subject line of the email"),
+      subject: z
+        .string()
+        .optional()
+        .describe(
+          "The subject line of the email (required if replyToMessageId is not set, must be omitted if replyToMessageId is set)."
+        ),
       contentType: z
         .enum(["text", "html"])
-        .default("text")
-        .describe("The content type of the email body (text or html)."),
+        .optional()
+        .describe(
+          "The content type of the email body (text or html). Required when replyToMessageId is not set. Must be omitted when replyToMessageId is set."
+        ),
       body: z.string().describe("The body of the email"),
+      importance: z
+        .enum(["low", "normal", "high"])
+        .optional()
+        .describe("The importance level of the email."),
       saveToSentItems: z
         .boolean()
         .optional()
         .describe(
-          "Whether to save the sent email to the Sent Items folder. Defaults to true."
+          "Whether to save the sent email to the Sent Items folder. Defaults to true. " +
+            "Note: this option is ignored when replyToMessageId is set — the email will always be saved to Sent Items in that case."
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to send from (e.g. 'support@company.com'). " +
+            "Leave empty to send from your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+      replyToMessageId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. The ID of the message to reply to. If provided, the email will be sent as a reply in the existing thread, with proper threading headers and the original message quoted."
+        ),
+      replyAll: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to reply to all recipients. Only used when replyToMessageId is set. Defaults to false."
+        ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
         ),
     },
     stake: "high",
@@ -256,8 +385,11 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Sending email",
       done: "Send email",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  move_messages: {
+  {
+    name: "move_messages",
     description:
       'Move one or more messages to a destination folder in Outlook. The destination is given as a path of folder names from the top level (e.g. ["Archive", "2026", "Receipts"]). Any folders along the path that do not exist are created automatically. Prefer passing all messages destined for the same folder in a single call rather than calling this tool in parallel. Note: Microsoft Graph assigns a new message ID after a move.',
     schema: {
@@ -280,13 +412,59 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
             "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
         ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Moving messages",
       done: "Move messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_contacts: {
+  {
+    name: "get_message_body",
+    description:
+      "Get the full body of a single Outlook message. ALWAYS call this after get_messages whenever the task requires reading email content — get_messages only returns a short preview. For large emails, use startChar/endChar to read in chunks and repeat until moreAvailable is false.",
+    schema: {
+      messageId: z
+        .string()
+        .describe("The ID of the message (from get_messages)"),
+      preferredContentType: z
+        .enum(["text", "html"])
+        .optional()
+        .describe(
+          "Preferred body content type. Use 'text' (default) to get plain text — Microsoft Graph will convert HTML emails automatically. Use 'html' to get the raw HTML."
+        ),
+      startChar: z
+        .number()
+        .optional()
+        .describe(
+          "Character offset to start reading from (0-indexed). Defaults to 0."
+        ),
+      endChar: z
+        .number()
+        .optional()
+        .describe(
+          "Character offset to stop reading at (exclusive). Defaults to the full body, capped at 50 000 characters per call."
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Fetching message body",
+      done: "Fetch message body",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "get_contacts",
     description:
       "Get contacts from Outlook. Supports search queries to filter contacts.",
     schema: {
@@ -316,8 +494,11 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching contacts",
       done: "Fetch contacts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_contact: {
+  {
+    name: "create_contact",
     description: "Create a new contact in Outlook.",
     schema: {
       displayName: z.string().describe("Display name of the contact"),
@@ -348,8 +529,11 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Creating contact",
       done: "Create contact",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_contact: {
+  {
+    name: "update_contact",
     description: "Update an existing contact in Outlook.",
     schema: {
       contactId: z.string().describe("ID of the contact to update"),
@@ -384,19 +568,22 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Updating contact",
       done: "Update contact",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const OUTLOOK_MAIL_SERVER = {
   serverInfo: {
     name: "outlook",
     version: "1.0.0",
-    description: "Read emails, manage drafts and contacts.",
+    description:
+      "Read and send Outlook emails (Microsoft 365): manage inbox messages, drafts, mail folders, contacts, and shared mailboxes.",
     authorization: {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions", "platform_actions"],
       scope:
-        "Mail.ReadWrite.Shared Mail.Send Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read SensitivityLabel.Read offline_access",
+        "Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read SensitivityLabel.Read offline_access",
       availableScopes: [
         {
           value: "Mail.ReadWrite",
@@ -415,6 +602,14 @@ export const OUTLOOK_MAIL_SERVER = {
           value: "Mail.Send",
           label: "Send mail",
           description: "Send emails on behalf of the signed-in user.",
+          required: true,
+          impliedBy: "Mail.Send.Shared",
+        },
+        {
+          value: "Mail.Send.Shared",
+          label: "Send mail from shared mailboxes",
+          description: "Send emails from shared and delegated mailboxes.",
+          fallbackScope: "Mail.Send",
         },
         {
           value: "Contacts.ReadWrite",
@@ -442,15 +637,6 @@ export const OUTLOOK_MAIL_SERVER = {
     },
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
-    instructions: null,
   },
-  tools: Object.values(OUTLOOK_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(OUTLOOK_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: OUTLOOK_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

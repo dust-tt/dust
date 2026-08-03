@@ -24,6 +24,9 @@ COPY /connectors/ .
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
 
+# Copy shared migration tooling (scripts/migrate.ts imports ../../scripts/db/migration-runner)
+COPY /scripts/db /app/scripts/db
+
 # Build temporal workers
 RUN CONNECTORS_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
 # Build all components (server, worker, cli) with esbuild
@@ -47,8 +50,10 @@ RUN if [ -n "$DATADOG_API_KEY" ]; then \
 EXPOSE 3002
 
 ARG COMMIT_HASH_LONG
-ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
-ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
 ENV DD_VERSION=${COMMIT_HASH}
 
 # Set a default command, it will start the API service if no command is provided

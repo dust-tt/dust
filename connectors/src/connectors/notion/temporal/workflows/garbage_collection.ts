@@ -3,7 +3,6 @@ import {
   GC_BATCHES_PER_RUN,
   INTERVAL_BETWEEN_GC_SYNCS_MS,
   MAX_CONCURRENT_CHILD_WORKFLOWS,
-  MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
   MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX,
   PROCESS_ALL_DISCOVERED_RESOURCES,
 } from "@connectors/connectors/notion/temporal/config";
@@ -11,7 +10,7 @@ import { performUpserts } from "@connectors/connectors/notion/temporal/workflows
 import type { ModelId } from "@connectors/types";
 import {
   continueAsNew,
-  patched,
+  deprecatePatch,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -39,10 +38,14 @@ const {
   startToCloseTimeout: "10 minute",
 });
 
-const { isFullSyncPendingOrOngoing, logMaxSearchPageIndexReached } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "1 minute",
-  });
+const {
+  isFullSyncPendingOrOngoing,
+  logMaxSearchPageIndexReached,
+  getGarbageCollectionBatchResumeState,
+  setGarbageCollectionBatchResumeState,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 minute",
+});
 
 // This is the garbage collector workflow that continuously runs for each notion connector.
 export async function notionGarbageCollectionWorkflow({
@@ -76,171 +79,196 @@ export async function notionGarbageCollectionWorkflow({
     return;
   }
 
-  // clear the connector cache before each sync
-  await clearWorkflowCache({ connectorId, topLevelWorkflowId });
-
-  const runTimestamp = Date.now();
-
-  const childWorkflowQueue = new PQueue({
-    concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
+  // Set (in redis) when the previous run continued-as-new in the middle of the batch-deletion
+  // phase to reset the event history. Not a workflow param: branching on a new input would break
+  // replay determinism for histories produced by other deploys.
+  deprecatePatch("gc-batch-deletion-continue-as-new");
+  const batchResumeState = await getGarbageCollectionBatchResumeState({
+    connectorId,
   });
 
-  const promises: Promise<void>[] = [];
+  let runTimestamp: number;
+  let nbOfBatches: number;
+  let startBatchIndex: number;
 
-  async function runSearch(
-    cursorType: "pages" | "databases"
-  ): Promise<{ isComplete: boolean; pageIndex: number }> {
-    let pageIndex = pageIndexes[cursorType];
-    const { last: lastCursor } = cursors[cursorType];
-    if (pageIndex > 0 && !lastCursor) {
-      // We are already done
-      return {
-        isComplete: true,
-        pageIndex,
-      };
+  if (batchResumeState) {
+    // The batches of the interrupted run are still in redis: skip straight to deleting.
+    runTimestamp = batchResumeState.runTimestamp;
+    nbOfBatches = batchResumeState.nbOfBatches;
+    startBatchIndex = batchResumeState.nextBatchIndex;
+  } else {
+    // clear the connector cache before each sync
+    await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
+    runTimestamp = Date.now();
+
+    const childWorkflowQueue = new PQueue({
+      concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
+    });
+
+    const promises: Promise<void>[] = [];
+
+    async function runSearch(
+      cursorType: "pages" | "databases"
+    ): Promise<{ isComplete: boolean; pageIndex: number }> {
+      let pageIndex = pageIndexes[cursorType];
+      const { last: lastCursor } = cursors[cursorType];
+      if (pageIndex > 0 && !lastCursor) {
+        // We are already done
+        return {
+          isComplete: true,
+          pageIndex,
+        };
+      }
+      // we go through each result page of the notion search API
+      do {
+        // It's a garbage collection, we want to fetch all pages.
+        const { pageIds, databaseIds, nextCursor } =
+          await getPagesAndDatabasesToSync({
+            connectorId,
+            lastSyncedAt: null,
+            // Only pass non-null cursors.
+            cursors: cursors[cursorType],
+            excludeUpToDatePages: false,
+            loggerArgs: {
+              pageIndex,
+              runType: "garbageCollection",
+            },
+            filter: cursorType === "pages" ? "page" : "database",
+          });
+
+        // Update the cursors object to keep both the previous and last cursors.
+        const newPreviousCursor = cursors[cursorType].last;
+        const newLastCursor = nextCursor;
+        cursors[cursorType] = {
+          previous: newPreviousCursor,
+          last: newLastCursor,
+        };
+
+        pageIndex += 1;
+
+        // this function triggers child workflows to process batches of pages and databases.
+        // the worflow that processes databases will itself trigger child workflows to process
+        // batches of child pages.
+        promises.push(
+          // First mark the page and databases as "seen" in the GC run.
+          // The activity returns a potential list of new pages and databases that  we never seen before.
+          // We upsert those.
+          markAsSeenAndUpsertNewResources({
+            connectorId,
+            pageIds,
+            databaseIds,
+            runTimestamp,
+            childWorkflowQueue,
+            topLevelWorkflowId,
+          })
+        );
+
+        if (pageIndex % GC_BATCHES_PER_RUN === 0) {
+          return { isComplete: false, pageIndex };
+        }
+        // There are too many search result pages, we're likely in an infinite loop (notion bug).
+        if (pageIndex > MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX) {
+          // Run activity to log that we had to stop early because we hit the max page index.
+          await logMaxSearchPageIndexReached({
+            connectorId,
+            searchPageIndex: pageIndex,
+            maxSearchPageIndex: MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX,
+          });
+          break;
+        }
+      } while (cursors[cursorType].last);
+
+      return { isComplete: true, pageIndex };
     }
-    // we go through each result page of the notion search API
+
+    const [pagesResult, databasesResult] = await Promise.all([
+      runSearch("pages"),
+      runSearch("databases"),
+    ]);
+
+    const isComplete = pagesResult.isComplete && databasesResult.isComplete;
+
+    if (!isComplete) {
+      await Promise.all(promises);
+      await continueAsNew<typeof notionGarbageCollectionWorkflow>({
+        connectorId,
+        cursors,
+        pageIndexes: {
+          pages: pagesResult.pageIndex,
+          databases: databasesResult.pageIndex,
+        },
+      });
+      return;
+    }
+
+    // wait for all child workflows to finish
+    await Promise.all(promises);
+
+    // These are resources (pages/DBs) that we didn't get from the search API but that are
+    // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
+    // well.
+    let discoveredResources: {
+      pageIds: string[];
+      databaseIds: string[];
+    } | null;
     do {
-      // It's a garbage collection, we want to fetch all pages.
-      const { pageIds, databaseIds, nextCursor } =
-        await getPagesAndDatabasesToSync({
+      discoveredResources = await getDiscoveredResourcesFromCache({
+        connectorId,
+        topLevelWorkflowId,
+      });
+      if (discoveredResources) {
+        await markAsSeenAndUpsertNewResources({
           connectorId,
-          lastSyncedAt: null,
-          // Only pass non-null cursors.
-          cursors: cursors[cursorType],
-          excludeUpToDatePages: false,
-          loggerArgs: {
-            pageIndex,
-            runType: "garbageCollection",
-          },
-          filter: cursorType === "pages" ? "page" : "database",
-        });
-
-      // Update the cursors object to keep both the previous and last cursors.
-      const newPreviousCursor = cursors[cursorType].last;
-      const newLastCursor = nextCursor;
-      cursors[cursorType] = {
-        previous: newPreviousCursor,
-        last: newLastCursor,
-      };
-
-      pageIndex += 1;
-
-      // this function triggers child workflows to process batches of pages and databases.
-      // the worflow that processes databases will itself trigger child workflows to process
-      // batches of child pages.
-      promises.push(
-        // First mark the page and databases as "seen" in the GC run.
-        // The activity returns a potential list of new pages and databases that  we never seen before.
-        // We upsert those.
-        markAsSeenAndUpsertNewResources({
-          connectorId,
-          pageIds,
-          databaseIds,
+          pageIds: discoveredResources.pageIds,
+          databaseIds: discoveredResources.databaseIds,
           runTimestamp,
           childWorkflowQueue,
           topLevelWorkflowId,
-        })
-      );
-
-      const batchesPerRun = patched("reduce-gc-batches-per-run")
-        ? GC_BATCHES_PER_RUN
-        : 512;
-      if (pageIndex % batchesPerRun === 0) {
-        return { isComplete: false, pageIndex };
-      }
-      // There are too many search result pages, we're likely in an infinite loop (notion bug).
-      if (pageIndex > MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX) {
-        // Run activity to log that we had to stop early because we hit the max page index.
-        await logMaxSearchPageIndexReached({
-          connectorId,
-          searchPageIndex: pageIndex,
-          maxSearchPageIndex: MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX,
         });
-        break;
       }
-    } while (cursors[cursorType].last);
+    } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
 
-    return { isComplete: true, pageIndex };
-  }
+    // Look at pages and databases that were not visited in this run, check with the notion API if
+    // they were really deleted and delete them from the database if they were.
+    // Find the resources not seen in the GC run
 
-  const [pagesResult, databasesResult] = await Promise.all([
-    runSearch("pages"),
-    runSearch("databases"),
-  ]);
-
-  const isComplete = pagesResult.isComplete && databasesResult.isComplete;
-
-  if (!isComplete) {
-    await Promise.all(promises);
-    await continueAsNew<typeof notionGarbageCollectionWorkflow>({
-      connectorId,
-      cursors,
-      pageIndexes: {
-        pages: pagesResult.pageIndex,
-        databases: databasesResult.pageIndex,
-      },
-    });
-    return;
-  }
-
-  // wait for all child workflows to finish
-  await Promise.all(promises);
-
-  // These are resources (pages/DBs) that we didn't get from the search API but that are
-  // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
-  // well.
-  let discoveredResources: {
-    pageIds: string[];
-    databaseIds: string[];
-  } | null;
-  do {
-    discoveredResources = await getDiscoveredResourcesFromCache({
-      connectorId,
-      topLevelWorkflowId,
-    });
-    if (discoveredResources) {
-      await markAsSeenAndUpsertNewResources({
-        connectorId,
-        pageIds: discoveredResources.pageIds,
-        databaseIds: discoveredResources.databaseIds,
-        runTimestamp,
-        childWorkflowQueue,
-        topLevelWorkflowId,
-      });
-    }
-  } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
-
-  // Look at pages and databases that were not visited in this run, check with the notion API if
-  // they were really deleted and delete them from the database if they were.
-  // Find the resources not seen in the GC run
-
-  // Create batches of resources to check, by chunk of 100
-  const nbOfBatches = await createResourcesNotSeenInGarbageCollectionRunBatches(
-    {
+    // Create batches of resources to check, by chunk of 100
+    nbOfBatches = await createResourcesNotSeenInGarbageCollectionRunBatches({
       connectorId,
       batchSize: 100,
-    }
-  );
-
-  // For each chunk, run a garbage collection activity
-  const queue = new PQueue({
-    concurrency: MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
-  });
-  const gbPromises: Promise<void>[] = [];
-  for (let batchIndex = 0; batchIndex < nbOfBatches; batchIndex++) {
-    gbPromises.push(
-      queue.add(async () =>
-        garbageCollectBatch({
-          connectorId,
-          runTimestamp,
-          batchIndex,
-        })
-      )
-    );
+    });
+    startBatchIndex = 0;
   }
 
-  await Promise.all(gbPromises);
+  // Sequential on purpose so we can check continueAsNewSuggested between batches:
+  // continue-as-new before thousands of batches fill the event history and kill the workflow.
+  for (
+    let batchIndex = startBatchIndex;
+    batchIndex < nbOfBatches;
+    batchIndex++
+  ) {
+    await garbageCollectBatch({
+      connectorId,
+      runTimestamp,
+      batchIndex,
+    });
+
+    if (workflowInfo().continueAsNewSuggested && batchIndex + 1 < nbOfBatches) {
+      await setGarbageCollectionBatchResumeState({
+        connectorId,
+        resumeState: {
+          runTimestamp,
+          nbOfBatches,
+          nextBatchIndex: batchIndex + 1,
+        },
+      });
+      await continueAsNew<typeof notionGarbageCollectionWorkflow>({
+        connectorId,
+      });
+      return;
+    }
+  }
 
   // Once done, clear all the redis keys used for garbage collection
   await completeGarbageCollectionRun(connectorId, nbOfBatches);

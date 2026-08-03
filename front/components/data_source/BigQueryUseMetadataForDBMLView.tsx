@@ -63,7 +63,6 @@ export function BigQueryUseMetadataForDBMLView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetUseMetadataForDBML(!useMetadataForDBML);
               }}
@@ -74,7 +73,7 @@ export function BigQueryUseMetadataForDBMLView({
         }
       >
         <ContextItem.Description>
-          <div className="text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-muted-foreground">
             Your tables and columns description set in BigQuery will be used to
             describe the schemas to Agents.
           </div>

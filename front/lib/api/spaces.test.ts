@@ -28,6 +28,17 @@ import { Err, Ok } from "@app/types/shared/result";
 import { SPACE_KINDS } from "@app/types/space";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+async function fetchNonGlobalGroup(space: SpaceResource, auth: Authenticator) {
+  const groupReference = space.groups.find((group) => !group.isGlobal());
+  if (!groupReference) {
+    return null;
+  }
+  const [group] = await space.fetchGroupResources(auth, {
+    groupReferences: [groupReference],
+  });
+  return group;
+}
+
 describe("createSpaceAndGroup", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;
@@ -90,8 +101,9 @@ describe("createSpaceAndGroup", () => {
         expect(space.isRegularAndRestricted()).toBe(true);
 
         // Verify the space has a group
-        expect(space.groups.length).toBeGreaterThan(0);
-        const spaceGroup = space.groups.find((g) =>
+        const groups = await space.fetchGroupResources(adminAuth);
+        expect(groups.length).toBeGreaterThan(0);
+        const spaceGroup = groups.find((g) =>
           g.name.startsWith("Group for space Test Regular Space")
         );
         expect(spaceGroup).toBeDefined();
@@ -103,6 +115,26 @@ describe("createSpaceAndGroup", () => {
           expect(memberIds).toContain(user1.sId);
           expect(memberIds).toContain(user2.sId);
         }
+      }
+    });
+
+    it("should create the member group with kind regular_auto", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Kind Check Space",
+        isRestricted: true,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [user1.sId],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const groups = await result.value.fetchGroupResources(adminAuth);
+        const memberGroup = groups.find((g) =>
+          g.name.startsWith("Group for space Kind Check Space")
+        );
+        expect(memberGroup).toBeDefined();
+        expect(memberGroup?.kind).toBe("regular_auto");
       }
     });
 
@@ -202,6 +234,61 @@ describe("createSpaceAndGroup", () => {
           getProjectConversationsDatasourceName(space)
         );
         expect(dataSource).toBeNull();
+      }
+
+      createConnectorSpy.mockRestore();
+    });
+
+    it("should add the creator to the project editor group", async () => {
+      const createConnectorSpy = vi
+        .spyOn(
+          await import("@app/lib/api/projects/connector"),
+          "createDataSourceAndConnectorForProject"
+        )
+        .mockResolvedValue(new Ok(undefined));
+
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user1.sId,
+        workspace.sId
+      );
+      const staleAuthJson = userAuth.toJSON();
+
+      const result = await createSpaceAndGroup(userAuth, {
+        name: "Test Project Creator Editor",
+        isRestricted: true,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const pod = result.value;
+        const creator = userAuth.getNonNullableUser();
+        const { groupsToProcess, allGroupMemberships } =
+          await pod.fetchManualGroupsMemberships(userAuth);
+        const editorGroup = groupsToProcess.find(
+          (group) => group.kind === "space_editors"
+        );
+
+        expect(editorGroup).toBeDefined();
+        expect(
+          allGroupMemberships.some(
+            (membership) =>
+              membership.groupId === editorGroup!.id &&
+              membership.userId === creator.id
+          )
+        ).toBe(true);
+
+        const staleAuth = await Authenticator.fromJSON(staleAuthJson);
+        expect(pod.canAdministrate(staleAuth)).toBe(false);
+        expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
+
+        await staleAuth.refresh();
+        expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
+
+        const refreshedPod = await SpaceResource.fetchById(staleAuth, pod.sId);
+        expect(refreshedPod?.canAdministrate(staleAuth)).toBe(true);
       }
 
       createConnectorSpy.mockRestore();
@@ -953,7 +1040,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        const spaceGroup = await fetchNonGlobalGroup(space, adminAuth);
         expect(spaceGroup).toBeDefined();
 
         // Create an active API key for the space group
@@ -988,7 +1075,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        const spaceGroup = await fetchNonGlobalGroup(space, adminAuth);
         expect(spaceGroup).toBeDefined();
 
         // Create an active API key for the space group
@@ -1018,7 +1105,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        const spaceGroup = await fetchNonGlobalGroup(space, adminAuth);
         expect(spaceGroup).toBeDefined();
 
         // Create a disabled API key for the space group

@@ -1,4 +1,5 @@
 import { AGENT_SIDEKICK_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_TEMPLATES_SERVER_NAME } from "@app/lib/api/actions/servers/agent_templates/metadata";
 import type {
   AvailableSkill,
   AvailableTool,
@@ -12,6 +13,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
@@ -27,7 +29,7 @@ interface SidekickUserMetadata {
 export interface SidekickContext {
   mcpServerViews: {
     context: MCPServerViewResource;
-    askUserQuestion: MCPServerViewResource | null;
+    templates: MCPServerViewResource | null;
   } | null;
 }
 
@@ -44,10 +46,16 @@ export function formatAvailableModels(
   const sections = Array.from(byProvider.entries()).map(
     ([provider, providerModels]) => {
       const modelLines = providerModels
-        .map(
-          (m) =>
-            `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : " (no vision)"}`
-        )
+        .map((m) => {
+          const reasoningEfforts = getAvailableReasoningEfforts(
+            m.supportedReasoningEfforts
+          );
+          const reasoningInfo =
+            reasoningEfforts.length > 1
+              ? ` (supported reasoning efforts: ${reasoningEfforts.join(", ")})`
+              : "";
+          return `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : " (no vision)"}${reasoningInfo}`;
+        })
         .join("\n");
       return `<provider id="${provider}">\n${modelLines}\n</provider>`;
     }
@@ -262,18 +270,17 @@ export async function buildSidekickContext(
     return null;
   }
 
-  const context =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+  const [context, templates] = await Promise.all([
+    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
       AGENT_SIDEKICK_CONTEXT_TOOL_NAME
-    );
-  const askUserQuestion =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+    ),
+    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      "ask_user_question"
-    );
-
+      AGENT_TEMPLATES_SERVER_NAME
+    ),
+  ]);
   return {
-    mcpServerViews: context ? { context, askUserQuestion } : null,
+    mcpServerViews: context ? { context, templates } : null,
   };
 }

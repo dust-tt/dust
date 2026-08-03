@@ -20,7 +20,7 @@ import {
   DialogTitle,
   Label,
   LoadingBlock,
-  LockIcon,
+  Lock01,
   Page,
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
@@ -55,7 +55,7 @@ export default function WorkOSSSOConnection({
   const isSSOConfigured = ssoStatus?.status === "configured";
 
   return (
-    <WorkspaceSection title="Authentication and access" icon={LockIcon}>
+    <WorkspaceSection title="Authentication and access" icon={Lock01}>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <div className="flex flex-row items-center gap-2">
@@ -63,7 +63,7 @@ export default function WorkOSSSOConnection({
             {isSSOConfigured && (
               <>
                 <Chip label="Enabled" color="success" size="xs" />
-                <span className="text-base font-normal text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-base font-normal text-muted-foreground">
                   {ssoStatus.connection?.type}
                 </span>
               </>

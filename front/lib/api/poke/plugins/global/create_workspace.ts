@@ -49,6 +49,7 @@ export const createWorkspacePlugin = createPlugin({
         required: false,
       },
     },
+    requiredRoles: ["support"],
   },
   populateAsyncArgs: async () => {
     // Fetch all plans from the database

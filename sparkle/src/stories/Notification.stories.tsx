@@ -9,7 +9,22 @@ import {
 import { Button, Notification } from "../index_with_tw_base";
 
 const meta: Meta<typeof Notification> = {
-  title: "Modules/Notification",
+  title: "Feedback & Status/Notification",
+  parameters: {
+    docs: {
+      description: {
+        component: `A transient toast that confirms the outcome of an action. Toasts are dispatched imperatively with the **useSendNotification** hook ( \`title\`, \`description\`, and **type** — \`success\`, \`error\`, \`info\`, or \`hello\`) and rendered inside a **Notification.Area** mounted near the app root. **NotificationContent** is the underlying presentational card, useful for inline previews.
+
+**When to use**
+- For brief, self-dismissing feedback after an action completes (saved, failed, copied).
+
+**Guidelines**
+- Mount a single **Notification.Area** high in the tree, then call **useSendNotification** wherever an action resolves.
+- Match \`type\` to the outcome and keep \`title\`/\`description\` concise — long copy is line-clamped.
+- For persistent, inline status attached to a region, use a **ContentMessage** instead.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Notification>;
 
 export default meta;
@@ -17,7 +32,7 @@ export default meta;
 /** Notification shown inline (no toast) for design iteration. */
 export const Inline = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       <NotificationContent
         type="success"
         title="Success"
@@ -34,6 +49,11 @@ export const Inline = () => {
         description="Some information"
       />
       <NotificationContent
+        type="warning"
+        title="Warning"
+        description="Something needs your attention"
+      />
+      <NotificationContent
         type="hello"
         title="You have a message"
         description="A friendly notification"
@@ -45,7 +65,7 @@ export const Inline = () => {
 /** Same as Inline but with longer titles and descriptions (tests line-clamp). */
 export const InlineLongText = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       <NotificationContent
         type="success"
         title="Your workspace has been successfully updated and all changes were saved"
@@ -60,6 +80,11 @@ export const InlineLongText = () => {
         type="info"
         title="A new version of the app is available with performance improvements"
         description="This release includes faster load times, updated dependencies, and bug fixes. We recommend updating when convenient. The update will be applied automatically on your next session."
+      />
+      <NotificationContent
+        type="warning"
+        title="Your storage is nearly full and uploads may fail soon"
+        description="You have used 94% of your 10 GB quota. Remove old files or upgrade your plan to avoid disruption to your workflow and prevent data loss."
       />
       <NotificationContent
         type="hello"
@@ -82,7 +107,7 @@ const NotificationExample = () => {
   const sendNotification = useSendNotification();
 
   return (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       <Button
         onClick={() =>
           sendNotification({
@@ -112,6 +137,16 @@ const NotificationExample = () => {
           })
         }
         label="Show Info"
+      />
+      <Button
+        onClick={() =>
+          sendNotification({
+            title: "Warning",
+            description: "Something needs your attention",
+            type: "warning",
+          })
+        }
+        label="Show Warning"
       />
       <Button
         onClick={() =>

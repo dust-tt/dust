@@ -1,10 +1,31 @@
+import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
+import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { Authenticator } from "@app/lib/auth";
+import * as enabledModels from "@app/lib/model_tiers/enabled_models";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
+import {
+  GPT_5_4_MINI_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
+  GPT_5_6_LUNA_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import { describe, expect, it, vi } from "vitest";
+import type {
+  ModelConfigurationType,
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
+import {
+  GROK_4_5_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+} from "@app/types/assistant/models/xai";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/resources/provider_credential_resource");
 
@@ -75,5 +96,307 @@ describe("getWhitelistedProviders", () => {
 
     const providers = getWhitelistedProviders(auth);
     expect(providers).toEqual(new Set(["noop"]));
+  });
+});
+
+function makeAgentConfiguration({
+  providerId,
+  modelId,
+  reasoningEffort,
+}: {
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
+  reasoningEffort?: ReasoningEffort;
+}): LightAgentConfigurationType {
+  return {
+    id: 1,
+    versionCreatedAt: null,
+    sId: "agent_test",
+    version: 0,
+    versionAuthorId: null,
+    instructions: null,
+    model: {
+      providerId,
+      modelId,
+      temperature: 0,
+      reasoningEffort,
+    },
+    status: "active",
+    scope: "visible",
+    userFavorite: false,
+    name: "Test Agent",
+    description: "Test Agent",
+    pictureUrl: "",
+    maxStepsPerRun: 8,
+    tags: [],
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+describe("resolveModel", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("uses the user's enabled selection and marks resolution as user", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      selection: {
+        providerId: GPT_5_5_MODEL_CONFIG.providerId,
+        modelId: GPT_5_5_MODEL_CONFIG.modelId,
+      },
+      configuration: makeAgentConfiguration({
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      }),
+      featureFlags: [],
+    });
+
+    expect(modelResolutionMethod).toBe("user");
+    expect(resolvedModel).toEqual({
+      providerId: GPT_5_5_MODEL_CONFIG.providerId,
+      modelId: GPT_5_5_MODEL_CONFIG.modelId,
+      reasoningEffort: GPT_5_5_MODEL_CONFIG.defaultReasoningEffort,
+    });
+  });
+
+  it("uses the agent model when no selection is provided", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      }),
+      featureFlags: [],
+    });
+
+    expect(modelResolutionMethod).toBe("agent");
+    expect(resolvedModel).toEqual({
+      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      reasoningEffort:
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    });
+  });
+
+  it("honors a supported reasoning effort configured on the agent", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+        modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+        reasoningEffort: "high",
+      }),
+      featureFlags: [],
+    });
+
+    expect(modelResolutionMethod).toBe("agent");
+    expect(resolvedModel).toEqual({
+      providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+      modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+      reasoningEffort: "high",
+    });
+  });
+
+  it("falls back to the model default for an unsupported agent effort", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const { resolvedModel } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        reasoningEffort: "none",
+      }),
+      featureFlags: [],
+    });
+
+    expect(resolvedModel.reasoningEffort).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort
+    );
+  });
+
+  it("honors a supported reasoning effort from the selection", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const { resolvedModel } = await resolveModel(auth, {
+      selection: {
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        reasoningEffort: "high",
+      },
+      configuration: makeAgentConfiguration({
+        providerId: GPT_5_5_MODEL_CONFIG.providerId,
+        modelId: GPT_5_5_MODEL_CONFIG.modelId,
+      }),
+      featureFlags: [],
+    });
+
+    expect(resolvedModel.reasoningEffort).toBe("high");
+  });
+
+  it("falls back to the model default when the selection pins an unsupported reasoning effort", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const { resolvedModel } = await resolveModel(auth, {
+      selection: {
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        reasoningEffort: "none",
+      },
+      configuration: makeAgentConfiguration({
+        providerId: GPT_5_5_MODEL_CONFIG.providerId,
+        modelId: GPT_5_5_MODEL_CONFIG.modelId,
+      }),
+      featureFlags: [],
+    });
+
+    expect(resolvedModel.reasoningEffort).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort
+    );
+  });
+
+  it("resolves an auto agent configuration to a concrete model when models_picker is enabled", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await FeatureFlagFactory.basic(auth, "models_picker");
+
+    const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+      }),
+      featureFlags: ["models_picker"],
+    });
+
+    // `auto` is a stream like `auto_fast` / `auto_complex`: it routes through
+    // getModelForStream and resolves to its first available candidate.
+    expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
+    expect(modelResolutionMethod).toBe("auto");
+    expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
+    expect(resolvedModel).toEqual({
+      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      reasoningEffort:
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    });
+  });
+
+  it("resolves an auto user selection to a concrete model when models_picker is enabled", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await FeatureFlagFactory.basic(auth, "models_picker");
+
+    const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      selection: {
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+      },
+      configuration: makeAgentConfiguration({
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      }),
+      featureFlags: ["models_picker"],
+    });
+
+    expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
+    expect(modelResolutionMethod).toBe("auto");
+    expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
+    expect(resolvedModel).toEqual({
+      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      reasoningEffort:
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    });
+  });
+
+  it("falls back to a preferred large model when the agent is on auto without models_picker", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const getAutoModelSpy = vi.spyOn(enabledModels, "getAutoModelForAuth");
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+      }),
+      featureFlags: [],
+    });
+
+    expect(getAutoModelSpy).not.toHaveBeenCalled();
+    expect(modelResolutionMethod).toBe("agent");
+    expect(resolvedModel).toEqual({
+      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      reasoningEffort:
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    });
+  });
+});
+
+describe("pickPreferredLargeModel", () => {
+  it("prefers Grok 4.5 over legacy Grok models", () => {
+    const selected = pickPreferredLargeModel([
+      GROK_4_MODEL_CONFIG,
+      GROK_4_5_MODEL_CONFIG,
+    ]);
+
+    expect(selected.modelId).toBe(GROK_4_5_MODEL_CONFIG.modelId);
+  });
+
+  it("picks the first model in the preferred order", () => {
+    const selected = pickPreferredLargeModel([
+      GPT_5_5_MODEL_CONFIG,
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    ]);
+
+    expect(selected.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+  });
+
+  it("falls back to any large model when no preferred model is available", () => {
+    const selected = pickPreferredLargeModel([GPT_5_5_MODEL_CONFIG]);
+
+    expect(selected.modelId).toBe(GPT_5_5_MODEL_CONFIG.modelId);
+  });
+
+  it("prefers Sonnet 4.6 as the cost-effective pick under a cost_efficient cap", () => {
+    // Under a cost_efficient tier cap, Sonnet 4.6 (at light reasoning) remains
+    // the preferred selectable model over other cost-effective options.
+    const selected = pickPreferredLargeModel([
+      GPT_5_4_MINI_MODEL_CONFIG,
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    ]);
+
+    expect(selected.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+  });
+
+  it("falls back to the hardcoded default when no models are available", () => {
+    const models: ModelConfigurationType[] = [];
+    const selected = pickPreferredLargeModel(models);
+
+    expect(selected.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
   });
 });

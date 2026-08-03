@@ -28,20 +28,30 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
   };
 });
 
+// Mock the ancestor resume so we can assert on it without launching workflows
+vi.mock("@app/lib/api/assistant/conversation/retry_blocked_actions", () => ({
+  retryBlockedActions: vi.fn(),
+}));
+
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
   LightMCPToolConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import {
+  createConversation,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
 import { registerUserAnswer } from "@app/lib/api/assistant/conversation/answer_user_question";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { dismissMention } from "@app/lib/api/assistant/conversation/mentions";
 import {
-  createUserMentions,
-  dismissMention,
-} from "@app/lib/api/assistant/conversation/mentions";
-import { createAgentMessages } from "@app/lib/api/assistant/conversation/messages";
+  createAgentMessages,
+  resolveModelsForMentionedAgents,
+} from "@app/lib/api/assistant/conversation/messages";
 import { resolveAuthentication } from "@app/lib/api/assistant/conversation/resolve_authentication";
+import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import {
   publishAgentMessagesEvents,
@@ -58,6 +68,7 @@ import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
+  ConversationModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -71,9 +82,11 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { emitToolExecutedAuditEvent } from "@app/temporal/agent_loop/activities/run_tool";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { resolveAndCreateUserMentions } from "@app/tests/utils/mentions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
@@ -82,6 +95,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isRichUserMention } from "@app/types/assistant/mentions";
+import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 
 describe("dismissMention", () => {
@@ -163,13 +177,20 @@ describe("dismissMention", () => {
       if (!conversationRes.isOk()) {
         throw new Error("Failed to fetch conversation");
       }
-      const conversation = conversationRes.value;
 
       // Use postUserMessage to create the message with the full flow
       const user = refreshedAuth.getNonNullableUser();
       const userJson = user.toJSON();
       const postResult = await postUserMessage(refreshedAuth, {
-        conversation,
+        conversationResource: await ConversationResource.fetchById(
+          refreshedAuth,
+          restrictedConversation.sId
+        ).then((resource) => {
+          if (!resource) {
+            throw new Error("Failed to fetch conversation resource");
+          }
+          return resource;
+        }),
         content: `Hello @${mentionedUser.username}`,
         mentions: [
           {
@@ -311,13 +332,20 @@ describe("dismissMention", () => {
       if (!conversationRes1.isOk()) {
         throw new Error("Failed to fetch conversation");
       }
-      const conversation1 = conversationRes1.value;
 
       // Use postUserMessage to create the first message with the full flow
       const user = refreshedAuth.getNonNullableUser();
       const userJson = user.toJSON();
       const postResult1 = await postUserMessage(refreshedAuth, {
-        conversation: conversation1,
+        conversationResource: await ConversationResource.fetchById(
+          refreshedAuth,
+          restrictedConversation.sId
+        ).then((resource) => {
+          if (!resource) {
+            throw new Error("Failed to fetch conversation resource");
+          }
+          return resource;
+        }),
         content: `Hello @${mentionedUser.username}`,
         mentions: [
           {
@@ -351,11 +379,18 @@ describe("dismissMention", () => {
       if (!conversationRes2.isOk()) {
         throw new Error("Failed to refresh conversation");
       }
-      const conversation2 = conversationRes2.value;
 
       // Use postUserMessage to create the second message with the full flow
       const postResult2 = await postUserMessage(refreshedAuth, {
-        conversation: conversation2,
+        conversationResource: await ConversationResource.fetchById(
+          refreshedAuth,
+          restrictedConversation.sId
+        ).then((resource) => {
+          if (!resource) {
+            throw new Error("Failed to fetch conversation resource");
+          }
+          return resource;
+        }),
         content: `Hello again @${mentionedUser.username}`,
         mentions: [
           {
@@ -437,7 +472,7 @@ describe("dismissMention", () => {
         },
       ];
 
-      await createUserMentions(auth, {
+      await resolveAndCreateUserMentions(auth, {
         mentions,
         message: userMessage,
         conversation,
@@ -489,10 +524,6 @@ describe("dismissMention", () => {
       await MembershipFactory.associate(workspace, otherUser, {
         role: "user",
       });
-      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        otherUser.sId,
-        workspace.sId
-      );
 
       // Create a user who is NOT a member of the restricted space
       const mentionedUser = await UserFactory.basic();
@@ -505,21 +536,33 @@ describe("dismissMention", () => {
         userIds: [otherUser.sId],
       });
 
+      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
       // Create a conversation with requestedSpaceIds that includes the restricted space
       const restrictedSpaceModelId = getResourceIdFromSId(
         refreshedRestrictedSpace!.sId
       );
       expect(restrictedSpaceModelId).not.toBeNull();
 
-      const restrictedConversation = await ConversationFactory.create(
+      const restrictedConversationResource = await createConversation(
         otherUserAuth,
         {
-          agentConfigurationId: "test-agent",
-          messagesCreatedAt: [],
+          title: "Restricted Conversation",
           visibility: "unlisted",
-          requestedSpaceIds: [restrictedSpaceModelId!],
+          spaceId: null,
         }
       );
+      await ConversationModel.update(
+        { requestedSpaceIds: [restrictedSpaceModelId!] },
+        { where: { id: restrictedConversationResource.id } }
+      );
+      const restrictedConversation = {
+        ...restrictedConversationResource.toJSON(),
+        requestedSpaceIds: [refreshedRestrictedSpace!.sId],
+      };
 
       // Note: auth (the user trying to dismiss) doesn't have access to this conversation
       // because they're not in the restricted space, so they'll get a 404
@@ -538,7 +581,7 @@ describe("dismissMention", () => {
         },
       ];
 
-      await createUserMentions(otherUserAuth, {
+      await resolveAndCreateUserMentions(otherUserAuth, {
         mentions,
         message: userMessage,
         conversation: restrictedConversation,
@@ -619,7 +662,7 @@ describe("dismissMention", () => {
         },
       ];
 
-      await createUserMentions(refreshedAuth, {
+      await resolveAndCreateUserMentions(refreshedAuth, {
         mentions,
         message: userMessage,
         conversation: restrictedConversation,
@@ -659,6 +702,10 @@ describe("dismissMention", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(refreshedAuth, {
+            agentConfigurations: [agentConfig],
+          }),
+          restrictedAgentIds: new Set<string>(),
         },
       });
 
@@ -780,13 +827,21 @@ describe("validateAction", () => {
    * Helper to create a blocked MCP action for testing.
    */
   async function createBlockedAction({
-    augmentedInputs = {},
     agentMessageId,
     status = "blocked_validation_required",
+    functionCallName = "test_tool",
+    configurationName = "test_tool",
+    permission = "low",
+    argumentsRequiringApproval,
+    augmentedInputs = {},
   }: {
-    augmentedInputs?: Record<string, unknown>;
     agentMessageId: number;
     status?: ToolExecutionStatus;
+    functionCallName?: string;
+    configurationName?: string;
+    permission?: MCPToolStakeLevelType;
+    argumentsRequiringApproval?: string[];
+    augmentedInputs?: Record<string, unknown>;
   }) {
     const functionCallId = generateRandomModelSId();
     const currentIndex = stepContentIndex++;
@@ -803,7 +858,7 @@ describe("validateAction", () => {
         type: "function_call",
         value: {
           id: functionCallId,
-          name: "test_tool",
+          name: functionCallName,
           arguments: "{}",
         },
       },
@@ -814,7 +869,7 @@ describe("validateAction", () => {
       id: 1,
       sId: generateRandomModelSId(),
       type: "mcp_configuration",
-      name: "test_tool",
+      name: configurationName,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -827,11 +882,12 @@ describe("validateAction", () => {
       dustProject: null,
       internalMCPServerId: null,
       availability: "auto",
-      permission: "low",
+      permission,
       toolServerId: "test-server",
       retryPolicy: "no_retry",
-      originalName: "test_tool",
+      originalName: configurationName,
       mcpServerName: "test_server",
+      argumentsRequiringApproval,
     };
 
     // Create MCP action
@@ -872,6 +928,7 @@ describe("validateAction", () => {
   async function createAgentMessageWithNullUserParent() {
     const userMessageRow = await UserMessageModel.create({
       userId: null,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Message without user",
       userContextUsername: "api-user",
@@ -897,6 +954,7 @@ describe("validateAction", () => {
     });
 
     const agentMessageRow = await AgentMessageModel.create({
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       status: "created",
       agentConfigurationId: agentConfig.sId,
@@ -1358,6 +1416,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1529,6 +1588,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1604,6 +1664,78 @@ describe("validateAction", () => {
     });
   });
 
+  describe("sub-agent conversations", () => {
+    it("should resume the calling conversation whatever the approval surface", async () => {
+      // The caller (e.g. an orchestrator running `run_agent`) sits in
+      // `blocked_child_action_input_required` until its loop is relaunched. Resuming it must not
+      // depend on the client that approved: Slack, Teams and the public API all land here.
+      const parentConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      });
+      const parentAgentMessage =
+        await ConversationFactory.createAgentMessageWithRank({
+          workspace,
+          conversationId: parentConversation.id,
+          rank: 0,
+          agentConfigurationId: "test-agent",
+        });
+
+      // The sub-agent conversation: its user message points back at the caller's agent message.
+      const { messageRow: childUserMessage } =
+        await ConversationFactory.createUserMessage({
+          auth,
+          workspace,
+          conversation,
+          content: "Prepare the brief",
+          agenticMessageType: "run_agent",
+          agenticOriginMessageId: parentAgentMessage.sId,
+        });
+
+      const childAgentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+        status: "created",
+        agentConfigurationId: "test-agent",
+        agentConfigurationVersion: 0,
+        skipToolsValidation: false,
+      });
+      const childAgentMessage = await MessageModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        conversationId: conversation.id,
+        rank: 1,
+        parentId: childUserMessage.id,
+        agentMessageId: childAgentMessageRow.id,
+      });
+
+      const { actionId } = await createBlockedAction({
+        agentMessageId: childAgentMessageRow.id,
+      });
+
+      vi.mocked(retryBlockedActions).mockResolvedValue(new Ok(undefined));
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId,
+        approvalState: "approved",
+        messageId: childAgentMessage.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(vi.mocked(retryBlockedActions)).toHaveBeenCalledWith(
+        auth,
+        expect.objectContaining({ sId: parentConversation.sId }),
+        expect.objectContaining({ messageId: parentAgentMessage.sId })
+      );
+    });
+  });
+
   describe("error cases", () => {
     it("should return error when action is not found", async () => {
       // Create a user message and agent message
@@ -1621,6 +1753,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1673,6 +1806,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1714,6 +1848,162 @@ describe("validateAction", () => {
         expect(result.error.code).toBe("action_not_blocked");
       }
     });
+
+    it.each([
+      "interrupted",
+      "gracefully_stopped",
+    ] as const)("rejects resolving an action whose agent message is %s", async (status) => {
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const userMessageRow =
+        await ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversation.id,
+          rank: 0,
+          content: "Test message",
+        });
+
+      const messageRow = await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        parentId: userMessageRow.id,
+      });
+
+      const { action } = await AgentMCPActionFactory.create(auth, {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: messageRow.agentMessageId!,
+      });
+
+      // Legacy stuck conversation: the message reached a non-resumable terminal status while its
+      // blocked action was left pending. A stale approval must not resume the loop.
+      await ConversationFactory.setAgentMessageStatus({
+        workspace,
+        agentMessageModelId: messageRow.agentMessageId!,
+        status,
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId: action.sId,
+        approvalState: "approved",
+        messageId: messageRow.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("action_not_blocked");
+      }
+
+      // The action was not transitioned.
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("blocked_validation_required");
+    });
+
+    it("rejects resolving authentication or file authorization whose agent message can no longer resume", async () => {
+      async function expectResolveAuthenticationRejected({
+        agentMessageStatus,
+        status,
+        kind,
+        rank,
+      }: {
+        agentMessageStatus: "interrupted" | "gracefully_stopped";
+        status:
+          | "blocked_authentication_required"
+          | "blocked_file_authorization_required";
+        kind?: "file_authorization";
+        rank: number;
+      }) {
+        const messageRow = await ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversation.id,
+          rank: rank - 1,
+          content: "Test message",
+        });
+        const agentConfig = await AgentConfigurationFactory.createTestAgent(
+          auth,
+          { name: `Test Agent ${rank}` }
+        );
+        const agentMessageMessage =
+          await ConversationFactory.createAgentMessageWithRank({
+            workspace,
+            conversationId: conversation.id,
+            rank,
+            agentConfigurationId: agentConfig.sId,
+            parentId: messageRow.id,
+          });
+        const { action, actionId } = await createBlockedAction({
+          agentMessageId: agentMessageMessage.agentMessageId!,
+          status,
+        });
+
+        await ConversationFactory.setAgentMessageStatus({
+          workspace,
+          agentMessageModelId: agentMessageMessage.agentMessageId!,
+          status: agentMessageStatus,
+        });
+
+        const conversationResource = await ConversationResource.fetchById(
+          auth,
+          conversation.sId
+        );
+        expect(conversationResource).not.toBeNull();
+
+        const result = await resolveAuthentication(
+          auth,
+          conversationResource!,
+          {
+            actionId,
+            messageId: agentMessageMessage.sId,
+            outcome: "completed",
+            ...(kind ? { kind } : {}),
+          }
+        );
+
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.code).toBe("action_not_blocked");
+        }
+
+        await action.reload();
+        expect(action.status).toBe(status);
+      }
+
+      for (const agentMessageStatus of [
+        "interrupted",
+        "gracefully_stopped",
+      ] as const) {
+        const rankOffset = agentMessageStatus === "interrupted" ? 0 : 10;
+
+        await expectResolveAuthenticationRejected({
+          agentMessageStatus,
+          status: "blocked_authentication_required",
+          rank: 1 + rankOffset,
+        });
+        await expectResolveAuthenticationRejected({
+          agentMessageStatus,
+          status: "blocked_file_authorization_required",
+          kind: "file_authorization",
+          rank: 3 + rankOffset,
+        });
+      }
+    });
   });
 
   describe("approval states", () => {
@@ -1733,6 +2023,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1978,6 +2269,125 @@ describe("validateAction", () => {
     });
   });
 
+  describe("always_approved recording", () => {
+    // Creates the user message → agent message chain shared by both tests.
+    async function createAgentMessageChain() {
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const agentMessageMessage =
+        await ConversationFactory.createAgentMessageWithRank({
+          workspace,
+          conversationId: conversation.id,
+          rank: 1,
+          agentConfigurationId: agentConfig.sId,
+          parentId: messageRow.id,
+        });
+      if (!agentMessageMessage.agentMessageId) {
+        throw new Error("Expected an agent message id on the message row.");
+      }
+
+      return {
+        agentConfig,
+        agentMessageId: agentMessageMessage.agentMessageId,
+        agentMessageMessage,
+      };
+    }
+
+    it("records medium-stake approvals under the tool configuration name, not the function-call name", async () => {
+      const { agentMessageId, agentMessageMessage } =
+        await createAgentMessageChain();
+
+      // Sandbox child actions share their parent's step content, so the
+      // function-call name is the parent sandbox tool, not the child tool.
+      const { actionId } = await createBlockedAction({
+        agentMessageId,
+        functionCallName: "sandbox__bash",
+        configurationName: "salesforce__update_object",
+        permission: "medium",
+        argumentsRequiringApproval: ["objectName"],
+        augmentedInputs: { objectName: "Contact", records: [{ Id: "1" }] },
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId,
+        approvalState: "always_approved",
+        messageId: agentMessageMessage.sId,
+      });
+      expect(result.isOk()).toBe(true);
+
+      const user = auth.getNonNullableUser();
+      expect(
+        await user.hasApprovedTool(auth, {
+          mcpServerId: "test-server",
+          toolName: "salesforce__update_object",
+          argsAndValues: { objectName: "Contact" },
+        })
+      ).toBe(true);
+      expect(
+        await user.hasApprovedTool(auth, {
+          mcpServerId: "test-server",
+          toolName: "sandbox__bash",
+          argsAndValues: { objectName: "Contact" },
+        })
+      ).toBe(false);
+    });
+
+    it("records low-stake approvals under the tool configuration name, not the function-call name", async () => {
+      const { agentMessageId, agentMessageMessage } =
+        await createAgentMessageChain();
+
+      const { actionId } = await createBlockedAction({
+        agentMessageId,
+        functionCallName: "sandbox__bash",
+        configurationName: "salesforce__execute_read_query",
+        permission: "low",
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId,
+        approvalState: "always_approved",
+        messageId: agentMessageMessage.sId,
+      });
+      expect(result.isOk()).toBe(true);
+
+      const user = auth.getNonNullableUser();
+      expect(
+        await user.hasApprovedTool(auth, {
+          mcpServerId: "test-server",
+          toolName: "salesforce__execute_read_query",
+        })
+      ).toBe(true);
+      expect(
+        await user.hasApprovedTool(auth, {
+          mcpServerId: "test-server",
+          toolName: "sandbox__bash",
+        })
+      ).toBe(false);
+    });
+  });
+
   describe("agent loop launching", () => {
     it("should not launch agent loop when there are remaining blocked actions", async () => {
       // Create a user message and agent message
@@ -1995,6 +2405,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,

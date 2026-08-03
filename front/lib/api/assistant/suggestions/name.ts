@@ -4,7 +4,7 @@ import { getFastestWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import type { BuilderSuggestionInputType } from "@app/types/api/internal/assistant";
+import type { BuilderSuggestionInputType } from "@app/types/api/assistant";
 import type {
   ModelConversationTypeMultiActions,
   UserMessageTypeModel,

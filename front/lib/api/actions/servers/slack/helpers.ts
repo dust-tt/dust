@@ -1,12 +1,21 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  type AgentLoopRunContext,
+  isAgentLoopRunContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
+import {
+  formatSlackMessageForLLM,
+  renderFormattedMessage,
+} from "@app/lib/api/actions/servers/slack/message_formatter";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebAPICallResult } from "@slack/web-api";
@@ -27,14 +36,14 @@ interface CanvasCreateResult extends WebAPICallResult {
 
 // Constants for Slack API limits and pagination.
 export const MAX_CHANNEL_SEARCH_RESULTS = 20;
-export const MAX_THREAD_MESSAGES = 200;
+const MAX_THREAD_MESSAGES = 200;
 export const SLACK_API_PAGE_SIZE = 200; // Slack recommendation 100 to 200 and max 1000 per request.
-export const MAX_PUBLIC_CHANNELS_LIMIT = 4000; // conversations.list is Tier 2 (20 req/min) => max 20 request plus cache TTL.
-export const DEFAULT_THREAD_MESSAGES = 20;
+const MAX_PUBLIC_CHANNELS_LIMIT = 4000; // conversations.list is Tier 2 (20 req/min) => max 20 request plus cache TTL.
+const DEFAULT_THREAD_MESSAGES = 20;
 export const SLACK_THREAD_LISTING_LIMIT = 100;
-export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000;
+const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000;
 export const MAX_USER_SEARCH_RESULTS = 20;
-export const USER_CACHE_TTL_MS = 60 * 10 * 1000;
+const USER_CACHE_TTL_MS = 60 * 10 * 1000;
 
 export function isSlackMissingScope(error: unknown): boolean {
   return (
@@ -74,7 +83,7 @@ type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
 type UserWithId = Member & { id: string };
 
 // Minimal channel information returned to reduce context window usage.
-export type MinimalChannelInfo = {
+type MinimalChannelInfo = {
   id: string;
   name: string;
   created: number;
@@ -96,7 +105,7 @@ export type MinimalChannelInfo = {
 };
 
 // Clean channel payload to keep only essential fields.
-export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
+function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
   const typeFlags: Array<[boolean | undefined, string]> = [
     [channel.is_channel, "public channel"],
     [channel.is_group, "private group"],
@@ -140,7 +149,7 @@ export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
 }
 
 // Minimal user information returned to reduce context window usage.
-export type MinimalUserInfo = {
+type MinimalUserInfo = {
   id: string;
   name: string;
   real_name: string;
@@ -175,7 +184,7 @@ export function cleanUserPayload(user: Partial<Member>): MinimalUserInfo {
 }
 
 // Minimal user group information returned to reduce context window usage.
-export type MinimalUserGroupInfo = {
+type MinimalUserGroupInfo = {
   id: string;
   handle: string;
   name: string;
@@ -184,9 +193,7 @@ export type MinimalUserGroupInfo = {
 };
 
 // Clean user group payload to keep only essential fields.
-export function cleanUserGroupPayload(
-  usergroup: Usergroup
-): MinimalUserGroupInfo {
+function cleanUserGroupPayload(usergroup: Usergroup): MinimalUserGroupInfo {
   return {
     id: usergroup.id ?? "",
     handle: usergroup.handle ?? "",
@@ -249,7 +256,7 @@ export const getChannels = async (
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const getCachedPublicChannels = cacheWithRedis(
+const getCachedPublicChannels = cacheWithRedis(
   async ({
     slackClient,
   }: {
@@ -312,7 +319,7 @@ const getAllUsers = async ({
     });
 };
 
-export const getCachedWorkspaceUsers = cacheWithRedis(
+const getCachedWorkspaceUsers = cacheWithRedis(
   async ({
     slackClient,
   }: {
@@ -491,7 +498,7 @@ function formatUsersAsMarkdown(users: MinimalUserInfo[]): string {
 }
 
 // Helper function to build filtered list responses.
-export async function hasSlackScope(
+async function hasSlackScope(
   accessToken: string,
   scope: string
 ): Promise<boolean> {
@@ -745,23 +752,27 @@ export async function executeListPublicChannels(
 
 export async function executePostMessage(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType,
+  toolContext: ToolContext,
   {
     accessToken,
     to,
     message,
     threadTs,
-    fileId,
+    fileAttachment,
     unfurlLinks,
     unfurlMedia,
+    showSentByFooter,
   }: {
     accessToken: string;
     to: string | string[];
     message: string;
     threadTs: string | undefined;
-    fileId: string | undefined;
+    fileAttachment:
+      | { fileId: string; runContext: AgentLoopRunContext }
+      | undefined;
     unfurlLinks: boolean | undefined;
     unfurlMedia: boolean | undefined;
+    showSentByFooter?: boolean;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
@@ -784,24 +795,30 @@ export async function executePostMessage(
 
   const originalMessage = message;
 
-  const agentUrl = getConversationRoute(
-    auth.getNonNullableWorkspace().sId,
-    "new",
-    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getAppUrl()
-  );
-  message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
-
-  if (!(await hasSlackScope(accessToken, "files:write"))) {
-    fileId = undefined;
+  if (
+    showSentByFooter !== false &&
+    isAgentLoopRunContext(toolContext.runContext)
+  ) {
+    const agentUrl = getConversationRoute(
+      auth.getNonNullableWorkspace().sId,
+      "new",
+      `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
+      config.getAppUrl()
+    );
+    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  } else {
+    message = slackifyMarkdown(originalMessage);
   }
 
+  const canUploadFile = await hasSlackScope(accessToken, "files:write");
+
   // If a file is provided, upload it as attachment of the original message.
-  if (fileId) {
+  if (fileAttachment && canUploadFile) {
+    const { fileId, runContext } = fileAttachment;
     const fileResult = await getFileFromConversationAttachment(
       auth,
       fileId,
-      agentLoopContext
+      runContext
     );
     if (fileResult.isErr()) {
       return new Err(
@@ -911,7 +928,7 @@ export async function executeUpdateMessage({
 
 export async function executeScheduleMessage(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType,
+  toolContext: ToolContext,
   {
     accessToken,
     to,
@@ -920,6 +937,7 @@ export async function executeScheduleMessage(
     threadTs,
     unfurlLinks,
     unfurlMedia,
+    showSentByFooter,
   }: {
     accessToken: string;
     to: string;
@@ -928,18 +946,26 @@ export async function executeScheduleMessage(
     threadTs: string | undefined;
     unfurlLinks: boolean | undefined;
     unfurlMedia: boolean | undefined;
+    showSentByFooter?: boolean;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
 
-  const agentUrl = getConversationRoute(
-    auth.getNonNullableWorkspace().sId,
-    "new",
-    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getAppUrl()
-  );
-  message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  if (
+    showSentByFooter !== false &&
+    isAgentLoopRunContext(toolContext.runContext)
+  ) {
+    const agentUrl = getConversationRoute(
+      auth.getNonNullableWorkspace().sId,
+      "new",
+      `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
+      config.getAppUrl()
+    );
+    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  } else {
+    message = slackifyMarkdown(originalMessage);
+  }
 
   // Convert post_at to Unix timestamp in seconds.
   let timestampSeconds: number;
@@ -1206,7 +1232,7 @@ function hasChannelTabs(
   );
 }
 
-export type ChannelCanvasInfo = {
+type ChannelCanvasInfo = {
   canvas_id: string;
   type: "canvas";
   label?: string;
@@ -1426,30 +1452,6 @@ export async function executeWriteCanvas({
   ]);
 }
 
-export async function executeDeleteCanvas({
-  canvas_id,
-  accessToken,
-}: {
-  canvas_id: string;
-  accessToken: string;
-}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
-  const slackClient = await getSlackClient(accessToken);
-
-  const res = await slackClient.apiCall("canvases.delete", { canvas_id });
-  if (!res.ok) {
-    return new Err(
-      new MCPError(`Failed to delete canvas: ${res.error ?? "unknown error"}`)
-    );
-  }
-
-  return new Ok([
-    {
-      type: "text" as const,
-      text: `Canvas "${canvas_id}" has been permanently deleted.`,
-    },
-  ]);
-}
-
 export async function executeCreateChannel({
   name,
   is_private,
@@ -1661,15 +1663,19 @@ export async function executeReadThreadMessages({
 
   const formattedOutput = {
     parent_message: {
-      text: parentMessage?.text ?? "",
-      blocks: parentMessage?.blocks,
+      // Rendered text reconstructs content from blocks/attachments when the top-level
+      // `text` is empty (common for app/bot alerts). `raw_text` keeps the original.
+      text: parentMessage
+        ? renderFormattedMessage(formatSlackMessageForLLM(parentMessage))
+        : "",
+      raw_text: parentMessage?.text ?? "",
       user: parentMessage?.user ?? "",
       ts: parentMessage?.ts ?? "",
       reply_count: parentMessage?.reply_count ?? 0,
     },
     thread_replies: threadReplies.map((msg) => ({
-      text: msg.text ?? "",
-      blocks: msg.blocks,
+      text: renderFormattedMessage(formatSlackMessageForLLM(msg)),
+      raw_text: msg.text ?? "",
       user: msg.user ?? "",
       ts: msg.ts ?? "",
     })),
@@ -1692,4 +1698,29 @@ export async function executeReadThreadMessages({
       text: JSON.stringify(formattedOutput, null, 2),
     },
   ]);
+}
+
+export async function executeSetUserStatus({
+  accessToken,
+  statusText,
+  statusEmoji,
+  statusExpiration,
+}: {
+  accessToken: string;
+  statusText: string;
+  statusEmoji: string;
+  statusExpiration?: number;
+}): Promise<Result<void, string>> {
+  const slackClient = await getSlackClient(accessToken);
+  const response = await slackClient.users.profile.set({
+    profile: {
+      status_text: statusText,
+      status_emoji: statusEmoji,
+      status_expiration: statusExpiration ?? 0,
+    },
+  });
+  if (!response.ok) {
+    return new Err(response.error ?? "Failed to set status");
+  }
+  return new Ok(undefined);
 }

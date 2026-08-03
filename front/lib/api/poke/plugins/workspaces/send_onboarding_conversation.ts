@@ -29,6 +29,7 @@ export const sendOnboardingConversationPlugin = createPlugin({
           "Language code for the onboarding conversation (e.g., 'en', 'fr', 'de'). Defaults to English if not specified.",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _resource, args) => {
     const workspace = auth.workspace();

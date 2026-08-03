@@ -1,3 +1,4 @@
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
@@ -32,25 +33,25 @@ import {
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionTimeIcon,
   Avatar,
-  BoltIcon,
   Button,
+  Clock,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
   cn,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Edit04,
   Icon,
-  LinkIcon,
-  MoreIcon,
-  PencilSquareIcon,
+  Link01,
   Toolbar,
   Tooltip,
-  TrashIcon,
+  Trash01,
+  Zap,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
@@ -83,7 +84,7 @@ function UserMessageEditor({
 
   return (
     <div
-      className="dark:focus-within:ring-highlight/30-night w-full rounded-2xl bg-muted-background py-3 pl-4 pr-3 focus-within:ring-1 focus-within:ring-highlight/30 dark:bg-muted-background-night dark:ring-border-dark-night dark:focus-within:ring-1 sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+      className="w-full rounded-2xl bg-muted-background py-3 pl-4 pr-3 focus-within:ring-1 focus-within:ring-highlight/30 sm:focus-within:ring-2"
       onClick={(e) => {
         // If e.target is not a child of a div with class "tiptap", then focus on the editor
         if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
@@ -134,6 +135,7 @@ interface UserMessageProps {
   owner: WorkspaceType;
   onReactionToggle: (emoji: string) => void;
   isProjectArchived?: boolean;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
 
 export function UserMessage({
@@ -146,6 +148,7 @@ export function UserMessage({
   owner,
   onReactionToggle,
   isProjectArchived = false,
+  setLimitReachedCode,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
@@ -186,11 +189,19 @@ export function UserMessage({
         .trim();
     }
 
-    await editMessage({
+    const result = await editMessage({
       messageId: message.sId,
       content,
       mentions: filteredMentions,
     });
+
+    if (!result) {
+      return;
+    }
+    if (result.isErr()) {
+      setLimitReachedCode?.(result.error);
+      return;
+    }
 
     setShouldShowEditor(false);
   };
@@ -229,6 +240,9 @@ export function UserMessage({
     .filter((m) => isUserMessage(m) && m.visibility === "pending").length;
   const isEmpty = !message.content;
   const isCurrentUser = message.user?.sId === currentUserId;
+  const hasCitations = (citations?.length ?? 0) > 0;
+  const shouldHideMessageContent =
+    isEmpty && hasCitations && !isDeleted && !isPending;
   const canDelete =
     (isCurrentUser || isAdmin) && !isDeleted && !isProjectArchived;
   const canEdit = isCurrentUser && !isDeleted && !isProjectArchived;
@@ -331,14 +345,12 @@ export function UserMessage({
                   displayChip ? (
                     <>
                       {isTriggeredOrigin(message.context.origin) && (
-                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="inline-block leading-none text-muted-foreground">
                           <TriggerChip message={message} />
                         </span>
                       )}
                       {message.version > 0 && !isDeleted && (
-                        <span className="text-xs text-faint dark:text-muted-foreground-night">
-                          (edited)
-                        </span>
+                        <span className="text-xs text-faint">(edited)</span>
                       )}
                     </>
                   ) : undefined
@@ -356,14 +368,12 @@ export function UserMessage({
                   displayChip ? (
                     <>
                       {isTriggeredOrigin(message.context.origin) && (
-                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="inline-block leading-none text-muted-foreground">
                           <TriggerChip message={message} />
                         </span>
                       )}
                       {message.version > 0 && !isDeleted && (
-                        <span className="text-xs text-faint dark:text-muted-foreground-night">
-                          (edited)
-                        </span>
+                        <span className="text-xs text-faint">(edited)</span>
                       )}
                     </>
                   ) : undefined
@@ -377,7 +387,7 @@ export function UserMessage({
             type="user"
             className={cn(
               isCurrentUser ? "ml-auto" : undefined,
-              "relative max-w-conversation @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]"
+              "relative max-w-conversation @xxxs-conversation:max-w-[95%] @xxs-conversation:max-w-[80%] @xs-conversation:max-w-[85%]"
             )}
             ref={userMessageHoveredRef}
           >
@@ -387,6 +397,7 @@ export function UserMessage({
                 type="user"
                 className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
                 reversed={isCurrentUser}
+                showContent={!shouldHideMessageContent}
               >
                 <div
                   className={cn(
@@ -396,23 +407,20 @@ export function UserMessage({
                 >
                   {isPending && (
                     <Icon
-                      visual={ActionTimeIcon}
+                      visual={Clock}
                       size="xs"
-                      className="mt-1 shrink-0 text-faint dark:text-faint-night"
+                      className="mt-1 shrink-0 text-faint"
                     />
                   )}
                   {isDeleted ? (
                     <DeletedMessage />
                   ) : isEmpty ? (
-                    <div className="text-faint dark:text-faint-night text-sm">
-                      (no message)
-                    </div>
+                    <div className="text-faint text-sm">(no message)</div>
                   ) : (
                     <div
                       className={cn(
                         "min-w-0",
-                        isPending &&
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                        isPending && "text-muted-foreground"
                       )}
                     >
                       <UserMessageMarkdown
@@ -465,11 +473,11 @@ export function UserMessage({
       {isLastMessage && pendingMessageCount > 0 && (
         <div
           className={cn(
-            "mt-1 mr-3 flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night",
+            "mt-1 mr-3 flex items-center gap-1 text-xs text-muted-foreground",
             isCurrentUser && "justify-end"
           )}
         >
-          <Icon visual={ActionTimeIcon} size="xs" />
+          <Icon visual={Clock} size="xs" />
           {`Message${pluralize(pendingMessageCount)} queued`}
         </div>
       )}
@@ -516,7 +524,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Icon size="xs" visual={BoltIcon} className="h-3.5 w-3.5" />}
+      trigger={<Icon size="xs" visual={Zap} className="h-3.5 w-3.5" />}
     />
   );
 }
@@ -610,14 +618,14 @@ function ActionMenu({
   const actions = showActions
     ? [
         {
-          icon: LinkIcon,
+          icon: Link01,
           label: "Copy message link",
           onClick: handleCopyMessageLink,
         },
         ...(canEdit
           ? [
               {
-                icon: PencilSquareIcon,
+                icon: Edit04,
                 label: "Edit message",
                 onClick: handleEditMessage,
               },
@@ -626,7 +634,7 @@ function ActionMenu({
         ...(canDelete
           ? [
               {
-                icon: TrashIcon,
+                icon: Trash01,
                 label: "Delete message",
                 onClick: handleDeleteMessage,
               },
@@ -639,7 +647,7 @@ function ActionMenu({
   // In a narrow container (and in bottom mode), buttons sit below the bubble — always visible.
   const sideItemVisibilityClass = cn(
     "transition-opacity duration-300",
-    mode === "side" && shouldHideActions && "@sm/conversation:opacity-0"
+    mode === "side" && shouldHideActions && "@sm-conversation:opacity-0"
   );
 
   return (
@@ -667,7 +675,7 @@ function ActionMenu({
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  icon={MoreIcon}
+                  icon={DotsHorizontal}
                   size="icon-xs"
                   variant="outline"
                   aria-label="Message actions"

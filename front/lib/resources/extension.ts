@@ -16,6 +16,10 @@ import type {
   Transaction,
 } from "sequelize";
 
+export type GetExtensionConfigResponseBody = {
+  blacklistedDomains: string[];
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

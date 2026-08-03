@@ -82,7 +82,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/editors", () => {
     expect(data.editors[0].id).toBe(agentOwner.id);
   });
 
-  it("should return 200 and the editor list for editor", async () => {
+  it("should return 200 and only light user fields for non-admin editor", async () => {
     const { workspace, agent, agentOwner } = await setupTest({
       agentOwnerRole: "builder",
       requestUserRole: "builder",
@@ -92,7 +92,13 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/editors", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.editors).toHaveLength(1);
-    expect(data.editors[0].id).toBe(agentOwner.id);
+    expect(data.editors[0].sId).toBe(agentOwner.sId);
+
+    // Non-admin receives only minimal essential fields; admin-only fields are absent.
+    expect(data.editors[0].email).toBeDefined();
+    expect(data.editors[0].id).toBeUndefined();
+    expect(data.editors[0].provider).toBeUndefined();
+    expect(data.editors[0].username).toBeUndefined();
   });
 
   it("should return 404 for non-existent agent", async () => {
@@ -131,6 +137,23 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     expect(editorIds).toContain(newEditor.sId);
   });
 
+  it("admin who is not an agent editor can become an editor", async () => {
+    const { workspace, agent, agentOwner, requestUser } = await setupTest({
+      agentOwnerRole: "builder",
+      requestUserRole: "admin",
+    });
+
+    const response = await patchEditors(workspace, agent.sId, {
+      addEditorIds: [requestUser.sId],
+    });
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.editors).toHaveLength(2);
+    const editorIds = data.editors.map((e: UserType) => e.sId);
+    expect(editorIds).toContain(agentOwner.sId);
+    expect(editorIds).toContain(requestUser.sId);
+  });
+
   it("admin should successfully remove an editor", async () => {
     const { workspace, agent, agentOwner } = await setupTest({
       requestUserRole: "admin",
@@ -162,7 +185,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     expect(data.editors[0].sId).toBe(editorToRemove.sId);
   });
 
-  it("editor should successfully add another editor", async () => {
+  it("editor should successfully add another editor and get light response", async () => {
     const { workspace, agent, agentOwner } = await setupTest({
       agentOwnerRole: "builder",
       requestUserRole: "builder",
@@ -177,9 +200,11 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.editors).toHaveLength(2);
-    const editorIds = data.editors.map((e: UserType) => e.sId);
+    const editorIds = data.editors.map((e: { sId: string }) => e.sId);
     expect(editorIds).toContain(agentOwner.sId);
     expect(editorIds).toContain(newEditor.sId);
+    // Non-admin receives minimal essential data including email.
+    expect(data.editors[0].email).toBeDefined();
   });
 
   it("editor should successfully remove another editor", async () => {

@@ -1,5 +1,8 @@
-import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
-import { getFeatureFlags } from "@app/lib/auth";
+import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
+import {
+  getReferencedSkillSpaceModelIds,
+  resolveAdditionalRequestedSpaceModelIds,
+} from "@app/lib/api/skills/space_requirements";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -7,10 +10,16 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
 import type {
-  SkillType,
-  SkillWithRelationsType,
+  DeleteSkillResponseBody,
+  GetSkillResponseBody,
+  GetSkillWithRelationsResponseBody,
+  PatchSkillResponseBody,
+} from "@app/types/api/skills";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import {
+  availabilityFromIsDefault,
+  SKILL_AVAILABILITIES,
 } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -27,30 +36,6 @@ import filesRoute from "./files/[fileId]/content";
 import history from "./history";
 import reinforcement from "./reinforcement";
 import restore from "./restore";
-
-export type GetSkillResponseBody = {
-  skill: SkillType;
-};
-
-export type GetSkillWithRelationsResponseBody = {
-  skill: SkillWithRelationsType;
-};
-
-export type PatchSkillResponseBody = {
-  skill: Omit<
-    SkillType,
-    | "author"
-    | "requestedSpaceIds"
-    | "workspaceId"
-    | "createdAt"
-    | "updatedAt"
-    | "editedBy"
-  >;
-};
-
-export type DeleteSkillResponseBody = {
-  success: boolean;
-};
 
 const ParamsSchema = z.object({
   sId: z.string(),
@@ -71,9 +56,10 @@ const PatchSkillRequestBodySchema = z.object({
   attachedKnowledge: z.array(AttachedKnowledgeSchema),
   instructionsHtml: z.string().nullable(),
   additionalRequestedSpaceIds: z.array(z.string()).optional(),
-  referencedSkillIds: z.array(z.string()).optional(),
   fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+  // @deprecated Use availability instead. Kept while old clients still send it.
   isDefault: z.boolean().optional(),
+  availability: z.enum(SKILL_AVAILABILITIES).optional(),
   reinforcement: z.enum(["auto", "on", "off"]).optional(),
 });
 
@@ -112,6 +98,7 @@ app.route("/reinforcement", reinforcement);
 app.route("/restore", restore);
 app.route("/files/:fileId/content", filesRoute);
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -134,40 +121,35 @@ app.get(
     const serializedSkill = skill.toJSON(auth);
 
     if (withRelations === "true") {
-      const featureFlags = await getFeatureFlags(auth);
-      const includeChildSkills = featureFlags.includes("nested_skills");
-
       const usage = await skill.fetchUsage(auth);
       const editors = await skill.listEditors(auth);
       const editedByUser = await skill.fetchEditedByUser(auth);
-      const extendedSkill = serializedSkill.extendedSkillId
-        ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
-        : null;
-      const childSkills = includeChildSkills
-        ? await skill.fetchChildSkills(auth)
-        : [];
+      const childSkills = await skill.fetchChildSkills(auth);
+      const usedBySkills =
+        (await SkillResource.batchFetchUsedBySkills(auth, [skill])).get(
+          skill.sId
+        ) ?? [];
 
       const skillWithRelations: SkillWithRelationsType = {
         ...serializedSkill,
         relations: {
-          usage,
+          usage: {
+            ...usage,
+            count: usage.count + usedBySkills.length,
+            skills: usedBySkills,
+          },
           editors: editors ? editors.map((e) => e.toJSON()) : null,
           editedByUser: editedByUser ? editedByUser.toJSON() : null,
-          extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
-          ...(includeChildSkills
-            ? {
-                childSkills: childSkills.map((childSkill) => {
-                  const {
-                    instructions,
-                    instructionsHtml,
-                    tools,
-                    ...childSkillWithoutInstructionsAndTools
-                  } = childSkill.toJSON(auth);
+          childSkills: childSkills.map((childSkill) => {
+            const {
+              instructions,
+              instructionsHtml,
+              tools,
+              ...childSkillWithoutInstructionsAndTools
+            } = childSkill.toJSON(auth);
 
-                  return childSkillWithoutInstructionsAndTools;
-                }),
-              }
-            : {}),
+            return childSkillWithoutInstructionsAndTools;
+          }),
         },
       };
 
@@ -205,7 +187,56 @@ app.patch(
       });
     }
 
-    // Check if user can write.
+    // Resolve the requested availability once: isDefault is a deprecated alias; an explicit
+    // availability takes priority over it.
+    const requestedAvailability =
+      body.availability ??
+      (body.isDefault !== undefined
+        ? availabilityFromIsDefault(body.isDefault)
+        : undefined);
+
+    const availabilityChanged =
+      requestedAvailability !== undefined &&
+      requestedAvailability !== skill.availability;
+
+    // Changing a skill's availability requires the workspace-level permission to publish
+    // skills — even for editors.
+    if (
+      availabilityChanged &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to change this skill's availability.",
+        },
+      });
+    }
+
+    // without make skill discoverable permission, a user can neither make a skill
+    // auto-discoverable nor change an already auto-discoverable skill's availability.
+    const involvesAutoDiscoverable =
+      requestedAvailability === "users_and_agents" ||
+      skill.availability === "users_and_agents";
+    if (
+      availabilityChanged &&
+      involvesAutoDiscoverable &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to change this skill's auto-discoverable status.",
+        },
+      });
+    }
+
+    // Editing a skill remains editor-only; non-editors holding the publish permission use
+    // PATCH /skills/:sId/availability to publish or unpublish without editing.
     if (!skill.canWrite(auth)) {
       return apiError(ctx, {
         status_code: 403,
@@ -217,7 +248,7 @@ app.patch(
     }
 
     // Check for existing active skill with the same name (excluding current skill).
-    const existingSkill = await SkillResource.fetchActiveByName(auth, name);
+    const existingSkill = await SkillResource.fetchByName(auth, name);
 
     if (existingSkill && existingSkill.id !== skill.id) {
       return apiError(ctx, {
@@ -242,11 +273,21 @@ app.patch(
       }
     }
 
-    // Fetch MCP server views first to compute requestedSpaceIds.
+    // Fetch MCP server views first to compute requestedSpaceIds. The views end up on the
+    // updated skill, whose serialized response includes their tools — fetch the heavy attributes.
     const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
     const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
-      mcpServerViewIds
+      mcpServerViewIds,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     if (mcpServerViewIds.length !== mcpServerViews.length) {
@@ -296,6 +337,11 @@ app.patch(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       });
+    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
+      auth,
+      body.instructions,
+      skill.sId
+    );
 
     let additionalRequestedSpaceIds: ModelId[];
 
@@ -324,9 +370,16 @@ app.patch(
           mcpServerViews: skill.mcpServerViews,
           attachedKnowledge: previousAttachedKnowledge,
         });
-      const previousComputedRequestedSpaceIdsSet = new Set(
-        previousComputedRequestedSpaceIds
-      );
+      const previousReferencedSkillSpaceIds =
+        await getReferencedSkillSpaceModelIds(
+          auth,
+          skill.instructions,
+          skill.sId
+        );
+      const previousComputedRequestedSpaceIdsSet = new Set([
+        ...previousComputedRequestedSpaceIds,
+        ...previousReferencedSkillSpaceIds,
+      ]);
 
       additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
         (spaceId) => !previousComputedRequestedSpaceIdsSet.has(spaceId)
@@ -335,28 +388,13 @@ app.patch(
 
     const requestedSpaceIds = uniq([
       ...computedRequestedSpaceIds,
+      ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIds,
     ]);
 
-    const featureFlags = await getFeatureFlags(auth);
-    const enableSkillReferences = featureFlags.includes("nested_skills");
-
-    // Validate file attachments if provided (gated behind sandbox_tools).
+    // Validate file attachments if provided.
     let files: FileResource[] | undefined;
     if (fileAttachments) {
-      if (
-        !featureFlags.includes("sandbox_tools") &&
-        fileAttachments.length > 0
-      ) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: "File attachments are not supported.",
-          },
-        });
-      }
-
       const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
       files = await FileResource.fetchByIds(auth, fileAttachmentIds);
       if (files.length !== fileAttachmentIds.length) {
@@ -402,13 +440,11 @@ app.patch(
       icon: body.icon,
       instructions: body.instructions,
       instructionsHtml: body.instructionsHtml,
-      isDefault: body.isDefault,
+      availability: requestedAvailability,
       mcpServerViews,
       name,
       reinforcement: body.reinforcement,
       requestedSpaceIds,
-      enableSkillReferences,
-      referencedSkillIds: body.referencedSkillIds,
       userFacingDescription: body.userFacingDescription,
       ...(shouldActivate ? { status: "active" as const } : {}),
     });
@@ -433,13 +469,13 @@ app.delete(
     }
     const { skill } = loaded;
 
-    // Check if user can write.
-    if (!skill.canWrite(auth)) {
+    // Check if user can administrate.
+    if (!skill.canAdministrate(auth)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: "Only editors can delete this skill.",
+          message: "Only admins and editors can archive this skill.",
         },
       });
     }

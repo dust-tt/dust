@@ -1,0 +1,20 @@
+import { WithMistralCodestralConfig } from "@app/lib/model_constructors/providers/mistral/models/codestral";
+import { MistralStream } from "@app/lib/model_constructors/stream/clients/mistral";
+import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
+import { EUROPE } from "@app/lib/model_constructors/types/regions";
+
+export class MistralCodestralEuropeMistralStream extends WithMistralCodestralConfig(
+  MistralStream
+) {
+  static readonly tokenPricing = {
+    standardInput: 0.9,
+    standardOutput: 2.8,
+  };
+
+  // Inference runs in the EU; the endpoint remains usable from both US and EU.
+  static readonly region = EUROPE;
+
+  static readonly id = this.buildId();
+}
+
+MistralCodestralEuropeMistralStream satisfies StreamEndpointConstructor;

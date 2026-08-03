@@ -1,17 +1,19 @@
 // Okay to use public API types because here front is talking to core API.
 
-import type {
-  ContentNodeAttachmentType,
-  ConversationAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
+import { fetchContentFragmentsForConversation } from "@app/lib/api/assistant/content_fragments";
 import {
   getAttachmentFromContentFragment,
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { truncateLegacyPastedSnippet } from "@app/lib/api/files/snippet";
 import type { Authenticator } from "@app/lib/auth";
-import type { ConversationType } from "@app/types/assistant/conversation";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
-import { isContentFragmentType } from "@app/types/content_fragment";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type {
+  ContentNodeAttachmentType,
+  ConversationAttachmentType,
+} from "@app/types/api/assistant/conversation/attachments";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
@@ -19,56 +21,55 @@ export async function listAttachments(
   auth: Authenticator,
   {
     conversation,
+    upToRank,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType | ConversationResource;
+    /** When set, only attachments from messages with `rank <= upToRank` are included. */
+    upToRank?: number;
   }
 ): Promise<ConversationAttachmentType[]> {
-  // Using a map to avoid duplicated, order matters, project files should override directly attached files as they could have be moved from conversation to project.
+  // Using a map to avoid duplicated, order matters, project files should override directly
+  // attached files as they could have been moved from conversation to project.
   const attachments: Map<string, ConversationAttachmentType> = new Map();
-  for (const versions of conversation.content) {
-    const m = versions[versions.length - 1];
-    if (isContentFragmentType(m)) {
-      // Only list the latest version of a content fragment.
-      if (m.contentFragmentVersion !== "latest") {
-        continue;
-      }
 
-      const attachment = getAttachmentFromContentFragment(m);
-      if (attachment) {
-        attachments.set(m.contentFragmentId, attachment);
-      }
-    } else if (isAgentMessageType(m)) {
-      const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
-      const agentCreator = {
-        type: "agent" as const,
-        name: m.configuration.name,
-        pictureUrl: m.configuration.pictureUrl,
-      };
+  const [contentFragments, generatedFiles] = await Promise.all([
+    fetchContentFragmentsForConversation(auth, {
+      conversation,
+      upToRank,
+    }),
+    AgentMCPActionResource.listGeneratedFilesForConversation(auth, {
+      conversationId: conversation.id,
+      upToRank,
+    }),
+  ]);
 
-      for (const f of generatedFiles) {
-        // File path only, skip JIT attachment tracking.
-        if (!f.fileId) {
-          continue;
-        }
-
-        attachments.set(
-          f.fileId,
-          makeFileAttachment({
-            fileId: f.fileId,
-            source: "agent",
-            createdAt: f.createdAt ?? 0,
-            updatedAt: f.updatedAt ?? 0,
-            contentType: f.contentType,
-            title: f.title,
-            snippet: f.snippet,
-            isInProjectContext: f.isInProjectContext ?? false,
-            hideFromUser: f.hidden ?? false,
-            skipDataSourceIndexing: f.skipDataSourceIndexing ?? false,
-            creator: agentCreator,
-          })
-        );
-      }
+  for (const m of contentFragments) {
+    const attachment = getAttachmentFromContentFragment(m);
+    if (attachment) {
+      attachments.set(
+        m.contentFragmentId,
+        truncateLegacyPastedSnippet(attachment)
+      );
     }
+  }
+
+  for (const f of generatedFiles) {
+    attachments.set(
+      f.fileId,
+      makeFileAttachment({
+        fileId: f.fileId,
+        source: "agent",
+        createdAt: f.createdAt ?? 0,
+        updatedAt: f.updatedAt ?? 0,
+        contentType: f.contentType,
+        title: f.title,
+        snippet: f.snippet,
+        isInProjectContext: f.isInProjectContext ?? false,
+        hideFromUser: f.hidden ?? false,
+        skipDataSourceIndexing: f.skipDataSourceIndexing ?? false,
+        creator: f.creator,
+      })
+    );
   }
 
   return Array.from(attachments.values());

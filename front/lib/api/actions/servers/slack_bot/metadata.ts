@@ -1,13 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
-  post_message: {
+export const SLACK_BOT_TOOLS_METADATA = [
+  {
+    name: "post_message",
     description:
-      "Post a message to a Slack channel. The slack bot must be added to the channel before it can post messages. Direct messages are not supported. You MUST ONLY post to channels that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
+      "Post a message to a Slack channel as the workspace bot/app (not as the user). Posts to channels only. You MUST ONLY post to channels that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
       to: z
         .string()
@@ -17,7 +15,18 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup."
+          "The message to post, using standard Markdown formatting " +
+            "(e.g., [text](url) for links, **bold**, *italic*). Do NOT " +
+            "use Slack-specific markup like <url|text> for links. The " +
+            "system converts Markdown to Slack format automatically. To " +
+            "mention a user, use <@USER_ID>, where USER_ID is a Slack " +
+            "user ID that always starts with 'U' and contains only " +
+            "uppercase letters and digits (e.g., <@U01234ABCD>), so " +
+            "every valid mention starts with '<@U'. Never use an ID " +
+            "from another system (e.g. a HubSpot, Notion, CRM, or " +
+            "database ID) as the Slack user ID; resolve it with the " +
+            "search_user tool if needed. To reference a channel, use " +
+            "#CHANNEL or <#CHANNEL_ID>."
         ),
       threadTs: z
         .string()
@@ -43,14 +52,24 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         .describe(
           "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
         ),
+      showSentByFooter: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe(
+          "Include the 'Sent via [AgentName] on Dust' footer. Set false only when explicitly asked to remove the footer, never for formatting or brevity."
+        ),
     },
     stake: "low",
     displayLabels: {
       running: "Posting Slack message",
       done: "Post Slack message",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  edit_message: {
+  {
+    name: "edit_message",
     description:
       "Edit a message previously posted in a Slack channel by providing its timestamp and channel.",
     schema: {
@@ -63,7 +82,18 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The new message content, using standard Markdown formatting. Do NOT use Slack-specific markup."
+          "The new message content, using standard Markdown formatting " +
+            "(e.g., [text](url) for links, **bold**, *italic*). Do NOT " +
+            "use Slack-specific markup like <url|text> for links. The " +
+            "system converts Markdown to Slack format automatically. To " +
+            "mention a user, use <@USER_ID>, where USER_ID is a Slack " +
+            "user ID that always starts with 'U' and contains only " +
+            "uppercase letters and digits (e.g., <@U01234ABCD>), so " +
+            "every valid mention starts with '<@U'. Never use an ID " +
+            "from another system (e.g. a HubSpot, Notion, CRM, or " +
+            "database ID) as the Slack user ID; resolve it with the " +
+            "search_user tool if needed. To reference a channel, use " +
+            "#CHANNEL or <#CHANNEL_ID>."
         ),
     },
     stake: "low",
@@ -71,8 +101,11 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       running: "Editing Slack message",
       done: "Edit Slack message",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  search_user: {
+  {
+    name: "search_user",
     description: `Search for a Slack user by user ID or email address.
 
 Query parameter accepts:
@@ -97,9 +130,12 @@ The search_all parameter should only be set to true if the user explicitly reque
       running: "Searching Slack user",
       done: "Search Slack user",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_public_channels: {
-    description: "List all public channels in the workspace",
+  {
+    name: "list_public_channels",
+    description: "List all public Slack channels in the workspace",
     schema: {
       nameFilter: z
         .string()
@@ -111,8 +147,11 @@ The search_all parameter should only be set to true if the user explicitly reque
       running: "Listing Slack public channels",
       done: "List Slack public channels",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  read_channel_history: {
+  {
+    name: "read_channel_history",
     description:
       "Read messages from a specific channel with pagination support. The slack bot must be added to the channel before it can read messages.",
     schema: {
@@ -141,10 +180,13 @@ The search_all parameter should only be set to true if the user explicitly reque
       running: "Reading Slack channel history",
       done: "Read Slack channel history",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  read_thread_messages: {
+  {
+    name: "read_thread_messages",
     description:
-      "Read all messages in a specific thread with pagination support",
+      "Read all messages in a specific Slack thread (in channels the workspace bot belongs to) with pagination support",
     schema: {
       channel: z.string().describe("Channel name or ID"),
       threadTs: z
@@ -174,9 +216,12 @@ The search_all parameter should only be set to true if the user explicitly reque
       running: "Reading Slack thread messages",
       done: "Read Slack thread messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  add_reaction: {
-    description: "Add a reaction emoji to a message",
+  {
+    name: "add_reaction",
+    description: "Add a reaction emoji to a Slack message as the workspace bot",
     schema: {
       channel: z.string().describe("The channel where the message is located"),
       timestamp: z
@@ -193,9 +238,13 @@ The search_all parameter should only be set to true if the user explicitly reque
       running: "Adding Slack reaction",
       done: "Add Slack reaction",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  remove_reaction: {
-    description: "Remove a reaction emoji from a message",
+  {
+    name: "remove_reaction",
+    description:
+      "Remove a reaction emoji from a Slack message as the workspace bot",
     schema: {
       channel: z.string().describe("The channel where the message is located"),
       timestamp: z
@@ -212,11 +261,12 @@ The search_all parameter should only be set to true if the user explicitly reque
       running: "Removing Slack reaction",
       done: "Remove Slack reaction",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const SLACK_BOT_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "slack_bot",
     version: "1.0.0",
@@ -228,21 +278,6 @@ export const SLACK_BOT_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: null,
-    instructions:
-      "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
-      "Direct messages and search operations are not supported. " +
-      "When posting or editing a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). " +
-      "Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
-      "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-      "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
   },
-  tools: Object.values(SLACK_BOT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(SLACK_BOT_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: SLACK_BOT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

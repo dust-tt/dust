@@ -1,4 +1,4 @@
-import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
+import type { FetchConversationParticipantsResponse } from "@app/lib/api/assistant/participants";
 import type {
   AgentMessageNewEvent,
   UserMessageNewEvent,

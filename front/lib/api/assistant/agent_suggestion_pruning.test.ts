@@ -49,7 +49,7 @@ describe("pruneSuggestionsForAgent", () => {
         agentConfiguration,
         {
           suggestion: {
-            modelId: "gpt-4-turbo", // Same as agent's model
+            modelId: "gpt-5-mini", // Same as agent's model
           },
         }
       );
@@ -74,7 +74,7 @@ describe("pruneSuggestionsForAgent", () => {
         agentConfiguration,
         {
           suggestion: {
-            modelId: "claude-sonnet-4-5-20250929", // Different from agent's gpt-4-turbo
+            modelId: "claude-sonnet-4-5-20250929", // Different from agent's gpt-5-mini
             reasoningEffort: "medium",
           },
         }
@@ -100,7 +100,7 @@ describe("pruneSuggestionsForAgent", () => {
         agentConfiguration,
         {
           suggestion: {
-            modelId: "gpt-4-turbo", // Same as agent's model
+            modelId: "gpt-5-mini", // Same as agent's model
             reasoningEffort: "high", // Different reasoning effort
           },
         }

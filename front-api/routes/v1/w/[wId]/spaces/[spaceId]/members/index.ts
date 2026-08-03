@@ -1,4 +1,4 @@
-import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -60,7 +60,7 @@ const withEditableSpace = createMiddleware<
 
   if (
     space.managementMode === "group" ||
-    space.groups.some((g) => g.kind === "global")
+    space.groups.some((group) => group.isGlobal())
   ) {
     return apiError(ctx, {
       status_code: 404,
@@ -93,11 +93,12 @@ app.get(
   async (ctx): HandlerResult<GetSpaceMembersResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
+    const groups = await space.fetchGroupResources(auth);
 
     const currentMembers = uniqBy(
       (
         await concurrentExecutor(
-          space.groups,
+          groups,
           (group) => group.getActiveMembers(auth),
           { concurrency: 1 }
         )
@@ -189,8 +190,8 @@ app.post(
 
     // Trigger notifications for newly added members (projects only).
     if (space.isProject()) {
-      notifyProjectMembersAdded(auth, {
-        project: space.toJSON(),
+      notifyPodMembersAdded(auth, {
+        pod: space.toJSON(),
         addedUserIds: userIds,
       });
     }

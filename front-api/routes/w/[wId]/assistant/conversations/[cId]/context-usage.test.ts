@@ -24,6 +24,7 @@ function makeRunUsage({
     completionTokens,
     cachedTokens: null,
     cacheCreationTokens: null,
+    reasoningTokens: null,
     costMicroUsd: 1,
     isBatch: false,
   };

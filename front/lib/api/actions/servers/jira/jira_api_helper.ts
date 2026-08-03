@@ -43,6 +43,7 @@ import {
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/api/actions/servers/jira/types";
 import logger from "@app/logger/logger";
+import { normalizeAtlassianCloudUrl } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
@@ -356,9 +357,12 @@ export async function getJiraBaseUrlAndResourceInfo(
     return null;
   }
 
-  const resource = !cloudUrl
+  const normalizedCloudUrl = cloudUrl
+    ? normalizeAtlassianCloudUrl(cloudUrl)
+    : null;
+  const resource = !normalizedCloudUrl
     ? resources[0]
-    : (resources.find((r) => r.url === cloudUrl) ?? null);
+    : (resources.find((r) => r.url === normalizedCloudUrl) ?? null);
 
   if (!resource) {
     return null;
@@ -716,7 +720,7 @@ export async function transitionIssue(
   return handleResults(result, null);
 }
 
-export async function getAllFields(
+async function getAllFields(
   baseUrl: string,
   accessToken: string
 ): Promise<
@@ -818,6 +822,32 @@ async function processFieldsWithMetadata(
   return processFieldsForJira(fields, fieldsMetadata);
 }
 
+// Jira resolves `issuetype.name` instance-wide, which is ambiguous when projects share a
+// localized name (e.g. sub-tasks named "Sous-tâche") and gets rejected. Resolve to the
+// project-scoped id instead.
+async function resolveIssueType(
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string,
+  issuetype: { id?: string; name?: string }
+): Promise<{ id: string } | { name: string } | undefined> {
+  if (issuetype.id) {
+    return { id: issuetype.id };
+  }
+  if (!issuetype.name) {
+    return undefined;
+  }
+  const typesResult = await getIssueTypes(baseUrl, accessToken, projectKey);
+  if (typesResult.isOk()) {
+    const match = typesResult.value.find((t) => t.name === issuetype.name);
+    if (match) {
+      return { id: match.id };
+    }
+  }
+  // Fall back to the name so behavior is no worse than before if resolution fails.
+  return { name: issuetype.name };
+}
+
 export async function createIssue(
   baseUrl: string,
   resourceInfo: ResourceInfo,
@@ -830,6 +860,13 @@ export async function createIssue(
     issueData
   );
 
+  const issuetype = await resolveIssueType(
+    baseUrl,
+    accessToken,
+    issueData.project.key,
+    issueData.issuetype
+  );
+
   const result = await jiraApiCall(
     {
       endpoint: "/rest/api/3/issue",
@@ -838,7 +875,7 @@ export async function createIssue(
     JiraIssueSchema,
     {
       method: "POST",
-      body: { fields: processedFields },
+      body: { fields: { ...processedFields, issuetype } },
       baseUrl,
     }
   );

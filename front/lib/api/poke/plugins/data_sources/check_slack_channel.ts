@@ -24,6 +24,7 @@ export const checkSlackChannelPlugin = createPlugin({
         description: "Slack channel ID to check (e.g., C1234567890)",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

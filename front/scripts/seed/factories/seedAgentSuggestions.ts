@@ -13,7 +13,7 @@ import type {
 
 import type { CreatedAgent, SeedContext, SuggestionAsset } from "./types";
 
-export interface SeedAgentSuggestionsOptions {
+interface SeedAgentSuggestionsOptions {
   agents: Map<string, CreatedAgent>;
 }
 

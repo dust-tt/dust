@@ -415,6 +415,40 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
     }
   },
 
+  list_ticket_requested_items: async ({ ticket_id }, { authInfo }) => {
+    const clientResult = createFreshserviceClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+    const client = clientResult.value;
+
+    try {
+      const result = await client.request<{ requested_items: unknown[] }>(
+        `tickets/${ticket_id}/requested_items`
+      );
+
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      const requestedItems = result?.requested_items || [];
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved ${requestedItems.length} requested items for ticket ${ticket_id}`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(requestedItems, null, 2),
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        )
+      );
+    }
+  },
+
   list_ticket_tasks: async ({ ticket_id }, { authInfo }) => {
     const clientResult = createFreshserviceClient(authInfo);
     if (clientResult.isErr()) {

@@ -52,6 +52,10 @@ export type AgentActionSpecification = {
   name: string;
   description: string;
   inputSchema: JSONSchema;
+  // Whether this tool is loaded upfront in the cached prefix. Intrinsic,
+  // provider-agnostic property. Providers with tool search defer non-eager
+  // tools when tool search is enabled.
+  eager?: boolean;
 };
 
 export function dustAppRunInputsToInputSchema(

@@ -1,6 +1,7 @@
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
+import Custom404 from "@app/components/pages/Custom404";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { extractConfig } from "@app/lib/config";
 import { clientFetch } from "@app/lib/egress/client";
@@ -12,7 +13,7 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useApp, useCancelRun, useSavedRunStatus } from "@app/lib/swr/apps";
-import Custom404 from "@app/pages/404";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type {
   BlockRunConfig,
   SpecificationBlockType,
@@ -22,12 +23,12 @@ import type { CoreAPIError } from "@app/types/core/core_api";
 import type { APIErrorResponse } from "@app/types/error";
 import type { BlockType } from "@app/types/run";
 import {
-  BracesIcon,
+  Brackets,
   Button,
-  DocumentTextIcon,
-  PlayIcon,
+  File04,
+  Play,
   Spinner,
-  StopIcon,
+  Stop,
 } from "@dust-tt/sparkle";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -99,8 +100,9 @@ export function AppViewPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { isAdmin, isBuilder } = useAuth();
-  const readOnly = !isBuilder;
+  const { isAdmin } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const readOnly = !hasPermission("admin", "dust_app");
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -376,7 +378,7 @@ export function AppViewPage() {
               disabled={cancelRequested}
               label={cancelRequested ? "Canceling..." : "Cancel"}
               onClick={() => handleCancelRun()}
-              icon={StopIcon}
+              icon={Stop}
             />
           ) : (
             <Button
@@ -388,7 +390,7 @@ export function AppViewPage() {
                 runRequested || run?.status.run == "running" ? "Running" : "Run"
               }
               onClick={() => handleRun()}
-              icon={PlayIcon}
+              icon={Play}
             />
           )}
           {runError ? (
@@ -408,7 +410,7 @@ export function AppViewPage() {
             <div className="hidden flex-initial space-x-2 sm:block">
               <Button
                 variant="outline"
-                icon={BracesIcon}
+                icon={Brackets}
                 label="Secrets"
                 onClick={() => {
                   void router.push(`/w/${owner.sId}/developers/dev-secrets`);
@@ -416,7 +418,7 @@ export function AppViewPage() {
               />
               <Button
                 variant="ghost"
-                icon={DocumentTextIcon}
+                icon={File04}
                 label="Documentation"
                 onClick={() => {
                   window.open(
@@ -456,13 +458,13 @@ export function AppViewPage() {
         />
 
         {spec.length == 0 ? (
-          <div className="mx-auto mt-8 text-sm text-gray-400">
-            <p className="">Welcome to your new Dust app.</p>
+          <div className="mx-auto mt-8 text-sm text-muted-foreground">
+            <p>Welcome to your new Dust app.</p>
             <p className="mt-4">To get started, add your first block or:</p>
             <p className="mt-4">
               <Button
                 variant="ghost"
-                icon={DocumentTextIcon}
+                icon={File04}
                 label="Follow the QuickStart Guide"
                 onClick={() => {
                   window.open(
@@ -494,7 +496,7 @@ export function AppViewPage() {
                   disabled={cancelRequested}
                   label={cancelRequested ? "Canceling..." : "Cancel"}
                   onClick={() => handleCancelRun()}
-                  icon={StopIcon}
+                  icon={Stop}
                 />
               ) : (
                 <Button
@@ -508,7 +510,7 @@ export function AppViewPage() {
                       : "Run"
                   }
                   onClick={() => handleRun()}
-                  icon={PlayIcon}
+                  icon={Play}
                 />
               )}
             </div>

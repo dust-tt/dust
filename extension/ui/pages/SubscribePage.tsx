@@ -6,7 +6,7 @@ import {
   cn,
   DustLogo,
   Page,
-  RocketIcon,
+  Rocket02,
 } from "@dust-tt/sparkle";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { Link } from "react-router-dom";
@@ -28,8 +28,7 @@ export const SubscribePage = () => {
       <div
         className={cn(
           "flex h-screen flex-col p-4",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "bg-background text-foreground"
         )}
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
@@ -49,7 +48,7 @@ export const SubscribePage = () => {
             <div className="m-1 flex text-center">
               <Link to={`${regionInfo.url}/w/${workspace.sId}/subscribe`}>
                 <Button
-                  icon={RocketIcon}
+                  icon={Rocket02}
                   variant="primary"
                   label="Get started"
                   onClick={() => {

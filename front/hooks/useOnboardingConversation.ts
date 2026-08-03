@@ -1,6 +1,6 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
-import type { PostSendOnboardingResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/send-onboarding";
+import type { PostSendOnboardingResponseBody } from "@app/types/api/assistant/onboarding";
 import { useCallback, useEffect, useRef } from "react";
 
 interface UseOnboardingConversationProps {

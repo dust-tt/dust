@@ -9,6 +9,7 @@ import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   downloadAndProcessMicrosoftFile,
   downloadDriveItemAsBuffer,
@@ -23,6 +24,7 @@ import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/mic
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type AdmZip from "adm-zip";
+import assert from "assert";
 import { z } from "zod";
 
 const driveChildItemSchema = z.object({
@@ -82,10 +84,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
   },
 
-  search_drive_items: async (
-    { query },
-    { auth, authInfo, agentLoopContext }
-  ) => {
+  search_drive_items: async ({ query }, { auth, authInfo, runContext }) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
@@ -93,10 +92,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
-    const allowedLabels = await getAllowedLabelsForMCPServer(
-      auth,
-      agentLoopContext
-    );
+    const allowedLabels = await getAllowedLabelsForMCPServer(auth, {
+      runContext,
+    });
 
     try {
       const response = await searchMicrosoftDriveItems({
@@ -221,6 +219,55 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
   },
 
+  get_item_from_url: async ({ url }, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      // Graph shares API: any OneDrive/SharePoint URL (including sharing
+      // links) is addressable as a share id of the form "u!" + base64url(url).
+      const shareId = `u!${Buffer.from(url)
+        .toString("base64")
+        .replace(/=+$/, "")
+        .replace(/\//g, "_")
+        .replace(/\+/g, "-")}`;
+
+      const item = await client
+        .api(`/shares/${shareId}/driveItem`)
+        .select("id,name,webUrl,folder,file,parentReference")
+        .get();
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              id: item.id,
+              name: item.name,
+              type: item.folder ? "folder" : "file",
+              webUrl: item.webUrl,
+              driveId: item.parentReference?.driveId,
+              siteId: item.parentReference?.siteId,
+              parentFolderId: item.parentReference?.id,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(
+          normalizeError(err).message || "Failed to resolve URL to a drive item"
+        )
+      );
+    }
+  },
+
   update_word_document: async (
     { itemId, driveId, siteId, documentXml },
     { authInfo }
@@ -322,7 +369,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
   get_file_content: async (
     { itemId, driveId, siteId, offset, limit, getAsXml },
-    { auth, authInfo, agentLoopContext }
+    { auth, authInfo, runContext }
   ) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
@@ -331,10 +378,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
-    const allowedLabels = await getAllowedLabelsForMCPServer(
-      auth,
-      agentLoopContext
-    );
+    const allowedLabels = await getAllowedLabelsForMCPServer(auth, {
+      runContext,
+    });
 
     try {
       const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
@@ -466,9 +512,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
   },
 
-  upload_file: async (
-    { fileId, driveId, siteId, folderPath, fileName },
-    { auth, authInfo, agentLoopContext }
+  create_folder: async (
+    { name, driveId, siteId, parentFolderId },
+    { authInfo }
   ) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
@@ -477,9 +523,56 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
-    if (!agentLoopContext) {
+    try {
+      const endpoint = await getDriveItemEndpoint(undefined, driveId, siteId);
+      const parentPath = parentFolderId
+        ? `${endpoint}/items/${parentFolderId}`
+        : `${endpoint}/root`;
+
+      const createdFolder = await client.api(`${parentPath}/children`).post({
+        name,
+        folder: {},
+        "@microsoft.graph.conflictBehavior": "fail",
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              id: createdFolder.id,
+              name: createdFolder.name,
+              webUrl: createdFolder.webUrl,
+              parentFolderId: createdFolder.parentReference?.id,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      const error = normalizeError(err);
+      if (error.message.toLowerCase().includes("namealreadyexists")) {
+        return new Err(
+          new MCPError(
+            `A folder named '${name}' already exists in this location. Use list_drive_items to get its id.`
+          )
+        );
+      }
+      return new Err(new MCPError(error.message || "Failed to create folder"));
+    }
+  },
+
+  upload_file: async (
+    { fileId, driveId, siteId, parentFolderId, fileName },
+    { auth, authInfo, runContext }
+  ) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+    const client = await getGraphClient(authInfo);
+    if (!client) {
       return new Err(
-        new MCPError("No conversation context available for file access")
+        new MCPError("Failed to authenticate with Microsoft Graph")
       );
     }
 
@@ -488,7 +581,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       const fileResult = await getFileFromConversationAttachment(
         auth,
         fileId,
-        agentLoopContext
+        runContext
       );
 
       if (fileResult.isErr()) {
@@ -510,78 +603,15 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       // Determine the upload endpoint
       const endpoint = await getDriveItemEndpoint(undefined, driveId, siteId);
 
-      // If folderPath is provided, ensure the folder exists (create if needed)
-      if (folderPath) {
-        const folders = folderPath
-          .split("/")
-          .filter((f: string) => f.length > 0);
-        let currentPath = "";
-        let parentItemId = "root";
-
-        for (const folder of folders) {
-          currentPath = currentPath
-            ? `${currentPath}/${encodeURIComponent(folder)}`
-            : encodeURIComponent(folder);
-
-          try {
-            // Try to get the folder
-            const folderItem = await client
-              .api(`${endpoint}/root:/${currentPath}`)
-              .get();
-            // Update parent item ID for next iteration
-            parentItemId = folderItem.id;
-          } catch (err) {
-            const error = normalizeError(err);
-            const isNotFound =
-              error.message.toLowerCase().includes("could not be found") ||
-              error.message.toLowerCase().includes("not found");
-
-            if (isNotFound) {
-              // Folder doesn't exist, create it
-              try {
-                const createdFolder = await client
-                  .api(`${endpoint}/items/${parentItemId}/children`)
-                  .post({
-                    name: folder,
-                    folder: {},
-                    "@microsoft.graph.conflictBehavior": "fail",
-                  });
-                // Update parent item ID for next iteration
-                parentItemId = createdFolder.id;
-              } catch (createErr) {
-                return new Err(
-                  new MCPError(
-                    `Failed to create folder '${folder}': ${normalizeError(createErr).message}`
-                  )
-                );
-              }
-            } else {
-              return new Err(
-                new MCPError(
-                  `Failed to check folder '${currentPath}': ${normalizeError(err).message}`
-                )
-              );
-            }
-          }
-        }
-      }
-
-      // Build the upload path
       const uploadFileName = sanitizeFilename(fileName ?? filename);
-      // Reject if the original path contained traversal attempts
-      if (folderPath?.includes("..")) {
-        return new Err(
-          new MCPError(
-            "Invalid folder path: path traversal sequences are not allowed"
-          )
-        );
-      }
-      const uploadPath = folderPath
-        ? `${folderPath}/${uploadFileName}`
-        : uploadFileName;
+      const encodedFileName = encodeURIComponent(uploadFileName);
 
-      // Upload using PUT /drive/root:/{path}:/content
-      const uploadEndpoint = `${endpoint}/root:/${encodeURIComponent(uploadPath)}:/content`;
+      // Upload into the target folder by item id; addressing folders by
+      // path is locale-dependent and lets Graph implicitly create folders
+      // on misresolved paths.
+      const uploadEndpoint = parentFolderId
+        ? `${endpoint}/items/${parentFolderId}:/${encodedFileName}:/content`
+        : `${endpoint}/root:/${encodedFileName}:/content`;
 
       const response = await client
         .api(uploadEndpoint)
@@ -614,6 +644,47 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
       const errorMessage = error.message || "Failed to upload file";
       return new Err(new MCPError(errorMessage));
+    }
+  },
+
+  rename_drive_item: async (
+    { itemId, driveId, siteId, name },
+    { authInfo }
+  ) => {
+    const client = await getGraphClient(authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
+      const response = await client.api(endpoint).patch({ name });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              success: true,
+              message: "Item renamed successfully",
+              item: {
+                id: response.id,
+                name: response.name,
+                webUrl: response.webUrl,
+                lastModifiedDateTime: response.lastModifiedDateTime,
+              },
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(normalizeError(err).message || "Failed to rename item")
+      );
     }
   },
 

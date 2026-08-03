@@ -1,8 +1,22 @@
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { copyConversationGCSMount } from "@app/lib/api/files/gcs_mount/files";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+
+async function markForkPrepared(
+  auth: Authenticator,
+  conversation: ConversationResource
+): Promise<void> {
+  await ConversationForkResource.markFileCopied(auth, {
+    childConversationModelId: conversation.id,
+  });
+  await publishConversationEvent(
+    { type: "conversation_fork_prepared", created: Date.now() },
+    { conversationId: conversation.sId }
+  );
+}
 
 export async function copyConversationGCSMountActivity({
   workspaceId,
@@ -36,9 +50,7 @@ export async function copyConversationGCSMountActivity({
 
     // Unblock the fork even if conversations are not found — nothing to copy.
     if (dest) {
-      await ConversationForkResource.markFileCopied(auth, {
-        childConversationModelId: dest.id,
-      });
+      await markForkPrepared(auth, dest);
     } else {
       await ConversationForkResource.markFileCopiedByDestSId(auth, {
         childConversationSId: destConversationId,
@@ -77,7 +89,5 @@ export async function copyConversationGCSMountActivity({
     );
   }
 
-  await ConversationForkResource.markFileCopied(auth, {
-    childConversationModelId: dest.id,
-  });
+  await markForkPrepared(auth, dest);
 }

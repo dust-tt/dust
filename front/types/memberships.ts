@@ -1,14 +1,14 @@
+import { NEAR_LIMIT_FRACTION } from "@app/lib/metronome/constants";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export const MEMBERSHIP_ROLE_TYPES = ["admin", "builder", "user"] as const;
+export const MEMBERSHIP_ROLE_TYPES = [
+  "admin",
+  "manager",
+  "builder",
+  "user",
+] as const;
 
 export type MembershipRoleType = (typeof MEMBERSHIP_ROLE_TYPES)[number];
-
-export function isMembershipRoleType(
-  value: unknown
-): value is MembershipRoleType {
-  return MEMBERSHIP_ROLE_TYPES.includes(value as MembershipRoleType);
-}
 
 export const MEMBERSHIP_ORIGIN_TYPES = [
   "provisioned",
@@ -18,20 +18,26 @@ export const MEMBERSHIP_ORIGIN_TYPES = [
 
 export type MembershipOriginType = (typeof MEMBERSHIP_ORIGIN_TYPES)[number];
 
-export function isMembershipOriginType(
-  value: unknown
-): value is MembershipOriginType {
-  return MEMBERSHIP_ORIGIN_TYPES.includes(value as MembershipOriginType);
-}
-
-export const MEMBERSHIP_SEAT_TYPES = [
-  "free",
+// Paid seat types — billable seats excluding the one-shot `free` starter seat.
+// These are the seats a member can be moved to from the admin seat pickers.
+export const PAID_SEAT_TYPES = [
   "workspace",
   "workspace_yearly",
   "pro",
   "pro_yearly",
   "max",
   "max_yearly",
+] as const;
+
+export type PaidSeatType = (typeof PAID_SEAT_TYPES)[number];
+
+// Billable seat types — each maps to a Metronome product.
+export const BILLABLE_SEAT_TYPES = ["free", ...PAID_SEAT_TYPES] as const;
+
+export const MEMBERSHIP_SEAT_TYPES = [
+  // `none` = no billable seat assigned; member cannot send messages.
+  "none",
+  ...BILLABLE_SEAT_TYPES,
 ] as const;
 
 export type MembershipSeatType = (typeof MEMBERSHIP_SEAT_TYPES)[number];
@@ -44,6 +50,21 @@ export function isMembershipSeatType(
     MEMBERSHIP_SEAT_TYPES.includes(value as MembershipSeatType)
   );
 }
+
+// Relative tier ordering of seat types, from lowest to highest. Yearly variants
+// share their base tier. Used both to sort seat plans for display and to tell
+// whether a scheduled seat change is an upgrade or a downgrade. `none` is the
+// lowest (no seat) and `workspace` the highest (platform/enterprise seat).
+export const SEAT_TYPE_ORDER: Record<MembershipSeatType, number> = {
+  none: 0,
+  free: 1,
+  pro: 2,
+  pro_yearly: 2,
+  max: 3,
+  max_yearly: 3,
+  workspace: 4,
+  workspace_yearly: 4,
+};
 
 // Normalized seat types for pool credit limits. Monthly and yearly variants
 // share a single pool limit. Free seats are excluded (lifetime allocation,
@@ -64,6 +85,24 @@ export function isNormalizedPoolLimitSeatType(
     typeof value === "string" &&
     (NORMALIZED_POOL_LIMIT_SEAT_TYPES as readonly string[]).includes(value)
   );
+}
+
+/**
+ * Collapse a seat type's `_yearly` variant onto its base tier (e.g.
+ * `pro_yearly` → `pro`). Yearly and monthly variants share a tier, icon and
+ * label, so this is used both for display and for matching a base seat-type
+ * filter against either cadence.
+ */
+export function toBaseSeatType(
+  seatType: MembershipSeatType
+): MembershipSeatType {
+  if (seatType.endsWith("_yearly")) {
+    const base = seatType.slice(0, -"_yearly".length);
+    if (isMembershipSeatType(base)) {
+      return base;
+    }
+  }
+  return seatType;
 }
 
 /**
@@ -88,9 +127,88 @@ export function normalizeToPoolLimitSeatType(
     case "workspace_yearly":
       return "workspace";
     case "free":
+    case "none":
       return null;
     default:
       assertNever(seatType);
+  }
+}
+
+/**
+ * Whether a seat type carries an individual (per-user) credit allocation the
+ * user spends from before falling back to the workspace pool. Pro and max seats
+ * do; free seats also have a personal allocation (a fixed lifetime grant) — the
+ * only difference is free seats have no pool fallback, so once exhausted they are
+ * `capped` rather than `on_pool`. Workspace seats have no individual allocation
+ * (they spend straight from the shared pool).
+ */
+export function isSeatBased(
+  seatType: MembershipSeatType | null | undefined
+): boolean {
+  if (!seatType) {
+    return false;
+  }
+  switch (seatType) {
+    case "free":
+    case "pro":
+    case "pro_yearly":
+    case "max":
+    case "max_yearly":
+      return true;
+    case "none":
+    case "workspace":
+    case "workspace_yearly":
+      return false;
+    default:
+      return assertNever(seatType);
+  }
+}
+
+/**
+ * Whether a seat type carries an individual per-seat Metronome subscription
+ * balance — queryable via `listMetronomeSeatBalances`'s `seatIds` filter.
+ * Pro/max only: free seats hold a per-user *customer* credit instead (a
+ * different Metronome object, see `listCustomerPerUserCreditBalances`), and
+ * workspace/none seats have no individual balance at all.
+ */
+export function hasMetronomeSeatBalance(
+  seatType: MembershipSeatType | null | undefined
+): boolean {
+  if (!seatType) {
+    return false;
+  }
+  switch (seatType) {
+    case "pro":
+    case "pro_yearly":
+    case "max":
+    case "max_yearly":
+      return true;
+    case "free":
+    case "none":
+    case "workspace":
+    case "workspace_yearly":
+      return false;
+    default:
+      return assertNever(seatType);
+  }
+}
+
+export function isPaidSeatType(
+  seatType: MembershipSeatType
+): seatType is PaidSeatType {
+  switch (seatType) {
+    case "workspace":
+    case "workspace_yearly":
+    case "pro":
+    case "pro_yearly":
+    case "max":
+    case "max_yearly":
+      return true;
+    case "none":
+    case "free":
+      return false;
+    default:
+      return assertNever(seatType);
   }
 }
 
@@ -136,4 +254,178 @@ export function isUserCreditState(value: unknown): value is UserCreditState {
     typeof value === "string" &&
     USER_CREDIT_STATES.includes(value as UserCreditState)
   );
+}
+
+/**
+ * Whether a user in the given credit state is currently spending from their
+ * personal seat balance (`user_seat*`) rather than the shared workspace pool.
+ * Such users still have their own credits and are therefore unaffected by
+ * workspace pool depletion — only their own per-user cap (`capped`) can block
+ * them.
+ */
+export function isSpendingFromPersonalSeat(state: UserCreditState): boolean {
+  switch (state) {
+    case "user_seat":
+    case "user_seat_low_balance":
+      return true;
+    case "normal":
+    case "on_pool":
+    case "on_pool_low_balance":
+    case "capped":
+      return false;
+    default:
+      return assertNever(state);
+  }
+}
+
+export const MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS = "pending";
+export const MEMBERSHIP_UPGRADE_REQUEST_STATUSES = [
+  MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS,
+  "approved",
+  "denied",
+] as const;
+
+export type MembershipUpgradeRequestStatus =
+  (typeof MEMBERSHIP_UPGRADE_REQUEST_STATUSES)[number];
+
+export const MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS = 1024;
+
+export interface MembershipUpgradeRequestType {
+  sId: string;
+  status: MembershipUpgradeRequestStatus;
+  createdAt: number;
+  resolvedAt: number | null;
+  reason: string | null;
+  requester: {
+    sId: string;
+    name: string;
+    email: string | null;
+    image: string | null;
+    seatType: MembershipSeatType | null;
+  };
+}
+
+/**
+ * The credit state a freshly-allocated seat should start in, derived purely
+ * from the seat type (assumes a full, unspent balance):
+ *   - seat-based (pro/max/free): `user_seat` — they spend personal credits first.
+ *   - workspace (pool-based): `on_pool` — no personal allocation, straight to
+ *     the shared pool.
+ *
+ * Used to initialize the state at membership creation; the authoritative
+ * reconcile from live Metronome balances refines it afterwards.
+ */
+export function initialCreditStateForSeatType(
+  seatType: MembershipSeatType | null | undefined
+): UserCreditState {
+  return isSeatBased(seatType) ? "user_seat" : "on_pool";
+}
+
+/**
+ * Compute the credit state a user *should* be in from the live source of
+ * truth, across both dimensions of `UserCreditState`:
+ *   - the cap dimension (`capped`): consumption reached the effective per-user
+ *     cap (seat allowance + pool limit). This is the hard block, evaluated
+ *     first — if consumption reached the cap, the personal seat is necessarily
+ *     exhausted too.
+ *   - the seat↔pool dimension: a seat-based user with personal balance left is
+ *     `user_seat`; once the personal balance is exhausted — or for pool-based
+ *     seats that never had one — they spend from the workspace pool (`on_pool`).
+ *     Free seats are the exception: they are seat-based but have no pool
+ *     fallback, so an exhausted free seat is `capped`.
+ *
+ * `seatBalanceAwu` / `seatStartingBalanceAwu` come from the live per-seat /
+ * per-user credit balance; `seatBalanceAwu > 0` means the user still holds
+ * personal credit. `perUserCapAwuCredits` / `consumedAwuCredits` are `null`
+ * when no cap is configured or usage is unknown, in which case the cap bands
+ * are skipped.
+ *
+ * Crucially, where a seat-based user goes once their personal credit is gone is
+ * decided by the SEAT TYPE, not by the balance value: a seat with no pool
+ * fallback (free) is never `on_pool` — it stays on its seat until the balance
+ * is known-exhausted (0), then `capped`. Seats with a pool fallback (pro/max)
+ * fall back to the workspace pool. A `null` (unknown) balance never downgrades
+ * a free user — only a known 0 does — so a transient read miss can't wrongly
+ * cap or pool them; the exhaustion alert is the authoritative capped trigger.
+ */
+export function expectedUserCreditState({
+  seatType,
+  seatBalanceAwu,
+  seatStartingBalanceAwu,
+  perUserCapAwuCredits,
+  consumedAwuCredits,
+}: {
+  seatType: MembershipSeatType | null | undefined;
+  seatBalanceAwu: number | null;
+  seatStartingBalanceAwu: number | null;
+  perUserCapAwuCredits: number | null;
+  consumedAwuCredits: number | null;
+}): UserCreditState {
+  const capKnown = perUserCapAwuCredits !== null && consumedAwuCredits !== null;
+
+  // Hard block: consumption reached the per-user cap. Only meaningful when
+  // cap > 0 — cap = 0 means "no pool access" (enforced by the state machine's
+  // seat_balance_exhausted routing), not a cap that users can "hit" by spending.
+  if (
+    capKnown &&
+    perUserCapAwuCredits > 0 &&
+    consumedAwuCredits >= perUserCapAwuCredits
+  ) {
+    return "capped";
+  }
+
+  // Seat-based user still holding personal credit.
+  if (isSeatBased(seatType) && seatBalanceAwu !== null && seatBalanceAwu > 0) {
+    return "user_seat";
+  }
+
+  // Seats with no pool fallback (free) never spend from the pool: they stay on
+  // their personal seat until the balance is known-exhausted (0 → capped). An
+  // unknown (null) balance leaves them on the seat — never `on_pool`.
+  if (
+    isSeatBased(seatType) &&
+    normalizeToPoolLimitSeatType(seatType) === null
+  ) {
+    return seatBalanceAwu === 0 ? "capped" : "user_seat";
+  }
+
+  // Pool-backed seats (pro/max with depleted balance) and pool-based seats spend
+  // from the workspace pool.
+  return "on_pool";
+}
+
+/**
+ * Compute whether a user should see the "near limit" warning banner from their
+ * live Metronome inputs. Two sources:
+ *   - Cap consumption ≥ 80 % of the effective per-user cap (seat allowance +
+ *     pool limit). Applies to pro/max pool users.
+ *   - Free seat: ≥ 80 % of the lifetime credit consumed (≤ 20 % remaining).
+ */
+export function computeUserNearLimit({
+  seatType,
+  seatBalanceAwu,
+  seatStartingBalanceAwu,
+  effectiveCapAwuCredits,
+  consumedAwuCredits,
+}: {
+  seatType: MembershipSeatType | null | undefined;
+  seatBalanceAwu: number | null;
+  seatStartingBalanceAwu: number | null;
+  effectiveCapAwuCredits: number | null;
+  consumedAwuCredits: number | null;
+}): boolean {
+  // Cap-based warning (pro/max with a configured cap).
+  if (effectiveCapAwuCredits !== null && consumedAwuCredits !== null) {
+    return consumedAwuCredits >= NEAR_LIMIT_FRACTION * effectiveCapAwuCredits;
+  }
+  // Free-seat lifetime credit warning (no pool fallback, no cap).
+  if (
+    seatType === "free" &&
+    seatBalanceAwu !== null &&
+    seatStartingBalanceAwu !== null &&
+    seatStartingBalanceAwu > 0
+  ) {
+    return seatBalanceAwu <= (1 - NEAR_LIMIT_FRACTION) * seatStartingBalanceAwu;
+  }
+  return false;
 }

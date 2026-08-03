@@ -1,5 +1,5 @@
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PostCheckBigQueryLocationsResponseBody } from "@app/pages/api/w/[wId]/credentials/check_bigquery_locations";
+import type { PostCheckBigQueryLocationsResponseBody } from "@app/types/api/oauth";
 import type { CheckBigQueryCredentials } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";

@@ -26,10 +26,18 @@ export {
 export type {
   ButtonIconType,
   ButtonProps,
+  ButtonSizeType,
+  ButtonVariantType,
   IconOnlyButtonProps,
   RegularButtonProps,
+  RegularButtonSize,
 } from "./Button";
-export { Button } from "./Button";
+export {
+  BUTTON_SIZES,
+  BUTTON_VARIANTS,
+  Button,
+  buttonVariants,
+} from "./Button";
 export type { ButtonGroupProps } from "./ButtonGroup";
 export { ButtonGroup, ButtonGroupDropdown } from "./ButtonGroup";
 export { ButtonsSwitch, ButtonsSwitchList } from "./ButtonsSwitch";
@@ -84,6 +92,7 @@ export {
   DataTable,
   ScrollableDataTable,
 } from "./DataTable";
+export { DataTableLoadingSkeleton } from "./DataTableLoadingSkeleton";
 export {
   Dialog,
   DialogClose,
@@ -137,6 +146,8 @@ export { Hoverable } from "./Hoverable";
 export { HoveringBar } from "./HoveringBar";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
+export type { ImageGenerationPlaceholderProps } from "./ImageGenerationPlaceholder";
+export { ImageGenerationPlaceholder } from "./ImageGenerationPlaceholder";
 export type {
   ImagePreviewProps,
   ImagePreviewTitlePositionType,
@@ -149,10 +160,26 @@ export {
 } from "./ImagePreview";
 export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
-export { Input } from "./Input";
+export type { InputProps, InputSizeType } from "./Input";
+export { INPUT_SIZES, Input } from "./Input";
+export type { InputWithSaveProps } from "./InputWithSave";
+export { InputWithSave } from "./InputWithSave";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { KeyboardShortcut } from "./KeyboardShortcut";
 export { Label } from "./Label";
+export type {
+  LegacyButtonProps,
+  LegacyButtonVariantType,
+  LegacyIconOnlyButtonProps,
+  LegacyRegularButtonProps,
+} from "./LegacyButton";
+export { LegacyButton, MetaButton } from "./LegacyButton";
+export type { LegacyInputProps } from "./LegacyInput";
+export { LegacyInput } from "./LegacyInput";
+export type { LegacyInputWithSaveProps } from "./LegacyInputWithSave";
+export { LegacyInputWithSave } from "./LegacyInputWithSave";
+export type { LegacyFlexSplitButtonProps } from "./LegacySplitButton";
+export { LegacyFlexSplitButton } from "./LegacySplitButton";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { ListGroup, ListItem, ListItemSection } from "./ListItem";
@@ -181,6 +208,12 @@ export {
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
 export * from "./NavigationList";
+export {
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
+} from "./NavTabPill";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
@@ -225,14 +258,18 @@ export {
   SheetPortal,
   SheetTitle,
   SheetTrigger,
+  SheetViewportProvider,
   useSheetViewport,
 } from "./Sheet";
 export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
 export { SidebarLayout } from "./SidebarLayout";
+export type { SliderStepsProps } from "./SliderSteps";
+export { SliderSteps } from "./SliderSteps";
 export { SliderToggle } from "./SliderToggle";
 export { Spinner } from "./Spinner";
 export type { SpinnerBrandProps } from "./SpinnerBrand";
 export { SpinnerBrand } from "./SpinnerBrand";
+export type { FlexSplitButtonProps } from "./SplitButton";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";

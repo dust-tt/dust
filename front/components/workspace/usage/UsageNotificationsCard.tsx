@@ -3,20 +3,21 @@ import {
   useUsageNotifications,
 } from "@app/lib/swr/usage_settings";
 import {
-  ActionCreditCoinsIcon,
-  Icon,
-  Input,
+  InputWithSave,
   Page,
   SettingsList,
+  SliderToggle,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface UsageNotificationsCardProps {
   workspaceId: string;
+  readOnly: boolean;
 }
 
 export function UsageNotificationsCard({
   workspaceId,
+  readOnly,
 }: UsageNotificationsCardProps) {
   const { usageNotifications, isUsageNotificationsLoading } =
     useUsageNotifications({ workspaceId });
@@ -24,78 +25,100 @@ export function UsageNotificationsCard({
     workspaceId,
   });
 
-  const [balanceThresholdInput, setBalanceThresholdInput] =
-    useState<string>("");
-  const [isSavingBalanceThreshold, setIsSavingBalanceThreshold] =
+  const [isSavingUpgradeRequestEmail, setIsSavingUpgradeRequestEmail] =
     useState(false);
+  const [isEditingThreshold, setIsEditingThreshold] = useState(false);
 
-  useEffect(() => {
-    // Defaults to 0 when no threshold is configured (warning off).
-    setBalanceThresholdInput(
-      String(usageNotifications.balanceThresholdCredits ?? 0)
-    );
-  }, [usageNotifications.balanceThresholdCredits]);
+  const handleToggleUpgradeRequestEmail = async () => {
+    setIsSavingUpgradeRequestEmail(true);
+    try {
+      await doUpdateUsageNotifications({
+        upgradeRequestEmail: !usageNotifications.upgradeRequestEmail,
+      });
+    } finally {
+      setIsSavingUpgradeRequestEmail(false);
+    }
+  };
 
-  const handleCommitBalanceThreshold = async () => {
-    const currentThreshold = usageNotifications.balanceThresholdCredits ?? 0;
-    const trimmed = balanceThresholdInput.trim();
+  // Defaults to 0 when no threshold is configured (warning off).
+  const currentThreshold = usageNotifications.balanceThresholdCredits ?? 0;
+
+  const handleSaveBalanceThreshold = async (newValue: string) => {
+    const trimmed = newValue.trim();
 
     // An empty value falls back to 0 (warning off). The input only ever holds
-    // digits (see onChange), so `next` is always a non-negative integer.
+    // digits (see normalizeValue), so `nextThreshold` is always a non-negative
+    // integer.
     const nextThreshold = trimmed === "" ? 0 : Number(trimmed);
 
     if (nextThreshold === currentThreshold) {
       return;
     }
 
-    setIsSavingBalanceThreshold(true);
-    try {
-      const ok = await doUpdateUsageNotifications({
-        balanceThresholdCredits: nextThreshold,
-      });
-      if (!ok) {
-        // reset to the current value
-        setBalanceThresholdInput(String(currentThreshold));
-      }
-    } finally {
-      setIsSavingBalanceThreshold(false);
-    }
+    await doUpdateUsageNotifications({
+      balanceThresholdCredits: nextThreshold,
+    });
   };
 
   return (
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
-        <span className="heading-base text-foreground dark:text-foreground-night">
-          Notifications
-        </span>
+        <span className="heading-base text-foreground">Notifications</span>
         <Page.P variant="secondary">
           Customize when and how you receive usage based notification
         </Page.P>
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Credit balance threshold"
-          description="Email all workspace admins when your remaining credit balance drops below this amount (in credits). Set to 0 to disable."
+          title="Workspace credit pool threshold alert"
+          description={
+            <>
+              Email all workspace admins when your remaining workspace credit
+              pool balance drops below this amount.{" "}
+              <strong>Set to 0 to disable.</strong>
+            </>
+          }
           action={
-            <div className="relative w-32">
-              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                <Icon visual={ActionCreditCoinsIcon} size="xs" />
-              </div>
-              <Input
-                type="text"
+            <div className="w-52">
+              <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={balanceThresholdInput}
-                onChange={(e) =>
-                  setBalanceThresholdInput(e.target.value.replace(/[^\d]/g, ""))
+                placeholder="Disabled"
+                value={
+                  currentThreshold === 0
+                    ? ""
+                    : currentThreshold.toLocaleString()
                 }
-                onBlur={() => void handleCommitBalanceThreshold()}
-                disabled={
-                  isSavingBalanceThreshold || isUsageNotificationsLoading
+                unit={
+                  currentThreshold === 0 && !isEditingThreshold
+                    ? undefined
+                    : "credits"
                 }
-                className="pl-8 text-right"
+                normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                formatValue={(value) =>
+                  value ? Number(value).toLocaleString() : value
+                }
+                onSave={handleSaveBalanceThreshold}
+                onFocus={() => setIsEditingThreshold(true)}
+                onBlur={() => setIsEditingThreshold(false)}
+                disabled={readOnly || isUsageNotificationsLoading}
               />
             </div>
+          }
+        />
+        <SettingsList.Row
+          title="Upgrade request emails"
+          description="Email all workspace admins and managers when a member requests a spend-limit upgrade."
+          action={
+            <SliderToggle
+              selected={usageNotifications.upgradeRequestEmail}
+              disabled={
+                readOnly ||
+                isSavingUpgradeRequestEmail ||
+                isUsageNotificationsLoading
+              }
+              onClick={() => void handleToggleUpgradeRequestEmail()}
+            />
           }
         />
       </SettingsList>

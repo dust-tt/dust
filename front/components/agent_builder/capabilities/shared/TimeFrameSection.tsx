@@ -80,9 +80,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
         <div
           className={cn(
             "text-sm font-semibold",
-            !isChecked
-              ? "text-muted-foreground dark:text-muted-foreground-night"
-              : "text-foreground dark:text-foreground-night"
+            !isChecked ? "text-muted-foreground" : "text-foreground"
           )}
         >
           {actionText} data from the last

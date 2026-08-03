@@ -11,13 +11,7 @@ import type { AppType } from "@app/types/app";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Button,
-  CommandLineIcon,
-  DataTable,
-  PlusIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Button, DataTable, Plus, Spinner, Terminal } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import type { ParsedUrlQuery } from "querystring";
@@ -67,7 +61,7 @@ const hasAppsModalQuery = (
   isString(query.modal) && query.modal === "apps";
 
 interface SpaceAppsListProps {
-  isBuilder: boolean;
+  canAdministrateApps: boolean;
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
@@ -75,7 +69,7 @@ interface SpaceAppsListProps {
 
 export const SpaceAppsList = ({
   owner,
-  isBuilder,
+  canAdministrateApps,
   space,
   onSelect,
 }: SpaceAppsListProps) => {
@@ -100,7 +94,7 @@ export const SpaceAppsList = ({
         category: "apps",
         name: app.name,
         description: app.description ?? "",
-        icon: CommandLineIcon,
+        icon: Terminal,
         workspaceId: owner.sId,
         onClick: () => onSelect(app.sId),
       })) || [],
@@ -109,7 +103,7 @@ export const SpaceAppsList = ({
 
   React.useEffect(() => {
     // Extract modal=apps query param to open modal on first render and remove it from URL
-    if (!router.isReady || !isBuilder) {
+    if (!router.isReady || !canAdministrateApps) {
       return;
     }
     const { query } = router;
@@ -118,7 +112,7 @@ export const SpaceAppsList = ({
     }
     setIsCreateAppModalOpened(true);
     void removeParamFromRouter(router, "modal");
-  }, [router.isReady, router.query.modal, isBuilder, router]);
+  }, [router.isReady, router.query.modal, canAdministrateApps, router]);
 
   const { portalToHeader } = useActionButtonsPortal({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
@@ -137,11 +131,11 @@ export const SpaceAppsList = ({
 
   const actionButtons = (
     <>
-      {isBuilder && (
+      {canAdministrateApps && (
         <Button
           label="New App"
           variant="primary"
-          icon={PlusIcon}
+          icon={Plus}
           size="sm"
           onClick={() => {
             setIsCreateAppModalOpened(true);
@@ -155,10 +149,10 @@ export const SpaceAppsList = ({
     <>
       {!isEmpty && portalToHeader(actionButtons)}
       {isEmpty ? (
-        <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background dark:bg-muted-background-night">
+        <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background">
           <Button
             label="Create App"
-            disabled={!isBuilder}
+            disabled={!canAdministrateApps}
             onClick={() => {
               setIsCreateAppModalOpened(true);
             }}

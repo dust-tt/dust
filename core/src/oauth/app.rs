@@ -10,7 +10,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     middleware::from_fn,
     response::Json,
     routing::{delete, get, patch, post},
@@ -208,6 +208,12 @@ async fn connections_finalize(
     }
 }
 
+#[derive(Deserialize, Default)]
+struct ConnectionAccessTokenQuery {
+    #[serde(default)]
+    force_refresh: bool,
+}
+
 #[derive(Deserialize)]
 #[allow(dead_code)]
 struct ConnectionAccessTokenPayload {
@@ -241,12 +247,18 @@ async fn deprecated_connections_access_token(
     Path(connection_id): Path<String>,
     Json(_payload): Json<ConnectionAccessTokenPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    connections_access_token(State(state), Path(connection_id)).await
+    connections_access_token(
+        State(state),
+        Path(connection_id),
+        Query(ConnectionAccessTokenQuery::default()),
+    )
+    .await
 }
 
 async fn connections_access_token(
     State(state): State<Arc<OAuthState>>,
     Path(connection_id): Path<String>,
+    Query(query): Query<ConnectionAccessTokenQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     match state.store.retrieve_connection(&connection_id).await {
         Err(e) => error_response(
@@ -261,39 +273,46 @@ async fn connections_access_token(
             "Requested connection was not found",
             None,
         ),
-        Ok(Some(mut c)) => match c.access_token(state.clone().store.clone()).await {
-            Err(e) => error_response(
-                match e.code {
-                    connection::ConnectionErrorCode::TokenRevokedError => StatusCode::UNAUTHORIZED,
-                    connection::ConnectionErrorCode::ConnectionNotFinalizedError
-                    | connection::ConnectionErrorCode::InvalidMetadataError => {
-                        StatusCode::BAD_REQUEST
-                    }
-                    _ => StatusCode::INTERNAL_SERVER_ERROR,
-                },
-                &e.code.to_string(),
-                &e.message,
-                None,
-            ),
-            Ok((access_token, scrubbed_raw_json)) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!(ConnectionAccessTokenResponse {
-                        connection: ConnectionInfo {
-                            connection_id: c.connection_id(),
-                            created: c.created(),
-                            provider: c.provider(),
-                            status: c.status(),
-                            metadata: c.metadata().clone(),
-                        },
-                        access_token,
-                        access_token_expiry: c.access_token_expiry(),
-                        scrubbed_raw_json: scrubbed_raw_json.unwrap_or_default(),
-                    })),
-                }),
-            ),
-        },
+        Ok(Some(mut c)) => {
+            match c
+                .access_token(state.clone().store.clone(), query.force_refresh)
+                .await
+            {
+                Err(e) => error_response(
+                    match e.code {
+                        connection::ConnectionErrorCode::TokenRevokedError => {
+                            StatusCode::UNAUTHORIZED
+                        }
+                        connection::ConnectionErrorCode::ConnectionNotFinalizedError
+                        | connection::ConnectionErrorCode::InvalidMetadataError => {
+                            StatusCode::BAD_REQUEST
+                        }
+                        _ => StatusCode::INTERNAL_SERVER_ERROR,
+                    },
+                    &e.code.to_string(),
+                    &e.message,
+                    None,
+                ),
+                Ok((access_token, scrubbed_raw_json)) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!(ConnectionAccessTokenResponse {
+                            connection: ConnectionInfo {
+                                connection_id: c.connection_id(),
+                                created: c.created(),
+                                provider: c.provider(),
+                                status: c.status(),
+                                metadata: c.metadata().clone(),
+                            },
+                            access_token,
+                            access_token_expiry: c.access_token_expiry(),
+                            scrubbed_raw_json: scrubbed_raw_json.unwrap_or_default(),
+                        })),
+                    }),
+                ),
+            }
+        }
     }
 }
 async fn connections_metadata(
@@ -328,6 +347,78 @@ async fn connections_metadata(
                 })),
             }),
         ),
+    }
+}
+
+#[derive(Deserialize)]
+struct ConnectionUpdateMetadataPayload {
+    use_static_ip_proxy: bool,
+}
+
+async fn connections_update_metadata(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+    Json(payload): Json<ConnectionUpdateMetadataPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.retrieve_connection(&connection_id).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "connection_not_found",
+            "Requested connection was not found",
+            None,
+        ),
+        Ok(Some(mut c)) => {
+            if c.provider() != ConnectionProvider::Mcp
+                && c.provider() != ConnectionProvider::McpStatic
+            {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_provider",
+                    "Connection metadata updates are only supported for MCP providers",
+                    None,
+                );
+            }
+
+            let mut extra_metadata = serde_json::Map::new();
+            extra_metadata.insert(
+                "use_static_ip_proxy".to_string(),
+                serde_json::Value::String(payload.use_static_ip_proxy.to_string()),
+            );
+
+            if let Err(e) = c
+                .update_metadata(state.clone().store.clone(), extra_metadata)
+                .await
+            {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &e.code.to_string(),
+                    &e.message,
+                    None,
+                );
+            }
+
+            (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!(ConnectionMetadataResponse {
+                        connection: ConnectionInfo {
+                            connection_id: c.connection_id(),
+                            created: c.created(),
+                            provider: c.provider(),
+                            status: c.status(),
+                            metadata: c.metadata().clone(),
+                        },
+                    })),
+                }),
+            )
+        }
     }
 }
 
@@ -539,6 +630,10 @@ pub async fn create_app() -> Result<Router> {
         .route(
             "/connections/{connection_id}/metadata",
             get(connections_metadata),
+        )
+        .route(
+            "/connections/{connection_id}/metadata",
+            patch(connections_update_metadata),
         )
         .route(
             "/connections/{connection_id}/credential",

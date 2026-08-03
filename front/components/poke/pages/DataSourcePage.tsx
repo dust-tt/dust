@@ -13,10 +13,10 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
-import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
+import type { FeaturesType } from "@app/types/api/poke/data_sources";
 import type {
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,
@@ -29,15 +29,15 @@ import {
   Button,
   Chip,
   ContextItem,
-  DocumentTextIcon,
-  EyeIcon,
+  Eye,
+  File04,
   Input,
   LinkWrapper,
-  LockIcon,
-  MagnifyingGlassIcon,
+  Lock01,
+  SearchMd,
   SliderToggle,
   Spinner,
-  TableIcon,
+  Table,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
@@ -158,10 +158,8 @@ function FolderDisplay({
                 visual={
                   <ContextItem.Visual
                     visual={({ className }) =>
-                      DocumentTextIcon({
-                        className:
-                          className +
-                          " text-muted-foreground dark:text-muted-foreground-night",
+                      File04({
+                        className: className + " text-muted-foreground",
                       })
                     }
                   />
@@ -170,7 +168,7 @@ function FolderDisplay({
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      icon={EyeIcon}
+                      icon={Eye}
                       onClick={() =>
                         onDisplayDocumentSource(d.document_id, dataSource.sId)
                       }
@@ -247,10 +245,8 @@ function FolderDisplay({
                 visual={
                   <ContextItem.Visual
                     visual={({ className }) =>
-                      TableIcon({
-                        className:
-                          className +
-                          " text-muted-foreground dark:text-muted-foreground-night",
+                      Table({
+                        className: className + " text-muted-foreground",
                       })
                     }
                   />
@@ -504,7 +500,7 @@ function NotionUrlCheckOrFind({
   };
 
   return (
-    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-muted-foreground">
       <div className="flex items-center gap-2 px-2 pt-2">
         <div>Notion URL</div>
         <div className="grow">
@@ -551,7 +547,7 @@ function NotionUrlCheckOrFind({
           onClick={handleParentChain}
         />
       </div>
-      <div className="text-muted-foreground dark:text-muted-foreground-night">
+      <div className="text-muted-foreground">
         {urlDetails && (
           <div className="text-md flex flex-col gap-2 rounded-md p-4 pt-2">
             <Chip
@@ -704,7 +700,7 @@ function ZendeskTicketCheck({
         </div>
         <Button
           variant="outline"
-          icon={idsIsLoading ? Spinner : MagnifyingGlassIcon}
+          icon={idsIsLoading ? Spinner : SearchMd}
           label={idsIsLoading ? undefined : "Check"}
           disabled={!ticketId || idsIsLoading}
           onClick={async () => {
@@ -735,7 +731,7 @@ function ZendeskTicketCheck({
         </div>
         <Button
           variant="outline"
-          icon={urlIsLoading ? Spinner : MagnifyingGlassIcon}
+          icon={urlIsLoading ? Spinner : SearchMd}
           label={urlIsLoading ? undefined : "Check"}
           disabled={!ticketUrl || urlIsLoading}
           onClick={async () => {
@@ -1014,7 +1010,7 @@ export function DataSourcePage() {
                 }
               }}
               label="Search Data"
-              icon={LockIcon}
+              icon={Lock01}
             />
             {[
               "bigquery",
@@ -1039,7 +1035,7 @@ export function DataSourcePage() {
                   }
                 }}
                 label="Query Data"
-                icon={LockIcon}
+                icon={Lock01}
               />
             ) : null}
             {dataSource.connectorProvider === "notion" && (
@@ -1058,7 +1054,7 @@ export function DataSourcePage() {
                     }
                   }}
                   label="Notion Requests"
-                  icon={LockIcon}
+                  icon={Lock01}
                 />
                 <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
               </>

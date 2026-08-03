@@ -5,6 +5,11 @@ import {
   getProgrammaticUsageLimit,
   syncProgrammaticUsageLimit,
 } from "@app/lib/api/credits/programmatic_usage_limit";
+import type {
+  GetProgrammaticUsageLimitResponseBody,
+  PutProgrammaticUsageLimitResponseBody,
+} from "@app/types/api/credits/programmatic_usage_limit";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -12,16 +17,8 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const UpdateProgrammaticUsageLimitBodySchema = z.object({
-  monthlyCapCredits: z.number().int().nonnegative().nullable(),
+  monthlyCapCredits: z.number().int().nonnegative(),
 });
-
-export type GetProgrammaticUsageLimitResponseBody = {
-  monthlyCapCredits: number | null;
-};
-
-export type PutProgrammaticUsageLimitResponseBody = {
-  monthlyCapCredits: number | null;
-};
 
 // Mounted at /api/w/:wId/usage_settings/programmatic_usage_limit.
 const app = workspaceApp();
@@ -52,6 +49,18 @@ app.put(
   async (ctx): HandlerResult<PutProgrammaticUsageLimitResponseBody> => {
     const auth = ctx.get("auth");
     const { monthlyCapCredits } = ctx.req.valid("json");
+
+    const plan = auth.plan();
+    if (!plan || !isCreditPricedPlan(plan)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Programmatic monthly cap is only available on credit-priced plans.",
+        },
+      });
+    }
 
     const auditContext = getAuditLogContext(auth);
     const result = await syncProgrammaticUsageLimit({

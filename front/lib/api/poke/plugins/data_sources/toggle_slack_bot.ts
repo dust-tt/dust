@@ -19,6 +19,7 @@ export const toggleSlackBotPlugin = createPlugin({
         description: "Enable or disable the Slack bot",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

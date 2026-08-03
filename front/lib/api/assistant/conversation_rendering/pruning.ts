@@ -1,3 +1,5 @@
+/** Shared token accounting and tool-result pruning helpers. */
+import type { Interaction } from "@app/lib/api/assistant/conversation/interactions";
 import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
 
 const PRUNED_TOOL_RESULT_PLACEHOLDER =
@@ -6,146 +8,48 @@ const PRUNED_TOOL_RESULT_PLACEHOLDER =
   "</dust_system>";
 const PRUNED_TOOL_RESULT_TOKENS = 24;
 
+// Pruning advances through history in batches of this size, not message by message. Every move
+// of the pruning frontier invalidates the provider cache from that point on. Moving it for a
+// handful of tokens costs more than it saves, so it only moves once a batch has accumulated.
+// Flat rather than a percentage of contextSize since no model in our fleet sits between 16k-64k
+// tokens. Starting point, tune against production cache-miss metrics.
+export const PRUNING_CHECKPOINT_TOKENS = 20_000;
+
 export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
 };
 
-export type MinimalMessageType = {
-  role: string;
-};
-
-export type Interaction<T extends MinimalMessageType> = {
-  messages: T[];
-  prunedContext?: boolean;
-};
-
 export type InteractionWithTokens = Interaction<MessageWithTokens>;
 
-/**
- * Prunes all tool results in an interaction.
- * Returns a new interaction with all tool results replaced by placeholders.
- */
-export function pruneAllToolResults(
-  interaction: InteractionWithTokens
-): InteractionWithTokens {
-  const prunedMessages = interaction.messages.map((msg) => {
-    if (msg.role === "function") {
-      return {
-        ...msg,
-        content: PRUNED_TOOL_RESULT_PLACEHOLDER,
-        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
-      };
-    }
-    return msg;
-  });
-
+/** Turns a function-role message into the pruned placeholder. */
+export function pruneToolResultMessage(
+  message: Extract<MessageWithTokens, { role: "function" }>
+): Extract<MessageWithTokens, { role: "function" }> {
   return {
-    messages: prunedMessages,
+    ...message,
+    content: PRUNED_TOOL_RESULT_PLACEHOLDER,
+    tokenCount: PRUNED_TOOL_RESULT_TOKENS,
   };
 }
 
-/**
- * Calculate total tokens for an interaction.
- */
-export function getInteractionTokenCount(
-  interaction: InteractionWithTokens
-): number {
+/** Total tokens across an interaction's messages. */
+function getInteractionTokenCount(interaction: InteractionWithTokens): number {
   return interaction.messages.reduce((sum, msg) => sum + msg.tokenCount, 0);
 }
 
-/**
- * Progressively prune tool results from an interaction to meet token budget. Prunes from oldest to
- * newest tool results until the interaction fits.
- */
-export function progressivelyPruneInteraction(
-  interaction: InteractionWithTokens,
-  maxTokens: number
-): InteractionWithTokens {
-  const currentTokens = getInteractionTokenCount(interaction);
-  if (currentTokens <= maxTokens) {
-    return interaction;
-  }
-
-  // Find all tool result messages.
-  const toolResultIndices: number[] = [];
-  for (let i = 0; i < interaction.messages.length; i++) {
-    if (interaction.messages[i].role === "function") {
-      toolResultIndices.push(i);
-    }
-  }
-
-  let prunedContext = false;
-
-  // Prune from oldest to newest, recalculating tokens each time.
-  let prunedMessages = [...interaction.messages];
-  for (const index of toolResultIndices) {
-    // If very last tool result is pruned, we mark prunedContext as true.
-    if (index === toolResultIndices[toolResultIndices.length - 1]) {
-      prunedContext = true;
-    }
-    const message = prunedMessages[index];
-    if (message.role === "function") {
-      // Create a new array with the pruned message.
-      prunedMessages = [...prunedMessages];
-      prunedMessages[index] = {
-        ...message,
-        content: PRUNED_TOOL_RESULT_PLACEHOLDER,
-        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
-      };
-
-      // Check if we've pruned enough.
-      const newTotalTokens = prunedMessages.reduce(
-        (sum, msg) => sum + msg.tokenCount,
-        0
-      );
-      if (newTotalTokens <= maxTokens) {
-        break;
-      }
-    }
-  }
-
-  return {
-    messages: prunedMessages,
-    prunedContext,
-  };
+/** Total tokens across every interaction in the array. */
+export function sumInteractionTokens(
+  interactions: InteractionWithTokens[]
+): number {
+  return interactions.reduce(
+    (sum, interaction) => sum + getInteractionTokenCount(interaction),
+    0
+  );
 }
 
-/**
- * Prunes all tool results from a list of interactions, attempting to fully preserve up to n
- * interactions (starting from the last). As soon as we reach n interactions, or as soon as an
- * interaction does not fit within the token budget, we'll fully prune the remaining interactions.
- */
-export function prunePreviousInteractions(
-  inputInteractions: InteractionWithTokens[],
-  maxTokens: number,
-  interactionsToPreserve: number
-): InteractionWithTokens[] {
-  const interactions = [...inputInteractions];
-
-  let shouldPrune = false;
-  let availableTokens = maxTokens;
-  for (let i = interactions.length - 1; i >= 0; i--) {
-    // We prune if we've pruned the last interaction, or if we've reached the number of interactions
-    // to preserve.
-    shouldPrune =
-      shouldPrune || i < interactions.length - interactionsToPreserve;
-
-    let interactionTokens = getInteractionTokenCount(interactions[i]);
-    if (interactionTokens > availableTokens) {
-      // If the interaction does not fit the context we prune it and prune all the ones after.
-      shouldPrune = true;
-    }
-
-    if (shouldPrune) {
-      // We are pruning all previous interactions. We simply prune all tool results and update the
-      // available tokens.
-      interactions[i] = pruneAllToolResults(interactions[i]);
-      interactionTokens = getInteractionTokenCount(interactions[i]);
-    }
-
-    // We update the available tokens.
-    availableTokens -= interactionTokens;
-  }
-
-  return interactions;
+/** Tokens removed by replacing a tool result with the pruning placeholder. */
+export function getToolResultTokenSavings(message: MessageWithTokens): number {
+  return message.role === "function"
+    ? Math.max(message.tokenCount - PRUNED_TOOL_RESULT_TOKENS, 0)
+    : 0;
 }

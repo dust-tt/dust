@@ -1,0 +1,7 @@
+{
+  "action": "workspace.interactive_content_sharing_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}

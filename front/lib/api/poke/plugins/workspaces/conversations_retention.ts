@@ -21,6 +21,7 @@ export const conversationsRetentionPlugin = createPlugin({
         async: true,
       },
     },
+    requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth) => {
     const retentionDays = await getConversationsDataRetention(auth);

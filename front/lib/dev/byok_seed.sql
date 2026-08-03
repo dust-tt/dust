@@ -124,8 +124,8 @@ inserted_conversations_space AS (
 
 -- Step 6a: Link system group → system space
 link_system AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "vaultId", "createdAt", "updatedAt")
-  SELECT sg."workspaceId", sg.id, ss.id, NOW(), NOW()
+  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
+  SELECT sg."workspaceId", sg.id, 'system', ss.id, NOW(), NOW()
   FROM inserted_system_group sg
   CROSS JOIN inserted_system_space ss
   RETURNING "vaultId"
@@ -133,8 +133,8 @@ link_system AS (
 
 -- Step 6b: Link global group → global space
 link_global AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, gs.id, NOW(), NOW()
+  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
+  SELECT gg."workspaceId", gg.id, 'global', gs.id, NOW(), NOW()
   FROM inserted_global_group gg
   CROSS JOIN inserted_global_space gs
   RETURNING "vaultId"
@@ -142,8 +142,8 @@ link_global AS (
 
 -- Step 6c: Link global group → conversations space
 link_conversations AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, cs.id, NOW(), NOW()
+  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
+  SELECT gg."workspaceId", gg.id, 'global', cs.id, NOW(), NOW()
   FROM inserted_global_group gg
   CROSS JOIN inserted_conversations_space cs
   RETURNING "vaultId"

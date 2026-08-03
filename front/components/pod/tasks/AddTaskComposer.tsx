@@ -16,16 +16,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
-  UserIcon,
+  User01,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-export type AddTaskAssigneeChoice =
+type AddTaskAssigneeChoice =
   | { kind: "default" }
   | { kind: "unassigned" }
   | { kind: "member"; sId: string };
 
-export function resolveSubmitAssigneeSId(
+function resolveSubmitAssigneeSId(
   choice: AddTaskAssigneeChoice,
   defaultAssigneeId: string
 ): string | null {
@@ -133,7 +133,7 @@ function TaskRowAssigneeMenu({
                 }
               />
             ) : (
-              UserIcon
+              User01
             )
           }
         />

@@ -27,13 +27,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Avatar,
-  Button,
-  CommandIcon,
-  Spinner,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Avatar, Button, Command, Spinner, Tooltip } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
 import type { ReactNode } from "react";
@@ -129,9 +123,7 @@ export function AssistantSkillsToolsSection({
     <div className="flex flex-col gap-5">
       {hasSkills && (
         <div className="flex flex-col gap-5">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Skills
-          </div>
+          <div className="heading-lg text-foreground">Skills</div>
           <div className="grid grid-cols-2 gap-2">
             {isSkillsLoading ? (
               <div className="flex flex-row items-center gap-2">
@@ -139,7 +131,7 @@ export function AssistantSkillsToolsSection({
               </div>
             ) : (
               sortedSkills.map((skill) => {
-                const SkillAvatar = getSkillAvatarIcon(skill.icon);
+                const SkillAvatar = getSkillAvatarIcon(skill);
                 return (
                   <div
                     className="flex flex-row items-center gap-2"
@@ -157,9 +149,7 @@ export function AssistantSkillsToolsSection({
 
       {hasTools && (
         <div className="flex flex-col gap-5">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Tools
-          </div>
+          <div className="heading-lg text-foreground">Tools</div>
           <div className="grid grid-cols-2 gap-2">
             {isToolsLoading || isToolsetsLoading ? (
               <div className="flex flex-row items-center gap-2">
@@ -302,7 +292,7 @@ function renderOtherAction(
     return {
       title: asDisplayName(action.name),
       description: action.description,
-      avatar: <Avatar icon={CommandIcon} size="xs" />,
+      avatar: <Avatar icon={Command} size="xs" />,
       order: 3,
     };
   } else {

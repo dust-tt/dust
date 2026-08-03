@@ -30,10 +30,12 @@ export async function getOAuthConnectionAccessToken({
   config,
   logger,
   connectionId,
+  forceRefresh = false,
 }: {
   config: { url: string; apiKey: string | null };
   logger: LoggerInterface;
   connectionId: string;
+  forceRefresh?: boolean;
 }): Promise<
   Result<
     {
@@ -45,38 +47,45 @@ export async function getOAuthConnectionAccessToken({
     OAuthAPIError
   >
 > {
-  const cached = CACHE.get(connectionId);
+  if (!forceRefresh) {
+    const cached = CACHE.get(connectionId);
 
-  if (cached && cached.localExpiryMs > Date.now()) {
-    const isValid =
-      cached.access_token_expiry === null ||
-      cached.access_token_expiry > Date.now() + ACCESS_TOKEN_EXPIRY_BUFFER_MS;
+    if (cached && cached.localExpiryMs > Date.now()) {
+      const isValid =
+        cached.access_token_expiry === null ||
+        cached.access_token_expiry > Date.now() + ACCESS_TOKEN_EXPIRY_BUFFER_MS;
 
-    if (isValid) {
-      return new Ok(cached);
+      if (isValid) {
+        return new Ok(cached);
+      }
+
+      logger.warn(
+        {
+          access_token_expiry: cached.access_token_expiry,
+          connectionId,
+        },
+        "Local cache has expired tokens"
+      );
     }
-
-    logger.warn(
-      {
-        access_token_expiry: cached.access_token_expiry,
-        connectionId,
-      },
-      "Local cache has expired tokens"
-    );
+  } else {
+    CACHE.delete(connectionId);
   }
 
   const res = await new OAuthAPI(config, logger).getAccessToken({
     connectionId,
+    forceRefresh,
   });
 
   if (res.isErr()) {
     return res;
   }
 
-  CACHE.set(connectionId, {
-    localExpiryMs: Date.now() + OAUTH_ACCESS_TOKEN_CACHE_TTL_MS,
-    ...res.value,
-  });
+  if (!forceRefresh) {
+    CACHE.set(connectionId, {
+      localExpiryMs: Date.now() + OAUTH_ACCESS_TOKEN_CACHE_TTL_MS,
+      ...res.value,
+    });
+  }
 
   return res;
 }

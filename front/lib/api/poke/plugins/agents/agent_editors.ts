@@ -26,6 +26,7 @@ export const updateEditorsPlugin = createPlugin({
         multiple: true,
       },
     },
+    requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth, resource) => {
     if (!resource) {

@@ -1,17 +1,15 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const WAKEUPS_SERVER_NAME = "wakeups" as const;
 
-export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
-  schedule_wakeup: {
+export const WAKEUPS_TOOLS_METADATA = [
+  {
+    name: "schedule_wakeup",
     description:
       "Schedule a wake-up that posts a user message at a future time to re-invoke " +
-      "the agent. Use this to check back on something later, remind the user, poll until a " +
-      "condition is met or schedule recurring work. The `when` field accepts three formats: " +
+      "the agent. Useful for requests to check back on something later, remind the user, poll " +
+      "until a condition is met, or schedule recurring work. The `when` field accepts three formats: " +
       '(1) relative duration like "in 2h", "in 30m", "in 1d";\n' +
       '(2) absolute ISO 8601 timestamp like "2026-04-16T16:00:00Z";\n' +
       '(3) 5-field cron expression like "0 9 * * MON-FRI". (# and L are not supported).\n' +
@@ -39,32 +37,39 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
             "If omitted, falls back to the user's timezone."
         ),
     },
-    // We want the wake-up creation high stake to ensure a human is in the loop to avoid agents
-    // scheduling themselves automatically for recurring wake-ups in an cascading way (we had an
-    // incident where an agent would wake-up itself every 2 minutes to process data in batch out of
-    // triggered conversations every hour creating a blowup of usage).
+    // This static default remains high to avoid cascading usage on legacy plans. At runtime,
+    // credit-priced subscriptions resolve this tool to low stake because usage is credit-limited.
     stake: "high",
     displayLabels: {
       running: "Scheduling wake-up",
       done: "Schedule wake-up",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
-  list_wakeups: {
+  {
+    name: "list_wakeups",
     description:
-      "List wake-ups with their status, schedule, and reason. " +
-      "Useful for checking what's already scheduled before creating a new wake-up, or for " +
-      "finding the wake-up ID needed to cancel a wake-up.",
+      "List wake-ups and reminders with their status, schedule, and reason, including " +
+      "pending reminders and already-fired, cancelled, or expired wake-ups. Useful for checking " +
+      "what's already scheduled before creating a new wake-up, or for finding the wake-up ID " +
+      "needed to cancel a wake-up.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing wake-ups",
       done: "List wake-ups",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  cancel_wakeup: {
+  {
+    name: "cancel_wakeup",
     description:
-      "Cancel a previously scheduled wake-up by ID. " +
-      "Cancelling an already-fired, cancelled, or expired wake-up is a no-op.",
+      "Cancel or stop a previously scheduled wake-up or reminder by ID. " +
+      "Useful for requests to stop a reminder set earlier, remove a scheduled follow-up, or cancel " +
+      "a wake-up. Cancelling an already-fired, cancelled, or expired wake-up " +
+      "is a no-op.",
     schema: {
       wakeUpId: z
         .string()
@@ -77,8 +82,10 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
       running: "Cancelling wake-up",
       done: "Cancel wake-up",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-});
+] as const;
 
 export const WAKEUPS_SERVER = {
   serverInfo: {
@@ -88,16 +95,7 @@ export const WAKEUPS_SERVER = {
     authorization: null,
     icon: "ActionTimeIcon",
     documentationUrl: null,
-    instructions: null,
     displayedAs: "agent",
   },
-  tools: Object.values(WAKEUPS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(WAKEUPS_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: WAKEUPS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

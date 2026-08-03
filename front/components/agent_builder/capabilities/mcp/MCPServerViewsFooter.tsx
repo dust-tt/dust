@@ -33,7 +33,7 @@ export function MCPServerViewsFooter({
                     : undefined
                 }
                 size="xs"
-                color="green"
+                color="success"
               />
             ))}
           </div>

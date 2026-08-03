@@ -183,23 +183,20 @@ export function LatencyChart({
             <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
           </linearGradient>
         </defs>
-        <CartesianGrid
-          vertical={false}
-          className="stroke-border dark:stroke-border-night"
-        />
+        <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="date"
           type="category"
           scale="point"
           allowDuplicatedCategory={false}
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+          className="text-xs text-muted-foreground"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
           minTickGap={16}
         />
         <YAxis
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+          className="text-xs text-muted-foreground"
           tickLine={false}
           axisLine={false}
           tickMargin={8}

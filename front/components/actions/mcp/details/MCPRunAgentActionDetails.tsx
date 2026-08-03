@@ -49,9 +49,9 @@ import {
   Button,
   CitationGrid,
   ContentMessage,
-  ExternalLinkIcon,
+  LinkExternal01,
   Markdown,
-  RobotIcon,
+  Robot,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
@@ -323,12 +323,12 @@ function MCPRunAgentActionDetailsDisplay({
           ? () => (
               <Avatar visual={childAgent.pictureUrl} size="xs" busy={isBusy} />
             )
-          : RobotIcon
+          : Robot
       }
     >
       {displayContext === "conversation" ? (
         query && (
-          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-sm font-normal text-muted-foreground">
             {query}
           </div>
         )
@@ -336,7 +336,7 @@ function MCPRunAgentActionDetailsDisplay({
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-4">
             {query && childAgent && (
-              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              <div className="text-sm font-normal text-muted-foreground">
                 <ContentMessage title="Query" variant="primary" size="lg">
                   <Markdown
                     content={query}
@@ -352,7 +352,7 @@ function MCPRunAgentActionDetailsDisplay({
             )}
 
             {addedMCPServerViewIds.length > 0 && (
-              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              <div className="text-sm font-normal text-muted-foreground">
                 <ContentMessage title="Added Tools" variant="primary" size="lg">
                   {addedMCPServerViewIds.map((id) => {
                     const mcpServerView = mcpServerViews.find(
@@ -374,7 +374,7 @@ function MCPRunAgentActionDetailsDisplay({
               </div>
             )}
             {handoverResource && (
-              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              <div className="text-sm font-normal text-muted-foreground">
                 <ContentMessage title="Handoff" variant="primary" size="lg">
                   <Markdown
                     content={handoverResource.resource.text}
@@ -391,12 +391,12 @@ function MCPRunAgentActionDetailsDisplay({
                 response) && (
                 <>
                   <div className="flex items-center justify-between py-2">
-                    <span className="font-medium text-foreground dark:text-foreground-night">
+                    <span className="font-medium text-foreground">
                       @{childAgent.name}'s Answer
                     </span>
                     {conversationUrl && (
                       <Button
-                        icon={ExternalLinkIcon}
+                        icon={LinkExternal01}
                         label="View full conversation"
                         variant="outline"
                         onClick={() => window.open(conversationUrl, "_blank")}
@@ -436,8 +436,6 @@ function MCPRunAgentActionDetailsDisplay({
                                   attachmentCitation={markdownCitationToAttachmentCitation(
                                     document
                                   )}
-                                  owner={owner}
-                                  conversationId={null}
                                 />
                               ))}
                           </CitationGrid>
@@ -450,11 +448,7 @@ function MCPRunAgentActionDetailsDisplay({
             {generatedFiles.length > 0 && (
               <div className="flex flex-col gap-2">
                 {generatedFiles.map((file) => (
-                  <ToolGeneratedFileDetails
-                    key={file.fileId}
-                    resource={file}
-                    owner={owner}
-                  />
+                  <ToolGeneratedFileDetails key={file.fileId} resource={file} />
                 ))}
               </div>
             )}

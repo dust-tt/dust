@@ -1,87 +1,282 @@
-import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   getDefaultSeatTypeForContract,
   getSeatSubscriptionsFromContract,
+  resolveRequestedSeatTypeForContract,
 } from "@app/lib/metronome/seat_types";
+import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
+import { buildCachedContractMock } from "@app/tests/utils/metronome_contracts";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { describe, expect, it } from "vitest";
 
-// Drives new-member seat assignment (`resolveSeatTypeForNewMembership`).
 describe("getDefaultSeatTypeForContract — entitlement", () => {
-  const productSeatTypes = new Map<string, MembershipSeatType>([
-    ["workspace-product", "workspace"],
-    ["workspace-yearly-product", "workspace_yearly"],
-  ]);
+  const { contract, productSeatTypes } = buildCachedContractMock({
+    seats: [{ seatType: "pro" }, { seatType: "pro_yearly", entitled: true }],
+  });
 
-  // Contract carries both the monthly and yearly workspace seat subscriptions,
-  // but only `workspace_yearly` is entitled (the monthly one is dormant).
-  const contract = {
-    subscriptions: [
-      {
-        id: "sub_ws",
-        subscription_rate: {
-          product: { id: "workspace-product", name: "workspace" },
-        },
-      },
-      {
-        id: "sub_ws_yearly",
-        subscription_rate: {
-          product: {
-            id: "workspace-yearly-product",
-            name: "Workspace Seat (Yearly)",
-          },
-        },
-      },
-    ],
-    recurring_credits: [],
-    overrides: [
-      { entitled: true, product: { id: "workspace-yearly-product" } },
-    ],
-  } as unknown as CachedContract;
-
-  it("assigns the entitled seat, not a dormant lower-name subscription", () => {
-    // Both seats are 0 AWU; without entitlement filtering the tie-break would
-    // pick "workspace" (< "workspace_yearly"). Entitlement must win.
-    expect(getDefaultSeatTypeForContract(contract, productSeatTypes)).toBe(
-      "workspace_yearly"
-    );
+  it("assigns the entitled committed seat, not a dormant lower-name subscription", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro_yearly", { minSeats: 10, maxSeats: null }],
+    ]);
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        seatLimits,
+        seatCounts: { pro_yearly: 0 },
+      })
+    ).toBe("pro_yearly");
   });
 });
 
-// A contract switch can entitle a seat the package doesn't sell and disable one
-// it does, layering `entitled: true`/`false` overrides on the same product. The
-// effective entitlement is the latest override per product (ties → disable).
+describe("getDefaultSeatTypeForContract — committed seats", () => {
+  const { contract, productSeatTypes } = buildCachedContractMock({
+    seats: [
+      { seatType: "pro", entitled: true },
+      { seatType: "free", entitled: true },
+    ],
+  });
+
+  it("assigns free even when a committed seat has open slots", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 5, maxSeats: null }],
+    ]);
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        seatLimits,
+        seatCounts: { pro: 3 },
+      })
+    ).toBe("free");
+  });
+
+  it("falls back to a committed seat when free is blocked (returning member)", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 5, maxSeats: null }],
+    ]);
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        isReturningMember: true,
+        seatLimits,
+        seatCounts: { pro: 3 },
+      })
+    ).toBe("pro");
+  });
+
+  it("returns none when free is blocked and committed slots are exhausted", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 5, maxSeats: null }],
+    ]);
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        isReturningMember: true,
+        seatLimits,
+        seatCounts: { pro: 5 },
+      })
+    ).toBe("none");
+  });
+
+  it("returns none when no committed seats configured and free not available", () => {
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        isReturningMember: true,
+      })
+    ).toBe("none");
+  });
+
+  it("assigns free (no committed seats, new member)", () => {
+    expect(getDefaultSeatTypeForContract(contract, productSeatTypes)).toBe(
+      "free"
+    );
+  });
+
+  it("skips max even when it has committed slots, falls through to none when free is blocked", () => {
+    const { contract: maxContract, productSeatTypes: maxProductSeatTypes } =
+      buildCachedContractMock({
+        seats: [
+          { seatType: "max", entitled: true },
+          { seatType: "free", entitled: true },
+        ],
+      });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["max", { minSeats: 5, maxSeats: null }],
+    ]);
+    expect(
+      getDefaultSeatTypeForContract(maxContract, maxProductSeatTypes, {
+        isReturningMember: true,
+        seatLimits,
+        seatCounts: { max: 0 },
+      })
+    ).toBe("none");
+  });
+
+  it("auto-assigns workspace_yearly when committed slots remain and free is blocked (pooled enterprise)", () => {
+    const { contract: wsContract, productSeatTypes: wsProductSeatTypes } =
+      buildCachedContractMock({
+        seats: [
+          { seatType: "workspace_yearly", entitled: true },
+          { seatType: "free", entitled: true },
+        ],
+      });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 10, maxSeats: null }],
+    ]);
+    expect(
+      getDefaultSeatTypeForContract(wsContract, wsProductSeatTypes, {
+        isReturningMember: true,
+        seatLimits,
+        seatCounts: { workspace_yearly: 4 },
+      })
+    ).toBe("workspace_yearly");
+  });
+
+  it("returns none once workspace_yearly committed slots are taken and free is blocked", () => {
+    const { contract: wsContract, productSeatTypes: wsProductSeatTypes } =
+      buildCachedContractMock({
+        seats: [
+          { seatType: "workspace_yearly", entitled: true },
+          { seatType: "free", entitled: true },
+        ],
+      });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 10, maxSeats: null }],
+    ]);
+    expect(
+      getDefaultSeatTypeForContract(wsContract, wsProductSeatTypes, {
+        isReturningMember: true,
+        seatLimits,
+        seatCounts: { workspace_yearly: 10 },
+      })
+    ).toBe("none");
+  });
+
+  it("legacy: no-seat-subscription contract returns none", () => {
+    const { contract: legacyContract } = buildCachedContractMock();
+    expect(
+      getDefaultSeatTypeForContract(legacyContract, productSeatTypes)
+    ).toBe("none");
+  });
+});
+
+describe("getDefaultSeatTypeForContract — requested seat (invitation)", () => {
+  const { contract, productSeatTypes } = buildCachedContractMock({
+    seats: [
+      { seatType: "free", entitled: true },
+      { seatType: "pro", entitled: true },
+      { seatType: "max", entitled: true },
+    ],
+  });
+
+  it("honors a requested paid tier when uncapped", () => {
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "max",
+      })
+    ).toBe("max");
+  });
+
+  it("honors a requested paid tier under its maxSeats cap", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 0, maxSeats: 5 }],
+    ]);
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "pro",
+        seatLimits,
+        seatCounts: { pro: 4 },
+      })
+    ).toBe("pro");
+  });
+
+  it("falls back to free when the requested paid tier hit its maxSeats cap", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 0, maxSeats: 5 }],
+    ]);
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "pro",
+        seatLimits,
+        seatCounts: { pro: 5 },
+      })
+    ).toBe("free");
+  });
+
+  it("falls back to free when the requested tier is not entitled", () => {
+    const { contract: proOnly, productSeatTypes: proOnlyTypes } =
+      buildCachedContractMock({
+        seats: [
+          { seatType: "free", entitled: true },
+          { seatType: "pro", entitled: true },
+        ],
+      });
+    expect(
+      resolveRequestedSeatTypeForContract(proOnly, proOnlyTypes, {
+        requestedSeatType: "max",
+      })
+    ).toBe("free");
+  });
+
+  it("does not fall back to a committed paid seat; uses free instead", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 10, maxSeats: null }],
+      ["max", { minSeats: 0, maxSeats: 2 }],
+    ]);
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "max",
+        seatLimits,
+        seatCounts: { pro: 0, max: 2 },
+      })
+    ).toBe("free");
+  });
+
+  it("honors a requested free seat within the free caps", () => {
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "free",
+        freeSeatCounts: { active: 2, lifetime: 2 },
+        freeSeatLimits: { maxActiveFreeUsers: 5, maxLifetimeFreeUsers: 10 },
+      })
+    ).toBe("free");
+  });
+
+  it("falls back to none when free is requested but the free cap is exhausted", () => {
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "free",
+        freeSeatCounts: { active: 5, lifetime: 5 },
+        freeSeatLimits: { maxActiveFreeUsers: 5, maxLifetimeFreeUsers: 10 },
+      })
+    ).toBe("none");
+  });
+
+  it("enterprise pooled (no free): an unassignable paid request → none", () => {
+    const { contract: noFree, productSeatTypes: noFreeTypes } =
+      buildCachedContractMock({
+        seats: [{ seatType: "pro", entitled: true }],
+      });
+    expect(
+      resolveRequestedSeatTypeForContract(noFree, noFreeTypes, {
+        requestedSeatType: "max",
+      })
+    ).toBe("none");
+  });
+
+  it("requestedSeatType null applies the default resolution", () => {
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: null,
+      })
+    ).toBe("free");
+  });
+});
+
 describe("getSeatSubscriptionsFromContract — effective entitlement", () => {
-  const productSeatTypes = new Map<string, MembershipSeatType>([
-    ["pro-product", "pro"],
-    ["pro-yearly-product", "pro_yearly"],
-  ]);
-
-  const baseSubscriptions = [
-    {
-      id: "sub_pro",
-      subscription_rate: { product: { id: "pro-product", name: "Pro" } },
-    },
-    {
-      id: "sub_pro_yearly",
-      subscription_rate: {
-        product: { id: "pro-yearly-product", name: "Pro (Yearly)" },
-      },
-    },
-  ];
-
   it("drops a seat disabled by a later override and keeps a newly entitled one", () => {
-    const contract = {
-      subscriptions: baseSubscriptions,
-      recurring_credits: [],
+    const { contract, productSeatTypes } = buildCachedContractMock({
+      seats: [{ seatType: "pro" }, { seatType: "pro_yearly" }],
       overrides: [
-        // Package baseline: pro_yearly entitled (no starting_at → earliest).
-        { entitled: true, product: { id: "pro-yearly-product" } },
-        // Operator switch: disable pro_yearly, entitle pro — both timestamped.
+        { entitled: true, product: { id: "pro_yearly-product" } },
         {
           entitled: false,
           starting_at: "2026-06-01T00:00:00.000Z",
-          product: { id: "pro-yearly-product" },
+          product: { id: "pro_yearly-product" },
         },
         {
           entitled: true,
@@ -89,7 +284,7 @@ describe("getSeatSubscriptionsFromContract — effective entitlement", () => {
           product: { id: "pro-product" },
         },
       ],
-    } as unknown as CachedContract;
+    });
 
     const seatTypes = [
       ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
@@ -98,11 +293,8 @@ describe("getSeatSubscriptionsFromContract — effective entitlement", () => {
   });
 
   it("lets a same-timestamp disable win over an entitle", () => {
-    // `pro` is entitled so the contract isn't treated as legacy (which would
-    // keep all seats); `pro_yearly` has a true+false pair at the same instant.
-    const contract = {
-      subscriptions: baseSubscriptions,
-      recurring_credits: [],
+    const { contract, productSeatTypes } = buildCachedContractMock({
+      seats: [{ seatType: "pro" }, { seatType: "pro_yearly" }],
       overrides: [
         {
           entitled: true,
@@ -112,15 +304,15 @@ describe("getSeatSubscriptionsFromContract — effective entitlement", () => {
         {
           entitled: true,
           starting_at: "2026-06-01T00:00:00.000Z",
-          product: { id: "pro-yearly-product" },
+          product: { id: "pro_yearly-product" },
         },
         {
           entitled: false,
           starting_at: "2026-06-01T00:00:00.000Z",
-          product: { id: "pro-yearly-product" },
+          product: { id: "pro_yearly-product" },
         },
       ],
-    } as unknown as CachedContract;
+    });
 
     const onContract = getSeatSubscriptionsFromContract(
       contract,

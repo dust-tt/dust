@@ -1,52 +1,91 @@
-import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
-import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
+import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
+import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
+import {
+  NotificationPreferences,
+  useNotificationPreferencesForm,
+} from "@app/components/me/NotificationPreferences";
+import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
+import {
+  SoundNotificationPreferences,
+  useSoundNotificationPreferencesForm,
+} from "@app/components/me/SoundNotificationPreferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { MyAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
+import { CreditsCell } from "@app/components/workspace/analytics/creditsTableCells";
+import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { usePatchUser, useUser } from "@app/lib/swr/user";
+import { useAppRouter } from "@app/lib/platform";
+import {
+  useMyTopConversations,
+  useMyUsage,
+  useSeatPlan,
+} from "@app/lib/swr/credits";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import {
+  usePatchUser,
+  usePendingInvitations,
+  useUser,
+  useUserMemory,
+  useWorkspaceUsageStatus,
+} from "@app/lib/swr/user";
+import { getConversationRoute } from "@app/lib/utils/router";
+import {
+  MAX_USER_MEMORY_CHARS,
+  MAX_USER_MEMORY_CONTENT_LENGTH,
+} from "@app/types/api/me/memory";
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   Avatar,
-  BarChartIcon,
-  BellIcon,
-  BoltIcon,
+  BarChart01,
+  Bell01,
+  Brain,
   Button,
-  Cog6ToothIcon,
-  cn,
+  ContentMessageInline,
   Dialog,
   DialogClose,
   DialogContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
+  Edit04,
+  InfoCircle,
   Input,
   Label,
-  LightModeIcon,
-  MoonIcon,
+  Mail01,
+  Moon01,
   NavigationList,
   NavigationListItem,
-  PencilSquareIcon,
+  Page,
   Separator,
-  SparklesIcon,
+  Settings01,
+  ShapesPlus,
+  SliderToggle,
   Spinner,
-  SunIcon,
+  Stars02,
+  Sun,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  ToolsIcon,
-  UserIcon,
-  XMarkIcon,
+  Tooltip,
+  User01,
+  XClose,
+  Zap,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ExternalLinkIcon } from "lucide-react";
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -56,7 +95,9 @@ type SettingsSection =
   | "usage"
   | "customization"
   | "notifications"
-  | "tools";
+  | "memory"
+  | "tools"
+  | "invitations";
 
 interface UserSettingsPopoverProps {
   open: boolean;
@@ -81,21 +122,17 @@ function SectionContent({
 }: SectionContentProps) {
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
-      <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-8">
+      <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 pb-8 pt-5 sm:px-6 sm:pt-8">
         <header className="flex flex-col gap-1">
-          <h2 className="min-h-9 text-2xl font-semibold leading-9 text-foreground dark:text-foreground-night">
-            {title}
-          </h2>
+          <h2 className="heading-2xl text-foreground">{title}</h2>
           {description && (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {description}
-            </p>
+            <p className="copy-sm text-muted-foreground">{description}</p>
           )}
         </header>
         {children}
       </div>
       {footer && (
-        <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-border px-6 py-4 dark:border-border-night">
+        <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-border dark:border-border-dark px-6 py-4">
           {footer}
         </div>
       )}
@@ -105,83 +142,223 @@ function SectionContent({
 
 // ─── Usage ────────────────────────────────────────────────────────────────────
 
-function CreditRow({
-  label,
-  description,
-}: {
-  label: string;
-  description: string;
-}) {
+function ordinalDay(day: number): string {
+  const suffix =
+    day >= 11 && day <= 13
+      ? "th"
+      : day % 10 === 1
+        ? "st"
+        : day % 10 === 2
+          ? "nd"
+          : day % 10 === 3
+            ? "rd"
+            : "th";
+  return `${day}${suffix}`;
+}
+
+interface MyTopConversationsSectionProps {
+  owner: WorkspaceType;
+  onClose: () => void;
+  visible: boolean;
+}
+
+// Conversations ranked by the user's own credit consumption over the last 30
+// days. Hidden when there is no consumption to show.
+function MyTopConversationsSection({
+  owner,
+  onClose,
+  visible,
+}: MyTopConversationsSectionProps) {
+  const router = useAppRouter();
+  const { topConversations, isTopConversationsLoading } = useMyTopConversations(
+    {
+      workspaceId: owner.sId,
+      disabled: !visible,
+    }
+  );
+
+  if (!isTopConversationsLoading && topConversations.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex flex-col gap-0.5">
-        <span className="flex items-center gap-1">
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-            {label}
-          </span>
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-semibold text-foreground">
+          Most expensive recent conversations
         </span>
-        <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-          {description}
-        </span>
+        <Tooltip
+          label="Conversations with your highest credit consumption over the last 30 days. Costs only reflect your own messages, not the whole conversation's cost."
+          trigger={<InfoCircle className="h-4 w-4 text-muted-foreground" />}
+        />
       </div>
-      <span className="flex items-center gap-1 text-xs text-muted-foreground opacity-90 dark:text-muted-foreground-night">
-        10000/<span className="font-medium">10000</span>
-      </span>
-    </div>
+      {isTopConversationsLoading ? (
+        <div className="flex justify-center py-2">
+          <Spinner size="sm" />
+        </div>
+      ) : (
+        <NavigationList>
+          {topConversations.map((conversation) => (
+            <NavigationListItem
+              key={conversation.conversationId}
+              label={conversation.title ?? "Untitled conversation"}
+              onClick={() => {
+                onClose();
+                void router.push(
+                  getConversationRoute(owner.sId, conversation.conversationId)
+                );
+              }}
+              suffix={<CreditsCell credits={conversation.totalCredits} />}
+            />
+          ))}
+        </NavigationList>
+      )}
+    </section>
   );
 }
 
-function UsageSection() {
+interface UsageSectionProps {
+  owner: WorkspaceType;
+  onClose: () => void;
+  // The popover stays mounted while closed (animated exit), so gate fetches on
+  // visibility to avoid polling the analytics endpoint from a hidden dialog.
+  visible: boolean;
+}
+
+function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
+  const { isManager, subscription } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const canAccessBilling = hasPermission("admin", "billing");
+
+  const isCreditBased = isCreditPricedPlan(subscription.plan);
+
+  const { myUsage, nextCreditResetAt, isMyUsageLoading } = useMyUsage({
+    workspaceId: owner.sId,
+    disabled: !isCreditBased,
+  });
+  const { seatPlans } = useSeatPlan({
+    workspaceId: owner.sId,
+    disabled: !isCreditBased,
+  });
+
+  const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
+    owner,
+    disabled: isManager || !isCreditBased,
+  });
+
+  const seatName =
+    (myUsage?.seatType ? seatPlans[myUsage.seatType]?.name : null) ??
+    subscription.plan.name;
+
+  const isLoading = isMyUsageLoading;
+
+  const hasPersonalUsage =
+    (myUsage?.spendLimitAwuCredits ?? myUsage?.memberUsageLimit ?? null) !==
+    null;
+
   return (
     <SectionContent
       title="Usage"
       description="Manage the usage of your Dust workspace"
     >
-      <section className="flex flex-col gap-2 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-highlight-100 outline outline-1 outline-highlight-500/20 dark:bg-highlight-100-night">
-              <SparklesIcon className="h-3 w-3 text-highlight-500" />
+      {isCreditBased && (
+        <section className="flex flex-col gap-2 rounded-lg bg-muted-background p-4">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-highlight-100 outline outline-1 outline-highlight-500/20">
+                <Stars02 className="h-3 w-3 text-highlight-500" />
+              </span>
+              <span className="text-base font-semibold text-foreground">
+                {seatName}
+              </span>
             </span>
-            <span className="text-base font-semibold text-foreground dark:text-foreground-night">
-              Pro plan
-            </span>
-          </span>
-          <Button variant="primary" size="xs" label="Request for upgrade" />
-        </div>
-        <Separator />
-        <div className="flex flex-col gap-4">
-          <CreditRow
-            label="Personal Credit"
-            description="Every 14th of the months"
-          />
-          <CreditRow
-            label="Workspace Credit"
-            description="Your access to your Workspace credit pools"
-          />
-        </div>
-        <Separator />
-        <p className="cursor-pointer text-center text-xs text-muted-foreground underline dark:text-muted-foreground-night">
-          Request more credit
-        </p>
-      </section>
+            <UsageUpgradeButton
+              owner={owner}
+              hasPendingUpgradeRequest={hasPendingUpgradeRequest}
+              variant="button"
+              isManager={isManager}
+              onManagerNavigate={onClose}
+            />
+          </div>
+          <Separator />
+          {isLoading ? (
+            <div className="flex justify-center py-2">
+              <Spinner size="sm" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {hasPersonalUsage ? (
+                <>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium text-foreground">
+                      Your Credits
+                    </span>
+                    {nextCreditResetAt &&
+                      myUsage?.seatType !== "free" &&
+                      (() => {
+                        const d = new Date(nextCreditResetAt);
+                        const month = d.toLocaleDateString("en-US", {
+                          month: "long",
+                          timeZone: "UTC",
+                        });
+                        return (
+                          <span className="text-xs text-muted-foreground">
+                            Resets on {month} {ordinalDay(d.getUTCDate())}
+                          </span>
+                        );
+                      })()}
+                  </div>
+                  <AwuUsageBar
+                    consumed={myUsage?.consumedAwuCredits ?? 0}
+                    consumedFromAllowance={
+                      myUsage?.consumedFromAllowanceAwuCredits ?? 0
+                    }
+                    consumedFromPool={myUsage?.consumedFromPoolAwuCredits ?? 0}
+                    memberUsageLimit={myUsage?.memberUsageLimit ?? null}
+                    seatBalanceAwu={myUsage?.seatBalanceAwu ?? null}
+                    effectiveLimit={myUsage?.spendLimitAwuCredits ?? 0}
+                    spendLimitSource={myUsage?.spendLimitSource ?? "none"}
+                    seatType={myUsage?.seatType ?? null}
+                    isTotalAllowedUsagePending={false}
+                  />
+                </>
+              ) : null}
+            </div>
+          )}
+        </section>
+      )}
 
-      <section className="flex items-center justify-between border-b border-border pb-4 dark:border-border-night">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-            Invoices
-          </span>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Access and download your invoices
-          </span>
-        </div>
-        <Button
-          variant="outline"
-          size="xs"
-          label="Billing"
-          icon={ExternalLinkIcon}
-        />
-      </section>
+      <MyAwuUsageFromAnalyticsChart
+        workspaceId={owner.sId}
+        disabled={!visible}
+      />
+
+      <MyTopConversationsSection
+        owner={owner}
+        onClose={onClose}
+        visible={visible}
+      />
+
+      {canAccessBilling && (
+        <section className="flex items-center justify-between border-b border-border dark:border-border-dark pb-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold text-foreground">
+              Invoices
+            </span>
+            <span className="text-sm text-muted-foreground">
+              Access and download your invoices
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="xs"
+            label="Billing"
+            icon={ExternalLinkIcon}
+            href={`/w/${owner.sId}/${isCreditBased ? "billing" : "subscription"}`}
+            target="_blank"
+          />
+        </section>
+      )}
     </SectionContent>
   );
 }
@@ -259,7 +436,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
   if (isUserLoading) {
     return (
-      <SectionContent title="Personal Informations">
+      <SectionContent title="Personal Information">
         <div className="flex justify-center p-6">
           <Spinner />
         </div>
@@ -269,7 +446,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
   return (
     <SectionContent
-      title="Personal Informations"
+      title="Personal Information"
       footer={
         <Button
           label="Save"
@@ -295,7 +472,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           <Button
             variant="outline"
             size="sm"
-            icon={PencilSquareIcon}
+            icon={Edit04}
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
@@ -336,9 +513,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
           <div className="flex items-center gap-2">
             <Label>Email</Label>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {user?.email}
-            </span>
+            <span className="text-sm text-muted-foreground">{user?.email}</span>
           </div>
         </div>
       </FormProvider>
@@ -363,6 +538,10 @@ function CustomizationSection() {
   const modEnterShortcut = useMemo(
     () => (isMac ? "⌘ + ↵" : "Ctrl + ↵"),
     [isMac]
+  );
+
+  const [portalContainer] = useState<HTMLElement | undefined>(() =>
+    typeof document !== "undefined" ? document.body : undefined
   );
 
   const [localTheme, setLocalTheme] = useState(currentTheme ?? "system");
@@ -411,10 +590,10 @@ function CustomizationSection() {
                 variant="outline"
                 icon={
                   localTheme === "light"
-                    ? SunIcon
+                    ? Sun
                     : localTheme === "dark"
-                      ? MoonIcon
-                      : LightModeIcon
+                      ? Moon01
+                      : Sun
                 }
                 label={
                   localTheme === "light"
@@ -427,25 +606,23 @@ function CustomizationSection() {
                 className="w-fit"
               />
             </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  icon={SunIcon}
-                  label="Light"
-                  onClick={() => setLocalTheme("light")}
-                />
-                <DropdownMenuItem
-                  icon={MoonIcon}
-                  label="Dark"
-                  onClick={() => setLocalTheme("dark")}
-                />
-                <DropdownMenuItem
-                  icon={LightModeIcon}
-                  label="System"
-                  onClick={() => setLocalTheme("system")}
-                />
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
+            <DropdownMenuContent mountPortalContainer={portalContainer}>
+              <DropdownMenuItem
+                icon={Sun}
+                label="Light"
+                onClick={() => setLocalTheme("light")}
+              />
+              <DropdownMenuItem
+                icon={Moon01}
+                label="Dark"
+                onClick={() => setLocalTheme("dark")}
+              />
+              <DropdownMenuItem
+                icon={Sun}
+                label="System"
+                onClick={() => setLocalTheme("system")}
+              />
+            </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
@@ -455,7 +632,7 @@ function CustomizationSection() {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <div className="copy-sm flex items-center gap-2 text-foreground dark:text-foreground-night">
+              <div className="copy-sm flex items-center gap-2 text-foreground">
                 Send message:
                 <Button
                   variant="outline"
@@ -465,20 +642,16 @@ function CustomizationSection() {
                 />
               </div>
             </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
-                  Enter
-                  <DropdownMenuShortcut>↵</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
-                  {modEnterMenuLabel}
-                  <DropdownMenuShortcut>
-                    {modEnterShortcut}
-                  </DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
+            <DropdownMenuContent mountPortalContainer={portalContainer}>
+              <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
+                Enter
+                <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
+                {modEnterMenuLabel}
+                <DropdownMenuShortcut>{modEnterShortcut}</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
@@ -490,45 +663,90 @@ function CustomizationSection() {
 
 function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const { user } = useUser();
-  const notificationPreferencesRef =
-    useRef<NotificationPreferencesRefProps>(null);
-  const [isDirty, setIsDirty] = useState(false);
+  const sendNotification = useSendNotification();
+  const sound = useSoundNotificationPreferencesForm();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const showNotificationPreferences = Boolean(user?.subscriberHash);
+  const notif = useNotificationPreferencesForm({
+    owner,
+    disabled: !showNotificationPreferences,
+  });
+
+  const isDirty = sound.isDirty || notif.isDirty;
+  const isLoading =
+    sound.isLoading || (showNotificationPreferences && notif.isLoading);
 
   const handleSave = async () => {
-    if (notificationPreferencesRef.current) {
-      await notificationPreferencesRef.current.savePreferences();
-      setIsDirty(false);
+    setIsSubmitting(true);
+    try {
+      const [soundSaved, notifSaved] = await Promise.all([
+        sound.save(),
+        notif.save(),
+      ]);
+      if (soundSaved && notifSaved) {
+        sendNotification({
+          type: "success",
+          title: "Notification preferences saved",
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  if (!user?.subscriberHash) {
-    return (
-      <SectionContent title="Notifications">
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Notification preferences are not available for your account.
-        </p>
-      </SectionContent>
-    );
-  }
 
   return (
     <SectionContent
       title="Notifications"
+      description="Control how and when Dust notifies you"
       footer={
         <Button
           label="Save"
           variant="primary"
           type="button"
           onClick={handleSave}
-          disabled={!isDirty}
+          disabled={!isDirty || isSubmitting}
         />
       }
     >
-      <NotificationPreferences
-        ref={notificationPreferencesRef}
-        onChanged={() => setIsDirty(true)}
-        owner={owner}
-      />
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-4">
+            <Page.SectionHeader
+              title="Inbox notifications"
+              description="Sound alerts for items that need your attention"
+            />
+            <SoundNotificationPreferences
+              control={sound.control}
+              disabled={sound.isLoading}
+            />
+          </div>
+          {showNotificationPreferences && (
+            <div className="flex flex-col gap-4">
+              <Page.SectionHeader
+                title="Other channels"
+                description="Choose where else to receive notifications"
+              />
+              {notif.status === "error" ? (
+                <ContentMessageInline variant="warning" icon={InfoCircle}>
+                  We couldn't load your notification settings. Please try again
+                  later.
+                </ContentMessageInline>
+              ) : (
+                <NotificationPreferences
+                  control={notif.control}
+                  displaySlackOption={notif.displaySlackOption}
+                  workflowEnabled={notif.workflowEnabled}
+                />
+              )}
+            </div>
+          )}
+        </>
+      )}
     </SectionContent>
   );
 }
@@ -540,14 +758,14 @@ function ToolsSection({ owner }: { owner: WorkspaceType }) {
     <SectionContent title="Tools and Triggers">
       <Tabs defaultValue="tools">
         <TabsList border>
-          <TabsTrigger value="tools" label="Tools" icon={BoltIcon} />
-          <TabsTrigger value="triggers" label="Triggers" icon={BellIcon} />
+          <TabsTrigger value="tools" label="Tools" icon={Zap} />
+          <TabsTrigger value="triggers" label="Triggers" icon={Bell01} />
         </TabsList>
         <TabsContent value="tools">
           <UserToolsTable owner={owner} />
         </TabsContent>
         <TabsContent value="triggers">
-          <p className="py-8 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="py-8 text-center text-sm text-muted-foreground">
             Coming soon
           </p>
         </TabsContent>
@@ -556,18 +774,147 @@ function ToolsSection({ owner }: { owner: WorkspaceType }) {
   );
 }
 
+// ─── Invitations ──────────────────────────────────────────────────────────────
+
+interface InvitationsSectionProps {
+  invitations: PendingInvitationOption[];
+  isLoading: boolean;
+}
+
+function InvitationsSection({
+  invitations,
+  isLoading,
+}: InvitationsSectionProps) {
+  return (
+    <SectionContent
+      title="Invitations"
+      description="Workspaces you've been invited to join"
+    >
+      {isLoading ? (
+        <div className="flex justify-center py-6">
+          <Spinner />
+        </div>
+      ) : (
+        <PendingInvitationsTable invitations={invitations} />
+      )}
+    </SectionContent>
+  );
+}
+
+// ─── Memory ───────────────────────────────────────────────────────────────────
+
+function MemorySection({ owner }: { owner: WorkspaceType }) {
+  const { content, isMemoryEnabled, isMemoryLoading, setMemory } =
+    useUserMemory({ owner });
+
+  const [draft, setDraft] = useState<string | null>(null);
+  const [enabledDraft, setEnabledDraft] = useState<boolean | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const value = draft ?? content;
+  const enabledValue = enabledDraft ?? isMemoryEnabled;
+
+  const isContentDirty = draft !== null && draft !== content;
+  const isEnabledDirty =
+    enabledDraft !== null && enabledDraft !== isMemoryEnabled;
+  const isDirty = isEnabledDirty || (enabledValue && isContentDirty);
+  // The editor shows the visible-character count; the Save gate uses the raw
+  // markdown length against the server cap so we never submit a rejected body.
+  const isOverLimit = value.length > MAX_USER_MEMORY_CONTENT_LENGTH;
+
+  const handleToggle = () => {
+    setEnabledDraft(!enabledValue);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const update: { content?: string; enabled?: boolean } = {};
+      if (isEnabledDirty) {
+        update.enabled = enabledValue;
+      }
+      if (enabledValue && isContentDirty) {
+        update.content = value;
+      }
+
+      const saved = await setMemory(update);
+      if (saved) {
+        setDraft(null);
+        setEnabledDraft(null);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <SectionContent
+      title="Memory"
+      footer={
+        <Button
+          label="Save"
+          variant="primary"
+          type="button"
+          onClick={handleSave}
+          disabled={!isDirty || isOverLimit || isSaving}
+        />
+      }
+    >
+      {isMemoryLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-4 rounded-2xl border border-border dark:border-border-dark p-4">
+            <div className="flex flex-col gap-1">
+              <span className="heading-base text-foreground">
+                Enable Memory
+              </span>
+              <span className="copy-sm text-muted-foreground">
+                Dust builds a personal memory from your conversations and uses
+                it to tailor future responses.
+              </span>
+            </div>
+            <SliderToggle selected={enabledValue} onClick={handleToggle} />
+          </div>
+
+          {enabledValue && (
+            <div className="flex flex-col gap-2">
+              <span className="heading-base text-foreground">About you</span>
+              <MarkdownEditor
+                value={value}
+                onChange={(markdown) => setDraft(markdown)}
+                readOnly={isSaving}
+                maxCharacterCount={MAX_USER_MEMORY_CHARS}
+                showCharacterCount
+                editorClassName="min-h-96"
+              />
+            </div>
+          )}
+        </>
+      )}
+    </SectionContent>
+  );
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
+// Order only. "Memory" (user_memory feature flag) and "Invitations" (pending
+// invitations) keep their position here and are filtered out below when not
+// applicable.
 const NAV_ITEMS: Array<{
   section: SettingsSection;
   icon: React.ComponentType;
   label: string;
 }> = [
-  { section: "personal", icon: UserIcon, label: "Personal Information" },
-  { section: "usage", icon: BarChartIcon, label: "Usage" },
-  { section: "customization", icon: Cog6ToothIcon, label: "Customization" },
-  { section: "notifications", icon: BellIcon, label: "Notifications" },
-  { section: "tools", icon: ToolsIcon, label: "Tools and Triggers" },
+  { section: "personal", icon: User01, label: "Personal Information" },
+  { section: "usage", icon: BarChart01, label: "Usage" },
+  { section: "customization", icon: Settings01, label: "Customization" },
+  { section: "memory", icon: Brain, label: "Memory" },
+  { section: "notifications", icon: Bell01, label: "Notifications" },
+  { section: "tools", icon: ShapesPlus, label: "Tools and Triggers" },
+  { section: "invitations", icon: Mail01, label: "Invitations" },
 ];
 
 export function UserSettingsPopover({
@@ -577,6 +924,30 @@ export function UserSettingsPopover({
 }: UserSettingsPopoverProps) {
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("personal");
+
+  const { hasFeature } = useFeatureFlags();
+  const hasUserMemory = hasFeature("user_memory");
+
+  // Only fetch while the popover is open: it is always mounted in the user menu.
+  const { pendingInvitations, isPendingInvitationsLoading } =
+    usePendingInvitations({ workspaceId: owner.sId, disabled: !open });
+  const hasPendingInvitations = pendingInvitations.length > 0;
+
+  // "Memory" is gated on the user_memory feature flag; "Invitations" only
+  // appears when the user has pending invitations.
+  const navItems = useMemo(
+    () =>
+      NAV_ITEMS.filter((item) => {
+        if (item.section === "memory") {
+          return hasUserMemory;
+        }
+        if (item.section === "invitations") {
+          return hasPendingInvitations;
+        }
+        return true;
+      }),
+    [hasUserMemory, hasPendingInvitations]
+  );
 
   useEffect(() => {
     if (open) {
@@ -589,50 +960,48 @@ export function UserSettingsPopover({
       <DialogContent
         size="2xl"
         height="xl"
-        className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:duration-200 data-[state=closed]:duration-150 data-[state=open]:ease-out data-[state=closed]:ease-in motion-reduce:animate-none"
+        className="h-[90vh] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:duration-200 data-[state=closed]:duration-150 data-[state=open]:ease-out data-[state=closed]:ease-in motion-reduce:animate-none"
       >
         <div className="flex h-full flex-col overflow-hidden sm:flex-row">
-          {/* Mobile: horizontal tab strip */}
-          <nav className="flex flex-shrink-0 items-center border-b border-border bg-muted-background sm:hidden dark:border-border-night dark:bg-muted-background-night">
-            <DialogClose asChild>
-              <Button
-                variant="ghost"
-                size="xmini"
-                icon={XMarkIcon}
-                className="flex-shrink-0 px-2"
-              />
-            </DialogClose>
-            <div className="flex flex-1">
-              {NAV_ITEMS.map(({ section, icon: Icon, label }) => (
-                <button
-                  key={section}
-                  type="button"
-                  onClick={() => setActiveSection(section)}
-                  className={cn(
-                    "flex flex-1 flex-col items-center gap-1 py-2 transition-colors",
-                    activeSection === section
-                      ? "bg-highlight-100 text-highlight-600 dark:bg-highlight-100-night dark:text-highlight-500"
-                      : "text-muted-foreground hover:bg-muted-background dark:text-muted-foreground-night dark:hover:bg-muted-background-night"
-                  )}
-                >
-                  <span className="flex size-4 items-center justify-center">
-                    <Icon />
-                  </span>
-                  <span className="line-clamp-1 text-xs">{label}</span>
-                </button>
-              ))}
+          {/* Mobile: top horizontal tab menu with an underline on the active tab */}
+          <div className="flex flex-shrink-0 flex-col border-b border-border dark:border-border-dark sm:hidden">
+            <div className="flex flex-shrink-0 items-center justify-end p-2">
+              <DialogClose asChild>
+                <Button variant="ghost" size="mini" icon={XClose} />
+              </DialogClose>
             </div>
-          </nav>
+            <Tabs
+              value={activeSection}
+              onValueChange={(value) => {
+                const item = navItems.find((i) => i.section === value);
+                if (item) {
+                  setActiveSection(item.section);
+                }
+              }}
+              className="px-2"
+            >
+              <TabsList>
+                {navItems.map(({ section, icon, label }) => (
+                  <TabsTrigger
+                    key={section}
+                    value={section}
+                    icon={icon}
+                    label={label}
+                  />
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
 
           {/* Desktop: vertical sidebar */}
-          <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border bg-muted-background sm:flex dark:border-border-night dark:bg-muted-background-night">
+          <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border dark:border-border-dark sm:flex">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
-                <Button variant="ghost" size="mini" icon={XMarkIcon} />
+                <Button variant="ghost" size="mini" icon={XClose} />
               </DialogClose>
             </div>
             <NavigationList className="flex-1 px-2 pb-3">
-              {NAV_ITEMS.map(({ section, icon, label }) => (
+              {navItems.map(({ section, icon, label }) => (
                 <NavigationListItem
                   key={section}
                   icon={icon}
@@ -648,12 +1017,25 @@ export function UserSettingsPopover({
             {activeSection === "personal" && (
               <PersonalInfoSection owner={owner} />
             )}
-            {activeSection === "usage" && <UsageSection />}
+            {activeSection === "usage" && (
+              <UsageSection
+                owner={owner}
+                onClose={() => onOpenChange(false)}
+                visible={open}
+              />
+            )}
             {activeSection === "customization" && <CustomizationSection />}
             {activeSection === "notifications" && (
               <NotificationsSection owner={owner} />
             )}
+            {activeSection === "memory" && <MemorySection owner={owner} />}
             {activeSection === "tools" && <ToolsSection owner={owner} />}
+            {activeSection === "invitations" && (
+              <InvitationsSection
+                invitations={pendingInvitations}
+                isLoading={isPendingInvitationsLoading}
+              />
+            )}
           </div>
         </div>
       </DialogContent>

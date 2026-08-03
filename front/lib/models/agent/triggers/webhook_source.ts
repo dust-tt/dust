@@ -1,11 +1,14 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   WebhookProvider,
   WebhookSourceSignatureAlgorithm,
 } from "@app/types/triggers/webhooks";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> {
   declare createdAt: CreationOptional<Date>;
@@ -41,11 +44,11 @@ WebhookSourceModel.init(
       allowNull: false,
     },
     secret: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     urlSecret: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     signatureHeader: {
@@ -69,7 +72,7 @@ WebhookSourceModel.init(
       allowNull: true,
     },
     oauthConnectionId: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
   },

@@ -1,10 +1,14 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+  Op,
+} from "@app/lib/resources/storage/data_types";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserProviderType } from "@app/types/user";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes, Op } from "sequelize";
 
 export class UserModel extends BaseModel<UserModel> {
   declare createdAt: CreationOptional<Date>;
@@ -132,7 +136,7 @@ UserMetadataModel.init(
       allowNull: false,
     },
     value: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
   },
@@ -177,9 +181,8 @@ export class UserToolApprovalModel extends WorkspaceAwareModel<UserToolApprovalM
   declare mcpServerId: string;
   declare toolName: string;
 
-  // For medium-stake tools, we tie the approval to an agent, and eventually to arg-values couples.
+  // For medium-stake tools, approvals are tied to argument-value pairs.
   // For low-stake tools, these are null.
-  declare agentId: string | null;
   declare argsAndValues: Record<string, string> | null;
 
   // Md5 hash of argsAndValues for quick lookup and uniqueness constraint.
@@ -206,11 +209,6 @@ UserToolApprovalModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    agentId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      defaultValue: null,
-    },
     argsAndValues: {
       type: DataTypes.JSONB,
       allowNull: true,
@@ -234,7 +232,6 @@ UserToolApprovalModel.init(
           "userId",
           "mcpServerId",
           "toolName",
-          "agentId",
           "argsAndValuesMd5",
         ],
         unique: true,

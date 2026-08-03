@@ -10,7 +10,7 @@ export function SettingsList({ children, className }: SettingsListProps) {
   return (
     <div
       className={cn(
-        "s-flex s-flex-col s-overflow-hidden s-rounded-2xl s-border s-border-border s-divide-y s-divide-border dark:s-border-border-night dark:s-divide-border-night",
+        "flex flex-col overflow-hidden rounded-2xl border border-border divide-y divide-border",
         className
       )}
     >
@@ -35,21 +35,17 @@ function SettingsListRow({
   return (
     <div
       className={cn(
-        "s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-4",
+        "flex items-center justify-between gap-4 px-4 py-4",
         className
       )}
     >
-      <div className="s-flex s-min-w-0 s-flex-col s-gap-0.5">
-        <span className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
-          {title}
-        </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="heading-sm text-foreground">{title}</span>
         {description && (
-          <span className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {description}
-          </span>
+          <span className="copy-sm text-muted-foreground">{description}</span>
         )}
       </div>
-      {action && <div className="s-shrink-0">{action}</div>}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

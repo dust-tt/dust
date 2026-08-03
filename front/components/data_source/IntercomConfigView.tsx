@@ -65,7 +65,6 @@ export function IntercomConfigView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetNewConfig(!isSyncNotesEnabled);
               }}
@@ -76,7 +75,7 @@ export function IntercomConfigView({
         }
       >
         <ContextItem.Description>
-          <div className="text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-muted-foreground">
             If activated, Dust will also sync the notes from the conversations
             you've selected.
           </div>

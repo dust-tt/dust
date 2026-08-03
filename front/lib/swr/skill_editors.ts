@@ -2,9 +2,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
-  GetSkillEditorsResponseBody,
   PatchSkillEditorsRequestBody,
-} from "@app/pages/api/w/[wId]/skills/[sId]/editors";
+  SkillEditorsLightResponseBody,
+  SkillEditorsResponseBody,
+} from "@app/types/api/skills/editors";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
@@ -20,7 +21,9 @@ export function useSkillEditors({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const editorsFetcher: Fetcher<GetSkillEditorsResponseBody> = fetcher;
+  const editorsFetcher: Fetcher<
+    SkillEditorsResponseBody | SkillEditorsLightResponseBody
+  > = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     skillId ? `/api/w/${owner.sId}/skills/${skillId}/editors` : null,
@@ -44,7 +47,7 @@ export function useUpdateSkillEditors({
   skillId,
 }: {
   owner: LightWorkspaceType;
-  skillId: string;
+  skillId: string | null;
 }) {
   const sendNotification = useSendNotification();
   const { mutateEditors } = useSkillEditors({
@@ -55,6 +58,10 @@ export function useUpdateSkillEditors({
 
   const updateSkillEditors = useCallback(
     async (body: PatchSkillEditorsRequestBody) => {
+      if (!skillId) {
+        return false;
+      }
+
       const res = await clientFetch(
         `/api/w/${owner.sId}/skills/${skillId}/editors`,
         {
@@ -67,7 +74,7 @@ export function useUpdateSkillEditors({
       );
 
       if (res.ok) {
-        void mutateEditors();
+        await mutateEditors();
 
         let title;
         let description: string | undefined = undefined;
@@ -94,7 +101,14 @@ export function useUpdateSkillEditors({
           title,
           description,
         });
+        return true;
       }
+
+      sendNotification({
+        type: "error",
+        title: "Failed to update editors",
+      });
+      return false;
     },
     [owner, skillId, mutateEditors, sendNotification]
   );

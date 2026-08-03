@@ -20,6 +20,7 @@ export const batchDowngradePlugin = createPlugin({
           "Comma-separated list of sIds of the workspaces to downgrade",
       },
     },
+    requiredRoles: ["billing"],
   },
   execute: async (_1, _2, args) => {
     const { sIds } = args;

@@ -1,3 +1,4 @@
+import type { Interaction } from "@app/lib/api/assistant/conversation/interactions";
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
@@ -8,11 +9,11 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -57,7 +58,7 @@ export const getConversation = async (
   auth: Authenticator,
   conversationId: string,
   includeDeleted: boolean = false,
-  branchId: string | null = null,
+  _branchId: string | null = null,
   lastInteractionsToFetchToolOutputContentFor: number | null = null,
   messagePagination?: { limit: number; lastRank: number | null }
 ) =>
@@ -65,7 +66,6 @@ export const getConversation = async (
     auth,
     conversationId,
     includeDeleted,
-    branchId,
     "full",
     lastInteractionsToFetchToolOutputContentFor,
     messagePagination
@@ -75,17 +75,72 @@ export const getLightConversation = async (
   auth: Authenticator,
   conversationId: string,
   includeDeleted: boolean = false,
-  branchId: string | null = null
-) => _getConversation(auth, conversationId, includeDeleted, branchId, "light");
+  _branchId: string | null = null,
+  lastInteractionsToFetchToolOutputContentFor: number | null = null,
+  messagePagination?: { limit: number; lastRank: number | null }
+) =>
+  _getConversation(
+    auth,
+    conversationId,
+    includeDeleted,
+    "light",
+    lastInteractionsToFetchToolOutputContentFor,
+    messagePagination,
+    true
+  );
+
+// Batch size (in interactions) for extending the tool-output-content fetch window beyond the
+// guaranteed floor. The boundary is anchored on a fixed, absolute interaction index rather than
+// distance from the most recent interaction, so it only advances once a full batch of new
+// interactions has accumulated instead of sliding by one every single turn.
+//
+// When the boundary does advance, every interaction between the old and new checkpoint loses its
+// tool-output content in a single turn (see computeMessagesWithToolOutputContent), which busts the
+// prompt cache for that turn. A larger batch means fewer crossings overall. It also means most
+// conversations whose interaction count never reaches the threshold never cross it at all. 30 is a
+// placeholder pending real data on the interaction-count distribution (see the
+// "conversation.interactions_count" metric below). Revisit once that data is in.
+export const TOOL_OUTPUT_FETCH_BATCH_SIZE = 30;
+
+/**
+ * Decides which agent messages should have their tool-output content fetched.
+ *
+ * The last `floorCount` interactions are always included. Beyond that floor, the window extends
+ * backward to the most recent checkpoint at or before the floor's start, a fixed multiple of
+ * TOOL_OUTPUT_FETCH_BATCH_SIZE. Because checkpoints are fixed positions counted from the start of
+ * the conversation, not from the tail, the boundary stays put across most turns and only jumps
+ * forward once a whole batch has accumulated.
+ */
+export function computeMessagesWithToolOutputContent(
+  interactions: Interaction<{ id: ModelId; role: "user" | "agent" }>[],
+  floorCount: number
+): Set<ModelId> {
+  if (floorCount <= 0) {
+    return new Set();
+  }
+
+  const floorStart = Math.max(interactions.length - floorCount, 0);
+  const checkpointStart =
+    Math.floor(floorStart / TOOL_OUTPUT_FETCH_BATCH_SIZE) *
+    TOOL_OUTPUT_FETCH_BATCH_SIZE;
+
+  return new Set(
+    interactions
+      .slice(checkpointStart)
+      .flatMap((i) =>
+        i.messages.filter((m) => m.role === "agent").map((m) => m.id)
+      )
+  );
+}
 
 async function _getConversation<V extends "light" | "full">(
   auth: Authenticator,
   conversationId: string,
   includeDeleted: boolean = false,
-  branchId: string | null = null,
   viewType: V = "full" as V,
   lastInteractionsToFetchToolOutputContentFor: number | null = null,
-  messagePagination?: { limit: number; lastRank: number | null }
+  messagePagination?: { limit: number; lastRank: number | null },
+  textContentOnly: boolean = false
 ): Promise<
   Result<
     (V extends "light"
@@ -108,49 +163,11 @@ async function _getConversation<V extends "light" | "full">(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  let where: WhereOptions<MessageModel> = {
+  const where: WhereOptions<MessageModel> = {
     conversationId: conversation.id,
     workspaceId: owner.id,
+    branchId: { [Op.is]: null },
   };
-
-  if (branchId) {
-    const branch = await ConversationBranchResource.fetchById(auth, branchId);
-    if (!branch || !branch.canRead(auth)) {
-      return new Err(new ConversationError("branch_not_found"));
-    }
-
-    const previousMessage = await MessageModel.findOne({
-      where: {
-        id: branch.previousMessageId,
-        workspaceId: owner.id,
-      },
-    });
-    if (!previousMessage) {
-      return new Err(new ConversationError("message_not_found"));
-    }
-
-    const branchModelId = branch.id;
-
-    // All messages before the branch and the branch itself.
-    where = {
-      ...where,
-      [Op.or]: [
-        {
-          branchId: branchModelId,
-        },
-        {
-          branchId: null,
-          rank: { [Op.lte]: previousMessage.rank },
-        },
-      ],
-    };
-  } else {
-    // All messages not part of a branch.
-    where = {
-      ...where,
-      branchId: { [Op.is]: null },
-    };
-  }
 
   let messages: MessageModel[];
   let paginationHasMore: boolean | undefined;
@@ -164,6 +181,13 @@ async function _getConversation<V extends "light" | "full">(
     messages = paginatedMessages;
     paginationHasMore = hasMore;
   } else {
+    // The include.where lands in the LEFT JOIN ON clause (required: false keeps the OUTER join),
+    // letting the planner use the side tables' (workspaceId, conversationId) indexes instead of
+    // one PK probe per message. Relies on conversationId being backfilled on side tables.
+    const sideTableWhere = {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    };
     messages = await MessageModel.findAll({
       where,
       order: [
@@ -175,11 +199,13 @@ async function _getConversation<V extends "light" | "full">(
           model: UserMessageModel,
           as: "userMessage",
           required: false,
+          where: sideTableWhere,
         },
         {
           model: AgentMessageModel,
           as: "agentMessage",
           required: false,
+          where: sideTableWhere,
         },
         // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
         // along with messages in one query). Only once we move to a MessageResource will we be able
@@ -188,11 +214,13 @@ async function _getConversation<V extends "light" | "full">(
           model: ContentFragmentModel,
           as: "contentFragment",
           required: false,
+          where: sideTableWhere,
         },
         {
           model: CompactionMessageModel,
           as: "compactionMessage",
           required: false,
+          where: sideTableWhere,
         },
       ],
     });
@@ -200,42 +228,39 @@ async function _getConversation<V extends "light" | "full">(
 
   let messagesWithToolOutputContent: Set<ModelId> | null = null;
 
-  // In the case of the agentic loop, to save memory and latency, we only want to fetch content for the last N interactions.
+  // In the case of the agentic loop, to save memory and latency, we don't want to fetch tool
+  // output content for every interaction in the conversation. See
+  // computeMessagesWithToolOutputContent for how the fetch window is decided.
   if (lastInteractionsToFetchToolOutputContentFor !== null) {
-    if (lastInteractionsToFetchToolOutputContentFor <= 0) {
-      messagesWithToolOutputContent = new Set();
-    } else {
-      const interactions = groupMessagesIntoInteractions(
-        removeNulls(
-          messages.map((m) => {
-            if (m.userMessageId) {
-              return {
-                id: m.userMessageId,
-                role: "user",
-              };
-            } else if (m.agentMessageId) {
-              return {
-                id: m.agentMessageId,
-                role: "agent",
-              };
-            }
-            // We don't care about the other messages.
-          })
-        )
-      );
+    const interactions = groupMessagesIntoInteractions(
+      removeNulls(
+        messages.map((m) => {
+          if (m.userMessageId) {
+            return {
+              id: m.userMessageId,
+              role: "user" as const,
+            };
+          } else if (m.agentMessageId) {
+            return {
+              id: m.agentMessageId,
+              role: "agent" as const,
+            };
+          }
+          // We don't care about the other messages.
+        })
+      )
+    );
 
-      // Keep the last N interactions with the highest ranks (order is correct because of the sort above).
-      const interactionsToKeep = interactions.slice(
-        -lastInteractionsToFetchToolOutputContentFor
-      );
+    // Purely observational, see TOOL_OUTPUT_FETCH_BATCH_SIZE above.
+    getStatsDClient().distribution(
+      "conversation.interactions_count",
+      interactions.length
+    );
 
-      // We only need to fetch content for the actions of the last N interactions.
-      messagesWithToolOutputContent = new Set(
-        interactionsToKeep.flatMap((i) =>
-          i.messages.filter((m) => m.role === "agent").map((m) => m.id)
-        )
-      );
-    }
+    messagesWithToolOutputContent = computeMessagesWithToolOutputContent(
+      interactions,
+      lastInteractionsToFetchToolOutputContentFor
+    );
   }
 
   const renderRes = await batchRenderMessages(
@@ -243,7 +268,8 @@ async function _getConversation<V extends "light" | "full">(
     conversation,
     messages,
     viewType,
-    messagesWithToolOutputContent
+    messagesWithToolOutputContent,
+    textContentOnly
   );
 
   if (renderRes.isErr()) {
@@ -337,7 +363,7 @@ async function _getConversation<V extends "light" | "full">(
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
-      branchId,
+      branchId: null,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
       ...(forkingData && { forkingData }),
     };
@@ -416,7 +442,7 @@ async function _getConversation<V extends "light" | "full">(
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
-      branchId,
+      branchId: null,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
       ...(forkingData && { forkingData }),
     };

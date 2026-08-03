@@ -348,7 +348,7 @@ export function DataSourceList({
       className={cn("flex max-h-full flex-col overflow-auto pr-1", className)}
     >
       {showSelectAllHeader && selectableItems.length > 0 && (
-        <div className="flex items-center justify-between p-3 font-medium text-foreground dark:text-white">
+        <div className="flex items-center justify-between p-3 font-medium text-foreground">
           <div className="flex items-center gap-3">
             <Checkbox
               checked={selectAllState}
@@ -381,7 +381,7 @@ export function DataSourceList({
         return (
           <Fragment key={item.id}>
             <div
-              className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60 hover:dark:bg-muted/10"
+              className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60"
               onClick={() => item.onClick?.()}
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -399,7 +399,7 @@ export function DataSourceList({
                 )}
 
                 {item.icon && <Icon size="sm" visual={item.icon} />}
-                <div className="truncate text-sm text-foreground dark:text-white">
+                <div className="truncate text-sm text-foreground">
                   {item.title}
                 </div>
               </div>

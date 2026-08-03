@@ -1,3 +1,7 @@
+import {
+  BuilderEditorGateMessage,
+  BuilderEditorLoadErrorMessage,
+} from "@app/components/shared/BuilderEditorGateMessage";
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
@@ -10,13 +14,13 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderSuggestionsPanel } from "@app/components/skill_builder/SkillBuilderSuggestionsPanel";
-import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { SkillVersionHistoryPicker } from "@app/components/skill_builder/SkillBuilderVersionComparisonBanner";
 import { SkillBuilderVersionComparisonFooter } from "@app/components/skill_builder/SkillBuilderVersionComparisonFooter";
 import {
   SkillVersionComparisonProvider,
   useSkillVersionComparisonContext,
 } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { SkillSpaceRestrictionsProvider } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,
@@ -26,21 +30,24 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
-import { getSkillIcon } from "@app/lib/skill";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
-import { useSkillEditors } from "@app/lib/swr/skill_editors";
+import {
+  useSkillEditors,
+  useUpdateSkillEditors,
+} from "@app/lib/swr/skill_editors";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { WorkspaceType } from "@app/types/user";
 import {
   BarFooter,
   BarHeader,
   Button,
   ContentMessage,
   cn,
-  InformationCircleIcon,
+  InfoCircle,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -52,23 +59,23 @@ import { useForm } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;
-  extendedSkill?: SkillType;
   onSaved: () => void;
 }
 
-export default function SkillBuilder({
-  skill,
-  extendedSkill,
-  onSaved,
-}: SkillBuilderProps) {
+export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
+  const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
   const isMobile = useIsMobile();
 
-  const { editors } = useSkillEditors({
+  const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
+    useSkillEditors({
+      owner,
+      skillId: skill?.sId ?? null,
+    });
+  const updateSkillEditors = useUpdateSkillEditors({
     owner,
     skillId: skill?.sId ?? null,
   });
@@ -80,9 +87,7 @@ export default function SkillBuilder({
     limit: 30,
   });
 
-  const hasSelfImprovingSkills =
-    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
-  const enableSkillReferences = hasFeature("nested_skills");
+  const hasSelfImprovingSkills = useIsSelfImprovementAvailable();
 
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
@@ -93,6 +98,10 @@ export default function SkillBuilder({
 
   const hasPendingSuggestions = suggestions.length > 0;
 
+  const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
+  const isEditorLocked =
+    !!skill && (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
+
   const defaultValues = useMemo(() => {
     if (skill) {
       return transformSkillTypeToFormData(skill);
@@ -100,11 +109,11 @@ export default function SkillBuilder({
 
     return getDefaultSkillFormData({
       user,
-      extendedSkillId: extendedSkill?.sId ?? null,
     });
-  }, [skill, user, extendedSkill]);
+  }, [skill, user]);
 
   const form = useForm<SkillBuilderFormData>({
+    disabled: isEditorLocked,
     resolver: zodResolver(skillBuilderFormSchema),
     defaultValues,
     resetOptions: {
@@ -126,9 +135,29 @@ export default function SkillBuilder({
   const isCreatingNew = !skill;
   const { isDirty } = form.formState;
 
+  const isEditorGateVisible =
+    !!skill && !isEditorsLoading && !isEditorsError && !isCurrentUserEditor;
+
   useNavigationLock(isDirty && !isSaving);
 
+  const handleAddSelfAsEditor = async () => {
+    if (!skill || isAddingSelfAsEditor) {
+      return;
+    }
+
+    setIsAddingSelfAsEditor(true);
+    try {
+      await updateSkillEditors({ addEditorIds: [user.sId] });
+    } finally {
+      setIsAddingSelfAsEditor(false);
+    }
+  };
+
   const handleSubmit = async (data: SkillBuilderFormData) => {
+    if (isEditorLocked) {
+      return;
+    }
+
     setIsSaving(true);
 
     const result = await submitSkillBuilderForm({
@@ -156,6 +185,8 @@ export default function SkillBuilder({
       type: "success",
     });
 
+    await mutateEditors({ editors: data.editors }, { revalidate: false });
+
     onSaved();
 
     if (isCreatingNew && result.value.sId) {
@@ -177,6 +208,33 @@ export default function SkillBuilder({
   };
 
   const handleSave = () => {
+    if (isEditorLocked) {
+      if (isEditorsError) {
+        sendNotification({
+          title: "Unable to verify editor access",
+          description: "Retry loading editors before saving changes.",
+          type: "error",
+        });
+        return;
+      }
+
+      if (isEditorsLoading) {
+        sendNotification({
+          title: "Verifying editor access",
+          description: "Wait until skill editors finish loading before saving.",
+          type: "error",
+        });
+        return;
+      }
+
+      sendNotification({
+        title: "Cannot save skill",
+        description: "Only skill editors can save changes.",
+        type: "error",
+      });
+      return;
+    }
+
     void form.handleSubmit(handleSubmit)();
   };
 
@@ -206,22 +264,27 @@ export default function SkillBuilder({
 
       <ScrollArea className="flex-1">
         <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
-          {extendedSkill && (
-            <ContentMessage
-              title={`Built on ${extendedSkill.name}`}
-              variant="highlight"
-              icon={getSkillIcon(extendedSkill.icon)}
-              size="lg"
-            >
-              A customized version of {extendedSkill.name} with your own
-              guidelines and {enableSkillReferences ? "capabilities" : "tools"}.
-            </ContentMessage>
-          )}
+          {isEditorLocked && isEditorsError ? (
+            <BuilderEditorLoadErrorMessage
+              builderType="skill"
+              onRetry={() => {
+                void mutateEditors();
+              }}
+            />
+          ) : isEditorGateVisible ? (
+            <BuilderEditorGateMessage
+              builderType="skill"
+              isLoading={isAddingSelfAsEditor}
+              onAddSelfAsEditor={() => {
+                void handleAddSelfAsEditor();
+              }}
+            />
+          ) : null}
           {skill?.status === "suggested" && (
             <ContentMessage
               title="This is a generated skill suggestion"
               variant="primary"
-              icon={InformationCircleIcon}
+              icon={InfoCircle}
               size="lg"
             >
               This skill was automatically generated based on your workspace's
@@ -229,18 +292,19 @@ export default function SkillBuilder({
               specific needs before saving.
             </ContentMessage>
           )}
-          <SkillBuilderRequestedSpacesSection
-            initialRequestedSpaceIds={skill?.requestedSpaceIds}
-          />
           <SkillBuilderAgentFacingDescriptionSection />
           <SkillBuilderInstructionsSection />
-          {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
-          {!enableSkillReferences && (
-            <SkillBuilderToolsSection extendedSkill={extendedSkill} />
-          )}
+          <SkillBuilderRequestedSpacesSection />
+          <SkillBuilderFilesSection />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
+            isEditorGateVisible={isEditorGateVisible}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={() => {
+              void handleAddSelfAsEditor();
+            }}
+            owner={owner}
           />
         </div>
       </ScrollArea>
@@ -260,7 +324,7 @@ export default function SkillBuilder({
             variant="highlight"
             label={isSaving ? "Saving..." : "Save"}
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || isEditorLocked}
           />
         }
       />
@@ -271,51 +335,66 @@ export default function SkillBuilder({
     <SkillBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
         <SkillVersionComparisonProvider>
-          <div
-            className={cn(
-              "flex h-dvh flex-row",
-              "bg-background text-foreground",
-              "dark:bg-background-night dark:text-foreground-night"
-            )}
+          <SkillSpaceRestrictionsProvider
+            initialRequestedSpaceIds={skill?.requestedSpaceIds}
           >
-            {showSuggestionsPanel ? (
-              <ResizablePanelGroup
-                id="skill-builder-layout"
-                direction="horizontal"
-                className="h-full w-full"
-              >
-                <ResizablePanel defaultSize={65} minSize={40}>
-                  <div className="h-full w-full overflow-y-auto">
-                    {leftPanel}
-                  </div>
-                </ResizablePanel>
-
-                <>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+            <div
+              className={cn(
+                "flex h-dvh flex-row",
+                "bg-background text-foreground"
+              )}
+            >
+              {showSuggestionsPanel ? (
+                <ResizablePanelGroup
+                  id="skill-builder-layout"
+                  direction="horizontal"
+                  className="h-full w-full"
+                >
+                  <ResizablePanel defaultSize={65} minSize={40}>
                     <div className="h-full w-full overflow-y-auto">
-                      <SkillBuilderSuggestionsPanel />
+                      {leftPanel}
                     </div>
                   </ResizablePanel>
-                </>
-              </ResizablePanelGroup>
-            ) : (
-              leftPanel
-            )}
-          </div>
+
+                  <>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+                      <div className="h-full w-full overflow-y-auto">
+                        <SkillBuilderSuggestionsPanel
+                          disabled={isEditorLocked}
+                        />
+                      </div>
+                    </ResizablePanel>
+                  </>
+                </ResizablePanelGroup>
+              ) : (
+                leftPanel
+              )}
+            </div>
+          </SkillSpaceRestrictionsProvider>
         </SkillVersionComparisonProvider>
       </FormProvider>
     </SkillBuilderFormContext.Provider>
   );
 }
 
+interface SkillBuilderSettingsOrComparisonFooterProps {
+  skill?: SkillType;
+  hasSelfImprovingSkills: boolean;
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
+  owner: WorkspaceType;
+}
+
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
-}: {
-  skill?: SkillType;
-  hasSelfImprovingSkills: boolean;
-}) {
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
+  owner,
+}: SkillBuilderSettingsOrComparisonFooterProps) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
   if (compareVersion) {
@@ -326,6 +405,10 @@ function SkillBuilderSettingsOrComparisonFooter({
     <SkillBuilderSettingsSection
       skill={skill}
       hasSelfImprovingSkills={hasSelfImprovingSkills}
+      isEditorGateVisible={isEditorGateVisible}
+      isAddingSelfAsEditor={isAddingSelfAsEditor}
+      onAddSelfAsEditor={onAddSelfAsEditor}
+      owner={owner}
     />
   );
 }

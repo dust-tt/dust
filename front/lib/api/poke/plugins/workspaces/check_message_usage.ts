@@ -10,6 +10,7 @@ export const checkMessageUsagePlugin = createPlugin({
     resourceTypes: ["workspaces"],
     readonly: true,
     args: {},
+    requiredRoles: ["support"],
   },
   execute: async (auth, workspace) => {
     if (!workspace) {

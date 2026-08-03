@@ -1,20 +1,20 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { getSidekickMetadataFromContext } from "@app/lib/api/actions/servers/helpers";
 
 export function getAgentConfigurationIdFromContext(
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContext
 ): string | null {
   return (
-    getSidekickMetadataFromContext(agentLoopContext)
+    getSidekickMetadataFromContext(toolContext)
       ?.sidekickTargetAgentConfigurationId ?? null
   );
 }
 
 export function getAgentConfigurationVersionFromContext(
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContext
 ): number | null {
   return (
-    getSidekickMetadataFromContext(agentLoopContext)
+    getSidekickMetadataFromContext(toolContext)
       ?.sidekickTargetAgentConfigurationVersion ?? null
   );
 }

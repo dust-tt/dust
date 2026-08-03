@@ -1,0 +1,17 @@
+{
+  "action": "frame.authorized_files_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "frame_file_id": "string",
+    "frame_file_name": "string",
+    "share_scope": "string",
+    "authorized_ref_count": "string",
+    "authorized_refs": "string",
+    "unverifiable_ref_count": "string",
+    "frame_content_hash": "string"
+  }
+}

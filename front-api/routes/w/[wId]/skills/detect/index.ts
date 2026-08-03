@@ -5,29 +5,34 @@ import {
 import { initGitHubRepoClient } from "@app/lib/api/skills/detection/github/github_api";
 import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detection/github/github_auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { DetectedSkillSummary } from "@app/lib/skill_detection";
+import type {
+  DetectedSkillSummary,
+  DetectSkillsResponseBody,
+} from "@app/lib/skill_detection";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
 import upload from "./upload";
-
-export type DetectSkillsResponseBody = {
-  skills: DetectedSkillSummary[];
-};
 
 // Mounted at /api/w/:wId/skills/detect.
 const app = workspaceApp();
 
 app.route("/upload", upload);
 
+/** @ignoreswagger */
 app.post(
   "/",
-  ensureIsBuilder(),
+  ensureHasWorkspacePermission(
+    "create",
+    "skill",
+    "Detecting skills is restricted.",
+    "app_auth_error"
+  ),
   async (ctx): HandlerResult<DetectSkillsResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
@@ -75,7 +80,7 @@ app.post(
           return apiError(ctx, {
             status_code: 404,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_github_repository_not_found",
               message: error.message,
             },
           });

@@ -15,6 +15,7 @@ export interface FetchAssistantTemplatesResponse {
 // Mounted at /api/templates.
 const app = createHono();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<FetchAssistantTemplatesResponse> => {
   const templates = await TemplateResource.listAll({
     visibility: "published",

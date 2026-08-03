@@ -9,7 +9,7 @@ import {
   Card,
   ContentMessage,
   DataTable,
-  InformationCircleIcon,
+  InfoCircle,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -63,12 +63,7 @@ interface AgentMessageProps {
 
 function AgentMessage({ title, children }: AgentMessageProps) {
   return (
-    <ContentMessage
-      title={title}
-      icon={InformationCircleIcon}
-      variant="warning"
-      size="sm"
-    >
+    <ContentMessage title={title} icon={InfoCircle} variant="warning" size="sm">
       {children}
     </ContentMessage>
   );
@@ -118,7 +113,7 @@ export function ChildAgentSection() {
               <div className="heading-sm truncate font-medium">
                 {row.original.name}
               </div>
-              <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <div className="truncate text-xs text-muted-foreground">
                 {row.original.description || "No description available"}
               </div>
             </div>
@@ -193,7 +188,7 @@ export function ChildAgentSection() {
                 />
                 <div className="text-md font-medium">{selectedAgent.name}</div>
               </div>
-              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground">
                 {selectedAgent.description || "No description available"}
               </div>
             </div>

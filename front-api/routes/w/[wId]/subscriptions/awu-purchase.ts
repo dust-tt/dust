@@ -1,4 +1,7 @@
-import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
+import type {
+  GetAwuPurchaseInfoResponseBody,
+  PostAwuPurchaseResponseBody,
+} from "@app/lib/credits/awu_purchase";
 import {
   getAwuPurchaseInfo,
   purchaseAwuCredits,
@@ -12,19 +15,14 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export type GetAwuPurchaseInfoResponseBody = AwuPurchaseInfo;
-
 const PostAwuPurchaseBody = z.object({
   amountCredits: z.number().int().positive(),
 });
 
-export type PostAwuPurchaseResponseBody = {
-  amountCredits: number;
-};
-
 // Mounted at /api/w/:wId/subscriptions/awu-purchase.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),
@@ -46,7 +44,7 @@ app.get(
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: "Failed to get AWU purchase info.",
+          message: "Failed to get credit purchase info.",
         },
       });
     }
@@ -73,7 +71,7 @@ app.post(
             api_error: {
               type: "invalid_request_error",
               message:
-                "AWU credit purchases are only available for Metronome-billed workspaces.",
+                "Credit purchases are not available for this workspace. Please contact support.",
             },
           });
         case "legacy_plan":
@@ -82,7 +80,7 @@ app.post(
             api_error: {
               type: "invalid_request_error",
               message:
-                "AWU credit purchases are not available for legacy plan workspaces.",
+                "Credit purchases are not available for your current plan. Please contact support.",
             },
           });
         case "enterprise_plan":
@@ -91,7 +89,7 @@ app.post(
             api_error: {
               type: "invalid_request_error",
               message:
-                "AWU credit purchases are not available for Enterprise workspaces. Please contact your Dust sales representative.",
+                "Credit purchases are not available for Enterprise workspaces. Please contact your Dust sales representative.",
             },
           });
         case "no_stripe_customer":
@@ -109,7 +107,7 @@ app.post(
             api_error: {
               type: "invalid_request_error",
               message:
-                "A pending AWU credit purchase already exists for this workspace. Please wait for it to complete.",
+                "A pending credit purchase already exists for this workspace. Please wait for it to complete.",
             },
           });
         case "invalid_amount":

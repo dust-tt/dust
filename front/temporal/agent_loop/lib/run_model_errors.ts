@@ -3,7 +3,7 @@ import { ApplicationFailure } from "@temporalio/common";
 
 const RUN_MODEL_LLM_ERROR_TYPE_SEPARATOR = ":";
 
-export const RUN_MODEL_LLM_ERROR_TYPE_PREFIX = "RunModelLLMError";
+const RUN_MODEL_LLM_ERROR_TYPE_PREFIX = "RunModelLLMError";
 
 const RUN_MODEL_LLM_UNRESPONSIVE_ERROR_TYPES = new Set<LLMErrorType>([
   "llm_timeout_error",

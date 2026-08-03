@@ -2,7 +2,6 @@ import {
   softDeleteAgentMessage,
   softDeleteUserMessageAndReplies,
 } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
@@ -41,6 +40,94 @@ const ParamsSchema = z.object({
 // Mounted under /api/w/:wId/assistant/conversations/:cId/messages/:mId.
 const app = workspaceApp();
 
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}:
+ *   get:
+ *     summary: Get a message
+ *     description: Retrieve a specific message by its ID within a conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   oneOf:
+ *                     - $ref: '#/components/schemas/PrivateUserMessage'
+ *                     - $ref: '#/components/schemas/PrivateAgentMessage'
+ *                     - $ref: '#/components/schemas/PrivateContentFragment'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Message or conversation not found
+ *   delete:
+ *     summary: Delete a message
+ *     description: Soft-delete a user or agent message from a conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully deleted message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Message or conversation not found
+ */
+
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId, mId } = ctx.req.valid("param");
@@ -73,7 +160,8 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     auth,
     conversation,
     [messageRes.value],
-    viewType
+    viewType,
+    null
   );
 
   if (renderedMessages.isErr()) {
@@ -102,8 +190,8 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId, mId } = ctx.req.valid("param");
 
-  const conversation = await ConversationResource.fetchById(auth, cId);
-  if (!conversation) {
+  const conversationResource = await ConversationResource.fetchById(auth, cId);
+  if (!conversationResource) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {
@@ -113,7 +201,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const messageRes = await conversation.getMessageById(auth, mId);
+  const messageRes = await conversationResource.getMessageById(auth, mId);
   if (messageRes.isErr()) {
     return apiError(ctx, {
       status_code: 404,
@@ -125,8 +213,6 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const message = messageRes.value;
-  const branchId = message.getBranchId() ?? null;
-
   if (!message.userMessage && !message.agentMessage) {
     return apiError(ctx, {
       status_code: 404,
@@ -137,28 +223,11 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const conversationRes = await getConversation(
-    auth,
-    conversation.sId,
-    false,
-    branchId
-  );
-
-  if (conversationRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Unable to get the conversation.",
-      },
-    });
-  }
-
-  const fullConversation = conversationRes.value;
+  const conversation = conversationResource.toJSON();
 
   const renderRes = await batchRenderMessages(
     auth,
-    conversation,
+    conversationResource,
     [message],
     "full"
   );
@@ -177,7 +246,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   if (isUserMessageType(renderedMessage)) {
     const deleteResult = await softDeleteUserMessageAndReplies(auth, {
       message: renderedMessage,
-      conversation: fullConversation,
+      conversationResource,
     });
     if (deleteResult.isErr()) {
       return apiError(ctx, {
@@ -191,7 +260,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   } else if (isAgentMessageType(renderedMessage)) {
     const deleteResult = await softDeleteAgentMessage(auth, {
       message: renderedMessage,
-      conversation: fullConversation,
+      conversation,
     });
     if (deleteResult.isErr()) {
       return apiError(ctx, {

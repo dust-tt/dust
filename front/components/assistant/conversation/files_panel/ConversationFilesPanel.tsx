@@ -1,23 +1,20 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { ConversationFileExplorer } from "@app/components/assistant/conversation/files_panel/ConversationFileExplorer";
 import { FilesTab } from "@app/components/assistant/conversation/files_panel/FilesTab";
 import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
 import { SandboxTab } from "@app/components/assistant/conversation/files_panel/SandboxTab";
 import type { ConversationAttachmentItem } from "@app/components/assistant/conversation/files_panel/types";
 import { conversationAttachmentToRow } from "@app/components/assistant/conversation/files_panel/utils";
-import {
-  FilePreviewSheet,
-  type MinimalFileForPreview,
-} from "@app/components/spaces/FilePreviewSheet";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { downloadFile } from "@app/lib/swr/files";
+import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isInteractiveContentType } from "@app/types/files";
+import { isInteractiveContentType, opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -25,7 +22,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -41,10 +38,7 @@ export function ConversationFilesPanel({
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
 
   const [activeTab, setActiveTab] = useState("files");
-  const [previewFile, setPreviewFile] = useState<MinimalFileForPreview | null>(
-    null
-  );
-  const [showPreviewSheet, setShowPreviewSheet] = useState(false);
+  const { openFilePreview } = useFilePreviewContext();
   const isDownloadingRef = useRef(false);
   const blobUrlRef = useRef<string | null>(null);
   const { openPanel, closePanel } = useConversationSidePanelContext();
@@ -66,27 +60,43 @@ export function ConversationFilesPanel({
   const openFile = useCallback(
     ({
       fileId,
+      filePath,
       title,
       contentType,
     }: {
       fileId: string;
+      filePath?: string | null;
       title: string;
       contentType: string;
     }) => {
       if (isInteractiveContentType(contentType)) {
         openPanel({ type: "interactive_content", fileId });
+      } else if (opensInSidePanel(contentType) && filePath) {
+        // Some formats (e.g. presentations) open in the resizable right panel
+        // like frames, rather than the cramped file preview modal. Preview
+        // relies on the path-based conversion route, so a file path is required.
+        openPanel({ type: "file_preview", filePath });
       } else {
-        setPreviewFile({ sId: fileId, fileName: title, contentType });
-        setShowPreviewSheet(true);
+        openFilePreview({
+          fileId,
+          filePath: filePath ?? undefined,
+          title,
+          contentType,
+        });
       }
     },
-    [openPanel]
+    [openPanel, openFilePreview]
   );
 
   const handleAttachmentClick = useCallback(
     (item: ConversationAttachmentItem) => {
       if (isFileAttachmentType(item)) {
-        openFile(item);
+        openFile({
+          fileId: item.fileId,
+          filePath: item.path,
+          title: item.title,
+          contentType: item.contentType,
+        });
       }
     },
     [openFile]
@@ -164,36 +174,29 @@ export function ConversationFilesPanel({
   if (!hasSandbox) {
     return (
       <>
-        <div className="flex h-full flex-col">
+        <div className="flex h-panel flex-col">
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              <span className="text-sm font-semibold text-foreground">
                 Working Files
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={closePanel}
-                icon={XMarkIcon}
+                icon={XClose}
               />
             </div>
           </AppLayoutTitle>
           {filesContent}
         </div>
-
-        <FilePreviewSheet
-          owner={owner}
-          file={previewFile}
-          isOpen={showPreviewSheet}
-          onOpenChange={setShowPreviewSheet}
-        />
       </>
     );
   }
 
   return (
     <>
-      <div className="flex h-full flex-col">
+      <div className="flex h-panel flex-col">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
@@ -211,7 +214,7 @@ export function ConversationFilesPanel({
                   variant="ghost"
                   size="sm"
                   onClick={closePanel}
-                  icon={XMarkIcon}
+                  icon={XClose}
                 />
               </div>
             </div>
@@ -229,13 +232,6 @@ export function ConversationFilesPanel({
           </TabsContent>
         </Tabs>
       </div>
-
-      <FilePreviewSheet
-        owner={owner}
-        file={previewFile}
-        isOpen={showPreviewSheet}
-        onOpenChange={setShowPreviewSheet}
-      />
     </>
   );
 }

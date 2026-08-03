@@ -3,9 +3,8 @@ import data from "@emoji-mart/data";
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
-import { PaintIcon } from "@sparkle/icons";
+import { Paint } from "@sparkle/icons";
 import { ActionIcons } from "@sparkle/icons";
-import { EmotionLaughIcon } from "@sparkle/icons/app";
 
 import {
   Button,
@@ -15,10 +14,25 @@ import {
 } from "../components";
 import { ColorPicker, IconPicker } from "../components/Picker";
 import { EmojiPicker } from "../index_with_tw_base";
+import { FaceSmile } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Components/Picker",
+  title: "Forms & Inputs/Picker",
   component: ColorPicker,
+  parameters: {
+    docs: {
+      description: {
+        component: `A family of grid-based selection pickers for choosing a visual token. **ColorPicker** presents a palette of **colors** with a **selectedColor** and **onColorSelect**; **IconPicker** lists named **icons** with **selectedIcon** and **onIconSelect**; **EmojiPicker** wraps emoji-mart for emoji selection via **onEmojiSelect**.
+
+**When to use**
+- To let users pick an accent colour, icon, or emoji when customising an entity (agent avatar, folder, label).
+
+**Guidelines**
+- These pickers render the grid only; mount them inside a **PopoverRoot** / **PopoverContent** triggered by a **Button** as shown in the stories.
+- Keep the current value in state and close the popover in the select callback for a single-pick interaction.`,
+      },
+    },
+  },
 } satisfies Meta<typeof ColorPicker>;
 
 export default meta;
@@ -103,21 +117,21 @@ const ColorPickerExample = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="s-mt-14 s-flex s-flex-col s-items-center s-gap-6">
-      <div className="s-w-full s-max-w-2xl">
-        <h3 className="s-mb-4 s-text-lg s-font-medium">Color Picker</h3>
+    <div className="mt-14 flex flex-col items-center gap-6">
+      <div className="w-full max-w-2xl">
+        <h3 className="mb-4 text-lg font-medium">Color Picker</h3>
         <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
               label="Select Color"
               variant="outline"
-              icon={PaintIcon}
+              icon={Paint}
               size="sm"
               className={selectedColor}
               isSelect
             />
           </PopoverTrigger>
-          <PopoverContent className="s-w-fit">
+          <PopoverContent className="w-fit">
             <ColorPicker
               colors={colors}
               selectedColor={selectedColor}
@@ -139,9 +153,9 @@ const IconPickerExample = () => {
   const SelectedIcon = ActionIcons[selectedIcon as keyof typeof ActionIcons];
 
   return (
-    <div className="s-mt-14 s-flex s-flex-col s-items-center s-gap-6">
-      <div className="s-w-full s-max-w-2xl">
-        <h3 className="s-mb-4 s-text-lg s-font-medium">Icon Picker</h3>
+    <div className="mt-14 flex flex-col items-center gap-6">
+      <div className="w-full max-w-2xl">
+        <h3 className="mb-4 text-lg font-medium">Icon Picker</h3>
         <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -152,7 +166,7 @@ const IconPickerExample = () => {
               isSelect
             />
           </PopoverTrigger>
-          <PopoverContent className="s-w-fit s-p-0">
+          <PopoverContent className="w-fit p-0">
             <IconPicker
               icons={ActionIcons}
               selectedIcon={selectedIcon}
@@ -172,15 +186,15 @@ const EmojiPickerExample = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="s-mt-14 s-flex s-flex-col s-items-center s-gap-6">
-      <div className="s-w-full s-max-w-2xl">
-        <h3 className="s-mb-4 s-text-lg s-font-medium">Emoji Picker</h3>
+    <div className="mt-14 flex flex-col items-center gap-6">
+      <div className="w-full max-w-2xl">
+        <h3 className="mb-4 text-lg font-medium">Emoji Picker</h3>
         <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
               label="Pick an Emoji"
               variant="outline"
-              icon={EmotionLaughIcon}
+              icon={FaceSmile}
               size="sm"
               isSelect
             />

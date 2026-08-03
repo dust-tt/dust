@@ -7,22 +7,18 @@ import {
   readWorkspacePolicy,
   writeWorkspacePolicy,
 } from "@app/lib/api/sandbox/egress_policy";
-import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
+import type {
+  GetWorkspaceEgressPolicyResponseBody,
+  PutWorkspaceEgressPolicyResponseBody,
+} from "@app/types/api/sandbox/egress_policy";
 import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
-export type GetWorkspaceEgressPolicyResponseBody = {
-  policy: EgressPolicy;
-};
-
-export type PutWorkspaceEgressPolicyResponseBody = {
-  policy: EgressPolicy;
-};
-
 // Mounted at /api/w/:wId/sandbox/egress-policy.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetWorkspaceEgressPolicyResponseBody> => {

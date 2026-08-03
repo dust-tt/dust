@@ -28,7 +28,7 @@ import {
   SheetTitle,
   SheetTrigger,
   Spinner,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useState } from "react";
@@ -264,7 +264,7 @@ export default function UserProvisioning({
   } = useDirectorySyncStatus({ owner, plan });
 
   return (
-    <WorkspaceSection title="User provisioning" icon={UserGroupIcon}>
+    <WorkspaceSection title="User provisioning" icon={Users01}>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <DirectorySyncStatus
@@ -322,7 +322,7 @@ function WorkspaceGroupButtonWithModal({
       }}
     >
       <SheetTrigger asChild>
-        <Button icon={UserGroupIcon} label="View groups" />
+        <Button icon={Users01} label="View groups" />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>

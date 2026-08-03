@@ -1,23 +1,24 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const CONFLUENCE_TOOL_NAME = "confluence" as const;
 
-export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
-  get_current_user: {
+export const CONFLUENCE_TOOLS_METADATA = [
+  {
+    name: "get_current_user",
     description:
-      "Get information about the currently authenticated Confluence user including account ID, display name, and email.",
+      "Get the currently authenticated Confluence user: who you are, your own account ID, display name, and email.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Getting current Confluence user",
       done: "Get current Confluence user",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_spaces: {
+  {
+    name: "get_spaces",
     description:
       "Get a list of Confluence spaces. Returns a list of spaces with their IDs, keys, names, types, and statuses.",
     schema: {},
@@ -26,10 +27,13 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Confluence spaces",
       done: "List Confluence spaces",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_pages: {
+  {
+    name: "get_pages",
     description:
-      "Search for Confluence pages using CQL (Confluence Query Language). Only returns page objects. " +
+      "Search Confluence to find and locate pages across spaces by keyword, title, label, or space, using CQL (Confluence Query Language). Use this to find a page when you only know its title or topic and not its ID. Only returns page objects. " +
       "Text matching operators: '~' contains, '!~' not contains, '=' exact match. " +
       "Common fields: title, text, space (use space key, not name), creator, label. " +
       "Examples: 'type=page AND space=DEV', 'type=page AND title~\"meeting\"', 'type=page AND label=important'",
@@ -53,10 +57,13 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Searching Confluence pages",
       done: "Search Confluence pages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_page: {
+  {
+    name: "get_page",
     description:
-      "Get a single Confluence page by its ID. Returns the page metadata and optionally the page body content.",
+      "Retrieve and read a single Confluence page by its ID, returning its metadata and body content. Use this when you already know the page ID.",
     schema: {
       pageId: z.string().describe("The ID of the page to retrieve"),
       includeBody: z
@@ -72,10 +79,13 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Confluence page",
       done: "Retrieve Confluence page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_page: {
+  {
+    name: "create_page",
     description:
-      "Create a new Confluence page in a specified space with optional content and parent page.",
+      "Create a new Confluence page in a space, optionally nested under a parent page.",
     schema: {
       spaceId: z
         .string()
@@ -107,8 +117,11 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Confluence page",
       done: "Create Confluence page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_page: {
+  {
+    name: "update_page",
     description:
       "Update an existing Confluence page. You can update the title, content, status, space, or parent. The version number must be incremented from the current version.",
     schema: {
@@ -156,8 +169,10 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Confluence page",
       done: "Update Confluence page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const CONFLUENCE_SERVER = {
   serverInfo: {
@@ -170,15 +185,6 @@ export const CONFLUENCE_SERVER = {
     },
     icon: "ConfluenceLogo",
     documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
-    instructions: null,
   },
-  tools: Object.values(CONFLUENCE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(CONFLUENCE_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: CONFLUENCE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

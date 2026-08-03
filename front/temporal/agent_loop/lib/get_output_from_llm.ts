@@ -1,7 +1,14 @@
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
+import {
+  type CacheDiagnosticsKey,
+  getPreviousMessageId,
+  setPreviousMessageId,
+} from "@app/lib/api/llm/cache_diagnostics";
 import type { LLM } from "@app/lib/api/llm/llm";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type {
   GetOutputRequestParams,
@@ -233,7 +240,9 @@ export async function getOutputFromLLMStream(
   {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools,
+    toolSearchEnabled,
+    disableToolUse,
+    cacheDiagnosticsEnabled,
     specifications,
     flushParserTokens,
     contentParser,
@@ -267,15 +276,32 @@ export async function getOutputFromLLMStream(
     return makeLLMTimeoutResponse("activity");
   }
 
+  // Prompt-cache diagnostics: thread the previous step's response id so Anthropic
+  // can report why the cache prefix diverged. Keyed by conversation and agent in
+  // Redis so the chain survives across steps and user turns. `null` (no prior, or
+  // expired) is still a valid opt-in value. `undefined` keeps the feature off.
+  const cacheDiagnosticsKey: CacheDiagnosticsKey = {
+    conversationId: conversation.sId,
+    agentConfigurationId: agentConfiguration.sId,
+    providerId: model.providerId,
+  };
+
+  const previousMessageId = cacheDiagnosticsEnabled
+    ? await getPreviousMessageId(cacheDiagnosticsKey)
+    : undefined;
+
   const events = llm.stream(
     {
       conversation: modelConversationRes.value.modelConversation,
-      hasConditionalJITTools,
+      toolSearchEnabled,
+      disableToolUse,
       prompt,
       specifications,
+      previousMessageId,
     },
     {
-      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      agentConfigurationId: agentConfiguration.sId,
     }
   );
 
@@ -283,6 +309,7 @@ export async function getOutputFromLLMStream(
   const actions: Output["actions"] = [];
   let generation = "";
   let nativeChainOfThought = "";
+  let stopReason: string | undefined = undefined;
   const publishedToolCallStartKeys = new Set<string>();
 
   try {
@@ -437,13 +464,25 @@ export async function getOutputFromLLMStream(
           nativeChainOfThought += "\n\n";
           continue;
         }
+        case "provider_passthrough": {
+          // Opaque provider block stored in stream order so the producing
+          // provider can replay it verbatim.
+          contents.push({
+            type: "provider_passthrough",
+            value: {
+              provider: event.content.provider,
+              block: event.content.block,
+            },
+          });
+          continue;
+        }
         default:
           break;
       }
 
       if (event.type === "tool_call") {
         const {
-          content: { name, id, arguments: args },
+          content: { name, id, arguments: args, namespace },
           metadata: { thoughtSignature },
         } = event;
         actions.push({
@@ -459,6 +498,7 @@ export async function getOutputFromLLMStream(
             id,
             name,
             arguments: stringifiedArgs,
+            namespace,
             metadata: thoughtSignature ? { thoughtSignature } : undefined,
           },
         });
@@ -471,6 +511,55 @@ export async function getOutputFromLLMStream(
           metadata: event.metadata,
         });
         generation += event.content.text;
+      }
+
+      if (event.type === "interaction_id") {
+        if (cacheDiagnosticsEnabled) {
+          const { modelInteractionId, cacheMissReason } = event.content;
+
+          // Store this response id so the next step/turn can compare against it.
+          await setPreviousMessageId(cacheDiagnosticsKey, modelInteractionId);
+
+          if (cacheMissReason) {
+            logger.info(
+              {
+                ...logContext,
+                agentConfigurationId: agentConfiguration.sId,
+                modelInteractionId,
+                previousMessageId,
+                cacheMissReasonType: cacheMissReason.type,
+                cacheMissedInputTokens: cacheMissReason.cacheMissedInputTokens,
+              },
+              "[LLM stream] prompt cache miss"
+            );
+            const reasonTags = [
+              `model_id:${model.modelId}`,
+              `reason:${cacheMissReason.type}`,
+              `is_dust_like_agent:${isDustLikeAgent(agentConfiguration.sId)}`,
+            ];
+            // Count: how often each reason occurs.
+            getStatsDClient().increment(
+              "llm.cache_miss_reason.count",
+              1,
+              reasonTags
+            );
+            // Weighted by lost-cache tokens: which reason actually costs the most,
+            // not just which happens most. Only the `*_changed` reasons carry this
+            // (the inconclusive ones have no diverged prefix to measure).
+            if (cacheMissReason.cacheMissedInputTokens !== undefined) {
+              getStatsDClient().distribution(
+                "llm.cache_miss_reason.missed_input_tokens",
+                cacheMissReason.cacheMissedInputTokens,
+                reasonTags
+              );
+            }
+          }
+        }
+        continue;
+      }
+
+      if (event.type === "success") {
+        stopReason = event.stopReason;
       }
 
       if (event.type === "token_usage") {
@@ -522,5 +611,6 @@ export async function getOutputFromLLMStream(
     nativeChainOfThought,
     dustRunId: llm.getTraceId(),
     timeToFirstEvent,
+    stopReason,
   });
 }

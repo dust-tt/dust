@@ -24,21 +24,72 @@
 #   dhcd  - cd into environment worktree (changes dir in current shell)
 
 _dust_hive_services=(
-  sdk sparkle front core oauth connectors front-workers front-spa-poke front-spa-app viz
+  sdk sparkle front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
 )
 _dust_hive_warm_state_services=(
-  front front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
+  front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
 )
 # Avoid invoking the Bun CLI from completion; derive state from PID files plus one Docker scan.
 
-_dust_hive_current_env() {
-  # 1. Detect from cwd (inside a .hives/<name> worktree)
+_dust_hive_json_string() {
+  local file="${1:?usage: _dust_hive_json_string <file> <key>}"
+  local key="${2:?usage: _dust_hive_json_string <file> <key>}"
+
+  command sed -nE "s/^[[:space:]]*\"$key\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\\1/p" "$file" 2>/dev/null |
+    head -1
+}
+
+_dust_hive_path_is_at_or_inside() {
+  local parent="${1%/}"
+  local candidate="${2%/}"
+
+  [[ -n "$parent" ]] || return 1
+  [[ "$candidate" == "$parent" || "$candidate" == "$parent"/* ]]
+}
+
+_dust_hive_current_env_from_metadata() {
   local cwd="$PWD"
-  if [[ "$cwd" == */.hives/* ]]; then
-    local after="${cwd##*/.hives/}"
-    echo "${after%%/*}"
+  local env_dir env_name metadata repo_root worktree_path
+  local best_env="" best_len=0 path_len
+
+  [[ -d "$HOME/.dust-hive/envs" ]] || return
+
+  while IFS= read -r env_dir; do
+    env_name="${env_dir##*/}"
+    metadata="$env_dir/metadata.json"
+    [[ -f "$metadata" ]] || continue
+
+    worktree_path="$(_dust_hive_json_string "$metadata" "worktreePath")"
+    if [[ -z "$worktree_path" ]]; then
+      repo_root="$(_dust_hive_json_string "$metadata" "repoRoot")"
+      [[ -n "$repo_root" ]] || continue
+      worktree_path="$repo_root/.hives/$env_name"
+      if [[ ! -d "$worktree_path" && -d "$HOME/dust-hive/$env_name" ]]; then
+        worktree_path="$HOME/dust-hive/$env_name"
+      fi
+    fi
+
+    if _dust_hive_path_is_at_or_inside "$worktree_path" "$cwd"; then
+      path_len=${#worktree_path}
+      if (( path_len > best_len )); then
+        best_env="$env_name"
+        best_len=$path_len
+      fi
+    fi
+  done < <(command find "$HOME/.dust-hive/envs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+
+  [[ -n "$best_env" ]] && echo "$best_env"
+}
+
+_dust_hive_current_env() {
+  # 1. Detect from cwd using registered environment metadata
+  local current
+  current="$(_dust_hive_current_env_from_metadata)"
+  if [[ -n "$current" ]]; then
+    echo "$current"
     return
   fi
+
   # 2. Fall back to last-active env from activity.json
   local activity=~/.dust-hive/activity.json
   if [[ -f "$activity" ]]; then
@@ -225,6 +276,7 @@ _dust-hive() {
     command)
       local -a commands=(
         'spawn:Create a new environment'
+        'adopt:Register an existing git worktree as an environment'
         'open:Open environment terminal session'
         'reload:Kill and reopen terminal session'
         'restart:Restart a single service'
@@ -235,6 +287,7 @@ _dust-hive() {
         'up:Start managed services (temporal + test postgres + test redis)'
         'down:Stop all envs, temporal, test postgres, test redis'
         'destroy:Remove environment'
+        'unregister:Remove Hive resources but keep worktree'
         'list:Show all environments'
         'status:Show service health'
         'logs:Show service logs'
@@ -248,6 +301,7 @@ _dust-hive() {
         'sync:Pull latest main, rebuild binaries, refresh deps'
         'temporal:Manage Temporal server'
         'seed-config:Extract user data from existing DB'
+        'env:Manage config.env vars (list|get|set|unset)'
         'feed:Run seed script for a scenario'
         'flag:Toggle a feature flag on the workspace'
         'help:Show help'
@@ -279,6 +333,19 @@ _dust-hive() {
             '--compact[Use compact layout]' \
             '-u[Use single unified logs tab]' \
             '--unified-logs[Use single unified logs tab]'
+          ;;
+        adopt)
+          _arguments \
+            '1::name:' \
+            '-n[Environment name]:name:' \
+            '--name[Environment name]:name:' \
+            '-p[Existing worktree path]:path:_files -/' \
+            '--path[Existing worktree path]:path:_files -/' \
+            '-b[Branch name to display]:branch:' \
+            '--branch-name[Branch name to display]:branch:' \
+            '--base-branch[Base branch to record]:branch:' \
+            '-W[Wait for cold services to finish their initial builds]' \
+            '--wait[Wait for cold services to finish their initial builds]'
           ;;
         open|o)
           _arguments \
@@ -340,6 +407,12 @@ _dust-hive() {
             '-k[Keep the git branch]' \
             '--keep-branch[Keep the git branch]'
           ;;
+        unregister)
+          _arguments \
+            '1::name:_dust_hive_envs' \
+            '-f[Force cleanup of blocked service ports]' \
+            '--force[Force cleanup of blocked service ports]'
+          ;;
         list|ls|l)
           ;;
         status|st)
@@ -389,6 +462,12 @@ _dust-hive() {
           ;;
         seed-config)
           _arguments '1:postgres-uri:'
+          ;;
+        env)
+          _arguments \
+            '1::subcommand:(list get set unset)' \
+            '2::key:' \
+            '3::value:'
           ;;
         feed)
           _arguments \
@@ -460,7 +539,7 @@ function dhb {
 
   base="$(_dust_hive_base_port "$query")" || return
   port=$((base + offset))
-  url="http://localhost:${port}"
+  url="http://localhost:${port}/w/DevWkSpace/"
 
   echo "Opening $url"
   open "$url"
@@ -532,7 +611,7 @@ function _dhd  { local words=("dust-hive" "destroy" "${(@)words[2,-1]}"); local 
 function _dhw  { local words=("dust-hive" "warm" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
 function _dhc  { local words=("dust-hive" "cool" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
 function _dhx  { local words=("dust-hive" "spawn" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
-function _dhb  { _arguments '1::worktree:_dust_hive_envs'; }
+function _dhb  { _arguments '1::worktree:_dust_hive_warm_envs'; }
 function _dhdb_database {
   local cur="${words[CURRENT]}"
   local use_unmatched=0

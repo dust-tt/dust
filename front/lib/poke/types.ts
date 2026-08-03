@@ -5,7 +5,7 @@ export const KILL_SWITCH_TYPES = [
   "global_blacklist_openai",
   "global_disable_firecrawl",
   "global_dust_agents_fallback",
-  "global_disable_metronome_billing",
+  "pause_upsert_queue",
 ] as const;
 export type KillSwitchType = (typeof KILL_SWITCH_TYPES)[number];
 export function isKillSwitchType(type: string): type is KillSwitchType {

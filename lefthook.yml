@@ -13,7 +13,7 @@
 #   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
 #
 # Skip only linting/type-checking (front and connectors):
-#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-lint-swagger-annotations,front-typecheck,front-circular,front-docs-check,biome,connectors-typecheck git commit -m "message"
+#   LEFTHOOK_EXCLUDE=front-typecheck,front-circular,front-api-docs-check,biome,connectors-typecheck git commit -m "message"
 #
 # Skip only a project:
 #   LEFTHOOK_EXCLUDE=front git commit -m "message"
@@ -31,7 +31,7 @@ output:
   #  - execution      # Print any execution logs
   #  - execution_out  # Print execution output
   #  - execution_info # Print `EXECUTE > ...` logging
-  - skips          # Print "skip" (i.e. no files matched)
+  #  - skips          # Print "skip" (i.e. no files matched)
 
 pre-commit:
   # Run tasks in parallel for better performance
@@ -65,19 +65,20 @@ pre-commit:
       run: scripts/check-package-lock-sync.sh
       priority: 1
 
+    # Optional: actionlint for GitHub Actions workflow files (skip with LEFTHOOK_EXCLUDE=actionlint)
+    actionlint:
+      glob: ".github/{workflows,actions}/**/*.{yml,yaml}"
+      run: |
+        if command -v actionlint >/dev/null 2>&1; then
+          actionlint {staged_files}
+        else
+          echo "Warning: actionlint is not installed. Skipping GitHub Actions linting."
+          echo "Install with: brew install actionlint"
+          exit 0
+        fi
+      priority: 1
+
     # Front directory checks
-    front-lint-test-filenames:
-      tags: front
-      glob: "*.{js,jsx,ts,tsx}"
-      root: front/
-      run: npm run lint:test-filenames
-
-    front-lint-swagger-annotations:
-      tags: front
-      glob: "front/pages/api/v1/**/*.ts"
-      root: front/
-      run: npm run lint:swagger-annotations
-
     front-lint-audit-log-schemas:
       tags: front
       glob: "front/admin/audit_log_schemas/**/*.json"
@@ -90,10 +91,17 @@ pre-commit:
       root: front/
       run: npm run tsgo
 
-    front-docs-check:
-      tags: front
-      glob: "front/pages/api/v1/**/*"
-      root: front/
+    # Front-api directory checks
+    front-api-lint-swagger-annotations:
+      tags: front-api
+      glob: "front-api/routes/**/*.ts"
+      root: front-api/
+      run: npm run lint:swagger-annotations
+
+    front-api-docs-check:
+      tags: front-api
+      glob: "front-api/routes/**/*.ts"
+      root: front-api/
       run: npm run docs:check
 
     # Connectors directory checks
@@ -152,6 +160,20 @@ pre-commit:
         echo "Use the new phased migration system instead:"
         echo "  npm run -w connectors migration:generate:pre-deploy <description>"
         echo "  npm run -w connectors migration:generate:post-deploy <description>"
+        echo ""
+        echo "See: https://app.notion.com/p/dust-tt/Runbook-Deploy-Run-migrations-5669e328475d489ba16298a77f2aa45c?source=copy_link#36728599d94180898358cf59a8725740"
+        exit 1
+      priority: 1
+
+    no-legacy-db-migration-front:
+      glob: "front/migrations/db/*.sql"
+      run: |
+        echo ""
+        echo "ERROR: front/migrations/db/ is frozen. Do not add files here."
+        echo ""
+        echo "Use the new phased migration system instead:"
+        echo "  npm run -w front migration:generate:pre-deploy <description>"
+        echo "  npm run -w front migration:generate:post-deploy <description>"
         echo ""
         echo "See: https://app.notion.com/p/dust-tt/Runbook-Deploy-Run-migrations-5669e328475d489ba16298a77f2aa45c?source=copy_link#36728599d94180898358cf59a8725740"
         exit 1

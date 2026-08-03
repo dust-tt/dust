@@ -3,14 +3,11 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 type HandleErrorParams = {
-  action: AgentMCPActionResource;
-  agentConfiguration: AgentConfigurationType;
-  agentMessage: AgentMessageType;
+  action: AgentMCPActionResource | SandboxFunctionMCPActionResource;
   errorContent: CallToolResult["content"];
   status: ToolExecutionStatus;
   executionDurationMs: number;
@@ -21,19 +18,15 @@ type HandleErrorParams = {
  */
 export async function handleMCPActionError(
   auth: Authenticator,
-  {
-    action,
-    agentConfiguration,
-    agentMessage,
-    errorContent,
-    status,
-    executionDurationMs,
-  }: HandleErrorParams
+  { action, errorContent, status, executionDurationMs }: HandleErrorParams
 ): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  await action.createOutputItems(
+  const outputRes = await action.createOutputItems(
     auth,
     errorContent.map((item) => ({ content: item }))
   );
+  if (outputRes.isErr()) {
+    throw outputRes.error;
+  }
 
   // If the tool is not already in a final state, we set it to errored (could be denied).
   if (!isToolExecutionStatusFinal(status)) {
@@ -44,12 +37,7 @@ export async function handleMCPActionError(
   return {
     type: "tool_success",
     created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: errorContent,
-      generatedFiles: [],
-    },
+    output: errorContent,
+    generatedFiles: [],
   };
 }

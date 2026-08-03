@@ -8,7 +8,7 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ChevronDownIcon,
+  ChevronDown,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -20,10 +20,10 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  ListSelectIcon,
+  ListSelect,
   SliderToggle,
   TextArea,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
@@ -141,7 +141,7 @@ export function CreateWebhookSourceFormContent({
             return (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="subscribedEvents">Events to watch</Label>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <p className="text-sm text-muted-foreground">
                   Choose which events will activate this trigger
                 </p>
                 <div>
@@ -150,14 +150,14 @@ export function CreateWebhookSourceFormContent({
                       <Button
                         label={dropDownLabel}
                         variant="outline"
-                        icon={ChevronDownIcon}
+                        icon={ChevronDown}
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-72" align="start">
                       <div className="flex gap-2 p-2">
                         <Button
                           label="Select all"
-                          icon={ListSelectIcon}
+                          icon={ListSelect}
                           variant="primary"
                           size="xs"
                           onClick={handleSelectAll}
@@ -165,7 +165,7 @@ export function CreateWebhookSourceFormContent({
                         />
                         <Button
                           label="Unselect all"
-                          icon={XMarkIcon}
+                          icon={XClose}
                           variant="primary"
                           size="xs"
                           onClick={handleUnselectAll}
@@ -205,7 +205,7 @@ export function CreateWebhookSourceFormContent({
                   </DropdownMenu>
                 </div>
                 {fieldState.error && (
-                  <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
+                  <div className="flex items-center gap-1 text-xs text-warning">
                     {fieldState.error.message}
                   </div>
                 )}
@@ -231,7 +231,7 @@ export function CreateWebhookSourceFormContent({
             <CollapsibleContent>
               <div className="flex flex-col space-y-2">
                 <Label>Secret</Label>
-                <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <p className="mt-1 text-sm text-muted-foreground">
                   <i>
                     Note: You will be able to see and copy this secret for the
                     first 10 minutes after creating the webhook.
@@ -303,8 +303,8 @@ export function CreateWebhookSourceFormContent({
                             label={field.value}
                             variant="outline"
                             // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-                            className="!mt-0"
-                            icon={ChevronDownIcon}
+                            className="mt-0!"
+                            icon={ChevronDown}
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>

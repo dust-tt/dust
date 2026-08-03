@@ -31,7 +31,7 @@ describe.skipIf(!runManual)("GCS downscoped token CAB", () => {
     bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
     const result = await mintDownscopedGcsToken({
       bucket,
-      prefixes: [PREFIX],
+      prefixes: [{ prefix: PREFIX, readOnly: false }],
     });
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -140,29 +140,83 @@ describe("buildAccessBoundaryRules", () => {
 
   it("emits one bucket-get rule + 2 rules per prefix (single prefix)", () => {
     const rules = buildAccessBoundaryRules("bucket-x", [
-      "w/ws1/conversations/c1/files",
+      { prefix: "w/ws1/conversations/c1/files", readOnly: false },
     ]);
     expect(rules).toHaveLength(3);
   });
 
   it("scales linearly with the number of prefixes", () => {
     const rules = buildAccessBoundaryRules("bucket-x", [
-      "w/ws1/conversations/c1/files",
-      "w/ws1/pods/spc1/files",
+      { prefix: "w/ws1/conversations/c1/files", readOnly: false },
+      { prefix: "w/ws1/pods/spc1/files", readOnly: false },
     ]);
     expect(rules).toHaveLength(5);
   });
 
   it("keeps the unconditional bucket-get rule first", () => {
     const rules = buildAccessBoundaryRules("bucket-x", [
-      "w/ws1/conversations/c1/files",
+      { prefix: "w/ws1/conversations/c1/files", readOnly: false },
     ]);
     expect(rules[0].availablePermissions[0]).toMatch(/sandbox_storage_mount/);
     expect("availabilityCondition" in rules[0]).toBe(false);
   });
 
+  it("grants read/write (objectUser) for a writable prefix", () => {
+    const rules = buildAccessBoundaryRules("bucket-x", [
+      { prefix: "w/ws1/pods/spc1/files", readOnly: false },
+    ]);
+    expect(
+      rules.some((r) => r.availablePermissions[0].includes("objectUser"))
+    ).toBe(true);
+    expect(
+      rules.some((r) => r.availablePermissions[0].includes("objectViewer"))
+    ).toBe(false);
+  });
+
+  it("grants read-only (objectViewer) for a read-only prefix", () => {
+    const rules = buildAccessBoundaryRules("bucket-x", [
+      { prefix: "w/ws1/pods/spc1/sandbox-functions", readOnly: true },
+    ]);
+    expect(
+      rules.some((r) => r.availablePermissions[0].includes("objectViewer"))
+    ).toBe(true);
+    expect(
+      rules.some((r) => r.availablePermissions[0].includes("objectUser"))
+    ).toBe(false);
+  });
+
+  it("emits 7 rules for the full pod sandbox prefix set (files, functions, state)", () => {
+    // Pod sandboxes mount three prefixes; the CAB ceiling is 10 rules, so
+    // this must stay at 7 (1 unconditional + 2 per prefix).
+    const rules = buildAccessBoundaryRules("bucket-x", [
+      { prefix: "w/ws1/pods/spc1/files", readOnly: false },
+      { prefix: "w/ws1/pods/spc1/sandbox-functions", readOnly: true },
+      { prefix: "w/ws1/pods/spc1/state", readOnly: false },
+    ]);
+    expect(rules).toHaveLength(7);
+  });
+
+  it("grants read/write on the pod state prefix", () => {
+    const rules = buildAccessBoundaryRules("bucket-x", [
+      { prefix: "w/ws1/pods/spc1/state", readOnly: false },
+    ]);
+
+    const objectRule = rules.find((r) =>
+      r.availablePermissions[0].includes("objectUser")
+    );
+    expect(objectRule).toBeDefined();
+    expect(
+      objectRule &&
+        "availabilityCondition" in objectRule &&
+        objectRule.availabilityCondition.expression
+    ).toContain("projects/_/buckets/bucket-x/objects/w/ws1/pods/spc1/state/");
+  });
+
   it("references every prefix in list and resource.name conditions", () => {
-    const prefixes = ["w/ws1/conversations/c1/files", "w/ws1/pods/spc1/files"];
+    const prefixes = [
+      { prefix: "w/ws1/conversations/c1/files", readOnly: false },
+      { prefix: "w/ws1/pods/spc1/files", readOnly: false },
+    ];
     const rules = buildAccessBoundaryRules("bucket-x", prefixes);
 
     const listRules = rules.filter((r) =>
@@ -174,7 +228,7 @@ describe("buildAccessBoundaryRules", () => {
     expect(listRules).toHaveLength(2);
     expect(objectRules).toHaveLength(2);
 
-    for (const prefix of prefixes) {
+    for (const { prefix } of prefixes) {
       expect(
         listRules.some(
           (r) =>

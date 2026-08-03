@@ -1,5 +1,9 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
-import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import {
+  getWorkspaceLimitForSubmitError,
+  ReachedLimitPopup,
+} from "@app/components/app/ReachedLimitPopup";
+import { ActivationNextSteps } from "@app/components/assistant/conversation/ActivationNextSteps";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -10,24 +14,39 @@ import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ConversationListItemType } from "@app/types/assistant/conversation";
+import type {
+  ConversationListItemType,
+  SubmitMessageError,
+} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   toMentionType,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { SubscriptionType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
-import { Button, Card, LightbulbIcon, Page, XMarkIcon } from "@dust-tt/sparkle";
+import { getWorkspaceDefaultAgentId, isAdmin } from "@app/types/user";
+import {
+  Button,
+  Card,
+  Lightbulb04,
+  Page,
+  ScrollArea,
+  XClose,
+} from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 interface ConversationContainerProps {
@@ -67,6 +86,11 @@ export function ConversationContainerVirtuoso({
 
   const sendNotification = useSendNotification();
 
+  const { hasFeature } = useFeatureFlags();
+  const workspaceDefaultAgentId = hasFeature("workspace_default_agent")
+    ? getWorkspaceDefaultAgentId(owner)
+    : null;
+
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
     options: { disabled: true },
@@ -79,18 +103,76 @@ export function ConversationContainerVirtuoso({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // A seatless member can never send a message. We surface this up-front rather
+  // than relying on the deferred background message-post failure, which lands
+  // after navigation and would otherwise leave behind an empty conversation.
+  const { userBlockedReason } = useWorkspaceUsageStatus({
+    owner,
+  });
+
+  // Maps a message-send failure to the right surface: blocking limits (no seat,
+  // credits, per-user cap, plan limit) open the dedicated popup, everything else
+  // is a transient error shown as a notification.
+  const handleSubmitMessageError = useCallback(
+    (error: SubmitMessageError) => {
+      const limitCode = getWorkspaceLimitForSubmitError(error.type);
+      if (limitCode) {
+        setLimitReachedCode(limitCode);
+      } else {
+        sendNotification({
+          title: error.title,
+          description: error.message,
+          type: "error",
+        });
+      }
+    },
+    [sendNotification]
+  );
+
   const handleConversationCreation = useCallback(
     async (
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
-      selectedMCPServerViewIds?: string[]
+      selectedMCPServerViewIds?: string[],
+      selectedSpaceIds?: string[],
+      modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
           code: "internal_error",
           name: "AlreadySubmitting",
           message: "Already submitting",
+        });
+      }
+
+      // Pre-check blocking conditions before creating the conversation.
+      // With deferMessage:true the message posts after navigation, so backend
+      // errors arrive too late and leave an empty conversation behind.
+      // userBlockedReason comes directly from isUserBlocked on the server —
+      // no blocking logic lives here.
+      if (userBlockedReason) {
+        let limitCode: WorkspaceLimit;
+        switch (userBlockedReason) {
+          case "no_seat":
+            limitCode = "no_seat";
+            break;
+          case "user_cap_reached":
+            limitCode = "user_credits_exhausted";
+            break;
+          case "credits_exhausted":
+            limitCode = "pool_credits_exhausted";
+            break;
+          default:
+            assertNeverAndIgnore(userBlockedReason);
+            limitCode = "pool_credits_exhausted";
+            break;
+        }
+        setLimitReachedCode(limitCode);
+        return new Err({
+          code: "internal_error",
+          name: "UserBlocked",
+          message: "You are not allowed to send messages.",
         });
       }
 
@@ -103,29 +185,22 @@ export function ConversationContainerVirtuoso({
           contentFragments,
           clientSideMCPServerIds,
           selectedMCPServerViewIds,
+          selectedSpaceIds,
           richMentions: mentions,
+          modelSelection,
         },
         // Navigate as soon as the conversation exists; the first message is posted
-        // in the background by useCreateConversationWithMessage.
+        // in the background by useCreateConversationWithMessage. Background-post
+        // failures (e.g. no seat, credits) are surfaced through `onError` so the
+        // same blocking popup shows even though the conversation already exists.
         deferMessage: true,
+        onError: handleSubmitMessageError,
       });
 
       setIsSubmitting(false);
 
       if (conversationRes.isErr()) {
-        if (conversationRes.error.type === "plan_limit_reached_error") {
-          setLimitReachedCode("message_limit");
-        } else if (conversationRes.error.type === "credits_exhausted_error") {
-          setLimitReachedCode("pool_credits_exhausted");
-        } else if (conversationRes.error.type === "user_cap_reached_error") {
-          setLimitReachedCode("user_credits_exhausted");
-        } else {
-          sendNotification({
-            title: conversationRes.error.title,
-            description: conversationRes.error.message,
-            type: "error",
-          });
-        }
+        handleSubmitMessageError(conversationRes.error);
 
         return new Err({
           code: "internal_error",
@@ -154,10 +229,11 @@ export function ConversationContainerVirtuoso({
     },
     [
       isSubmitting,
+      userBlockedReason,
       mutateConversations,
       owner,
       router,
-      sendNotification,
+      handleSubmitMessageError,
       createConversationWithMessage,
       clientSideMCPServerIds,
     ]
@@ -169,6 +245,7 @@ export function ConversationContainerVirtuoso({
   }, [user]);
 
   const { startConversationRef } = useWelcomeTourGuide();
+  const isMobile = useIsMobile();
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -185,6 +262,7 @@ export function ConversationContainerVirtuoso({
           user={user}
           conversationId={activeConversationId}
           setLimitReachedCode={setLimitReachedCode}
+          limitReachedCode={limitReachedCode}
           key={conversationViewerKey}
           clientSideMCPServerIds={clientSideMCPServerIds}
         />
@@ -192,16 +270,19 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="agent-input-header"
-            className="flex h-fit w-full max-w-conversation flex-col justify-end gap-8 py-4 md:min-h-[20vh]"
+            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 py-4 md:min-h-[20vh]"
             ref={startConversationRef}
           >
+            <div className="flex w-full justify-center">
+              <ActivationNextSteps owner={owner} />
+            </div>
             <Page.Header title={greeting} />
           </div>
           <div
             className={classNames(
               "sticky bottom-0 z-20 flex max-h-dvh w-full",
               "pb-2",
-              "sm:w-full sm:max-w-conversation sm:pb-4"
+              "md:w-full md:max-w-conversation md:pb-4"
             )}
           >
             <InputBar
@@ -210,6 +291,7 @@ export function ConversationContainerVirtuoso({
               onSubmit={handleConversationCreation}
               draftKey="home-new-conversation"
               disableAutoFocus={false}
+              defaultAgentId={workspaceDefaultAgentId}
             />
           </div>
 
@@ -221,21 +303,21 @@ export function ConversationContainerVirtuoso({
                 containerClassName="w-full group"
               >
                 <div className="flex w-full flex-col gap-2 text-sm">
-                  <div className="flex w-full items-center gap-2 font-semibold text-highlight-600 dark:text-highlight-400">
-                    <LightbulbIcon className="text-highlight-600 dark:text-highlight-400 h-5 w-5" />
+                  <div className="flex w-full items-center gap-2 font-semibold text-highlight-600">
+                    <Lightbulb04 className="text-highlight-600 h-5 w-5" />
                     <div className="w-full">{suggestion.title}</div>
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
                       <Button
                         variant="ghost"
                         size="xs"
-                        icon={XMarkIcon}
+                        icon={XClose}
                         tooltip="Dismiss"
                         onClick={() => onDismissSuggestion?.(suggestion.id)}
-                        className="text-highlight-600 dark:text-highlight-400"
+                        className="text-highlight-600"
                       />
                     </div>
                   </div>
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="text-sm text-muted-foreground">
                     {suggestion.description}
                   </div>
                 </div>
@@ -266,7 +348,9 @@ export function ConversationContainerVirtuoso({
   // when there is no active conversation
   return activeConversationId ? (
     body
+  ) : isMobile ? (
+    <div className="px-4">{body}</div>
   ) : (
-    <div className="h-full overflow-auto px-4 py-4 md:px-8">{body}</div>
+    <ScrollArea className="px-4 md:px-8">{body}</ScrollArea>
   );
 }

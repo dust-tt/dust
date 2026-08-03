@@ -64,6 +64,7 @@ function parseProjectTasksPeopleMode(
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");

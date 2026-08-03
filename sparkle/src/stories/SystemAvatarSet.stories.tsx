@@ -3,7 +3,14 @@ import React from "react";
 import { Avatar } from "../index_with_tw_base";
 
 export default {
-  title: "Assets/SystemAvatarSet",
+  title: "Assets/Avatars/SystemAvatarSet",
+  parameters: {
+    docs: {
+      description: {
+        component: `Catalog of hosted system avatar images for Dust's built-in assistants and connectors (Dust, Slack, Notion, Drive, GitHub, model providers, etc.). Pass the URL shown to the **Avatar** component's \`visual\` prop to represent these system agents consistently. For decorative user/agent avatars see the **AvatarSet** page instead.`,
+      },
+    },
+  },
 };
 
 const avatarUrlList = {
@@ -50,9 +57,9 @@ const itemStyle = {
 
 export const SystemAvatarSet = () => (
   <>
-    <div className="s-py-4 s-text-base">
+    <div className="py-4 text-base">
       url is{" "}
-      <span className="s-font-bold">
+      <span className="font-bold">
         "https://dust.tt/static/systemavatar/filename"
       </span>
     </div>
@@ -61,7 +68,7 @@ export const SystemAvatarSet = () => (
         return (
           <div key={filename} style={itemStyle as React.CSSProperties}>
             <Avatar visual={url} size="md" />
-            <div className="s-overflow-hidden s-text-ellipsis s-text-xs">
+            <div className="overflow-hidden text-ellipsis text-xs">
               {filename}
             </div>
           </div>

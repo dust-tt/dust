@@ -1,5 +1,5 @@
+import type { PokeListApps } from "@app/lib/api/poke/apps";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeListApps } from "@app/pages/api/poke/workspaces/[wId]/apps";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
 

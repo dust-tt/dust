@@ -15,7 +15,7 @@ import {
   DialogTrigger,
   Input,
   Spinner,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { type ChangeEvent, useCallback, useState } from "react";
 
@@ -54,7 +54,7 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
     >
       <DialogTrigger asChild>
         <div className="flex w-full flex-col items-start">
-          <Button icon={TrashIcon} variant="warning" label="Delete Pod" />
+          <Button icon={Trash01} variant="warning" label="Delete Pod" />
         </div>
       </DialogTrigger>
       <DialogContent size="md">
@@ -68,7 +68,7 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
         ) : (
           <>
             <DialogContainer className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <p className="text-sm text-muted-foreground">
                 Type <strong>delete</strong> below to confirm. This permanently
                 removes all Pod content and cannot be undone.
               </p>

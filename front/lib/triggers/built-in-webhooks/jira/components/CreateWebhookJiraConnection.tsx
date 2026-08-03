@@ -10,7 +10,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Label,
-  PlusIcon,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -107,7 +107,7 @@ export function CreateWebhookJiraConnection({
                 <span className="text-warning">*</span>
               )}
             </Label>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Select Jira projects to monitor for events
             </p>
             <div className="mt-2 flex flex-col gap-2">
@@ -133,7 +133,7 @@ export function CreateWebhookJiraConnection({
                       <Button
                         label="Add project"
                         variant="outline"
-                        icon={PlusIcon}
+                        icon={Plus}
                         size="sm"
                       />
                     </DropdownMenuTrigger>
@@ -175,7 +175,7 @@ export function CreateWebhookJiraConnection({
           </div>
 
           {selectedProjects.length === 0 && (
-            <p className="dark:text-warning-night mt-1 text-xs text-warning">
+            <p className="mt-1 text-xs text-warning">
               Please select at least one project to create the webhook
             </p>
           )}

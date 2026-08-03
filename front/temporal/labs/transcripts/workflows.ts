@@ -22,13 +22,9 @@ const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
 export async function retrieveNewTranscriptsWorkflow({
   workspaceId,
   transcriptsConfigurationId,
-  modjoCursor = null,
-  modjoIsFirstSync = null,
 }: {
   workspaceId: string;
   transcriptsConfigurationId: string;
-  modjoCursor?: number | null;
-  modjoIsFirstSync?: boolean | null; // null = auto-detect, true/false = preserve across continueAsNew
 }) {
   if (!transcriptsConfigurationId) {
     throw new Error(
@@ -40,14 +36,10 @@ export async function retrieveNewTranscriptsWorkflow({
 
   const result = await retrieveNewTranscriptsActivity(
     transcriptsConfigurationId,
-    modjoCursor,
-    modjoIsFirstSync,
     workspaceId
   );
 
   const filesToProcess = result.fileIds;
-  const nextCursor = result.nextCursor;
-  const isFirstSync = result.isFirstSync;
 
   for (const fileId of filesToProcess) {
     const hasReachedWorkflowLimits =
@@ -58,8 +50,6 @@ export async function retrieveNewTranscriptsWorkflow({
       await continueAsNew<typeof retrieveNewTranscriptsWorkflow>({
         workspaceId,
         transcriptsConfigurationId,
-        modjoCursor,
-        modjoIsFirstSync: isFirstSync,
       });
       return;
     }
@@ -80,15 +70,6 @@ export async function retrieveNewTranscriptsWorkflow({
         },
       ],
       memo,
-    });
-  }
-
-  if (nextCursor !== null) {
-    await continueAsNew<typeof retrieveNewTranscriptsWorkflow>({
-      workspaceId,
-      transcriptsConfigurationId,
-      modjoCursor: nextCursor,
-      modjoIsFirstSync: isFirstSync,
     });
   }
 }

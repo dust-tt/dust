@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
   "root": true,
   "plugins": [],
   "vcs": {
@@ -26,7 +26,8 @@
       "!!extension/packages",
       "!!**/package-lock.json",
       "!!**/__snapshots__",
-      "!!**/.git"
+      "!!**/.git",
+      "!!cli/dust-sandbox/functions-runner/runner.js"
     ]
   },
   "formatter": {
@@ -53,10 +54,13 @@
       "connectors/**",
       "front-spa/**",
       "front/**",
-      "front-api/**"
+      "front-api/**",
+      "marketing/**",
+      "cli/dust-sandbox/functions-runner/**",
+      "cli/dust-sandbox/pod/**"
     ],
     "rules": {
-      "recommended": false,
+      "preset": "none",
       "correctness": {
         "noUnusedImports": { "fix": "safe", "level": "error" },
         "noUnusedVariables": "error"
@@ -95,6 +99,16 @@
       ]
     },
     {
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}",
+        "!front/lib/api/assistant/conversation/fetch.ts",
+        "!**/*.{test,spec}.{js,jsx,ts,tsx}",
+        "!front/tests/**"
+      ],
+      "plugins": ["./.grit/patterns/noExpensiveConversationFetch.grit"]
+    },
+    {
       "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],
       "plugins": ["./.grit/patterns/noInlineSuccessResponseBody.grit"]
     },
@@ -102,7 +116,6 @@
       "includes": [
         "front/components/**/*.{js,jsx,ts,tsx}",
         "front/lib/**/*.tsx",
-        "front/pages/**/*.{jsx,tsx}",
         "front-spa/**/*.{js,jsx,ts,tsx}",
         "sparkle/src/**/*.{js,jsx,ts,tsx}",
         "viz/**/*.{js,jsx,ts,tsx}",
@@ -130,8 +143,6 @@
         "front/**/*.{js,jsx,ts,tsx}",
         "front-api/**/*.{js,jsx,ts,tsx}",
         "sparkle/**/*.{js,jsx,ts,tsx}",
-        "!front/pages/**",
-        "!front/lib/api/sse.ts",
         "!front-api/server.ts",
         "!sparkle/.storybook/**",
         "!sparkle/playground/**"
@@ -143,18 +154,11 @@
       "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
     },
     {
-      "includes": ["**/pages/**/*.{js,jsx,ts,tsx}"],
+      "includes": ["marketing/pages/**/*.{js,jsx,ts,tsx}"],
       "plugins": [
         "./.grit/patterns/nextjsPageComponentNaming.grit",
         "./.grit/patterns/nextjsNoDataFetchingInGetssp.grit"
       ]
-    },
-    {
-      "includes": [
-        "front/lib/actions/mcp_internal_actions/**/*.{js,jsx,ts,tsx}",
-        "front/lib/api/actions/servers/**/*.{js,jsx,ts,tsx}"
-      ],
-      "plugins": ["./.grit/patterns/noMcpServerInstructions.grit"]
     },
     {
       "includes": ["front-api/routes/**/*.ts"],
@@ -166,9 +170,14 @@
         "connectors/src/resources/storage/models/**/*.ts",
         "front/lib/models/**/*.ts",
         "front/lib/resources/storage/models/**/*.ts",
-        "front/lib/resources/storage/wrappers/**/*.ts"
+        "front/lib/resources/storage/wrappers/**/*.ts",
+        "!front/lib/resources/storage/data_types.ts",
+        "!connectors/src/resources/storage/data_types.ts"
       ],
-      "plugins": ["./.grit/patterns/tooLongIndexName.grit"]
+      "plugins": [
+        "./.grit/patterns/tooLongIndexName.grit",
+        "./.grit/patterns/noSequelizeDataTypesImport.grit"
+      ]
     },
     {
       "includes": ["cli/dust-cli/**", "sparkle/**"],
@@ -255,7 +264,9 @@
       "connectors/**",
       "front-spa/**",
       "front/**",
-      "front-api/**"
+      "front-api/**",
+      "cli/dust-sandbox/functions-runner/**",
+      "cli/dust-sandbox/pod/**"
     ],
     "enabled": true,
     "actions": {

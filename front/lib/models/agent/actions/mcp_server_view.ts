@@ -1,13 +1,16 @@
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServerViewModel> {
   declare createdAt: CreationOptional<Date>;
@@ -24,6 +27,8 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   // Can be null if the user did not set a custom name or description.
   declare name: string | null;
   declare description: string | null;
+
+  declare isRestrictedToSkills: boolean;
 
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 
@@ -70,6 +75,11 @@ MCPServerViewModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    isRestrictedToSkills: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     internalMCPServerId: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -95,7 +105,7 @@ MCPServerViewModel.init(
       },
     },
     oauthScope: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
   },

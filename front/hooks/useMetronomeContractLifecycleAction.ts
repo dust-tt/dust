@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PatchMetronomeContractRequestBody } from "@app/pages/api/w/[wId]/metronome/contract";
+import type { PatchMetronomeContractRequestBody } from "@app/types/api/credits/metronome_contract";
 import { useCallback, useState } from "react";
 import type { z } from "zod";
 
@@ -91,7 +91,7 @@ export function useCancelMetronomeContract({
     errorTitle: "Cancellation failed",
     errorDescription: "Failed to cancel your subscription.",
     successTitle: "Subscription cancelled",
-    successDescription: "Your subscription will end at the end of the period.",
+    successDescription: "Your subscription has been cancelled.",
   });
 
   return {

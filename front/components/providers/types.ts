@@ -1,16 +1,21 @@
 export { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { getModelMaker } from "@app/types/assistant/models/providers";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import {
   AnthropicLogo,
   DeepseekLogo,
-  DustLogo,
+  DustLogoSquare,
   FireworksLogo,
   GeminiLogo,
   GrokLogo,
+  MinimaxLogo,
   MistralLogo,
+  MoonshotLogo,
   OpenaiLogo,
-  TogetheraiLogo,
+  ZaiLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -37,9 +42,6 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   google_ai_studio: {
     light: GeminiLogo,
   },
-  togetherai: {
-    light: TogetheraiLogo,
-  },
   deepseek: {
     light: DeepseekLogo,
   },
@@ -50,7 +52,16 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
     light: GrokLogo,
   },
   noop: {
-    light: DustLogo,
+    light: DustLogoSquare,
+  },
+  auto: {
+    light: DustLogoSquare,
+  },
+  auto_fast: {
+    light: DustLogoSquare,
+  },
+  auto_complex: {
+    light: DustLogoSquare,
   },
 };
 
@@ -60,4 +71,34 @@ export const getModelProviderLogo = (
 ) => {
   const logos = MODEL_PROVIDER_LOGOS[provider];
   return isDark && logos.dark ? logos.dark : logos.light;
+};
+
+// Resolve the logo for a model maker (lab). Lab-only makers have their own
+// logos; provider-shared makers fall through to the provider logo.
+export const getModelMakerLogo = (
+  makerId: ModelMakerIdType,
+  isDark: boolean
+): ComponentType => {
+  switch (makerId) {
+    case "zai":
+      return ZaiLogo;
+    case "moonshot":
+      return MoonshotLogo;
+    case "minimax":
+      return MinimaxLogo;
+    default:
+      return getModelProviderLogo(makerId, isDark);
+  }
+};
+
+// Resolve the logo for a model known only by its modelId. Returns undefined for
+// models we no longer support.
+export const getModelLogoByModelId = (
+  modelId: string,
+  isDark: boolean
+): ComponentType | undefined => {
+  const modelConfig = getModelConfigByModelId(modelId);
+  return modelConfig
+    ? getModelMakerLogo(getModelMaker(modelConfig), isDark)
+    : undefined;
 };

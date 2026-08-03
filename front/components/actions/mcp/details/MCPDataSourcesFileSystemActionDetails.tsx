@@ -9,16 +9,16 @@ import {
   getVisualForContentNodeType,
 } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types/core/utils";
-import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
-  ActionPinDistanceIcon,
   Breadcrumbs,
+  type BreadcrumbsItem,
   Citation,
   CitationIcons,
   CitationTitle,
-  DocumentIcon,
+  File02,
   Icon,
   Markdown,
+  MarkerPin01,
 } from "@dust-tt/sparkle";
 
 export function DataSourceNodeContentDetails({
@@ -42,7 +42,7 @@ export function DataSourceNodeContentDetails({
           ? "Retrieving file content"
           : "Retrieve file content"
       }
-      visual={DocumentIcon}
+      visual={File02}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div>
@@ -66,7 +66,7 @@ export function DataSourceNodeContentDetails({
           <Markdown
             content={text}
             isStreaming={false}
-            textColor="text-muted-foreground dark:text-muted-foreground-night"
+            textColor="text-muted-foreground"
             forcedTextSize="text-sm"
           />
         )}
@@ -118,12 +118,10 @@ export function FilesystemPathDetails({
       actionName={
         displayContext === "conversation" ? "Locating item" : "Locate item"
       }
-      visual={ActionPinDistanceIcon}
+      visual={MarkerPin01}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-          Location
-        </span>
+        <span className="text-sm font-bold text-foreground">Location</span>
         <Breadcrumbs className="pl-2" items={breadcrumbItems} />
       </div>
     </ActionDetailsWrapper>

@@ -1,8 +1,14 @@
+export const DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS = true;
+export const DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED = true;
+export const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
+export const DEFAULT_TOP_UP_ENABLED = false;
+export const DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED = true;
+
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 /*
  * Workspace-level configuration for AWU credit purchases. Distinct from
@@ -20,11 +26,41 @@ import { DataTypes } from "sequelize";
  *   Metronome `spend_threshold_reached` alert on the workspace's customer.
  *   Independent from `paygEnabled` — the cap can be set even when PAYG is
  *   disabled, and PAYG can be enabled without a cap.
+ * - allowMemberUpgradeRequests: Whether non-admin members who reach their
+ *   per-user spend limit can request a spend-limit upgrade from the product.
+ *   Defaults to true.
+ * - upgradeRequestEmailEnabled: Whether workspace admins are emailed when a
+ *   member requests an upgrade. Defaults to true.
+ * - defaultPoolCapAwuCredits: Workspace-wide default per-user cap on
+ *   workspace-pool AWU consumption, in AWU credits, excluding the seat
+ *   allowance. Non-nullable, defaults to 0: 0 removes pool access; a positive
+ *   value is the per-user pool cap. Effective cap resolution is per-user
+ *   override -> group cap -> this workspace default (no plan-tier fallback).
+ *   Unlimited is not supported.
+ * - programmaticMonthlyCapAwuCredits: Workspace monthly cap on programmatic
+ *   (API) AWU consumption, in AWU credits. Source of truth for the cap; the
+ *   four Metronome programmatic alerts (cap/warning/low/critical) are derived
+ *   from it. Non-nullable, defaults to 0: 0 blocks all programmatic access
+ *   (no alerts, statically depleted); a positive value is the monthly cap.
+ * - autoSeatUpgradeEnabled: Whether members who hit their per-user credit limit
+ *   are automatically bumped to the next entitled seat tier (free→pro, pro→max,
+ *   none→workspace) instead of being blocked. May increase the bill. Defaults to
+ *   false.
+ * - balanceThresholdAwuCredits: Credit balance (in AWU credits) below which
+ *   workspace admins are emailed. Source of truth for the threshold value; the
+ *   Metronome balance-threshold alert (see
+ *   `lib/metronome/alerts/balance_threshold.ts`) is derived from it. NULL means
+ *   no threshold is configured (the warning is off); 0 is normalized to NULL.
+ * - topUpEnabled: When true, enterprise-plan workspaces show the "Top up"
+ *   button on the Usage page. Defaults to false (enterprise workspaces are
+ *   directed to sales by default).
+ * - autoInvoiceFinalizationEnabled: When false, `cleanAndFinalizeMetronomeDraftInvoice`
+ *   skips the Stripe finalization step and leaves the invoice as a cleaned draft
+ *   for manual review. Defaults to true (finalization is automatic).
  *
- * The credit-cap-warning notification settings (whether to warn, and at which
- * balance) are NOT stored here: they are derived from the workspace's Metronome
- * balance-threshold alert (see `lib/metronome/alerts/balance_threshold.ts`),
- * with reads cached in Redis.
+ * The Metronome balance-threshold alert id (used by the webhook to match the
+ * firing alert) is NOT stored here: it is a Metronome-generated value resolved
+ * from the alert, with reads cached in Redis.
  */
 export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsageConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -32,6 +68,14 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare defaultDiscountPercent: number;
   declare paygEnabled: CreationOptional<boolean>;
   declare usageCapCredits: number | null;
+  declare allowMemberUpgradeRequests: CreationOptional<boolean>;
+  declare upgradeRequestEmailEnabled: CreationOptional<boolean>;
+  declare defaultPoolCapAwuCredits: CreationOptional<number>;
+  declare programmaticMonthlyCapAwuCredits: CreationOptional<number>;
+  declare autoSeatUpgradeEnabled: CreationOptional<boolean>;
+  declare balanceThresholdAwuCredits: number | null;
+  declare topUpEnabled: CreationOptional<boolean>;
+  declare autoInvoiceFinalizationEnabled: CreationOptional<boolean>;
 }
 
 CreditUsageConfigurationModel.init(
@@ -73,6 +117,46 @@ CreditUsageConfigurationModel.init(
           }
         },
       },
+    },
+    allowMemberUpgradeRequests: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
+    },
+    upgradeRequestEmailEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    },
+    defaultPoolCapAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    programmaticMonthlyCapAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    autoSeatUpgradeEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+    },
+    balanceThresholdAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    topUpEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: DEFAULT_TOP_UP_ENABLED,
+    },
+    autoInvoiceFinalizationEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED,
     },
   },
   {

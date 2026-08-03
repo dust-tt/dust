@@ -5,6 +5,7 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isUserMessageContextOverflowing } from "@app/lib/api/assistant/conversation/helper";
@@ -18,6 +19,7 @@ import {
   addBackwardCompatibleConversationWithoutContentFields,
   normalizeConversationVisibility,
 } from "@app/lib/api/v1/backward_compatibility";
+import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
@@ -31,15 +33,18 @@ import {
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
   isContentFragmentInputWithInlinedContent,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import type {
   AgenticMessageData,
+  ConversationType,
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
-import { isInteractiveContentType } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  isSandboxFunctionContentType,
+} from "@app/types/files";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
@@ -48,14 +53,12 @@ import {
   PublicPostConversationsRequestBodySchema,
 } from "@dust-tt/client";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { validatePublicModelSelection } from "@front-api/lib/api/assistant/conversation/model_selection";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-
 import conversation from "./[cId]";
-
-export const MAX_CONVERSATION_DEPTH = 4;
 
 // Mounted at /api/v1/w/:wId/assistant/conversations.
 const app = publicApiApp();
@@ -174,7 +177,20 @@ app.post(
               api_error: {
                 type: "rate_limit_error",
                 message:
-                  "Your workspace has reached its programmatic monthly spending cap.",
+                  "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.",
+              },
+            });
+          }
+          // Per-API-key credit cap: block when this key's credit state is
+          // "capped" (driven by the Metronome per-key cap alert / reconcile).
+          const key = auth.key();
+          if (key && (await isApiKeyCapped(workspace.sId, key.id))) {
+            return apiError(ctx, {
+              status_code: 429,
+              api_error: {
+                type: "rate_limit_error",
+                message:
+                  "This API key has reached its credit spend limit. Please increase the limit in the Developers > API Keys section of the Dust dashboard.",
               },
             });
           }
@@ -321,16 +337,23 @@ app.post(
       resolvedSpaceModelId = space.id;
     }
 
-    let conversation = await createConversation(auth, {
+    const conversationResource = await createConversation(auth, {
       title: title ?? null,
       visibility: normalizeConversationVisibility(visibility),
       depth,
       spaceId: resolvedSpaceModelId,
     });
 
-    if (conversation.depth === 0) {
+    let conversation: ConversationType = {
+      ...conversationResource.toJSON(),
+      owner: auth.getNonNullableWorkspace(),
+      visibility: conversationResource.visibility,
+      content: [],
+    };
+
+    if (conversationResource.depth === 0) {
       await ConversationResource.upsertParticipation(auth, {
-        conversation,
+        conversation: conversationResource,
         action: "subscribed",
         user: auth.user()?.toJSON() ?? null,
       });
@@ -345,7 +368,7 @@ app.post(
 
       if (isContentFragmentInputWithInlinedContent(cf)) {
         const contentFragmentRes = await toFileContentFragment(auth, {
-          conversation,
+          conversation: conversationResource,
           contentFragment: cf,
         });
         if (contentFragmentRes.isErr()) {
@@ -366,12 +389,17 @@ app.post(
         isContentFragmentInputWithFileId(cf) ||
         isContentFragmentInputWithContentNode(cf)
       ) {
-        const cfRes = await postNewContentFragment(auth, conversation, cf, {
-          username: context?.username ?? null,
-          fullName: context?.fullName ?? null,
-          email: context?.email?.toLowerCase() ?? null,
-          profilePictureUrl: context?.profilePictureUrl ?? null,
-        });
+        const cfRes = await postNewContentFragment(
+          auth,
+          conversationResource.toJSON(),
+          cf,
+          {
+            username: context?.username ?? null,
+            fullName: context?.fullName ?? null,
+            email: context?.email?.toLowerCase() ?? null,
+            profilePictureUrl: context?.profilePictureUrl ?? null,
+          }
+        );
         if (cfRes.isErr()) {
           return apiError(ctx, {
             status_code: 400,
@@ -382,25 +410,6 @@ app.post(
           });
         }
         newContentFragment = cfRes.value;
-      }
-
-      const updatedConversationRes = await getConversation(
-        auth,
-        conversation.sId
-      );
-
-      if (updatedConversationRes.isErr()) {
-        // Preserving former code in which if the conversation was not found here, we do not error
-        if (
-          !(
-            updatedConversationRes.error instanceof ConversationError &&
-            updatedConversationRes.error.type === "conversation_not_found"
-          )
-        ) {
-          return apiErrorForConversation(ctx, updatedConversationRes.error);
-        }
-      } else {
-        conversation = updatedConversationRes.value;
       }
     }
 
@@ -418,6 +427,15 @@ app.post(
       const agenticMessageData: AgenticMessageData | undefined =
         message.agenticMessageData ?? undefined;
 
+      const modelSelectionRes = await validatePublicModelSelection(
+        auth,
+        message.modelSelection
+      );
+      if (modelSelectionRes.isErr()) {
+        return apiError(ctx, modelSelectionRes.error);
+      }
+      const modelSelection = modelSelectionRes.value;
+
       // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
       if (message.context.selectedMCPServerViewIds) {
         if (!auth.user()) {
@@ -433,11 +451,12 @@ app.post(
 
         const mcpServerViews = await MCPServerViewResource.fetchByIds(
           auth,
-          message.context.selectedMCPServerViewIds
+          message.context.selectedMCPServerViewIds,
+          { isRestrictedToSkills: false }
         );
 
         const r = await ConversationResource.upsertMCPServerViews(auth, {
-          conversation,
+          conversation: conversationResource,
           mcpServerViews,
           enabled: true,
           source: "conversation",
@@ -480,16 +499,18 @@ app.post(
               content: message.content,
               context: messageContext,
               agenticMessageData,
-              conversation,
+              conversationResource,
               mentions: message.mentions,
+              modelSelection,
               skipToolsValidation: skipToolsValidation ?? false,
             })
           : await postUserMessage(auth, {
               content: message.content,
               context: messageContext,
               agenticMessageData,
-              conversation,
+              conversationResource,
               mentions: message.mentions,
+              modelSelection,
               skipToolsValidation: skipToolsValidation ?? false,
             });
 
@@ -506,7 +527,8 @@ app.post(
       // created as well, so pulling the conversation again will allow to have an up to date view
       // of the conversation with agent messages included so that the user of the API can start
       // streaming events from these agent messages directly.
-      const updatedRes = await getConversation(auth, conversation.sId);
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+      const updatedRes = await getConversation(auth, conversationResource.sId);
 
       if (updatedRes.isErr()) {
         return apiErrorForConversation(ctx, updatedRes.error);
@@ -519,7 +541,8 @@ app.post(
       message: newMessage ?? undefined,
       contentFragment:
         !newContentFragment ||
-        isInteractiveContentType(newContentFragment.contentType)
+        isInteractiveContentType(newContentFragment.contentType) ||
+        isSandboxFunctionContentType(newContentFragment.contentType)
           ? undefined
           : {
               ...newContentFragment,

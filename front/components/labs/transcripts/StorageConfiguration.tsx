@@ -1,6 +1,6 @@
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
-import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
@@ -9,8 +9,8 @@ import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ChatBubbleThoughtIcon,
   ContentMessage,
+  MessageDotsCircle,
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -170,7 +170,7 @@ export function StorageConfiguration({
           title="Default storage"
           variant="primary"
           size="lg"
-          icon={ChatBubbleThoughtIcon}
+          icon={MessageDotsCircle}
         >
           Your configuration handles the storage of all your workspace's
           transcripts. Other users will not have the possibility to store their

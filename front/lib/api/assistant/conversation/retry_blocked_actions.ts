@@ -2,7 +2,7 @@ import { isBlockedActionEvent } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -19,6 +19,7 @@ async function findUserMessageForRetry(
     {
       agentMessageId: string;
       agentMessageVersion: number;
+      branchId: string | null;
       lastStep: number;
       userMessageId: string;
       userMessageVersion: number;
@@ -35,7 +36,14 @@ async function findUserMessageForRetry(
       sId: messageId,
       workspaceId,
     },
-    attributes: ["agentMessageId", "parentId", "version", "sId"],
+    attributes: [
+      "agentMessageId",
+      "parentId",
+      "version",
+      "sId",
+      "branchId",
+      "workspaceId",
+    ],
   });
 
   if (!agentMessage || !agentMessage.parentId || !agentMessage.agentMessageId) {
@@ -62,7 +70,23 @@ async function findUserMessageForRetry(
     });
 
   if (blockedActions.length === 0) {
-    return new Err(new Error("No blocked actions found"));
+    // Not a failure: the message simply has nothing waiting on user input (already resumed, or
+    // reached here through a handover whose caller was never blocked).
+    return new Err(
+      new DustError("no_blocked_actions", "No blocked actions found")
+    );
+  }
+
+  // Blocked actions of a message that can no longer resume are stale leftovers: retrying them
+  // would relaunch an agent loop that was already terminated. All blocked actions belong to the
+  // same agent message, so checking the first one is enough.
+  if (!(await blockedActions[0].canAgentMessageResume(auth))) {
+    return new Err(
+      new DustError(
+        "agent_message_not_resumable",
+        "Agent message can no longer resume"
+      )
+    );
   }
 
   // Purge blocked actions event message from the stream:
@@ -77,6 +101,7 @@ async function findUserMessageForRetry(
   return new Ok({
     agentMessageId: agentMessage.sId,
     agentMessageVersion: agentMessage.version,
+    branchId: agentMessage.getBranchId(),
     lastStep: blockedActions[blockedActions.length - 1].stepContent.step,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
@@ -94,11 +119,7 @@ export async function retryBlockedActions(
     waitForCompletion?: boolean;
   }
 ): Promise<Result<void, Error | DustError<"agent_loop_already_running">>> {
-  const {
-    sId: conversationId,
-    title: conversationTitle,
-    branchId: conversationBranchId,
-  } = conversation;
+  const { sId: conversationId, title: conversationTitle } = conversation;
 
   const getUserMessageIdRes = await findUserMessageForRetry(
     auth,
@@ -127,7 +148,7 @@ export async function retryBlockedActions(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId,
+      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
     },

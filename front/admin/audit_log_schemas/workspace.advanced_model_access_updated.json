@@ -1,0 +1,13 @@
+{
+  "action": "workspace.advanced_model_access_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "enabled": "string",
+    "model_id": "string",
+    "provider_id": "string"
+  }
+}

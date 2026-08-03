@@ -1,6 +1,8 @@
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
-import type { Authenticator } from "@app/lib/auth";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -10,12 +12,17 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  AgentMessageStatus,
   AgentMessageType,
   ConversationType,
   ConversationVisibility,
@@ -23,10 +30,61 @@ import type {
   UserMessageOrigin,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import type {
+  ModelResolutionMethodType,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import type { SupportedContentFragmentType } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import type { Transaction } from "sequelize";
+
+async function authForConversationFetch(
+  auth: Authenticator,
+  t?: Transaction
+): Promise<Authenticator> {
+  if (auth.isUser()) {
+    return auth;
+  }
+
+  const user = auth.user();
+  if (!user) {
+    return auth;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const role = await MembershipResource.getActiveRoleForUserInWorkspace({
+    user,
+    workspace,
+    transaction: t,
+  });
+
+  if (role === "none") {
+    await MembershipFactory.associate(workspace, user, { role: "user" }, t);
+  }
+
+  return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId, {
+    transaction: t,
+  });
+}
+
+async function resolveAgentConfigurationId(
+  auth: Authenticator,
+  agentConfigurationId: string,
+  t?: Transaction
+): Promise<string> {
+  const fetchAuth = await authForConversationFetch(auth, t);
+  const existing = await getAgentConfiguration(fetchAuth, {
+    agentId: agentConfigurationId,
+    variant: "extra_light",
+  });
+  if (existing) {
+    return agentConfigurationId;
+  }
+
+  const agent = await AgentConfigurationFactory.createTestAgent(fetchAuth);
+  return agent.sId;
+}
 
 export class ConversationFactory {
   static async create(
@@ -72,6 +130,11 @@ export class ConversationFactory {
       );
     }
 
+    const resolvedAgentConfigurationId =
+      messagesCreatedAt.length > 0
+        ? await resolveAgentConfigurationId(auth, agentConfigurationId, t)
+        : agentConfigurationId;
+
     // Note: fetchConversationParticipants rely on the existence of UserMessage even if we have a table for ConversationParticipant.
     for (let i = 0; i < messagesCreatedAt.length; i++) {
       const createdAt = messagesCreatedAt[i];
@@ -86,7 +149,7 @@ export class ConversationFactory {
       await createMessageAndAgentMessage({
         workspace,
         conversationModelId: conversation.id,
-        agentConfigurationId,
+        agentConfigurationId: resolvedAgentConfigurationId,
         createdAt,
         rank: i * 2 + 1,
         parentId: userMessageRow.id,
@@ -94,7 +157,16 @@ export class ConversationFactory {
       });
     }
 
-    return conversation;
+    const fetchAuth = await authForConversationFetch(auth, t);
+    const res = await getConversation(
+      fetchAuth,
+      conversation.sId,
+      visibility === "deleted"
+    );
+    if (res.isErr()) {
+      throw new Error(`Failed to fetch conversation: ${res.error.type}`);
+    }
+    return res.value;
   }
 
   static async setTriggerIdForTest(
@@ -172,19 +244,22 @@ export class ConversationFactory {
     conversation,
     content,
     origin = "web",
+    rank = 0,
     agenticMessageType,
     agenticOriginMessageId,
   }: {
     auth: Authenticator;
     workspace: WorkspaceType;
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     content: string;
     origin?: UserMessageOrigin;
+    rank?: number;
     agenticMessageType?: "run_agent" | "agent_handover";
     agenticOriginMessageId?: string;
   }): Promise<{ messageRow: MessageModel; userMessage: UserMessageType }> {
     const userMessageRow = await UserMessageModel.create({
       userId: auth.getNonNullableUser().id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content,
       userContextUsername: "testuser",
@@ -194,11 +269,13 @@ export class ConversationFactory {
       userContextProfilePictureUrl: null,
       userContextOrigin: origin,
       clientSideMCPServerIds: [],
+      agenticMessageType: agenticMessageType ?? null,
+      agenticOriginMessageId: agenticOriginMessageId ?? null,
     });
 
     const messageRow = await MessageModel.create({
       sId: generateRandomModelSId(),
-      rank: 0,
+      rank,
       conversationId: conversation.id,
       parentId: null,
       userMessageId: userMessageRow.id,
@@ -234,6 +311,7 @@ export class ConversationFactory {
         }),
       rank: messageRow.rank,
       reactions: [],
+      requestedModel: null,
     };
 
     return { messageRow, userMessage };
@@ -259,6 +337,7 @@ export class ConversationFactory {
   }): Promise<MessageModel> {
     const userMessageRow = await UserMessageModel.create({
       userId: auth.user()?.id,
+      conversationId,
       workspaceId: workspace.id,
       content,
       userContextUsername: "testuser",
@@ -291,6 +370,8 @@ export class ConversationFactory {
     agentConfigurationVersion = 0,
     parentId = null,
     version = 0,
+    resolvedModel = null,
+    modelResolutionMethod = null,
   }: {
     workspace: WorkspaceType;
     conversationId: ModelId;
@@ -299,13 +380,20 @@ export class ConversationFactory {
     agentConfigurationVersion?: number;
     parentId?: ModelId | null;
     version?: number;
+    resolvedModel?: ResolvedRequestedModel | null;
+    modelResolutionMethod?: ModelResolutionMethodType | null;
   }): Promise<MessageModel> {
     const agentMessageRow = await AgentMessageModel.create({
       status: "created",
       agentConfigurationId,
       agentConfigurationVersion,
+      conversationId,
       workspaceId: workspace.id,
       skipToolsValidation: false,
+      resolvedProviderId: resolvedModel?.providerId ?? null,
+      resolvedModelId: resolvedModel?.modelId ?? null,
+      resolvedReasoningEffort: resolvedModel?.reasoningEffort ?? null,
+      modelResolutionMethod,
     });
 
     return MessageModel.create({
@@ -320,6 +408,24 @@ export class ConversationFactory {
   }
 
   /**
+   * Sets the status of an agent message, e.g. to simulate a message that was interrupted.
+   */
+  static async setAgentMessageStatus({
+    workspace,
+    agentMessageModelId,
+    status,
+  }: {
+    workspace: WorkspaceType;
+    agentMessageModelId: ModelId;
+    status: AgentMessageStatus;
+  }): Promise<void> {
+    await AgentMessageModel.update(
+      { status },
+      { where: { id: agentMessageModelId, workspaceId: workspace.id } }
+    );
+  }
+
+  /**
    * Creates a test agent message with full type information.
    * Optionally creates an MCP action (with its step content) when `mcpAction` is provided.
    */
@@ -330,13 +436,18 @@ export class ConversationFactory {
       conversation,
       agentConfig,
       mcpAction,
+      runIds = null,
     }: {
       workspace: WorkspaceType;
-      conversation: ConversationType | ConversationWithoutContentType;
+      conversation:
+        | ConversationType
+        | ConversationWithoutContentType
+        | ConversationResource;
       agentConfig: LightAgentConfigurationType;
       mcpAction?: {
         toolConfiguration: LightServerSideMCPToolConfigurationType;
       };
+      runIds?: string[] | null;
     }
   ): Promise<{
     messageRow: MessageModel;
@@ -347,8 +458,10 @@ export class ConversationFactory {
       status: "created",
       agentConfigurationId: agentConfig.sId,
       agentConfigurationVersion: agentConfig.version,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
+      runIds,
     });
 
     const messageRow = await MessageModel.create({
@@ -385,6 +498,9 @@ export class ConversationFactory {
       rank: messageRow.rank,
       branchId: messageRow.getBranchId(),
       richMentions: [],
+      costCredits: null,
+      resolvedModel: null,
+      modelResolutionMethod: null,
     };
 
     if (!mcpAction) {
@@ -474,6 +590,7 @@ export class ConversationFactory {
 
     const contentFragment = await ContentFragmentResource.makeNew({
       workspaceId: workspace.id,
+      conversationId,
       title,
       contentType: contentType ?? "text/plain",
       fileId: finalFileId,
@@ -556,6 +673,7 @@ const createUserMessage = async ({
             createdAt,
             updatedAt: createdAt,
             userId: user?.id,
+            conversationId: conversationModelId,
             workspaceId: workspace.id,
             content: "Test user Message.",
             userContextUsername: "soupinou",
@@ -601,6 +719,7 @@ const createMessageAndAgentMessage = async ({
       status: "created",
       agentConfigurationId,
       agentConfigurationVersion: 0,
+      conversationId: conversationModelId,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     },

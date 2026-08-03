@@ -8,9 +8,9 @@ export type SelectedEmojiType = {
   unified: string;
 };
 
-export const DROID_AVATARS_BASE_PATH = "/static/droidavatar/";
+const DROID_AVATARS_BASE_PATH = "/static/droidavatar/";
 
-export const DROID_AVATAR_FILES = [
+const DROID_AVATAR_FILES = [
   "Droid_Yellow_8.jpg",
   "Droid_Yellow_7.jpg",
   "Droid_Yellow_6.jpg",
@@ -109,9 +109,9 @@ export const DROID_AVATAR_FILES = [
   "Droid_Black_1.jpg",
 ];
 
-export const SPIRIT_AVATARS_BASE_PATH = "/static/spiritavatar/";
+const SPIRIT_AVATARS_BASE_PATH = "/static/spiritavatar/";
 
-export const SPIRIT_AVATAR_FILES = [
+const SPIRIT_AVATAR_FILES = [
   "Spirit_Black_1.jpg",
   "Spirit_Black_2.jpg",
   "Spirit_Black_3.jpg",
@@ -210,7 +210,7 @@ export const SPIRIT_AVATAR_FILES = [
   "Spirit_Yellow_8.jpg",
 ];
 
-export const EMOJI_AVATARS_BASE_PATH = "/static/";
+const EMOJI_AVATARS_BASE_PATH = "/static/";
 
 // Avatar URLs
 const BASE_URL = "https://dust.tt/";

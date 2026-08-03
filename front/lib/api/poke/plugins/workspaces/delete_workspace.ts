@@ -28,15 +28,22 @@ export const deleteWorkspacePlugin = createPlugin({
         type: "boolean",
         description:
           "Purge workspace data in this region following a relocation. If true, will ignore " +
-          "data sources and subscription checks.",
+          "subscription checks.",
         label: "Workspace has been relocated?",
       },
+      deleteDataSources: {
+        type: "boolean",
+        description:
+          "Delete all data sources as part of the workspace deletion.",
+        label: "Delete all data sources",
+      },
     },
+    requiredRoles: ["engineering"],
   },
   execute: async (
     auth,
     workspace,
-    { confirmation, workspaceHasBeenRelocated }
+    { confirmation, workspaceHasBeenRelocated, deleteDataSources }
   ) => {
     if (!workspace) {
       return new Err(new Error("Workspace not found"));
@@ -44,6 +51,17 @@ export const deleteWorkspacePlugin = createPlugin({
 
     if (confirmation !== "DELETE") {
       return new Err(new Error("Invalid confirmation, must type 'DELETE'"));
+    }
+
+    if (!deleteDataSources) {
+      const dataSources = await DataSourceResource.listByWorkspace(auth);
+      if (dataSources.length > 0) {
+        return new Err(
+          new Error(
+            'Workspace has data sources. Check "Delete all data sources" to delete them with the workspace.'
+          )
+        );
+      }
     }
 
     // If the workspace has been relocated, we can delete it immediately.
@@ -59,21 +77,19 @@ export const deleteWorkspacePlugin = createPlugin({
 
       await deleteWorkspace(workspace, { workspaceHasBeenRelocated });
     } else {
-      // If the workspace has not been relocated, we need to check if it has data sources or a
-      // paid plan.
-      const dataSources = await DataSourceResource.listByWorkspace(auth);
-      if (dataSources.length > 0) {
-        return new Err(
-          new Error(
-            "Workspace has data sources, please delete them before deleting the workspace."
-          )
-        );
-      }
+      // If the workspace has not been relocated, we need to check its subscription.
       const subscription = auth.getNonNullableSubscription();
       if (!isFreePlan(subscription.plan.code)) {
         return new Err(
           new Error(
             "Workspace has a paid plan, please downgrade to a free plan before deleting the workspace."
+          )
+        );
+      }
+      if (subscription.metronomeContractId !== null) {
+        return new Err(
+          new Error(
+            "Workspace has an active Metronome contract, please downgrade the contract before deleting the workspace."
           )
         );
       }

@@ -23,23 +23,26 @@ import {
   isConnectorProviderAssistantDefaultSelected,
   isValidConnectorSuffix,
 } from "@app/lib/connector_providers";
+import { doesConnectorProviderCountTowardConnectionsLimit } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
-import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
+import type {
+  PostDataSourceRequestBody,
+  PostSpaceDataSourceResponseBody,
+} from "@app/types/api/data_sources";
 import {
-  ConnectorConfigurationTypeSchema,
-  ConnectorsAPI,
-} from "@app/types/connectors/connectors_api";
+  PostDataSourceRequestBodySchema,
+  PostDataSourceWithProviderRequestBodySchema,
+} from "@app/types/api/data_sources";
+import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { WebCrawlerConfigurationTypeSchema } from "@app/types/connectors/webcrawler";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
-import type { DataSourceType } from "@app/types/data_source";
-import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { PlanType } from "@app/types/plan";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
@@ -51,42 +54,23 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context } from "hono";
-import { z } from "zod";
+import type { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 import dsId from "./[dsId]";
 
-export const PostDataSourceWithProviderRequestBodySchema = z.object({
-  provider: z.enum(CONNECTOR_PROVIDERS),
-  name: z.string().optional(),
-  configuration: ConnectorConfigurationTypeSchema,
-  connectionId: z.string().optional(),
-  relatedCredentialId: z.string().optional(),
-  extraConfig: z.record(z.string(), z.string()).optional(),
-});
-
-const PostDataSourceWithoutProviderRequestBodySchema = z.object({
-  name: z.string(),
-  description: z.string().nullable(),
-});
-
-const PostDataSourceRequestBodySchema = z.union([
-  PostDataSourceWithoutProviderRequestBodySchema,
+export type { PostDataSourceRequestBody, PostSpaceDataSourceResponseBody };
+// Contract types and schemas are owned by `@app/lib/api/data_sources` and
+// re-exported here to preserve this module's public surface.
+export {
+  PostDataSourceRequestBodySchema,
   PostDataSourceWithProviderRequestBodySchema,
-]);
-
-export type PostDataSourceRequestBody = z.infer<
-  typeof PostDataSourceRequestBodySchema
->;
-
-export type PostSpaceDataSourceResponseBody = {
-  dataSource: DataSourceType;
-  dataSourceView: DataSourceViewType;
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
@@ -109,13 +93,13 @@ app.post(
         });
       }
     } else {
-      if (space.isGlobal() && !auth.isBuilder()) {
+      if (space.isGlobal() && !auth.isManager()) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `builders` for the current workspace can update a data source.",
+              "Only the users that are `managers` for the current workspace can update a data source.",
           },
         });
       }
@@ -246,6 +230,28 @@ async function handleDataSourceWithProvider({
         message: "Your plan does not allow you to create managed data sources.",
       },
     });
+  }
+
+  if (
+    plan.limits.connections.count !== -1 &&
+    doesConnectorProviderCountTowardConnectionsLimit(provider)
+  ) {
+    const dataSources = await DataSourceResource.listByWorkspace(auth);
+    const connectionsCount = dataSources.filter(
+      (ds) =>
+        ds.connectorProvider !== null &&
+        doesConnectorProviderCountTowardConnectionsLimit(ds.connectorProvider)
+    ).length;
+    if (connectionsCount >= plan.limits.connections.count) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: "plan_limit_error",
+          message:
+            "Your plan does not allow you to create more connected data sources. You already have at least ${plan.limits.connections.count} data sources",
+        },
+      });
+    }
   }
 
   // System spaces only for managed data sources; webcrawler is regular-only.
@@ -415,6 +421,7 @@ async function handleDataSourceWithProvider({
     const deleteRes = await coreAPI.deleteDataSource({
       projectId: dustProjectId,
       dataSourceId: dustDataSourceId,
+      caller: "private-api-create-rollback",
     });
     if (deleteRes.isErr()) {
       logger.error(
@@ -561,6 +568,7 @@ async function handleDataSourceWithProvider({
       const deleteRes = await coreAPI.deleteDataSource({
         projectId: dustProjectId,
         dataSourceId: dustDataSourceId,
+        caller: "private-api-connector-rollback",
       });
       if (deleteRes.isErr()) {
         logger.error(

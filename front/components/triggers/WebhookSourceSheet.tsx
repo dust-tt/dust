@@ -39,15 +39,15 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
 import {
   Button,
-  InformationCircleIcon,
-  LockIcon,
+  InfoCircle,
+  Lock01,
   MultiPageSheet,
   MultiPageSheetContent,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniq from "lodash/uniq";
@@ -602,21 +602,13 @@ function WebhookSourceSheetContent({
             <FormProvider {...editForm}>
               <Tabs value={selectedTab} onValueChange={changeTab}>
                 <TabsList>
-                  <TabsTrigger
-                    value="info"
-                    label="Info"
-                    icon={InformationCircleIcon}
-                  />
-                  <TabsTrigger
-                    value="sharing"
-                    label="Sharing"
-                    icon={LockIcon}
-                  />
+                  <TabsTrigger value="info" label="Info" icon={InfoCircle} />
+                  <TabsTrigger value="sharing" label="Sharing" icon={Lock01} />
                   <>
                     <div className="grow" />
                     <div className="flex h-full flex-row items-center">
                       <Button
-                        icon={TrashIcon}
+                        icon={Trash01}
                         variant="warning"
                         size="xs"
                         disabled={isDeleting}

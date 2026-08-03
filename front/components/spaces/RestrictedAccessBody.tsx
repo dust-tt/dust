@@ -1,8 +1,11 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { GroupSelectionTable } from "@app/components/groups/GroupSelectionTable";
-import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
+import {
+  MemberSelectionTable,
+  type SearchMemberType,
+} from "@app/components/members/MemberSelectionTable";
 import type { GroupType } from "@app/types/groups";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -22,20 +25,20 @@ function isMembersManagementType(
 
 interface RestrictedAccessBodyProps {
   isManual: boolean;
-  planAllowsSCIM: boolean;
+  scimEnabled: boolean;
   managementType: MembersManagementType;
   owner: LightWorkspaceType;
-  selectedMembers: UserType[];
+  selectedMembers: SearchMemberType[];
   selectedGroups: GroupType[];
   onManagementTypeChange: (managementType: MembersManagementType) => void;
-  onMembersUpdated: (members: UserType[]) => void;
+  onMembersUpdated: (members: SearchMemberType[]) => void;
   onGroupsUpdated: (groups: GroupType[]) => void;
-  initialMembers?: UserType[];
+  initialMembers?: SearchMemberType[];
 }
 
 export function RestrictedAccessBody({
   isManual,
-  planAllowsSCIM,
+  scimEnabled,
   managementType,
   owner,
   selectedMembers,
@@ -59,7 +62,7 @@ export function RestrictedAccessBody({
 
   const handleMemberSelectionChange = (
     _ids: Set<string>,
-    users: UserType[]
+    users: SearchMemberType[]
   ) => {
     onMembersUpdated(users);
   };
@@ -72,7 +75,7 @@ export function RestrictedAccessBody({
   };
 
   const handleManagementTypeChange = async (newManagementType: string) => {
-    if (!isMembersManagementType(newManagementType) || !planAllowsSCIM) {
+    if (!isMembersManagementType(newManagementType) || !scimEnabled) {
       return;
     }
 
@@ -117,7 +120,7 @@ export function RestrictedAccessBody({
 
   return (
     <>
-      {planAllowsSCIM && (
+      {scimEnabled && (
         <div className="flex flex-row items-center justify-between">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

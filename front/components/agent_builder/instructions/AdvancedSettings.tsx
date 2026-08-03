@@ -2,11 +2,16 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
 import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
+import { ModelPicker } from "@app/components/model_picker/ModelPicker";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   cn,
@@ -17,13 +22,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DocumentTextIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  File04,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { useController } from "react-hook-form";
 
 function getResponseFormatError(value: string): string | null {
@@ -53,38 +60,126 @@ const RESPONSE_FORMAT_PLACEHOLDER =
   "  }\n" +
   "}";
 
-export function AdvancedSettings() {
+function StructuredResponseFormatDialog({
+  isOpen,
+  onOpenChange,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { isDark } = useTheme();
-  const { owner } = useAgentBuilderContext();
-  const { models } = useModels({ owner });
-  const { field: modelSettingsField } = useController<
-    AgentBuilderFormData,
-    "generationSettings.modelSettings"
-  >({
-    name: "generationSettings.modelSettings",
-  });
+
   const { field: responseFormatField } = useController<
     AgentBuilderFormData,
     "generationSettings.responseFormat"
   >({
     name: "generationSettings.responseFormat",
   });
-  const [isResponseFormatDialogOpen, setIsResponseFormatDialogOpen] =
-    React.useState(false);
+
   const [tempResponseFormat, setTempResponseFormat] = React.useState<
     string | null
   >(null);
+  const currentValue = tempResponseFormat ?? responseFormatField.value ?? "";
+  const validationError = getResponseFormatError(currentValue);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent size="xl" height="lg">
+        <DialogHeader>
+          <DialogTitle visual={<File04 />}>
+            Structured response format
+          </DialogTitle>
+          <DialogDescription>
+            Specify a JSON schema to get responses in a consistent structure.{" "}
+            <a
+              href="https://docs.dust.tt/docs/structured-output-format"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              See documentation
+            </a>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          <SuspensedCodeEditor
+            data-color-mode={isDark ? "dark" : "light"}
+            value={currentValue}
+            placeholder={RESPONSE_FORMAT_PLACEHOLDER}
+            name="responseFormat"
+            onChange={(e) => setTempResponseFormat(e.target.value)}
+            minHeight={400}
+            className={cn(
+              "rounded-lg bg-primary-100",
+              validationError && "border-2 border-red-500 bg-primary-100"
+            )}
+            style={{
+              fontSize: 13,
+              fontFamily:
+                "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+              overflowY: "auto",
+            }}
+            language="json"
+          />
+          {validationError && (
+            <p className="text-sm text-red-500">{validationError}</p>
+          )}
+        </DialogContainer>
+        <DialogFooter
+          className="pt-2"
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: () => {
+              setTempResponseFormat(null);
+              onOpenChange(false);
+            },
+          }}
+          rightButtonProps={{
+            label: "Save",
+            disabled: !!validationError,
+            onClick: () => {
+              if (tempResponseFormat !== null) {
+                responseFormatField.onChange(tempResponseFormat);
+              }
+              setTempResponseFormat(null);
+              onOpenChange(false);
+            },
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AdvancedSettingsLegacy({
+  owner,
+  setIsResponseFormatDialogOpen,
+}: {
+  owner: LightWorkspaceType;
+  setIsResponseFormatDialogOpen: (open: boolean) => void;
+}) {
+  const { models: allModels } = useModels({ owner });
+
+  // Filter out the auto models and get the rest
+  const [_, models] = useMemo(() => {
+    return [[], allModels.filter((m) => !isModelStreamId(m.modelId))];
+  }, [allModels]);
+
+  const { field: modelSettingsField } = useController<
+    AgentBuilderFormData,
+    "generationSettings.modelSettings"
+  >({
+    name: "generationSettings.modelSettings",
+  });
 
   if (!models) {
     return null;
   }
 
-  const currentValue = tempResponseFormat ?? responseFormatField.value ?? "";
-  const validationError = getResponseFormatError(currentValue);
-
-  const supportsResponseFormat = isSupportingResponseFormat(
-    modelSettingsField.value.modelId
-  );
+  const supportsResponseFormat =
+    modelSettingsField.value &&
+    isSupportingResponseFormat(modelSettingsField.value.modelId);
   return (
     <>
       <DropdownMenu>
@@ -92,94 +187,140 @@ export function AdvancedSettings() {
           <Button label="Advanced" variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
+          <DropdownMenuLabel label="Model selection" />
           <ModelSelectionSubmenu models={models} />
-
           <ReasoningEffortSubmenu models={models} />
-
           {supportsResponseFormat && (
-            <DropdownMenuItem
-              label="Structured Response Format"
-              onSelect={() => {
-                setTimeout(() => {
-                  setTempResponseFormat(responseFormatField.value ?? null);
-                  setIsResponseFormatDialogOpen(true);
-                }, 0);
-              }}
-            />
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                label="Structured response format"
+                onSelect={() => {
+                  setTimeout(() => {
+                    setIsResponseFormatDialogOpen(true);
+                  }, 0);
+                }}
+              />
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <Dialog
-        open={isResponseFormatDialogOpen}
-        onOpenChange={setIsResponseFormatDialogOpen}
-      >
-        <DialogContent size="xl" height="lg">
-          <DialogHeader>
-            <DialogTitle visual={<DocumentTextIcon />}>
-              Structured response format
-            </DialogTitle>
-            <DialogDescription>
-              Specify a JSON schema to get responses in a consistent structure.{" "}
-              <a
-                href="https://docs.dust.tt/docs/structured-output-format"
-                target="_blank"
-                rel="noreferrer"
-                className="underline"
-              >
-                See documentation
-              </a>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogContainer>
-            <SuspensedCodeEditor
-              data-color-mode={isDark ? "dark" : "light"}
-              value={currentValue}
-              placeholder={RESPONSE_FORMAT_PLACEHOLDER}
-              name="responseFormat"
-              onChange={(e) => setTempResponseFormat(e.target.value)}
-              minHeight={400}
-              className={cn(
-                "rounded-lg bg-slate-100 dark:bg-slate-100-night",
-                validationError &&
-                  "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
-              )}
-              style={{
-                fontSize: 13,
-                fontFamily:
-                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                overflowY: "auto",
-              }}
-              language="json"
-            />
-            {validationError && (
-              <p className="text-sm text-red-500">{validationError}</p>
-            )}
-          </DialogContainer>
-          <DialogFooter
-            className="pt-2"
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setTempResponseFormat(null);
-                setIsResponseFormatDialogOpen(false);
-              },
-            }}
-            rightButtonProps={{
-              label: "Save",
-              disabled: !!validationError,
-              onClick: () => {
-                if (tempResponseFormat !== null) {
-                  responseFormatField.onChange(tempResponseFormat);
-                }
-                setTempResponseFormat(null);
-                setIsResponseFormatDialogOpen(false);
-              },
-            }}
-          />
-        </DialogContent>
-      </Dialog>
     </>
   );
+}
+
+export function AdvancedSettings() {
+  const { owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags();
+  const hasModelsPicker = hasFeature("models_picker");
+
+  const [isResponseFormatDialogOpen, setIsResponseFormatDialogOpen] =
+    React.useState(false);
+
+  const { field: generationSettingsField } = useController<
+    AgentBuilderFormData,
+    "generationSettings"
+  >({
+    name: "generationSettings",
+  });
+
+  const [modelSelection, setModelSelection] = React.useState<
+    ModelSelectionType | undefined
+  >(undefined);
+
+  useEffect(() => {
+    const modelId = generationSettingsField.value.modelSettings?.modelId;
+    const providerId = generationSettingsField.value.modelSettings?.providerId;
+    const reasoningEffort =
+      generationSettingsField.value.reasoningEffort ?? undefined;
+    if (!modelId || !providerId) {
+      setModelSelection(undefined);
+    } else if (
+      modelId !== modelSelection?.modelId ||
+      providerId !== modelSelection?.providerId ||
+      reasoningEffort !== modelSelection?.reasoningEffort
+    ) {
+      setModelSelection({
+        modelId,
+        providerId,
+        reasoningEffort,
+      });
+    }
+  }, [
+    generationSettingsField.value.modelSettings?.modelId,
+    generationSettingsField.value.modelSettings?.providerId,
+    generationSettingsField.value.reasoningEffort,
+    modelSelection?.modelId,
+    modelSelection?.providerId,
+    modelSelection?.reasoningEffort,
+  ]);
+
+  const supportsResponseFormat =
+    generationSettingsField.value.modelSettings &&
+    isSupportingResponseFormat(
+      generationSettingsField.value.modelSettings.modelId
+    );
+
+  if (hasModelsPicker) {
+    return (
+      <>
+        <StructuredResponseFormatDialog
+          isOpen={isResponseFormatDialogOpen}
+          onOpenChange={setIsResponseFormatDialogOpen}
+        />
+        <ModelPicker
+          // Set these 2 as we are in the context of the agent builder, not a conversation
+          agentId={null}
+          agentModel={null}
+          // Use what is in the agent builder form
+          lastRequestedModel={modelSelection ?? null}
+          owner={owner}
+          buttonSize="sm"
+          buttonVariant="outline"
+          showLabel={true}
+          side="top"
+          disabled={false}
+          onSelectionChange={(newModelSelection) => {
+            // Keep both in sync to avoid extra re-renders
+            setModelSelection(newModelSelection);
+            generationSettingsField.onChange({
+              ...generationSettingsField.value,
+              reasoningEffort: newModelSelection?.reasoningEffort,
+              modelSettings: {
+                modelId: newModelSelection?.modelId,
+                providerId: newModelSelection?.providerId,
+              },
+            });
+          }}
+        />
+        <Button
+          label="JSON Response"
+          variant="outline"
+          size="sm"
+          disabled={!supportsResponseFormat}
+          tooltip={
+            !supportsResponseFormat
+              ? "Pick a specific model that supports structured response format (JSON schema)"
+              : "Will constrain the model to a specific JSON schema"
+          }
+          onClick={() => {
+            setIsResponseFormatDialogOpen(true);
+          }}
+        />
+      </>
+    );
+  } else {
+    return (
+      <>
+        <StructuredResponseFormatDialog
+          isOpen={isResponseFormatDialogOpen}
+          onOpenChange={setIsResponseFormatDialogOpen}
+        />
+        <AdvancedSettingsLegacy
+          owner={owner}
+          setIsResponseFormatDialogOpen={setIsResponseFormatDialogOpen}
+        />
+      </>
+    );
+  }
 }

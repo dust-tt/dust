@@ -1,17 +1,32 @@
+import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
+import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
+import {
+  AuthorizedFileAccessModel,
+  FileModel,
+} from "@app/lib/resources/storage/models/files";
 import { copyContent } from "@app/lib/utils/files";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import type { MockFileVersion } from "@app/tests/utils/mocks/file_storage";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { frameContentType } from "@app/types/files";
+import type {
+  AllSupportedFileContentType,
+  FileUseCaseMetadata,
+} from "@app/types/files";
+import {
+  frameContentType,
+  isUnverifiableFrameFileRefsShareError,
+  sandboxFunctionContentType,
+} from "@app/types/files";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -607,6 +622,49 @@ describe("FileResource", () => {
       expect(row?.mountFilePath).toBeNull();
     });
 
+    it("should expose the transcript sibling for audio files only", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const makeConversationFile = async (
+        contentType: AllSupportedFileContentType,
+        fileName: string,
+        useCaseMetadata: FileUseCaseMetadata
+      ) => {
+        const file = await FileFactory.create(auth, null, {
+          contentType,
+          fileName,
+          fileSize: 100,
+          status: "created",
+          useCase: "conversation",
+          useCaseMetadata,
+        });
+        await file.markAsReady(auth);
+        return file;
+      };
+
+      const audio = await makeConversationFile("audio/webm", "voice.webm", {
+        conversationId: "conv-audio",
+      });
+      expect(audio.getTextProcessedMountFilePath()).toBe(
+        `w/${workspace.sId}/conversations/conv-audio/files/voice.processed.txt`
+      );
+
+      // Images process to a resized image, not to text.
+      const image = await makeConversationFile("image/png", "shot.png", {
+        conversationId: "conv-image",
+      });
+      expect(image.getTextProcessedMountFilePath()).toBeNull();
+
+      // Raw-mounted files are never processed, so no sibling is written.
+      const rawAudio = await makeConversationFile("audio/webm", "raw.webm", {
+        conversationId: "conv-raw",
+        skipFileProcessing: true,
+      });
+      expect(rawAudio.getTextProcessedMountFilePath()).toBeNull();
+    });
+
     it("should not re-resolve when mountFilePath is already set", async () => {
       const { authenticator: auth, workspace } = await createResourceTest({
         role: "admin",
@@ -961,7 +1019,7 @@ describe("FileResource", () => {
       expect(path).toContain("/original");
     });
 
-    it("should resolve to 'processed' version for PDF files", async () => {
+    it("should resolve to 'original' version for PDF files (no pre-processing; lazy via extract_text tool)", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -976,10 +1034,10 @@ describe("FileResource", () => {
       });
 
       const { path } = file.getContentBucketAndPath(auth);
-      expect(path).toContain("/processed");
+      expect(path).toContain("/original");
     });
 
-    it("should resolve to 'processed' version for Word documents", async () => {
+    it("should resolve to 'original' version for Word documents (no pre-processing; lazy via extract_text tool)", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -995,7 +1053,7 @@ describe("FileResource", () => {
       });
 
       const { path } = file.getContentBucketAndPath(auth);
-      expect(path).toContain("/processed");
+      expect(path).toContain("/original");
     });
 
     it("should resolve to 'original' version for spreadsheets when file processing is skipped", async () => {
@@ -1128,6 +1186,441 @@ describe("FileResource", () => {
 
       // Only canonical write, no mount path write.
       expect(allUploadCalls).toHaveLength(1);
+    });
+  });
+
+  describe("revert", () => {
+    // revert() reads versions and refreshes the mount entirely through getPrivateUploadBucket(),
+    // which fileStorageMock already stubs globally (see tests/utils/mocks/file_storage.ts).
+    // setSortedFileVersions/setCopyFileFails drive it without reaching into FileResource's
+    // private methods. fileStorageMock.reset() (global beforeEach) clears both between tests.
+    function mockVersion(): MockFileVersion {
+      return {
+        copy: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("refreshes the mount copy from the restored canonical version", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-revert" },
+      });
+
+      const row = await FileModel.findOne({
+        where: { id: frameFile.id, workspaceId: workspace.id },
+      });
+      assert(row?.mountFilePath, "Mount path should be set");
+
+      fileStorageMock.setSortedFileVersions(() => [
+        mockVersion(),
+        mockVersion(),
+      ]);
+
+      const result = await frameFile.revert(auth, {
+        revertedByAgentConfigurationId: "agent-1",
+      });
+
+      expect(result.isOk()).toBe(true);
+
+      const allCopyFileCalls = vi
+        .mocked(getPrivateUploadBucket)
+        .mock.results.flatMap((r) =>
+          r.type === "return" ? vi.mocked(r.value.copyFile).mock.calls : []
+        );
+
+      // The mount copy must be refreshed to the restored canonical version, so reads through
+      // the mount and the next publish see the reverted content rather than the stale mount.
+      expect(
+        allCopyFileCalls.some((call) => call[1] === row.mountFilePath)
+      ).toBe(true);
+    });
+
+    it("still succeeds when refreshing the mount copy fails", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-revert-fail" },
+      });
+
+      fileStorageMock.setSortedFileVersions(() => [
+        mockVersion(),
+        mockVersion(),
+      ]);
+
+      // The restore copy succeeds (the version object's own .copy() call), but the mount
+      // refresh's copyFile() call fails. Best-effort: the revert must not fail because of it,
+      // since the canonical restore already succeeded by that point. setUseCaseMetadata
+      // (called earlier in revert(), unrelated to this fix) also refreshes the mount as a
+      // side effect, so only the call after the restore should fail.
+      let copyFileCallCount = 0;
+      fileStorageMock.setCopyFileFails(() => {
+        copyFileCallCount += 1;
+        return copyFileCallCount > 1;
+      });
+
+      const result = await frameFile.revert(auth, {
+        revertedByAgentConfigurationId: "agent-1",
+      });
+
+      expect(result.isOk()).toBe(true);
+    });
+  });
+
+  describe("authorized file access", () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+      vi.spyOn(
+        FileResource.prototype,
+        "getSharedReadStream"
+      ).mockImplementation(function getSharedReadStream(this: FileResource) {
+        return Readable.from([Buffer.from(this.fileName, "utf-8")]);
+      });
+    });
+
+    it("refreshAuthorizedFileAccess replaces prior rows with the refreshed allowlist", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const shareableFile = await FileResource.shareableFileModel.findOne({
+        where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+      });
+      expect(shareableFile).not.toBeNull();
+
+      const existingAllowedAt = new Date("2026-01-01T00:00:00.000Z");
+      await AuthorizedFileAccessModel.create({
+        workspaceId: frameFile.workspaceId,
+        shareableFileId: shareableFile!.id,
+        kind: "file_id",
+        ref: "fil_OLDREF0001",
+        fileName: null,
+        legacyPath: null,
+        shareScope: shareableFile!.shareScope,
+        generatedByUserId: auth.user()!.id,
+        frameContentHash: "old-hash",
+        allowedAt: existingAllowedAt,
+      });
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from([Buffer.from('useFile("fil_ABCDEFGHIJ");', "utf-8")])
+      );
+      vi.spyOn(FileResource, "fetchById").mockResolvedValue(null);
+
+      const refreshed = await frameFile.refreshAuthorizedFileAccess(auth);
+
+      expect(refreshed.frameContentHash).toBe(
+        computeFrameContentHash('useFile("fil_ABCDEFGHIJ");')
+      );
+      expect(refreshed.unverifiableRefs).toEqual(["fil_ABCDEFGHIJ"]);
+
+      const rows = await AuthorizedFileAccessModel.findAll({
+        where: {
+          shareableFileId: shareableFile!.id,
+          workspaceId: frameFile.workspaceId,
+        },
+      });
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.kind).toBe("unverifiable");
+      expect(rows[0]?.ref).toBe("fil_ABCDEFGHIJ");
+    });
+
+    it("uploadFrameContent blocks when static refs cannot be verified", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: 'useFile("fil_ZZZZZZZZZZ");',
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      vi.spyOn(FileResource, "fetchById").mockResolvedValue(null);
+
+      const result = await uploadFrameContent(
+        auth,
+        frameFile,
+        'useFile("fil_ZZZZZZZZZZ");'
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(isUnverifiableFrameFileRefsShareError(result.error)).toBe(true);
+      }
+
+      const shareableFile = await FileResource.shareableFileModel.findOne({
+        where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+      });
+      const rows = await AuthorizedFileAccessModel.findAll({
+        where: {
+          shareableFileId: shareableFile!.id,
+          workspaceId: frameFile.workspaceId,
+        },
+      });
+      expect(rows).toHaveLength(0);
+    });
+
+    it("uploadFrameContent updates the allowlist for verifiable refs", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const dataFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "data.txt",
+        fileSize: 10,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const frameContent = `useFile("${dataFile.sId}");`;
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: frameContent,
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const result = await uploadFrameContent(auth, frameFile, frameContent);
+      expect(result.isOk()).toBe(true);
+
+      const shareableFile = await FileResource.shareableFileModel.findOne({
+        where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+      });
+      const rows = await AuthorizedFileAccessModel.findAll({
+        where: {
+          shareableFileId: shareableFile!.id,
+          workspaceId: frameFile.workspaceId,
+        },
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.kind).toBe("file_id");
+      expect(rows[0]?.ref).toBe(dataFile.sId);
+      expect(rows[0]?.fileName).toBe("data.txt");
+      expect(rows[0]?.generatedByUserId).toBe(auth.user()!.id);
+    });
+
+    it("getActiveAuthorizedFileAccessAllowlist resolves computedByUserId from generatedByUserId FK", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const shareableFile = await FileResource.shareableFileModel.findOne({
+        where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+      });
+      expect(shareableFile).not.toBeNull();
+
+      await AuthorizedFileAccessModel.create({
+        workspaceId: frameFile.workspaceId,
+        shareableFileId: shareableFile!.id,
+        kind: "file_id",
+        ref: "fil_PLACEHOLDER",
+        fileName: null,
+        legacyPath: null,
+        shareScope: shareableFile!.shareScope,
+        generatedByUserId: auth.user()!.id,
+        frameContentHash: "hash123",
+        allowedAt: new Date(),
+      });
+
+      const allowlist =
+        await frameFile.getActiveAuthorizedFileAccessAllowlist();
+
+      expect(allowlist?.generatedByUserId).toBe(auth.user()!.id);
+    });
+
+    it("setShareScope updates share scope without recomputing the allowlist", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      await frameFile.setShareScope(auth, "public");
+
+      const shareableFile = await FileResource.shareableFileModel.findOne({
+        where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+      });
+      expect(shareableFile?.shareScope).toBe("public");
+
+      const rows = await AuthorizedFileAccessModel.findAll({
+        where: {
+          shareableFileId: shareableFile!.id,
+          workspaceId: frameFile.workspaceId,
+        },
+      });
+      expect(rows).toHaveLength(0);
+    });
+
+    it("fetchByShareToken returns the active authorized file access allowlist", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const dataFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "data.txt",
+        fileSize: 10,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const frameContent = `useFile("${dataFile.sId}");`;
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: frameContent,
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const uploadResult = await uploadFrameContent(
+        auth,
+        frameFile,
+        frameContent
+      );
+      expect(uploadResult.isOk()).toBe(true);
+
+      const shareInfo = await frameFile.getShareInfo();
+      const token = shareInfo?.shareUrl.split("/").at(-1);
+      assert(token, "Share token should be defined");
+
+      const result = await FileResource.fetchByShareToken(token);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.authorizedFileAccess).not.toBeNull();
+        expect(result.value.authorizedFileAccess?.refs).toEqual([
+          {
+            kind: "file_id",
+            ref: dataFile.sId,
+            fileName: "data.txt",
+          },
+        ]);
+      }
+    });
+  });
+
+  describe("sandbox function mount routing", () => {
+    it("resolves a sandbox function bundle under the dedicated prefix", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const space = await SpaceFactory.regular(workspace);
+
+      const bundleFile = await FileFactory.create(auth, null, {
+        contentType: sandboxFunctionContentType,
+        fileName: "greet.ts",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+
+      const row = await FileModel.findOne({
+        where: { id: bundleFile.id, workspaceId: workspace.id },
+      });
+      expect(row?.mountFilePath).toBe(
+        `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
+      );
+    });
+
+    it("keeps regular project files under the pod files prefix", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const space = await SpaceFactory.regular(workspace);
+
+      const projectFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "notes.txt",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+
+      const row = await FileModel.findOne({
+        where: { id: projectFile.id, workspaceId: workspace.id },
+      });
+      expect(row?.mountFilePath).toBe(
+        `w/${workspace.sId}/pods/${space.sId}/files/notes.txt`
+      );
     });
   });
 });

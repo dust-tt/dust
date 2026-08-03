@@ -5,11 +5,11 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Button, MenuIcon } from "@dust-tt/sparkle";
+import { Button, cn, Menu01 } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { sendGetSessionInfoMessage } from "@extension/shared/messages";
-import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useClientSideMCPServerIds } from "@extension/ui/components/conversation/ExtensionClientSideMCPServerProvider";
+import { useContext, useEffect, useState } from "react";
 
 interface ConversationContainerProps {
   workspace: LightWorkspaceType;
@@ -17,7 +17,6 @@ interface ConversationContainerProps {
   subscription: SubscriptionType;
   conversationId: string | null;
   conversation?: ConversationWithoutContentType;
-  serverId?: string;
 }
 
 const SUGGESTIONS = {
@@ -41,16 +40,12 @@ export const ConversationContainer = ({
   subscription,
   conversationId,
   conversation,
-  serverId,
 }: ConversationContainerProps) => {
   const platform = usePlatform();
   const { currentPanel } = useConversationSidePanelContext();
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  const clientSideMCPServerIds = useMemo(
-    () => (serverId ? [serverId] : undefined),
-    [serverId]
-  );
+  const clientSideMCPServerIds = useClientSideMCPServerIds();
 
   const [suggestion, setSuggestion] = useState<
     | {
@@ -100,10 +95,7 @@ export const ConversationContainer = ({
   }, []);
 
   return (
-    <ExtensionInputBarProvider
-      workspace={workspace}
-      conversationId={conversationId}
-    >
+    <>
       <div className={currentPanel ? "hidden" : "flex flex-col h-full w-full"}>
         <ConversationContainerVirtuoso
           owner={workspace}
@@ -116,12 +108,16 @@ export const ConversationContainer = ({
         />
       </div>
       {conversation && currentPanel && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background dark:bg-background-night">
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
           {/* Hamburger button overlaid in the pl-14 area of AppLayoutTitle header */}
-          <div className="absolute left-0 top-0 z-10 flex h-[58px] shrink-0 items-center px-2">
+          <div
+            className={cn(
+              "absolute left-0 top-0 z-10 flex shrink-0 items-center px-2 h-title"
+            )}
+          >
             <Button
               variant="ghost"
-              icon={MenuIcon}
+              icon={Menu01}
               onClick={() => setSidebarOpen(true)}
             />
           </div>
@@ -132,6 +128,6 @@ export const ConversationContainer = ({
           />
         </div>
       )}
-    </ExtensionInputBarProvider>
+    </>
   );
 };

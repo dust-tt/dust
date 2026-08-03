@@ -136,25 +136,44 @@ export function EditableFrame({ children }: EditableFrameProps) {
         setTimeout(() => target.classList.remove(...cls), FLASH_DURATION_MS);
       };
 
-      // Wrap rawText with surrounding source context so the server string-search is unique.
+      // Published (bundled) frames carry a `data-source` ("<relPath>:<line>:<col>") on each JSX
+      // element. When present, route the edit to the source file by location (robust against
+      // duplicated text and works through the bundle). Otherwise, fall back to the legacy
+      // context-string match against the rendered code.
+      const sourceEl = target.closest<HTMLElement>("[data-source]");
+      const source = sourceEl?.dataset.source;
+
       const rawText = decodeURIComponent(target.dataset.rawText ?? "");
-      const ctxBefore = decodeURIComponent(target.dataset.ctxBefore ?? "");
-      const ctxAfter = decodeURIComponent(target.dataset.ctxAfter ?? "");
       const rawFileId = target.dataset.fileId;
       const targetFileId = rawFileId?.startsWith(EDITABLE_FILE_ID_PREFIX)
         ? rawFileId.slice(EDITABLE_FILE_ID_PREFIX.length)
         : undefined;
+
       // rawText may start/end with \n+indent (multi-line JSX) that the browser strips from
       // textContent. Re-attach only that newline-based whitespace so the file replacement matches
       // the exact source bytes. Inline spaces are already present in textContent, so we skip them.
       const leadingWs = rawText.match(/^\s*\n\s*/)?.[0] ?? "";
       const trailingWs = rawText.match(/\s*\n\s*$/)?.[0] ?? "";
       const newRawText = leadingWs + newVisibleText + trailingWs;
-      const oldText = ctxBefore + rawText + ctxAfter;
-      const newText = ctxBefore + newRawText + ctxAfter;
+
+      // Location edits send the visible (trimmed) text. The server preserves surrounding
+      // whitespace and disambiguates among the element's own text children by oldText.
+      const editParams = source
+        ? { oldText: originalVisibleText, newText: newVisibleText, source }
+        : (() => {
+            const ctxBefore = decodeURIComponent(
+              target.dataset.ctxBefore ?? ""
+            );
+            const ctxAfter = decodeURIComponent(target.dataset.ctxAfter ?? "");
+            return {
+              oldText: ctxBefore + rawText + ctxAfter,
+              newText: ctxBefore + newRawText + ctxAfter,
+              targetFileId,
+            };
+          })();
 
       isSavingRef.current = true;
-      void editText({ oldText, newText, targetFileId })
+      void editText(editParams)
         .then((result) => {
           if (!result.success) {
             target.textContent = originalVisibleText;

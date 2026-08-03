@@ -7,8 +7,7 @@ import type {
 } from "@connectors/types";
 import { AdminCommandSchema } from "@connectors/types";
 import type { Request, Response } from "express";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import { fromError } from "zod-validation-error";
 
 const whitelistedCommands = [
   {
@@ -109,22 +108,19 @@ const _adminAPIHandler = async (
   req: Request<Record<string, string>, AdminResponseType, AdminCommandType>,
   res: Response<WithConnectorsAPIErrorReponse<AdminResponseType>>
 ) => {
-  const adminCommandValidation = AdminCommandSchema.decode(req.body);
+  const adminCommandValidation = AdminCommandSchema.safeParse(req.body);
 
-  if (isLeft(adminCommandValidation)) {
-    const pathError = reporter.formatValidationErrors(
-      adminCommandValidation.left
-    );
+  if (!adminCommandValidation.success) {
     return apiError(req, res, {
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
+        message: `Invalid request body: ${fromError(adminCommandValidation.error).toString()}`,
       },
       status_code: 400,
     });
   }
 
-  const adminCommand = adminCommandValidation.right;
+  const adminCommand = adminCommandValidation.data;
 
   if (
     !whitelistedCommands.some(

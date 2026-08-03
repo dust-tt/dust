@@ -1,5 +1,5 @@
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetDataSourceDetails } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
+import type { PokeGetDataSourceDetails } from "@app/types/api/poke/data_sources";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

@@ -23,11 +23,13 @@ yalc.lock
 front/public/sitemap.xml
 front/public/robots.txt
 mprocs.log
+process-compose*.log
 **/tsconfig.tsbuildinfo
 **/.npm-cache
 AGENTS.local.md
 CLAUDE.local.md
 node_modules
+thoughts/*
 
 # dust-hive worktrees
 .hives/
@@ -39,4 +41,10 @@ node_modules
 
 # Storybook static build output
 **/storybook-static/
+
+# Local pptx test decks dropped at the repo root during pptx tooling work
+/*.pptx
+
+# Sandbox provider build scratch dirs
+/front/lib/api/sandbox/providers/sandbox-build-*/
 

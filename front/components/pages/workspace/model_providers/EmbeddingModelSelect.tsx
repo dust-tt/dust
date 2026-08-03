@@ -55,7 +55,7 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="text-sm text-gray-500">
+      <div className="text-sm text-muted-foreground">
         Embedding models are used to create numerical representations of your
         data powering the semantic search capabilities of your agents.
       </div>

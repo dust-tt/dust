@@ -7,7 +7,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Label, PencilSquareIcon } from "@dust-tt/sparkle";
+import { Button, Edit04, Label } from "@dust-tt/sparkle";
 
 import Block from "./Block";
 
@@ -67,12 +67,12 @@ export default function Data({
       canUseCache={false}
     >
       <div className="flex flex-col sm:flex-row">
-        <div className="flex flex-row items-center text-sm font-medium leading-8 text-gray-700">
+        <div className="flex flex-row items-center text-sm font-medium leading-8 text-foreground">
           <Label>Dataset</Label>
           {block.spec.dataset_id && block.spec.hash ? (
             <div className="flex items-center">
               {block.spec.dataset_id}
-              <div className="ml-1 text-gray-400">
+              <div className="ml-1 text-muted-foreground">
                 ({block.spec.hash.slice(-7)})
               </div>
             </div>
@@ -91,14 +91,14 @@ export default function Data({
               onClick={() => {
                 window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.spec.dataset}`;
               }}
-              icon={PencilSquareIcon}
+              icon={Edit04}
               label={readOnly ? "View" : "Edit"}
               size="xs"
             />
           )}
         </div>
         {/*
-        <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">
+        <div className="flex flex-row items-center space-x-2 text-sm font-medium text-foreground leading-8">
           <div className="flex flex-initial">version:</div>
           <div className="flex flex-1 font-normal">latest</div>
         </div>

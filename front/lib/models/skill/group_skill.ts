@@ -1,9 +1,9 @@
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class GroupSkillModel extends WorkspaceAwareModel<GroupSkillModel> {
   declare id: CreationOptional<number>;

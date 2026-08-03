@@ -80,8 +80,8 @@ export function isCreditType(value: unknown): value is CreditType {
 // Credit expiration duration in days (default: 1 year)
 export const CREDIT_EXPIRATION_DAYS = 365;
 
-export const MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 1000;
-export const MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
+export const MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 0;
+export const MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 2_000_000;
 
 export type CreditDisplayData = {
   sId: string;

@@ -3,12 +3,17 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import logger from "@app/logger/logger";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import chunk from "lodash/chunk";
+import uniq from "lodash/uniq";
 
-// Safeguards to avoid sending a huge number of skills to the LLM
-const MAX_SKILLS_SENT_TO_LLM = 100;
+// Safeguards to avoid sending a huge number of skills to a single LLM call:
+// skills are checked in batches of this size, one LLM call per batch.
+export const SKILLS_PER_LLM_CALL = 100;
+const MAX_CONCURRENT_LLM_CALLS = 4;
 const MAX_DESCRIPTION_LENGTH = 500;
 
 const SET_SIMILAR_SKILLS_FUNCTION_NAME = "set_similar_skills";
@@ -99,37 +104,19 @@ function truncateDescription(description: string): string {
   return description;
 }
 
-export async function getSimilarSkills(
+async function findSimilarSkillsInBatch(
   auth: Authenticator,
-  inputs: {
+  {
+    model,
+    naturalDescription,
+    skills,
+  }: {
+    model: ModelConfigurationType;
     naturalDescription: string;
-    excludeSkillId: string | null;
+    skills: SkillResource[];
   }
-): Promise<Result<{ similar_skills: string[] }, Error>> {
+): Promise<Result<string[], Error>> {
   const owner = auth.getNonNullableWorkspace();
-
-  const model = await getSmallWhitelistedModel(auth);
-  if (!model) {
-    return new Err(
-      new Error("Failed to find a whitelisted model to generate cron rule")
-    );
-  }
-
-  // Retrieve existing skills
-  const allSkills: SkillResource[] = await SkillResource.listByWorkspace(auth, {
-    limit: MAX_SKILLS_SENT_TO_LLM,
-    onlyCustom: true,
-  });
-  if (allSkills.length === MAX_SKILLS_SENT_TO_LLM) {
-    logger.warn(
-      { workspaceId: owner.sId },
-      "The number of skills fetched reached the limit. Some skills might not be considered in the similarity check."
-    );
-  }
-
-  const skills = inputs.excludeSkillId
-    ? allSkills.filter((s) => s.sId !== inputs.excludeSkillId)
-    : allSkills;
 
   const existingSkills = skills
     .map(
@@ -137,7 +124,7 @@ export async function getSimilarSkills(
 "${truncateDescription(s.agentFacingDescription)}"`
     )
     .join("\n---\n");
-  const inputText = `Input description:"${inputs.naturalDescription}"
+  const inputText = `Input description:"${naturalDescription}"
 Existing skills:
 ${existingSkills}
 `;
@@ -191,5 +178,59 @@ ${existingSkills}
     return new Err(new Error("No similar skills generated"));
   }
 
-  return new Ok({ similar_skills: similar_skills });
+  return new Ok(similar_skills);
+}
+
+export async function getSimilarSkills(
+  auth: Authenticator,
+  inputs: {
+    naturalDescription: string;
+    excludeSkillId: string | null;
+  }
+): Promise<Result<{ similar_skills: string[] }, Error>> {
+  const model = await getSmallWhitelistedModel(auth);
+  if (!model) {
+    return new Err(
+      new Error("Failed to find a whitelisted model to generate cron rule")
+    );
+  }
+
+  // Retrieve all existing published custom skills: unpublished (editors-only) skills
+  // should not prevent someone else from creating a similar skill.
+  const allSkills: SkillResource[] = await SkillResource.listByWorkspace(auth, {
+    onlyCustom: true,
+    availability: ["workspace_users", "users_and_agents"],
+  });
+
+  const skills = inputs.excludeSkillId
+    ? allSkills.filter((s) => s.sId !== inputs.excludeSkillId)
+    : allSkills;
+
+  if (skills.length === 0) {
+    return new Ok({ similar_skills: [] });
+  }
+
+  // Check skills in batches, one LLM call per batch, so all skills are
+  // considered regardless of how many the workspace has.
+  const batches = chunk(skills, SKILLS_PER_LLM_CALL);
+  const results = await concurrentExecutor(
+    batches,
+    async (batch) =>
+      findSimilarSkillsInBatch(auth, {
+        model,
+        naturalDescription: inputs.naturalDescription,
+        skills: batch,
+      }),
+    { concurrency: MAX_CONCURRENT_LLM_CALLS }
+  );
+
+  const similarSkillIds: string[] = [];
+  for (const res of results) {
+    if (res.isErr()) {
+      return new Err(res.error);
+    }
+    similarSkillIds.push(...res.value);
+  }
+
+  return new Ok({ similar_skills: uniq(similarSkillIds) });
 }

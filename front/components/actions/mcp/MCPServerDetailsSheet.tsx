@@ -15,8 +15,8 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  InformationCircleIcon,
-  LockIcon,
+  InfoCircle,
+  Lock01,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -27,14 +27,14 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DETAILS_TABS = ["info", "sharing"] as const;
-export type TabType = (typeof DETAILS_TABS)[number];
+type TabType = (typeof DETAILS_TABS)[number];
 
 interface MCPServerDetailsSheetProps {
   owner: WorkspaceType;
@@ -46,6 +46,9 @@ interface MCPServerDetailsSheetProps {
   spaces: SpaceType[];
   readOnly?: boolean;
   sensitivityLabelsController?: SensitivityLabelsController;
+  confirmSkillsRestrictionChange: (
+    isRestrictedToSkills: boolean
+  ) => Promise<boolean>;
 }
 
 export function MCPServerDetailsSheet({
@@ -58,6 +61,7 @@ export function MCPServerDetailsSheet({
   spaces,
   readOnly = false,
   sensitivityLabelsController,
+  confirmSkillsRestrictionChange,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -131,7 +135,7 @@ export function MCPServerDetailsSheet({
   return (
     <Sheet open={isOpen} onOpenChange={(open) => void handleOpenChange(open)}>
       <SheetContent size="lg">
-        <SheetHeader className="flex flex-col gap-5 text-foreground dark:text-foreground-night">
+        <SheetHeader className="flex flex-col gap-5 text-foreground">
           {header}
         </SheetHeader>
         <SheetContainer>
@@ -149,24 +153,16 @@ export function MCPServerDetailsSheet({
               onValueChange={(v) => void changeTab(v as TabType)}
             >
               <TabsList>
-                <TabsTrigger
-                  value="info"
-                  label="Info"
-                  icon={InformationCircleIcon}
-                />
+                <TabsTrigger value="info" label="Info" icon={InfoCircle} />
                 {mcpServerView?.server.availability === "manual" && (
-                  <TabsTrigger
-                    value="sharing"
-                    label="Sharing"
-                    icon={LockIcon}
-                  />
+                  <TabsTrigger value="sharing" label="Sharing" icon={Lock01} />
                 )}
                 {mcpServerView?.server.availability === "manual" && (
                   <>
                     <div className="grow" />
                     <div className="flex h-full flex-row items-center">
                       <Button
-                        icon={TrashIcon}
+                        icon={Trash01}
                         variant="warning"
                         label={isDeleting ? "Removing..." : "Remove"}
                         size="xs"
@@ -216,6 +212,9 @@ export function MCPServerDetailsSheet({
                         sensitivityLabelsController={
                           sensitivityLabelsController
                         }
+                        confirmSkillsRestrictionChange={
+                          confirmSkillsRestrictionChange
+                        }
                       />
                     </div>
                   )}
@@ -233,7 +232,7 @@ export function MCPServerDetailsSheet({
         </SheetContainer>
         {!readOnly && (
           <div className="mt-2">
-            <div className="flex flex-row gap-2 border-t border-border px-3 py-3 dark:border-border-night">
+            <div className="flex flex-row gap-2 border-t border-border px-3 py-3">
               <Button
                 label="Cancel"
                 variant="outline"

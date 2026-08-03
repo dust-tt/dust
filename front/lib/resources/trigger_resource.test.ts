@@ -294,4 +294,121 @@ describe("TriggerResource", () => {
       mockDeleteWorkflow.mockRestore();
     });
   });
+
+  describe("disable", () => {
+    it("re-attempts schedule removal even when already disabled", async () => {
+      const mockCreateOrUpdateWorkflow = vi
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
+        .mockResolvedValue(new Ok("workflow-id"));
+      const mockDeleteWorkflow = vi
+        .spyOn(temporalClient, "deleteTriggerSchedule")
+        .mockResolvedValue(new Ok(undefined));
+
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+
+      const triggerResult = await TriggerResource.makeNew(authenticator, {
+        id: 200,
+        workspaceId: workspace.id,
+        name: "Schedule Trigger",
+        kind: "schedule",
+        agentConfigurationId: agentConfig.sId,
+        editor: authenticator.getNonNullableUser().id,
+        customPrompt: null,
+        status: "enabled",
+        configuration: {
+          cron: "0 9 * * 1",
+          timezone: "UTC",
+        },
+        origin: "user",
+      });
+      expect(triggerResult.isOk()).toBe(true);
+      if (triggerResult.isErr()) {
+        throw new Error("Failed to create test trigger");
+      }
+      const trigger = triggerResult.value;
+
+      // First disable: flips status and removes the schedule.
+      const first = await trigger.disable(authenticator);
+      expect(first.isOk()).toBe(true);
+      expect(trigger.status).toBe("disabled");
+      expect(mockDeleteWorkflow).toHaveBeenCalledTimes(1);
+
+      // Second disable on an already-disabled trigger: must still reconcile the
+      // Temporal schedule (this is what self-heals an orphaned schedule left by
+      // a previously failed removal).
+      mockDeleteWorkflow.mockClear();
+      const second = await trigger.disable(authenticator);
+      expect(second.isOk()).toBe(true);
+      expect(mockDeleteWorkflow).toHaveBeenCalledTimes(1);
+
+      mockCreateOrUpdateWorkflow.mockRestore();
+      mockDeleteWorkflow.mockRestore();
+    });
+  });
+
+  describe("disableMany", () => {
+    it("reconciles schedules for triggers already at the target status", async () => {
+      const mockCreateOrUpdateWorkflow = vi
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
+        .mockResolvedValue(new Ok("workflow-id"));
+      const mockDeleteWorkflow = vi
+        .spyOn(temporalClient, "deleteTriggerSchedule")
+        .mockResolvedValue(new Ok(undefined));
+
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+
+      // A trigger whose status was already flipped to disabled, but whose
+      // schedule removal previously failed and was swallowed.
+      const triggerResult = await TriggerResource.makeNew(authenticator, {
+        id: 201,
+        workspaceId: workspace.id,
+        name: "Already Disabled Trigger",
+        kind: "schedule",
+        agentConfigurationId: agentConfig.sId,
+        editor: authenticator.getNonNullableUser().id,
+        customPrompt: null,
+        status: "disabled",
+        configuration: {
+          cron: "0 9 * * 1",
+          timezone: "UTC",
+        },
+        origin: "user",
+      });
+      expect(triggerResult.isOk()).toBe(true);
+      if (triggerResult.isErr()) {
+        throw new Error("Failed to create test trigger");
+      }
+      const trigger = triggerResult.value;
+
+      mockDeleteWorkflow.mockClear();
+
+      // disableMany used to early-return when every trigger was already at the
+      // target status, leaving the orphaned schedule alive. It must now still
+      // reconcile the Temporal schedule.
+      const result = await TriggerResource.disableMany(
+        authenticator,
+        [trigger],
+        "disabled"
+      );
+      expect(result.isOk()).toBe(true);
+      expect(mockDeleteWorkflow).toHaveBeenCalledTimes(1);
+
+      mockCreateOrUpdateWorkflow.mockRestore();
+      mockDeleteWorkflow.mockRestore();
+    });
+  });
 });

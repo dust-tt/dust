@@ -12,24 +12,26 @@ import type {
 } from "@app/components/file_explorer/types";
 import {
   getCategoryFromContentType,
+  getFileExplorerSearchResultTitle,
   getSingularFileCategoryLabelForContentType,
+  isFilePreviewableContentType,
 } from "@app/components/file_explorer/utils";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import {
-  ArrowDownOnSquareIcon,
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRight,
+  DotsHorizontal,
+  Download01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FolderIcon,
-  FolderOpenIcon,
+  Folder,
+  FolderOpen,
   Icon,
-  MoreIcon,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -39,9 +41,10 @@ import { useState } from "react";
 
 export type ViewMode = "grid" | "list";
 
-export type FileExplorerItemProps = {
+type FileExplorerItemProps = {
   /** Merged onto the interactive surface (e.g. grab cursor while dragging). */
   containerClassName?: string;
+  downloadOnOpen?: boolean;
   extraMenuItems?: FileExplorerMenuAction[];
   /** When set, replaces default hover / background (e.g. drop-target highlight). */
   surfaceClassName?: string;
@@ -60,6 +63,7 @@ export type FileExplorerItemProps = {
 export function FileExplorerItem(props: FileExplorerItemProps) {
   const {
     containerClassName,
+    downloadOnOpen = false,
     extraMenuItems,
     onDownload,
     onOpen,
@@ -88,11 +92,10 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    if (!onDownload) {
+  const runDownload = async () => {
+    if (!onDownload || isDownloading) {
       return;
     }
-    e.stopPropagation();
     setIsDownloading(true);
     try {
       await onDownload();
@@ -101,6 +104,22 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       setMenuOpen(false);
     }
   };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await runDownload();
+  };
+
+  const handleOpen = () => {
+    if (downloadOnOpen) {
+      void runDownload();
+      return;
+    }
+    onOpen();
+  };
+
+  const displayedThumbnailContent =
+    downloadOnOpen && isDownloading ? <Spinner size="sm" /> : thumbnailContent;
 
   const hasMenu = onDownload || (extraMenuItems && extraMenuItems.length > 0);
 
@@ -118,7 +137,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         <Button
           variant="ghost"
           size="xs"
-          icon={MoreIcon}
+          icon={DotsHorizontal}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         />
       </DropdownMenuTrigger>
@@ -126,7 +145,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         {onDownload && (
           <DropdownMenuItem
             label={isDownloading ? "Downloading…" : "Download"}
-            icon={ArrowDownOnSquareIcon}
+            icon={Download01}
             disabled={isDownloading}
             onClick={handleDownload}
           />
@@ -152,7 +171,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         trigger={
           <span
             className={cn(
-              "text-sm truncate text-foreground dark:text-foreground-night leading-5",
+              "text-sm truncate text-foreground leading-5",
               "justify-start",
               titleClassName
             )}
@@ -163,7 +182,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       />
       <span
         className={cn(
-          "font-normal text-xs text-muted-foreground dark:text-muted-foreground-night leading-4",
+          "font-normal text-xs text-muted-foreground leading-4",
           "justify-start"
         )}
       >
@@ -178,13 +197,13 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         className={cn(
           "flex cursor-pointer items-center gap-4 rounded-xl px-3 py-2",
           containerClassName,
-          surfaceClassName ??
-            "hover:bg-muted-background dark:hover:bg-muted-background-night"
+          surfaceClassName ?? "hover:bg-muted-background"
         )}
-        onClick={onOpen}
+        aria-busy={downloadOnOpen && isDownloading}
+        onClick={handleOpen}
       >
         <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-          {thumbnailContent}
+          {displayedThumbnailContent}
         </div>
         {info}
         {menu}
@@ -198,13 +217,13 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         className={cn(
           "flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl",
           containerClassName,
-          surfaceClassName ??
-            "bg-muted-background hover:brightness-95 dark:bg-muted-background-night",
+          surfaceClassName ?? "bg-muted-background hover:brightness-95",
           props.kind === "icon" && "p-4"
         )}
-        onClick={onOpen}
+        aria-busy={downloadOnOpen && isDownloading}
+        onClick={handleOpen}
       >
-        {thumbnailContent}
+        {displayedThumbnailContent}
       </div>
       <div className="flex items-start justify-between gap-0.5">
         {info}
@@ -263,7 +282,7 @@ function FileExplorerDropTargetWrapper({
   );
 }
 
-export interface FileExplorerFolderCardProps {
+interface FileExplorerFolderCardProps {
   node: FileSystemTreeNode;
   viewMode: ViewMode;
   onNavigate: (node: FileSystemTreeNode) => void;
@@ -295,7 +314,7 @@ export function FileExplorerFolderCard({
       {({ surfaceClassName }) => (
         <FileExplorerItem
           kind="icon"
-          visual={FolderIcon}
+          visual={Folder}
           viewMode={viewMode}
           title={node.name}
           titleClassName="font-semibold"
@@ -309,9 +328,11 @@ export function FileExplorerFolderCard({
   );
 }
 
-export interface FileExplorerFileCardProps {
+interface FileExplorerFileCardProps {
   draggable?: boolean;
   entry: FileEntry;
+  /** When set, title shows path relative to this folder (search mode). */
+  searchFolderPath?: string;
   viewMode: ViewMode;
   onOpen: (entry: FileEntry) => void;
   onDownload: (entry: FileEntry) => Promise<void>;
@@ -358,12 +379,18 @@ function FileExplorerDraggableWrapper({
 export function FileExplorerFileCard({
   draggable: draggableProp = false,
   entry,
+  searchFolderPath,
   viewMode,
   onOpen,
   onDownload,
   extraMenuItems,
 }: FileExplorerFileCardProps) {
   const subtitle = getFileSubtitle(entry, viewMode);
+  const downloadOnOpen = !isFilePreviewableContentType(entry.contentType);
+  const title =
+    searchFolderPath !== undefined
+      ? getFileExplorerSearchResultTitle(entry, searchFolderPath)
+      : entry.fileName;
 
   const handleDragStart = (e: React.DragEvent) => {
     if (e.target instanceof HTMLElement && e.target.closest("button")) {
@@ -384,9 +411,10 @@ export function FileExplorerFileCard({
         kind="thumbnail"
         thumbnailSrc={entry.thumbnailUrl}
         viewMode={viewMode}
-        title={entry.fileName}
+        title={title}
         subtitle={subtitle}
         containerClassName={dragContainerClassName}
+        downloadOnOpen={downloadOnOpen}
         onOpen={() => onOpen(entry)}
         onDownload={() => onDownload(entry)}
         extraMenuItems={extraMenuItems}
@@ -396,9 +424,10 @@ export function FileExplorerFileCard({
         kind="icon"
         visual={getFileTypeIcon(entry.contentType, entry.fileName)}
         viewMode={viewMode}
-        title={entry.fileName}
+        title={title}
         subtitle={subtitle}
         containerClassName={dragContainerClassName}
+        downloadOnOpen={downloadOnOpen}
         onOpen={() => onOpen(entry)}
         onDownload={() => onDownload(entry)}
         extraMenuItems={extraMenuItems}
@@ -416,7 +445,7 @@ export function FileExplorerFileCard({
   );
 }
 
-export interface ContentNodeCardProps {
+interface ContentNodeCardProps {
   entry: ContentNodeEntry;
   viewMode: ViewMode;
   onOpen: (entry: ContentNodeEntry) => void;
@@ -431,7 +460,7 @@ export function ContentNodeCard({
 }: ContentNodeCardProps) {
   const ProviderIcon = getConnectorProviderLogoWithFallback({
     provider: entry.connectorProvider,
-    fallback: CloudArrowLeftRightIcon,
+    fallback: CloudArrowLeftRight,
   });
 
   return (
@@ -450,12 +479,8 @@ export function ContentNodeCard({
 export function FileExplorerEmptyState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3">
-      <Icon
-        visual={FolderOpenIcon}
-        size="lg"
-        className="text-muted-foreground dark:text-muted-foreground-night"
-      />
-      <p className="copy-base text-center text-muted-foreground dark:text-muted-foreground-night">
+      <Icon visual={FolderOpen} size="lg" className="text-muted-foreground" />
+      <p className="copy-base text-center text-muted-foreground">
         Nothing to see here
       </p>
     </div>

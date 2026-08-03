@@ -3,11 +3,16 @@ import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   expireRateLimiterKey,
+  type FixedWindowBounds,
   getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
-import type { MaxMessagesTimeframeType } from "@app/types/plan";
-import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  MaxAwuCreditsTimeframeType,
+  MaxMessagesTimeframeType,
+} from "@app/types/plan";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE = 100;
 export const MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 60;
@@ -56,6 +61,40 @@ export const makeAgentMentionsRateLimitKeyForWorkspace = (
   return `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`;
 };
 
+export const makeFairUseAwuCreditsRateLimitKeyForUser = (
+  owner: LightWorkspaceType,
+  user: UserType,
+  maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType
+) => {
+  return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}`;
+};
+
+// Fixed-window counter backing the admin-configured per-user spend cap. Always
+// bucketed on the Metronome contract billing cycle (the fixed-window counter
+// appends the cycle-boundary label). Distinct from the rolling plan-level
+// fair-use key above.
+export const makeSpendLimitAwuCreditsRateLimitKeyForUser = (
+  owner: LightWorkspaceType,
+  user: UserType
+) => {
+  return `workspace:${owner.id}:user:${user.id}:spend_limit_awu_credit_count`;
+};
+
+// Fixed-window bounds for the per-user spend cap over a Metronome contract
+// billing cycle. Pure — both the recorder/enforcer (`spend_limit.ts`) and the
+// poke read (`members_usage.ts`) derive the window from the same cycle so they
+// hit the same Redis key. Labelled by the cycle start so each recurrence is a
+// distinct key.
+export const makeSpendLimitCycleWindowBounds = (
+  cycleStart: Date,
+  cycleEnd: Date
+): FixedWindowBounds => {
+  return {
+    label: `cycle-${cycleStart.getTime()}`,
+    windowEndMs: cycleEnd.getTime(),
+  };
+};
+
 export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType
 ) => {
@@ -79,6 +118,40 @@ export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
       workspace,
       plan.limits.assistant.maxMessagesTimeframe
     ),
+  });
+}
+
+export async function resetFairUseAwuCreditsRateLimitForUser({
+  auth,
+  user,
+}: {
+  auth: Authenticator;
+  user: UserType;
+}) {
+  const workspace = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
+
+  const { maxAwuCredits, maxAwuCreditsTimeframe } = plan.limits.assistant;
+
+  if (maxAwuCredits === -1) {
+    return new Err(new Error("The workspace plan has no AWU fair-use limit."));
+  }
+
+  const resetResult = await expireRateLimiterKey({
+    key: makeFairUseAwuCreditsRateLimitKeyForUser(
+      workspace,
+      user,
+      maxAwuCreditsTimeframe
+    ),
+  });
+  if (resetResult.isErr()) {
+    return resetResult;
+  }
+
+  return new Ok({
+    didResetExistingKey: resetResult.value,
+    limit: maxAwuCredits,
+    timeframe: maxAwuCreditsTimeframe,
   });
 }
 

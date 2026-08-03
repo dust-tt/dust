@@ -1,6 +1,7 @@
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { GetConversationAttachmentsResponseBody } from "@app/types/api/assistant/conversation/attachments";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -11,13 +12,10 @@ const ParamsSchema = z.object({
   cId: z.string(),
 });
 
-export type GetConversationAttachmentsResponseBody = {
-  attachments: ConversationAttachmentType[];
-};
-
 // Mounted at /api/w/:wId/assistant/conversations/:cId/attachments.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -25,13 +23,19 @@ app.get(
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const conversationRes = await getConversation(auth, conversationId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      );
     }
 
     const attachments = await listAttachments(auth, {
-      conversation: conversationRes.value,
+      conversation,
     });
 
     return ctx.json({ attachments });

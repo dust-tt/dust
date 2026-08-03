@@ -1,4 +1,5 @@
 import { removeDiacritics, subFilter } from "@app/lib/utils";
+import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -11,12 +12,13 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   getConversationDisplayTitle,
+  isPodConversation,
   isReinforcedSkillNotificationMetadata,
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { truncate } from "@app/types/shared/utils/string_utils";
+import type { PodListItemType } from "@app/types/space";
 import moment from "moment";
-
 import type { VirtuosoMessage } from "./types";
 
 const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;
@@ -68,6 +70,11 @@ export function getGroupConversationsByUnreadAndActionRequired(
           if (conversation.unread || conversation.actionRequired) {
             if (isReinforcedSkillConversation(conversation)) {
               acc.skillSuggestionConversations.push(conversation);
+            } else if (
+              conversation.triggerId !== null ||
+              conversation.nextWakeupAt !== null
+            ) {
+              acc.triggeredConversations.push(conversation);
             } else {
               acc.inboxConversations.push(conversation);
             }
@@ -81,17 +88,19 @@ export function getGroupConversationsByUnreadAndActionRequired(
           readConversations: [],
           inboxConversations: [],
           skillSuggestionConversations: [],
+          triggeredConversations: [],
         } as {
           readConversations: ConversationListItemType[];
           inboxConversations: ConversationListItemType[];
           skillSuggestionConversations: ConversationListItemType[];
+          triggeredConversations: ConversationListItemType[];
         }
       )
   );
 }
 
 export function getGroupConversationsByDate<
-  T extends ConversationListItemType,
+  T extends ConversationListItemType | PodConversationListItemType,
 >({ conversations, titleFilter }: { conversations: T[]; titleFilter: string }) {
   const today = moment().startOf("day");
   const yesterday = moment().subtract(1, "days").startOf("day");
@@ -140,7 +149,7 @@ export function getGroupConversationsByDate<
   return groups;
 }
 
-export function filterTriggeredConversations(
+export function filterReadTriggeredConversations(
   conversations: ConversationListItemType[],
   hideTriggered: boolean
 ): ConversationListItemType[] {
@@ -151,6 +160,82 @@ export function filterTriggeredConversations(
   return conversations.filter(
     (c) => c.triggerId === null || c.unread || c.actionRequired
   );
+}
+
+/**
+ * Group unread conversations for the sidebar inbox sections:
+ * 1. Non-pod conversations first
+ * 2. Pod conversations grouped by pod name
+ * 3. Within each group, by updatedAt descending
+ */
+type UnreadConversationGroup =
+  | {
+      type: "non_pod";
+      conversations: ConversationListItemType[];
+    }
+  | {
+      type: "pod";
+      spaceId: string;
+      podName: string;
+      conversations: ConversationListItemType[];
+    };
+
+export function groupUnreadConversations(
+  conversations: ConversationListItemType[],
+  pods: PodListItemType[]
+): UnreadConversationGroup[] {
+  const podNameById = new Map(pods.map((pod) => [pod.sId, pod.name]));
+
+  const sorted = conversations.toSorted((a, b) => {
+    const aIsPod = isPodConversation(a);
+    const bIsPod = isPodConversation(b);
+
+    if (aIsPod !== bIsPod) {
+      return aIsPod ? 1 : -1;
+    }
+
+    if (aIsPod && bIsPod) {
+      const aName = podNameById.get(a.spaceId) ?? "";
+      const bName = podNameById.get(b.spaceId) ?? "";
+      const nameCmp = aName.localeCompare(bName);
+      if (nameCmp !== 0) {
+        return nameCmp;
+      }
+    }
+
+    return b.updated - a.updated;
+  });
+
+  const groups: UnreadConversationGroup[] = [];
+
+  for (const conversation of sorted) {
+    if (!isPodConversation(conversation)) {
+      const lastGroup = groups[groups.length - 1];
+      if (lastGroup?.type === "non_pod") {
+        lastGroup.conversations.push(conversation);
+      } else {
+        groups.push({ type: "non_pod", conversations: [conversation] });
+      }
+      continue;
+    }
+
+    const lastGroup = groups[groups.length - 1];
+    if (
+      lastGroup?.type === "pod" &&
+      lastGroup.spaceId === conversation.spaceId
+    ) {
+      lastGroup.conversations.push(conversation);
+    } else {
+      groups.push({
+        type: "pod",
+        spaceId: conversation.spaceId,
+        podName: podNameById.get(conversation.spaceId) ?? "",
+        conversations: [conversation],
+      });
+    }
+  }
+
+  return groups;
 }
 
 export function findFirstUnreadMessageIndex(

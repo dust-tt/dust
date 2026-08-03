@@ -3,14 +3,21 @@ import {
   getServerTypeAndIdFromSId,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
-import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type {
+  DeleteMCPServerResponseBody,
+  GetMCPServerResponseBody,
+  MCPServerType,
+  MCPServerTypeWithViews,
+  PatchMCPServerBody,
+  PatchMCPServerResponseBody,
+} from "@app/lib/api/mcp";
 import { withWorkspaceConnectionRequirement } from "@app/lib/api/mcp_oauth_prerequisites";
+import { PatchMCPServerBodySchema } from "@app/lib/api/mcp_schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -24,48 +31,6 @@ import { z } from "zod";
 import sync from "./sync";
 import tools from "./tools";
 
-const PatchMCPServerBodySchema = z
-  .object({
-    icon: z.string(),
-  })
-  .or(
-    z
-      .object({
-        sharedSecret: z.string().optional(),
-        customHeaders: z
-          .array(z.object({ key: z.string(), value: z.string() }))
-          .nullable()
-          .optional(),
-      })
-      .refine(
-        (data) =>
-          data.sharedSecret !== undefined || data.customHeaders !== undefined,
-        {
-          message: "Either sharedSecret or customHeaders must be provided",
-        }
-      )
-  )
-  .or(
-    z.object({
-      meta: z.record(z.string(), z.string()).nullable(),
-    })
-  );
-
-export type PatchMCPServerBody = z.infer<typeof PatchMCPServerBodySchema>;
-
-export type GetMCPServerResponseBody = {
-  server: MCPServerTypeWithViews;
-};
-
-export type PatchMCPServerResponseBody = {
-  success: true;
-  server: MCPServerType;
-};
-
-export type DeleteMCPServerResponseBody = {
-  deleted: boolean;
-};
-
 const ParamsSchema = z.object({
   serverId: z.string(),
 });
@@ -73,6 +38,7 @@ const ParamsSchema = z.object({
 // Mounted under /api/w/:wId/mcp/:serverId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -84,11 +50,9 @@ app.get(
     const { serverType, id } = getServerTypeAndIdFromSId(serverId);
     switch (serverType) {
       case "internal": {
-        const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
         const server = await InternalMCPServerInMemoryResource.fetchById(
           auth,
-          serverId,
-          systemSpace
+          serverId
         );
 
         if (!server) {
@@ -104,7 +68,15 @@ app.get(
         return ctx.json({ server: await enrichServer(auth, server.toJSON()) });
       }
       case "remote": {
-        const server = await RemoteMCPServerResource.fetchById(auth, serverId);
+        const server = await RemoteMCPServerResource.fetchById(auth, serverId, {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        });
 
         if (!server || server.id !== id) {
           return apiError(ctx, {
@@ -139,7 +111,16 @@ app.patch(
     if (serverType === "remote") {
       const remoteServer = await RemoteMCPServerResource.fetchById(
         auth,
-        serverId
+        serverId,
+        {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       );
       if (!remoteServer) {
         return apiError(ctx, {
@@ -153,11 +134,9 @@ app.patch(
       return handleRemotePatch(ctx, auth, remoteServer, body);
     }
 
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
     const internalServer = await InternalMCPServerInMemoryResource.fetchById(
       auth,
-      serverId,
-      systemSpace
+      serverId
     );
     if (!internalServer) {
       return apiError(ctx, {
@@ -182,16 +161,10 @@ app.delete(
 
     const { serverType } = getServerTypeAndIdFromSId(serverId);
 
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
     const server =
       serverType === "remote"
         ? await RemoteMCPServerResource.fetchById(auth, serverId)
-        : await InternalMCPServerInMemoryResource.fetchById(
-            auth,
-            serverId,
-            systemSpace
-          );
+        : await InternalMCPServerInMemoryResource.fetchById(auth, serverId);
 
     if (!server) {
       return apiError(ctx, {
@@ -232,7 +205,15 @@ async function enrichServer(
   json: MCPServerType
 ): Promise<MCPServerTypeWithViews> {
   const [views, workspaceConnection] = await Promise.all([
-    MCPServerViewResource.listByMCPServer(auth, json.sId),
+    MCPServerViewResource.listByMCPServer(auth, json.sId, {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    }),
     MCPServerConnectionResource.findByMCPServer(auth, {
       mcpServerId: json.sId,
       connectionType: "workspace",

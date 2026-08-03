@@ -1,18 +1,15 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { GetPokeSkillsResponseBody } from "@app/types/api/poke/skills";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import sId from "./[sId]";
 import suggestions from "./suggestions";
 
-export type GetPokeSkillsResponseBody = {
-  skills: SkillType[];
-};
-
 // Mounted at /api/poke/workspaces/:wId/skills.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeSkillsResponseBody> => {
   const auth = ctx.get("auth");
 

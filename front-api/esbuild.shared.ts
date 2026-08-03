@@ -45,6 +45,7 @@ export interface BuildTarget {
 // server.ts is the Hono-only runtime target (`npm start` in this workspace).
 export const BUILD_TARGETS: BuildTarget[] = [
   { name: "server", entry: "server.ts", outfile: "dist/server.js" },
+  { name: "migrate", entry: "scripts/migrate.ts", outfile: "dist/migrate.js" },
 ];
 
 // Options shared by dev and production builds. Mode-specific options

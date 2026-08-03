@@ -6,9 +6,11 @@ import {
 } from "@app/lib/notifications";
 import {
   type ConversationDetailsType,
+  getEmailSummary,
+} from "@app/lib/notifications/helpers";
+import {
   type ConversationUnreadPayloadType,
   filterParticipantsByNotifyCondition,
-  getEmailSummary,
   getMessagePreviewSlack,
   getMessagePreviewText,
   shouldSendNotificationForAgentAnswer,
@@ -94,7 +96,6 @@ describe("conversation-unread workflow business logic", () => {
     zendesk: false,
     reinforced_skill_notification: false,
     reinforcement: false,
-    branch_anchor: false,
   };
   describe("shouldSendNotificationForAgentAnswer", () => {
     it.each(

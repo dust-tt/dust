@@ -46,3 +46,51 @@ describe("CouponResource.validateRedemption", () => {
     }
   });
 });
+
+describe("CouponResource.validateRedemptionForContext", () => {
+  it("accepts a seat coupon in the subscription context", async () => {
+    const coupon = await CouponFactory.create({ discountType: "seat" });
+    expect(coupon.validateRedemptionForContext("subscription").isOk()).toBe(
+      true
+    );
+  });
+
+  it("accepts a credits coupon in the credits context", async () => {
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+    });
+    expect(coupon.validateRedemptionForContext("credits").isOk()).toBe(true);
+  });
+
+  it("rejects a seat coupon in the credits context with 'wrong_coupon_type'", async () => {
+    const coupon = await CouponFactory.create({ discountType: "seat" });
+    const result = coupon.validateRedemptionForContext("credits");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("wrong_coupon_type");
+    }
+  });
+
+  it("rejects a credits coupon in the subscription context with 'wrong_coupon_type'", async () => {
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+    });
+    const result = coupon.validateRedemptionForContext("subscription");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("wrong_coupon_type");
+    }
+  });
+
+  it("still applies base validation (expired) within a matching context", async () => {
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+      expirationDate: new Date(Date.now() - 1000),
+    });
+    const result = coupon.validateRedemptionForContext("credits");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("expired");
+    }
+  });
+});

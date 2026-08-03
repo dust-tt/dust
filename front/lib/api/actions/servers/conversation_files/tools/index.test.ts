@@ -1,4 +1,4 @@
-import type { FileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import type { FileAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { describe, expect, it } from "vitest";
 
 import { contentFromAttachments } from "./index";

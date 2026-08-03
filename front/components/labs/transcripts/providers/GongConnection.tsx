@@ -1,10 +1,5 @@
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
-import {
-  Button,
-  CloudArrowLeftRightIcon,
-  Page,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { Button, CloudArrowLeftRight, Page, XClose } from "@dust-tt/sparkle";
 
 interface GongConnectionProps {
   transcriptsConfiguration: LabsTranscriptsConfigurationType | null;
@@ -28,12 +23,12 @@ export function GongConnection({
               <Button
                 label="Gong connected"
                 size="sm"
-                icon={CloudArrowLeftRightIcon}
+                icon={CloudArrowLeftRight}
                 disabled={true}
               />
               <Button
                 label="Disconnect"
-                icon={XMarkIcon}
+                icon={XClose}
                 size="sm"
                 variant="outline"
                 onClick={() => setIsDeleteProviderDialogOpened(true)}
@@ -46,7 +41,7 @@ export function GongConnection({
                 <Button
                   label="Process your Gong transcripts"
                   size="sm"
-                  icon={CloudArrowLeftRightIcon}
+                  icon={CloudArrowLeftRight}
                   onClick={onConnect}
                 />
               </div>

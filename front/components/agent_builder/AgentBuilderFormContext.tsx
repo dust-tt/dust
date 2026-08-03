@@ -81,6 +81,7 @@ const webhookTriggerSchema = z.object({
   editorName: z.string().optional(),
   executionPerDayLimitOverride: z.number().nullable(),
   executionMode: z.enum(["fair_use", "programmatic"]).nullable(),
+  spaceId: z.string().nullable().optional(),
 });
 
 const scheduleTriggerSchema = z.object({
@@ -93,6 +94,7 @@ const scheduleTriggerSchema = z.object({
   configuration: scheduleConfigSchema,
   editor: z.number().nullable(),
   editorName: z.string().optional(),
+  spaceId: z.string().nullable().optional(),
 });
 
 const triggerSchema = z.discriminatedUnion("kind", [

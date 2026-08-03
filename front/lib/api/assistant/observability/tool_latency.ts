@@ -273,3 +273,10 @@ export async function fetchToolLatencyMetrics(
 
   return new Ok(byVersion);
 }
+
+export type GetToolLatencyResponse = {
+  byVersion: ToolLatencyByVersion[];
+  rows?: ToolLatencyRow[];
+  view?: ToolLatencyView;
+  serverName?: string;
+};

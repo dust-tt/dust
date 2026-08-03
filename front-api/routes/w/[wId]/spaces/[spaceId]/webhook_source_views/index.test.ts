@@ -239,7 +239,15 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/webhook_source_views/:webhookSource
     );
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    await regularSpace.groups[0].dangerouslyAddMember(adminAuth, {
+    const [memberGroup] = await regularSpace.fetchGroupResources(adminAuth, {
+      groupReferences: regularSpace.groups.filter((group) =>
+        group.isRegularAuto()
+      ),
+    });
+    if (!memberGroup) {
+      throw new Error("Expected the space member group to exist.");
+    }
+    await memberGroup.dangerouslyAddMember(adminAuth, {
       user: user.toJSON(),
     });
 

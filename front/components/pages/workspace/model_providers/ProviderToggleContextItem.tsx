@@ -31,7 +31,6 @@ export function ProviderToggleContextItem({
       visual={<Icon visual={LogoComponent} size="lg" />}
       action={
         <SliderToggle
-          size="xs"
           selected={providersSelection[providerId]}
           onClick={handleToggleChange}
           disabled={disabled}
@@ -39,9 +38,7 @@ export function ProviderToggleContextItem({
       }
     >
       <ContextItem.Description>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {description}
-        </span>
+        <span className="text-sm text-muted-foreground">{description}</span>
       </ContextItem.Description>
     </ContextItem>
   );

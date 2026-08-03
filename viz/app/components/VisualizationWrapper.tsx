@@ -3,7 +3,14 @@
 import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
+import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
+import {
+  PodFunctionHooksProvider,
+  usePodFunction,
+  usePodFunctionMutation,
+  useUserIdentity,
+} from "@viz/app/lib/pod-function-hooks";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
   VisualizationAPI,
@@ -28,6 +35,7 @@ import * as shadcnAll from "@viz/components/ui";
 import * as utilsAll from "@viz/lib/utils";
 import { toBlob, toSvg } from "html-to-image";
 import * as lucideAll from "lucide-react";
+import * as motionAll from "motion/react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -192,15 +200,18 @@ export function useVisualizationAPI(
       newText,
       oldText,
       targetFileId,
+      source,
     }: {
       newText: string;
       oldText: string;
       targetFileId?: string;
+      source?: string;
     }) => {
       return await sendCrossDocumentMessage("editText", {
         oldText,
         newText,
         targetFileId,
+        source,
       });
     },
     [sendCrossDocumentMessage]
@@ -402,6 +413,28 @@ export function VisualizationWrapper({
     [ref, downloadFile, identifier]
   );
 
+  // A rejected promise nothing catches never reaches the ErrorBoundary, which only sees throws
+  // during render. Frame code is async throughout (a `callFunction` awaited without a `catch`, a
+  // failed fetch), so without this the Frame shows a spinner forever and reports nothing.
+  //
+  // This surfaces the error even once the Frame has rendered, which does replace a Frame that was
+  // partly working with the parent's error card. That is the intent: a Frame with an uncaught
+  // rejection is broken, and the card feeds the error back to the model on retry. The event is
+  // deliberately not `preventDefault()`ed so the rejection still reaches the browser console.
+  useEffect(() => {
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const { reason } = event;
+      setErrorMessage(
+        reason instanceof Error ? reason : new Error(String(reason))
+      );
+    };
+
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    return () =>
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+  }, []);
+
   useEffect(() => {
     const loadCode = async () => {
       try {
@@ -431,12 +464,19 @@ export function VisualizationWrapper({
           // New location for utils.
           "@viz/lib/utils": utilsAll,
           "lucide-react": lucideAll,
+          "motion/react": motionAll,
           "@dust/slideshow/v1": dustSlideshowV1,
           "@dust/slideshow/v2": dustSlideshowV2,
           "@dust/react-hooks": {
+            SandboxFunctionCallError,
+            callFunction: (functionId: string, input?: unknown) =>
+              api.data.callFunction(functionId, input),
             captureScreenshot: handleScreenshotDownload,
             triggerUserFileDownload: memoizedDownloadFile,
             useFile: (fileId: string) => useFile(fileId, api.data),
+            usePodFunction,
+            usePodFunctionMutation,
+            useUserIdentity,
           },
         };
 
@@ -612,7 +652,9 @@ export function VisualizationWrapper({
         </div>
       )}
       <VizContext.Provider value={vizContextValue}>
-        {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+        <PodFunctionHooksProvider dataAPI={api.data}>
+          {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+        </PodFunctionHooksProvider>
       </VizContext.Provider>
     </div>
   );
@@ -636,6 +678,8 @@ function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
   });
 }
 
+export const USER_IDENTITY_RPC_TIMEOUT_MS = 5_000;
+
 export function makeSendCrossDocumentMessage({
   identifier,
   allowedOrigins,
@@ -649,6 +693,14 @@ export function makeSendCrossDocumentMessage({
   ) => {
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
+      let timeoutId: number | null = null;
+
+      const cleanup = () => {
+        window.removeEventListener("message", listener);
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+        }
+      };
 
       const listener = (event: MessageEvent) => {
         if (!isOriginAllowed(event.origin, allowedOrigins)) {
@@ -660,15 +712,21 @@ export function makeSendCrossDocumentMessage({
         }
 
         if (event.data.messageUniqueId === messageUniqueId) {
+          cleanup();
           if (event.data.error) {
             reject(event.data.error);
           } else {
             resolve(event.data.result);
           }
-          window.removeEventListener("message", listener);
         }
       };
       window.addEventListener("message", listener);
+      if (command === "getUserIdentity") {
+        timeoutId = window.setTimeout(() => {
+          cleanup();
+          reject(new Error("Frame host did not provide user identity."));
+        }, USER_IDENTITY_RPC_TIMEOUT_MS);
+      }
       window.parent?.postMessage(
         {
           command,

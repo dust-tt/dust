@@ -1,11 +1,13 @@
 import type { LLMTrace } from "@app/lib/api/llm/traces/types";
+import type { PokeFetchAssistantTemplateResponse } from "@app/lib/api/poke/templates";
 import { clientFetch } from "@app/lib/egress/client";
+import type { FetchAssistantTemplatesResponse } from "@app/lib/resources/template_resource";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
-import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
-import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
-import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
-import type { GetTablesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/tables";
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+import type {
+  GetDocumentsResponseBody,
+  GetTablesResponseBody,
+} from "@app/types/api/poke/data_sources";
+import type { PullTemplatesResponseBody } from "@app/types/api/poke/templates";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";

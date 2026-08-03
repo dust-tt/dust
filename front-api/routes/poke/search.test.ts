@@ -1,6 +1,9 @@
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { faker } from "@faker-js/faker";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -148,9 +151,12 @@ describe("GET /api/poke/search - data source", () => {
     });
 
     const dustAPIProjectId = faker.string.numeric(9);
-    await DataSourceViewFactory.folder(workspace, globalSpace, null, {
-      dustAPIProjectId,
-    });
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      null,
+      { dustAPIProjectId }
+    );
 
     const response = await searchRequest(dustAPIProjectId);
 
@@ -158,10 +164,12 @@ describe("GET /api/poke/search - data source", () => {
     const data = await response.json();
     expect(data.results).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          dustAPIProjectId,
+        {
+          id: dataSourceView.dataSource.id,
+          link: expect.stringContaining(dataSourceView.dataSource.sId),
+          name: `${workspace.name}'s folder (${dataSourceView.dataSource.name})`,
           type: "Data Source",
-        }),
+        },
       ])
     );
   });
@@ -174,5 +182,49 @@ describe("GET /api/poke/search - data source", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.results).toEqual([]);
+  });
+});
+
+describe("GET /api/poke/search - resource sId", () => {
+  it("returns the data source view when searching by its sId", async () => {
+    await createPrivateApiMockRequest({ isSuperUser: true, role: "admin" });
+
+    // The resource lives in a different workspace than the poke session's:
+    // the search must re-scope on the workspace embedded in the sId.
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+    const space = await SpaceFactory.regular(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    const response = await searchRequest(dataSourceView.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.results).toEqual([
+      expect.objectContaining({
+        id: dataSourceView.id,
+        type: "Data Source View",
+      }),
+    ]);
+  });
+
+  it("returns the data source when searching by its sId", async () => {
+    await createPrivateApiMockRequest({ isSuperUser: true, role: "admin" });
+
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+    const space = await SpaceFactory.regular(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    const response = await searchRequest(dataSourceView.dataSource.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.results).toEqual([
+      expect.objectContaining({
+        id: dataSourceView.dataSource.id,
+        type: "Data Source",
+      }),
+    ]);
   });
 });

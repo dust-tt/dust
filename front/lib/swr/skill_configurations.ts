@@ -1,18 +1,22 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { DetectedSkillSummary } from "@app/lib/skill_detection";
+import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
+import {
+  type DetectedSkillSummary,
+  type DetectSkillsResponseBody,
+  parseGitHubRepoUrl,
+} from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetSkillsWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills";
+import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import type {
   GetSkillResponseBody,
+  GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
-} from "@app/pages/api/w/[wId]/skills/[sId]";
-import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
-import type { DetectSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/detect";
-import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
-import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
+} from "@app/types/api/skills";
+import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
 import type {
+  SkillAvailability,
   SkillReinforcementMode,
   SkillStatus,
   SkillType,
@@ -23,8 +27,8 @@ import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useRef, useState } from "react";
-import type { Fetcher } from "swr";
+import { useCallback, useState } from "react";
+import type { Fetcher, SWRConfiguration } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
@@ -96,13 +100,19 @@ export function useSkills({
   disabled,
   status,
   globalSpaceOnly,
-  isDefault,
+  availability,
+  bypassEditorVisibility,
+  swrOptions,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
-  isDefault?: boolean;
+  availability?: SkillAvailability | SkillAvailability[];
+  // Admin-only: bypass the editor-visibility rule and also list unpublished
+  // (editors-only) skills the caller does not edit.
+  bypassEditorVisibility?: boolean;
+  swrOptions?: SWRConfiguration;
 }): {
   skills: SkillWithoutInstructionsAndToolsType[];
   isSkillsError: boolean;
@@ -118,15 +128,23 @@ export function useSkills({
   if (globalSpaceOnly) {
     queryParams.set("globalSpaceOnly", "true");
   }
-  if (isDefault) {
-    queryParams.set("isDefault", "true");
+  if (availability) {
+    const availabilities = Array.isArray(availability)
+      ? availability
+      : [availability];
+    for (const value of availabilities) {
+      queryParams.append("availability", value);
+    }
+  }
+  if (bypassEditorVisibility) {
+    queryParams.set("bypassEditorVisibility", "true");
   }
   const queryString = queryParams.toString();
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills${queryString ? `?${queryString}` : ""}`,
     fetcher,
-    { disabled }
+    { ...swrOptions, disabled }
   );
 
   return {
@@ -142,11 +160,15 @@ export function useSkillsWithRelations({
   disabled,
   status,
   onlyCustom,
+  bypassEditorVisibility,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status: SkillStatus;
   onlyCustom?: boolean;
+  // Admin-only: bypass the editor-visibility rule and also list unpublished
+  // (editors-only) skills the caller does not edit.
+  bypassEditorVisibility?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
@@ -158,18 +180,72 @@ export function useSkillsWithRelations({
   if (onlyCustom) {
     queryParams.set("onlyCustom", "true");
   }
+  if (bypassEditorVisibility) {
+    queryParams.set("bypassEditorVisibility", "true");
+  }
 
-  const { data, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
-    skillsFetcher,
-    { disabled }
-  );
+  const { data, isLoading, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
+      skillsFetcher,
+      { disabled }
+    );
 
   return {
     skillsWithRelations: data?.skills ?? emptyArray(),
     isSkillsWithRelationsLoading: isLoading,
     mutateSkillsWithRelations: mutate,
+    mutateSkillsWithRelationsRegardlessOfQueryParams:
+      mutateRegardlessOfQueryParams,
   };
+}
+
+export function useUpdateSkillsAvailability({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+
+  const {
+    mutateSkillsWithRelationsRegardlessOfQueryParams: mutateActiveSkills,
+  } = useSkillsWithRelations({
+    owner,
+    status: "active",
+    disabled: true,
+  });
+
+  const doUpdateAvailability = async (
+    skillIds: string[],
+    availability: SkillAvailability
+  ): Promise<boolean> => {
+    try {
+      await fetcher(`/api/w/${owner.sId}/skills/availability`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skillIds, availability }),
+      });
+
+      void mutateActiveSkills();
+
+      sendNotification({
+        type: "success",
+        title: "Skills updated",
+        description: `Successfully updated ${skillIds.length} skill${pluralize(skillIds.length)}.`,
+      });
+      return true;
+    } catch (err) {
+      sendNotification({
+        type: "error",
+        title: "Error updating skills",
+        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
+      });
+      return false;
+    }
+  };
+
+  return doUpdateAvailability;
 }
 
 export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
@@ -269,6 +345,7 @@ type SkillReinforcementUpdate = {
   reinforcement?: SkillReinforcementMode;
   selfImprovementLock?: boolean;
   selfImprovementCostsCapMicroUsd?: number | null;
+  selfImprovementCostsCapAwuCredits?: number | null;
 };
 
 export function useUpdateSkillReinforcement({
@@ -437,17 +514,22 @@ export function useDetectSkillsFromRepo({
   );
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
-  const lastDetectedUrl = useRef<string | null>(null);
+  const [repositoryNotFound, setRepositoryNotFound] = useState<boolean>(false);
 
   const triggerDetect = useDebounceWithAbort(
     useCallback(
       async (repoUrl: string, signal: AbortSignal) => {
-        if (repoUrl === lastDetectedUrl.current) {
+        if (!repoUrl || parseGitHubRepoUrl(repoUrl).isErr()) {
+          setDetectedSkills([]);
           setDetectError(null);
+          setRepositoryNotFound(false);
+          setIsDetecting(false);
           return;
         }
+
         setIsDetecting(true);
         setDetectError(null);
+        setRepositoryNotFound(false);
 
         try {
           const response: DetectSkillsResponseBody = await fetcher(
@@ -460,17 +542,25 @@ export function useDetectSkillsFromRepo({
             }
           );
 
-          lastDetectedUrl.current = repoUrl;
           setDetectedSkills(response.skills);
         } catch (err) {
           if (signal.aborted) {
             return;
           }
-          setDetectError(
-            isAPIErrorResponse(err)
-              ? err.error.message
-              : "Failed to detect skills from this repository."
-          );
+          setDetectedSkills([]);
+          if (isAPIErrorResponse(err)) {
+            setRepositoryNotFound(
+              err.error.type === "skill_github_repository_not_found"
+            );
+            // Detect errors are errors we want to expose to consumers: repository not found is singled out above.
+            setDetectError(
+              err.error.type === "skill_github_repository_not_found"
+                ? null
+                : err.error.message
+            );
+          } else {
+            setDetectError("Failed to detect skills from this repository.");
+          }
         } finally {
           if (!signal.aborted) {
             setIsDetecting(false);
@@ -482,7 +572,13 @@ export function useDetectSkillsFromRepo({
     { delayMs: DETECT_SKILLS_DEBOUNCE_MS }
   );
 
-  return { detectedSkills, isDetecting, detectError, triggerDetect };
+  return {
+    isDetecting,
+    detectError: isDetecting ? null : detectError,
+    repositoryNotFound: !isDetecting && repositoryNotFound,
+    detectedSkills: isDetecting || detectError ? [] : detectedSkills,
+    triggerDetect,
+  };
 }
 
 function notifyImportResult(

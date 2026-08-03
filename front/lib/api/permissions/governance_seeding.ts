@@ -1,0 +1,135 @@
+import type { Authenticator } from "@app/lib/auth";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import type { CapabilitySpec } from "@app/types/group_permissions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
+
+/**
+ * Governance capability seeders: the single source of truth for where each capability's default
+ * grant should land. Driven by `seedWorkspaceCapabilities`, called once from workspace
+ * provisioning (dust-tt/tasks#9454), to set a fresh workspace's default state. Existing
+ * workspaces were backfilled from their legacy state (feature flags, roles, etc) by the
+ * since-deleted `migrations/20260721_backfill_governance_capabilities.ts`.
+ *
+ * To register a new capability, add an entry to CAPABILITY_SEEDERS below; nothing else needs to
+ * change at the call site.
+ */
+
+// Where a capability's grant should land for a workspace.
+type CapabilityTarget = "everyone" | "builders" | "admins_only";
+
+interface CapabilitySeeder {
+  capability: CapabilitySpec;
+  // Decides the target for the workspace behind `auth`.
+  resolveTarget: (auth: Authenticator) => Promise<CapabilityTarget>;
+}
+
+const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
+  {
+    capability: { grantType: "create", resourceType: "agent" },
+    resolveTarget: async (_auth) => "everyone",
+  },
+  {
+    capability: { grantType: "create", resourceType: "skill" },
+    resolveTarget: async (_auth) => "builders",
+  },
+  // it's safe to set them to "everyone" because there is another workspace level permission check
+  // if inviting/publishing is allowed or not. We only check permission table if the feature itself is enabled
+  {
+    capability: { grantType: "invite", resourceType: "frame" },
+    resolveTarget: async (_auth) => "everyone",
+  },
+  {
+    capability: { grantType: "publish", resourceType: "frame" },
+    resolveTarget: async (_auth) => "everyone",
+  },
+  // Dust apps are a legacy feature gated by the `legacy_dust_apps` flag. Only workspaces that
+  // still have it should keep builder-level administration of apps; everywhere else it defaults to
+  // admins-only. The "builders" target degrades to "admins_only" when the workspace has no
+  // Builders group (i.e. no builder-role members), so this naturally lands on builders only for
+  // legacy workspaces that actually have builders.
+  {
+    capability: { grantType: "admin", resourceType: "dust_app" },
+    resolveTarget: async (auth) => {
+      const hasLegacyDustApps = await FeatureFlagResource.isEnabledForWorkspace(
+        auth.getNonNullableWorkspace(),
+        "legacy_dust_apps"
+      );
+      return hasLegacyDustApps ? "builders" : "admins_only";
+    },
+  },
+  {
+    capability: { grantType: "publish", resourceType: "agent" },
+    resolveTarget: async (_auth) => "everyone",
+  },
+];
+
+type ApplyCapabilityOutcome =
+  | "seeded_everybody"
+  | "seeded_builders"
+  | "skipped_admins_only"
+  | "skipped_no_builders_group";
+
+// Resolves a seeder's raw target down to what will actually happen: "builders" degrades to
+// "admins_only" if the workspace has no Builders group yet (no builder-role member has ever been
+// synced into it — see `syncBuilderGroupMembership`). Deliberately never creates the group here;
+// a capability grant with no members behind it isn't a meaningful default.
+async function resolveEffectiveTarget(
+  auth: Authenticator,
+  target: CapabilityTarget
+): Promise<CapabilityTarget> {
+  if (target !== "builders") {
+    return target;
+  }
+  const buildersGroup = await GroupResource.fetchManualBuildersGroup(
+    auth.getNonNullableWorkspace()
+  );
+  return buildersGroup ? "builders" : "admins_only";
+}
+
+// Applies an already-resolved target for one capability on the workspace behind `auth`.
+async function applyCapabilityTarget(
+  auth: Authenticator,
+  capability: CapabilitySpec,
+  target: CapabilityTarget
+): Promise<ApplyCapabilityOutcome> {
+  const effectiveTarget = await resolveEffectiveTarget(auth, target);
+
+  switch (effectiveTarget) {
+    case "admins_only":
+      return target === "builders"
+        ? "skipped_no_builders_group"
+        : "skipped_admins_only";
+    case "everyone":
+      await GroupPermissionResource.setForEverybody(auth, capability);
+      return "seeded_everybody";
+    case "builders": {
+      const buildersGroup = await GroupResource.fetchManualBuildersGroup(
+        auth.getNonNullableWorkspace()
+      );
+      assert(
+        buildersGroup,
+        "Builders group disappeared between resolve and apply."
+      );
+      await GroupPermissionResource.setGroups(auth, capability, [
+        buildersGroup,
+      ]);
+      return "seeded_builders";
+    }
+    default:
+      assertNever(effectiveTarget);
+  }
+}
+
+// Seed default governance state for a newly created workspace. Called once from workspace
+// provisioning. Runs seeders sequentially and unconditionally.
+export async function seedWorkspaceCapabilities(
+  auth: Authenticator
+): Promise<void> {
+  for (const seeder of CAPABILITY_SEEDERS) {
+    const target = await seeder.resolveTarget(auth);
+    await applyCapabilityTarget(auth, seeder.capability, target);
+  }
+}

@@ -8,7 +8,6 @@
 
 import {
   getCreditTypeProgrammaticUsdId,
-  getProductExcessCreditsId,
   getProductFreeCreditId,
   type USAGE_TYPE_FREE,
   type USAGE_TYPE_PROGRAMMATIC,
@@ -22,16 +21,16 @@ import type { Commit, Credit } from "@metronome/sdk/resources/shared";
 export const LEGACY_PRO_MONTHLY_PACKAGE_ALIAS = "legacy-pro-monthly";
 export const LEGACY_PRO_ANNUAL_PACKAGE_ALIAS = "legacy-pro-annual";
 export const LEGACY_BUSINESS_PACKAGE_ALIAS = "legacy-business";
-export const LEGACY_ENTERPRISE_PACKAGE_ALIAS = "legacy-enterprise";
 
 // EUR variants — same plans, billed in EUR for Eurozone/EEA/Switzerland customers.
 export const LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS = "legacy-pro-monthly-eur";
 export const LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS = "legacy-pro-annual-eur";
 export const LEGACY_BUSINESS_EUR_PACKAGE_ALIAS = "legacy-business-eur";
-export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
 
-// Free plan
-export const FREE_PACKAGE_ALIAS = "free-plan";
+// Aliases for new packages
+export const BUSINESS_USD_PACKAGE_ALIAS = "business-usd";
+export const BUSINESS_EUR_PACKAGE_ALIAS = "business-eur";
+export const BUSINESS_GBP_PACKAGE_ALIAS = "business-gbp";
 
 export type MetronomePackageTier = "free" | "pro" | "business" | "enterprise";
 
@@ -95,6 +94,9 @@ export function classifyMetronomePackageCurrencyByName(
   if (/\b(?:eur|euro)\b/.test(normalized)) {
     return "eur";
   }
+  if (/\b(?:gbp|pound|sterling)\b/.test(normalized)) {
+    return "gbp";
+  }
   return "usd";
 }
 
@@ -132,13 +134,6 @@ export const EXCESS_CREDIT_NAME = "Excess Credits";
 // toggled at runtime (see lib/metronome/payg_excess_credits.ts).
 export const DEFAULT_AWU_EXCESS_RECURRING_AMOUNT = 5_000;
 export const DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT = 50;
-
-// Excess credits are an internal accounting mechanism — they should not be
-// surfaced to end users or in the Poke UI. Discriminated by product ID since
-// the excess recurring credit has its own dedicated FIXED product.
-export function isMetronomeExcessCredit(entry: MetronomeBalance): boolean {
-  return entry.product.id === getProductExcessCreditsId();
-}
 
 // True for the recurring free credits granted to programmatic-usage workspaces
 // (monthly or annual cadence). The "excess" credit is excluded — it has its

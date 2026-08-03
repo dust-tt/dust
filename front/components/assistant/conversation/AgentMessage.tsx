@@ -1,3 +1,5 @@
+import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
@@ -11,7 +13,6 @@ import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessag
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -24,7 +25,13 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
+import {
+  CREDIT_COST_ITEM_CLASS_NAME,
+  useCreditCostMenuItem,
+} from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
+import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
   CitationsContext,
   CiteBlock,
@@ -36,43 +43,50 @@ import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
 } from "@app/components/markdown/VisualizationBlock";
+import { getModelWithReasoningEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import {
   useBranchConversation,
   useCancelMessage,
+  useConversationMessage,
   usePostOnboardingFollowUp,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
-import { useConversations } from "@app/hooks/conversations/useConversations";
+import { planFileKey } from "@app/hooks/conversations/usePlanFile";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
+import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import { useConversationWakeUps } from "@app/lib/swr/wakeups";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
+import { extractFromString } from "@app/lib/mentions/format";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import { getNextWakeUpFireAt } from "@app/lib/utils/wakeup_description";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { FetchConversationMessageResponseLight } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
+import type { FetchConversationMessageResponseLight } from "@app/types/api/assistant/messages";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
-import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
-import { isActiveWakeUp } from "@app/types/assistant/wakeups";
+import {
+  isAgentMention,
+  toRichAgentMentionType,
+} from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
   isInteractiveContentType,
@@ -85,27 +99,35 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
-  ActionGitBranchIcon,
-  ArrowPathIcon,
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
   Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  InformationCircleIcon,
+  DotsHorizontal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  type DropdownMenuItemProps,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  GitBranch01,
+  InfoCircle,
   InteractiveImageGrid,
-  LinkIcon,
-  MoreIcon,
-  StopIcon,
+  Link01,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  RefreshCw02,
+  Stop,
   Tooltip,
-  TrashIcon,
+  Trash01,
   TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -118,92 +140,81 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
+import { mutate } from "swr";
 
+const RUN_AGENT_TOOL_NAME = "run_agent";
+
+// Popover (not Tooltip) so the "Learn more" link inside stays reachable.
 function PrunedContextChip() {
   return (
-    <Tooltip
-      label={
-        <div className="flex flex-col gap-2 py-2">
-          <div className="font-semibold">
-            This conversation reached its size limit
-          </div>
-          <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
-            <p>
-              Dust had to trim part of the tool output used to generate this
-              message to fit the model&apos;s context window. This usually
-              happens when a search or other tool returns more data than the
-              model can process at once.
-            </p>
-            <p>
-              For best accuracy, start a fresh conversation or narrow the
-              request.
-            </p>
-            <p>
-              <a
-                href={CONTEXT_WINDOW_DOC_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-foreground dark:hover:text-foreground-night"
-              >
-                Learn more
-              </a>
-            </p>
-          </div>
+    <PopoverRoot>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="cursor-pointer rounded-lg border-0 bg-transparent p-0 outline-hidden ring-offset-background transition focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
+          aria-label="Context limit reached. Open details."
+        >
+          <Chip
+            label="Context limit reached"
+            size="xs"
+            color="primary"
+            icon={InfoCircle}
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="flex w-[min(24rem,calc(100vw-1.5rem))] flex-col gap-2"
+      >
+        <div className="font-semibold">
+          This conversation reached its size limit
         </div>
-      }
-      className="max-w-sm"
-      trigger={
-        <Chip
-          label="Context limit reached"
-          size="xs"
-          color="white"
-          icon={InformationCircleIcon}
-        />
-      }
-    />
+        <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground">
+          <p>
+            Dust had to trim part of the tool output used to generate this
+            message to fit the model&apos;s context window. This usually happens
+            when a search or other tool returns more data than the model can
+            process at once.
+          </p>
+          <p>
+            For best accuracy, first use <code>/compact</code> to summarize this
+            conversation and free up context. If needed, start a fresh
+            conversation or narrow your request.
+          </p>
+          <p>
+            <a
+              href={CONTEXT_WINDOW_DOC_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              Learn more
+            </a>
+          </p>
+        </div>
+      </PopoverContent>
+    </PopoverRoot>
   );
 }
 
-function buildMountFilePreviewHref({
-  apiBaseUrl,
-  ownerId,
-  conversationId,
-  spaceId,
-  filePath,
-}: {
-  apiBaseUrl: string;
-  ownerId: string;
-  conversationId: string;
-  spaceId: string | null;
-  filePath: string;
-}): string | undefined {
-  // Canonical paths go straight to the global file-path endpoint.
-  if (filePath.startsWith("conversation-") || filePath.startsWith("pod-")) {
-    return `${apiBaseUrl}/api/w/${ownerId}/files/path/${filePath}`;
-  }
-
-  // Normalize legacy "conversation/<rel>" to canonical before routing.
-  if (filePath.startsWith("conversation/")) {
-    const rel = filePath.slice("conversation/".length);
-    return `${apiBaseUrl}/api/w/${ownerId}/files/path/conversation-${conversationId}/${rel}`;
-  }
-
-  // Normalize legacy "pod/<rel>" and "project/<rel>" to canonical before routing.
-  if (filePath.startsWith("pod/") || filePath.startsWith("project/")) {
-    if (!spaceId) {
-      return undefined;
-    }
-    const rel = filePath.startsWith("pod/")
-      ? filePath.slice("pod/".length)
-      : filePath.slice("project/".length);
-    return `${apiBaseUrl}/api/w/${ownerId}/files/path/pod-${spaceId}/${rel}`;
-  }
-
-  return undefined;
+function hasMessageSpawnedSubAgent(
+  agentMessage: AgentMessageWithStreaming
+): boolean {
+  return (
+    agentMessage.actions.some(
+      (action) => action.internalMCPServerName === RUN_AGENT_TOOL_NAME
+    ) ||
+    agentMessage.activitySteps.some(
+      (step) =>
+        step.type === "action" &&
+        step.internalMCPServerName === RUN_AGENT_TOOL_NAME
+    )
+  );
 }
 
 interface AgentMessageProps {
@@ -227,6 +238,7 @@ interface AgentMessageProps {
   additionalMarkdownPlugins?: PluggableList;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isProjectArchived?: boolean;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
 
 export function AgentMessage({
@@ -246,6 +258,7 @@ export function AgentMessage({
   additionalMarkdownPlugins,
   isAutoScrollEnabledRef,
   isProjectArchived = false,
+  setLimitReachedCode,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
@@ -260,6 +273,62 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // Latches to true the first time the menu opens. We use this rather than
+  // `isMenuOpen` to gate the cost fetch so the query stays enabled after the
+  // menu closes: otherwise disabling it nulls the SWR key, dropping
+  // `refreshedMessage` back to the prop values (which never carry
+  // `subAgentCostCredits`) and flickering the displayed total during the close
+  // animation.
+  const [hasOpenedMenu, setHasOpenedMenu] = useState(false);
+  // Set once this message finishes a run live in this session (terminal stream
+  // event). Credits are computed in the finalize activity *after* the terminal
+  // event is published, so the streamed `costCredits` is never the authoritative
+  // total: it is `null` on a first run, and the *previous* run's total after an
+  // `ask_user` resume. So we keep the authoritative single-message fetch enabled
+  // and revalidate it when the menu opens (see below), rather than trusting the
+  // streamed value. Never reset: flipping `needsCostFetch` back to false would
+  // null the SWR key and revert the display to the stale streamed prop.
+  const [hasCompletedRunThisSession, setHasCompletedRunThisSession] =
+    useState(false);
+  // Owed revalidation, consumed on menu open: set on each terminal event,
+  // cleared once the mutate is fired, so reopening the menu with no new run in
+  // between does not refetch.
+  const pendingCostRevalidationRef = useRef(false);
+  // Re-fetch (on menu open) if a cost we want to show is still missing or may be
+  // stale:
+  // - Own cost: null until the agentic loop finishes; absent while streaming/listed.
+  // - Sub-agent cost: only aggregated by the single-message fetch, and only exists
+  //   when a `run_agent` action is present (it triggers both run_agent and handover).
+  // - Live completion: the streamed cost is pre-recompute (see above), so any
+  //   message that completed a run this session needs the authoritative fetch.
+  const needsCostFetch =
+    hasCompletedRunThisSession ||
+    agentMessage.costCredits == null ||
+    (hasMessageSpawnedSubAgent(agentMessage) &&
+      agentMessage.subAgentCostCredits == null);
+  const {
+    message: refreshedMessage,
+    isMessageLoading,
+    mutateMessage,
+  } = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: agentMessage.sId,
+    options: {
+      disabled: !hasOpenedMenu || !needsCostFetch,
+    },
+  });
+  const refreshedAgentMessage =
+    refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
+  const creditCostItem = useCreditCostMenuItem({
+    credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
+    subAgentCredits:
+      refreshedAgentMessage?.subAgentCostCredits ??
+      agentMessage.subAgentCostCredits,
+  });
+  // Keep the cost section visible while the fetch is in flight (showing a
+  // loader) rather than popping it in once it resolves.
+  const isCreditCostLoading = needsCostFetch && isMessageLoading;
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -281,20 +350,15 @@ export function AgentMessage({
     owner,
     options: { disabled: true },
   });
-  const { mutateWakeUps } = useConversationWakeUps({
-    owner,
-    conversationId,
-    disabled: true,
-  });
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
 
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
+
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user.sId,
@@ -406,6 +470,18 @@ export function AgentMessage({
 
           case "agent_message_success":
           case "agent_message_gracefully_stopped":
+            // A run finished live: its terminal event carries a pre-recompute
+            // cost (credits are computed in the finalize activity after the event
+            // is published), so mark the cost for revalidation on the next menu
+            // open.
+            setHasCompletedRunThisSession(true);
+            pendingCostRevalidationRef.current = true;
+            // We can remove all blocked actions for this message (especially useful to let other users see the message updates)
+            void removeAllBlockedActionsForMessage({
+              messageId: sId,
+              conversationId,
+            });
+            break;
           case "agent_generation_cancelled":
           case "agent_error":
           case "generation_tokens":
@@ -429,21 +505,13 @@ export function AgentMessage({
             ) {
               void mutateSandboxFiles();
             }
-            if (action.internalMCPServerName === "wakeups") {
-              void mutateWakeUps().then((updated) => {
-                const activeWakeUp =
-                  updated?.wakeUps.find(isActiveWakeUp) ?? null;
-                const nextWakeupAt = activeWakeUp
-                  ? getNextWakeUpFireAt(activeWakeUp)
-                  : null;
-                void mutateConversations(
-                  (currentData: ConversationListItemType[] | undefined) =>
-                    currentData?.map((c) =>
-                      c.sId === conversationId ? { ...c, nextWakeupAt } : c
-                    ),
-                  { revalidate: false }
-                );
-              });
+            if (action.internalMCPServerName === "plan_mode") {
+              // The conversation-channel `plan_updated` event can be lost (flaky SSE + small replay
+              // buffer), leaving the plan card/panel stale until turn end. The tool action rides the
+              // reliable per-message stream, so revalidate the plan here for a timely update.
+              void mutate(
+                planFileKey({ workspaceId: owner.sId, conversationId })
+              );
             }
             break;
           }
@@ -463,20 +531,17 @@ export function AgentMessage({
         sId,
         removeAllBlockedActionsForMessage,
         conversationId,
+        owner,
         mutateConversationAttachments,
         mutateSandboxStatus,
         mutateSandboxFiles,
-        mutateWakeUps,
-        mutateConversations,
       ]
     ),
     streamId,
   });
 
   const isDeleted = agentMessage.visibility === "deleted";
-  const isCancelled = agentMessage.status === "cancelled";
   const isGracefullyStopped = agentMessage.status === "gracefully_stopped";
-  const isCancelledOrDeleted = isDeleted || isCancelled;
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = useMemo(
@@ -662,7 +727,7 @@ export function AgentMessage({
         onClick={async () => {
           await cancelMessage([sId]);
         }}
-        icon={StopIcon}
+        icon={Stop}
         className="text-muted-foreground"
       />
     );
@@ -765,14 +830,17 @@ export function AgentMessage({
       blockedOnly?: boolean;
     }) => {
       setIsRetryHandlerProcessing(true);
-      await retryMessage({
+      const result = await retryMessage({
         conversationId,
         messageId,
         blockedOnly,
       });
       setIsRetryHandlerProcessing(false);
+      if (result.isErr()) {
+        setLimitReachedCode?.(result.error);
+      }
     },
-    [retryMessage]
+    [retryMessage, setLimitReachedCode]
   );
 
   const reloadMessage = useCallback(
@@ -839,14 +907,14 @@ export function AgentMessage({
     const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
-        icon: LinkIcon,
+        icon: Link01,
         onSelect: handleCopyMessageLink,
       },
     ];
 
     dropdownItems.push({
       label: "Branch from here",
-      icon: ActionGitBranchIcon,
+      icon: GitBranch01,
       onSelect: () => {
         void branchConversation(agentMessage.sId);
       },
@@ -856,7 +924,7 @@ export function AgentMessage({
     if (shouldShowRetry) {
       dropdownItems.push({
         label: "Retry",
-        icon: ArrowPathIcon,
+        icon: RefreshCw02,
         onSelect: () => {
           void retryHandler({
             conversationId,
@@ -870,7 +938,7 @@ export function AgentMessage({
     if (canDeleteAgentMessage) {
       dropdownItems.push({
         label: "Delete message",
-        icon: TrashIcon,
+        icon: Trash01,
         onSelect: handleDeleteAgentMessage,
         disabled: isDeleting,
         variant: "warning" as const,
@@ -884,22 +952,56 @@ export function AgentMessage({
           variant="outline"
           size="xs"
           onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          icon={isCopied ? ClipboardCheck : Clipboard}
           className="text-muted-foreground"
         />
-        <ButtonGroupDropdown
-          trigger={
+        <DropdownMenu
+          onOpenChange={(open) => {
+            setIsMenuOpen(open);
+            if (open) {
+              setHasOpenedMenu(true);
+              // The streamed cost is stale after a live completion (computed
+              // post-event). Revalidate the authoritative value once per
+              // completion so the total (e.g. summed across an `ask_user`
+              // resume) is correct without a page refresh.
+              if (pendingCostRevalidationRef.current) {
+                pendingCostRevalidationRef.current = false;
+                void mutateMessage();
+              }
+            }
+          }}
+        >
+          <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
               size="xs"
-              icon={MoreIcon}
+              icon={DotsHorizontal}
               className="text-muted-foreground"
             />
-          }
-          items={dropdownItems}
-          align="end"
-          onOpenChange={setIsMenuOpen}
-        />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {(creditCostItem || isCreditCostLoading) && (
+              <>
+                {creditCostItem ? (
+                  <DropdownMenuItem {...creditCostItem} />
+                ) : (
+                  <DropdownMenuItem
+                    label="Credit cost"
+                    endComponent={
+                      <div className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
+                    }
+                    className={CREDIT_COST_ITEM_CLASS_NAME}
+                    onSelect={(e) => e.preventDefault()}
+                  />
+                )}
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {dropdownItems.map((item, index) => (
+              <DropdownMenuItem key={index} {...item} />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </ButtonGroup>
     );
   }
@@ -913,13 +1015,25 @@ export function AgentMessage({
 
   const handleQuickReply = useCallback(
     async (reply: string) => {
-      const mention: RichAgentMention = {
-        id: agentMessage.configuration.sId,
-        type: "agent",
-        label: agentMessage.configuration.name,
-        pictureUrl: agentMessage.configuration.pictureUrl ?? "",
-        description: "",
-      };
+      const parsedMention = extractFromString(reply).find(isAgentMention);
+      const matchedAgent = parsedMention
+        ? agentConfigurations.find(
+            (a) => a.sId === parsedMention.configurationId
+          )
+        : undefined;
+      const currentAgent = agentConfigurations.find(
+        (a) => a.sId === agentMessage.configuration.sId
+      );
+      const resolvedConfig = matchedAgent ?? currentAgent;
+      const mention: RichAgentMention = resolvedConfig
+        ? toRichAgentMentionType(resolvedConfig)
+        : {
+            id: agentMessage.configuration.sId,
+            type: "agent",
+            label: agentMessage.configuration.name,
+            pictureUrl: agentMessage.configuration.pictureUrl,
+            description: "",
+          };
 
       const result = await handleSubmit(reply, [mention], {
         uploaded: [],
@@ -934,13 +1048,31 @@ export function AgentMessage({
         });
       }
     },
-    [agentMessage.configuration, handleSubmit, sendNotification]
+    [
+      agentConfigurations,
+      agentMessage.configuration,
+      handleSubmit,
+      sendNotification,
+    ]
   );
 
   const canMention =
     agentConfiguration.canRead &&
     canShowAgentConversationActions(agentConfiguration.sId);
   const isArchived = agentConfiguration.status === "archived";
+
+  const perMessageModel =
+    agentMessage.modelResolutionMethod === "user" && agentMessage.resolvedModel
+      ? getSupportedModelConfig(agentMessage.resolvedModel)
+      : null;
+  const perMessageModelLabel =
+    perMessageModel && agentMessage.resolvedModel
+      ? getModelWithReasoningEffortLabel({
+          kind: "model",
+          model: perMessageModel,
+          effort: agentMessage.resolvedModel.reasoningEffort,
+        })
+      : null;
 
   const renderName = useCallback(
     () => (
@@ -953,6 +1085,17 @@ export function AgentMessage({
           canMention={canMention}
           isDisabled={isArchived}
         />
+        {perMessageModelLabel && (
+          <Tooltip
+            label="Model was overridden for this message using the model picker."
+            tooltipTriggerAsChild
+            trigger={
+              <span className="pl-1 font-normal text-muted-foreground">
+                with {perMessageModelLabel}
+              </span>
+            }
+          />
+        )}
         {parentAgent && (
           <Chip
             label={`handoff from @${parentAgent.name}`}
@@ -969,6 +1112,7 @@ export function AgentMessage({
       agentConfiguration.sId,
       canMention,
       isArchived,
+      perMessageModelLabel,
       parentAgent,
       agentMessage.status,
     ]
@@ -1011,7 +1155,7 @@ export function AgentMessage({
     </ConversationMessageContent>
   );
 
-  const footerButtons = !isCancelledOrDeleted &&
+  const footerButtons = !isDeleted &&
     !isGracefullyStopped &&
     (alwaysVisibleButtons.length > 0 || hoverButtons.length > 0) && (
       <div className="flex items-center gap-2">
@@ -1225,6 +1369,7 @@ function AgentMessageContent({
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
+      action_card: getActionCardPlugin(onQuickReplySend, isLastMessage),
       ...propsAdditionalMarkdownComponents,
     }),
     [
@@ -1241,19 +1386,22 @@ function AgentMessageContent({
     ]
   );
 
-  // Auto-open interactive content drawer when interactive files are available.
-  const { interactiveFiles } = useAutoOpenInteractiveContent({
+  const { interactiveFiles } = useAutoOpenSidePanel({
     agentMessage,
     isLastMessage,
   });
 
   const blockedActionElement = blockedAction ? (
     <BlockedAction
+      // Key on the action id so that when the queue advances to the next
+      // blocked action of the same type, React mounts a fresh component
+      // instead of reusing the previous instance's local state (e.g. the
+      // "connected" state of a resolved personal authentication card).
+      key={blockedAction.actionId}
       blockedAction={blockedAction}
       triggeringUser={triggeringUser}
       owner={owner}
       conversationId={conversationId}
-      messageId={sId}
       retryHandler={retryHandlerWithResetState}
     />
   ) : null;
@@ -1274,23 +1422,6 @@ function AgentMessageContent({
     );
   }
 
-  if (agentMessage.status === "failed") {
-    return (
-      <ErrorMessage
-        error={
-          agentMessage.error ?? {
-            message: "Unexpected Error",
-            code: "unexpected_error",
-            metadata: {},
-          }
-        }
-        retryHandler={async () =>
-          retryHandler({ conversationId, messageId: agentMessage.sId })
-        }
-      />
-    );
-  }
-
   // Extract file IDs already referenced inline (to avoid duplicate rendering).
   // Match file IDs only in markdown IMAGE syntax: ![...](url containing fil_XXX)
   // NOT plain text mentions or links, to avoid filtering out images from the grid.
@@ -1300,6 +1431,9 @@ function AgentMessageContent({
   );
   const matches = (agentMessage.content ?? "").matchAll(markdownImageRegex);
   const referencedFileIds = new Set([...matches].map((m) => m[1]));
+  const referencedFilePaths = getFilePreviewDirectivePaths(
+    agentMessage.content ?? ""
+  );
 
   // Get completed images that are not already referenced in the Markdown content.
   // Combine from actions (updated during streaming) and generatedFiles (available on reload).
@@ -1326,10 +1460,34 @@ function AgentMessageContent({
     .filter((file) => isSupportedImageContentType(file.contentType))
     .filter((file) => file.fileId && !referencedFileIds.has(file.fileId));
 
+  const inProgressImageCount = Array.from(
+    agentMessage.streaming.actionProgress.values()
+  ).filter(({ progress }) => {
+    const output = progress?._meta?.data?.output;
+    return output !== undefined && isImageProgressOutput(output);
+  }).length;
+
+  const allImages = [
+    ...completedImages.map((image) => ({
+      imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
+      downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+      alt: image.title,
+      title: image.title,
+      isLoading: false,
+    })),
+    ...Array.from({ length: inProgressImageCount }, (_, i) => ({
+      imageUrl: "",
+      alt: `Generating image ${i + 1}`,
+      title: `Generating image ${i + 1}`,
+      isGenerating: true,
+    })),
+  ];
+
   const generatedFiles = filesFromMessage.filter(
     (file) =>
       !isSupportedImageContentType(file.contentType) &&
-      !isInteractiveContentType(file.contentType)
+      !isInteractiveContentType(file.contentType) &&
+      (file.filePath === undefined || !referencedFilePaths.has(file.filePath))
   );
 
   return (
@@ -1352,17 +1510,7 @@ function AgentMessageContent({
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
         />
-        {completedImages.length > 0 && (
-          <InteractiveImageGrid
-            images={completedImages.map((image) => ({
-              imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
-              downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
-              alt: image.title,
-              title: image.title,
-              isLoading: false,
-            }))}
-          />
-        )}
+        {allImages.length > 0 && <InteractiveImageGrid images={allImages} />}
 
         {agentMessage.content !== null &&
           agentMessage.content !== "" &&
@@ -1382,41 +1530,28 @@ function AgentMessageContent({
           )}
         {generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-2 gap-2 @xs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5">
-            {getCitations({
-              activeReferences: generatedFiles.map((file) => {
-                const href = file.fileId
-                  ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`
-                  : file.filePath
-                    ? buildMountFilePreviewHref({
-                        apiBaseUrl: config.getApiBaseUrl(),
-                        ownerId: owner.sId,
-                        conversationId,
-                        spaceId,
-                        filePath: file.filePath,
-                      })
-                    : undefined;
-                return {
-                  index: -1,
-                  document: {
-                    fileId: file.fileId ?? undefined,
-                    contentType: file.contentType,
-                    href,
-                    title: file.title,
-                  },
-                };
-              }),
-              owner,
-              conversationId,
-            })}
+            {generatedFiles.map((file) => (
+              <ToolGeneratedFileDetails
+                key={
+                  file.fileId ??
+                  ("filePath" in file ? file.filePath : file.title)
+                }
+                resource={file}
+              />
+            ))}
           </div>
         )}
-        {(agentMessage.status === "cancelled" ||
-          agentMessage.status === "interrupted") && (
+        {/*
+         * Cancelled messages render the standard message footer (feedback + full menu,
+         * including Retry), so we only show the "Generation stopped." note here.
+         */}
+        {agentMessage.status === "cancelled" && (
+          <div className="text-sm text-faint">Generation stopped.</div>
+        )}
+        {agentMessage.status === "interrupted" && (
           <div className="flex flex-col gap-2">
-            <div className="text-sm text-faint dark:text-faint-night">
-              {agentMessage.status === "interrupted"
-                ? "Skipped. Running your next message."
-                : "Generation stopped."}
+            <div className="text-sm text-faint">
+              Skipped. Running your next message.
             </div>
             <div>
               <ButtonGroupDropdown
@@ -1424,14 +1559,14 @@ function AgentMessageContent({
                   <Button
                     variant="outline"
                     size="xs"
-                    icon={MoreIcon}
+                    icon={DotsHorizontal}
                     className="text-muted-foreground"
                   />
                 }
                 items={[
                   {
                     label: "Retry",
-                    icon: ArrowPathIcon,
+                    icon: RefreshCw02,
                     onSelect: () => {
                       void retryHandler({
                         conversationId,
@@ -1445,6 +1580,20 @@ function AgentMessageContent({
               />
             </div>
           </div>
+        )}
+        {agentMessage.status === "failed" && (
+          <ErrorMessage
+            error={
+              agentMessage.error ?? {
+                message: "Unexpected Error",
+                code: "unexpected_error",
+                metadata: {},
+              }
+            }
+            retryHandler={async () =>
+              retryHandler({ conversationId, messageId: agentMessage.sId })
+            }
+          />
         )}
       </div>
     </CitationsContext.Provider>
@@ -1471,9 +1620,7 @@ function getCitations({
       <AttachmentCitation
         key={index}
         attachmentCitation={attachmentCitation}
-        compact
-        owner={owner}
-        conversationId={conversationId}
+        size="sm"
       />
     );
   });

@@ -5,6 +5,7 @@ import apps from "./apps";
 import assistant from "./assistant";
 import dataSourceViews from "./data_source_views";
 import dataSources from "./data_sources";
+import exists from "./exists";
 import featureFlags from "./feature_flags";
 import files from "./files";
 import mcp from "./mcp";
@@ -14,7 +15,6 @@ import skills from "./skills";
 import spaces from "./spaces";
 import usage from "./usage";
 import verifiedDomains from "./verified_domains";
-import workspaceUsage from "./workspace-usage";
 
 // Mounted at /api/v1/w/:wId. Every route below inherits publicApiAuth, which
 // resolves the Authenticator from sandbox token, OAuth bearer, or API key
@@ -28,6 +28,7 @@ app.route("/apps", apps);
 app.route("/assistant", assistant);
 app.route("/data_sources", dataSources);
 app.route("/data_source_views", dataSourceViews);
+app.route("/exists", exists);
 app.route("/feature_flags", featureFlags);
 app.route("/files", files);
 app.route("/mcp", mcp);
@@ -37,6 +38,5 @@ app.route("/skills", skills);
 app.route("/spaces", spaces);
 app.route("/usage", usage);
 app.route("/verified_domains", verifiedDomains);
-app.route("/workspace-usage", workspaceUsage);
 
 export default app;

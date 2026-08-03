@@ -8,6 +8,9 @@ import type { ConnectorProvider } from "@app/types/data_source";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { QueryTypes } from "sequelize";
 
+// Connectors in the h1-pentest workspace, which is a test we don't want to alert on.
+const IGNORED_CONNECTOR_IDS = [55901, 55902];
+
 interface ConnectorBlob {
   id: number;
   type: ConnectorProvider;
@@ -71,7 +74,9 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
       // Ignore webhook-based connectors, webcrawlers, and bot-type connectors
       !isWebhookBasedProvider(connector.type) &&
       !isBotTypeProvider(connector.type) &&
-      connector.type !== "webcrawler"
+      connector.type !== "webcrawler" &&
+      // Ignore test connectors
+      !IGNORED_CONNECTOR_IDS.includes(connector.id)
   );
   heartbeat();
 

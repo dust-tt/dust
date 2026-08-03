@@ -29,20 +29,16 @@ export function TimelineRow({
       <div className="flex flex-col items-center">
         <div className="flex h-5 w-4 flex-shrink-0 items-center justify-center">
           {spinner ? (
-            <Spinner size="xs" />
+            <Spinner size="xs" type="tri" />
           ) : icon === "circle" ? (
-            <div className="h-2 w-2 rounded-full border-[1.5px] border-border dark:border-border-night" />
+            <div className="h-2 w-2 rounded-full border-[1.5px] border-border" />
           ) : icon ? (
-            <Icon
-              visual={icon}
-              size="xs"
-              className="text-faint dark:text-faint-night"
-            />
+            <Icon visual={icon} size="xs" className="text-faint" />
           ) : null}
         </div>
         {!isLast && (
           <div
-            className="w-px flex-1 rounded-full bg-border dark:bg-border-night"
+            className="w-px flex-1 rounded-full bg-border"
             style={LINE_ANIMATION_STYLE}
           />
         )}

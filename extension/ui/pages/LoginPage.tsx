@@ -1,11 +1,4 @@
-import {
-  Button,
-  cn,
-  DustLogo,
-  LoginIcon,
-  Page,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Button, cn, DustLogo, LogIn01, Page, Spinner } from "@dust-tt/sparkle";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -38,8 +31,7 @@ export const LoginPage = () => {
       <div
         className={cn(
           "flex h-screen items-center justify-center",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "bg-background text-foreground"
         )}
       >
         <Spinner size="sm" />
@@ -52,8 +44,7 @@ export const LoginPage = () => {
       <div
         className={cn(
           "flex h-screen flex-col p-4",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "bg-background text-foreground"
         )}
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
@@ -81,7 +72,7 @@ export const LoginPage = () => {
             {authError && authError.code === "user_not_found" && (
               <Link to="https://dust.tt/home">
                 <Button
-                  icon={LoginIcon}
+                  icon={LogIn01}
                   variant="primary"
                   label="Sign up"
                   onClick={() => {
@@ -96,7 +87,7 @@ export const LoginPage = () => {
             )}
 
             <Button
-              icon={LoginIcon}
+              icon={LogIn01}
               variant="primary"
               label="Sign in"
               onClick={() => handleLogin()}
@@ -105,7 +96,7 @@ export const LoginPage = () => {
             />
           </div>
         </div>
-        <p className="text-muted-foreground dark:text-muted-foreground-night mx-auto max-w-[300px] text-center">
+        <p className="text-muted-foreground mx-auto max-w-[300px] text-center">
           By signing in, you agree to Dust's{" "}
           <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
             Terms of Use
@@ -125,8 +116,7 @@ export const LoginPage = () => {
       <div
         className={cn(
           "flex h-screen flex-col p-4",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "bg-background text-foreground"
         )}
       >
         <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
@@ -139,7 +129,7 @@ export const LoginPage = () => {
           />
           <div className="text-center">Then</div>
           <Button
-            icon={LoginIcon}
+            icon={LogIn01}
             variant="primary"
             label="Sign in"
             onClick={() => handleLogin()}
@@ -157,8 +147,7 @@ export const LoginPage = () => {
       <div
         className={cn(
           "flex h-screen flex-col p-4",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "bg-background text-foreground"
         )}
       >
         <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
@@ -173,7 +162,7 @@ export const LoginPage = () => {
               />
               <div className="text-center">Then</div>
               <Button
-                icon={LoginIcon}
+                icon={LogIn01}
                 variant="primary"
                 label="Sign in"
                 onClick={() => handleLogin()}
@@ -192,8 +181,7 @@ export const LoginPage = () => {
     <div
       className={cn(
         "flex h-screen flex-col p-4",
-        "bg-background text-foreground",
-        "dark:bg-background-night dark:text-foreground-night"
+        "bg-background text-foreground"
       )}
     >
       <div className="flex h-screen flex-col items-center justify-center text-center">

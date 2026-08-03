@@ -21,9 +21,9 @@ import * as readline from "readline";
 
 export async function grepHandler(
   { path, pattern }: { path: string; pattern: string },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  const conversationRes = requireAgentLoopConversation({ runContext });
   if (conversationRes.isErr()) {
     return conversationRes;
   }

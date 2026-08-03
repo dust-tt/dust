@@ -13,6 +13,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import * as dataSourcesModule from "@app/lib/api/data_sources";
 import * as fileUpsertModule from "@app/lib/api/files/upsert";
 import * as fileUtilsModule from "@app/lib/api/files/utils";
+import * as uploadFrameContentModule from "@app/lib/api/viz/upload_frame_content";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
@@ -27,7 +28,6 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -74,7 +74,7 @@ async function createUserMessage(
     content,
     branchId = null,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     rank: number;
     content: string;
     branchId?: ModelId | null;
@@ -85,6 +85,7 @@ async function createUserMessage(
 
   const userMessage = await UserMessageModel.create({
     userId: user.id,
+    conversationId: conversation.id,
     workspaceId: workspace.id,
     content,
     userContextUsername: user.username,
@@ -117,7 +118,7 @@ async function createAgentMessage(
     generatedFileId = null,
     branchId = null,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     rank: number;
     parentId: ModelId;
     status: "created" | "succeeded";
@@ -128,6 +129,7 @@ async function createAgentMessage(
   const workspace = auth.getNonNullableWorkspace();
 
   const agentMessage = await AgentMessageModel.create({
+    conversationId: conversation.id,
     workspaceId: workspace.id,
     status,
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
@@ -170,6 +172,7 @@ async function createAgentMessage(
   const action = await AgentMCPActionModel.create({
     workspaceId: workspace.id,
     agentMessageId: agentMessage.id,
+    stepContentId: stepContent.id,
     mcpServerConfigurationId: generateRandomModelSId(),
     status: "succeeded",
     citationsAllocated: 0,
@@ -232,14 +235,16 @@ async function createConversationFile(
     conversationId,
     fileName,
     snippet = null,
+    contentType = "text/plain",
   }: {
     conversationId: string;
     fileName: string;
     snippet?: string | null;
+    contentType?: "text/plain" | "text/csv";
   }
 ): Promise<FileResource> {
   return FileFactory.create(auth, auth.getNonNullableUser(), {
-    contentType: "text/plain",
+    contentType,
     fileName,
     fileSize: 16,
     status: "ready",
@@ -279,7 +284,7 @@ async function attachRunToAgentMessage(
     auth,
     {
       inputTokens: promptTokens,
-      outputTokens: 20,
+      totalOutputTokens: 20,
       totalTokens: promptTokens + 20,
     },
     model.modelId
@@ -444,6 +449,15 @@ function mockFileContentStorage() {
   };
 }
 
+function mockUploadFrameContent() {
+  return vi
+    .spyOn(uploadFrameContentModule, "uploadFrameContent")
+    .mockImplementation(async (auth, file, content) => {
+      await file.uploadContent(auth, content);
+      return new Ok(undefined);
+    });
+}
+
 function mockContentNodeAttachments(nodeDataSourceViewId: number) {
   return vi
     .spyOn(contentFragmentModule, "getContentFragmentBlob")
@@ -469,12 +483,12 @@ function mockContentNodeAttachments(nodeDataSourceViewId: number) {
 
 describe("createConversationFork", () => {
   it("creates the child conversation, sole participant, and lineage row", async () => {
-    const { auth, globalSpace, user } = await createPrivateApiMockRequest();
+    const { auth, user } = await createPrivateApiMockRequest();
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
 
     const userMessage = await createUserMessage(auth, {
@@ -505,8 +519,10 @@ describe("createConversationFork", () => {
     );
 
     expect(childConversation.title).toBeNull();
-    expect(childConversation.spaceId).toBe(globalSpace.sId);
-    expect(childConversation.depth).toBe(parentConversation.depth + 1);
+    expect(childConversation.spaceId).toBe(null);
+    // Forks keep the parent's depth: depth > 0 marks run_agent sub-conversations,
+    // which are hidden from space conversation lists.
+    expect(childConversation.depth).toBe(parentConversation.depth);
     expect(childConversation.forkingData).toEqual({
       forkedFrom: {
         parentConversationId: parentConversation.sId,
@@ -665,27 +681,6 @@ describe("createConversationFork", () => {
       status: "created",
     });
 
-    const branch = await ConversationBranchResource.makeNew(auth, {
-      state: "open",
-      previousMessageId: firstAgentMessage.id,
-      conversationId: parentConversation.id,
-      userId: auth.getNonNullableUser().id,
-    });
-
-    const branchUserMessage = await createUserMessage(auth, {
-      conversation: parentConversation,
-      rank: 10,
-      content: "Branch turn",
-      branchId: branch.id,
-    });
-    await createAgentMessage(auth, {
-      conversation: parentConversation,
-      rank: 11,
-      parentId: branchUserMessage.id,
-      status: "succeeded",
-      branchId: branch.id,
-    });
-
     const result = await createConversationFork(auth, {
       conversationId: parentConversation.sId,
     });
@@ -744,7 +739,7 @@ describe("createConversationFork", () => {
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
 
     const enabledRemoteServer = await RemoteMCPServerFactory.create(workspace);
@@ -823,12 +818,12 @@ describe("createConversationFork", () => {
   });
 
   it("copies enabled conversation skills into the child conversation", async () => {
-    const { auth, globalSpace } = await createPrivateApiMockRequest();
+    const { auth } = await createPrivateApiMockRequest();
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
 
     const enabledSkill = await SkillFactory.create(auth, {
@@ -839,7 +834,7 @@ describe("createConversationFork", () => {
     });
 
     const upsertResult = await SkillResource.upsertConversationSkills(auth, {
-      conversationId: parentConversation.id,
+      conversation: parentConversation.toJSON(),
       skills: [enabledSkill],
       enabled: true,
     });
@@ -896,8 +891,9 @@ describe("createConversationFork", () => {
 
     const sourceFile = await createConversationFile(auth, {
       conversationId: parentConversation.sId,
-      fileName: "notes.txt",
+      fileName: "notes.csv",
       snippet: "fork me",
+      contentType: "text/csv",
     });
 
     let parentConversationWithContent = await fetchConversationOrThrow(
@@ -955,7 +951,7 @@ describe("createConversationFork", () => {
     const childFileAttachments = childAttachments.filter(isFileAttachmentType);
 
     expect(childFileAttachments).toHaveLength(1);
-    expect(childFileAttachments[0]?.title).toBe("notes.txt");
+    expect(childFileAttachments[0]?.title).toBe("notes.csv");
     expect(childFileAttachments[0]?.fileId).not.toBe(sourceFile.sId);
 
     const copiedFiles = await FileResource.fetchByIds(auth, [
@@ -996,6 +992,7 @@ describe("createConversationFork", () => {
     const { auth } = await createPrivateApiMockRequest();
     const copyToConversationSpy = mockCopyToConversation({ copyContent: true });
     const { getFileContentSpy, uploadContentSpy } = mockFileContentStorage();
+    const uploadFrameContentSpy = mockUploadFrameContent();
     const {
       getOrCreateConversationDataSourceFromFileSpy,
       processAndUpsertToDataSourceSpy,
@@ -1011,6 +1008,7 @@ describe("createConversationFork", () => {
       conversationId: parentConversation.sId,
       fileName: "data.csv",
       snippet: "data",
+      contentType: "text/csv",
     });
     const frameFile = await FileFactory.create(
       auth,
@@ -1143,6 +1141,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
     getOrCreateConversationDataSourceFromFileSpy.mockRestore();
     processAndUpsertToDataSourceSpy.mockRestore();
     uploadContentSpy.mockRestore();
+    uploadFrameContentSpy.mockRestore();
   }, 15_000);
 
   it("only copies attachments that existed at the selected source message", async () => {
@@ -1626,6 +1625,130 @@ const untouched = "prefix${referencedFile.sId}suffix";`
     getContentFragmentBlobSpy.mockRestore();
   });
 
+  it("lists the fork of a project conversation in the project's conversation list", async () => {
+    const {
+      auth: initialAuth,
+      user,
+      workspace,
+    } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const project = await SpaceFactory.project(workspace);
+    const addMembersRes = await project.addMembers(initialAuth, {
+      userIds: [user.sId],
+    });
+    expect(addMembersRes.isOk()).toBe(true);
+
+    // Refresh auth after adding the user to the project (permissions are cached).
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: project.id,
+    });
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "How should I continue this?",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const { conversations } =
+      await ConversationResource.listConversationsInSpacePaginated(auth, {
+        spaceId: project.sId,
+        pagination: { limit: 10 },
+      });
+
+    const conversationIds = conversations.map((c) => c.sId);
+    expect(conversationIds).toContain(parentConversation.sId);
+    expect(conversationIds).toContain(result.value.conversationId);
+  });
+
+  it("surfaces the fork of a project conversation in unread lists for project members", async () => {
+    const {
+      auth: initialAuth,
+      user,
+      workspace,
+    } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+    const project = await SpaceFactory.project(workspace);
+    const addMembersRes = await project.addMembers(initialAuth, {
+      userIds: [user.sId, otherUser.sId],
+    });
+    expect(addMembersRes.isOk()).toBe(true);
+
+    // Refresh auths after adding the users to the project (permissions are cached).
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: project.id,
+    });
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "How should I continue this?",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    // The other project member never opened the fork: it must show up in
+    // their non-participant unread list (the sidebar activity badge path).
+    const { nonParticipantUnreadConversations } =
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
+        otherAuth,
+        [project.id]
+      );
+
+    const unreadIds = nonParticipantUnreadConversations.map((c) => c.sId);
+    expect(unreadIds).toContain(result.value.conversationId);
+  });
+
   it("inherits the parent's requested spaces so the fork does not broaden visibility", async () => {
     const {
       auth: initialAuth,
@@ -1654,7 +1777,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
     await ConversationModel.update(
       { requestedSpaceIds: [globalSpace.id, restrictedSpace.id] },

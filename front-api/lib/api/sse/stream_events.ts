@@ -3,6 +3,11 @@ import type { Context } from "hono";
 import { stream } from "hono/streaming";
 import { z } from "zod";
 
+// Written before consuming the event iterator so response bytes hit the wire
+// before any Redis subscribe / history fetch in the iterator. SSE comments are
+// ignored by clients per spec.
+const SSE_OPEN_COMMENT = ": connected\n\n";
+
 // Standard SSE resume parameter shared by every streaming route. An absent or
 // empty `lastEventId` (clients reconnecting without a prior event send `?lastEventId=`)
 // normalizes to null rather than failing validation.
@@ -19,9 +24,10 @@ type StreamEventsParams<TIn> = {
   // Returning `null` skips the event without writing anything. May be
   // sync or async — the helper always awaits.
   transform?: (event: TIn) => unknown | null | Promise<unknown | null>;
-  // Only MCP requests opts in. Conversation/message events rely on EOF
-  // alone — the SDK already filters "done" before JSON-parsing, so no
-  // consumer treats it as a terminator.
+  // When true, writes `data: done` after the iterator completes. Clients treat
+  // this as an immediate reconnect signal (history pagination, idle timeout).
+  // MCP requests also opt in; conversation/message routes use it for the same
+  // pagination handoff after Redis history replay.
   writeDoneSentinel?: boolean;
 };
 
@@ -31,6 +37,8 @@ export function streamEvents<TIn>(params: StreamEventsParams<TIn>) {
   return stream(params.ctx, async (s) => {
     const controller = new AbortController();
     s.onAbort(() => controller.abort());
+
+    await s.write(SSE_OPEN_COMMENT);
 
     for await (const event of params.iterator(controller.signal)) {
       const out: unknown = params.transform

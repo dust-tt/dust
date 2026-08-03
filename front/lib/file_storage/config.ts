@@ -22,6 +22,9 @@ const config = {
   getLLMTracesBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_LLM_TRACES_BUCKET");
   },
+  getPokeUserConfigBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_POKE_USER_CONFIG_BUCKET");
+  },
   getDustTablesBucket: (): string => {
     // TODO: we need to make sure this is set on front-reloc deployments
     return EnvironmentConfig.getEnvVariable("DUST_TABLES_BUCKET");

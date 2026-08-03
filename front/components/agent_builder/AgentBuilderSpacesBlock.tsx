@@ -4,12 +4,13 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
+import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
-import { Button, ContentMessage, PlanetIcon } from "@dust-tt/sparkle";
+import { Button, Planet } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
@@ -88,7 +89,7 @@ export function AgentBuilderSpacesBlock({
     return new Set([...skillRequestedSpaceIds, ...actionRequestedSpaceIds]);
   }, [selectedSkills, allSkills, spaceIdToActions]);
 
-  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+  const nonGlobalSpacesUsedByAgent = useMemo(() => {
     const nonGlobalSpaces = allSpaces.filter((s) => s.kind !== "global");
     const allRequestedSpaceIds = new Set([
       ...actionsAndSkillsRequestedSpaceIds,
@@ -97,6 +98,10 @@ export function AgentBuilderSpacesBlock({
 
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
   }, [allSpaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
+
+  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+    return nonGlobalSpacesUsedByAgent.filter((s) => s.isRestricted);
+  }, [nonGlobalSpacesUsedByAgent]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
@@ -164,39 +169,32 @@ export function AgentBuilderSpacesBlock({
   }, [allSpaces]);
 
   const spacesToDisplay = useMemo(() => {
-    return removeNulls([globalSpace, ...nonGlobalSpacesWithRestrictions]);
-  }, [globalSpace, nonGlobalSpacesWithRestrictions]);
+    return removeNulls([globalSpace, ...nonGlobalSpacesUsedByAgent]);
+  }, [globalSpace, nonGlobalSpacesUsedByAgent]);
 
   return (
-    <div className="space-y-3 px-6">
+    <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="heading-lg text-foreground dark:text-foreground-night">
-            Spaces and Pods
-          </h2>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Set what knowledge and capabilities the agent can access.
+          <h2 className="heading-lg text-foreground">Data and access</h2>
+          <p className="text-sm text-muted-foreground max-w-9/10">
+            Adding spaces or pods will make the data from each of them available
+            to the agent. Only members of all the spaces and pods listed will
+            have access to the agent.
           </p>
         </div>
         <Button
           label="Manage"
-          icon={PlanetIcon}
+          icon={Planet}
           variant="outline"
           onClick={handleOpenSheet}
         />
       </div>
-      {nonGlobalSpacesWithRestrictions.length > 0 && (
-        <div className="mb-4 w-full">
-          <ContentMessage variant="golden" size="lg">
-            Based on your selection of knowledge and capabilities, this agent
-            can only be used by users with access to:{" "}
-            <strong>
-              {nonGlobalSpacesWithRestrictions.map((v) => v.name).join(", ")}
-            </strong>
-            .
-          </ContentMessage>
-        </div>
-      )}
+      <SpaceRestrictionMessage
+        entityName="agent"
+        owner={owner}
+        spaces={nonGlobalSpacesWithRestrictions}
+      />
       <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <SpaceSelectionSheet

@@ -17,6 +17,7 @@ const ParamsSchema = z.object({
 
 const app = createHono();
 
+/** @ignoreswagger */
 app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const { webhookSecret } = ctx.req.valid("param");
 

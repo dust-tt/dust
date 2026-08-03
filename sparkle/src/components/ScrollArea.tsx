@@ -7,13 +7,11 @@ interface ScrollAreaProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
   hideScrollBar?: boolean;
   orientation?: "vertical" | "horizontal";
+  /** Horizontal: clip x-axis only so a parent/window can scroll vertically. */
+  scrollContainment?: "default" | "horizontal";
   scrollBarClassName?: string;
   viewportClassName?: string;
-  scrollStyles?: {
-    active?: string;
-    inactive?: string;
-  };
-  viewportRef?: React.RefObject<HTMLDivElement>;
+  viewportRef?: React.Ref<HTMLDivElement>;
 }
 
 const ScrollArea = React.forwardRef<
@@ -26,16 +24,15 @@ const ScrollArea = React.forwardRef<
       children,
       hideScrollBar = false,
       orientation = "vertical",
+      scrollContainment = "default",
       scrollBarClassName,
       viewportClassName,
-      scrollStyles,
       viewportRef,
       ...props
     },
     ref
   ) => {
     const localViewportRef = React.useRef<HTMLDivElement>(null);
-    const [isScrolled, setIsScrolled] = React.useState(false);
 
     const hasCustomScrollBar = useMemo(
       () =>
@@ -50,32 +47,22 @@ const ScrollArea = React.forwardRef<
 
     const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: ref.current is mutable and should not be in deps; callback reads current value at call time
-    const handleScroll = React.useCallback(() => {
-      if (viewportRef && viewportRef.current) {
-        setIsScrolled(viewportRef.current.scrollTop > 0);
-      }
-
-      if (localViewportRef.current) {
-        setIsScrolled(localViewportRef.current.scrollTop > 0);
-      }
-    }, []);
-
     return (
       <ScrollAreaPrimitive.Root
         ref={ref}
         className={cn(
-          "s-relative s-z-20 s-overflow-hidden s-transition-all s-duration-200",
-          isScrolled ? scrollStyles?.active : scrollStyles?.inactive,
+          "relative z-20",
+          scrollContainment === "horizontal"
+            ? "overflow-x-auto overflow-y-visible"
+            : "overflow-hidden",
           className
         )}
         {...props}
       >
         <ScrollAreaPrimitive.Viewport
           ref={viewportRef || localViewportRef}
-          onScroll={handleScroll}
           className={cn(
-            "s-scrollarea-viewport s-h-full s-w-full s-rounded-[inherit]",
+            "scrollarea-viewport h-full w-full rounded-[inherit]",
             viewportClassName
           )}
         >
@@ -85,7 +72,7 @@ const ScrollArea = React.forwardRef<
           orientation={orientation}
           className={cn(
             scrollBarClassName,
-            shouldHideDefaultScrollBar && "s-hidden"
+            shouldHideDefaultScrollBar && "hidden"
           )}
         />
         <ScrollAreaPrimitive.Corner />
@@ -98,45 +85,36 @@ ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
 const scrollBarSizes = {
   compact: {
     bar: {
-      vertical: "s-w-5",
-      horizontal: "s-h-5",
+      vertical: "w-5",
+      horizontal: "h-5",
     },
     padding: {
-      vertical: "s-pr-1 s-pl-2.5 s-py-2 hover:s-pl-2",
-      horizontal: "s-pb-1 s-pt-2.5 s-px-2",
+      vertical: "pr-1 pl-2.5 py-2 hover:pl-2",
+      horizontal: "pb-1 pt-2.5 px-2",
     },
-    thumb: cn(
-      "s-bg-muted-foreground/40 dark:s-bg-muted-foreground-night/40",
-      "hover:s-bg-muted-foreground/70 dark:hover:s-bg-muted-foreground-night/70"
-    ),
+    thumb: cn("bg-muted-foreground/40", "hover:bg-muted-foreground/70"),
   },
   classic: {
     bar: {
-      vertical: "s-w-5",
-      horizontal: "s-h-5",
+      vertical: "w-5",
+      horizontal: "h-5",
     },
     padding: {
-      vertical: "s-pl-2 s-pr-1 s-py-1",
-      horizontal: "s-py-0.5 s-px-1",
+      vertical: "pl-2 pr-1 py-1",
+      horizontal: "py-0.5 px-1",
     },
-    thumb: cn(
-      "s-bg-muted-foreground/70 dark:s-bg-muted-foreground-night/70",
-      "hover:s-bg-muted-foreground/80 dark:hover:s-bg-muted-foreground-night/80"
-    ),
+    thumb: cn("bg-muted-foreground/70", "hover:bg-muted-foreground/80"),
   },
   minimal: {
     bar: {
-      vertical: "s-w-3",
-      horizontal: "s-h-3",
+      vertical: "w-3",
+      horizontal: "h-3",
     },
     padding: {
-      vertical: "s-pr-px s-pl-1.5 s-py-px",
-      horizontal: "s-pb-px s-pt-1.5 s-px-px",
+      vertical: "pr-px pl-1.5 py-px",
+      horizontal: "pb-px pt-1.5 px-px",
     },
-    thumb: cn(
-      "s-bg-muted-foreground/20 dark:s-bg-muted-foreground-night/20",
-      "hover:s-bg-muted-foreground/50 dark:hover:s-bg-muted-foreground-night/50"
-    ),
+    thumb: cn("bg-muted-foreground/20", "hover:bg-muted-foreground/50"),
   },
 } as const;
 
@@ -164,14 +142,14 @@ const ScrollBar = React.forwardRef<
         ref={ref}
         orientation={orientation}
         className={cn(
-          "s-flex s-touch-none s-select-none hover:s-cursor-pointer",
+          "flex touch-none select-none hover:cursor-pointer",
           orientation === "vertical" && [
-            "s-h-full s-border-l s-border-l-transparent",
+            "h-full border-l border-l-transparent",
             sizeConfig.bar.vertical,
             sizeConfig.padding.vertical,
           ],
           orientation === "horizontal" && [
-            "s-flex-col s-border-t s-border-t-transparent",
+            "flex-col border-t border-t-transparent",
             sizeConfig.bar.horizontal,
             sizeConfig.padding.horizontal,
           ],
@@ -181,7 +159,7 @@ const ScrollBar = React.forwardRef<
       >
         <ScrollAreaPrimitive.ScrollAreaThumb
           className={cn(
-            "s-relative s-flex-1 s-rounded-full s-transition-colors s-duration-200",
+            "relative flex-1 rounded-full transition-colors duration-200",
             sizeConfig.thumb
           )}
         />

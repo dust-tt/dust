@@ -21,7 +21,6 @@ interface PodTasksUpdateValidationDetailsProps {
   input: PodTasksUpdateTasksInput;
   owner: LightWorkspaceType;
   user: UserType;
-  agentName: string;
   conversationId?: string | null;
 }
 
@@ -43,7 +42,6 @@ interface TaskUpdateRowProps {
   workspaceId: string;
   taskInput: PodTasksUpdateTaskItemInput;
   user: UserType;
-  agentName: string;
 }
 
 interface FormatAssigneeLabelParams {
@@ -106,16 +104,10 @@ function formatAssigneeLabel({
 function ChangeRow({ label, before, after }: ChangeRowProps) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-        {label}
-      </span>
-      <div className="flex flex-wrap items-center gap-2 text-sm text-foreground dark:text-foreground-night">
-        <span className="text-muted-foreground line-through dark:text-muted-foreground-night">
-          {before}
-        </span>
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
-          →
-        </span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
+        <span className="text-muted-foreground line-through">{before}</span>
+        <span className="text-muted-foreground">→</span>
         <span className="font-medium">{after}</span>
       </div>
     </div>
@@ -149,7 +141,7 @@ function AssigneeChangeRow({
   if (isUnassigning) {
     return (
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-xs font-medium text-muted-foreground">
           Assignee
         </span>
         <div className="flex items-center gap-3">
@@ -159,10 +151,10 @@ function AssigneeChangeRow({
             name={currentMember?.fullName ?? beforeLabel}
             isRounded
           />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground dark:text-foreground-night">
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
             {beforeLabel}
           </span>
-          <Chip size="xs" color="rose" label="Unassign" />
+          <Chip size="xs" color="warning" label="Unassign" />
         </div>
       </div>
     );
@@ -171,12 +163,7 @@ function AssigneeChangeRow({
   return <ChangeRow label="Assignee" before={beforeLabel} after={afterLabel} />;
 }
 
-function TaskUpdateRow({
-  workspaceId,
-  taskInput,
-  user,
-  agentName,
-}: TaskUpdateRowProps) {
+function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
   const {
     task: currentTask,
     isWorkspacePodTaskLoading: isWorkspaceProjectTaskLoading,
@@ -238,14 +225,14 @@ function TaskUpdateRow({
   return (
     <div className="flex items-start gap-3 px-3 py-3">
       <div className="mt-0.5 shrink-0">
-        <Checkbox size="xs" checked={isDone} disabled />
+        <Checkbox checked={isDone} disabled />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-start gap-2">
-          <p className="min-w-0 flex-1 break-words text-sm leading-5 text-foreground dark:text-foreground-night">
+          <p className="min-w-0 flex-1 break-words text-sm leading-5 text-foreground">
             {displayText}
           </p>
-          {isDone && <Chip size="xs" color="green" label="Done" />}
+          {isDone && <Chip size="xs" color="success" label="Done" />}
         </div>
 
         {currentTask ? (
@@ -275,22 +262,20 @@ function TaskUpdateRow({
             )}
             {statusChange && effectiveStatus === "done" && (
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-xs font-medium text-muted-foreground">
                   Marked done by
                 </span>
-                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                  {taskInput.markAsDoneByType === "user"
-                    ? "You"
-                    : `@${agentName}`}
+                <span className="text-sm font-medium text-foreground">
+                  {taskInput.markAsDoneByType === "user" ? "you" : "agent"}
                 </span>
               </div>
             )}
             {taskInput.doneRationale && (
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-xs font-medium text-muted-foreground">
                   Done rationale
                 </span>
-                <p className="text-sm italic text-foreground dark:text-foreground-night">
+                <p className="text-sm italic text-foreground">
                   {taskInput.doneRationale}
                 </p>
               </div>
@@ -299,14 +284,14 @@ function TaskUpdateRow({
               !assigneeChange &&
               !statusChange &&
               !taskInput.doneRationale && (
-                <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                <p className="text-xs text-muted-foreground">
                   No visible changes detected.
                 </p>
               )}
           </div>
         ) : (
           <div className="mt-2 flex flex-col gap-2">
-            <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-xs text-muted-foreground">
               Could not load the current task details.
             </p>
             {taskInput.text && (
@@ -346,22 +331,20 @@ function TaskUpdateRow({
             )}
             {(taskInput.status === "done" || taskInput.doneRationale) && (
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-xs font-medium text-muted-foreground">
                   Marked done by
                 </span>
-                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                  {taskInput.markAsDoneByType === "user"
-                    ? "You"
-                    : `@${agentName}`}
+                <span className="text-sm font-medium text-foreground">
+                  {taskInput.markAsDoneByType === "user" ? "you" : "agent"}
                 </span>
               </div>
             )}
             {taskInput.doneRationale && (
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-xs font-medium text-muted-foreground">
                   Done rationale
                 </span>
-                <p className="text-sm italic text-foreground dark:text-foreground-night">
+                <p className="text-sm italic text-foreground">
                   {taskInput.doneRationale}
                 </p>
               </div>
@@ -377,7 +360,6 @@ export function PodTasksUpdateValidationDetails({
   input,
   owner,
   user,
-  agentName,
   conversationId,
 }: PodTasksUpdateValidationDetailsProps) {
   const { podLabel, isPodLabelLoading } = usePodLabel({
@@ -391,26 +373,23 @@ export function PodTasksUpdateValidationDetails({
 
   return (
     <div className="flex flex-col gap-3 pt-2">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        @{agentName} wants to update{" "}
-        <span className="font-medium text-foreground dark:text-foreground-night">
-          {taskCount}
-        </span>{" "}
-        task{taskCount === 1 ? "" : "s"} in{" "}
-        <span className="font-medium text-foreground dark:text-foreground-night">
+      <p className="text-sm text-muted-foreground">
+        The agent wants to update{" "}
+        <span className="font-medium text-foreground">{taskCount}</span> task
+        {taskCount === 1 ? "" : "s"} in{" "}
+        <span className="font-medium text-foreground">
           {isPodLabelLoading ? "Loading…" : podLabel}
         </span>
         .{doneCount > 0 && <> {doneCount} will be marked as done.</>}
       </p>
 
-      <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background dark:divide-separator-night dark:border-separator-night dark:bg-background-night">
+      <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
         {input.tasks.map((taskInput) => (
           <TaskUpdateRow
             key={taskInput.taskId}
             workspaceId={owner.sId}
             taskInput={taskInput}
             user={user}
-            agentName={agentName}
           />
         ))}
       </div>

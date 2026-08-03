@@ -6,7 +6,6 @@ import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
-import config from "@app/lib/api/config";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   getBillingCycle,
@@ -16,12 +15,12 @@ import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import {
+  AlertCircle,
   Button,
-  CardIcon,
   ContentMessage,
-  ExclamationCircleIcon,
   Hoverable,
   Page,
+  Zap,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -64,14 +63,12 @@ function CreditCategoryBar({
   return (
     <Page.Vertical sizing="grow">
       <div className="flex w-full items-center justify-between">
-        <p className="my-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {title}
-        </p>
+        <p className="my-1 text-sm text-muted-foreground">{title}</p>
         {action}
       </div>
-      <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
+      <div className="text-lg font-semibold text-foreground">
         {consumedFormatted}
-        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-sm font-normal text-muted-foreground">
           / {totalFormatted}
           {isCap ? " cap" : ""}
         </span>
@@ -137,7 +134,7 @@ function UsageSection({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6 rounded-lg border border-border p-6 dark:border-border-night">
+      <div className="flex flex-col gap-6 rounded-lg border border-border p-6">
         <div className="h-8 w-32 animate-pulse rounded bg-muted-foreground/20" />
         <div className="h-24 w-full animate-pulse rounded bg-muted-foreground/20" />
       </div>
@@ -178,7 +175,7 @@ function UsageSection({
       />
 
       {/* Credit Categories */}
-      <div className="grid grid-cols-3 gap-8 border-t border-border pt-6 dark:border-border-night">
+      <div className="grid grid-cols-3 gap-8 border-t border-border pt-6">
         <CreditCategoryBar
           title="Free credits"
           consumed={creditsByType.free.consumed}
@@ -330,21 +327,12 @@ export function CreditsUsagePage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title={"Programmatic Usage"}
-          icon={CardIcon}
+          icon={Zap}
           description={
             <div>
               <p>
                 Monitor usage and credits for programmatic usage (API keys,
-                automated workflows, etc.). Usage cost is based on token
-                consumption, according to our{" "}
-                <Hoverable
-                  href={`${config.getStaticWebsiteUrl()}/home/api-pricing`}
-                  target="_blank"
-                  variant="primary"
-                >
-                  pricing page
-                </Hoverable>
-                . Learn more in the{" "}
+                automated workflows, etc.). Learn more in the{" "}
                 <Hoverable
                   href="https://docs.dust.tt/docs/programmatic-usage"
                   target="_blank"
@@ -363,7 +351,7 @@ export function CreditsUsagePage() {
             title={`You're ${totalConsumed < totalCredits ? "almost" : ""} out of credits.`}
             variant="warning"
             size="lg"
-            icon={ExclamationCircleIcon}
+            icon={AlertCircle}
           >
             <div className="flex items-end justify-between">
               <p>Add credits to ensure uninterrupted usage.</p>
@@ -412,7 +400,7 @@ export function CreditsUsagePage() {
                 title={title}
                 variant="info"
                 size="lg"
-                icon={ExclamationCircleIcon}
+                icon={AlertCircle}
               >
                 <div className="flex items-end justify-between">
                   <p>Complete your payment to activate your credits.</p>

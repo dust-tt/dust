@@ -1,14 +1,5 @@
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
-import { FIREWORKS_DEEPSEEK_R1_MODEL_ID } from "@app/types/assistant/models/fireworks";
 import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
-import {
-  TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
-  TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
-  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
-  TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
-  TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
-  TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
-} from "@app/types/assistant/models/togetherai";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -28,6 +19,7 @@ export type GetProviderModelsErrorResponseBody = {
 // Mounted at /api/w/:wId/providers/:pId/models.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -233,30 +225,9 @@ app.get(
           models: [{ id: GEMINI_2_5_PRO_MODEL_ID }],
         });
 
-      case "togetherai":
-        if (embed) {
-          return ctx.json({ models: [] });
-        }
-        return ctx.json({
-          models: [
-            // llama
-            { id: TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID },
-            // qwen
-            { id: TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID },
-            { id: TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID },
-            { id: TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID },
-            // deepseek
-            { id: TOGETHERAI_DEEPSEEK_V3_MODEL_ID },
-            { id: TOGETHERAI_DEEPSEEK_R1_MODEL_ID },
-          ],
-        });
-
       case "fireworks":
         return ctx.json({
-          models: [
-            { id: "llama-v3p1-8b-instruct" },
-            { id: FIREWORKS_DEEPSEEK_R1_MODEL_ID },
-          ],
+          models: [{ id: "llama-v3p1-8b-instruct" }],
         });
 
       case "deepseek":
@@ -264,7 +235,7 @@ app.get(
           return ctx.json({ models: [] });
         }
         return ctx.json({
-          models: [{ id: "deepseek-chat" }, { id: "deepseek-reasoner" }],
+          models: [{ id: "deepseek-chat" }],
         });
 
       default:

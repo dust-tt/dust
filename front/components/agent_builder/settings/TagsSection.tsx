@@ -4,13 +4,13 @@ import { TagsSelector } from "@app/components/agent_builder/settings/TagsSelecto
 import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useTags } from "@app/lib/swr/tags";
-import type { BuilderSuggestionsType } from "@app/types/api/internal/assistant";
+import type { BuilderSuggestionsType } from "@app/types/api/assistant";
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -48,6 +48,8 @@ export function TagsSection() {
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { tags: allTags } = useTags({ owner });
+  const { hasPermission } = useWorkspacePermissions();
+  const canManageProtectedTags = hasPermission("publish", "agent");
   const {
     fields: selectedTags,
     append,
@@ -100,7 +102,7 @@ export function TagsSection() {
           const currentTagIds = new Set(selectedTags.map((field) => field.sId));
           return allTags
             .filter((t) => !currentTagIds.has(t.sId))
-            .filter((t) => isBuilder(owner) || t.kind !== "protected")
+            .filter((t) => canManageProtectedTags || t.kind !== "protected")
             .filter(
               (tag) =>
                 tagsSuggestions.suggestions?.findIndex(

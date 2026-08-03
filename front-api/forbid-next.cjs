@@ -1,7 +1,7 @@
 // Runtime guard for the pure-Hono server. Throws if anything tries to load
 // the `next` package (or a subpath), proving that nothing in the import
 // graph pulls in Next.js. Wired in via NODE_OPTIONS=--require=./forbid-next.cjs
-// for the `front-hono` mprocs proc.
+// for the `front-api-hono` mprocs/process-compose process.
 const Module = require("node:module");
 
 const originalResolve = Module._resolveFilename;

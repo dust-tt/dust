@@ -2,9 +2,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
-  GetAgentEditorsResponseBody,
+  AgentEditorsLightResponseBody,
+  AgentEditorsResponseBody,
   PatchAgentEditorsRequestBody,
-} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
+} from "@app/types/api/assistant/configuration/editors";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
@@ -20,9 +21,11 @@ export function useEditors({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const editorsFetcher: Fetcher<GetAgentEditorsResponseBody> = fetcher;
+  const editorsFetcher: Fetcher<
+    AgentEditorsResponseBody | AgentEditorsLightResponseBody
+  > = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
     agentConfigurationId
       ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/editors`
       : null,
@@ -37,6 +40,7 @@ export function useEditors({
     editors: data?.editors ?? emptyArray(),
     isEditorsLoading: !error && !data && !disabled,
     isEditorsError: !!error,
+    isEditorsValidating: isValidating,
     mutateEditors: mutate,
   };
 }
@@ -46,7 +50,7 @@ export function useUpdateEditors({
   agentConfigurationId,
 }: {
   owner: LightWorkspaceType;
-  agentConfigurationId: string;
+  agentConfigurationId: string | null;
 }) {
   const sendNotification = useSendNotification();
   const { mutateEditors } = useEditors({
@@ -57,6 +61,10 @@ export function useUpdateEditors({
 
   const updateAgentEditors = useCallback(
     async (body: PatchAgentEditorsRequestBody) => {
+      if (!agentConfigurationId) {
+        return false;
+      }
+
       const res = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/editors`,
         {
@@ -69,7 +77,7 @@ export function useUpdateEditors({
       );
 
       if (res.ok) {
-        void mutateEditors();
+        await mutateEditors();
 
         let title = "";
         let description: string | undefined = undefined;
@@ -96,7 +104,14 @@ export function useUpdateEditors({
           title,
           description,
         });
+        return true;
       }
+
+      sendNotification({
+        type: "error",
+        title: "Failed to update editors",
+      });
+      return false;
     },
     [owner, agentConfigurationId, mutateEditors, sendNotification]
   );

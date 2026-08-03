@@ -1,15 +1,13 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { CheckNameResponseBody } from "@app/types/api/spaces";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
-export type CheckNameResponseBody = {
-  available: boolean;
-};
-
 // Mounted under /api/w/:wId/spaces/check-name.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<CheckNameResponseBody> => {
   const auth = ctx.get("auth");
   const name = ctx.req.query("name");

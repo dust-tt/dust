@@ -1,3 +1,4 @@
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
@@ -6,22 +7,28 @@ import {
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getToolNamePrefix } from "@app/lib/actions/tool_name_utils";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
 import apiConfig from "@app/lib/api/config";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
-  list: async (_, { auth, agentLoopContext }) => {
+  list: async (_, { auth, runContext }) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
     const mcpServerViewIdsFromAgentConfiguration =
-      agentLoopContext?.runContext?.agentConfiguration.actions
+      runContext.agentConfiguration.actions
         .filter(isServerSideMCPServerConfiguration)
-        .map((action) => action.mcpServerViewId) ?? [];
+        .map((action) => action.mcpServerViewId);
 
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
@@ -72,13 +79,10 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
     );
   },
 
-  enable: async ({ toolsetId }, { auth, agentLoopContext }) => {
-    const conversationId = agentLoopContext?.runContext?.conversation.sId;
-    if (!conversationId) {
-      return new Err(
-        new MCPError("No active conversation context", { tracked: false })
-      );
-    }
+  enable: async ({ toolsetId }, { auth, runContext }) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+    const conversationId = runContext.conversation.sId;
 
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
@@ -104,8 +108,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       config.nodeEnv === "development" ? "http://localhost:3000" : null
     );
 
-    const agentConfigurationId =
-      agentLoopContext?.runContext?.agentConfiguration.sId;
+    const agentConfigurationId = runContext.agentConfiguration.sId;
 
     const res = await api.postConversationTools({
       conversationId,
@@ -122,10 +125,23 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       );
     }
 
+    const enabledView = await MCPServerViewResource.fetchById(auth, toolsetId);
+
+    const prefixHint = enabledView
+      ? ` Their names share the \`${getToolNamePrefix(
+          enabledView.name ?? enabledView.getServerDisplayMetadata().name
+        )}${TOOL_NAME_SEPARATOR}\` prefix.`
+      : "";
+
+    // The newly enabled tools are not necessarily surfaced directly in the model's context (can
+    // be deferred behind tool search), so nudge it to look them up instead of guessing which
+    // tools exist.
     return new Ok([
       {
         type: "text" as const,
-        text: `Successfully enabled toolset ${toolsetId}`,
+        text:
+          `Successfully enabled toolset ${toolsetId}. Its tools are now available.${prefixHint} ` +
+          "Do not assume which tools exist; look them up before calling them.",
       },
     ]);
   },

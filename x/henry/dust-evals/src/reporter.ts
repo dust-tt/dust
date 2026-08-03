@@ -70,6 +70,7 @@ function formatCSV(report: EvalReport): string {
       "judge_agreement",
       "judge_variance",
       "agent_duration_ms",
+      "agent_cost_credits",
       "agent_conversation_id",
       "agent_message_id",
       "agent_retry_count",
@@ -96,6 +97,7 @@ function formatCSV(report: EvalReport): string {
         result.judgeResult.agreement.toFixed(3),
         result.judgeResult.variance.toFixed(3),
         result.agentDurationMs,
+        result.agentCostCredits ?? "",
         result.agentConversationId,
         result.agentMessageId,
         result.agentRetryCount,
@@ -144,6 +146,12 @@ function formatConsole(report: EvalReport): string {
   lines.push(
     `  Average Judge Agreement: ${(report.summary.averageJudgeAgreement * 100).toFixed(1)}%`
   )
+  lines.push(
+    `  Total Cost: ${formatCredits(report.summary.totalCostCredits)} credits`
+  )
+  lines.push(
+    `  Average Cost / Message: ${formatCredits(report.summary.averageCostCredits)} credits`
+  )
   if (report.config.minAgreement && report.summary.lowAgreementCount > 0) {
     lines.push(
       `  Low Agreement Results: ${report.summary.lowAgreementCount} (threshold: ${(report.config.minAgreement * 100).toFixed(0)}%)`
@@ -169,6 +177,10 @@ function formatConsole(report: EvalReport): string {
     lines.push(
       `  Avg Judge Agreement: ${(stat.averageJudgeAgreement * 100).toFixed(1)}%`
     )
+    lines.push(
+      `  Avg Cost / Message: ${formatCredits(stat.averageCostCredits)} credits`
+    )
+    lines.push(`  Total Cost: ${formatCredits(stat.totalCostCredits)} credits`)
   }
   lines.push("")
 
@@ -196,6 +208,7 @@ function formatConsole(report: EvalReport): string {
         `  Agreement: ${(result.judgeResult.agreement * 100).toFixed(0)}%`
       )
       lines.push(`  Duration: ${(result.agentDurationMs / 1000).toFixed(2)}s`)
+      lines.push(`  Cost: ${formatCredits(result.agentCostCredits)} credits`)
       lines.push(`  Conversation: ${result.agentConversationId}`)
     }
   }
@@ -214,6 +227,13 @@ function formatConsole(report: EvalReport): string {
   lines.push("=".repeat(80))
 
   return lines.join("\n")
+}
+
+function formatCredits(value: number | null): string {
+  if (typeof value !== "number") {
+    return "N/A"
+  }
+  return value.toFixed(2)
 }
 
 function escapeCSV(value: string): string {

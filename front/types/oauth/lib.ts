@@ -52,6 +52,7 @@ export const OAUTH_PROVIDERS = [
   "microsoft_tools",
   "zendesk",
   "salesforce",
+  "servicenow",
   "hubspot",
   "ukg_ready",
   "mcp", // MCP is a special provider for MCP servers.
@@ -83,6 +84,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   microsoft_tools: "Microsoft Tools",
   zendesk: "Zendesk",
   salesforce: "Salesforce",
+  servicenow: "ServiceNow",
   hubspot: "Hubspot",
   ukg_ready: "UKG Ready",
   mcp: "MCP",
@@ -106,6 +108,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "freshworks_org_url",
   "zendesk_subdomain",
   "databricks_workspace_url",
+  "servicenow_instance_url",
   "snowflake_account",
   "snowflake_role",
   "snowflake_warehouse",
@@ -230,7 +233,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Freshworks Organization URL",
             value: undefined,
             helpMessage:
-              "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com).",
+              "Your Freshworks organization URL (e.g., yourcompany.myfreshservice.com).",
           },
           freshservice_domain: {
             label: "Freshservice Domain URL",
@@ -275,6 +278,32 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "OAuth Client Secret",
             value: undefined,
             helpMessage: "The client secret from your Databricks OAuth app.",
+            validator: isValidClientIdOrSecret,
+          },
+        };
+        return result;
+      }
+      return null;
+    case "servicenow":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          servicenow_instance_url: {
+            label: "ServiceNow Instance URL",
+            value: undefined,
+            helpMessage:
+              "Your ServiceNow instance URL (e.g., https://your-instance.service-now.com).",
+            validator: isValidUrl,
+          },
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your ServiceNow OAuth app.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your ServiceNow OAuth app.",
             validator: isValidClientIdOrSecret,
           },
         };
@@ -409,6 +438,15 @@ export function getProviderRequiredOAuthCredentialInputs({
             helpMessage: "The scope(s) to request (space separated list).",
             validator: isValidScope,
           },
+          resource: {
+            label: "OAuth Resource / Audience",
+            value: undefined,
+            helpMessage:
+              "The resource or audience identifier (RFC 8707) your MCP " +
+              "server expects in the access token. Required if your OAuth " +
+              "server issues audience-scoped tokens.",
+            validator: isValidOptionalResource,
+          },
           token_endpoint_auth_method: {
             label: "Token Endpoint Authentication Method",
             value: "client_secret_post",
@@ -477,7 +515,7 @@ export function isOAuthProvider(obj: unknown): obj is OAuthProvider {
   return OAUTH_PROVIDERS.includes(obj as OAuthProvider);
 }
 
-export function isValidScope(obj: unknown): obj is string | undefined {
+function isValidScope(obj: unknown): obj is string | undefined {
   return !obj || typeof obj === "string";
 }
 
@@ -522,15 +560,6 @@ export function normalizeAtlassianCloudUrl(raw: string): string {
   return url.replace(/\/+$/, "");
 }
 
-export function isValidAtlassianCloudUrl(
-  cloudUrl: string | undefined
-): boolean {
-  if (!cloudUrl) {
-    return false;
-  }
-  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeAtlassianCloudUrl(cloudUrl));
-}
-
 export function isValidAtlassianCloudUrlOrEmpty(
   cloudUrl: string | undefined
 ): boolean {
@@ -552,7 +581,7 @@ export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
 
-export function isValidOptionalClientSecret(s: unknown): s is string {
+function isValidOptionalClientSecret(s: unknown): s is string {
   // Allow empty strings for optional client secrets (e.g., PKCE flows)
   return typeof s === "string";
 }
@@ -561,11 +590,16 @@ export function isValidUrl(s: unknown): s is string {
   return typeof s === "string" && validateUrl(s).valid;
 }
 
-export function isValidTokenEndpointAuthMethod(s: unknown): s is string {
+function isValidTokenEndpointAuthMethod(s: unknown): s is string {
   return (
     typeof s === "string" &&
     (s === "client_secret_post" || s === "client_secret_basic")
   );
+}
+
+function isValidOptionalResource(s: unknown): s is string {
+  // Optional (RFC 8707): most OAuth servers do not require an audience/resource.
+  return typeof s === "string";
 }
 
 export function isValidSnowflakeAccount(s: unknown): s is string {
@@ -621,7 +655,7 @@ export function isValidSnowflakeRole(s: unknown): s is string {
   );
 }
 
-export function isValidSnowflakeWarehouse(s: unknown): s is string {
+function isValidSnowflakeWarehouse(s: unknown): s is string {
   // Snowflake warehouse names follow same rules as roles
   // Allow alphanumeric and underscores
   return (
@@ -683,10 +717,7 @@ export function validateOAuthCredentials({
 
 // Credentials Providers
 
-export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
-  "gong",
-  "modjo",
-] as const;
+export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong"] as const;
 
 export type ProvidersWithWorkspaceConfigurations =
   (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
@@ -697,8 +728,6 @@ export const CREDENTIALS_PROVIDERS = [
   "salesforce",
   "notion",
   "slack",
-  // LABS
-  "modjo",
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
@@ -795,10 +824,9 @@ export type BigQueryCredentialsWithLocation = z.infer<
 export const ApiKeyCredentialsSchema = z.object({
   api_key: z.string(),
 });
-export type ModjoCredentials = z.infer<typeof ApiKeyCredentialsSchema>;
 export type LinearCredentials = z.infer<typeof ApiKeyCredentialsSchema>;
 
-export const HubspotCredentialsSchema = z.object({
+const HubspotCredentialsSchema = z.object({
   accessToken: z.string(),
   portalId: z.string(),
 });
@@ -819,16 +847,9 @@ export type ConnectionCredentials =
   | SnowflakeCredentials
   | BigQueryCredentialsWithLocation
   | SalesforceCredentials
-  | ModjoCredentials
   | HubspotCredentials
   | LinearCredentials
   | NotionCredentials;
-
-export function isModjoCredentials(
-  credentials: ConnectionCredentials
-): credentials is ModjoCredentials {
-  return "api_key" in credentials;
-}
 
 export type ModelProviderPostCredentialsBody = {
   provider: ByokModelProviderIdType;

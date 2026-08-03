@@ -1,13 +1,15 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type {
+  CreateMCPServerResponseBody,
+  MCPServerType,
+} from "@app/lib/api/mcp";
 import {
   isMCPCreateServerError,
   type MCPConnectionType,
 } from "@app/lib/swr/mcp_servers";
-import type { CreateMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp";
-import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
+import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { RegionInfo } from "@app/types/region";
@@ -16,7 +18,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
 import type { WorkspaceType } from "@app/types/user";
 
-export type CreateMCPServerDialogSubmitResult =
+type CreateMCPServerDialogSubmitResult =
   | {
       type: "oauth_required";
       authorization: AuthorizationInfo;
@@ -29,7 +31,7 @@ export type CreateMCPServerDialogSubmitResult =
       remoteMCPServerOAuthDiscoveryDone: boolean;
     };
 
-export type CreateMCPServerDialogSubmitErrorKind =
+type CreateMCPServerDialogSubmitErrorKind =
   | "discover_oauth_metadata"
   | "missing_use_case"
   | "oauth_connection"

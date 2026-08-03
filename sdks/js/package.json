@@ -1,8 +1,8 @@
 {
   "name": "@dust-tt/client",
-  "version": "1.2.6",
+  "version": "1.2.8",
   "engines": {
-    "node": ">=24.14.0"
+    "node": ">=24.16.0"
   },
   "description": "Client for Dust API",
   "repository": {
@@ -24,6 +24,7 @@
     "build": "npm run build:types && npm run build:bundle",
     "build:types": "tsgo",
     "build:bundle": "tsx esbuild.config.ts",
+    "test": "vitest --run",
     "watch": "npm-watch",
     "tsgo": "tsgo"
   },
@@ -36,10 +37,11 @@
     "esbuild": "^0.27.3",
     "npm-watch": "^0.11.0",
     "tslib": "^2.6.2",
-    "tsx": "^4.19.1"
+    "tsx": "^4.19.1",
+    "vitest": "^4.0.16"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/json-schema": "^7.0.15",
     "event-source-polyfill": "^1.0.31",
     "eventsource-parser": "^1.1.1",

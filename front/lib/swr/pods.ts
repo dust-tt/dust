@@ -6,8 +6,14 @@ import {
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  GetProjectContextResponseBody,
+  PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
+} from "@app/lib/api/projects/context";
 import { clientFetch } from "@app/lib/egress/client";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
+import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
   emptyArray,
@@ -15,34 +21,35 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { PostSeedInitialPodTasksResponseBody } from "@app/pages/api/w/[wId]/pods/[podId]/tasks/seed";
-import type { GetWorkspacePodTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
   FileSystemEntry,
   GetSpaceFilesResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/files";
-import type {
-  GetProjectContextResponseBody,
-  PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
+} from "@app/types/api/file_system/types";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
+} from "@app/types/api/projects/metadata";
 import type {
   GetUserPodNotificationPreferenceResponseBody,
   PatchUserPodNotificationPreferenceResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_notification_preferences";
-import type { PatchPodTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/index";
-import type { PostStartPodTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/start";
+  PostUserPodStarResponseBody,
+} from "@app/types/api/projects/preferences";
 import type {
   GetPodTasksResponseBody,
+  GetWorkspacePodTaskResponseBody,
+  PatchPodTaskResponseBody,
   PostPodTaskResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/index";
-import type { PostUserPodStarResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/star";
-import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
-import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
+  PostStartPodTaskResponseBody,
+} from "@app/types/api/projects/tasks";
+import type {
+  GetPodEgressPolicyResponseBody,
+  PutPodEgressPolicyResponseBody,
+} from "@app/types/api/sandbox/egress_policy";
+import type {
+  CheckNameResponseBody,
+  PatchPodMetadataBodyType,
+} from "@app/types/api/spaces";
 import type {
   NotificationCondition,
   UserPodNotificationPreference,
@@ -53,6 +60,8 @@ import type {
   PodTaskStatus,
   PodTaskType,
 } from "@app/types/project_task";
+import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
+import { EMPTY_EGRESS_POLICY } from "@app/types/sandbox/egress_policy";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -200,52 +209,6 @@ export function useAddPodContextContentNodes({
       sendNotification({
         type: "error",
         title: "Failed to add references to Pod",
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
-}
-
-export function useRemovePodContextFile({
-  owner,
-  podId,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-}) {
-  const sendNotification = useSendNotification();
-
-  return async (fileId: string): Promise<Result<void, Error>> => {
-    try {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${podId}/project_context/files/${fileId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to remove file from Pod",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
-
-      sendNotification({
-        type: "success",
-        title: "Removed from Pod files",
-      });
-
-      return new Ok(undefined);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to remove file from Pod",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -1083,6 +1046,43 @@ export function usePodMetadata({
   };
 }
 
+export function usePodDefaultSkills({
+  owner,
+  podId,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+  disabled?: boolean;
+}) {
+  const { podMetadata, isPodMetadataLoading } = usePodMetadata({
+    workspaceId: owner.sId,
+    podId,
+    disabled,
+  });
+  const { skills, isSkillsLoading } = useSkills({
+    owner,
+    status: "active",
+    disabled,
+  });
+
+  const defaultSkills = useMemo(() => {
+    const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+    // Preserve the stored order.
+    return (podMetadata?.defaultSkillIds ?? []).flatMap((skillId) => {
+      const skill = skillBySId.get(skillId);
+      return skill
+        ? [{ sId: skill.sId, name: skill.name, icon: skill.icon }]
+        : [];
+    });
+  }, [skills, podMetadata?.defaultSkillIds]);
+
+  return {
+    defaultSkills,
+    isDefaultSkillsLoading: isPodMetadataLoading || isSkillsLoading,
+  };
+}
+
 export function useUpdatePodMetadata({
   owner,
   podId,
@@ -1297,4 +1297,93 @@ export function useStarPod({
     },
     [workspaceId, podId, mutatePodConversationsSummary, sendNotification]
   );
+}
+
+function podEgressPolicyUrl(workspaceId: string, podId: string) {
+  return `/api/w/${workspaceId}/spaces/${podId}/sandbox/egress-policy`;
+}
+
+export function usePodEgressPolicy({
+  owner,
+  podId,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const policyFetcher: Fetcher<GetPodEgressPolicyResponseBody> = fetcher;
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
+    podEgressPolicyUrl(owner.sId, podId),
+    policyFetcher,
+    { disabled }
+  );
+
+  return {
+    policy: data?.policy ?? EMPTY_EGRESS_POLICY,
+    isPodEgressPolicyLoading: disabled ? false : isLoading,
+    isPodEgressPolicyError: !!error,
+    mutatePodEgressPolicy: mutate,
+  };
+}
+
+export function useUpdatePodEgressPolicy({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const [isUpdatingPodEgressPolicy, setIsUpdating] = useState(false);
+  const { mutatePodEgressPolicy } = usePodEgressPolicy({
+    owner,
+    podId,
+    disabled: true,
+  });
+
+  const updatePodEgressPolicy = async (
+    policy: EgressPolicy
+  ): Promise<boolean> => {
+    setIsUpdating(true);
+    try {
+      const response = await clientFetch(podEgressPolicyUrl(owner.sId, podId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(policy),
+      });
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to update Pod network policy",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PutPodEgressPolicyResponseBody = await response.json();
+      await mutatePodEgressPolicy({ policy: data.policy }, false);
+      sendNotification({
+        type: "success",
+        title: "Pod network policy updated",
+        description:
+          "Sandbox egress policy changes will be applied by the proxy cache shortly.",
+      });
+      return true;
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to update Pod network policy",
+        description: "An unexpected error occurred. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return { updatePodEgressPolicy, isUpdatingPodEgressPolicy };
 }

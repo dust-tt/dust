@@ -36,7 +36,7 @@ export function CapabilitiesFooter({
                 label={skill.name}
                 onRemove={() => onRemoveSelectedSkill(skill)}
                 size="xs"
-                color="green"
+                color="success"
               />
             ))}
             {localSelectedTools.map((tool, index) => (
@@ -46,7 +46,7 @@ export function CapabilitiesFooter({
                 label={getSelectedToolLabel(tool)}
                 onRemove={() => onRemoveSelectedTool(tool)}
                 size="xs"
-                color="green"
+                color="success"
               />
             ))}
           </div>

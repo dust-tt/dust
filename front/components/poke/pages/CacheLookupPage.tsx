@@ -1,16 +1,18 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type {
-  RedisCacheResult,
-  RedisInstance,
-} from "@app/pages/api/poke/cache";
 import {
+  usePokeCacheDeleteAll,
   usePokeCacheInvalidate,
   usePokeCacheLookup,
 } from "@app/poke/swr/cache";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import type {
+  RedisCacheResult,
+  RedisInstance,
+} from "@app/types/api/poke/cache";
 import type { CacheResourceDefinition } from "@app/types/shared/cache_resource_registry";
 import {
   buildCacheKey,
+  buildCacheKeyPattern,
   CACHE_RESOURCE_REGISTRY,
 } from "@app/types/shared/cache_resource_registry";
 import {
@@ -72,14 +74,12 @@ function RedisInstanceResult({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <h3 className="text-sm font-semibold text-foreground dark:text-foreground-night">
-          {label}
-        </h3>
+        <h3 className="text-sm font-semibold text-foreground">{label}</h3>
         <span
           className={`rounded px-1.5 py-0.5 text-xs font-medium ${
             found
-              ? "bg-success-100 text-success-800 dark:bg-success-100-night dark:text-success-800-night"
-              : "bg-muted-background text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night"
+              ? "bg-success-100 text-success-800"
+              : "bg-muted-background text-muted-foreground"
           }`}
         >
           {found ? "Found" : "Not found"}
@@ -89,7 +89,7 @@ function RedisInstanceResult({
         <>
           <div>
             <Label isMuted>TTL</Label>
-            <p className="mt-1 text-sm text-foreground dark:text-foreground-night">
+            <p className="mt-1 text-sm text-foreground">
               {formatTtl(result.ttlSeconds)}
             </p>
           </div>
@@ -174,7 +174,7 @@ function CacheResults({
 }: CacheResultsProps) {
   if (!submitted) {
     return (
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground">
         Fill in the parameters and click Lookup to see results.
       </p>
     );
@@ -190,9 +190,7 @@ function CacheResults({
 
   if (isError) {
     return (
-      <p className="text-sm text-warning-400 dark:text-warning-400-night">
-        Error fetching cache value.
-      </p>
+      <p className="text-sm text-warning-400">Error fetching cache value.</p>
     );
   }
 
@@ -225,7 +223,7 @@ function CacheResults({
       />
       <div>
         <Label isMuted>Redis Key</Label>
-        <code className="mt-1 block break-all rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
+        <code className="mt-1 block break-all rounded bg-muted-background p-2 text-sm text-foreground">
           {data.key}
         </code>
       </div>
@@ -349,7 +347,7 @@ function ResourceLookupForm({ onSubmit }: ResourceLookupFormProps) {
           {computedKey && (
             <div>
               <Label isMuted>Computed Key</Label>
-              <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
+              <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground">
                 {computedKey}
               </code>
             </div>
@@ -411,6 +409,110 @@ function RawKeyForm({ onSubmit }: RawKeyFormProps) {
   );
 }
 
+function ResourceInvalidateForm() {
+  const [selectedResource, setSelectedResource] =
+    useState<CacheResourceDefinition | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const { doDeleteAll, isDeletingAll } = usePokeCacheDeleteAll();
+
+  const pattern = selectedResource
+    ? buildCacheKeyPattern(selectedResource)
+    : null;
+
+  return (
+    <div className="space-y-4 py-4">
+      <div>
+        <Label className="mb-1 block">Resource Type</Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              isSelect
+              label={selectedResource?.label ?? "Select a resource..."}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-72">
+            {CACHE_RESOURCE_REGISTRY.map((resource) => (
+              <DropdownMenuItem
+                key={resource.id}
+                onClick={() => setSelectedResource(resource)}
+              >
+                {resource.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {selectedResource && !pattern && (
+        <ContentMessage
+          variant="warning"
+          size="sm"
+          title="This resource does not support bulk invalidation."
+        />
+      )}
+
+      {selectedResource && pattern && (
+        <>
+          <div>
+            <Label isMuted>Key Pattern</Label>
+            <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground">
+              {pattern}
+            </code>
+          </div>
+
+          <Button
+            label={isDeletingAll ? "Deleting..." : "Invalidate entire cache"}
+            variant="warning"
+            disabled={isDeletingAll}
+            onClick={() => setShowConfirm(true)}
+          />
+
+          <Dialog
+            open={showConfirm}
+            onOpenChange={(open) => {
+              if (!open) {
+                setShowConfirm(false);
+              }
+            }}
+          >
+            <DialogContent size="md" isAlertDialog>
+              <DialogHeader hideButton>
+                <DialogTitle>Delete all cache entries?</DialogTitle>
+              </DialogHeader>
+              <DialogContainer>
+                <p>
+                  This will delete all{" "}
+                  <span className="font-bold">{selectedResource.label}</span>{" "}
+                  entries matching <code className="break-all">{pattern}</code>{" "}
+                  from Cache Redis (REDIS_CACHE_URI). This action cannot be
+                  undone.
+                </p>
+              </DialogContainer>
+              <DialogFooter
+                leftButtonProps={{
+                  label: "Cancel",
+                  variant: "outline",
+                }}
+                rightButtonProps={{
+                  label: "Invalidate all",
+                  variant: "warning",
+                  onClick: async () => {
+                    await doDeleteAll({ resourceId: selectedResource.id });
+                    setShowConfirm(false);
+                  },
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function CacheLookupPage() {
   usePokePageMetadata({ name: "Cache Lookup" });
 
@@ -448,20 +550,21 @@ export function CacheLookupPage() {
     <main className="px-4 sm:px-6 lg:px-8">
       <div className="py-12">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-foreground-night">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Redis Cache Lookup
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="mt-2 text-sm text-muted-foreground">
             Inspect cached values in Redis
           </p>
         </div>
 
         <div className="flex gap-6">
-          <div className="w-80 shrink-0 rounded-lg bg-background p-4 dark:bg-background-night">
+          <div className="w-80 shrink-0 rounded-lg bg-background p-4">
             <Tabs defaultValue="resource">
               <TabsList>
-                <TabsTrigger value="resource" label="Resource Lookup" />
-                <TabsTrigger value="raw" label="Raw Key" />
+                <TabsTrigger value="resource" label="Resource" />
+                <TabsTrigger value="raw" label="Raw" />
+                <TabsTrigger value="invalidate" label="Invalidate" />
               </TabsList>
 
               <TabsContent value="resource">
@@ -471,10 +574,14 @@ export function CacheLookupPage() {
               <TabsContent value="raw">
                 <RawKeyForm onSubmit={setQuery} />
               </TabsContent>
+
+              <TabsContent value="invalidate">
+                <ResourceInvalidateForm />
+              </TabsContent>
             </Tabs>
           </div>
 
-          <div className="min-w-0 flex-1 rounded-lg bg-background p-4 dark:bg-background-night">
+          <div className="min-w-0 flex-1 rounded-lg bg-background p-4">
             <CacheResults
               data={data}
               isLoading={isCacheLoading}

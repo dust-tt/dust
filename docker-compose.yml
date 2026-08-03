@@ -10,7 +10,7 @@ services:
     ports:
       - 5432:5432
   qdrant_primary:
-    image: "qdrant/qdrant:v1.13.0"
+    image: "qdrant/qdrant:v1.18.3"
     volumes:
       - qdrant_primary:/qdrant/storage
     ports:
@@ -29,7 +29,7 @@ services:
       timeout: 10s
       retries: 1 # Only retry once to minimize delay
   qdrant_secondary:
-    image: "qdrant/qdrant:v1.13.0"
+    image: "qdrant/qdrant:v1.18.3"
     volumes:
       - qdrant_secondary:/qdrant/storage
     environment:
@@ -38,7 +38,7 @@ services:
       nofile:
         soft: 64000
         hard: 64000
-    command: ["./qdrant", "--bootstrap", "http://qdrant_primary:6335"]
+    command: ["./qdrant", "--bootstrap", "http://qdrant_primary:6335", "--uri", "http://qdrant_secondary:6335"]
     depends_on:
       qdrant_primary:
         condition: service_healthy # Ensure qdrant is healthy before starting qdrant_primary.
@@ -128,6 +128,18 @@ services:
       interval: 10s
       timeout: 10s
       retries: 20
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    profiles:
+      - gotenberg
+    ports:
+      - "3100:3000"
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=false
+      - --chromium-allow-list=.*
+      - --chromium-deny-list=
 
 volumes:
   pgsql:

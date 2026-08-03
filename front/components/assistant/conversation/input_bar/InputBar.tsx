@@ -7,6 +7,7 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarUsageBanner } from "@app/components/assistant/conversation/input_bar/InputBarUsageBanner";
 import {
   INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
@@ -19,17 +20,27 @@ import {
   useConversationTools,
 } from "@app/hooks/conversations";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAddConversationSelectedSpaces,
+  useSelectableConversationSpaces,
+} from "@app/lib/swr/conversation_selected_spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import {
   compareAgentsForSort,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  SelectableConversationSpaceType,
+} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { isEqualNode } from "@app/types/data_source_view";
@@ -42,10 +53,25 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
+
+type SelectedSpacesState = {
+  key: string;
+  spaceIds: string[];
+};
+
+function sameStringSet(a: string[], b: string[]) {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  const bSet = new Set(b);
+  return a.every((value) => bSet.has(value));
+}
 
 interface InputBarProps {
   owner: WorkspaceType;
@@ -54,15 +80,23 @@ interface InputBarProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
+    selectedMCPServerViewIds?: string[],
+    selectedSpaceIds?: string[],
+    modelSelection?: ModelSelectionType
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   stickyMentions?: RichMention[];
+  defaultAgentId?: string | null;
+  isDefaultAgentLoading?: boolean;
+  lastRequestedModel?: ModelSelectionType | null;
+  defaultSkills?: InputBarContainerProps["defaultSkills"];
+  isDefaultSkillsLoading?: boolean;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
+  disableAgentMentions?: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
@@ -85,9 +119,15 @@ export const InputBar = React.memo(function InputBar({
   draftKey,
   space,
   stickyMentions,
+  defaultAgentId,
+  isDefaultAgentLoading,
+  lastRequestedModel = null,
+  defaultSkills,
+  isDefaultSkillsLoading,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   disableUserMentions,
+  disableAgentMentions,
   isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
@@ -102,16 +142,24 @@ export const InputBar = React.memo(function InputBar({
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
+  const { featureFlags } = useFeatureFlags();
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
   >([]);
+
+  // Latest model-picker selection. The picker writes into this ref so we can
+  // read it at submit without re-rendering the input bar. `undefined` means
+  // no override (run the agent's configured model).
+  const modelSelectionRef = useRef<ModelSelectionType | undefined>(undefined);
 
   const {
     getAndClearSelectedAgent,
     selectedSingleAgent,
     getAndClearPendingInputText,
     fileUploaderService,
+    isLoadingGoTemplate,
+    onBeforeSubmit,
   } = useContext(InputBarContext);
 
   // We use this specific hook because this component is involved in the new conversation page.
@@ -127,6 +175,12 @@ export const InputBar = React.memo(function InputBar({
     draftKey,
     shouldUseDraft: !isAgentBuilder,
   });
+
+  useEffect(() => {
+    if (isLoadingGoTemplate) {
+      clearDraft();
+    }
+  }, [isLoadingGoTemplate, clearDraft]);
 
   useEffect(() => {
     if (droppedFiles.length > 0) {
@@ -200,8 +254,10 @@ export const InputBar = React.memo(function InputBar({
   // Tools selection
 
   const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
-    MCPServerViewType[]
+    MCPServerViewLightType[]
   >([]);
+  const [selectedSpacesState, setSelectedSpacesState] =
+    useState<SelectedSpacesState | null>(null);
 
   const { conversationTools } = useConversationTools({
     conversationId: conversation?.sId,
@@ -221,9 +277,132 @@ export const InputBar = React.memo(function InputBar({
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
   );
+  const spacesSelectionKey = conversation?.sId ?? `draft:${draftKey}`;
+  const draftSelectedSpaceIds = useMemo(
+    () => getDraft()?.selectedSpaceIds ?? [],
+    [getDraft]
+  );
+  const localSelectedSpaceIds =
+    selectedSpacesState?.key === spacesSelectionKey
+      ? selectedSpacesState.spaceIds
+      : null;
+  const inputBarSpaceId = conversation?.spaceId ?? space?.sId ?? undefined;
+  const shouldShowSpacesAction =
+    actions.includes("spaces") &&
+    featureFlags.includes("restricted_spaces_in_input_bar") &&
+    !isAgentBuilder &&
+    !inputBarSpaceId;
+
+  const {
+    spaces: conversationSelectableSpaces,
+    isSelectableSpacesLoading: isConversationSelectableSpacesLoading,
+    mutateSelectableSpaces,
+  } = useSelectableConversationSpaces({
+    owner,
+    conversationId: conversation?.sId ?? null,
+    disabled: !shouldShowSpacesAction || !conversation?.sId,
+  });
+  const addConversationSelectedSpaces = useAddConversationSelectedSpaces({
+    owner,
+    conversationId: conversation?.sId ?? null,
+  });
+
+  const {
+    spaces: workspaceRegularSpaces,
+    isSpacesLoading: isWorkspaceSpacesLoading,
+  } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: ["regular"],
+    disabled: !shouldShowSpacesAction || !!conversation?.sId,
+  });
+
+  const conversationSelectedSpaceIds = useMemo(() => {
+    const selectedSpaceIds: string[] = [];
+    for (const selectableSpace of conversationSelectableSpaces) {
+      if (selectableSpace.selected) {
+        selectedSpaceIds.push(selectableSpace.sId);
+      }
+    }
+
+    return selectedSpaceIds;
+  }, [conversationSelectableSpaces]);
+
+  const rawSelectedSpaceIds = useMemo(
+    () =>
+      conversation?.sId
+        ? Array.from(
+            new Set([
+              ...conversationSelectedSpaceIds,
+              ...(localSelectedSpaceIds ?? []),
+            ])
+          )
+        : (localSelectedSpaceIds ?? draftSelectedSpaceIds),
+    [
+      conversation?.sId,
+      conversationSelectedSpaceIds,
+      draftSelectedSpaceIds,
+      localSelectedSpaceIds,
+    ]
+  );
+  const rawSelectedSpaceIdSet = useMemo(
+    () => new Set(rawSelectedSpaceIds),
+    [rawSelectedSpaceIds]
+  );
+
+  const selectableSpaces: SelectableConversationSpaceType[] = useMemo(
+    () =>
+      conversation?.sId
+        ? conversationSelectableSpaces
+        : workspaceRegularSpaces
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((regularSpace) => ({
+              ...regularSpace,
+              selected: rawSelectedSpaceIdSet.has(regularSpace.sId),
+            })),
+    [
+      conversation?.sId,
+      conversationSelectableSpaces,
+      rawSelectedSpaceIdSet,
+      workspaceRegularSpaces,
+    ]
+  );
+  const selectableSpaceIds = useMemo(
+    () => new Set(selectableSpaces.map((space) => space.sId)),
+    [selectableSpaces]
+  );
+  const selectedSpaceIds = useMemo(() => {
+    if (!shouldShowSpacesAction) {
+      return [];
+    }
+
+    if (
+      (conversation?.sId && isConversationSelectableSpacesLoading) ||
+      (!conversation?.sId && isWorkspaceSpacesLoading)
+    ) {
+      return rawSelectedSpaceIds;
+    }
+
+    return rawSelectedSpaceIds.filter((spaceId) =>
+      selectableSpaceIds.has(spaceId)
+    );
+  }, [
+    conversation?.sId,
+    isConversationSelectableSpacesLoading,
+    isWorkspaceSpacesLoading,
+    rawSelectedSpaceIds,
+    selectableSpaceIds,
+    shouldShowSpacesAction,
+  ]);
+  const selectedSpaceIdSet = useMemo(
+    () => new Set(selectedSpaceIds),
+    [selectedSpaceIds]
+  );
+  const isSelectableSpacesLoading = conversation?.sId
+    ? isConversationSelectableSpacesLoading
+    : isWorkspaceSpacesLoading;
 
   const handleMCPServerViewSelect = useCallback(
-    (serverView: MCPServerViewType) => {
+    (serverView: MCPServerViewLightType) => {
       if (selectedMCPServerViewIds.has(serverView.sId)) {
         return;
       }
@@ -239,7 +418,7 @@ export const InputBar = React.memo(function InputBar({
   );
 
   const handleMCPServerViewDeselect = useCallback(
-    (serverView: MCPServerViewType) => {
+    (serverView: MCPServerViewLightType) => {
       if (!selectedMCPServerViewIds.has(serverView.sId)) {
         return;
       }
@@ -250,6 +429,80 @@ export const InputBar = React.memo(function InputBar({
       void deleteTool(serverView.sId);
     },
     [deleteTool, selectedMCPServerViewIds]
+  );
+
+  const clearSideChannelSelections = useCallback(async () => {
+    const serverViewIds = selectedMCPServerViews.map(
+      (serverView) => serverView.sId
+    );
+    setSelectedMCPServerViews([]);
+    setAttachedNodes([]);
+
+    await Promise.all(
+      serverViewIds.map((serverViewId) => deleteTool(serverViewId))
+    );
+  }, [deleteTool, selectedMCPServerViews]);
+
+  const handleSelectedSpaceIdsChange = useCallback(
+    async (spaceIds: string[]): Promise<string[] | null> => {
+      if (!shouldShowSpacesAction) {
+        setSelectedSpacesState({
+          key: spacesSelectionKey,
+          spaceIds: [],
+        });
+        return [];
+      }
+
+      const nextSpaceIds = Array.from(new Set(spaceIds)).filter((spaceId) =>
+        selectableSpaceIds.has(spaceId)
+      );
+      if (sameStringSet(selectedSpaceIds, nextSpaceIds)) {
+        return selectedSpaceIds;
+      }
+
+      if (conversation?.sId) {
+        const addedSpaceIds = nextSpaceIds.filter(
+          (spaceId) => !selectedSpaceIdSet.has(spaceId)
+        );
+        if (addedSpaceIds.length === 0) {
+          return selectedSpaceIds;
+        }
+
+        const response = await addConversationSelectedSpaces(addedSpaceIds);
+        if (!response) {
+          return null;
+        }
+
+        const persistedSpaceIds = response.selectedSpaces.map(
+          (selectedSpace) => selectedSpace.sId
+        );
+        await clearSideChannelSelections();
+        setSelectedSpacesState({
+          key: spacesSelectionKey,
+          spaceIds: persistedSpaceIds,
+        });
+        await mutateSelectableSpaces();
+        return persistedSpaceIds;
+      }
+
+      await clearSideChannelSelections();
+      setSelectedSpacesState({
+        key: spacesSelectionKey,
+        spaceIds: nextSpaceIds,
+      });
+      return nextSpaceIds;
+    },
+    [
+      addConversationSelectedSpaces,
+      clearSideChannelSelections,
+      conversation?.sId,
+      mutateSelectableSpaces,
+      spacesSelectionKey,
+      selectableSpaceIds,
+      selectedSpaceIds,
+      selectedSpaceIdSet,
+      shouldShowSpacesAction,
+    ]
   );
 
   const activeAgents = useMemo(() => {
@@ -272,6 +525,8 @@ export const InputBar = React.memo(function InputBar({
     ) {
       return;
     }
+
+    onBeforeSubmit?.();
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
     const shouldInjectSelectedAgent =
@@ -331,13 +586,19 @@ export const InputBar = React.memo(function InputBar({
           },
           // Only send the selectedMCPServerViewIds if we are creating a new conversation.
           // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId)
+          selectedMCPServerViews.map((sv) => sv.sId),
+          selectedSpaceIds,
+          modelSelectionRef.current
         );
 
         if (r.isOk()) {
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
+          setSelectedSpacesState({
+            key: spacesSelectionKey,
+            spaceIds: [],
+          });
         }
       } finally {
         setLoading(false);
@@ -347,17 +608,26 @@ export const InputBar = React.memo(function InputBar({
       setIsLocalSubmitting(true);
 
       try {
-        const submitPromise = onSubmit(markdown, mentions, {
-          uploaded: fileUploaderService.getFileBlobs().map((cf) => {
-            return {
-              title: cf.filename,
-              fileId: cf.fileId,
-              contentType: cf.contentType,
-              url: cf.sourceUrl,
-            };
-          }),
-          contentNodes: attachedNodes,
-        });
+        const submitPromise = onSubmit(
+          markdown,
+          mentions,
+          {
+            uploaded: fileUploaderService.getFileBlobs().map((cf) => {
+              return {
+                title: cf.filename,
+                fileId: cf.fileId,
+                contentType: cf.contentType,
+                url: cf.sourceUrl,
+              };
+            }),
+            contentNodes: attachedNodes,
+          },
+          // Existing conversation: MCP server views are synced via the
+          // conversationTools hook.
+          undefined,
+          selectedSpaceIds,
+          modelSelectionRef.current
+        );
 
         // Execute these operations in parallel with the submission.
         resetEditorText();
@@ -407,6 +677,7 @@ export const InputBar = React.memo(function InputBar({
         effectiveIsCompact && "min-w-0 flex-1"
       )}
     >
+      <InputBarUsageBanner owner={owner} />
       <PlanCard
         conversationId={conversation?.sId ?? null}
         workspaceId={owner.sId}
@@ -427,7 +698,7 @@ export const InputBar = React.memo(function InputBar({
         }}
         className={classNames(
           isShaking && "animate-shake",
-          "relative flex flex-col items-stretch gap-0 sm:flex-row",
+          "relative flex flex-col items-stretch gap-0 md:flex-row",
           INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
           !effectiveIsCompact && "w-full flex-1 self-stretch",
           effectiveIsCompact
@@ -438,21 +709,18 @@ export const InputBar = React.memo(function InputBar({
               )
             : classNames(
                 "w-full rounded-2xl",
-                "bg-muted-background dark:bg-muted-background-night",
+                "bg-muted-background",
                 "border",
-                "border-border-dark dark:border-border-dark/10",
-                "sm:border-border-dark/50 sm:has-[.tiptap:focus]:border-border-dark",
-                "dark:has-[.tiptap:focus]:border-border-dark-night sm:has-[.tiptap:focus]:border-border-dark",
+                "border-border-dark",
+                "md:border-border-dark/50 md:has-[.tiptap:focus]:border-border-dark",
+                "md:has-[.tiptap:focus]:border-border-dark",
                 isFloating
                   ? classNames(
-                      "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
-                      "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
-                      "sm:has-[.tiptap:focus]:ring-2 dark:sm:has-[.tiptap:focus]:ring-2"
+                      "has-[.tiptap:focus]:ring-1",
+                      "has-[.tiptap:focus]:ring-highlight/30",
+                      "md:has-[.tiptap:focus]:ring-2"
                     )
-                  : classNames(
-                      "has-[.tiptap:focus]:border-highlight-300",
-                      "dark:has-[.tiptap:focus]:border-highlight-300-night"
-                    )
+                  : classNames("has-[.tiptap:focus]:border-highlight-300")
               )
         )}
       >
@@ -470,13 +738,13 @@ export const InputBar = React.memo(function InputBar({
                 items: attachedNodes,
                 onRemove: handleNodesAttachmentRemove,
               }}
-              conversationId={conversation?.sId}
             />
           )}
           <InputBarContainer
             actions={actions}
             disableAutoFocus={disableAutoFocus}
             disableUserMentions={disableUserMentions}
+            disableAgentMentions={disableAgentMentions}
             allAgents={activeAgents}
             owner={owner}
             conversation={conversation}
@@ -485,14 +753,27 @@ export const InputBar = React.memo(function InputBar({
             pendingInputText={pendingInputText}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}
+            defaultAgentId={defaultAgentId}
+            isDefaultAgentLoading={isDefaultAgentLoading}
+            lastRequestedModel={lastRequestedModel}
+            defaultSkills={defaultSkills}
+            isDefaultSkillsLoading={isDefaultSkillsLoading}
             fileUploaderService={fileUploaderService}
             isSubmitting={
-              isLocalSubmitting || fileUploaderService.isProcessingFiles
+              isLocalSubmitting ||
+              fileUploaderService.isProcessingFiles ||
+              isLoadingGoTemplate
             }
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}
+            selectedSpaceIds={selectedSpaceIds}
+            selectableSpaces={selectableSpaces}
+            shouldShowSpacesAction={shouldShowSpacesAction}
+            isSelectableSpacesLoading={isSelectableSpacesLoading}
+            onSelectedSpaceIdsChange={handleSelectedSpaceIdsChange}
             onMCPServerViewSelect={handleMCPServerViewSelect}
+            modelSelectionRef={modelSelectionRef}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}

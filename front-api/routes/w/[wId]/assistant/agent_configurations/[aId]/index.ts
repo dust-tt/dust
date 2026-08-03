@@ -5,7 +5,7 @@ import {
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/internal/agent_configuration";
+import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -45,6 +45,7 @@ export type DeleteAgentConfigurationResponseBody = {
 // `/` handles GET, PATCH, and DELETE on the agent itself.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -98,7 +99,9 @@ app.patch(
       });
     }
 
-    if (!agent.canEdit && !auth.isAdmin()) {
+    // Editors only, admins included: an admin who wants to change an agent has to add themselves
+    // as an editor first. Batch operations on agents are a separate, admin-only path.
+    if (!agent.canEdit) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

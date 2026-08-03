@@ -10,8 +10,15 @@ import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
+import type { AgenticMessageData } from "@app/types/assistant/conversation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+
+export type AuditLogsPortal = "view_logs" | "configure_export";
+
+export type AuditLogsPortalResponse = {
+  portalUrl: string;
+};
 
 export const AUDIT_ACTIONS = [
   // Existing Tier 1 events.
@@ -27,6 +34,7 @@ export const AUDIT_ACTIONS = [
   // Authentication & Admin.
   "user.login_failed",
   "user.identity_merged",
+  "user.advanced_model_access_updated",
   "user.relocated",
   // API Keys & Secrets.
   "api_key.created",
@@ -34,12 +42,22 @@ export const AUDIT_ACTIONS = [
   "api_key.updated",
   // Membership & Invitations.
   "membership.role_updated",
+  "membership.seat_updated",
   "membership.origin_updated",
   "invitation.revoked",
   "invitation.role_updated",
   "member.bulk_invited",
   "member.bulk_revoked",
+  "membership.bulk_role_updated",
+  "membership.bulk_seat_updated",
   "member.spend_limit_updated",
+  "group.advanced_model_access_updated",
+  "group.member_added",
+  "group.member_removed",
+  "group.spend_limit_updated",
+  "membership.upgrade_request_created",
+  "membership.upgrade_request_resolved",
+  "membership.seat_auto_upgraded",
   // Domains & SSO.
   "domain.verified",
   "domain.verification_failed",
@@ -52,8 +70,12 @@ export const AUDIT_ACTIONS = [
   "credentials.revoked",
   "credentials.invalidated",
   // MCP Connections.
+  "dust_mcp_server.settings_updated",
   "mcp_connection.created",
   "mcp_connection.deleted",
+  // Skill import GitHub connection.
+  "skill_import_github_connection.created",
+  "skill_import_github_connection.deleted",
   // Projects.
   "project.joined",
   "project.left",
@@ -72,8 +94,32 @@ export const AUDIT_ACTIONS = [
   "sandbox_env_var.updated",
   // Workspace settings.
   "workspace.audit_logs_updated",
+  "workspace.analytics_updated",
+  "workspace.advanced_model_access_updated",
+  "workspace.default_agent_updated",
   "workspace.default_user_spend_limit_updated",
+  "workspace.domain_auto_join_updated",
+  "workspace.email_agents_updated",
+  "workspace.extension_mcp_tools_updated",
+  "workspace.governance_permission_updated",
+  "workspace.interactive_content_sharing_updated",
+  "workspace.manual_project_knowledge_management_updated",
+  "workspace.model_provider_settings_updated",
+  "workspace.name_updated",
+  "workspace.open_projects_updated",
+  "workspace.private_conversation_urls_updated",
   "workspace.programmatic_usage_limit_updated",
+  "workspace.published_agents_restricted_models_updated",
+  "workspace.regional_models_only_updated",
+  "workspace.reinforcement_cap_updated",
+  "workspace.self_improvement_cap_per_skill_updated",
+  "workspace.sharing_policy_updated",
+  "workspace.slack_personal_footer_removal_updated",
+  "workspace.sso_enforcement_updated",
+  "workspace.voice_transcription_updated",
+  "workspace.workos_organization_updated",
+  "workspace_branding.asset_promoted",
+  "workspace_branding.asset_deleted",
   // SCIM / Directory Sync.
   "scim.user_provisioned",
   "scim.user_updated",
@@ -86,6 +132,7 @@ export const AUDIT_ACTIONS = [
   "agent.executed",
   "tool.approval_decided",
   "tool.approval_requested",
+  "tool.approval_resolved",
   "tool.executed",
   // Triggers.
   "trigger.created",
@@ -112,6 +159,7 @@ export const AUDIT_ACTIONS = [
   "space.permissions_updated",
   // Conversations.
   "conversation.accessed",
+  "conversation.space_selected",
   // Data Sources.
   "datasource.created",
   "datasource.updated",
@@ -120,6 +168,10 @@ export const AUDIT_ACTIONS = [
   "datasource.reauthorized",
   // Files.
   "file.moved",
+  "frame.authorized_files_updated",
+  "frame.email_grant_added",
+  "frame.email_grant_revoked",
+  "frame.share_scope_updated",
   // Audit Logs.
   "audit_log.viewed",
   "audit_log.export_configured",
@@ -132,7 +184,7 @@ export const AUDIT_ACTIONS = [
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-export type EmitAuditLogEventParams = {
+type EmitAuditLogEventParams = {
   auth: Authenticator;
   action: AuditAction;
   targets: AuditLogTarget[];
@@ -363,7 +415,8 @@ type AuditTargetType =
   | "group"
   | "credential"
   | "mcp_connection"
-  | "sandbox_env_var";
+  | "sandbox_env_var"
+  | "frame";
 
 /**
  * Resource shape required for each audit target type.
@@ -402,4 +455,28 @@ export function getAuditLogContext(
     return { location: getClientIp(req) };
   }
   return { location: auth.clientIp() ?? "internal" };
+}
+
+type AgentTriggerType = "user" | "agent" | "trigger" | "handover";
+
+/**
+ * Classifies how an agent run was triggered, for the `trigger_type` metadata on
+ * `agent.executed`. A sub-agent run carries `agenticMessageData` (its type wins
+ * over a trigger), otherwise a trigger-backed conversation is `"trigger"` and
+ * everything else is a plain user message.
+ */
+export function deriveAgentTriggerType(
+  agenticMessageData: AgenticMessageData | undefined,
+  triggerId: string | null
+): AgentTriggerType {
+  if (agenticMessageData?.type === "run_agent") {
+    return "agent";
+  }
+  if (agenticMessageData?.type === "agent_handover") {
+    return "handover";
+  }
+  if (triggerId) {
+    return "trigger";
+  }
+  return "user";
 }

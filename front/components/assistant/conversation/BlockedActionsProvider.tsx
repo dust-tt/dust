@@ -1,5 +1,5 @@
 import { useConversations } from "@app/hooks/conversations";
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
@@ -17,7 +17,7 @@ import {
 
 type BlockedActionQueueItem = {
   messageId: string;
-  blockedAction: BlockedToolExecution;
+  blockedAction: AgentLoopBlockedToolExecution;
 };
 
 const EMPTY_BLOCKED_ACTIONS_QUEUE: BlockedActionQueueItem[] = [];
@@ -26,7 +26,7 @@ const pulseDurationMs = 3000;
 type BlockedActionsContextType = {
   enqueueBlockedAction: (params: {
     messageId: string;
-    blockedAction: BlockedToolExecution;
+    blockedAction: AgentLoopBlockedToolExecution;
   }) => void;
   removeCompletedAction: (actionId: string) => void;
   removeAllBlockedActionsForMessage: (params: {
@@ -34,10 +34,10 @@ type BlockedActionsContextType = {
     conversationId: string;
   }) => void;
   hasPendingValidations: (userId: string) => boolean;
-  getBlockedActions: (userId: string) => BlockedToolExecution[];
+  getBlockedActions: (userId: string) => AgentLoopBlockedToolExecution[];
   getFirstBlockedActionForMessage: (
     messageId: string
-  ) => BlockedToolExecution | undefined;
+  ) => AgentLoopBlockedToolExecution | undefined;
   startPulsingAction: (actionId: string) => void;
   stopPulsingAction: (actionId: string) => void;
   isActionPulsing: (actionId: string) => boolean;
@@ -73,7 +73,7 @@ export function BlockedActionsProvider({
   const conversationId = conversation?.sId || null;
 
   // Fetch blocked actions from the database.
-  const { blockedActions } = useBlockedActions({
+  const { blockedActions, mutate: mutateBlockedActions } = useBlockedActions({
     conversationId,
     workspaceId: owner.sId,
   });
@@ -97,7 +97,7 @@ export function BlockedActionsProvider({
       // Walk the tree to surface every leaf, anchored on the outermost
       // message id so removal/lookup matches the rendered agent message.
       const flattenBlockedActions = (
-        actions: BlockedToolExecution[],
+        actions: AgentLoopBlockedToolExecution[],
         outerMessageId: string
       ): BlockedActionQueueItem[] =>
         actions.flatMap((action) => {
@@ -126,7 +126,7 @@ export function BlockedActionsProvider({
       blockedAction,
     }: {
       messageId: string;
-      blockedAction: BlockedToolExecution;
+      blockedAction: AgentLoopBlockedToolExecution;
     }) => {
       setBlockedActionsQueue((prevQueue) => {
         const existingIndex = prevQueue.findIndex(
@@ -192,8 +192,16 @@ export function BlockedActionsProvider({
       setBlockedActionsQueue((prevQueue) =>
         prevQueue.filter((item) => item.blockedAction.actionId !== actionId)
       );
+
+      // Revalidate the blocked actions cache. Resolving an action happens
+      // right after the OAuth popup closes, which refocuses the window and
+      // can trigger an SWR focus revalidation that still sees the action as
+      // blocked in the database. Mutating here discards that in-flight stale
+      // response and refetches, so the resolved action is not re-inserted in
+      // the queue.
+      void mutateBlockedActions();
     },
-    [stopPulsingAction]
+    [stopPulsingAction, mutateBlockedActions]
   );
 
   const hasPendingValidations = useCallback(

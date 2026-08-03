@@ -1,5 +1,5 @@
+import type { PokeGetMCPServerViewDetails } from "@app/lib/api/poke/mcp_server_views";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetMCPServerViewDetails } from "@app/pages/api/poke/workspaces/[wId]/mcp_server_views/[svId]/details";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

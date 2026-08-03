@@ -15,6 +15,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -23,19 +24,18 @@ import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
-  ArrowLeftIcon,
-  ArrowPathIcon,
+  ArrowLeft,
   Avatar,
-  BarChartIcon,
-  BellIcon,
-  BrainIcon,
+  BarChart01,
+  Bell01,
+  Brain,
   Button,
   Chip,
   ContentMessage,
-  InformationCircleIcon,
-  LockIcon,
+  InfoCircle,
+  Lock01,
+  RefreshCw02,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -46,7 +46,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useState } from "react";
@@ -65,6 +65,7 @@ function triggerTypeToBuilderType(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         editor: trigger.editor,
+        spaceId: trigger.spaceId,
       };
     case "webhook":
       return {
@@ -79,6 +80,7 @@ function triggerTypeToBuilderType(
         webhookSourceViewId: trigger.webhookSourceViewId,
         executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
         executionMode: trigger.executionMode,
+        spaceId: trigger.spaceId,
       };
     default:
       assertNever(trigger);
@@ -90,8 +92,8 @@ export const SCOPE_INFO: Record<
   {
     shortLabel: string;
     label: string;
-    color: "green" | "golden" | "blue" | "primary";
-    icon?: typeof UserGroupIcon | undefined;
+    color: "success" | "info" | "highlight" | "primary";
+    icon?: typeof Users01 | undefined;
     text: string;
   }
 > = {
@@ -110,7 +112,7 @@ export const SCOPE_INFO: Record<
   visible: {
     shortLabel: "Published",
     label: "Published",
-    color: "green",
+    color: "success",
     text: "Visible agents.",
   },
 } as const;
@@ -161,6 +163,8 @@ export function AgentDetailsSheet({
     !isTriggersTabActive
   );
 
+  const { hasPermission } = useWorkspacePermissions();
+
   const handleAddTrigger = useCallback(() => {
     setTriggerEditMode({ type: "add" });
   }, []);
@@ -206,7 +210,8 @@ export function AgentDetailsSheet({
   );
 
   const showInsightsTabs =
-    agentId != null && (isBuilder(owner) || agentConfiguration?.canEdit);
+    agentId != null &&
+    (hasPermission("publish", "agent") || agentConfiguration?.canEdit);
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
@@ -244,11 +249,11 @@ export function AgentDetailsSheet({
 
         {/* Title and edit info */}
         <div className="flex flex-col items-center gap-1">
-          <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night notranslate">
+          <h2 className="text-xl font-semibold text-foreground notranslate">
             {agentConfiguration?.name ?? ""}
           </h2>
           {editedDate && (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Last edited: {editedDate}
               {lastAuthor && ` by ${lastAuthor}`}
             </p>
@@ -269,7 +274,7 @@ export function AgentDetailsSheet({
             <ContentMessage
               title="This agent has been archived."
               variant="warning"
-              icon={InformationCircleIcon}
+              icon={InfoCircle}
               size="sm"
             >
               It is no longer active and cannot be used.
@@ -282,7 +287,7 @@ export function AgentDetailsSheet({
                     setShowRestoreModal(true);
                   }}
                   className="mt-2"
-                  icon={ArrowPathIcon}
+                  icon={RefreshCw02}
                 />
               </div>
             </ContentMessage>
@@ -303,7 +308,7 @@ export function AgentDetailsSheet({
 
   return (
     <Sheet open={!!agentId} onOpenChange={onClose}>
-      <SheetContent size="xl" className="outline-none">
+      <SheetContent size="xl" className="outline-hidden">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
@@ -321,7 +326,7 @@ export function AgentDetailsSheet({
           />
         ) : (
           <>
-            <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
+            <SheetHeader className="flex flex-col gap-5 text-sm text-foreground">
               {/* eslint-disable-next-line react-hooks/static-components */}
               <DescriptionSection />
             </SheetHeader>
@@ -335,14 +340,14 @@ export function AgentDetailsSheet({
                     <TabsTrigger
                       value="info"
                       label="Info"
-                      icon={InformationCircleIcon}
+                      icon={InfoCircle}
                       onClick={() => setSelectedTab("info")}
                     />
                     {showInsightsTabs && (
                       <TabsTrigger
                         value="insights"
                         label="Insights"
-                        icon={BarChartIcon}
+                        icon={BarChart01}
                         onClick={() => setSelectedTab("insights")}
                       />
                     )}
@@ -350,7 +355,7 @@ export function AgentDetailsSheet({
                       <TabsTrigger
                         value="triggers"
                         label="Triggers"
-                        icon={BellIcon}
+                        icon={Bell01}
                         onClick={() => setSelectedTab("triggers")}
                       />
                     )}
@@ -358,7 +363,7 @@ export function AgentDetailsSheet({
                       <TabsTrigger
                         value="editors"
                         label="Editors"
-                        icon={UserGroupIcon}
+                        icon={Users01}
                         onClick={() => setSelectedTab("editors")}
                       />
                     )}
@@ -366,7 +371,7 @@ export function AgentDetailsSheet({
                       <TabsTrigger
                         value="agent_memory"
                         label="Memory"
-                        icon={BrainIcon}
+                        icon={Brain}
                         onClick={() => setSelectedTab("agent_memory")}
                       />
                     )}
@@ -419,7 +424,7 @@ export function AgentDetailsSheet({
               )}
               {isAgentConfigurationError?.error.type ===
                 "agent_configuration_not_found" && (
-                <ContentMessage title="Not Available" icon={LockIcon} size="md">
+                <ContentMessage title="Not Available" icon={Lock01} size="md">
                   This agent is not available.
                 </ContentMessage>
               )}
@@ -468,9 +473,9 @@ function TriggerEditView({
 
   return (
     <>
-      <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground dark:text-foreground-night">
+      <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground">
         <Button
-          icon={ArrowLeftIcon}
+          icon={ArrowLeft}
           variant="ghost"
           size="sm"
           onClick={() => {
@@ -511,7 +516,7 @@ function TriggerEditView({
         </SheetContainer>
       </FormProvider>
       {!isOnSelectionPage && (
-        <div className="flex flex-none justify-end gap-2 border-t border-border p-3 dark:border-border-night">
+        <div className="flex flex-none justify-end gap-2 border-t border-border p-3">
           <Button
             label="Cancel"
             variant="outline"

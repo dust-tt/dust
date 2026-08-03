@@ -9,12 +9,12 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
-  ArrowRightIcon,
+  ArrowRight,
   ContentMessage,
   ContentMessageInline,
-  DotIcon,
+  Dot,
   Icon,
-  InformationCircleIcon,
+  InfoCircle,
   Label,
   TextArea,
   Tooltip,
@@ -200,7 +200,7 @@ export function ScheduleEditionScheduler({
   return (
     <div className="space-y-1">
       <Label htmlFor="schedule-description">Scheduler</Label>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground">
         Describe when you want the agent to run in natural language.
       </p>
       <TextArea
@@ -215,17 +215,17 @@ export function ScheduleEditionScheduler({
       {cronDescription && (
         <div className="my-2">
           <ContentMessage variant="outline" size="lg">
-            <div className="flex flex-row items-start gap-2 text-foreground dark:text-foreground-night">
+            <div className="flex flex-row items-start gap-2 text-foreground">
               {generationStatus === "loading" ? (
                 <>
-                  <DotIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                  <Dot className="mt-0.5 h-4 w-4 shrink-0 self-start" />
                   <AnimatedText variant="primary">
                     {cronDescription}
                   </AnimatedText>
                 </>
               ) : (
                 <>
-                  <ArrowRightIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                  <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 self-start" />
                   <div className="flex flex-1 items-center justify-between">
                     <p>{cronDescription}</p>
                     {nextOccurrences.length > 0 && (
@@ -250,9 +250,9 @@ export function ScheduleEditionScheduler({
                         }
                         trigger={
                           <Icon
-                            visual={InformationCircleIcon}
+                            visual={InfoCircle}
                             size="xs"
-                            className="shrink-0 text-faint dark:text-faint-night"
+                            className="shrink-0 text-faint"
                           />
                         }
                       />

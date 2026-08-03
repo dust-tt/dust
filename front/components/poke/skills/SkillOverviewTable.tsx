@@ -49,7 +49,7 @@ export function SkillOverviewTable({
                 <Chip
                   key={s.sId}
                   size="sm"
-                  color={s.isRestricted ? "warning" : "blue"}
+                  color={s.isRestricted ? "warning" : "highlight"}
                 >
                   {s.name}
                 </Chip>
@@ -57,12 +57,8 @@ export function SkillOverviewTable({
             </PokeTableCell>
           </PokeTableRow>
           <PokeTableRow>
-            <PokeTableCell>Default</PokeTableCell>
-            <PokeTableCell>{skill.isDefault ? "Yes" : "No"}</PokeTableCell>
-          </PokeTableRow>
-          <PokeTableRow>
-            <PokeTableCell>Extended skill</PokeTableCell>
-            <PokeTableCell>{skill.extendedSkillId ?? "None"}</PokeTableCell>
+            <PokeTableCell>Availability</PokeTableCell>
+            <PokeTableCell>{skill.availability}</PokeTableCell>
           </PokeTableRow>
           <PokeTableRow>
             <PokeTableCell>Tools count</PokeTableCell>

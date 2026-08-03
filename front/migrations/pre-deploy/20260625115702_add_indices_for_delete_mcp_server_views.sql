@@ -1,0 +1,2 @@
+CREATE INDEX CONCURRENTLY conversation_mcp_server_views_mcp_server_view_id ON public.conversation_mcp_server_views USING btree ("mcpServerViewId");
+CREATE INDEX CONCURRENTLY skill_mcp_server_configurations_mcp_server_view_id ON public.skill_mcp_server_configurations USING btree ("mcpServerViewId");

@@ -1,21 +1,29 @@
 import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
+import { useSoundNotification } from "@app/hooks/useSoundNotification";
 import config from "@app/lib/api/config";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { workspaceAuthContextUrl } from "@app/lib/swr/workspaces";
-import { PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG } from "@app/types/notification_preferences";
+import {
+  MANUAL_ACTION_REQUIRED_TAG,
+  PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG,
+} from "@app/types/notification_preferences";
 import { isString } from "@app/types/shared/utils/general";
 import type { Novu } from "@novu/js";
 import { useEffect } from "react";
 import { mutate } from "swr";
+
+const isActivelyViewing = (isOnConversationPage: boolean): boolean =>
+  isOnConversationPage && window.document.hasFocus();
 
 export const useSetupNotifications = () => {
   const { push } = useAppRouter();
   const { novuClient } = useNovuClient();
   const sendNotification = useSendNotification();
   const { allowBrowserNotification, notify } = useBrowserNotification();
+  const { requestManualActionSound } = useSoundNotification();
 
   useEffect(() => {
     const setupNotifications = async (novuClient: Novu) => {
@@ -41,13 +49,35 @@ export const useSetupNotifications = () => {
           }
 
           if (
+            notification.result.tags?.includes(MANUAL_ACTION_REQUIRED_TAG) &&
+            window !== undefined
+          ) {
+            const conversationId = notification.result.data?.conversationId;
+            if (isString(conversationId)) {
+              if (
+                !isActivelyViewing(
+                  window.location.pathname.includes(conversationId)
+                )
+              ) {
+                requestManualActionSound();
+              }
+              window.dispatchEvent(new ConversationsUpdatedEvent());
+            }
+            void novuClient.notifications.delete({
+              notificationId: notification.result.id,
+            });
+            return;
+          }
+
+          if (
             notification.result.tags?.includes("conversations") &&
             window !== undefined
           ) {
             if (
-              window.location.pathname !==
-                notification.result.primaryAction?.redirect?.url ||
-              !window.document.hasFocus()
+              !isActivelyViewing(
+                window.location.pathname ===
+                  notification.result.primaryAction?.redirect?.url
+              )
             ) {
               // If we are not already on the conversation page, dispatch the event to update the conversations list.
               window.dispatchEvent(new ConversationsUpdatedEvent());
@@ -112,5 +142,12 @@ export const useSetupNotifications = () => {
         console.error("Failed to setup notifications", { error });
       }
     }
-  }, [allowBrowserNotification, notify, novuClient, push, sendNotification]);
+  }, [
+    allowBrowserNotification,
+    notify,
+    novuClient,
+    push,
+    requestManualActionSound,
+    sendNotification,
+  ]);
 };

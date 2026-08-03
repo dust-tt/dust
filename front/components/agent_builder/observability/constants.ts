@@ -1,4 +1,9 @@
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import {
+  type AnalyticsVisibleOrigin,
+  SOURCE_ORIGIN_LABELS,
+} from "@app/lib/api/analytics/source_labels";
+
+export type { AnalyticsVisibleOrigin };
 
 export const OBSERVABILITY_TIME_RANGE = [7, 14, 30, 90] as const;
 export type ObservabilityTimeRangeType =
@@ -7,9 +12,9 @@ export type ObservabilityTimeRangeType =
 export const DEFAULT_PERIOD_DAYS = 30;
 
 export const USAGE_METRICS_PALETTE = {
-  messages: "text-golden-500 dark:text-golden-500-night",
-  conversations: "text-blue-500 dark:text-blue-500-night",
-  activeUsers: "text-violet-500 dark:text-violet-500-night",
+  messages: "text-golden-500",
+  conversations: "text-blue-500",
+  activeUsers: "text-violet-500",
 } as const;
 
 export const USAGE_METRICS_LEGEND = [
@@ -19,20 +24,14 @@ export const USAGE_METRICS_LEGEND = [
 ] as const;
 
 export const ACTIVE_USERS_PALETTE = {
-  dau: "text-blue-500 dark:text-blue-500-night",
-  wau: "text-violet-500 dark:text-violet-500-night",
-  mau: "text-golden-500 dark:text-golden-500-night",
+  dau: "text-blue-500",
+  wau: "text-violet-500",
+  mau: "text-golden-500",
 } as const;
 
-export const ACTIVE_USERS_LEGEND = [
-  { key: "dau", label: "DAU" },
-  { key: "wau", label: "WAU" },
-  { key: "mau", label: "MAU" },
-] as const;
-
 export const LATENCY_PALETTE = {
-  average: "text-blue-500 dark:text-blue-500-night",
-  median: "text-violet-500 dark:text-violet-500-night",
+  average: "text-blue-500",
+  median: "text-violet-500",
 } as const;
 
 export const LATENCY_LEGEND = [
@@ -41,9 +40,9 @@ export const LATENCY_LEGEND = [
 ] as const;
 
 export const TOOL_EXECUTION_TIME_PALETTE = {
-  avgLatencyMs: "text-blue-500 dark:text-blue-500-night",
-  p50LatencyMs: "text-violet-500 dark:text-violet-500-night",
-  p95LatencyMs: "text-orange-500 dark:text-orange-500-night",
+  avgLatencyMs: "text-blue-500",
+  p50LatencyMs: "text-violet-500",
+  p95LatencyMs: "text-orange-500",
 } as const;
 
 export const TOOL_EXECUTION_TIME_LEGEND = [
@@ -53,8 +52,8 @@ export const TOOL_EXECUTION_TIME_LEGEND = [
 ] as const;
 
 export const COST_PALETTE = {
-  costMicroUsd: "text-blue-400 dark:text-blue-400-night",
-  totalCredits: "text-orange-400 dark:text-orange-400-night",
+  costMicroUsd: "text-blue-400",
+  totalCredits: "text-orange-400",
 } as const;
 
 export const CHART_HEIGHT = 260;
@@ -72,10 +71,8 @@ export const INDEXED_BASE_COLORS = [
   "red",
 ] as const;
 
-export type IndexedBaseColor = (typeof INDEXED_BASE_COLORS)[number];
-
 export function buildColorClass(baseColor: string, shade: number): string {
-  return `text-${baseColor}-${shade} dark:text-${baseColor}-${shade}-night`;
+  return `text-${baseColor}-${shade}`;
 }
 
 export const INDEXED_SHADES = [
@@ -93,18 +90,18 @@ export const MAX_TOOLS_DISPLAYED = 5;
 export const OTHER_LABEL = {
   key: "others",
   label: "Others",
-  color: "text-blue-300 dark:text-blue-300-night",
+  color: "text-blue-300",
 };
 
 export const UNKNOWN_LABEL = {
   key: "unknown",
   label: "Unknown",
-  color: "text-gray-400 dark:text-gray-400-night",
+  color: "text-muted-foreground",
 };
 
 export const FEEDBACK_DISTRIBUTION_PALETTE = {
-  positive: "text-green-400 dark:text-green-400-night",
-  negative: "text-rose-400 dark:text-rose-400-night",
+  positive: "text-green-400",
+  negative: "text-rose-400",
 } as const;
 
 export const FEEDBACK_DISTRIBUTION_LEGEND = [
@@ -112,56 +109,99 @@ export const FEEDBACK_DISTRIBUTION_LEGEND = [
   { key: "negative", label: "Negative" },
 ] as const;
 
-export type AnalyticsVisibleOrigin = Exclude<
-  UserMessageOrigin,
-  "reinforced_skill_notification" | "branch_anchor"
->;
-
 export const USER_MESSAGE_ORIGIN_LABELS: Record<
   AnalyticsVisibleOrigin,
   { label: string; color: string }
 > = {
-  web: { label: "Conversation", color: buildColorClass("blue", 500) },
+  web: { label: SOURCE_ORIGIN_LABELS.web, color: buildColorClass("blue", 500) },
   extension: {
-    label: "Chrome extension",
+    label: SOURCE_ORIGIN_LABELS.extension,
     color: buildColorClass("orange", 500),
   },
-  slack: { label: "Slack", color: buildColorClass("green", 500) },
-  slack_workflow: { label: "Slack", color: buildColorClass("green", 500) },
-  api: { label: "API", color: buildColorClass("violet", 500) },
-  cli: { label: "CLI", color: buildColorClass("gray", 500) },
-  cli_programmatic: { label: "CLI", color: buildColorClass("gray", 500) },
-  gsheet: { label: "Google Sheets", color: buildColorClass("emerald", 500) },
-  email: { label: "Email", color: buildColorClass("pink", 500) },
-  excel: { label: "Excel", color: buildColorClass("rose", 500) },
-  teams: { label: "Teams", color: buildColorClass("blue", 300) },
-  make: { label: "Make", color: buildColorClass("gray", 700) },
-  n8n: { label: "n8n", color: buildColorClass("lime", 500) },
-  raycast: { label: "Raycast", color: buildColorClass("red", 500) },
-  zapier: { label: "Zapier", color: buildColorClass("blue", 700) },
-  zendesk: { label: "Zendesk", color: buildColorClass("golden", 700) },
-  powerpoint: { label: "PowerPoint", color: buildColorClass("violet", 300) },
+  slack: {
+    label: SOURCE_ORIGIN_LABELS.slack,
+    color: buildColorClass("green", 500),
+  },
+  slack_workflow: {
+    label: SOURCE_ORIGIN_LABELS.slack_workflow,
+    color: buildColorClass("green", 500),
+  },
+  api: {
+    label: SOURCE_ORIGIN_LABELS.api,
+    color: buildColorClass("violet", 500),
+  },
+  cli: { label: SOURCE_ORIGIN_LABELS.cli, color: buildColorClass("gray", 500) },
+  cli_programmatic: {
+    label: SOURCE_ORIGIN_LABELS.cli_programmatic,
+    color: buildColorClass("gray", 500),
+  },
+  gsheet: {
+    label: SOURCE_ORIGIN_LABELS.gsheet,
+    color: buildColorClass("emerald", 500),
+  },
+  email: {
+    label: SOURCE_ORIGIN_LABELS.email,
+    color: buildColorClass("pink", 500),
+  },
+  excel: {
+    label: SOURCE_ORIGIN_LABELS.excel,
+    color: buildColorClass("rose", 500),
+  },
+  teams: {
+    label: SOURCE_ORIGIN_LABELS.teams,
+    color: buildColorClass("blue", 300),
+  },
+  make: {
+    label: SOURCE_ORIGIN_LABELS.make,
+    color: buildColorClass("gray", 700),
+  },
+  n8n: { label: SOURCE_ORIGIN_LABELS.n8n, color: buildColorClass("lime", 500) },
+  raycast: {
+    label: SOURCE_ORIGIN_LABELS.raycast,
+    color: buildColorClass("red", 500),
+  },
+  zapier: {
+    label: SOURCE_ORIGIN_LABELS.zapier,
+    color: buildColorClass("blue", 700),
+  },
+  zendesk: {
+    label: SOURCE_ORIGIN_LABELS.zendesk,
+    color: buildColorClass("golden", 700),
+  },
+  powerpoint: {
+    label: SOURCE_ORIGIN_LABELS.powerpoint,
+    color: buildColorClass("violet", 300),
+  },
   reinforcement: {
-    label: "Self-improving skills",
+    label: SOURCE_ORIGIN_LABELS.reinforcement,
     color: buildColorClass("emerald", 700),
   },
-  transcript: { label: "Transcript", color: buildColorClass("golden", 500) },
-  triggered: { label: "Trigger", color: buildColorClass("orange", 700) },
+  transcript: {
+    label: SOURCE_ORIGIN_LABELS.transcript,
+    color: buildColorClass("golden", 500),
+  },
+  triggered: {
+    label: SOURCE_ORIGIN_LABELS.triggered,
+    color: buildColorClass("orange", 700),
+  },
   triggered_programmatic: {
-    label: "Trigger",
+    label: SOURCE_ORIGIN_LABELS.triggered_programmatic,
     color: buildColorClass("orange", 300),
   },
   wakeup: {
-    label: "Wake-up",
+    label: SOURCE_ORIGIN_LABELS.wakeup,
     color: buildColorClass("violet", 700),
   },
   onboarding_conversation: {
-    label: "Onboarding",
+    label: SOURCE_ORIGIN_LABELS.onboarding_conversation,
     color: buildColorClass("rose", 300),
   },
-  agent_sidekick: { label: "Sidekick", color: buildColorClass("emerald", 300) },
+  agent_sidekick: {
+    label: SOURCE_ORIGIN_LABELS.agent_sidekick,
+    color: buildColorClass("emerald", 300),
+  },
   project_kickoff: {
-    label: "Pod Kickoff",
+    label: SOURCE_ORIGIN_LABELS.project_kickoff,
     color: buildColorClass("lime", 300),
   },
 };

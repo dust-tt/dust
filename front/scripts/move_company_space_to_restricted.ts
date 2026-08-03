@@ -161,7 +161,7 @@ makeScript(
       const memberGroup = await GroupResource.makeNew(
         {
           name: `${SPACE_GROUP_PREFIX} ${spaceName}`,
-          kind: "regular",
+          kind: "regular_auto",
           workspaceId: workspace.id,
         },
         { transaction: t }
@@ -175,6 +175,7 @@ makeScript(
       await GroupSpaceModel.create(
         {
           groupId: memberGroup.id,
+          groupKind: memberGroup.kind,
           vaultId: globalSpace.id,
           workspaceId: workspace.id,
           kind: "member",
@@ -197,6 +198,7 @@ makeScript(
           await GroupSpaceModel.create(
             {
               groupId: group.id,
+              groupKind: group.kind,
               vaultId: globalSpace.id,
               workspaceId: workspace.id,
               kind: "member",

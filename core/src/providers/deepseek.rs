@@ -148,7 +148,7 @@ impl LLM for DeepseekLLM {
             self.chat_uri()?,
             self.id.clone(),
             api_key,
-            // Pre-process messages if model is deepseek-reasoner.
+            // Pre-process messages if model doesn't support tools.
             match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
                 false => Some(strip_tools_from_chat_history(messages)),
                 true => None,
@@ -156,7 +156,7 @@ impl LLM for DeepseekLLM {
             .as_ref()
             .map(|m| m.as_ref())
             .unwrap_or(messages),
-            // Remove functions if model is deepseek-reasoner.
+            // Remove functions if model doesn't support tools.
             match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
                 false => None,
                 true => Some(functions),
@@ -164,7 +164,7 @@ impl LLM for DeepseekLLM {
             .as_ref()
             .map(|m| m.as_ref())
             .unwrap_or(functions),
-            // Remove function call if model is deepseek-reasoner.
+            // Remove function call if model doesn't support tools.
             match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
                 false => None,
                 true => function_call,

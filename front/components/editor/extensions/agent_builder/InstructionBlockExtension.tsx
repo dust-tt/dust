@@ -7,7 +7,7 @@ import {
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
+import { ChevronDown, ChevronRight, Chip, cn } from "@dust-tt/sparkle";
 import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import { Slice } from "@tiptap/pm/model";
@@ -21,7 +21,7 @@ import {
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
-export interface InstructionBlockAttributes {
+interface InstructionBlockAttributes {
   type: string;
 }
 
@@ -40,7 +40,7 @@ const InstructionBlockChip = ({ text }: { text: string }) => {
   return (
     <Chip
       size="mini"
-      className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+      className="bg-primary-100 transition-colors hover:bg-primary-200"
     >
       {text}
     </Chip>
@@ -109,7 +109,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  const ChevronIcon = isCollapsed ? ChevronRightIcon : ChevronDownIcon;
+  const ChevronIcon = isCollapsed ? ChevronRight : ChevronDown;
 
   const handleBlockClick = (e: React.MouseEvent) => {
     if (isCollapsed) {
@@ -122,9 +122,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   };
 
   const containerClasses = `rounded-lg py-2 px-1 transition-all ${
-    selected && isCollapsed
-      ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night"
-      : ""
+    selected && isCollapsed ? "ring-2 ring-highlight-300" : ""
   }`;
 
   const openingTagChip = isEditingType ? (
@@ -135,7 +133,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     >
       <Chip
         size="mini"
-        className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+        className="bg-primary-100 transition-colors hover:bg-primary-200"
       >
         {"<"}
         <span
@@ -158,7 +156,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
             }
           }}
           onBlur={handleTypeSubmit}
-          className="outline-none"
+          className="outline-hidden"
         >
           {(node.attrs.type ?? "instructions").toUpperCase()}
         </span>
@@ -181,7 +179,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
         <div className="flex items-start gap-1">
           <button
             onClick={handleToggle}
-            className="mt-[3px] rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="mt-[3px] rounded p-0.5 transition-colors hover:bg-primary-200"
             type="button"
             contentEditable={false}
           >

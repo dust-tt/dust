@@ -1,0 +1,104 @@
+import type {
+  BetaMessageStreamParams,
+  BetaRawMessageStreamEvent,
+} from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import type {
+  Model as HostModel,
+  MessageCreateParamsNonStreaming,
+} from "@anthropic-ai/sdk/resources/messages/messages";
+import AnthropicVertex from "@anthropic-ai/vertex-sdk";
+import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
+import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
+import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
+import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
+import { imageUrlToBase64ImageBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
+import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
+import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
+import type { Credentials } from "@app/lib/model_constructors/types/credentials";
+import { AGENT_PLATFORM_HOST } from "@app/lib/model_constructors/types/hosts";
+import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
+import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
+import {
+  CLAUDE_HAIKU_4_5,
+  type Model,
+} from "@app/lib/model_constructors/types/models";
+import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
+
+import { z } from "zod";
+
+// Can be extended later (e.g. "us", "asia-east1"...)
+export type AgentPlatformRegionalEndpoint = "global" | "eu";
+
+export const anthropicAgentPlatformConfigSchema = inputConfigSchema.extend({
+  reasoning: z
+    .object({
+      effort: z.enum([
+        ...ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS,
+        "none",
+      ]),
+    })
+    .optional(),
+});
+
+const MODEL_MAPPING: Partial<Record<Model, HostModel>> = {
+  [CLAUDE_HAIKU_4_5]: "claude-haiku-4-5@20251001",
+};
+
+export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputConverter(
+  WithAnthropicAIOutputConverter(
+    StreamEndpoint<
+      MessageCreateParamsNonStreaming,
+      BetaRawMessageStreamEvent,
+      AnthropicInputConfig
+    >
+  )
+) {
+  // Narrow `this.constructor` so the per-endpoint static below is visible.
+  declare ["constructor"]: BaseEndpointConfiguration<AnthropicInputConfig> & {
+    regionalEndpoint: AgentPlatformRegionalEndpoint;
+  };
+
+  static readonly lab = ANTHROPIC_LAB;
+  static readonly host = AGENT_PLATFORM_HOST;
+
+  static readonly regionalEndpoint: AgentPlatformRegionalEndpoint;
+
+  static readonly configSchema: z.ZodType<
+    z.infer<typeof anthropicAgentPlatformConfigSchema>
+  > = anthropicAgentPlatformConfigSchema;
+
+  private readonly client: AnthropicVertex;
+
+  constructor({ AGENT_PLATFORM_PROJECT_ID }: Credentials) {
+    super();
+    this.client = new AnthropicVertex({
+      region: this.constructor.regionalEndpoint,
+      projectId: AGENT_PLATFORM_PROJECT_ID,
+    });
+  }
+
+  modelToHostModel = (modelId: Model): HostModel =>
+    MODEL_MAPPING[modelId] ?? modelId;
+
+  // Vertex AI rejects URL image sources, so inline images as base64.
+  imageUrlToImageBlock = imageUrlToBase64ImageBlock;
+
+  async *streamRaw(
+    input: MessageCreateParamsNonStreaming
+  ): AsyncGenerator<BetaRawMessageStreamEvent> {
+    const streamingInput: BetaMessageStreamParams = { ...input };
+    const stream = this.client.beta.messages.stream(streamingInput);
+
+    // SDK mutates/reuses events; deep-copy.
+    for await (const event of stream) {
+      yield structuredClone(event);
+    }
+  }
+
+  async *rawStreamOutputToEvents(
+    stream: AsyncGenerator<BetaRawMessageStreamEvent>
+  ): AsyncGenerator<ModelResponseEvent> {
+    yield* rawOutputToEvents(stream, this.metadata(), this);
+  }
+}

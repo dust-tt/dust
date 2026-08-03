@@ -5,364 +5,236 @@ import {
   LinkWrapper,
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
-import type { SpinnerProps } from "@sparkle/components/Spinner";
 import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { ChevronDownIcon } from "@sparkle/icons/app";
+import { ChevronDown } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import * as React from "react";
-import { useEffect, useMemo, useState } from "react";
 
-const PULSE_ANIMATION_DURATION = 1;
+// Redesigned button alongside the existing Button (unchanged). Sizes: 24/32/40px.
+// Dark-mode strategy per variant:
+//   - primary/outline: explicit dark: gradient overrides (primary goes lighter, outline darker)
+//   - highlight/warning: explicit dark: overrides to preserve hue (token ramp would flip to wrong shade)
+//   - ghost variants: semantic tokens auto-flip, no dark: needed
 
 export const BUTTON_VARIANTS = [
   "primary",
   "highlight",
-  "highlight-secondary",
-  "warning",
-  "warning-secondary",
   "outline",
+  "warning",
   "ghost",
   "ghost-secondary",
+  "highlight-ghost",
+  "warning-ghost",
 ] as const;
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const REGULAR_BUTTON_SIZES = [
-  "xmini",
-  "mini",
-  "xs",
-  "sm",
-  "md",
-] as const;
-export const ICON_ONLY_SIZES = ["icon-xs", "icon"] as const;
-export const SMALL_BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini"] as const;
+export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
+export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
-export type RegularButtonSize = (typeof REGULAR_BUTTON_SIZES)[number];
-export type IconOnlySize = (typeof ICON_ONLY_SIZES)[number];
-export type ButtonSize = RegularButtonSize | IconOnlySize;
+// Inset white catch-light + hairline via border-dark + ambient drop via foreground.
+// All three auto-invert in dark mode via flipping tokens except the white highlight (intentional).
+const RAISED_SHADOW =
+  "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_color-mix(in_oklch,var(--color-foreground)_10%,transparent)]";
 
-function isSmallButtonSize(
-  size: ButtonSize | undefined
-): size is (typeof SMALL_BUTTON_SIZES)[number] {
-  return (
-    size !== undefined &&
-    SMALL_BUTTON_SIZES.includes(size as (typeof SMALL_BUTTON_SIZES)[number])
-  );
-}
+// Per-variant (not base) so ghost variants keep ::after free for consumers (e.g. Tabs).
+const OVERLAY = cn(
+  "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit]",
+  "after:transition-colors disabled:after:hidden"
+);
 
-// Define button styling with cva
 const buttonVariants = cva(
   cn(
-    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
-    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
-    "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
+    "relative isolate inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap",
+    // `transform` stays in the transition list for the `press` scale.
+    "transition-[color,background-color,border-color,transform] duration-100 ease-out",
+    "motion-reduce:transition-none",
+    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
+    // data-disabled is set only when truly disabled (not loading), so loading buttons
+    // keep their full-color active look while :disabled guards block interaction for both.
+    "data-[disabled]:shadow-none",
+    "disabled:cursor-not-allowed disabled:focus-visible:ring-0"
   ),
   {
     variants: {
       variant: {
         primary: cn(
-          "s-border s-border-transparent",
-          "s-bg-primary-800 dark:s-bg-primary-800-night",
-          "s-text-primary-50 dark:s-text-primary-50-night",
-          "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
-          "active:s-bg-primary-dark dark:active:s-bg-primary-light-night",
-          "disabled:s-bg-primary-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
+          OVERLAY,
+          "bg-linear-to-b from-primary-700 to-primary-800",
+          "dark:from-stone-50 dark:to-stone-150",
+          "text-primary-50",
+          RAISED_SHADOW,
+          "data-[disabled]:from-primary-300 data-[disabled]:to-primary-400",
+          "dark:data-[disabled]:opacity-50",
+          // Dark: light button surface → darken on hover instead of lighten.
+          // Dark: light button → drop shadow uses black (not white foreground token) to avoid glow.
+          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.5),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
+          "dark:hover:after:bg-black/[0.04] dark:active:after:bg-black/[0.04]"
         ),
         highlight: cn(
-          "s-border s-border-transparent",
-          "s-bg-highlight",
-          "s-text-highlight-50",
-          "hover:s-bg-highlight-light",
-          "active:s-bg-highlight-dark",
-          "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night"
-        ),
-        "highlight-secondary": cn(
-          "s-border",
-          "s-border-border dark:s-border-border-night",
-          "s-text-highlight-500 dark:s-text-highlight-500-night",
-          "s-bg-background dark:s-bg-background-night",
-          "hover:s-text-highlight-500 dark:hover:s-text-highlight-500-night",
-          "hover:s-bg-highlight-50 dark:hover:s-bg-highlight-900",
-          "hover:s-border-primary-150 dark:hover:s-border-border-night",
-          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
-          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
-          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
-          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
+          OVERLAY,
+          "bg-linear-to-b from-highlight-400 to-highlight-500",
+          "dark:from-blue-500 dark:to-blue-600",
+          "text-white",
+          RAISED_SHADOW,
+          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
+          "data-[disabled]:from-highlight-200 data-[disabled]:to-highlight-300",
+          // Dark disabled: lock gradient (prevent ramp flip) then fade with opacity.
+          "dark:data-[disabled]:from-highlight-600 dark:data-[disabled]:to-highlight-500",
+          "dark:data-[disabled]:opacity-50"
         ),
         warning: cn(
-          "s-border s-border-transparent",
-          "s-bg-warning",
-          "s-text-warning-50",
-          "hover:s-bg-warning-light",
-          "active:s-bg-warning-dark",
-          "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night"
-        ),
-        "warning-secondary": cn(
-          "s-border",
-          "s-border-border dark:s-border-border-night",
-          "s-text-warning-500 dark:s-text-warning-500-night",
-          "s-bg-background dark:s-bg-background-night",
-          "hover:s-text-warning-500 dark:hover:s-text-warning-500-night",
-          "hover:s-bg-warning-50 dark:hover:s-bg-warning-900",
-          "hover:s-border-primary-150 dark:hover:s-border-border-night",
-          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
-          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
-          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
-          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
+          OVERLAY,
+          "bg-linear-to-b from-warning-400 to-warning-500",
+          "dark:from-red-500 dark:to-red-600",
+          "text-white",
+          RAISED_SHADOW,
+          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
+          "data-[disabled]:from-warning-200 data-[disabled]:to-warning-300",
+          // Dark disabled: lock gradient (prevent ramp flip) then fade with opacity.
+          "dark:data-[disabled]:from-warning-600 dark:data-[disabled]:to-warning-500",
+          "dark:data-[disabled]:opacity-50"
         ),
         outline: cn(
-          "s-border",
-          "s-border-border dark:s-border-border-night",
-          "s-text-primary dark:s-text-primary-night",
-          "s-bg-background dark:s-bg-background-night",
-          "hover:s-text-primary dark:hover:s-text-primary-night",
-          "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
-          "hover:s-border-primary-150 dark:hover:s-border-border-night",
-          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
-          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
-          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
-          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
+          OVERLAY,
+          // overflow-hidden + after:rounded-none clips the hover overlay flush to the border-radius.
+          "overflow-hidden after:rounded-none",
+          "border border-border-dark dark:border-stone-775",
+          "bg-linear-to-b from-primary-50 to-primary-100",
+          "dark:from-stone-800 dark:to-stone-800",
+          "text-muted-foreground dark:text-primary-900",
+          "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_0.5px_1px_0_rgba(0,0,0,0.06)]",
+          "hover:after:bg-black/[0.02] active:after:bg-black/[0.02]",
+          "data-[disabled]:text-faint",
+          "dark:data-[disabled]:opacity-50"
         ),
         ghost: cn(
-          "s-border",
-          "s-border-border/0 dark:s-border-border-night/0",
-          "s-text-foreground dark:s-text-white",
-          "hover:s-bg-hover dark:hover:s-bg-hover-night",
-          "hover:s-text-primary-900 dark:hover:s-text-white",
-          "hover:s-border-border/0 dark:hover:s-border-border-night/0",
-          "active:s-bg-primary-300 dark:active:s-bg-hover-night",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
-          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
-          "disabled:hover:s-border-border/0 dark:disabled:hover:s-border-border-night/0",
-          "disabled:hover:s-text-primary-400 dark:disabled:hover:s-text-primary-400-night"
+          "text-foreground",
+          "hover:bg-black/[0.02] active:bg-black/[0.02]",
+          "dark:hover:bg-white/[0.08] dark:active:bg-white/[0.08]",
+          "data-[disabled]:text-faint",
+          "disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
         ),
         "ghost-secondary": cn(
-          "s-border",
-          "s-border-border/0 dark:s-border-border-night/0",
-          "s-text-muted-foreground dark:s-text-muted-foreground-night",
-          "hover:s-bg-hover dark:hover:s-bg-hover-night",
-          "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
-          "hover:s-border-border/0 dark:hover:s-border-border-night/0",
-          "active:s-bg-primary-300 dark:active:s-bg-hover-night",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
-          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
-          "disabled:hover:s-border-border/0 dark:disabled:hover:s-border-border-night/0",
-          "disabled:hover:s-text-primary-400 dark:disabled:hover:s-text-primary-400-night"
+          "text-muted-foreground",
+          "hover:bg-black/[0.02] active:bg-black/[0.02]",
+          "dark:hover:bg-white/[0.08] dark:active:bg-white/[0.08]",
+          "data-[disabled]:text-faint",
+          "disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
+        ),
+        "highlight-ghost": cn(
+          "text-highlight-500",
+          "hover:bg-highlight-50 active:bg-highlight-50",
+          "data-[disabled]:text-highlight-muted",
+          "disabled:hover:bg-transparent"
+        ),
+        "warning-ghost": cn(
+          "text-warning-500",
+          "hover:bg-warning-50 active:bg-warning-50",
+          "data-[disabled]:text-warning-muted",
+          "disabled:hover:bg-transparent"
         ),
       },
       size: {
-        "icon-xs": "s-h-6 s-w-6 s-gap-1 s-shrink-0",
-        icon: "s-h-7 s-w-7 s-gap-1.5 s-shrink-0",
-        xmini: "s-h-6 s-px-1.5 s-gap-1 s-shrink-0",
-        mini: "s-h-7 s-px-2 s-gap-1.5 s-shrink-0",
-        xs: "s-h-7 s-px-2.5 s-gap-1.5 s-shrink-0",
-        sm: "s-h-9 s-px-3 s-gap-2 s-shrink-0",
-        md: "s-h-12 s-px-4 s-py-2 s-gap-2.5 s-shrink-0",
+        xs: "h-6 gap-1.5 px-2 text-sm font-medium leading-4 tracking-[-0.28px] rounded-[9px]",
+        sm: "h-8 gap-1.5 px-3 text-sm font-medium tracking-[-0.28px] rounded-xl",
+        md: "h-10 gap-1.5 px-4 text-base font-medium tracking-[-0.32px] rounded-[15px]",
       },
-      rounded: {
-        "icon-xs": "s-rounded-lg",
-        icon: "s-rounded-lg",
-        xmini: "s-rounded-lg",
-        mini: "s-rounded-lg",
-        xs: "s-rounded-lg",
-        sm: "s-rounded-xl",
-        md: "s-rounded-2xl",
-        full: "s-rounded-full",
+      isIconOnly: {
+        true: "",
+        false: "",
+      },
+      press: {
+        true: "active:scale-[0.985] motion-reduce:active:scale-100",
+        false: "",
       },
     },
+    compoundVariants: [
+      { size: "xs", isIconOnly: true, className: "w-6 px-0" },
+      { size: "sm", isIconOnly: true, className: "w-8 px-0" },
+      { size: "md", isIconOnly: true, className: "w-10 px-0" },
+      // Solid raised variants: larger buttons get a stronger white overlay (Figma spec).
+      // dark:hover on primary is overridden per-variant to darken instead of lighten.
+      {
+        variant: ["primary", "highlight", "warning"],
+        size: ["xs", "sm"],
+        className: "hover:after:bg-white/10 active:after:bg-white/10",
+      },
+      {
+        variant: ["primary", "highlight", "warning"],
+        size: "md",
+        className: "hover:after:bg-white/20 active:after:bg-white/20",
+      },
+      // Outline dark: white overlay (dark surface needs lighten, not darken).
+      {
+        variant: "outline",
+        size: ["xs", "sm", "md"],
+        className:
+          "dark:hover:after:bg-white/[0.02] dark:active:after:bg-white/[0.02]",
+      },
+    ],
     defaultVariants: {
       variant: "primary",
       size: "sm",
-      rounded: "sm",
+      isIconOnly: false,
+      press: true,
     },
   }
 );
 
-const labelVariants = cva("", {
-  variants: {
-    size: {
-      "icon-xs": "s-hidden",
-      icon: "s-hidden",
-      xmini: "",
-      mini: "",
-      xs: "",
-      sm: "",
-      md: "",
-    },
-    hasLighterFont: {
-      true: "",
-      false: "",
-    },
-  },
-  compoundVariants: [
-    { size: "xmini", hasLighterFont: false, className: "s-label-xs" },
-    { size: "mini", hasLighterFont: false, className: "s-label-xs" },
-    { size: "xs", hasLighterFont: false, className: "s-label-xs" },
-    { size: "sm", hasLighterFont: false, className: "s-label-sm" },
-    { size: "md", hasLighterFont: false, className: "s-label-base" },
-    {
-      size: "xmini",
-      hasLighterFont: true,
-      className: "s-text-xs s-font-normal",
-    },
-    {
-      size: "mini",
-      hasLighterFont: true,
-      className: "s-text-xs s-font-normal",
-    },
-    { size: "xs", hasLighterFont: true, className: "s-text-xs s-font-normal" },
-    { size: "sm", hasLighterFont: true, className: "s-text-sm s-font-normal" },
-    {
-      size: "md",
-      hasLighterFont: true,
-      className: "s-text-base s-font-normal",
-    },
-  ],
-  defaultVariants: {
-    size: "sm",
-  },
-});
+// Labels and icons carry a subtle shadow on raised (non-ghost) variants.
+const RAISED_VARIANTS: ButtonVariantType[] = [
+  "primary",
+  "highlight",
+  "warning",
+  "outline",
+];
+const TEXT_SHADOW = "[text-shadow:0_1px_1.5px_rgba(0,0,0,0.08)]";
+const ICON_SHADOW = "drop-shadow-[0px_1px_0.75px_rgba(0,0,0,0.08)]";
 
-type SpinnerVariant = NonNullable<SpinnerProps["variant"]>;
+const INTERNAL_ICON_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
+  xs: "xs",
+  sm: "xs",
+  md: "sm",
+};
 
-const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
+const COUNTER_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
+  xs: "xs",
+  sm: "xs",
+  md: "sm",
+};
+
+const chevronVariantMap: Record<ButtonVariantType, string> = {
+  // primary swaps to a light button in dark mode, so its chevron tracks the
+  // flipping text token rather than a fixed white.
+  primary: "text-primary-50/60",
+  highlight: "text-white/60",
+  warning: "text-white/60",
+  outline: "text-faint",
+  ghost: "text-faint",
+  "ghost-secondary": "text-faint",
+  "highlight-ghost": "text-highlight-400",
+  "warning-ghost": "text-warning-400",
+};
+
+// Loading spinner color, matched to each variant's text color (including the
+// dark-mode swap: `revert` = light spinner on light theme, `mono` = the
+// inverse). Keeps the spinner the same color as the label.
+const spinnerVariantMap: Record<
+  ButtonVariantType,
+  React.ComponentProps<typeof Spinner>["variant"]
+> = {
   primary: "revert",
   highlight: "light",
-  "highlight-secondary": "mono",
   warning: "light",
-  "warning-secondary": "mono",
   outline: "mono",
   ghost: "mono",
   "ghost-secondary": "mono",
+  "highlight-ghost": "blue500",
+  "warning-ghost": "red500",
 };
-
-const chevronVariantMap = {
-  primary: "s-text-muted-foreground-night dark:s-text-muted-foreground",
-  outline: "s-text-faint",
-  ghost: "s-text-faint",
-  "ghost-secondary": "s-text-faint",
-  highlight: "s-text-white/60",
-  "highlight-secondary": "s-text-highlight-500 dark:s-text-highlight-500-night",
-  warning: "s-text-white/60",
-  "warning-secondary": "s-text-warning-500 dark:s-text-warning-500-night",
-} as const;
-
-export interface MetaButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
-  isRounded?: boolean;
-}
-
-const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
-  (
-    {
-      className,
-      asChild = false,
-      variant,
-      size,
-      isRounded,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    const Comp = asChild ? Slot : "button";
-
-    // Determine rounded variant based on isRounded prop
-    const rounded = isRounded ? "full" : size;
-
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, rounded, className }))}
-        ref={ref}
-        {...props}
-      >
-        {children}
-      </Comp>
-    );
-  }
-);
-MetaButton.displayName = "MetaButton";
-
-type IconSizeType = "xs" | "sm" | "md";
-type CounterSizeType = "xs" | "sm" | "md";
-
-export const ICON_SIZE_MAP: Record<ButtonSize, IconSizeType> = {
-  "icon-xs": "xs",
-  icon: "sm",
-  xmini: "xs",
-  mini: "sm",
-  xs: "xs",
-  sm: "sm",
-  md: "md",
-};
-
-const COUNTER_SIZE_MAP: Record<ButtonSize, CounterSizeType> = {
-  "icon-xs": "xs",
-  icon: "xs",
-  xmini: "xs",
-  mini: "xs",
-  xs: "xs",
-  sm: "sm",
-  md: "md",
-};
-
-const loadingContainerVariants = cva("-s-mx-0.5", {
-  variants: {
-    size: {
-      "icon-xs": "s-w-5 s-px-0.5",
-      icon: "s-w-5 s-px-0.5",
-      xmini: "s-w-5 s-px-0.5",
-      mini: "s-w-5 s-px-0.5",
-      xs: "s-w-5 s-px-0.5",
-      sm: "",
-      md: "",
-    },
-  },
-  defaultVariants: {
-    size: "sm",
-  },
-});
-
-const selectButtonSizeVariants = cva("", {
-  variants: {
-    size: {
-      "icon-xs": "s-w-auto s-px-1.5",
-      xmini: "s-w-auto s-px-1.5",
-      mini: "s-w-auto s-px-2",
-      icon: "s-w-auto s-px-2",
-      xs: "",
-      sm: "",
-      md: "",
-    },
-  },
-  defaultVariants: {
-    size: "sm",
-  },
-});
-
-type CommonButtonProps = Omit<MetaButtonProps, "children"> &
-  Omit<LinkWrapperProps, "children"> & {
-    isSelect?: boolean;
-    isLoading?: boolean;
-    isPulsing?: boolean;
-    briefPulse?: boolean;
-    tooltip?: string;
-    tooltipShortcut?: string;
-    isCounter?: boolean;
-    counterValue?: string;
-    isRounded?: boolean;
-    hasLighterFont?: boolean;
-  };
 
 export type ButtonIconType = React.ComponentType | React.ReactElement;
 
@@ -370,123 +242,154 @@ function isReactElement(visual: ButtonIconType): visual is React.ReactElement {
   return React.isValidElement(visual);
 }
 
-export type IconOnlyButtonProps = CommonButtonProps & {
-  size: IconOnlySize;
-  icon: ButtonIconType;
-  label?: never;
+// Backward-compat aliases and mappings for internal sparkle components that
+// previously imported from the old Button.tsx. No other files need to change.
+type LegacyButtonSizeType = "icon" | "icon-xs" | "icon-sm" | "mini" | "xmini";
+type LegacyButtonVariantType = "highlight-secondary" | "warning-secondary";
+
+const LEGACY_SIZE_MAP: Record<LegacyButtonSizeType, ButtonSizeType> = {
+  icon: "sm",
+  "icon-xs": "xs",
+  "icon-sm": "md",
+  mini: "sm",
+  xmini: "xs",
 };
 
-export type RegularButtonProps = CommonButtonProps & {
-  size?: RegularButtonSize;
-  icon?: ButtonIconType;
+const LEGACY_VARIANT_MAP: Record<LegacyButtonVariantType, ButtonVariantType> = {
+  "highlight-secondary": "highlight-ghost",
+  "warning-secondary": "warning-ghost",
+};
+
+export const ICON_SIZE_MAP: Record<ButtonSizeType, ButtonSizeType> = {
+  xs: "xs",
+  sm: "sm",
+  md: "md",
+};
+
+export type RegularButtonSize = ButtonSizeType;
+export type IconOnlyButtonProps = ButtonProps;
+export type RegularButtonProps = ButtonProps;
+
+export interface ButtonProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "size">,
+    Omit<LinkWrapperProps, "children" | "className"> {
+  size?: ButtonSizeType | LegacyButtonSizeType;
+  variant?: ButtonVariantType | LegacyButtonVariantType;
+  hasLighterFont?: boolean;
+  isRounded?: boolean;
   label?: string;
-};
-
-export type ButtonProps = IconOnlyButtonProps | RegularButtonProps;
+  icon?: ButtonIconType;
+  iconRight?: ButtonIconType;
+  isSelect?: boolean;
+  isLoading?: boolean;
+  isCounter?: boolean;
+  counterValue?: string;
+  isPulsing?: boolean;
+  tooltip?: string;
+  tooltipShortcut?: string;
+}
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       label,
       icon,
+      iconRight,
       className,
-      isLoading = false,
       variant = "primary",
-      tooltip,
-      tooltipShortcut,
+      size = "sm",
       isSelect = false,
-      isPulsing = false,
-      briefPulse = false,
+      isLoading = false,
       isCounter = false,
       counterValue,
-      size = "sm",
+      isPulsing = false,
       isRounded = false,
-      hasLighterFont = false,
+      tooltip,
+      tooltipShortcut,
       href,
       target,
       rel,
       replace,
       shallow,
       "aria-label": ariaLabel,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      hasLighterFont: _hasLighterFont,
       ...props
     },
     ref
   ) => {
-    const iconSize = ICON_SIZE_MAP[size];
-    const counterSize = COUNTER_SIZE_MAP[size];
-
-    const [isPulsingBriefly, setIsPulsingBriefly] = useState(false);
-
-    useEffect(() => {
-      if (!briefPulse) {
-        return;
-      }
-      const startPulse = () => {
-        setIsPulsingBriefly(true);
-        setTimeout(
-          () => setIsPulsingBriefly(false),
-          PULSE_ANIMATION_DURATION * 3000
-        );
-      };
-      startPulse();
-    }, [briefPulse]);
+    const normalizedSize: ButtonSizeType =
+      size != null && size in LEGACY_SIZE_MAP
+        ? LEGACY_SIZE_MAP[size as LegacyButtonSizeType]
+        : ((size as ButtonSizeType) ?? "sm");
+    const normalizedVariant: ButtonVariantType =
+      variant != null && variant in LEGACY_VARIANT_MAP
+        ? LEGACY_VARIANT_MAP[variant as LegacyButtonVariantType]
+        : ((variant as ButtonVariantType) ?? "primary");
+    const iconSize = INTERNAL_ICON_SIZE_MAP[normalizedSize];
+    const showCounter = isCounter && counterValue != null;
+    const isIconOnly = !label && !showCounter && !isSelect && !!icon;
+    // Menu triggers (dropdown/popover/select) skip the press scale, else the
+    // opening menu jumps with the anchor. Radix sets aria-haspopup on the
+    // trigger; isSelect is our chevron affordance. Tooltips don't, so they keep it.
+    const isMenuTrigger = isSelect || props["aria-haspopup"] != null;
+    const hasTextShadow =
+      normalizedVariant != null && RAISED_VARIANTS.includes(normalizedVariant);
+    const iconShadow = hasTextShadow ? ICON_SHADOW : "";
 
     const renderIcon = (visual: ButtonIconType, extraClass = "") => {
       if (isReactElement(visual)) {
-        return <span className={cn(extraClass, "s-shrink-0")}>{visual}</span>;
+        return <span className={cn("shrink-0", extraClass)}>{visual}</span>;
       }
-
-      return (
-        <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
-      );
+      return <Icon visual={visual} size={iconSize} className={extraClass} />;
     };
-    const renderChevron = (visual: React.ComponentType, extraClass = "") => (
-      <Icon
-        visual={visual}
-        size={iconSize}
-        className={cn(variant ? chevronVariantMap[variant] : "", extraClass)}
-      />
-    );
 
-    const showCounter = isCounter && counterValue != null;
-    const showContainer = label || showCounter;
-
-    const content = (
+    const restingContent = (
       <>
-        {isLoading ? (
-          <div className={loadingContainerVariants({ size })}>
-            <Spinner
-              size={isSmallButtonSize(size) ? "xs" : iconSize}
-              variant={(variant && spinnerVariantsMap[variant]) || "gray400"}
-            />
-          </div>
-        ) : (
-          icon && renderIcon(icon, "-s-mx-0.5")
+        {icon && renderIcon(icon, iconShadow)}
+        {label && (
+          <span className={cn(hasTextShadow && TEXT_SHADOW)}>{label}</span>
         )}
-
-        {showContainer && (
-          <div
-            className={cn(
-              "s-flex s-items-center s-gap-2",
-              labelVariants({ size, hasLighterFont })
-            )}
-          >
-            {label}
-            {showCounter && (
-              <Counter
-                value={Number(counterValue)}
-                variant={variant || "primary"}
-                size={counterSize}
-                isInButton={true}
-              />
-            )}
-          </div>
+        {showCounter && (
+          <Counter
+            value={Number(counterValue)}
+            variant="primary"
+            size={COUNTER_SIZE_MAP[normalizedSize]}
+            isInButton={true}
+          />
         )}
-        {isSelect && renderChevron(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
+        {iconRight && renderIcon(iconRight, iconShadow)}
+        {isSelect && (
+          <Icon
+            visual={ChevronDown}
+            size={iconSize}
+            className={
+              normalizedVariant ? chevronVariantMap[normalizedVariant] : ""
+            }
+          />
+        )}
       </>
     );
 
-    const pointerEventProps = useMemo(() => {
+    // Loading keeps the button at its resting size: the normal content stays
+    // in the layout but invisible, and a centered spinner overlays it.
+    const content = isLoading ? (
+      <>
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Spinner size="xs" variant={spinnerVariantMap[normalizedVariant]} />
+        </span>
+        <span
+          aria-hidden="true"
+          className="invisible flex items-center gap-[inherit]"
+        >
+          {restingContent}
+        </span>
+      </>
+    ) : (
+      restingContent
+    );
+
+    const pointerEventProps = React.useMemo(() => {
       if (isLoading || props.disabled) {
         return {
           onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -498,32 +401,41 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       return {};
     }, [isLoading, props.disabled]);
 
-    // We cannot skip a button tag when it's disabled. We need
-    // to apply disabled class manually (currently it has :disabled pseudo-class, which won't work if it's not a button)
-    // and disable pointer events.
-    const shouldUseSlot = !!href && !props.disabled;
-
-    const innerContent = shouldUseSlot ? <span>{content}</span> : content;
+    // Disabled/loading buttons must not navigate: render a real <button> and
+    // skip the LinkWrapper below.
+    const isInteractive = !props.disabled && !isLoading;
+    const shouldUseSlot = !!href && isInteractive;
+    const Comp = shouldUseSlot ? Slot : "button";
 
     const innerButton = (
-      <MetaButton
+      <Comp
         ref={ref}
-        size={size}
-        variant={variant}
-        isRounded={isRounded}
-        disabled={isLoading || props.disabled}
         className={cn(
-          (isPulsing || isPulsingBriefly) && "s-animate-ring-pulse",
-          isSelect && selectButtonSizeVariants({ size }),
+          buttonVariants({
+            variant: normalizedVariant,
+            size: normalizedSize,
+            isIconOnly,
+            press: !isMenuTrigger && !isLoading,
+          }),
+          isPulsing && "animate-ring-pulse-soft",
+          isRounded && "rounded-full",
+          isLoading && "relative",
           className
         )}
         aria-label={ariaLabel || tooltip || label}
-        asChild={shouldUseSlot}
         {...props}
+        // Loading blocks interaction (disabled attr) but keeps the active look:
+        // the muted `data-[disabled]:` styles are gated on this attribute, which
+        // is set only when truly disabled — so a loading button stays full-color
+        // and its spinner matches the label. Set after {...props} so a
+        // consumer-passed `disabled` can't clobber the computed value.
+        disabled={isLoading || props.disabled}
+        data-disabled={props.disabled && !isLoading ? "" : undefined}
+        aria-busy={isLoading || undefined}
         {...pointerEventProps}
       >
-        {innerContent}
-      </MetaButton>
+        {shouldUseSlot ? <span>{content}</span> : content}
+      </Comp>
     );
 
     const wrappedContent = tooltip ? (
@@ -537,7 +449,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       innerButton
     );
 
-    return href ? (
+    return href && isInteractive ? (
       <LinkWrapper
         href={href}
         target={target}
@@ -555,4 +467,4 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = "Button";
 
-export { Button, buttonVariants, MetaButton };
+export { Button, buttonVariants };

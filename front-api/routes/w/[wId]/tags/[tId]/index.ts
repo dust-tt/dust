@@ -17,6 +17,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/tags/:tId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
   validate("param", ParamsSchema),

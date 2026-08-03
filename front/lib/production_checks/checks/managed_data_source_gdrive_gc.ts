@@ -3,10 +3,42 @@ import {
   getConnectorsReplicaDbConnection,
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { googleDriveGarbageCollectorWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { withRetries } from "@app/types/shared/retries";
+import type { Client } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
+import type { Logger } from "pino";
 import { QueryTypes } from "sequelize";
+
+// Below this share of a data source's documents, a non-empty GC backlog is treated as
+// benign lag between GC runs rather than a GC failure.
+const NOT_DELETED_RATIO_THRESHOLD = 0.05;
+
+async function isGarbageCollectorRunning(
+  client: Client,
+  connectorId: string,
+  logger: Logger
+): Promise<boolean> {
+  try {
+    const handle = client.workflow.getHandle(
+      googleDriveGarbageCollectorWorkflowId(parseInt(connectorId, 10))
+    );
+    const description = await handle.describe();
+    return description.status.name === "RUNNING";
+  } catch (err) {
+    if (!(err instanceof WorkflowNotFoundError)) {
+      logger.error(
+        { error: err, connectorId },
+        "Failed to describe Google Drive garbage collector workflow."
+      );
+    }
+    return false;
+  }
+}
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   checkName,
@@ -17,31 +49,27 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
 ) => {
   const connectorsReplica = getConnectorsReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
-  const GdriveDataSources: { id: number; connectorId: string }[] =
+  const GdriveDataSources: {
+    id: number;
+    connectorId: string;
+    workspaceModelId: number;
+    workspaceId: string;
+  }[] =
     // biome-ignore lint/plugin/noRawSql: Leggit
     await frontReplica.query(
-      `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
+      `SELECT ds.id, ds."connectorId", ds."workspaceId" AS "workspaceModelId", w."sId" AS "workspaceId"
+       FROM data_sources ds
+       INNER JOIN workspaces w ON w.id = ds."workspaceId"
+       WHERE ds."connectorProvider" = 'google_drive'`,
       { type: QueryTypes.SELECT }
     );
-
-  const connectorInfos: {
-    id: number;
-    workspaceId: string;
-    dataSourceId: string;
-  }[] =
-    // biome-ignore lint/plugin/noRawSql: production check uses read replica
-    await connectorsReplica.query(
-      `SELECT id, "workspaceId", "dataSourceId" FROM connectors WHERE "type" = 'google_drive'`,
-      { type: QueryTypes.SELECT }
-    );
-  const connectorInfoById = new Map(
-    connectorInfos.map((c) => [String(c.id), c])
-  );
 
   if (GdriveDataSources.length === 0) {
     reportSuccess({ message: "No Google Drive data sources to check" });
     return;
   }
+
+  const temporalClient = await getTemporalClientForConnectorsNamespace();
 
   const CONCURRENCY = 8;
   await concurrentExecutor(
@@ -116,23 +144,49 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       const notDeleted = coreDocumentIds.filter(
         (coreId) => !connectorDocumentIds.has(coreId)
       );
-      if (notDeleted.length > 0) {
-        const connectorInfo = connectorInfoById.get(ds.connectorId);
-        const actionLinks: ActionLink[] = [
-          {
-            label: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} not GC'd (connector: ${ds.connectorId})`,
-            url: connectorInfo
-              ? `/poke/${connectorInfo.workspaceId}/data_sources/${connectorInfo.dataSourceId}`
-              : `/poke/connectors/${ds.connectorId}`,
-          },
-        ];
-        reportFailure(
-          { notDeleted, connectorId: ds.connectorId, actionLinks },
-          "Google Drive documents not properly Garbage collected"
-        );
-      } else {
+      if (notDeleted.length === 0) {
         reportSuccess();
+        return;
       }
+
+      const notDeletedRatio = notDeleted.length / coreDocumentIds.length;
+      if (notDeletedRatio <= NOT_DELETED_RATIO_THRESHOLD) {
+        reportSuccess({
+          message: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} awaiting GC out of ${coreDocumentIds.length} (below ${NOT_DELETED_RATIO_THRESHOLD * 100}% threshold, connector: ${ds.connectorId})`,
+        });
+        return;
+      }
+
+      // The backlog is expected while the garbage collector is processing it: only fire
+      // when no GC workflow is currently running for this connector.
+      if (
+        await isGarbageCollectorRunning(temporalClient, ds.connectorId, logger)
+      ) {
+        reportSuccess({
+          message: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} awaiting GC but the garbage collector is currently running (connector: ${ds.connectorId})`,
+        });
+        return;
+      }
+
+      const dataSourceId = DataSourceResource.modelIdToSId({
+        id: ds.id,
+        workspaceId: ds.workspaceModelId,
+      });
+      const actionLinks: ActionLink[] = [
+        {
+          label: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} not GC'd (connector: ${ds.connectorId})`,
+          url: `/poke/${ds.workspaceId}/data_sources/${dataSourceId}`,
+        },
+      ];
+      reportFailure(
+        {
+          notDeleted,
+          coreDocumentCount: coreDocumentIds.length,
+          connectorId: ds.connectorId,
+          actionLinks,
+        },
+        "Google Drive documents not properly Garbage collected"
+      );
     },
     { concurrency: CONCURRENCY }
   );

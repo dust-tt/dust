@@ -119,6 +119,7 @@ export async function ServerSideVisualizationWrapper({
 }: ServerSideVisualizationWrapperProps) {
   let prefetchedCode: string | undefined;
   let preFetchedFiles: PreFetchedFile[] = [];
+  let isAuthenticatedMember = false;
 
   try {
     const headers: Record<string, string> = {};
@@ -135,6 +136,7 @@ export async function ServerSideVisualizationWrapper({
     if (codeResponse.ok) {
       const responseData = await codeResponse.json();
       prefetchedCode = responseData.content;
+      isAuthenticatedMember = responseData.isAuthenticatedMember ?? false;
 
       if (!prefetchedCode) {
         logger.warn({ identifier }, "No code content found for visualization");
@@ -168,6 +170,7 @@ export async function ServerSideVisualizationWrapper({
       isPdfMode={isPdfMode}
       prefetchedCode={prefetchedCode}
       prefetchedFiles={preFetchedFiles}
+      isAuthenticatedMember={isAuthenticatedMember}
     />
   );
 }

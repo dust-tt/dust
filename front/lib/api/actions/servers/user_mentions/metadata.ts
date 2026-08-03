@@ -1,15 +1,13 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const USER_MENTIONS_SERVER_NAME = "user_mentions" as const;
 export const SEARCH_AVAILABLE_USERS_TOOL_NAME = "search_available_users";
 export const GET_MENTION_MARKDOWN_TOOL_NAME = "get_mention_markdown";
 
-export const USER_MENTIONS_TOOLS_METADATA = createToolsRecord({
-  [SEARCH_AVAILABLE_USERS_TOOL_NAME]: {
+export const USER_MENTIONS_TOOLS_METADATA = [
+  {
+    name: SEARCH_AVAILABLE_USERS_TOOL_NAME,
     description: "Search for users that are available to the conversation.",
     schema: {
       searchTerm: z
@@ -23,8 +21,11 @@ export const USER_MENTIONS_TOOLS_METADATA = createToolsRecord({
       running: "Searching users",
       done: "Search users",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  [GET_MENTION_MARKDOWN_TOOL_NAME]: {
+  {
+    name: GET_MENTION_MARKDOWN_TOOL_NAME,
     description:
       "Get the markdown directive to use to mention a list of users in a message.",
     schema: {
@@ -42,8 +43,10 @@ export const USER_MENTIONS_TOOLS_METADATA = createToolsRecord({
       running: "Getting mention markdown",
       done: "Get mention markdown",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-});
+] as const;
 
 export const USER_MENTIONS_SERVER = {
   serverInfo: {
@@ -53,15 +56,6 @@ export const USER_MENTIONS_SERVER = {
     icon: "ActionMegaphoneIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
-  tools: Object.values(USER_MENTIONS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(USER_MENTIONS_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: USER_MENTIONS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

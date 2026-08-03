@@ -1,17 +1,19 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
-  type GetUserSpendLimitResponse,
   getUserSpendLimit,
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
-  type SetUserSpendLimitResponse,
   setUserSpendLimit,
   type UserSpendLimitError,
 } from "@app/lib/api/users/spend_limit";
+import type {
+  GetUserSpendLimitResponseBody,
+  PutUserSpendLimitResponseBody,
+} from "@app/types/api/users/spend_limit";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -31,10 +33,6 @@ const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
 const ParamsSchema = z.object({
   uId: z.string(),
 });
-
-export type GetUserSpendLimitResponseBody = GetUserSpendLimitResponse;
-
-export type PutUserSpendLimitResponseBody = SetUserSpendLimitResponse;
 
 function spendLimitErrorToApiError(
   error: UserSpendLimitError
@@ -72,10 +70,11 @@ function spendLimitErrorToApiError(
 // Mounted at /api/w/:wId/members/:uId/spend_limit.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
-  ensureIsAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -103,7 +102,7 @@ app.get(
 app.put(
   "/",
   validate("param", ParamsSchema),
-  ensureIsAdmin(),
+  ensureIsManager(),
   validate("json", UpdateUserSpendLimitBodySchema),
   async (ctx): HandlerResult<PutUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");

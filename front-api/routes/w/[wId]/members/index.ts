@@ -1,6 +1,6 @@
+import type { GetMembersResponseBody } from "@app/lib/api/workspace";
 import { getMembers } from "@app/lib/api/workspace";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -9,18 +9,15 @@ import type { Context } from "hono";
 import { z } from "zod";
 
 import member from "./[uId]";
+import bulkSeatType from "./bulk-seat-type";
+import bulkSpendLimit from "./bulk-spend-limit";
+import freeSeats from "./free-seats";
 import lookup from "./lookup";
 import me from "./me";
 import search from "./search";
 
 export const DEFAULT_PAGE_LIMIT = 50;
 export const MAX_PAGE_LIMIT = 150;
-
-export type GetMembersResponseBody = {
-  members: UserTypeWithWorkspaces[];
-  total: number;
-  nextPageUrl?: string;
-};
 
 const MembersPaginationSchema = z.object({
   limit: z.coerce
@@ -57,6 +54,7 @@ function buildUrlWithParams(
 // Mounted under /api/w/:wId/members.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),
@@ -85,6 +83,9 @@ app.get(
   }
 );
 
+app.route("/bulk-seat-type", bulkSeatType);
+app.route("/bulk-spend-limit", bulkSpendLimit);
+app.route("/free-seats", freeSeats);
 app.route("/lookup", lookup);
 app.route("/me", me);
 app.route("/search", search);

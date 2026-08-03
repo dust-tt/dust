@@ -123,7 +123,7 @@ const SPECIAL_CASES_PATTERN = new RegExp(
   "g"
 );
 
-function formatAsDisplayName(name: string): string {
+export function formatAsDisplayName(name: string): string {
   return slugify(name)
     .replace(/_/g, " ")
     .replace(
@@ -140,10 +140,6 @@ export function asDisplayToolName(name?: string | null) {
 
   if (name === "interactive_content") {
     return "Create Frames";
-  }
-
-  if (name === "slideshow") {
-    return "Create Slideshows";
   }
 
   if (name === "image_generation") {

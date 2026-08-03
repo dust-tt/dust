@@ -21,6 +21,6 @@
     }
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://browser-intake-datadoghq.eu ws://localhost:* http://localhost:* https://*.novu.co wss://*.novu.co data:; frame-src http://localhost:*"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://browser-intake-datadoghq.eu ws://localhost:* http://localhost:* https://*.novu.co wss://*.novu.co wss://api.elevenlabs.io data:; frame-src http://localhost:*"
   }
 }

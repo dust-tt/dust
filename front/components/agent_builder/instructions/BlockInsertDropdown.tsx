@@ -96,8 +96,7 @@ export const BlockInsertDropdown = ({
                   icon={() => <Icon className="h-3.5 w-3.5" />}
                   label={suggestion.label}
                   className={cn(
-                    index === selectedIndex &&
-                      "bg-muted-background dark:bg-muted-background-night"
+                    index === selectedIndex && "bg-muted-background"
                   )}
                   onClick={() => onSelect(suggestion)}
                   onMouseEnter={() => onSelectedIndexChange(index)}

@@ -1,7 +1,24 @@
 import { parse } from "csv-parse/sync"
 import { readFile } from "fs/promises"
+import { dirname, isAbsolute, resolve } from "path"
 import type { EvalRow, Result } from "./types"
 import { Ok, Err } from "./types"
+
+/**
+ * Parse the optional `files` column into a list of absolute paths. Multiple
+ * files are comma-separated within the (quoted) cell. Relative paths are
+ * resolved against the CSV file's directory so prompt sets are portable.
+ */
+function parseFilesColumn(raw: string | undefined, csvDir: string): string[] {
+  if (!raw) {
+    return []
+  }
+  return raw
+    .split(",")
+    .map((f) => f.trim())
+    .filter(Boolean)
+    .map((f) => (isAbsolute(f) ? f : resolve(csvDir, f)))
+}
 
 export interface LoadCSVOptions {
   sample: number | undefined
@@ -96,11 +113,15 @@ export async function loadCSV(
       skip_empty_lines: true,
       trim: true,
       relax_quotes: true,
+      // Tolerate rows that omit the trailing (optional) `files` value.
+      relax_column_count: true,
     }) as Record<string, string>[]
 
     if (records.length === 0) {
       return Err(new Error("CSV file is empty"))
     }
+
+    const csvDir = dirname(path)
 
     // Validate columns exist
     const firstRecord = records[0]
@@ -144,7 +165,9 @@ export async function loadCSV(
         continue
       }
 
-      rows.push({ prompt, judge_prompt: judgePrompt })
+      const files = parseFilesColumn(record["files"], csvDir)
+
+      rows.push({ prompt, judge_prompt: judgePrompt, files })
     }
 
     if (errors.length > 0 && rows.length === 0) {

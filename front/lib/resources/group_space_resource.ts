@@ -195,7 +195,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     if (setMembersRes.isErr()) {
       return new Err(setMembersRes.error);
     }
-    return new Ok(setMembersRes.value);
+    return new Ok(undefined);
   }
 
   /**
@@ -220,8 +220,8 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
         where: {
           id: this.groupId,
           workspaceId: auth.getNonNullableWorkspace().id,
-          // Delete the corresponding group if it's regular or space_editors (system, global, provisioned groups should not be deleted)
-          kind: ["regular", "space_editors"],
+          // Delete the corresponding group if it's regular_auto or space_editors (system, global, provisioned groups should not be deleted)
+          kind: ["regular_auto", "space_editors"],
         },
         transaction,
       });

@@ -1,12 +1,9 @@
+import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetProvidersCheckResponseBody =
-  | { ok: true }
-  | { ok: false; error: string };
 
 const PostCheckBodySchema = z.object({
   config: z.object({
@@ -22,10 +19,11 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/providers/:pId/check.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("json", PostCheckBodySchema),
   async (ctx): HandlerResult<GetProvidersCheckResponseBody> => {
     const { pId } = ctx.req.valid("param");
@@ -112,7 +110,7 @@ app.post(
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "claude-3-5-sonnet-20241022",
+              model: "claude-sonnet-4-6",
               system: "You are a scientist",
               messages: [
                 {
@@ -252,22 +250,6 @@ app.post(
           return ctx.json({ ok: false, error: err.error?.message }, 400);
         }
         await rGoogleAIStudio.json();
-        return ctx.json({ ok: true });
-      }
-
-      case "togetherai": {
-        // eslint-disable-next-line no-restricted-globals
-        const tModelsRes = await fetch("https://api.together.xyz/v1/models", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${config.api_key}`,
-          },
-        });
-        if (!tModelsRes.ok) {
-          const err = await tModelsRes.json();
-          return ctx.json({ ok: false, error: err.error.message }, 400);
-        }
-        await tModelsRes.json();
         return ctx.json({ ok: true });
       }
 

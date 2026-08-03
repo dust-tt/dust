@@ -14,9 +14,10 @@ use crate::oauth::{
         microsoft_tools::MicrosoftToolsConnectionProvider, mock::MockConnectionProvider,
         monday::MondayConnectionProvider, notion::NotionConnectionProvider,
         productboard::ProductboardConnectionProvider, salesforce::SalesforceConnectionProvider,
-        slack::SlackConnectionProvider, slack_tools::SlackToolsConnectionProvider,
-        snowflake::SnowflakeConnectionProvider, ukg_ready::UkgReadyConnectionProvider,
-        vanta::VantaConnectionProvider, zendesk::ZendeskConnectionProvider,
+        servicenow::ServicenowConnectionProvider, slack::SlackConnectionProvider,
+        slack_tools::SlackToolsConnectionProvider, snowflake::SnowflakeConnectionProvider,
+        ukg_ready::UkgReadyConnectionProvider, vanta::VantaConnectionProvider,
+        zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -141,6 +142,7 @@ pub enum ConnectionProvider {
     Mock,
     Zendesk,
     Salesforce,
+    Servicenow,
     Hubspot,
     UkgReady,
     Vanta,
@@ -291,6 +293,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
+        ConnectionProvider::Servicenow => Box::new(ServicenowConnectionProvider::new()),
         ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
         ConnectionProvider::UkgReady => Box::new(UkgReadyConnectionProvider::new()),
         ConnectionProvider::Vanta => Box::new(VantaConnectionProvider::new()),
@@ -879,6 +882,7 @@ impl Connection {
     pub async fn access_token(
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
+        force_refresh: bool,
     ) -> Result<(String, Option<serde_json::Value>), ConnectionError> {
         if self.status != ConnectionStatus::Finalized {
             return Err(ConnectionError {
@@ -886,23 +890,26 @@ impl Connection {
                 message: "Connection is not finalized".to_string(),
             });
         }
-        if let Some(access_token) = self.valid_access_token()? {
-            return Ok((
-                access_token,
-                self.scrubbed_raw_json().map_err(|e| {
-                    error!(error = ?e, "Failed to retrieve and scrub raw_json");
-                    ConnectionError {
-                        code: ConnectionErrorCode::InternalError,
-                        message: "Failed to retrieve and scrub raw_json".to_string(),
-                    }
-                })?,
-            ));
+        if !force_refresh {
+            if let Some(access_token) = self.valid_access_token()? {
+                return Ok((
+                    access_token,
+                    self.scrubbed_raw_json().map_err(|e| {
+                        error!(error = ?e, "Failed to retrieve and scrub raw_json");
+                        ConnectionError {
+                            code: ConnectionErrorCode::InternalError,
+                            message: "Failed to retrieve and scrub raw_json".to_string(),
+                        }
+                    })?,
+                ));
+            }
         }
 
         info!(
             connection_id = self.connection_id(),
             provider = self.provider.to_string(),
             access_token_expiry = self.access_token_expiry,
+            force_refresh,
             "Refreshing access token",
         );
 

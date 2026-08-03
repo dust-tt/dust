@@ -1,9 +1,9 @@
+import Custom404 from "@app/components/pages/Custom404";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceLookup } from "@app/lib/swr/workspaces";
-import Custom404 from "@app/pages/404";
 import { isDevelopment } from "@app/types/shared/env";
 import {
   BarHeader,
@@ -67,18 +67,18 @@ export function NoWorkspacePage() {
           <div className="items-left justify-left flex flex-row">
             <Icon visual={DustLogoSquare} size="md" />
           </div>
-          <span className="heading-2xl text-foreground dark:text-foreground-night">
+          <span className="heading-2xl text-foreground">
             Hello {user?.firstName}!
           </span>
         </div>
         <div>
           {status === "auto-join-disabled" && (
             <div className="flex flex-col gap-4">
-              <span className="heading-lg text-muted-foreground dark:text-muted-foreground-night">
+              <span className="heading-lg text-muted-foreground">
                 {workspaceVerifiedDomain ?? workspace.name} already has a Dust
                 workspace.
               </span>
-              <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
+              <span className="copy-md text-muted-foreground">
                 To join the existing workspace of your company,
                 <span className="font-semibold">
                   {" "}
@@ -92,10 +92,10 @@ export function NoWorkspacePage() {
           )}
           {status === "revoked" && (
             <div className="flex flex-col gap-4">
-              <span className="heading-lg text-muted-foreground dark:text-muted-foreground-night">
+              <span className="heading-lg text-muted-foreground">
                 You no longer have access to {workspace.name}'s Dust workspace.
               </span>
-              <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
+              <span className="copy-md text-muted-foreground">
                 You may have been removed from the workspace or the workspace
                 may have reached its maximum number of users.
                 <br />

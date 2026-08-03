@@ -5,7 +5,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 export const PROFILE_DIR = "/opt/dust/profile";
 const COMMAND_HEREDOC_DELIMITER = "DUST_CMD_EOF";
 
-export interface WrapCommandOptions {
+interface WrapCommandOptions {
   timeoutSec?: number;
 }
 
@@ -20,10 +20,12 @@ export function providerToProfile(
     case "anthropic":
     case "mistral":
     case "deepseek":
-    case "togetherai":
     case "xai":
     case "fireworks":
     case "noop":
+    case "auto":
+    case "auto_fast":
+    case "auto_complex":
       return "anthropic";
     default:
       assertNever(providerId);

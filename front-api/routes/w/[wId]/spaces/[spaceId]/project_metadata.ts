@@ -1,30 +1,28 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   launchOrSignalProjectTodoWorkflow,
   startImmediateProjectTodoWorkflowOnce,
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
-import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
-import type { PodMetadataType } from "@app/types/project_metadata";
+import type {
+  GetPodMetadataResponseBody,
+  PatchPodMetadataResponseBody,
+} from "@app/types/api/projects/metadata";
+import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 
-export type GetPodMetadataResponseBody = {
-  projectMetadata: PodMetadataType | null;
-};
-
-export type PatchPodMetadataResponseBody = {
-  projectMetadata: PodMetadataType;
-};
-
 // Mounted under /api/w/:wId/spaces/:spaceId/project_metadata. All routes
 // require the space to be a project; this is checked inline per handler.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
@@ -96,6 +94,47 @@ app.patch(
       }
     }
 
+    // Validate the default agent exists and is usable (handles both global agents like
+    // "claude-4.5-sonnet" and workspace agents). A null value clears the default (@dust).
+    if (body.defaultAgentId) {
+      const agent = await getAgentConfiguration(auth, {
+        agentId: body.defaultAgentId,
+        variant: "extra_light",
+      });
+      if (!agent || agent.status !== "active") {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Agent "${body.defaultAgentId}" was not found or is not usable by the authenticated user.`,
+          },
+        });
+      }
+    }
+
+    let resolvedDefaultSkills: SkillResource[] | null = null;
+    if (body.defaultSkillIds !== undefined) {
+      const requestedSkillIds = [...new Set(body.defaultSkillIds)];
+      const skills = await SkillResource.fetchByIds(auth, requestedSkillIds);
+      const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+
+      const validatedSkills: SkillResource[] = [];
+      for (const skillId of requestedSkillIds) {
+        const skill = skillBySId.get(skillId);
+        if (!skill || skill.status !== "active") {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Skill "${skillId}" was not found, is not active, or is not usable as a default skill.`,
+            },
+          });
+        }
+        validatedSkills.push(skill);
+      }
+      resolvedDefaultSkills = validatedSkills;
+    }
+
     let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
     const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
@@ -113,7 +152,11 @@ app.patch(
         todoGenerationEnabled: body.todoGenerationEnabled ?? false,
         initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         pinnedFramePath: body.pinnedFramePath ?? null,
+        defaultAgentId: body.defaultAgentId ?? null,
       });
+      if (resolvedDefaultSkills) {
+        await metadata.setDefaultSkills(resolvedDefaultSkills);
+      }
       if (!body.archive) {
         void launchOrSignalProjectTodoWorkflow({
           workspaceId: auth.getNonNullableWorkspace().sId,
@@ -159,6 +202,12 @@ app.patch(
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
       }
+      if (body.defaultAgentId !== undefined) {
+        await metadata.updateDefaultAgentId(body.defaultAgentId);
+      }
+      if (resolvedDefaultSkills) {
+        await metadata.setDefaultSkills(resolvedDefaultSkills);
+      }
       if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
         void launchOrSignalProjectTodoWorkflow({
           workspaceId: auth.getNonNullableWorkspace().sId,
@@ -170,6 +219,13 @@ app.patch(
           workspaceId: auth.getNonNullableWorkspace().sId,
           spaceId: space.sId,
         });
+      }
+    }
+
+    if (resolvedDefaultSkills) {
+      const refreshed = await ProjectMetadataResource.fetchBySpace(auth, space);
+      if (refreshed) {
+        metadata = refreshed;
       }
     }
 

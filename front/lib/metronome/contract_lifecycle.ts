@@ -4,6 +4,7 @@ import {
   reactivateMetronomeContract as reactivateMetronomeContractRaw,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
+import { isCreditPricedFreePlan } from "@app/lib/plans/plan_codes";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -14,7 +15,8 @@ export type ContractLifecycleError =
 
 /**
  * Schedule the workspace's Metronome contract to end at the current billing
- * period end, and mark the local subscription as canceled so the "ends on X"
+ * period end (or immediately for the free plan, which has nothing to bill
+ * out), and mark the local subscription as canceled so the "ends on X"
  * banner surfaces immediately.
  */
 export async function cancelWorkspaceContractAtPeriodEnd(
@@ -48,36 +50,44 @@ export async function cancelWorkspaceContractAtPeriodEnd(
     });
   }
 
-  const invoicesResult = await listMetronomeDraftInvoices(metronomeCustomerId);
-  if (invoicesResult.isErr()) {
-    return new Err({
-      kind: "upstream_error",
-      message: `Failed to fetch Metronome draft invoices: ${invoicesResult.error.message}`,
-    });
-  }
-
-  const nowMs = Date.now();
-  const currentInvoice = invoicesResult.value.find((inv) => {
-    if (inv.contract_id !== metronomeContractId) {
-      return false;
+  // The free plan is never billed, so there's no billing period to wait
+  // out: end the contract now instead of looking up an invoice period.
+  let periodEnd: Date;
+  if (isCreditPricedFreePlan(subscription.plan.code)) {
+    periodEnd = new Date();
+  } else {
+    const invoicesResult =
+      await listMetronomeDraftInvoices(metronomeCustomerId);
+    if (invoicesResult.isErr()) {
+      return new Err({
+        kind: "upstream_error",
+        message: `Failed to fetch Metronome draft invoices: ${invoicesResult.error.message}`,
+      });
     }
-    if (!inv.start_timestamp || !inv.end_timestamp) {
-      return false;
-    }
-    const startMs = new Date(inv.start_timestamp).getTime();
-    const endMs = new Date(inv.end_timestamp).getTime();
-    return startMs <= nowMs && nowMs < endMs;
-  });
 
-  if (!currentInvoice?.end_timestamp) {
-    return new Err({
-      kind: "invalid_state",
-      message:
-        "Could not determine the current billing period end from Metronome.",
+    const nowMs = Date.now();
+    const currentInvoice = invoicesResult.value.find((inv) => {
+      if (inv.contract_id !== metronomeContractId) {
+        return false;
+      }
+      if (!inv.start_timestamp || !inv.end_timestamp) {
+        return false;
+      }
+      const startMs = new Date(inv.start_timestamp).getTime();
+      const endMs = new Date(inv.end_timestamp).getTime();
+      return startMs <= nowMs && nowMs < endMs;
     });
-  }
 
-  const periodEnd = new Date(currentInvoice.end_timestamp);
+    if (!currentInvoice?.end_timestamp) {
+      return new Err({
+        kind: "invalid_state",
+        message:
+          "Could not determine the current billing period end from Metronome.",
+      });
+    }
+
+    periodEnd = new Date(currentInvoice.end_timestamp);
+  }
 
   const scheduleResult = await scheduleMetronomeContractEnd({
     metronomeCustomerId,

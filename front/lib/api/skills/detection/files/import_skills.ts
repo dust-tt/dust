@@ -7,13 +7,15 @@ import {
 } from "@app/lib/api/skills/detection/zip/detect_skills";
 import type { ZipDetectedSkill } from "@app/lib/api/skills/detection/zip/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -25,8 +27,7 @@ const FILE_IMPORT_CONCURRENCY = 4;
 
 const IMPORT_CONFLICT_STRATEGIES = ["error", "skip", "override"] as const;
 
-export type ImportConflictStrategyType =
-  (typeof IMPORT_CONFLICT_STRATEGIES)[number];
+type ImportConflictStrategyType = (typeof IMPORT_CONFLICT_STRATEGIES)[number];
 
 export function isImportConflictStrategy(
   value: string
@@ -58,18 +59,22 @@ export async function importSkillsFromFiles(
   {
     uploadedFiles,
     names,
+    editors,
     source = "local_file",
     onConflict = "skip",
   }: {
     uploadedFiles: formidable.File[];
     names?: string[];
+    editors?: string[];
     source?: FileImportSource;
     onConflict?: ImportConflictStrategyType;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
+  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+    return new Err(new Error("Creating skills is restricted."));
+  }
+
   const allSkills: ZipDetectedSkill[] = [];
-  const featureFlags = await getFeatureFlags(auth);
-  const allowFileAttachments = featureFlags.includes("sandbox_tools");
 
   // Readers are keyed by skill to avoid re-opening the same zip for each
   // attachment. Each zip buffer produces one reader shared across its skills.
@@ -88,23 +93,16 @@ export async function importSkillsFromFiles(
       return new Err(new Error(detectResult.error.message));
     }
 
-    let reader:
-      | ((originalEntryName: string) => Result<Buffer, Error>)
-      | undefined;
-    if (allowFileAttachments) {
-      const readerResult = createZipAttachmentReader(buffer);
-      if (readerResult.isErr()) {
-        await cleanupTempFiles(uploadedFiles);
-        return new Err(readerResult.error);
-      }
-      reader = readerResult.value;
+    const readerResult = createZipAttachmentReader(buffer);
+    if (readerResult.isErr()) {
+      await cleanupTempFiles(uploadedFiles);
+      return new Err(readerResult.error);
     }
+    const reader = readerResult.value;
 
     for (const skill of detectResult.value) {
       allSkills.push(skill);
-      if (reader) {
-        readerBySkill.set(skill, reader);
-      }
+      readerBySkill.set(skill, reader);
     }
   }
 
@@ -135,6 +133,15 @@ export async function importSkillsFromFiles(
     return new Err(new Error("No matching importable skills found."));
   }
 
+  const editorUsersResult = await resolveEditorUsersFromEmails(
+    auth,
+    editors ?? []
+  );
+  if (editorUsersResult.isErr()) {
+    return editorUsersResult;
+  }
+  const editorUsers = editorUsersResult.value;
+
   const user = auth.user();
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
@@ -153,32 +160,29 @@ export async function importSkillsFromFiles(
       continue;
     }
 
-    let fileAttachments: FileResource[] = [];
-    if (allowFileAttachments) {
-      const readEntry = readerBySkill.get(skill);
-      if (!readEntry) {
-        skipped.push({
-          name: skill.name,
-          message: "Internal error: no zip reader for skill.",
-        });
-        continue;
-      }
-
-      const skillDirPath = path.dirname(skill.skillMdPath);
-      const uploadResults = await concurrentExecutor(
-        skill.attachments,
-        (attachment) =>
-          uploadAttachment(auth, {
-            originalEntryName: attachment.originalEntryName,
-            contentType: attachment.contentType,
-            fileName: path.relative(skillDirPath, attachment.path),
-            readEntry,
-          }),
-        { concurrency: FILE_IMPORT_CONCURRENCY }
-      );
-
-      fileAttachments = removeNulls(uploadResults);
+    const readEntry = readerBySkill.get(skill);
+    if (!readEntry) {
+      skipped.push({
+        name: skill.name,
+        message: "Internal error: no zip reader for skill.",
+      });
+      continue;
     }
+
+    const skillDirPath = path.dirname(skill.skillMdPath);
+    const uploadResults = await concurrentExecutor(
+      skill.attachments,
+      (attachment) =>
+        uploadAttachment(auth, {
+          originalEntryName: attachment.originalEntryName,
+          contentType: attachment.contentType,
+          fileName: path.relative(skillDirPath, attachment.path),
+          readEntry,
+        }),
+      { concurrency: FILE_IMPORT_CONCURRENCY }
+    );
+
+    const fileAttachments = removeNulls(uploadResults);
 
     if (existing) {
       const attachedKnowledge = await existing.getAttachedKnowledge(auth);
@@ -193,15 +197,18 @@ export async function importSkillsFromFiles(
         mcpServerViews: existing.mcpServerViews,
         attachedKnowledge,
         requestedSpaceIds: existing.requestedSpaceIds,
-        ...(allowFileAttachments ? { fileAttachments } : {}),
+        fileAttachments,
         source,
         sourceMetadata: { filePath: skill.skillMdPath },
       });
 
-      if (allowFileAttachments) {
-        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-          skillId: existing.sId,
-        });
+      await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+        skillId: existing.sId,
+      });
+
+      const editorsResult = await existing.upsertEditors(auth, editorUsers);
+      if (editorsResult.isErr()) {
+        return editorsResult;
       }
 
       updated.push(existing);
@@ -237,23 +244,28 @@ export async function importSkillsFromFiles(
           instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
           editedBy: user?.id ?? null,
           requestedSpaceIds: [],
-          extendedSkillId: null,
           icon,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },
-          isDefault: false,
+          availability: DEFAULT_SKILL_AVAILABILITY,
         },
         {
           mcpServerViews: suggestedMCPServerViews,
-          ...(allowFileAttachments ? { fileAttachments } : {}),
+          fileAttachments,
           addCurrentUserAsEditor: auth.user() !== null,
         }
       );
 
-      if (allowFileAttachments) {
-        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-          skillId: skillResource.sId,
-        });
+      await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+        skillId: skillResource.sId,
+      });
+
+      const editorsResult = await skillResource.upsertEditors(
+        auth,
+        editorUsers
+      );
+      if (editorsResult.isErr()) {
+        return editorsResult;
       }
 
       imported.push(skillResource);
@@ -261,6 +273,39 @@ export async function importSkillsFromFiles(
   }
 
   return new Ok({ imported, updated, skipped });
+}
+
+async function resolveEditorUsersFromEmails(
+  auth: Authenticator,
+  editorEmails: string[]
+): Promise<Result<UserResource[], Error>> {
+  const normalizedEditorEmails = [
+    ...new Set(
+      editorEmails.map((email) => email.trim().toLowerCase()).filter(Boolean)
+    ),
+  ];
+
+  if (normalizedEditorEmails.length === 0) {
+    return new Ok([]);
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const editorUsers = await UserResource.listUserWithExactEmails(
+    workspace,
+    normalizedEditorEmails
+  );
+  const foundEmails = new Set(editorUsers.map((u) => u.email.toLowerCase()));
+  const missingEmails = normalizedEditorEmails.filter(
+    (email) => !foundEmails.has(email)
+  );
+
+  if (missingEmails.length > 0) {
+    return new Err(
+      new Error(`Editors not found in workspace: ${missingEmails.join(", ")}`)
+    );
+  }
+
+  return new Ok(editorUsers);
 }
 
 async function uploadAttachment(

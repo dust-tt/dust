@@ -45,12 +45,12 @@ const IntervalScheduleConfigSchema = z.object({
   timezone: z.string(),
 });
 
-export const ScheduleConfigSchema = z.union([
+const ScheduleConfigSchema = z.union([
   CronScheduleConfigSchema,
   IntervalScheduleConfigSchema,
 ]);
 
-export const WebhookConfigSchema = z.object({
+const WebhookConfigSchema = z.object({
   includePayload: z.boolean(),
   event: z.string().optional(),
   filter: z.string().optional(),
@@ -63,19 +63,6 @@ export type WebhookConfig = {
 };
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
-
-export type TriggerConfiguration =
-  | {
-      kind: "schedule";
-      configuration: ScheduleConfig;
-    }
-  | {
-      kind: "webhook";
-      configuration: WebhookConfig;
-      executionPerDayLimitOverride: number | null;
-      webhookSourceViewId: string | null;
-      executionMode: TriggerExecutionMode | null;
-    };
 
 export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 
@@ -105,10 +92,6 @@ export type WebhookRequestTriggerStatus =
 
 export type TriggerOrigin = "user" | "agent";
 
-export function isValidTriggerOrigin(origin: string): origin is TriggerOrigin {
-  return ["user", "agent"].includes(origin);
-}
-
 const TriggerStatusSchema = z.enum(TRIGGER_STATUSES);
 
 export const TriggerSchema = z.discriminatedUnion("kind", [
@@ -120,6 +103,7 @@ export const TriggerSchema = z.discriminatedUnion("kind", [
     configuration: ScheduleConfigSchema,
     editor: z.number().optional(),
     status: TriggerStatusSchema.optional(),
+    spaceId: z.string().nullable().optional(),
   }),
   z.object({
     name: z.string(),
@@ -131,6 +115,7 @@ export const TriggerSchema = z.discriminatedUnion("kind", [
     executionPerDayLimitOverride: z.number(),
     editor: z.number().optional(),
     status: TriggerStatusSchema.optional(),
+    spaceId: z.string().nullable().optional(),
   }),
 ]);
 
@@ -145,6 +130,7 @@ const TriggerBaseSchema = z.object({
   createdAt: z.number(),
   naturalLanguageDescription: z.string().nullable(),
   origin: z.enum(["user", "agent"]),
+  spaceId: z.string().nullable(),
 });
 
 export const FullTriggerSchema = z.discriminatedUnion("kind", [

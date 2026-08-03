@@ -5,11 +5,9 @@ import type {
 import { MCPServerConfigurationSchema } from "@app/lib/actions/mcp_schemas";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
-  AgentFunctionCallContentType,
-  AgentReasoningContentType,
-  AgentTextContentType,
-} from "@app/types/assistant/agent_message_content";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+  AgentMessageType,
+  InlineActivityStep,
+} from "@app/types/assistant/conversation";
 import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -49,7 +47,7 @@ export const AGENT_STATUSES = [
 ] as const;
 export type AgentStatus = (typeof AGENT_STATUSES)[number];
 
-export const AGENT_CONFIGURATION_STATUSES = [
+const AGENT_CONFIGURATION_STATUSES = [
   "active",
   "archived",
   "draft",
@@ -197,6 +195,16 @@ export const AgentConfigurationSchema = LightAgentConfigurationSchema.extend({
 
 export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
 
+export type AgentConfigurationWithoutModelType = Omit<
+  AgentConfigurationType,
+  "model"
+>;
+
+export type LightAgentConfigurationWithoutModelType = Omit<
+  LightAgentConfigurationType,
+  "model"
+>;
+
 export interface TemplateAgentConfigurationType {
   name: string;
   pictureUrl: string;
@@ -209,19 +217,6 @@ export interface TemplateAgentConfigurationType {
   isTemplate: true;
   maxStepsPerRun?: number;
   tags: TagType[];
-}
-
-export function isTemplateAgentConfiguration(
-  agentConfiguration:
-    | LightAgentConfigurationType
-    | TemplateAgentConfigurationType
-    | null
-): agentConfiguration is TemplateAgentConfigurationType {
-  return !!(
-    agentConfiguration &&
-    "isTemplate" in agentConfiguration &&
-    agentConfiguration.isTemplate === true
-  );
 }
 
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 64;
@@ -253,6 +248,7 @@ export const AgentErrorCategories = [
   "stream_error",
   "unknown_error",
   "invalid_response_format_configuration",
+  "credits_exhausted",
 ] as const;
 
 export type AgentErrorCategory = (typeof AgentErrorCategories)[number];
@@ -262,17 +258,6 @@ export function isAgentErrorCategory(
 ): category is AgentErrorCategory {
   return AgentErrorCategories.includes(category as AgentErrorCategory);
 }
-
-// Event sent when an agent error occurred before we have an agent message in the database.
-export type AgentMessageErrorEvent = {
-  type: "agent_message_error";
-  created: number;
-  configurationId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
 
 // Generic type for the content of an agent / tool error.
 export type GenericErrorContent = {
@@ -316,16 +301,6 @@ export type ToolErrorEvent = {
   };
 };
 
-export type AgentDisabledErrorEvent = {
-  type: "agent_disabled_error";
-  created: number;
-  configurationId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
 export type AgentToolCallStartedEvent = {
   type: "tool_call_started";
   created: number;
@@ -354,6 +329,16 @@ export type AgentGenerationCancelledEvent = {
   status: "cancelled" | "interrupted";
 };
 
+// Server-rendered view of a finished agent message (the displayed body, chain of
+// thought, and activity steps). Computed from the persisted step contents (the
+// same source reload uses), so the client can trust it wholesale at stream end
+// instead of reconciling its incrementally-built view.
+export type AgentMessageContentView = {
+  content: string | null;
+  chainOfThought: string | null;
+  activitySteps: InlineActivityStep[];
+};
+
 // Event sent when the agent loop was gracefully stopped (current step completed, then exited).
 export type AgentMessageGracefullyStoppedEvent = {
   type: "agent_message_gracefully_stopped";
@@ -361,6 +346,8 @@ export type AgentMessageGracefullyStoppedEvent = {
   configurationId: string;
   messageId: string;
   message: AgentMessageType;
+  // Optional: absent on events from an older server during a deploy window.
+  contentView?: AgentMessageContentView;
   runIds: string[];
 };
 
@@ -371,6 +358,8 @@ export type AgentMessageSuccessEvent = {
   configurationId: string;
   messageId: string;
   message: AgentMessageType;
+  // Optional: absent on events from an older server during a deploy window.
+  contentView?: AgentMessageContentView;
   runIds: string[];
 };
 
@@ -382,38 +371,6 @@ export type AgentActionsEvent = {
     action: MCPToolConfigurationType;
     functionCallId: string;
   }>;
-};
-
-export type AgentChainOfThoughtEvent = {
-  type: "agent_chain_of_thought";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  message: AgentMessageType;
-  chainOfThought: string;
-};
-
-// Deprecated
-// TODO(agent-step-content): Remove this event
-export type AgentContentEvent = {
-  type: "agent_message_content";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  content: string;
-  processedContent: string;
-};
-
-export type AgentStepContentEvent = {
-  type: "agent_step_content";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  index: number;
-  content:
-    | AgentTextContentType
-    | AgentFunctionCallContentType
-    | AgentReasoningContentType;
 };
 
 export type AgentContextPrunedEvent = {

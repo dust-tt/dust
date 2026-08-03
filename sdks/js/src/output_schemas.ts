@@ -593,6 +593,7 @@ export const OAuthProviderSchema = FlexibleEnumSchema<
   | "microsoft_tools"
   | "zendesk"
   | "salesforce"
+  | "servicenow"
   | "hubspot"
   | "mcp"
   | "mcp_static"

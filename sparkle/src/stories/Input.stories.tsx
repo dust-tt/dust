@@ -1,15 +1,39 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Input } from "../index_with_tw_base";
+import { INPUT_SIZES } from "@sparkle/components/Input";
+
+import { Image03, Input, SearchMd } from "../index_with_tw_base";
 
 const MESSAGE_STATUSES = ["info", "default", "error"] as const;
 
 const meta = {
-  title: "Primitives/Input",
+  title: "Forms & Inputs/Input",
   component: Input,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A single-line text field for short, freeform input such as a name, email, or search term. Inputs support an optional **label**, a helper or error **message** with status colouring, and the standard HTML input **type**s.
+
+**When to use**
+- To collect a short piece of text or a number from the user.
+- Inside forms, search bars, and settings panels.
+
+**Guidelines**
+- Always provide a **label** so the field is understandable and accessible; placeholders are examples, not labels.
+- Surface validation with **isError** and a **message** set to \`messageStatus="error"\`.
+- Use **messageStatus="info"** for neutral helper text (constraints, formats, hints).
+- For multi-line input use **TextArea**; for search-specific affordances use **SearchInput**.`,
+      },
+    },
+  },
   argTypes: {
+    size: {
+      options: INPUT_SIZES,
+      control: { type: "select" },
+      description: "The size of the input (sm / md / lg)",
+    },
     placeholder: {
       control: "text",
       description: "Placeholder text for the input",
@@ -52,6 +76,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {
   args: {
+    size: "md",
     placeholder: "Enter text...",
     value: "",
     label: "Input Label",
@@ -61,6 +86,41 @@ export const Playground: Story = {
     isError: false,
     type: "text",
   },
+};
+
+export const Sizes: Story = {
+  render: () => (
+    <div className="flex w-72 flex-col gap-4">
+      {INPUT_SIZES.map((size) => (
+        <Input key={size} size={size} placeholder={`Size ${size}`} />
+      ))}
+    </div>
+  ),
+};
+
+export const WithIcons: Story = {
+  render: () => (
+    <div className="flex w-72 flex-col gap-4">
+      <Input placeholder="Search…" icon={SearchMd} />
+      <Input placeholder="With trailing icon" iconRight={Image03} />
+      <Input placeholder="Both" icon={SearchMd} iconRight={Image03} />
+    </div>
+  ),
+};
+
+export const WithPrefixSuffix: Story = {
+  render: () => (
+    <div className="flex w-72 flex-col gap-4">
+      <Input
+        placeholder="0.00"
+        prefix={<span className="text-faint">$</span>}
+      />
+      <Input
+        placeholder="12,890"
+        suffix={<span className="text-faint">cr</span>}
+      />
+    </div>
+  ),
 };
 
 export const WithError: Story = {
@@ -94,8 +154,8 @@ export const WithInfoMessage: Story = {
 
 export const AllVariants: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-20">
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+    <div className="flex flex-col gap-20">
+      <div className="grid grid-cols-3 gap-4">
         <Input
           placeholder="placeholder"
           name="input"
@@ -130,7 +190,7 @@ export const AllVariants: Story = {
           messageStatus="error"
         />
       </div>
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <Input placeholder="placeholder" name="input" />
         <Input
           placeholder="placeholder"
@@ -159,7 +219,7 @@ export const AllVariants: Story = {
           messageStatus="error"
         />
       </div>
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <Input
           placeholder="placeholder"
           name="input"

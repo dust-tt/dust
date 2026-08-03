@@ -1,8 +1,10 @@
 // Environment setup operations
-// Hives live under {repoRoot}/.hives/{name}/ so Node module resolution
-// naturally walks up to find {repoRoot}/node_modules/. We only need:
+// Worktrees live under {repoRoot} so Node module resolution naturally walks up
+// to find {repoRoot}/node_modules/. Hive-owned worktrees use
+// {repoRoot}/.hives/{name}/; adopted worktrees can use any path under
+// {repoRoot}. We only need:
 // 1. A small node_modules/@dust-tt/ override so workspace packages resolve
-//    from the hive (not the main repo).
+//    from the worktree (not the main repo).
 // 2. Shallow copies of workspace-level node_modules (version overrides).
 // NOTE: cargo target is symlinked to share Rust compilation cache.
 
@@ -36,11 +38,11 @@ function setupShallowNodeModules(srcNodeModules: string, destDir: string): void 
 }
 
 // Setup @dust-tt workspace overrides in hive's node_modules.
-// Since hives are under the repo root, Node resolution walks up to find
+// Since worktrees are under the repo root, Node resolution walks up to find
 // {repoRoot}/node_modules/ for all packages. But @dust-tt/* packages in
 // the root node_modules point to the main repo's workspaces via relative
 // symlinks. We override them here to point to the hive's workspaces instead,
-// so TypeScript and runtime resolve the hive's types (not the main repo's).
+// so TypeScript and runtime resolve the worktree's types (not the main repo's).
 function setupDustTtOverrides(repoRoot: string, worktreePath: string): void {
   const mainDustTt = join(repoRoot, "node_modules", "@dust-tt");
   const hiveDustTt = join(worktreePath, "node_modules", "@dust-tt");
@@ -67,9 +69,9 @@ async function symlinkCargoTarget(srcDir: string, destDir: string): Promise<void
   }
 }
 
-// Find all files matching filename in the repo (excluding node_modules and other large dirs)
+// Find all local agent config files in the repo (excluding node_modules and other large dirs)
 // Uses -prune to skip entire directory trees rather than filtering after traversal
-async function findAgentsFiles(srcDir: string, filename: string): Promise<string[]> {
+async function findAgentsFiles(srcDir: string): Promise<string[]> {
   const proc = Bun.spawn(
     [
       "find",
@@ -99,8 +101,13 @@ async function findAgentsFiles(srcDir: string, filename: string): Promise<string
       ")",
       "-prune",
       "-o",
+      "(",
       "-name",
-      filename,
+      "AGENTS.local.md",
+      "-o",
+      "-name",
+      "AGENTS.override.md",
+      ")",
       "-type",
       "f",
       "-print",
@@ -126,16 +133,13 @@ async function findAgentsFiles(srcDir: string, filename: string): Promise<string
 // Copy user config files (AGENTS.local.md, AGENTS.override.md files, .claude/) from main repo to worktree
 async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<void> {
   // Find and copy all AGENTS.local.md and AGENTS.override.md files, preserving directory structure
-  const filenames = ["AGENTS.local.md", "AGENTS.override.md"];
-  for (const filename of filenames) {
-    const agentsFiles = await findAgentsFiles(srcDir, filename);
-    for (const srcPath of agentsFiles) {
-      // Get relative path from srcDir
-      const relativePath = srcPath.slice(srcDir.length + 1);
-      const destPath = `${destDir}/${relativePath}`;
-      await Bun.spawn(["cp", srcPath, destPath]).exited;
-      logger.success(`Copied ${relativePath}`);
-    }
+  const agentsFiles = await findAgentsFiles(srcDir);
+  for (const srcPath of agentsFiles) {
+    // Get relative path from srcDir
+    const relativePath = srcPath.slice(srcDir.length + 1);
+    const destPath = `${destDir}/${relativePath}`;
+    await Bun.spawn(["cp", srcPath, destPath]).exited;
+    logger.success(`Copied ${relativePath}`);
   }
 
   // Copy directories recursively, merging with existing content
@@ -186,6 +190,8 @@ const DEFAULT_CONFIG: DependencyConfig = {
 const WORKSPACE_NODE_MODULES = [
   { name: "sdks/js", dir: "sdks/js" },
   { name: "front", dir: "front" },
+  { name: "front-api", dir: "front-api" },
+  { name: "marketing", dir: "marketing" },
   { name: "connectors", dir: "connectors" },
   { name: "sparkle", dir: "sparkle" },
   { name: "front-spa", dir: "front-spa" },
@@ -219,9 +225,9 @@ async function linkWorkspaceNodeModules(worktreePath: string, repoRoot: string):
 }
 
 // Install all dependencies for a worktree
-// Since hives are under the repo root, Node module resolution walks up to
+// Since worktrees are under the repo root, Node module resolution walks up to
 // find {repoRoot}/node_modules/ automatically. We only need to:
-// 1. Override @dust-tt/* packages to point to the hive's workspaces
+// 1. Override @dust-tt/* packages to point to the worktree's workspaces
 // 2. Shallow-copy workspace-level node_modules (version overrides)
 export async function installAllDependencies(
   worktreePath: string,

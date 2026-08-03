@@ -6,7 +6,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  XMarkIcon,
+  XClose,
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
@@ -100,7 +100,7 @@ export function ZendeskTagFilters({
               disabled={loading}
               className="ml-1 hover:opacity-70 disabled:opacity-50"
             >
-              <XMarkIcon className="h-3 w-3" />
+              <XClose className="h-3 w-3" />
             </button>
           )}
         </span>
@@ -161,7 +161,7 @@ export function ZendeskTagFilters({
       }
     >
       <ContextItem.Description>
-        <div className="text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-muted-foreground">
           <div className="mb-4 flex items-start justify-between gap-4">
             <p>{description}</p>
             {!isEditing && (
@@ -176,34 +176,34 @@ export function ZendeskTagFilters({
 
           {hasIncludedTags && (
             <div className="mb-4">
-              <p className="mb-2 text-sm font-medium text-green-800 dark:text-green-200">
+              <p className="mb-2 text-sm font-medium text-success-800">
                 Include Tags (sync only items with these tags):
               </p>
               {renderTagList(
                 includedTags,
                 "include",
-                "bg-green-100 dark:bg-green-900",
-                "text-green-800 dark:text-green-200"
+                "bg-success-100",
+                "text-success-800"
               )}
             </div>
           )}
 
           {hasExcludedTags && (
             <div className="mb-4">
-              <p className="mb-2 text-sm font-medium text-red-800 dark:text-red-200">
+              <p className="mb-2 text-sm font-medium text-warning-800">
                 Exclude Tags (don't sync items with these tags):
               </p>
               {renderTagList(
                 excludedTags,
                 "exclude",
-                "bg-red-100 dark:bg-red-900",
-                "text-red-800 dark:text-red-200"
+                "bg-warning-100",
+                "text-warning-800"
               )}
             </div>
           )}
 
           {!hasTags && (
-            <p className="mb-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="mb-4 text-sm text-muted-foreground">
               No tag filters configured.
             </p>
           )}

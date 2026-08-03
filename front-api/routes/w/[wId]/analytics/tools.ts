@@ -1,12 +1,12 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { AvailableTool } from "@app/lib/api/assistant/observability/tool_usage";
+import type { GetWorkspaceToolsResponse } from "@app/lib/api/assistant/observability/tool_usage";
 import {
   fetchAvailableTools,
   resolveToolDisplayNames,
 } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -15,14 +15,11 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
 
-export type GetWorkspaceToolsResponse = {
-  tools: AvailableTool[];
-};
-
 // Mounted at /api/w/:wId/analytics/tools.
 const app = workspaceApp();
 
-app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
+/** @ignoreswagger */
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   const { days } = ctx.req.valid("query");

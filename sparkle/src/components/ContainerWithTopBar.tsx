@@ -31,22 +31,22 @@ export function ContainerWithTopBar({
   return (
     <div
       className={cn(
-        "s-flex s-w-full s-flex-col",
-        "s-rounded-xl s-border s-bg-muted-background dark:s-bg-muted-background-night s-transition-all s-duration-200",
-        "s-border-border dark:s-border-border-night",
-        "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
-        "focus-within:s-outline-none focus-within:s-ring-2",
-        "focus-within:s-ring-highlight/20 dark:focus-within:s-ring-highlight/50",
-        "s-min-h-40",
-        error && "s-border-warning-500 dark:s-border-warning-500-night",
+        "flex w-full flex-col",
+        "rounded-xl border bg-muted-background transition-all duration-200",
+        "border-border",
+        "focus-within:border-border-focus",
+        "focus-within:outline-hidden focus-within:ring-2",
+        "focus-within:ring-highlight/20",
+        "min-h-40",
+        error && "border-warning-500",
         className
       )}
     >
       <div
         className={cn(
-          "s-sticky s-top-0 s-z-10 s-flex s-items-center s-rounded-t-xl",
-          "s-border-b s-border-border dark:s-border-border-night",
-          "s-bg-muted-background/80 s-backdrop-blur-sm dark:s-bg-muted-background-night/80"
+          "sticky top-0 z-10 flex items-center rounded-t-xl",
+          "border-b border-border",
+          "bg-muted-background/80 backdrop-blur-sm"
         )}
       >
         {topBar}

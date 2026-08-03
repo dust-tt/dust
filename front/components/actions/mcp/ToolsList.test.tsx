@@ -28,15 +28,15 @@ vi.mock("@dust-tt/sparkle", () => ({
   ),
   Collapsible: ({ children }: any) => <div>{children}</div>,
   CollapsibleContent: ({ children }: any) => <div>{children}</div>,
-  CollapsibleTrigger: ({ children }: any) => (
-    <button type="button">{children}</button>
+  CollapsibleTrigger: ({ children, label }: any) => (
+    <button type="button">{children ?? label}</button>
   ),
   ContentMessage: ({ children }: any) => <div>{children}</div>,
   DropdownMenu: ({ children }: any) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
   DropdownMenuItem: ({ label }: any) => <button type="button">{label}</button>,
   DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,
-  InformationCircleIcon: () => null,
+  InfoCircle: () => null,
 }));
 
 // Treat the test server as remote so default-stake lookups skip the internal
@@ -119,6 +119,24 @@ const readOnlyMcpServerView = MCPServerViewTypeFactory.build({
   },
 });
 
+const unscopedMediumMcpServerView = MCPServerViewTypeFactory.build({
+  server: {
+    tools: [
+      {
+        name: TOOL_NAME_WITH_UNDERSCORE,
+        description: "Get messages",
+      },
+    ],
+  },
+  toolsMetadata: [
+    {
+      toolName: TOOL_NAME_WITH_UNDERSCORE,
+      enabled: true,
+      permission: "medium",
+    },
+  ],
+});
+
 function renderToolsList({
   view = mcpServerView,
   keepDirtyValues = false,
@@ -161,6 +179,31 @@ function renderToolsList({
 }
 
 describe("ToolsList", () => {
+  it("uses the MCP server view's skills restriction as the form default", () => {
+    const restrictedView = MCPServerViewTypeFactory.build({
+      isRestrictedToSkills: true,
+    });
+
+    expect(getMCPServerFormDefaults(restrictedView).isRestrictedToSkills).toBe(
+      true
+    );
+  });
+
+  it("keeps persisted medium selected but hides it from unscoped options", () => {
+    const defaults = getMCPServerFormDefaults(unscopedMediumMcpServerView);
+    expect(
+      defaults.toolSettings[encodeMCPToolNameForForm(TOOL_NAME_WITH_UNDERSCORE)]
+        .permission
+    ).toBe("medium");
+
+    renderToolsList({ view: unscopedMediumMcpServerView });
+    expect(
+      screen.getAllByRole("button", {
+        name: "Medium (allows input-scoped confirmation save)",
+      })
+    ).toHaveLength(1);
+  });
+
   it("keeps form state flat and validates when a tool name contains a dot", async () => {
     const { form } = renderToolsList();
 

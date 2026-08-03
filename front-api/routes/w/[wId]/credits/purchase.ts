@@ -1,31 +1,28 @@
 import type {
   CreateCreditPurchaseError,
   CreatedCreditPurchase,
-  CreditPurchaseInfo,
   CreditPurchaseInfoError,
+  GetCreditPurchaseInfoResponseBody,
 } from "@app/lib/api/credits/purchase";
 import {
   createCreditPurchase,
   getCreditPurchaseInfo,
+  PostCreditPurchaseRequestBody,
 } from "@app/lib/api/credits/purchase";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import {
+  ensureIsAdmin,
+  ensureIsManager,
+} from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
-
-export const PostCreditPurchaseRequestBody = z.object({
-  amountDollars: z.number().positive(),
-});
 
 type PostCreditPurchaseResponseBody = CreatedCreditPurchase & {
   success: true;
 };
-
-export type GetCreditPurchaseInfoResponseBody = CreditPurchaseInfo;
 
 function infoErrorToApi(
   err: CreditPurchaseInfoError
@@ -102,9 +99,10 @@ function purchaseErrorToApi(
 // Mounted at /api/w/:wId/credits/purchase.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetCreditPurchaseInfoResponseBody> => {
     const auth = ctx.get("auth");
 

@@ -1,8 +1,7 @@
-import * as creditStateDispatcher from "@app/lib/api/metronome/credit_state_dispatcher";
 import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
-import * as perUserUsage from "@app/lib/metronome/per_user_usage";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -20,8 +19,6 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
     ...actual,
     upsertMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserCapAlert: vi.fn(),
-    getMetronomePerUserCap: vi.fn(),
-    getMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
   };
 });
 
@@ -40,27 +37,6 @@ vi.mock("@app/lib/metronome/seat_types", async () => {
     ...actual,
     getProductSeatTypes: vi.fn(),
     getAwuAllocationForSeatType: vi.fn(),
-  };
-});
-
-vi.mock("@app/lib/metronome/per_user_usage", async () => {
-  const actual = await vi.importActual<typeof perUserUsage>(
-    "@app/lib/metronome/per_user_usage"
-  );
-  return {
-    ...actual,
-    fetchPerUserAwuUsage: vi.fn(),
-  };
-});
-
-vi.mock("@app/lib/api/metronome/credit_state_dispatcher", async () => {
-  const actual = await vi.importActual<typeof creditStateDispatcher>(
-    "@app/lib/api/metronome/credit_state_dispatcher"
-  );
-  return {
-    ...actual,
-    dispatchPerUserCapReached: vi.fn(),
-    dispatchPerUserCapResolved: vi.fn(),
   };
 });
 
@@ -84,19 +60,6 @@ beforeEach(() => {
   vi.mocked(spendLimits.clearMetronomePerUserCapAlert).mockResolvedValue(
     new Ok(undefined)
   );
-  vi.mocked(spendLimits.getMetronomePerUserCap).mockResolvedValue(new Ok(null));
-  vi.mocked(
-    spendLimits.getMetronomeDefaultUserCapAlertForSeatType
-  ).mockResolvedValue(new Ok(null));
-  vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValue(
-    new Ok(new Map())
-  );
-  vi.mocked(creditStateDispatcher.dispatchPerUserCapReached).mockResolvedValue(
-    new Ok(undefined)
-  );
-  vi.mocked(creditStateDispatcher.dispatchPerUserCapResolved).mockResolvedValue(
-    new Ok(undefined)
-  );
 
   // Seat allowance resolution mocks (resolveUserSeatAllowance).
   vi.mocked(planType.getActiveContract).mockResolvedValue(null);
@@ -106,7 +69,7 @@ beforeEach(() => {
 
 describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
   describe("auth", () => {
-    it("returns 403 when caller is not an admin", async () => {
+    it("returns 403 when caller is a user", async () => {
       const { workspace, user } = await createPrivateApiMockRequest({
         method: "GET",
         role: "user",
@@ -118,6 +81,42 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
 
       expect(response.status).toBe(403);
       expect((await response.json()).error.type).toBe("workspace_auth_error");
+    });
+
+    it("allows a manager to read and set the spend limit", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "manager",
+        workspace,
+      });
+
+      const putResponse = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "limited", awuCredits: 1500 }),
+        }
+      );
+      expect(putResponse.status).toBe(200);
+      expect(await putResponse.json()).toEqual({
+        limit: { kind: "limited", awuCredits: 1500 },
+      });
+
+      const getResponse = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId)
+      );
+      expect(getResponse.status).toBe(200);
+      expect(await getResponse.json()).toEqual({
+        kind: "limited",
+        awuCredits: 1500,
+      });
     });
 
     it("returns 403 when workspace is not on Metronome billing", async () => {
@@ -239,7 +238,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
   });
 
   describe("GET", () => {
-    it("returns unlimited when no per-user alert exists", async () => {
+    it("returns unlimited when no override is persisted", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const { user } = await createPrivateApiMockRequest({
         method: "GET",
@@ -255,30 +254,24 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(await response.json()).toEqual({ kind: "unlimited" });
     });
 
-    it("returns limited with threshold when alert exists", async () => {
-      vi.mocked(spendLimits.getMetronomePerUserCap).mockResolvedValueOnce(
-        new Ok({
-          alert: {
-            id: TEST_ALERT_ID,
-            name: "test alert",
-            status: "enabled",
-            threshold: 2500,
-            type: "spend_threshold_reached",
-            updated_at: "2024-01-01T00:00:00Z",
-          },
-          customer_status: "ok",
-        })
-      );
-
+    it("returns limited with the override persisted on the membership", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
-      const { user } = await createPrivateApiMockRequest({
+      const targetUser = await UserFactory.basic();
+      const membership = await MembershipFactory.associate(
+        workspace,
+        targetUser,
+        { role: "user" }
+      );
+      await membership.updatePoolCapOverride(2500);
+
+      await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
         workspace,
       });
 
       const response = await honoApp.request(
-        spendLimitUrl(workspace.sId, user.sId)
+        spendLimitUrl(workspace.sId, targetUser.sId)
       );
 
       expect(response.status).toBe(200);
@@ -290,12 +283,15 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
   });
 
   describe("PUT", () => {
-    it("clears alert + dispatches resolved for unlimited", async () => {
+    it("clears alert for unlimited", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const targetUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, targetUser, {
-        role: "user",
-      });
+      const membership = await MembershipFactory.associate(
+        workspace,
+        targetUser,
+        { role: "user" }
+      );
+      await membership.updatePoolCapOverride(1200);
 
       await createPrivateApiMockRequest({
         method: "PUT",
@@ -313,10 +309,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({
-        limit: { kind: "unlimited" },
-        transitionedTo: "resolved",
-      });
+      expect(await response.json()).toEqual({ limit: { kind: "unlimited" } });
       expect(spendLimits.clearMetronomePerUserCapAlert).toHaveBeenCalledWith(
         expect.objectContaining({
           metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
@@ -324,24 +317,23 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
           userId: targetUser.sId,
         })
       );
-      expect(
-        creditStateDispatcher.dispatchPerUserCapResolved
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: targetUser.sId })
-      );
       expect(spendLimits.upsertMetronomePerUserCapAlert).not.toHaveBeenCalled();
+
+      // The persisted override is cleared.
+      const updatedMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: targetUser,
+          workspace,
+        });
+      expect(updatedMembership?.poolCapOverrideAwuCredits).toBeNull();
     });
 
-    it("syncs alert + dispatches resolved when usage is below cap", async () => {
+    it("upserts alert for limited", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const targetUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, targetUser, {
         role: "user",
       });
-
-      vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValueOnce(
-        new Ok(new Map([[targetUser.sId, 500]]))
-      );
 
       await createPrivateApiMockRequest({
         method: "PUT",
@@ -361,7 +353,6 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         limit: { kind: "limited", awuCredits: 1500 },
-        transitionedTo: "resolved",
       });
       expect(spendLimits.upsertMetronomePerUserCapAlert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -371,48 +362,14 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
           awuCredits: 1500,
         })
       );
-      expect(
-        creditStateDispatcher.dispatchPerUserCapResolved
-      ).toHaveBeenCalled();
-      expect(
-        creditStateDispatcher.dispatchPerUserCapReached
-      ).not.toHaveBeenCalled();
-    });
 
-    it("dispatches reached when usage is at/above cap", async () => {
-      const workspace = await makeMetronomeWorkspaceWithCustomer();
-      const targetUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, targetUser, {
-        role: "user",
-      });
-
-      vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValueOnce(
-        new Ok(new Map([[targetUser.sId, 2000]]))
-      );
-
-      await createPrivateApiMockRequest({
-        method: "PUT",
-        role: "admin",
-        workspace,
-      });
-
-      const response = await honoApp.request(
-        spendLimitUrl(workspace.sId, targetUser.sId),
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kind: "limited", awuCredits: 1500 }),
-        }
-      );
-
-      expect(response.status).toBe(200);
-      expect((await response.json()).transitionedTo).toBe("reached");
-      expect(
-        creditStateDispatcher.dispatchPerUserCapReached
-      ).toHaveBeenCalled();
-      expect(
-        creditStateDispatcher.dispatchPerUserCapResolved
-      ).not.toHaveBeenCalled();
+      // The pool-only override is persisted on the membership.
+      const updatedMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: targetUser,
+          workspace,
+        });
+      expect(updatedMembership?.poolCapOverrideAwuCredits).toBe(1500);
     });
   });
 });

@@ -37,6 +37,7 @@ export const revokeCouponPlugin = createPlugin({
           "I confirm I want to revoke this coupon redemption. This will immediately stop the associated Metronome credit.",
       },
     },
+    requiredRoles: ["billing"],
   },
   populateAsyncArgs: async (auth) => {
     const items = await CouponRedemptionResource.listActiveByWorkspace(auth);

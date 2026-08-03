@@ -1,0 +1,44 @@
+import { googleAiStudioConfigSchema } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
+import {
+  GEMINI_3_CONTEXT_SIZE,
+  GEMINI_3_MAX_OUTPUT_TOKENS,
+} from "@app/lib/model_constructors/providers/google_ai_studio/models/shared";
+import { GEMINI_PRO_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
+import { GEMINI_3_1_PRO } from "@app/lib/model_constructors/types/models";
+
+import { z } from "zod";
+
+const DEFAULT_REASONING_EFFORT = "high";
+
+// No `none` and no `minimal`: Pro answers "Budget 0 is invalid. This model only
+// works in thinking mode" and "Thinking level MINIMAL is not supported for this
+// model" (verified live 2026-07-27). It cannot reduce thinking below `low`.
+const GEMINI_3_1_PRO_REASONING_EFFORTS = [
+  ...GEMINI_PRO_SUPPORTED_REASONING_EFFORTS,
+] as const;
+
+const configSchema = googleAiStudioConfigSchema.extend({
+  reasoning: z
+    .object({
+      effort: z.enum(GEMINI_3_1_PRO_REASONING_EFFORTS),
+    })
+    .default({ effort: DEFAULT_REASONING_EFFORT }),
+});
+
+// Mixin carrying shared config; runtime base differs per surface.
+export function WithGoogleGeminiThreeDotOneProConfig<
+  TBase extends abstract new (
+    ...args: any[]
+  ) => object,
+>(Base: TBase) {
+  abstract class GoogleGeminiThreeDotOnePro extends Base {
+    static readonly model = GEMINI_3_1_PRO;
+
+    static readonly configSchema = configSchema;
+
+    static readonly contextSize = GEMINI_3_CONTEXT_SIZE;
+    static readonly maxOutputTokens = GEMINI_3_MAX_OUTPUT_TOKENS;
+  }
+
+  return GoogleGeminiThreeDotOnePro;
+}

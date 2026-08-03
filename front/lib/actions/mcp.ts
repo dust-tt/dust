@@ -8,9 +8,13 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  AgentLoopEventScope,
+  AgentLoopMCPApproveExecutionEvent,
+  AgentLoopToolExecution,
   MCPApproveExecutionEvent,
+  SandboxFunctionEventScope,
+  SandboxFunctionToolExecution,
   ToolAskUserQuestionEvent,
-  ToolExecution,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
@@ -18,6 +22,7 @@ import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
+  ActionGeneratedFileType,
   FileAuthorizationInfo,
   UserQuestion,
 } from "@app/lib/actions/types";
@@ -28,7 +33,9 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { SandboxFunctionMCPActionType } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type ActionApprovalStateType =
@@ -62,10 +69,13 @@ export type ServerSideMCPToolType = Omit<
   toolServerId: string;
   timeoutMs?: number;
   retryPolicy: MCPToolRetryPolicyType;
-  // For "medium" stake tools: defines which arguments require per-agent approval.
-  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  // For "medium" stake tools: defines which argument values scope the approval.
+  // The user must approve each specific combination of values.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
+  // When true, the tool is loaded upfront in the cached tools prefix instead of
+  // being deferred behind tool search.
+  eager?: boolean;
 };
 
 export type ClientSideMCPToolType = Omit<
@@ -77,10 +87,13 @@ export type ClientSideMCPToolType = Omit<
   toolServerId: string;
   type: "mcp_configuration";
   timeoutMs?: number;
-  // For "medium" stake tools: defines which arguments require per-agent approval.
-  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  // For "medium" stake tools: defines which argument values scope the approval.
+  // The user must approve each specific combination of values.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
+  // When true, the tool is loaded upfront in the cached tools prefix instead of
+  // being deferred behind tool search.
+  eager?: boolean;
 };
 
 type WithToolNameMetadata<
@@ -153,40 +166,50 @@ export type LightMCPToolConfigurationType =
 
 export type { FileAuthorizationInfo };
 
-export type BlockedToolExecution = ToolExecution &
-  (
-    | {
-        status: "blocked_validation_required";
-        authorizationInfo: AuthorizationInfo | null;
-      }
-    | {
-        status: "blocked_child_action_input_required";
-        authorizationInfo: AuthorizationInfo | null;
-        resumeState: Record<string, unknown> | null;
-        childBlockedActionsList: BlockedToolExecution[];
-      }
-    | {
-        status: "blocked_authentication_required";
-        metadata: MCPValidationMetadataType & {
-          mcpServerId: string;
-          mcpServerDisplayName: string;
-        };
-        authorizationInfo: AuthorizationInfo;
-      }
-    | {
-        status: "blocked_file_authorization_required";
-        metadata: MCPValidationMetadataType & {
-          mcpServerId: string;
-          mcpServerDisplayName: string;
-        };
-        fileAuthorizationInfo: FileAuthorizationInfo;
-      }
-    | {
-        status: "blocked_user_answer_required";
-        question: UserQuestion;
-        authorizationInfo: null;
-      }
-  );
+// Status-specific payloads of a blocked tool execution, shared by both run scopes.
+type BlockedToolExecutionVariant =
+  | {
+      status: "blocked_validation_required";
+      authorizationInfo: AuthorizationInfo | null;
+    }
+  | {
+      status: "blocked_child_action_input_required";
+      authorizationInfo: AuthorizationInfo | null;
+      resumeState: Record<string, unknown> | null;
+      // Child actions always belong to a child conversation, so they are agent-loop scoped.
+      childBlockedActionsList: AgentLoopBlockedToolExecution[];
+    }
+  | {
+      status: "blocked_authentication_required";
+      metadata: MCPValidationMetadataType & {
+        mcpServerId: string;
+        mcpServerDisplayName: string;
+      };
+      authorizationInfo: AuthorizationInfo;
+    }
+  | {
+      status: "blocked_file_authorization_required";
+      metadata: MCPValidationMetadataType & {
+        mcpServerId: string;
+        mcpServerDisplayName: string;
+      };
+      fileAuthorizationInfo: FileAuthorizationInfo;
+    }
+  | {
+      status: "blocked_user_answer_required";
+      question: UserQuestion;
+      authorizationInfo: null;
+    };
+
+export type AgentLoopBlockedToolExecution = AgentLoopToolExecution &
+  BlockedToolExecutionVariant;
+
+export type SandboxFunctionBlockedToolExecution = SandboxFunctionToolExecution &
+  BlockedToolExecutionVariant;
+
+export type BlockedToolExecution =
+  | AgentLoopBlockedToolExecution
+  | SandboxFunctionBlockedToolExecution;
 
 export function getMCPApprovalStateFromUserApprovalState(
   userApprovalState: ActionApprovalStateType
@@ -204,7 +227,9 @@ export function getMCPApprovalStateFromUserApprovalState(
   }
 }
 
-export type MCPParamsEvent = {
+// Emitted by the agent loop once tool arguments have been generated and the action created.
+// Published on the conversation message channel, hence the conversation-scoped identifiers.
+export type AgentLoopToolParamsEvent = {
   type: "tool_params";
   created: number;
   configurationId: string;
@@ -213,12 +238,13 @@ export type MCPParamsEvent = {
   runIds?: string[];
 };
 
+// Emitted by the tool runner when the tool execution completed. Generic across run contexts: it
+// carries the processed output only, consumers scope it to their own run context.
 export type MCPSuccessEvent = {
   type: "tool_success";
   created: number;
-  configurationId: string;
-  messageId: string;
-  action: AgentMCPActionWithOutputType;
+  output: CallToolResult["content"];
+  generatedFiles: ActionGeneratedFileType[];
 };
 
 export type MCPErrorEvent = {
@@ -233,20 +259,37 @@ export type MCPErrorEvent = {
   };
 };
 
-export type ToolNotificationEvent = {
+type ToolNotificationEventBase = {
   type: "tool_notification";
   created: number;
+  notification: ProgressNotificationContentType;
+};
+
+// Tool notification emitted when running a tool within an agent loop. Published on the
+// conversation message channel, hence the conversation-scoped identifiers.
+export type AgentLoopToolNotificationEvent = ToolNotificationEventBase & {
   configurationId: string;
   conversationId: string;
   messageId: string;
   action: AgentMCPActionWithOutputType;
-  notification: ProgressNotificationContentType;
 };
 
+// Tool notification emitted when running a tool within a sandbox function invocation.
+export type SandboxFunctionToolNotificationEvent = ToolNotificationEventBase & {
+  sandboxFunctionId: string;
+  invocationId: string;
+  action: SandboxFunctionMCPActionType;
+};
+
+export type ToolNotificationEvent =
+  | AgentLoopToolNotificationEvent
+  | SandboxFunctionToolNotificationEvent;
+
+// AgentActionRunningEvents are events related action execution within an agent loop.
 export type AgentActionRunningEvents =
-  | MCPParamsEvent
-  | MCPApproveExecutionEvent
-  | ToolNotificationEvent;
+  | AgentLoopToolParamsEvent
+  | AgentLoopMCPApproveExecutionEvent
+  | AgentLoopToolNotificationEvent;
 
 const MAX_DESCRIPTION_LENGTH = 1024;
 
@@ -269,6 +312,7 @@ export function buildToolSpecification(
     description:
       actionConfiguration.description?.slice(0, MAX_DESCRIPTION_LENGTH) ?? "",
     inputSchema,
+    ...(actionConfiguration.eager ? { eager: true } : {}),
   };
 }
 
@@ -292,6 +336,18 @@ export function isToolPersonalAuthRequiredEvent(
     "type" in event &&
     event.type === "tool_personal_auth_required"
   );
+}
+
+export function isSandboxFunctionToolEvent<
+  T extends AgentLoopEventScope | SandboxFunctionEventScope,
+>(event: T): event is Extract<T, SandboxFunctionEventScope> {
+  return "sandboxFunctionId" in event;
+}
+
+export function isAgentLoopToolEvent<
+  T extends AgentLoopEventScope | SandboxFunctionEventScope,
+>(event: T): event is Extract<T, AgentLoopEventScope> {
+  return "conversationId" in event;
 }
 
 export function isToolFileAuthRequiredEvent(

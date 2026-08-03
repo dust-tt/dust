@@ -2,8 +2,8 @@ import config from "@app/lib/api/config";
 import type { KeyType } from "@app/types/key";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   IconButton,
   Page,
   Sheet,
@@ -59,12 +59,12 @@ export const APIKeyCreationSheet = ({
             <div className="mt-4">
               <Page.H variant="h5">Name</Page.H>
               <Page.Horizontal align="center">
-                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {latestKey?.name}
                 </pre>
                 <IconButton
                   tooltip="Copy to clipboard"
-                  icon={isCopiedName ? ClipboardCheckIcon : ClipboardIcon}
+                  icon={isCopiedName ? ClipboardCheck : Clipboard}
                   onClick={async () => {
                     if (latestKey?.name) {
                       await copyName(latestKey.name);
@@ -76,12 +76,12 @@ export const APIKeyCreationSheet = ({
             <div className="mt-4">
               <Page.H variant="h5">Domain</Page.H>
               <Page.Horizontal align="center">
-                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {domain}
                 </pre>
                 <IconButton
                   tooltip="Copy to clipboard"
-                  icon={isCopiedDomain ? ClipboardCheckIcon : ClipboardIcon}
+                  icon={isCopiedDomain ? ClipboardCheck : Clipboard}
                   onClick={async () => {
                     await copyDomain(domain);
                   }}
@@ -91,14 +91,12 @@ export const APIKeyCreationSheet = ({
             <div className="mt-4">
               <Page.H variant="h5">Workspace ID</Page.H>
               <Page.Horizontal align="center">
-                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {workspace.sId}
                 </pre>
                 <IconButton
                   tooltip="Copy to clipboard"
-                  icon={
-                    isCopiedWorkspaceId ? ClipboardCheckIcon : ClipboardIcon
-                  }
+                  icon={isCopiedWorkspaceId ? ClipboardCheck : Clipboard}
                   onClick={async () => {
                     await copyWorkspaceId(workspace.sId);
                   }}
@@ -108,12 +106,12 @@ export const APIKeyCreationSheet = ({
             <div className="mt-4">
               <Page.H variant="h5">API Key</Page.H>
               <Page.Horizontal align="center">
-                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {latestKey?.secret}
                 </pre>
                 <IconButton
                   tooltip="Copy to clipboard"
-                  icon={isCopiedApiKey ? ClipboardCheckIcon : ClipboardIcon}
+                  icon={isCopiedApiKey ? ClipboardCheck : Clipboard}
                   onClick={async () => {
                     if (latestKey?.secret) {
                       await copyApiKey(latestKey.secret);

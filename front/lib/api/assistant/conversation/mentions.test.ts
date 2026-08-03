@@ -2,7 +2,6 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
-  createUserMentions,
   getMentionStatus,
   validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
@@ -26,6 +25,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { resolveAndCreateUserMentions } from "@app/tests/utils/mentions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -74,7 +74,7 @@ describe("createAgentMessages", () => {
       },
     ];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -141,7 +141,7 @@ describe("createAgentMessages", () => {
       },
     ];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -216,7 +216,7 @@ describe("createAgentMessages", () => {
 
     const mentions: MentionType[] = [];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -268,7 +268,7 @@ describe("createAgentMessages", () => {
       } as AgentMention,
     ];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -325,7 +325,7 @@ describe("createAgentMessages", () => {
       },
     ];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -374,7 +374,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: userMessage,
         conversation,
@@ -437,7 +437,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation,
@@ -481,7 +481,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation,
@@ -588,7 +588,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation: updatedConversation,
@@ -694,7 +694,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation: updatedConversation,
@@ -800,7 +800,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation: updatedConversation,
@@ -846,12 +846,19 @@ describe("createAgentMessages", () => {
       );
       expect(restrictedSpaceModelId).not.toBeNull();
 
-      const restrictedConversation = await ConversationFactory.create(auth, {
-        agentConfigurationId: "test-agent",
-        messagesCreatedAt: [],
+      const restrictedConversationResource = await createConversation(auth, {
+        title: "Test Conversation",
         visibility: "unlisted",
-        requestedSpaceIds: [restrictedSpaceModelId!],
+        spaceId: null,
       });
+      await ConversationModel.update(
+        { requestedSpaceIds: [restrictedSpaceModelId!] },
+        { where: { id: restrictedConversationResource.id } }
+      );
+      const restrictedConversation = {
+        ...restrictedConversationResource.toJSON(),
+        requestedSpaceIds: [refreshedRestrictedSpace!.sId],
+      };
 
       // Verify the mentioned user cannot access the conversation
       const canAccess = await ConversationResource.canAccess(
@@ -877,7 +884,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: userMessage,
         conversation: restrictedConversation,
@@ -923,7 +930,7 @@ describe("createAgentMessages", () => {
       const globalGroup = globalGroupRes.value;
 
       // Add global group directly to make it open (if not already there)
-      const existingGroupIds = openSpace.groups.map((g) => g.sId);
+      const existingGroupIds = openSpace.groups.map((g) => g.groupSId);
       const hasGlobalGroup = existingGroupIds.includes(globalGroup.sId);
 
       // If global group is not already there, associate it directly
@@ -980,7 +987,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: userMessage,
         conversation: openConversation,
@@ -1039,12 +1046,19 @@ describe("createAgentMessages", () => {
       );
       expect(restrictedSpaceModelId).not.toBeNull();
 
-      const restrictedConversation = await ConversationFactory.create(auth, {
-        agentConfigurationId: "test-agent",
-        messagesCreatedAt: [],
+      const restrictedConversationResource = await createConversation(auth, {
+        title: "Test Conversation",
         visibility: "unlisted",
-        requestedSpaceIds: [restrictedSpaceModelId!],
+        spaceId: null,
       });
+      await ConversationModel.update(
+        { requestedSpaceIds: [restrictedSpaceModelId!] },
+        { where: { id: restrictedConversationResource.id } }
+      );
+      const restrictedConversation = {
+        ...restrictedConversationResource.toJSON(),
+        requestedSpaceIds: [refreshedRestrictedSpace!.sId],
+      };
 
       // Add user as participant first (which would normally auto-approve)
       await ConversationResource.upsertParticipation(auth, {
@@ -1075,7 +1089,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation: restrictedConversation,
@@ -1130,11 +1144,13 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedProjectSpace).not.toBeNull();
 
-      const projectConversation = await createConversation(userAuth, {
+      const projectConversationResource = await createConversation(userAuth, {
         title: "Project Conversation",
         visibility: "unlisted",
         spaceId: refreshedProjectSpace!.id,
       });
+
+      const projectConversation = projectConversationResource.toJSON();
 
       // Create an agent message
       const agentConfig = await AgentConfigurationFactory.createTestAgent(
@@ -1160,7 +1176,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(userAuth, {
+      const result = await resolveAndCreateUserMentions(userAuth, {
         mentions,
         message: agentMessage,
         conversation: projectConversation,
@@ -1207,11 +1223,13 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedProjectSpace).not.toBeNull();
 
-      const projectConversation = await createConversation(userAuth, {
+      const projectConversationResource = await createConversation(userAuth, {
         title: "Project Conversation",
         visibility: "unlisted",
         spaceId: refreshedProjectSpace!.id,
       });
+
+      const projectConversation = projectConversationResource.toJSON();
 
       // Create an agent message
       const agentConfig = await AgentConfigurationFactory.createTestAgent(
@@ -1237,7 +1255,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(userAuth, {
+      const result = await resolveAndCreateUserMentions(userAuth, {
         mentions,
         message: agentMessage,
         conversation: projectConversation,
@@ -1527,12 +1545,19 @@ describe("createAgentMessages", () => {
 
       // Create a conversation in a restricted space
       const restrictedSpace = await SpaceFactory.regular(workspace);
-      const regularConversation = await ConversationFactory.create(auth, {
-        agentConfigurationId: "test-agent",
-        messagesCreatedAt: [],
+      const regularConversationResource = await createConversation(auth, {
+        title: "Test Conversation",
         visibility: "unlisted",
-        requestedSpaceIds: [restrictedSpace.id],
+        spaceId: null,
       });
+      await ConversationModel.update(
+        { requestedSpaceIds: [restrictedSpace.id] },
+        { where: { id: regularConversationResource.id } }
+      );
+      const regularConversation = {
+        ...regularConversationResource.toJSON(),
+        requestedSpaceIds: [restrictedSpace.sId],
+      };
 
       const restrictedUserResource = await getUserForWorkspace(auth, {
         userId: restrictedUser.sId,
@@ -1702,6 +1727,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -1779,6 +1805,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -1856,7 +1883,7 @@ describe("createUserMessage", () => {
       const userJson = adminUser.toJSON();
       const userMessage = await withTransaction(async (transaction) => {
         return createUserMessage(userAuth, {
-          conversation: projectConversation,
+          conversation: projectConversation.toJSON(),
           content: `Hello @${mentionedUser.sId}`,
           metadata: {
             type: "create",
@@ -1870,6 +1897,7 @@ describe("createUserMessage", () => {
               profilePictureUrl: userJson.image,
               origin: "web",
             },
+            requestedModel: null,
           },
           transaction,
         });

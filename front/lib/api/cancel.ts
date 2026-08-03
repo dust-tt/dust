@@ -21,21 +21,19 @@ export async function terminateMessageGeneration(
     action: "cancel" | "interrupt";
   }
 ): Promise<void> {
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
 
-  if (conversationRes.isErr()) {
+  if (!conversation) {
     logger.warn(
-      { conversationId, error: conversationRes.error },
+      { conversationId },
       "terminateMessageGeneration: conversation not found, skipping"
     );
     return;
   }
 
-  const conversation = conversationRes.value;
   const status = action === "interrupt" ? "interrupted" : "cancelled";
   const signalFn =
     action === "interrupt" ? interruptAgentLoop : cancelAgentLoop;
@@ -88,11 +86,17 @@ export async function terminateMessageGeneration(
       continue;
     }
 
-    await updateAgentMessageWithFinalStatus(auth, {
-      conversation,
+    const result = await updateAgentMessageWithFinalStatus(auth, {
+      conversation: conversation.toJSON(),
       agentMessage,
       status,
     });
+
+    // The status check above reads a snapshot: the message may have been finalized between the
+    // render and the update. Don't publish a stale terminal event in that case.
+    if (!result.applied) {
+      continue;
+    }
 
     await publishConversationRelatedEvent({
       event: {

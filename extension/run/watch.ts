@@ -31,17 +31,26 @@ async function main() {
     const server = new WebpackDevServer(config.devServer, compiler);
     await server.start();
   } else {
-    compiler.watch({ ignored: ["**/node_modules"] }, async (err, res) => {
-      if (err) {
-        console.error(err);
+    // Ignore node_modules AND the build output dirs. The Tailwind v4 `@source`
+    // globs (e.g. `@source "../../platforms/**/*.{ts,tsx}"`) make the postcss
+    // loader register `platforms/**` as a watched context directory. Since
+    // webpack writes its output into `platforms/<platform>/build/`, watching
+    // that dir without ignoring `build/` causes an infinite recompile loop:
+    // each compile writes the output → the watcher fires → it recompiles again.
+    compiler.watch(
+      { ignored: ["**/node_modules", "**/build/**"] },
+      async (err, res) => {
+        if (err) {
+          console.error(err);
+        }
+        if (res?.hasErrors) {
+          console.error(res.compilation.errors);
+        }
+        console.log(
+          `[Dust Extension][development] Webpack successfully compiled.`
+        );
       }
-      if (res?.hasErrors) {
-        console.error(res.compilation.errors);
-      }
-      console.log(
-        `[Dust Extension][development] Webpack successfully compiled.`
-      );
-    });
+    );
   }
 }
 

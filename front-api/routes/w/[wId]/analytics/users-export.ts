@@ -6,10 +6,10 @@ import {
 import {
   buildAgentAnalyticsBaseQuery,
   daysToDateRange,
-  timezoneSchema,
 } from "@app/lib/api/assistant/observability/utils";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { stringify } from "csv-stringify/sync";
@@ -23,7 +23,8 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/analytics/users-export.
 const app = workspaceApp();
 
-app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
+/** @ignoreswagger */
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   const { days, timezone } = ctx.req.valid("query");

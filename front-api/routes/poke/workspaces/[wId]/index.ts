@@ -11,6 +11,7 @@ import analytics from "./analytics";
 import apps from "./apps";
 import assistants from "./assistants";
 import authContext from "./auth-context";
+import cancelPendingContract from "./cancel_pending_contract";
 import conversations from "./conversations";
 import credits from "./credits";
 import dataRetention from "./data_retention";
@@ -28,8 +29,7 @@ import mcpServerViews from "./mcp_server_views";
 import memberships from "./memberships";
 import observability from "./observability";
 import projects from "./projects";
-import revoke from "./revoke";
-import roles from "./roles";
+import seatLimitsSchedule from "./seat_limits_schedule";
 import skillSuggestions from "./skill_suggestions";
 import skills from "./skills";
 import spaces from "./spaces";
@@ -61,6 +61,7 @@ app.route("/auth-context", authContext);
 // parent /poke `pokeAuth`) to the target workspace.
 app.use("*", withPokeWorkspace);
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("json", WorkspaceSegmentationSchema),
@@ -79,6 +80,7 @@ app.patch(
 
 app.route("/agent_configurations", agentConfigurations);
 app.route("/analytics", analytics);
+app.route("/cancel_pending_contract", cancelPendingContract);
 app.route("/apps", apps);
 app.route("/assistants", assistants);
 app.route("/conversations", conversations);
@@ -98,8 +100,7 @@ app.route("/mcp_server_views", mcpServerViews);
 app.route("/memberships", memberships);
 app.route("/observability", observability);
 app.route("/projects", projects);
-app.route("/revoke", revoke);
-app.route("/roles", roles);
+app.route("/seat_limits_schedule", seatLimitsSchedule);
 app.route("/skill_suggestions", skillSuggestions);
 app.route("/skills", skills);
 app.route("/spaces", spaces);

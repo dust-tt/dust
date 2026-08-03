@@ -1,0 +1,221 @@
+import { createAsyncGenerator } from "@app/lib/api/llm/utils";
+import * as converters from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
+import {
+  outputItemToEvents,
+  rawOutputToEvents,
+  usageToTokenUsageEvent,
+} from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
+import type {
+  ResponseOutputItem,
+  ResponseStreamEvent,
+  ResponseUsage,
+} from "openai/resources/responses/responses";
+import { describe, expect, it } from "vitest";
+
+const metadata = {
+  lab: "openai",
+  host: "openai-responses",
+  model: "gpt-5.4",
+  region: "global",
+} as const;
+
+describe("outputItemToEvents", () => {
+  it("preserves an id-bearing reasoning item with no visible summary", () => {
+    const item = {
+      type: "reasoning",
+      id: "rs_empty",
+      summary: [],
+      status: "completed",
+    } satisfies ResponseOutputItem;
+
+    expect(outputItemToEvents(item, metadata, converters)).toEqual([
+      {
+        type: "reasoning",
+        content: { value: "" },
+        metadata: {
+          ...metadata,
+          content: { id: "rs_empty" },
+        },
+      },
+    ]);
+  });
+
+  it("preserves a discovered function call namespace", () => {
+    const item = {
+      type: "function_call",
+      id: "fc_123",
+      call_id: "call_123",
+      name: "get_weather",
+      namespace: "weather",
+      arguments: "{}",
+      status: "completed",
+    } satisfies ResponseOutputItem;
+
+    expect(outputItemToEvents(item, metadata, converters)).toEqual([
+      {
+        type: "tool_call",
+        content: {
+          id: "call_123",
+          name: "get_weather",
+          arguments: {},
+          namespace: "weather",
+        },
+        metadata,
+      },
+    ]);
+  });
+
+  it.each<ResponseOutputItem>([
+    {
+      type: "tool_search_call",
+      id: "ts_123",
+      call_id: null,
+      execution: "server",
+      status: "completed",
+      arguments: { paths: ["weather"] },
+    },
+    {
+      type: "tool_search_output",
+      id: "tso_123",
+      call_id: null,
+      execution: "server",
+      status: "completed",
+      tools: [
+        {
+          type: "function",
+          name: "get_weather",
+          description: "Get the current weather",
+          parameters: { type: "object", properties: {} },
+          strict: false,
+          defer_loading: true,
+        },
+      ],
+    },
+  ])("preserves $type as provider passthrough", (item) => {
+    expect(outputItemToEvents(item, metadata, converters)).toEqual([
+      {
+        type: "provider_passthrough",
+        content: { provider: "openai", block: item },
+        metadata,
+      },
+    ]);
+  });
+});
+
+describe("usageToTokenUsageEvent", () => {
+  it("splits standard input, cache reads, and cache writes", () => {
+    const usage: ResponseUsage = {
+      input_tokens: 2006,
+      input_tokens_details: {
+        cached_tokens: 1200,
+        cache_write_tokens: 720,
+      },
+      output_tokens: 300,
+      output_tokens_details: { reasoning_tokens: 50 },
+      total_tokens: 2306,
+    };
+
+    expect(usageToTokenUsageEvent(metadata, usage)).toEqual({
+      type: "token_usage",
+      content: {
+        cacheCreated: 720,
+        longCacheCreated: 0,
+        shortCacheCreated: 0,
+        cacheHit: 1200,
+        standardInput: 86,
+        totalOutput: 300,
+        reasoning: 50,
+      },
+      metadata,
+    });
+  });
+});
+
+describe("rawOutputToEvents", () => {
+  it("preserves interleaved reasoning and function-call item order", async () => {
+    const rawEvents: ResponseStreamEvent[] = [
+      {
+        type: "response.output_item.done",
+        output_index: 0,
+        sequence_number: 0,
+        item: {
+          type: "reasoning",
+          id: "rs_1",
+          summary: [{ type: "summary_text", text: "first thought" }],
+          status: "completed",
+        },
+      },
+      {
+        type: "response.output_item.done",
+        output_index: 1,
+        sequence_number: 1,
+        item: {
+          type: "function_call",
+          id: "fc_1",
+          call_id: "call_1",
+          name: "first_tool",
+          arguments: "{}",
+          status: "completed",
+        },
+      },
+      {
+        type: "response.output_item.done",
+        output_index: 2,
+        sequence_number: 2,
+        item: {
+          type: "reasoning",
+          id: "rs_2",
+          summary: [{ type: "summary_text", text: "second thought" }],
+          status: "completed",
+        },
+      },
+      {
+        type: "response.output_item.done",
+        output_index: 3,
+        sequence_number: 3,
+        item: {
+          type: "function_call",
+          id: "fc_2",
+          call_id: "call_2",
+          name: "second_tool",
+          arguments: "{}",
+          status: "completed",
+        },
+      },
+    ];
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator(rawEvents),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    expect(events.at(-1)).toMatchObject({
+      type: "success",
+      content: {
+        aggregated: [
+          {
+            type: "reasoning",
+            content: { value: "first thought" },
+            metadata: { content: { id: "rs_1" } },
+          },
+          {
+            type: "tool_call",
+            content: { id: "call_1", name: "first_tool" },
+          },
+          {
+            type: "reasoning",
+            content: { value: "second thought" },
+            metadata: { content: { id: "rs_2" } },
+          },
+          {
+            type: "tool_call",
+            content: { id: "call_2", name: "second_tool" },
+          },
+        ],
+      },
+    });
+  });
+});

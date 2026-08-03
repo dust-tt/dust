@@ -15,6 +15,7 @@ import {
   getUserInfo,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
+  isSlackPostingPermissionError,
   isSlackWebAPIPlatformError,
   isWebAPIRateLimitedError,
   SlackExternalUserError,
@@ -85,6 +86,10 @@ const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
   "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <https://dust4ai.slack.com/marketplace/A09214D6XQT-dust|Dust App for Slack>).";
 const SLACK_ERROR_TEXT =
   "An unexpected error occurred while answering your message, please retry.";
+const SLACK_POSTING_PERMISSION_ERROR_MARKDOWN =
+  "Dust doesn't have permission to post in this channel. The agent answered, but " +
+  "Slack rejected the reply. Ask a workspace admin to allow the Dust app to post " +
+  "here, then retry.";
 
 // Keep aligned with front/types/files.ts MAX_FILE_SIZES for conversation uploads.
 const MAX_OTHER_FILE_SIZE_TO_UPLOAD = 50 * 1024 * 1024; // 50 MB
@@ -207,6 +212,13 @@ export async function botAnswerMessage(
           thread_ts: slackMessageTs,
           unfurl_links: false,
         });
+      } else if (isSlackPostingPermissionError(e)) {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          blocks: makeMarkdownBlock(SLACK_POSTING_PERMISSION_ERROR_MARKDOWN),
+          thread_ts: slackMessageTs,
+          unfurl_links: false,
+        });
       } else {
         await slackClient.chat.postMessage({
           channel: slackChannel,
@@ -280,6 +292,13 @@ export async function botReplaceMention(
         await slackClient.chat.postMessage({
           channel: slackChannel,
           blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
+          thread_ts: slackMessageTs,
+          unfurl_links: false,
+        });
+      } else if (isSlackPostingPermissionError(e)) {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          blocks: makeMarkdownBlock(SLACK_POSTING_PERMISSION_ERROR_MARKDOWN),
           thread_ts: slackMessageTs,
           unfurl_links: false,
         });
@@ -388,7 +407,7 @@ export async function botValidateToolExecution(
       throw new Error("Unreachable: bot cannot validate tool execution.");
     }
 
-    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+    const hasChatbotAccessRes = await notifyIfSlackUserIsNotAllowed(
       connector,
       slackClient,
       slackUserInfo,
@@ -399,6 +418,11 @@ export async function botValidateToolExecution(
       },
       slackConfig.whitelistedDomains
     );
+    if (hasChatbotAccessRes.isErr()) {
+      return hasChatbotAccessRes;
+    }
+
+    const hasChatbotAccess = hasChatbotAccessRes.value;
     if (!hasChatbotAccess.authorized) {
       return new Ok(undefined);
     }
@@ -485,6 +509,18 @@ export async function botValidateToolExecution(
       }
     }
 
+    // The Slack click only performs the validation when the action is still blocked. If it was
+    // already resolved elsewhere (e.g. approved from the Dust web app), `validateAction` returns
+    // `action_not_blocked` and the click is a no-op: surface that to the user.
+    let confirmationText: string;
+    if (res.isOk()) {
+      confirmationText = text;
+    } else if (String(res.error.type) === "action_not_blocked") {
+      confirmationText = "Tool validation was already handled in Dust.";
+    } else {
+      confirmationText = "An error occurred while validating the tool.";
+    }
+
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postEphemeral",
@@ -494,7 +530,7 @@ export async function botValidateToolExecution(
     await slackClient.chat.postEphemeral({
       channel: slackChannel,
       user: slackChatBotMessage.slackUserId,
-      text,
+      text: confirmationText,
       thread_ts: params.slackThreadTs ?? slackMessageTs,
     });
 
@@ -851,7 +887,7 @@ async function answerMessage(
     // permissions.
     skipToolsValidation = true;
   } else {
-    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+    const hasChatbotAccessRes = await notifyIfSlackUserIsNotAllowed(
       connector,
       slackClient,
       slackUserInfo,
@@ -862,6 +898,11 @@ async function answerMessage(
       },
       slackConfig.whitelistedDomains
     );
+    if (hasChatbotAccessRes.isErr()) {
+      return hasChatbotAccessRes;
+    }
+
+    const hasChatbotAccess = hasChatbotAccessRes.value;
     if (!hasChatbotAccess.authorized) {
       return new Ok(undefined);
     }
@@ -1705,7 +1746,10 @@ async function isAgentAccessingRestrictedSpace(
 
     const agentSpaceIds = agent.requestedSpaceIds.flat();
 
-    const spacesRes = await dustAPI.getSpaces();
+    // Only regular spaces can be restricted in this listing: the endpoint
+    // never returns project spaces, and global and system spaces are never
+    // flagged as restricted.
+    const spacesRes = await dustAPI.getSpaces({ kinds: ["regular"] });
     if (spacesRes.isErr()) {
       logger.error(
         { error: spacesRes.error, agentId },

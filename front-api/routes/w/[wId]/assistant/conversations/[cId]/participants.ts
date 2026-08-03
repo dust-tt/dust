@@ -14,22 +14,109 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/participants.
 const app = workspaceApp();
 
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/participants:
+ *   get:
+ *     summary: Get conversation participants
+ *     description: Returns the participants of a specific conversation.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 participants:
+ *                   type: object
+ *                   properties:
+ *                     agents:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           configurationId:
+ *                             type: string
+ *                           configurationName:
+ *                             type: string
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           username:
+ *                             type: string
+ *                           fullName:
+ *                             type: string
+ *                             nullable: true
+ *                           pictureUrl:
+ *                             type: string
+ *                             nullable: true
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Add a participant to a conversation
+ *     description: Adds the authenticated user as a participant to a specific conversation.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Successfully added participant
+ *       401:
+ *         description: Unauthorized
+ */
+
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId } = ctx.req.valid("param");
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      ctx,
+      new ConversationError("conversation_not_found")
     );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const participantsRes = await fetchConversationParticipants(
     auth,
-    conversationRes.value
+    conversation
   );
   if (participantsRes.isErr()) {
     return apiError(ctx, {
@@ -48,16 +135,17 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId } = ctx.req.valid("param");
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      ctx,
+      new ConversationError("conversation_not_found")
     );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
-  const conversation = conversationRes.value;
   const u = auth.user();
   if (!u) {
     return apiError(ctx, {

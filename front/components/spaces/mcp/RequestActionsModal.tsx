@@ -13,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PlusIcon,
+  Plus,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -88,7 +88,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Request Tool" icon={PlusIcon} />
+        <Button label="Request Tool" icon={Plus} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>
@@ -106,7 +106,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                 {isLoading && <Spinner size="lg" />}
 
                 {!isLoading && serverViews.length === 0 && (
-                  <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+                  <label className="block text-sm font-medium text-muted-foreground">
                     <p>
                       There are no extra tools set up that you can request
                       access to. Ask an admin to set one up.
@@ -116,7 +116,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
 
                 {serverViews.length >= 1 && (
                   <>
-                    <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+                    <label className="block text-sm font-medium text-muted-foreground">
                       <p>Which tools you want to get access to?</p>
                     </label>
                     <DropdownMenu>
@@ -157,7 +157,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
 
               {selectedMcpServer && (
                 <div className="flex flex-col gap-2">
-                  <p className="mb-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <p className="mb-2 text-sm text-muted-foreground">
                     {capitalize(selectedMcpServer.editedByUser?.fullName ?? "")}{" "}
                     is the administrator for the{" "}
                     {selectedMcpServer

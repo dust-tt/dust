@@ -3,7 +3,7 @@ import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messag
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { formatUTCDateFromMillis } from "@app/lib/api/elasticsearch";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { stringify } from "csv-stringify/sync";
@@ -16,7 +16,8 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/analytics/usage-metrics-export.
 const app = workspaceApp();
 
-app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
+/** @ignoreswagger */
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   const { days } = ctx.req.valid("query");

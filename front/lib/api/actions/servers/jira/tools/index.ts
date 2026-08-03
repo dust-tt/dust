@@ -4,6 +4,10 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
+  type AgentLoopRunContext,
+  isAgentLoopRunContext,
+} from "@app/lib/actions/types";
+import {
   createComment,
   createIssue,
   createIssueLink,
@@ -36,6 +40,7 @@ import { SEARCH_USERS_MAX_RESULTS } from "@app/lib/api/actions/servers/jira/type
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import assert from "assert";
 
 const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
   get_issue_read_fields: async (_params, { authInfo }) => {
@@ -862,8 +867,14 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   upload_attachment: async (
     { issueKey, attachment },
-    { auth, authInfo, agentLoopContext }
+    { auth, authInfo, runContext }
   ) => {
+    let attachmentRunContext: AgentLoopRunContext | undefined;
+    if (attachment.type === "conversation_file") {
+      assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+      attachmentRunContext = runContext;
+    }
+
     return withAuth({
       action: async (baseUrl, _resourceInfo, accessToken) => {
         let fileToUpload: {
@@ -872,19 +883,11 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           contentType: string;
         };
 
-        if (attachment.type === "conversation_file") {
-          if (!agentLoopContext) {
-            return new Err(
-              new MCPError(
-                "Conversation context required for conversation file attachments"
-              )
-            );
-          }
-
+        if (attachment.type === "conversation_file" && attachmentRunContext) {
           const fileResult = await getFileFromConversationAttachment(
             auth,
             attachment.fileId,
-            agentLoopContext
+            attachmentRunContext
           );
 
           if (fileResult.isErr()) {

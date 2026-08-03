@@ -1,5 +1,4 @@
 import { isRunAgentQueryProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ActionGeneratedDBFileType } from "@app/lib/actions/types";
 import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -20,7 +19,10 @@ import {
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import { isInteractiveContentType } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  isSandboxFunctionContentType,
+} from "@app/types/files";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
@@ -89,12 +91,15 @@ export function addBackwardCompatibleConversationWithoutContentFields(
   };
 }
 
-export function filterOutInteractiveContentFileContentTypes(
+function filterOutInternalFileContentTypes(
   c: ContentFragmentType[]
 ): ContentFragmentPublicType[] {
   const result: ContentFragmentPublicType[] = [];
   for (const m of c) {
-    if (isInteractiveContentType(m.contentType)) {
+    if (
+      isInteractiveContentType(m.contentType) ||
+      isSandboxFunctionContentType(m.contentType)
+    ) {
       continue;
     }
     result.push({
@@ -125,7 +130,7 @@ export function addBackwardCompatibleConversationFields(
       } else if (
         isArrayOf<MessageType, ContentFragmentType>(c, isContentFragmentType)
       ) {
-        return filterOutInteractiveContentFileContentTypes(c);
+        return filterOutInternalFileContentTypes(c);
       } else if (isCompactionMessageType(c[0])) {
         // TODO(compaction): expose compaction messages in the public API.
         return [];
@@ -164,17 +169,8 @@ function getRawContents(msg: AgentMessageType): Array<{
 export function addBackwardCompatibleAgentMessageFields(
   agentMessage: AgentMessageType
 ): AgentMessagePublicType {
-  // File path files have no public file resource. Omit them from each action's generatedFiles.
-  const publicActions = agentMessage.actions.map((action) => ({
-    ...action,
-    generatedFiles: action.generatedFiles.filter(
-      (f): f is ActionGeneratedDBFileType => f.fileId !== null
-    ),
-  }));
-
   return {
     ...agentMessage,
-    actions: publicActions,
     // Map "gracefully_stopped" to "succeeded" and "interrupted" to "cancelled" for the public API.
     status:
       agentMessage.status === "gracefully_stopped"
@@ -188,9 +184,8 @@ export function addBackwardCompatibleAgentMessageFields(
 
 /**
  * Transforms an internal agent message stream event into the public
- * `AgentMessageEventType` exposed by the v1 SSE endpoint. Filters out
- * file-path generated files (no public file resource) and enriches
- * `run_agent` tool notifications with child conversation URLs.
+ * `AgentMessageEventType` exposed by the v1 SSE endpoint. Enriches `run_agent`
+ * tool notifications with child conversation URLs.
  */
 export function toPublicAgentMessageEvent(
   auth: Authenticator,
@@ -220,12 +215,6 @@ export function toPublicAgentMessageEvent(
       eventId: event.eventId,
       data: {
         ...event.data,
-        action: {
-          ...event.data.action,
-          generatedFiles: event.data.action.generatedFiles.filter(
-            (f): f is ActionGeneratedDBFileType => f.fileId !== null
-          ),
-        },
         notification: {
           ...event.data.notification,
           // For backward compatibility, we need to move the _meta.data to the root level.
@@ -233,24 +222,6 @@ export function toPublicAgentMessageEvent(
             label,
             output,
           },
-        },
-      },
-    };
-  }
-
-  if (
-    event.data.type === "agent_action_success" ||
-    event.data.type === "tool_params"
-  ) {
-    return {
-      eventId: event.eventId,
-      data: {
-        ...event.data,
-        action: {
-          ...event.data.action,
-          generatedFiles: event.data.action.generatedFiles.filter(
-            (f): f is ActionGeneratedDBFileType => f.fileId !== null
-          ),
         },
       },
     };

@@ -3,9 +3,11 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { FetchConversationMessagesResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
-import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
-import type { FetchConversationMessageActionResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/actions/[aId]";
+import type {
+  FetchConversationMessageActionResponse,
+  FetchConversationMessageResponse,
+  FetchConversationMessagesResponse,
+} from "@app/types/api/assistant/messages";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 

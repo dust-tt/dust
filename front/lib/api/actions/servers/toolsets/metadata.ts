@@ -1,32 +1,37 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
-  list: {
+export const TOOLSETS_TOOLS_METADATA = [
+  {
+    name: "list",
     description:
       "List the available toolsets with their names and descriptions. This is like using 'ls' in Unix.",
     schema: {},
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Listing tools",
       done: "List tools",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  enable: {
+  {
+    name: "enable",
     description: "Enable a toolset for this conversation.",
     schema: {
       toolsetId: z.string().describe("The ID of the toolset to enable."),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Enabling tool",
       done: "Enabled tool",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-});
+] as const;
 
 export const TOOLSETS_SERVER = {
   serverInfo: {
@@ -36,15 +41,6 @@ export const TOOLSETS_SERVER = {
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
-    instructions: null,
   },
-  tools: Object.values(TOOLSETS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(TOOLSETS_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: TOOLSETS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

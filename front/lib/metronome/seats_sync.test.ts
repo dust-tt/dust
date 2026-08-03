@@ -13,6 +13,13 @@ const {
   mockGetActiveMemberships,
   mockGetScheduledFutureMemberships,
   mockFetchSeatLimits,
+  mockListPerUserCreditUserIds,
+  mockListPerUserCreditBalances,
+  mockAddPerUserCredit,
+  mockRevokePerUserCustomerCredit,
+  mockUpsertPerUserCreditAlerts,
+  mockClearPerUserCreditAlerts,
+  mockListSeatBalances,
 } = vi.hoisted(() => ({
   mockGetProductSeatTypes: vi.fn(),
   mockUpdateSubscriptionQuantity: vi.fn(),
@@ -21,6 +28,13 @@ const {
   mockGetActiveMemberships: vi.fn(),
   mockGetScheduledFutureMemberships: vi.fn(),
   mockFetchSeatLimits: vi.fn(),
+  mockListPerUserCreditUserIds: vi.fn(),
+  mockListPerUserCreditBalances: vi.fn(),
+  mockAddPerUserCredit: vi.fn(),
+  mockRevokePerUserCustomerCredit: vi.fn(),
+  mockUpsertPerUserCreditAlerts: vi.fn(),
+  mockClearPerUserCreditAlerts: vi.fn(),
+  mockListSeatBalances: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/client", () => ({
@@ -28,7 +42,21 @@ vi.mock("@app/lib/metronome/client", () => ({
   updateSubscriptionQuantity: mockUpdateSubscriptionQuantity,
   updateSubscriptionSeats: mockUpdateSubscriptionSeats,
   getMetronomeSubscriptionSeatState: mockGetSeatState,
-  getMetronomeSubscriptionAssignedSeatIds: vi.fn(),
+  listCustomerPerUserCreditUserIds: mockListPerUserCreditUserIds,
+  listCustomerPerUserCreditBalances: mockListPerUserCreditBalances,
+  addPerUserCreditToCustomer: mockAddPerUserCredit,
+  revokePerUserCustomerCredit: mockRevokePerUserCustomerCredit,
+  // Seat-credit transfer path (no-op in these tests: empty balances ⇒ no
+  // transfers ⇒ the segment-find / adjust helpers are never reached).
+  listMetronomeSeatBalances: mockListSeatBalances,
+  findSeatCreditSegmentForPeriod: vi.fn(),
+  getMetronomeSeatActiveSince: vi.fn(),
+  adjustSeatCreditBalances: vi.fn(),
+}));
+
+vi.mock("@app/lib/metronome/alerts/per_user_credit_balance", () => ({
+  upsertPerUserCreditBalanceAlerts: mockUpsertPerUserCreditAlerts,
+  clearPerUserCreditBalanceAlerts: mockClearPerUserCreditAlerts,
 }));
 
 vi.mock("@app/lib/metronome/seat_types", async () => {
@@ -46,8 +74,14 @@ vi.mock("@app/lib/resources/membership_resource", () => ({
 }));
 
 vi.mock("@app/lib/resources/workspace_seat_limit_resource", () => ({
-  WorkspaceSeatLimitResource: { fetchByWorkspace: mockFetchSeatLimits },
+  WorkspaceSeatLimitResource: { fetchScheduleByWorkspace: mockFetchSeatLimits },
 }));
+
+// Build the schedule map value for a single always-active limit (no scheduled
+// changes): one open-ended segment starting in the distant past.
+function activeSchedule(minSeats: number, maxSeats: number | null = null) {
+  return [{ minSeats, maxSeats, startAt: new Date(0), endAt: null }];
+}
 
 // Cache wrappers run at import time and (for invalidate) in `syncSeatCount`'s
 // finally block — stub them so the test never touches Redis.
@@ -81,6 +115,17 @@ describe("syncSeatCount min clamping", () => {
     mockGetScheduledFutureMemberships.mockResolvedValue([]);
     mockUpdateSubscriptionQuantity.mockResolvedValue(new Ok(undefined));
     mockUpdateSubscriptionSeats.mockResolvedValue(new Ok(undefined));
+    // Free-seat credit grant/revoke runs on every syncSeatCount; default to
+    // "no existing credits" so the clamping tests (no free seats) are no-ops.
+    mockListPerUserCreditUserIds.mockResolvedValue(new Ok(new Set()));
+    mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
+    mockAddPerUserCredit.mockResolvedValue(new Ok(null));
+    mockRevokePerUserCustomerCredit.mockResolvedValue(new Ok(undefined));
+    mockUpsertPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
+    mockClearPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
+    // No seat balances / assignments ⇒ the credit-transfer reconciliation
+    // finds nothing to move (the focus of these tests is seat-count sync).
+    mockListSeatBalances.mockResolvedValue(new Ok([]));
   });
 
   it("clamps a QUANTITY_ONLY count up to the configured minSeats", async () => {
@@ -92,13 +137,14 @@ describe("syncSeatCount min clamping", () => {
       total: 1,
     });
     mockFetchSeatLimits.mockResolvedValue(
-      new Map([["workspace", { minSeats: 5 }]])
+      new Map([["workspace", activeSchedule(5)]])
     );
 
     const result = await syncSeatCount({
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_ws", productId: "ws-product", mode: "QUANTITY_ONLY" },
       ]),
@@ -124,13 +170,14 @@ describe("syncSeatCount min clamping", () => {
       total: 3,
     });
     mockFetchSeatLimits.mockResolvedValue(
-      new Map([["workspace", { minSeats: 2 }]])
+      new Map([["workspace", activeSchedule(2)]])
     );
 
     await syncSeatCount({
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_ws", productId: "ws-product", mode: "QUANTITY_ONLY" },
       ]),
@@ -149,7 +196,9 @@ describe("syncSeatCount min clamping", () => {
       memberships: [membership("u1", "pro")],
       total: 1,
     });
-    mockFetchSeatLimits.mockResolvedValue(new Map([["pro", { minSeats: 3 }]]));
+    mockFetchSeatLimits.mockResolvedValue(
+      new Map([["pro", activeSchedule(3)]])
+    );
     // No seats currently assigned in Metronome.
     mockGetSeatState.mockResolvedValue(
       new Ok({ assignedSeatIds: [], unassignedSeats: 0 })
@@ -159,6 +208,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_pro", productId: "pro-product", mode: "SEAT_BASED" },
       ]),
@@ -188,7 +238,9 @@ describe("syncSeatCount min clamping", () => {
       ],
       total: 4,
     });
-    mockFetchSeatLimits.mockResolvedValue(new Map([["pro", { minSeats: 3 }]]));
+    mockFetchSeatLimits.mockResolvedValue(
+      new Map([["pro", activeSchedule(3)]])
+    );
     // Previously: 1 assigned + 2 unassigned (floor padding). Now 4 real users.
     mockGetSeatState.mockResolvedValue(
       new Ok({ assignedSeatIds: ["u1"], unassignedSeats: 2 })
@@ -198,6 +250,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_pro", productId: "pro-product", mode: "SEAT_BASED" },
       ]),
@@ -228,7 +281,7 @@ describe("syncSeatCount min clamping", () => {
       total: 1,
     });
     mockFetchSeatLimits.mockResolvedValue(
-      new Map([["pro", { minSeats: 200 }]])
+      new Map([["pro", activeSchedule(200)]])
     );
     // 200 floor already provisioned as unassigned; user not yet assigned.
     mockGetSeatState.mockResolvedValue(
@@ -239,6 +292,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_pro", productId: "pro-product", mode: "SEAT_BASED" },
       ]),
@@ -266,7 +320,7 @@ describe("syncSeatCount min clamping", () => {
       total: 1,
     });
     mockFetchSeatLimits.mockResolvedValue(
-      new Map([["pro", { minSeats: 200 }]])
+      new Map([["pro", activeSchedule(200)]])
     );
     mockGetSeatState.mockResolvedValue(
       new Ok({ assignedSeatIds: ["u1"], unassignedSeats: 598 })
@@ -276,6 +330,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_pro", productId: "pro-product", mode: "SEAT_BASED" },
       ]),
@@ -289,6 +344,126 @@ describe("syncSeatCount min clamping", () => {
         removeSeatIds: [],
         addUnassignedSeats: 0,
         removeUnassignedSeats: 399,
+      })
+    );
+  });
+
+  it("sends now and future-dated quantities for a scheduled QUANTITY_ONLY commitment change", async () => {
+    const scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    mockGetProductSeatTypes.mockResolvedValue(
+      new Map([["ws-product", "workspace"]])
+    );
+    mockGetActiveMemberships.mockResolvedValue({
+      memberships: [membership("u1", "workspace")],
+      total: 1,
+    });
+    // Committed floor rises from 2 to 5 at `scheduledAt`.
+    mockFetchSeatLimits.mockResolvedValue(
+      new Map([
+        [
+          "workspace",
+          [
+            {
+              minSeats: 2,
+              maxSeats: null,
+              startAt: new Date(0),
+              endAt: scheduledAt,
+            },
+            { minSeats: 5, maxSeats: null, startAt: scheduledAt, endAt: null },
+          ],
+        ],
+      ])
+    );
+
+    await syncSeatCount({
+      metronomeCustomerId: "cus_1",
+      contractId: "con_1",
+      workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
+      contract: makeContract([
+        { id: "sub_ws", productId: "ws-product", mode: "QUANTITY_ONLY" },
+      ]),
+    });
+
+    // Now: floor 2 billed (1 real user).
+    expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith(
+      expect.objectContaining({ subscriptionId: "sub_ws", quantity: 2 })
+    );
+    // At the effective date: floor 5 billed, pinned to `scheduledAt`.
+    expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionId: "sub_ws",
+        quantity: 5,
+        startingAt: scheduledAt.toISOString(),
+      })
+    );
+  });
+
+  it("updates only unassigned seats at the effective date for a scheduled SEAT_BASED commitment change", async () => {
+    const scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    mockGetProductSeatTypes.mockResolvedValue(
+      new Map([["pro-product", "pro"]])
+    );
+    mockGetActiveMemberships.mockResolvedValue({
+      memberships: [membership("u1", "pro")],
+      total: 1,
+    });
+    // Committed floor rises from 3 to 5 at `scheduledAt`; membership unchanged.
+    mockFetchSeatLimits.mockResolvedValue(
+      new Map([
+        [
+          "pro",
+          [
+            {
+              minSeats: 3,
+              maxSeats: null,
+              startAt: new Date(0),
+              endAt: scheduledAt,
+            },
+            { minSeats: 5, maxSeats: null, startAt: scheduledAt, endAt: null },
+          ],
+        ],
+      ])
+    );
+    // "now" read: nothing assigned yet. Future read (covering `scheduledAt`)
+    // reflects the state after the "now" reconcile: u1 assigned + 2 unassigned.
+    mockGetSeatState
+      .mockResolvedValueOnce(
+        new Ok({ assignedSeatIds: [], unassignedSeats: 0 })
+      )
+      .mockResolvedValueOnce(
+        new Ok({ assignedSeatIds: ["u1"], unassignedSeats: 2 })
+      );
+
+    await syncSeatCount({
+      metronomeCustomerId: "cus_1",
+      contractId: "con_1",
+      workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
+      contract: makeContract([
+        { id: "sub_pro", productId: "pro-product", mode: "SEAT_BASED" },
+      ]),
+    });
+
+    // Now: assign u1 and pad to floor 3 (2 unassigned).
+    expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromSubscriptionId: "sub_pro",
+        addSeatIds: ["u1"],
+        addUnassignedSeats: 2,
+        removeUnassignedSeats: 0,
+      })
+    );
+    // At the effective date: membership unchanged — only unassigned seats grow to
+    // reach the new floor 5 (2 → 4), pinned to `scheduledAt`.
+    expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromSubscriptionId: "sub_pro",
+        addSeatIds: [],
+        removeSeatIds: [],
+        addUnassignedSeats: 2,
+        removeUnassignedSeats: 0,
+        startingAt: scheduledAt.toISOString(),
       })
     );
   });

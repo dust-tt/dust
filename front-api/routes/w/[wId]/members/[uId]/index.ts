@@ -15,9 +15,9 @@ import logger from "@app/logger/logger";
 import type {
   GetMemberResponseBody,
   PostMemberResponseBody,
-} from "@app/pages/api/w/[wId]/members/[uId]/index";
-import { isMembershipRoleType } from "@app/types/memberships";
+} from "@app/types/api/user";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { AssignableRoleSchema } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -41,6 +41,7 @@ const app = workspaceApp();
 app.route("/seat-type", seatType);
 app.route("/spend_limit", spendLimit);
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
@@ -103,7 +104,6 @@ app.post(
 
     const featureFlags = await getFeatureFlags(auth);
     const body = ctx.req.valid("json");
-    const isAdmin = auth.isAdmin();
 
     // Allow Dust Super User to force role for testing
     const allowForSuperUserTesting =
@@ -111,13 +111,12 @@ app.post(
       auth.isDustSuperUser() &&
       body.force === "true";
 
-    if (!isAdmin && !allowForSuperUserTesting) {
+    if (!auth.isManager() && !allowForSuperUserTesting) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can modify memberships.",
+          message: "You do not have permission to modify memberships.",
         },
       });
     }
@@ -129,6 +128,32 @@ app.post(
         api_error: {
           type: "workspace_user_not_found",
           message: "The user requested was not found.",
+        },
+      });
+    }
+
+    // Escalation guard: only those who can manage admins may assign the `admin`
+    // role or change the role of an existing admin.
+    const currentMembership =
+      await MembershipResource.getLatestMembershipOfUserInWorkspace({
+        user,
+        workspace: owner,
+      });
+    const targetIsAdmin =
+      currentMembership?.role === "admin" && !currentMembership.isRevoked();
+    const assigningAdmin = body.role === "admin";
+
+    if (
+      (targetIsAdmin || assigningAdmin) &&
+      !auth.isAdmin() &&
+      !allowForSuperUserTesting
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "You do not have permission to assign or modify the admin role.",
         },
       });
     }
@@ -172,17 +197,20 @@ app.post(
         }
       }
     } else {
-      const role = body.role;
-      if (!isMembershipRoleType(role)) {
+      // The deprecated `builder` role can no longer be assigned; it is granted only through the
+      // `dust-builders` provisioning group.
+      const roleParse = AssignableRoleSchema.safeParse(body.role);
+      if (!roleParse.success) {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { role: 'admin' | 'builder' | 'user' }.",
+              "The request body is invalid, expects { role: 'admin' | 'manager' | 'user' }.",
           },
         });
       }
+      const role = roleParse.data;
 
       // Check if this is an admin trying to change their own role and they are the sole admin
       const currentUser = auth.user();
@@ -273,7 +301,7 @@ app.post(
 
     switch (body.role) {
       case "admin":
-      case "builder":
+      case "manager":
       case "user":
         w.role = body.role;
         break;

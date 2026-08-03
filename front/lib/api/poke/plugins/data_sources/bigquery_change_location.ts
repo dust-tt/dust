@@ -33,6 +33,7 @@ export const bigqueryChangeLocationPlugin = createPlugin({
           "Confirm you want to update the connector to the selected location.",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_, dataSource) => {
     return !!dataSource && dataSource.connectorProvider === "bigquery";

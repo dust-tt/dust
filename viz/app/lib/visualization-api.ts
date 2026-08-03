@@ -1,3 +1,4 @@
+import type { UserIdentityState } from "@viz/app/types";
 import type {
   SupportedEventType,
   SupportedMessage,
@@ -8,6 +9,16 @@ import type {
  * Implementation varies by wrapper (cache, RPC, etc.).
  */
 export interface VisualizationDataAPI {
+  /**
+   * Call a sandbox function.
+   */
+  callFunction(functionId: string, input?: unknown): Promise<unknown>;
+
+  /**
+   * Return the user authenticated in the workspace owning this Frame.
+   */
+  getUserIdentity(): Promise<UserIdentityState>;
+
   /**
    * Fetch a file by ID.
    */
@@ -23,6 +34,7 @@ export type EditTextFn = (params: {
   newText: string;
   oldText: string;
   targetFileId?: string;
+  source?: string;
 }) => Promise<{ success: boolean; error?: string }>;
 
 export interface VisualizationUIAPI {

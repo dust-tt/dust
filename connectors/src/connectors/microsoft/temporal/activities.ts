@@ -12,11 +12,14 @@ import {
   getFullDeltaResults,
   getItem,
   getParentReferenceInternalId,
+  getSensitivityLabels,
   getSiteAPIPath,
   getSites,
   itemToMicrosoftNode,
+  searchDriveItems,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import {
+  DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS,
   type DriveItem,
   MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED,
   type MicrosoftNode,
@@ -33,16 +36,17 @@ import {
   isItemNotFoundError,
   isJSONParsingError,
   isMalformedDriveError,
+  isSiteNotFoundError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import {
+  computeDisallowedLabels,
   deleteFile,
   deleteFolder,
   getParents,
   isAlreadySeenItem,
   recursiveNodeDeletion,
-  removeFileBasedOnSensitivityLabel,
   shouldSyncFileBasedOnSensitivityLabels,
   syncOneFile,
   updateDescendantsParentsInCore,
@@ -56,6 +60,7 @@ import {
   getAdaptiveConcurrency,
 } from "@connectors/lib/async_utils";
 import {
+  deleteDataSourceDocument,
   MAX_FILE_SIZE_TO_DOWNLOAD,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
@@ -194,6 +199,9 @@ async function readDeltaFromGCSStream(
 const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;
 
+// Page size for scanning sensitivity-label-skipped nodes during reconciliation.
+const HIDDEN_FILES_PAGE_SIZE = 50;
+
 export async function getRootNodesToSync(
   connectorId: ModelId
 ): Promise<string[]> {
@@ -221,82 +229,93 @@ export async function getRootNodesToSyncFromResources(
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
   const rootFolderAndDriveNodes = removeNulls(
-    await Promise.all(
-      rootResources
-        .filter(
-          (resource) =>
-            resource.nodeType === "folder" || resource.nodeType === "drive"
-        )
-        .map(async (resource) => {
-          try {
-            const item = await getItem(
-              logger,
-              client,
-              typeAndPathFromInternalId(resource.internalId).itemAPIPath
-            );
+    await concurrentExecutor(
+      rootResources.filter(
+        (resource) =>
+          resource.nodeType === "folder" || resource.nodeType === "drive"
+      ),
+      async (resource) => {
+        try {
+          const item = await getItem(
+            logger,
+            client,
+            typeAndPathFromInternalId(resource.internalId).itemAPIPath
+          );
 
-            const node = itemToMicrosoftNode(
-              resource.nodeType as "folder" | "drive",
-              item
-            );
-            return {
-              ...node,
-              name: node.name,
-            };
-          } catch (error) {
-            if (error instanceof GraphError && error.statusCode === 404) {
-              return null;
-            }
-            if (isAccessBlockedError(error)) {
-              logger.warn(
-                {
-                  connectorId,
-                  id: resource.internalId,
-                  error: error.message,
-                },
-                "Root resource access blocked by administrator, skipping"
-              );
-              return null;
-            }
-            if (isGeneralExceptionError(error)) {
-              logger.warn(
-                {
-                  connectorId,
-                  internalId: resource.internalId,
-                  errorCode: error.code,
-                  errorMessage: error.message,
-                },
-                "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
-              );
-              return null;
-            }
-            if (isBillingPolicyError(error)) {
-              logger.warn(
-                {
-                  connectorId,
-                  internalId: resource.internalId,
-                  error: error.message,
-                },
-                "Billing policy error from Microsoft, skipping root resource"
-              );
-              return null;
-            }
-            if (error instanceof ExternalOAuthTokenError) {
-              // Do not throw immediately, the token may still be valid for other roots.
-              oauthTokenErrors.push(error);
-              return null;
-            }
-            logger.error(
+          const node = itemToMicrosoftNode(
+            resource.nodeType as "folder" | "drive",
+            item
+          );
+          return {
+            ...node,
+            name: node.name,
+          };
+        } catch (error) {
+          if (
+            (error instanceof GraphError && error.statusCode === 404) ||
+            isSiteNotFoundError(error)
+          ) {
+            logger.warn(
               {
                 connectorId,
-                error,
-                id: resource.internalId,
+                internalId: resource.internalId,
+                error: normalizeError(error).message,
               },
-              "Failed to get item"
+              "Root resource not found, skipping"
             );
-            throw error;
+            return null;
           }
-        })
+          if (isAccessBlockedError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                id: resource.internalId,
+                error: error.message,
+              },
+              "Root resource access blocked by administrator, skipping"
+            );
+            return null;
+          }
+          if (isGeneralExceptionError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                internalId: resource.internalId,
+                errorCode: error.code,
+                errorMessage: error.message,
+              },
+              "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+            );
+            return null;
+          }
+          if (isBillingPolicyError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                internalId: resource.internalId,
+                error: error.message,
+              },
+              "Billing policy error from Microsoft, skipping root resource"
+            );
+            return null;
+          }
+          if (error instanceof ExternalOAuthTokenError) {
+            // Do not throw immediately, the token may still be valid for other roots.
+            oauthTokenErrors.push(error);
+            return null;
+          }
+          logger.error(
+            {
+              connectorId,
+              error,
+              id: resource.internalId,
+            },
+            "Failed to get item"
+          );
+          throw error;
+        }
+      },
+      { concurrency: 5 }
     )
   );
 
@@ -328,6 +347,11 @@ export async function getRootNodesToSyncFromResources(
           { error: error.message },
           "Billing policy error from Microsoft, skipping sites-root"
         );
+      } else if (isSiteNotFoundError(error)) {
+        logger.warn(
+          { error: normalizeError(error).message },
+          "SharePoint site target not found, skipping sites-root"
+        );
       } else {
         throw error;
       }
@@ -350,8 +374,11 @@ export async function getRootNodesToSyncFromResources(
               nextLink
             );
           } catch (error) {
-            if (isItemNotFoundError(error)) {
-              logger.warn({ sitePath }, "Site not found, skipping drives");
+            if (isItemNotFoundError(error) || isSiteNotFoundError(error)) {
+              logger.warn(
+                { sitePath, error: normalizeError(error).message },
+                "Site not found, skipping drives"
+              );
               return { results: [] };
             }
             if (isAccessBlockedError(error)) {
@@ -571,7 +598,11 @@ async function isParentAlreadyInNodes({
   return false;
 }
 
-export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
+export async function markNodeAsSeen(
+  connectorId: ModelId,
+  internalId: string,
+  startSyncTs?: number
+) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -596,9 +627,41 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
     return;
   }
 
-  // if node was updated more recently than this sync, we don't need to mark it
-  if (node.lastSeenTs && node.lastSeenTs < new Date()) {
-    await node.update({ lastSeenTs: new Date() });
+  // No need to mark nodes updated more recently than this sync.
+  if (
+    startSyncTs !== undefined &&
+    node.lastSeenTs &&
+    node.lastSeenTs.getTime() > startSyncTs
+  ) {
+    return;
+  }
+
+  await node.update({ lastSeenTs: new Date() });
+}
+
+// A 404 returned while listing the children of a drive/folder is ambiguous: the
+// node may have been genuinely deleted upstream, or Microsoft Graph may have
+// returned a transient itemNotFound on the /children enumeration (a documented,
+// intermittent behavior). This confirms which case we are in by doing a
+// lightweight direct GET on the node itself: returns true if it still exists,
+// false if it is genuinely gone. Any other error is rethrown.
+async function microsoftNodeStillExists(
+  logger: LoggerInterface,
+  client: Client,
+  internalId: string
+): Promise<boolean> {
+  try {
+    await getItem(
+      logger,
+      client,
+      typeAndPathFromInternalId(internalId).itemAPIPath + "?$select=id"
+    );
+    return true;
+  } catch (error) {
+    if (isItemNotFoundError(error)) {
+      return false;
+    }
+    throw error;
   }
 }
 
@@ -668,6 +731,7 @@ export async function syncFiles({
   );
   const client = await getMicrosoftClient(connector.connectionId);
 
+  let childrenListed = false;
   try {
     const childrenResult = await getFilesAndFolders(
       logger,
@@ -676,6 +740,7 @@ export async function syncFiles({
       nextPageLink,
       (providerConfig.allowedSensitivityLabels ?? []).length > 0
     );
+    childrenListed = true;
 
     const children = childrenResult.results;
 
@@ -705,6 +770,7 @@ export async function syncFiles({
           file: child,
           parentInternalId,
           startSyncTs,
+          skipMissingFile: true,
           heartbeat,
         }),
       { concurrency }
@@ -826,25 +892,80 @@ export async function syncFiles({
         nextLink: undefined,
       };
     }
+    // The hosting SharePoint site is gone ("Target '<tenant>.sharepoint.com' is
+    // not found."): the resource can no longer be synced, so skip it instead of
+    // throwing, which would otherwise wedge the workflow in an infinite retry
+    // loop.
+    // The childrenListed gate keeps this catch at the parent-listing boundary:
+    // a child file disappearing later during syncOneFile is local to that file
+    // and should not short-circuit the whole page.
+    if (!childrenListed && isSiteNotFoundError(e)) {
+      logger.warn(
+        {
+          connectorId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          parent,
+          error: e.message,
+        },
+        "SharePoint site not found, skipping syncFiles"
+      );
+      return {
+        count: 0,
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
+
+    // A bare 404 while listing children is ambiguous: the drive/folder may have
+    // been deleted upstream, or Microsoft Graph may have returned a transient
+    // itemNotFound on the /children enumeration. Skipping unconditionally marks
+    // the node as seen and silently drops its whole subtree, with no recovery on
+    // re-sync. So we confirm the parent is genuinely gone before skipping: if it
+    // still exists, the 404 was transient and we rethrow to let Temporal retry
+    // rather than lose the subtree.
+    if (!childrenListed && e instanceof GraphError && e.statusCode === 404) {
+      if (await microsoftNodeStillExists(logger, client, parent.internalId)) {
+        logger.warn(
+          {
+            connectorId,
+            dataSourceId: dataSourceConfig.dataSourceId,
+            parent,
+            error: e.message,
+          },
+          "Transient 404 while listing children but parent still exists, retrying syncFiles"
+        );
+        throw e;
+      }
+
+      logger.warn(
+        {
+          connectorId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          parent,
+          error: e.message,
+        },
+        "Resource not found (404) from Microsoft, skipping syncFiles"
+      );
+      return {
+        count: 0,
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
 
     throw e;
   }
 }
 
-export async function reconcileSensitivityLabelsForParent({
-  connectorId,
-  parentInternalId,
-  startSyncTs,
-  nextPageLink,
-}: {
-  connectorId: ModelId;
-  parentInternalId: string;
-  startSyncTs: number;
-  nextPageLink?: string;
-}): Promise<{
-  childNodes: string[];
-  nextLink?: string;
-}> {
+/**
+ * Returns the tenant sensitivity labels that are NOT in the connector's allowed
+ * set. This drives the Search queries that find already-synced files which
+ * should now be excluded. When no labels are configured (filtering disabled) the
+ * set is empty — we never exclude anything in that case.
+ */
+export async function getDisallowedSensitivityLabelGuids(
+  connectorId: ModelId
+): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -859,121 +980,203 @@ export async function reconcileSensitivityLabelsForParent({
   }
 
   const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  if (allowedLabels.length === 0) {
+    return [];
+  }
+
   const client = await getMicrosoftClient(connector.connectionId);
+  const tenantLabels = await getSensitivityLabels(logger, client);
 
-  let childrenResult: {
-    results: DriveItem[];
-    nextLink?: string;
-  };
-  try {
-    childrenResult = await getFilesAndFolders(
-      logger,
-      client,
-      parentInternalId,
-      nextPageLink,
-      allowedLabels.length > 0
-    );
-  } catch (error) {
-    if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
-      logger.info(
-        {
-          connectorId,
-          parentInternalId,
-          error: normalizeError(error).message,
-        },
-        "[ReconcileSensitivityLabels] Parent not found or malformed, skipping subtree"
-      );
-      return {
-        childNodes: [],
-        nextLink: undefined,
-      };
-    }
-    throw error;
-  }
-
-  const mimeTypesToSync = await getMimeTypesToSync({
-    pdfEnabled: providerConfig.pdfEnabled || false,
-    csvEnabled: providerConfig.csvEnabled || false,
+  const disallowedLabels = computeDisallowedLabels({
+    tenantLabels,
+    allowedLabels,
   });
-
-  let removedCount = 0;
-  let addedCount = 0;
-
-  for (const child of childrenResult.results) {
-    await heartbeat();
-
-    if (!child.file) {
-      continue;
-    }
-
-    if (!child.parentReference) {
-      throw new Error(`Unexpected: parent reference missing: ${child}`);
-    }
-
-    const mimeType = child.file.mimeType;
-    if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
-      continue;
-    }
-
-    const internalId = getDriveItemInternalId(child);
-    const fileResource = await MicrosoftNodeResource.fetchByInternalId(
-      connectorId,
-      internalId
-    );
-
-    const shouldSync = shouldSyncFileBasedOnSensitivityLabels({
-      fields: child.listItem?.fields,
-      allowedLabels,
-    });
-
-    const isHiddenBySensitivityLabel =
-      fileResource?.skipReason ===
-      MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED;
-
-    if (!shouldSync) {
-      await removeFileBasedOnSensitivityLabel({
-        connectorId,
-        dataSourceConfig,
-        file: child,
-        fileResource,
-        parentInternalId,
-        logger,
-      });
-      removedCount++;
-    } else if (!fileResource || isHiddenBySensitivityLabel) {
-      const didSync = await syncOneFile({
-        connectorId,
-        dataSourceConfig,
-        providerConfig,
-        file: child,
-        parentInternalId: getParentReferenceInternalId(child.parentReference),
-        startSyncTs,
-        heartbeat,
-      });
-      if (didSync) {
-        addedCount++;
-      }
-    }
-  }
 
   logger.info(
     {
       connectorId,
-      parentInternalId,
-      removedCount,
-      addedCount,
+      allowedCount: allowedLabels.length,
+      tenantCount: tenantLabels.length,
+      disallowedCount: disallowedLabels.length,
     },
-    "[ReconcileSensitivityLabels] Parent page reconciled"
+    "[SensitivityLabels] Computed disallowed label guids"
   );
 
-  const childNodes = childrenResult.results
-    .filter((item) => item.folder)
-    .map((item) => getDriveInternalIdFromItem(item));
+  return disallowedLabels;
+}
+
+export async function searchFilesByLabel({
+  connectorId,
+  labelGuid,
+  from,
+}: {
+  connectorId: ModelId;
+  labelGuid: string;
+  from: number;
+}): Promise<{ internalIds: string[]; nextFrom: number | null }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+  const client = await getMicrosoftClient(connector.connectionId);
+
+  await heartbeat();
+
+  return searchDriveItems(logger, client, {
+    queryString: `InformationProtectionLabelId:${labelGuid}`,
+    from,
+  });
+}
+
+export async function removeSensitivityLabelFilesActivity({
+  connectorId,
+  internalIds,
+}: {
+  connectorId: ModelId;
+  internalIds: string[];
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const nodeResources = await MicrosoftNodeResource.fetchByInternalIds(
+    connectorId,
+    internalIds
+  );
+
+  const nodeByInternalId = new Map(nodeResources.map((n) => [n.internalId, n]));
+
+  // Only act on files we have synced that are not already hidden.
+  const toRemove = internalIds.filter((id) => {
+    const node = nodeByInternalId.get(id);
+    return (
+      node !== undefined &&
+      node.skipReason !== MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED
+    );
+  });
+
+  if (toRemove.length === 0) {
+    return;
+  }
+
+  logger.info(
+    { connectorId, count: toRemove.length },
+    "[RemoveSensitivityLabelFiles] Marking files as label-skipped"
+  );
+
+  await MicrosoftNodeResource.bulkMarkAsSensitivityLabelSkipped(
+    connectorId,
+    toRemove
+  );
+
+  for (const internalId of toRemove) {
+    await heartbeat();
+    await deleteDataSourceDocument(dataSourceConfig, internalId);
+  }
+}
+
+export async function reconcileHiddenFilesActivity({
+  connectorId,
+  idCursor,
+}: {
+  connectorId: ModelId;
+  idCursor: number;
+}): Promise<{ nextCursor: number | null }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const providerConfig =
+    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
+  if (!providerConfig) {
+    throw new Error(`Configuration for connector ${connectorId} not found`);
+  }
+
+  const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
+  const client = await getMicrosoftClient(connector.connectionId);
+  const startSyncTs = new Date().getTime();
+
+  const hiddenFiles =
+    await MicrosoftNodeResource.fetchSensitivityLabelSkippedByPaginatedIds({
+      connectorId,
+      pageSize: HIDDEN_FILES_PAGE_SIZE,
+      idCursor,
+    });
+
+  if (hiddenFiles.length === 0) {
+    return { nextCursor: null };
+  }
+
+  const lastNode = hiddenFiles[hiddenFiles.length - 1];
+  const nextCursor = lastNode ? lastNode.id + 1 : null;
+
+  for (const node of hiddenFiles) {
+    await heartbeat();
+
+    const { itemAPIPath } = typeAndPathFromInternalId(node.internalId);
+
+    let file: DriveItem;
+    try {
+      file = await getItem<DriveItem>(
+        logger,
+        client,
+        `${itemAPIPath}?${DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS}`
+      );
+    } catch (error) {
+      if (isItemNotFoundError(error)) {
+        logger.info(
+          { connectorId, internalId: node.internalId },
+          "[ReconcileHiddenFiles] File not found in Graph API, leaving hidden"
+        );
+        continue;
+      }
+      throw error;
+    }
+
+    if (!file.parentReference) {
+      continue;
+    }
+
+    const shouldSync = shouldSyncFileBasedOnSensitivityLabels({
+      fields: file.listItem?.fields,
+      allowedLabels,
+    });
+
+    if (!shouldSync) {
+      continue;
+    }
+
+    logger.info(
+      { connectorId, internalId: node.internalId },
+      "[ReconcileHiddenFiles] File now allowed, re-syncing"
+    );
+
+    const parentInternalId = getParentReferenceInternalId(file.parentReference);
+
+    await syncOneFile({
+      connectorId,
+      dataSourceConfig,
+      providerConfig,
+      file,
+      parentInternalId,
+      startSyncTs,
+      heartbeat,
+    });
+  }
 
   return {
-    childNodes,
-    nextLink: childrenResult.nextLink,
+    nextCursor: hiddenFiles.length < HIDDEN_FILES_PAGE_SIZE ? null : nextCursor,
   };
 }
 
@@ -1098,7 +1301,9 @@ export async function syncDeltaForRootNodesInDrive({
     }
     throw error;
   }
-  const uniqueChangedItems = removeAllButLastOccurences(results);
+  // getFullDeltaResults already dedups by id (last write wins), so no extra
+  // pass is needed here; avoid an extra full copy of the delta set.
+  const uniqueChangedItems = results;
 
   const sortedChangedItems: DriveItem[] = [];
   const containsWholeDrive = rootNodeIds.some(
@@ -1468,8 +1673,10 @@ export async function fetchDeltaForRootNodesInDrive({
   // Upload the delta data to GCS
   const file = getDeltaSyncBucket().file(gcsFilePath);
 
-  // Process changes in batches of 1000
-  const uniqueChangedItems = removeAllButLastOccurences(results);
+  // Process changes in batches of 1000.
+  // getFullDeltaResults already dedups by id (last write wins), so no extra
+  // pass is needed here; avoid an extra full copy of the delta set.
+  const uniqueChangedItems = results;
   const sortedChangedItems: DriveItem[] = [];
   const containsWholeDrive = rootNodeIds.some(
     (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
@@ -1623,28 +1830,6 @@ export async function cleanupDeltaGCSFile({
 }
 
 /**
- *  As per recommendation, remove all but the last occurences of the same
- *  driveItem in the list
- */
-function removeAllButLastOccurences(deltaList: DriveItem[]) {
-  const uniqueDeltas = new Set<string>();
-  const resultList = [];
-  for (const driveItem of deltaList.reverse()) {
-    if (!driveItem.id) {
-      throw new Error(`DriveItem id is missing: ${driveItem}`);
-    }
-
-    if (uniqueDeltas.has(driveItem.id)) {
-      continue;
-    }
-    uniqueDeltas.add(driveItem.id);
-    resultList.push(driveItem);
-  }
-
-  return resultList;
-}
-
-/**
  * Order items as follows:
  * - first the node in the changedList matching rootid, or the drive root folder if no rootId is specified
  * - then those whose parentInternalId is in in the list above;
@@ -1774,6 +1959,23 @@ async function getDeltaData({
       // Return empty results with current deltaLink so we retry next cycle.
       return { results: [], deltaLink: node.deltaLink };
     }
+    // A 404 means the delta-synced drive/folder was deleted upstream ("404 FILE
+    // NOT FOUND"), or the hosting SharePoint site is gone ("Target
+    // '<tenant>.sharepoint.com' is not found."). Skip gracefully so we do not
+    // wedge the incremental sync in an infinite retry loop.
+    if (
+      (e instanceof GraphError && e.statusCode === 404) ||
+      isSiteNotFoundError(e)
+    ) {
+      logger.warn(
+        {
+          internalId: node.internalId,
+          error: e.message,
+        },
+        "Resource not found (404) from Microsoft, skipping delta sync for node"
+      );
+      return { results: [], deltaLink: node.deltaLink };
+    }
     throw e;
   }
 }
@@ -1898,7 +2100,7 @@ export async function microsoftGarbageCollectionActivity({
   // during the garbage collection and the caching below prevents this from
   // being detected
   const nodesToCheck = nodes
-    .filter((n) => n.lastSeenTs ?? 0 < startGarbageCollectionTs)
+    .filter((n) => (n.lastSeenTs?.getTime() ?? 0) < startGarbageCollectionTs)
     .filter(
       (n) =>
         n.nodeType === "drive" ||
@@ -2016,6 +2218,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_drive_not_found",
               });
@@ -2024,6 +2227,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_drive_removed_from_selection",
               });
@@ -2038,6 +2242,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_not_found",
               });
@@ -2047,6 +2252,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_marked_deleted",
               });
@@ -2064,6 +2270,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_outside_sync_scope",
               });
@@ -2088,6 +2295,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 internalId: node.internalId,
                 dataSourceConfig,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
               });
             }

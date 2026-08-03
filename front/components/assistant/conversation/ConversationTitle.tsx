@@ -9,21 +9,20 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
-  ActionGitBranchIcon,
-  ArrowLeftIcon,
+  ArrowLeft,
   Breadcrumbs,
+  type BreadcrumbsItem,
   Button,
   Chip,
-  FolderIcon,
-  MoreIcon,
+  DotsHorizontal,
+  Folder,
+  GitBranch01,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -35,7 +34,7 @@ const MOBILE_FORKED_TITLE_TRUNCATE_LENGTH = 35;
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
-  const { openPanel } = useConversationSidePanelContext();
+  const { togglePanel } = useConversationSidePanelContext();
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -44,7 +43,6 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
   });
-  const router = useAppRouter();
   const isMobile = useIsMobile();
 
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -74,13 +72,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
 
   if (spaceId && spaceInfo) {
     breadcrumbItems.push({
-      icon: isMobile ? undefined : ArrowLeftIcon,
+      icon: isMobile ? undefined : ArrowLeft,
       label: spaceInfo.name,
-      onClick: () => {
-        void router.push(getPodRoute(owner.sId, spaceId), undefined, {
-          shallow: true,
-        });
-      },
+      href: getPodRoute(owner.sId, spaceId),
     });
   }
 
@@ -117,7 +111,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
                   owner.sId,
                   forkedFrom.parentConversationId
                 )}
-                icon={ActionGitBranchIcon}
+                icon={GitBranch01}
                 label={isMobile ? tooltipLabel : chipLabel}
                 size="mini"
               />
@@ -131,7 +125,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   return (
     <AppLayoutTitle>
       <div
-        className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
+        className="grid h-full min-w-0 max-w-full grid-cols-[1fr_auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
         <div
@@ -172,9 +166,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           <Button
             size="sm"
             label={isMobile ? undefined : "Files"}
-            icon={FolderIcon}
+            icon={Folder}
             variant="ghost"
-            onClick={() => openPanel({ type: "files" })}
+            onClick={() => togglePanel({ type: "files" })}
           />
           <ConversationMenu
             activeConversationId={activeConversationId}
@@ -184,7 +178,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               <Button
                 size="sm"
                 variant="ghost"
-                icon={MoreIcon}
+                icon={DotsHorizontal}
                 aria-label="Conversation menu"
                 isLoading={isPendingAction}
                 disabled={

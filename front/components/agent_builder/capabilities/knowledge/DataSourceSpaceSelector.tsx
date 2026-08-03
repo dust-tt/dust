@@ -7,7 +7,7 @@ import type { SpaceType } from "@app/types/space";
 import { SPACE_KINDS } from "@app/types/space";
 import { useCallback, useContext, useMemo } from "react";
 
-export interface DataSourceSpaceSelectorProps {
+interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];
 }
 
@@ -85,7 +85,7 @@ export function DataSourceSpaceSelector({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="heading-sm bg-muted-background p-2 dark:bg-muted-background-night/50 text-foreground dark:text-foreground-night">
+      <div className="heading-sm bg-muted-background p-2 text-foreground">
         From spaces:
       </div>
       <DataSourceList
@@ -95,7 +95,7 @@ export function DataSourceSpaceSelector({
       />
       {projectItems.length > 0 && (
         <>
-          <div className="heading-sm bg-muted-background p-2 dark:bg-muted-background-night/50 text-foreground dark:text-foreground-night">
+          <div className="heading-sm bg-muted-background p-2 text-foreground">
             From Pods:
           </div>
           <DataSourceList

@@ -7,7 +7,7 @@ import type {
  * Model rendering of conversations.
  */
 
-export interface ModelMessageType {
+interface ModelMessageType {
   role: "action" | "agent" | "user" | "content_fragment" | "compaction";
   name: string;
   content: string;
@@ -56,6 +56,7 @@ export interface FunctionCallType {
   id: string;
   name: string;
   arguments: string; // Empty is not valid, should be at least "{}"
+  namespace?: string;
   metadata?: { thoughtSignature?: string };
 }
 

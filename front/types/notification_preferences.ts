@@ -95,7 +95,7 @@ export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
 } as const;
 
 export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread" as const;
-export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID =
+export const POD_ADDED_AS_MEMBER_TRIGGER_ID =
   "project-added-as-member" as const;
 export const AGENT_SUGGESTIONS_READY_TRIGGER_ID =
   "agent-suggestions-ready" as const;
@@ -118,12 +118,49 @@ export const PROGRAMMATIC_CAP_REACHED_TRIGGER_ID =
   "programmatic-cap-reached" as const;
 export const PROGRAMMATIC_CAP_REACHED_TAG = "programmatic-cap-reached" as const;
 
-export type WorkflowTriggerId =
-  | typeof CONVERSATION_UNREAD_TRIGGER_ID
-  | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
-  | typeof AGENT_SUGGESTIONS_READY_TRIGGER_ID
-  | typeof SKILL_SUGGESTIONS_READY_TRIGGER_ID
-  | typeof PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID
-  | typeof USER_AWU_CAP_REACHED_TRIGGER_ID
-  | typeof BALANCE_THRESHOLD_REACHED_TRIGGER_ID
-  | typeof PROGRAMMATIC_CAP_REACHED_TRIGGER_ID;
+export const UPGRADE_REQUEST_CREATED_TRIGGER_ID =
+  "upgrade-request-created" as const;
+export const UPGRADE_REQUEST_CREATED_TAG = "upgrade-request-created" as const;
+
+export const SEAT_AUTO_UPGRADED_TRIGGER_ID = "seat-auto-upgraded" as const;
+export const SEAT_AUTO_UPGRADED_TAG = "seat-auto-upgraded" as const;
+
+export const MANUAL_ACTION_REQUIRED_TRIGGER_ID =
+  "manual-action-required" as const;
+export const MANUAL_ACTION_REQUIRED_TAG = "manual-action-required" as const;
+
+export const ACTIVATION_NEW_CONVERSATION_TRIGGER_ID =
+  "activation-new-conversation" as const;
+
+export const SOUND_NOTIFICATION_OPTIONS = [
+  "Pluck",
+  "Wood",
+  "Skeumorphic",
+  "Game",
+  "Xylophone",
+  "Digital Synth",
+  "Horn",
+  "Bell",
+  "Kalimba",
+  "Marimba",
+  "Tuba",
+  "Wizz",
+] as const;
+
+type SoundNotificationType = (typeof SOUND_NOTIFICATION_OPTIONS)[number];
+
+export const DEFAULT_SOUND_NOTIFICATION: SoundNotificationType = "Pluck";
+
+export const isSoundNotificationType = (
+  value: unknown
+): value is SoundNotificationType => {
+  return (
+    typeof value === "string" &&
+    (SOUND_NOTIFICATION_OPTIONS as readonly string[]).includes(value)
+  );
+};
+
+export const SOUND_NOTIFICATION_METADATA_KEYS = {
+  enabled: "sound_notification_enabled",
+  sound: "sound_notification_type",
+} as const;

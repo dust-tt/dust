@@ -48,6 +48,14 @@ export function generateHTMLReport(report: EvalReport): string {
         <div class="card-value">${(summary.averageJudgeAgreement * 100).toFixed(0)}%</div>
         <div class="card-label">Judge Agreement</div>
       </div>
+      <div class="card">
+        <div class="card-value">${formatCredits(summary.totalCostCredits)}</div>
+        <div class="card-label">Total Cost (credits)</div>
+      </div>
+      <div class="card">
+        <div class="card-value">${formatCredits(summary.averageCostCredits)}</div>
+        <div class="card-label">Avg Cost / Message</div>
+      </div>
     </section>
 
     <section class="config-section">
@@ -109,6 +117,7 @@ export function generateHTMLReport(report: EvalReport): string {
             <th onclick="sortTable(2)">Score ↕</th>
             <th onclick="sortTable(3)">Agreement ↕</th>
             <th onclick="sortTable(4)">Duration ↕</th>
+            <th onclick="sortTable(5)">Cost ↕</th>
             <th>Details</th>
           </tr>
         </thead>
@@ -696,6 +705,13 @@ function getScripts(): string {
   `
 }
 
+function formatCredits(value: number | null): string {
+  if (typeof value !== "number") {
+    return "N/A"
+  }
+  return value.toFixed(2)
+}
+
 function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000)
   const minutes = Math.floor(seconds / 60)
@@ -770,6 +786,14 @@ function generateAgentStatCard(stat: EvalStatistics, maxScore: number): string {
         <div class="stat-item">
           <span class="stat-label">Judge Agreement:</span>
           <span class="stat-value">${(stat.averageJudgeAgreement * 100).toFixed(0)}%</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Avg Cost:</span>
+          <span class="stat-value">${formatCredits(stat.averageCostCredits)} cr</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Total Cost:</span>
+          <span class="stat-value">${formatCredits(stat.totalCostCredits)} cr</span>
         </div>
       </div>
     </div>
@@ -855,6 +879,7 @@ function generateResultRow(
         ${(result.judgeResult.agreement * 100).toFixed(0)}%
       </td>
       <td data-sort="${result.agentDurationMs}">${(result.agentDurationMs / 1000).toFixed(1)}s</td>
+      <td data-sort="${result.agentCostCredits ?? -1}">${formatCredits(result.agentCostCredits)}</td>
       <td>
         <button class="btn" onclick="openModal(${index})">View</button>
       </td>
@@ -934,6 +959,10 @@ function generateResultModals(results: EvalResult[], workspaceId: string): strin
               <div class="meta-item">
                 <span class="meta-label">Retries</span>
                 ${result.agentRetryCount}
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Cost (credits)</span>
+                ${formatCredits(result.agentCostCredits)}
               </div>
               <div class="meta-item">
                 <span class="meta-label">Conversation ID</span>

@@ -1,5 +1,3 @@
-import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
@@ -13,14 +11,20 @@ import config from "@app/lib/api/config";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import {
-  PASTED_CONTENT_MAX_CHARACTERS,
+  isPastedContentOverInlineLimit,
   TRUNCATED_SNIPPET_SIZE,
   TRUNCATED_SUFFIX,
-  TRUNCATED_TEXT_SIZE,
+  truncateLegacyPastedSnippet,
+  truncateSnippet,
 } from "@app/lib/api/files/snippet";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import {
+  getCachedPrivateUploadSignedUrl,
+  MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
+} from "@app/lib/file_storage/signed_url_cache";
+import { isPastedFile } from "@app/lib/files";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -36,6 +40,7 @@ import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type {
@@ -53,7 +58,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type {
@@ -65,7 +69,7 @@ import type {
 import { Op } from "sequelize";
 
 /** How to build the message envelope and resolve the file when rendering a DB fragment to {@link ContentFragmentType}. */
-export type RenderContentFragmentToTypeSource =
+type RenderContentFragmentToTypeSource =
   | {
       kind: "conversation_message";
       conversationId: string;
@@ -676,54 +680,11 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   /**
-   * Temporary workaround until we can call this method from the MessageResource.
-   * @deprecated use the destroy method.
+   * Content fragment GCS + DB cleanup lives in destroyConversation (one
+   * conversation-level GCS prefix delete, then batched DB deletes).
    */
   delete(): Promise<Result<undefined, Error>> {
     throw new Error("Method not implemented.");
-  }
-
-  async destroy(
-    {
-      conversationId,
-      messageId,
-      workspaceId,
-    }: { conversationId: string; messageId: string; workspaceId: string },
-    transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
-    try {
-      const { filePath: textFilePath } = fileAttachmentLocation({
-        conversationId,
-        workspaceId,
-        messageId,
-        contentFormat: "text",
-      });
-
-      const { filePath: rawFilePath } = fileAttachmentLocation({
-        conversationId,
-        workspaceId,
-        messageId,
-        contentFormat: "raw",
-      });
-
-      const privateUploadGcs = getPrivateUploadBucket();
-
-      // First, we delete the doc from the file storage.
-      await privateUploadGcs.delete(textFilePath, { ignoreNotFound: true });
-      await privateUploadGcs.delete(rawFilePath, { ignoreNotFound: true });
-
-      // Then, we delete the record from the DB.
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
   }
 
   async setSourceUrl(sourceUrl: string | null) {
@@ -806,6 +767,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           contentFragmentType: "file",
           expiredReason: fr.expiredReason,
           path: null,
+          processedPath: null,
+          skipDataSourceIndexing: false,
           skipFileProcessing: false,
           fileId: null,
           snippet: null,
@@ -864,6 +827,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let isInProjectContext = false;
       let hidden = true;
       let path: string | null = null;
+      let processedPath: string | null = null;
+      let skipDataSourceIndexing = false;
       let skipFileProcessing = false;
 
       if (fileResource) {
@@ -875,12 +840,19 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
         isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
         hidden = !!fileResource.useCaseMetadata?.hideFromUser;
+        skipDataSourceIndexing =
+          fileResource.useCaseMetadata?.skipDataSourceIndexing === true;
         skipFileProcessing =
           fileResource.useCaseMetadata?.skipFileProcessing === true;
         path = getConversationFilePath({
           workspaceId: workspace.sId,
           conversationId: fileResource.useCaseMetadata?.conversationId,
           mountFilePath: fileResource.mountFilePath,
+        });
+        processedPath = getConversationFilePath({
+          workspaceId: workspace.sId,
+          conversationId: fileResource.useCaseMetadata?.conversationId,
+          mountFilePath: fileResource.getTextProcessedMountFilePath(),
         });
       }
 
@@ -897,6 +869,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         contentFragmentType: "file",
         expiredReason: null,
         path,
+        processedPath,
+        skipDataSourceIndexing,
         skipFileProcessing,
         fileId: fileStringId,
         snippet,
@@ -1033,7 +1007,9 @@ async function getSignedUrlForVersion(
     version,
   });
 
-  return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
+  return getCachedPrivateUploadSignedUrl(fileCloudStoragePath, {
+    expirationDelayMs: MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
+  });
 }
 
 export async function getContentFragmentFromAttachmentFile(
@@ -1160,10 +1136,8 @@ export async function getContentFragmentFromAttachmentFile(
 
     // Check if this is a pasted content (large paste) - use simplified XML format
     if (isPastedFile(attachment.contentType)) {
-      const truncated = content.length > PASTED_CONTENT_MAX_CHARACTERS;
-      const truncatedContent = truncated
-        ? content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX
-        : content;
+      const truncated = isPastedContentOverInlineLimit(content);
+      const truncatedContent = truncated ? truncateSnippet(content) : content;
 
       return new Ok({
         role: "content_fragment",
@@ -1219,9 +1193,16 @@ function renderFileOrAttachmentXml(
   if (isNewFileExplorer) {
     const path = "path" in attachment ? attachment.path : null;
     const pathAttr = path ? ` path="${path}"` : "";
+    // Binary originals with a text processed version (audio transcripts) are mounted next to the
+    // original. Point the model at the sibling: no tool of ours can read the original.
+    const processedPath =
+      "processedPath" in attachment ? attachment.processedPath : null;
+    const processedPathAttr = processedPath
+      ? ` processedPath="${processedPath}"`
+      : "";
     return content
-      ? `<file name="${attachment.title}"${pathAttr}>${content}\n</file>`
-      : `<file name="${attachment.title}"${pathAttr}/>`;
+      ? `<file name="${attachment.title}"${pathAttr}${processedPathAttr}>${content}\n</file>`
+      : `<file name="${attachment.title}"${pathAttr}${processedPathAttr}/>`;
   }
 
   return renderAttachmentXml({ attachment, content: content ?? null });
@@ -1256,10 +1237,11 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
-  const attachment = getAttachmentFromContentFragment(message);
-  if (!attachment) {
+  const rawAttachment = getAttachmentFromContentFragment(message);
+  if (!rawAttachment) {
     return null;
   }
+  const attachment = truncateLegacyPastedSnippet(rawAttachment);
 
   // Get fileId directly from the message based on content fragment type.
   const fileStringId =
@@ -1270,9 +1252,11 @@ export async function renderLightContentFragmentForModel(
   // Pasted content is always inlined regardless of feature flags.
   if (fileStringId && isPastedFile(contentType)) {
     const snippet = attachment.snippet ?? "";
+    const hasMissingSnippet = attachment.snippet === null;
     const truncated =
-      snippet.length === TRUNCATED_SNIPPET_SIZE &&
-      snippet.endsWith(TRUNCATED_SUFFIX);
+      hasMissingSnippet ||
+      (snippet.length === TRUNCATED_SNIPPET_SIZE &&
+        snippet.endsWith(TRUNCATED_SUFFIX));
     return {
       role: "content_fragment",
       name: `attach_pasted_content`,

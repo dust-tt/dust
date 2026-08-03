@@ -107,6 +107,21 @@ impl TokenizerSingleton {
             }
         }
     }
+
+    pub async fn batch_count(&self, texts: Vec<String>) -> Result<Vec<usize>> {
+        match self {
+            TokenizerSingleton::Tiktoken(bpe) => {
+                crate::providers::tiktoken::tiktoken::batch_count_async(bpe.clone(), texts).await
+            }
+            TokenizerSingleton::SentencePiece(spp) => {
+                crate::providers::sentencepiece::sentencepiece::batch_count_async(
+                    spp.clone(),
+                    texts,
+                )
+                .await
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]

@@ -31,6 +31,7 @@ const ParamsSchema = z.object({
 
 const app = createHono();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

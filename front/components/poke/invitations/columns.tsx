@@ -2,11 +2,11 @@ import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortabl
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
 import {
-  ClipboardIcon,
+  Clipboard,
   IconButton,
-  MovingMailIcon,
+  Mail01,
   Tooltip,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -82,7 +82,7 @@ export function makeColumnsForInvitations(
             <a href={inviteLink}>link</a>
             &nbsp;
             <IconButton
-              icon={ClipboardIcon}
+              icon={Clipboard}
               variant="outline"
               tooltip="Copy invite link to clipboard"
               size="xs"
@@ -108,7 +108,7 @@ export function makeColumnsForInvitations(
 
         return (
           <IconButton
-            icon={MovingMailIcon}
+            icon={Mail01}
             size="xs"
             variant="outline"
             tooltip="Reinvite (revokes current and sends a new invitation)"
@@ -147,7 +147,7 @@ export function makeColumnsForInvitations(
 
         return (
           <IconButton
-            icon={TrashIcon}
+            icon={Trash01}
             size="xs"
             variant="outline"
             onClick={async () => {

@@ -1,19 +1,19 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
   InternalPostConversationsRequestBodySchema,
   SupportedContentNodeContentType,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import {
   isSupportedContentNodeFragmentContentType,
   PostConversationsResponseBodySchema,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
+import type { PostConversationsResponseBody } from "@app/types/api/assistant/conversation/types";
 import type {
   ClientMessageOrigin,
   ConversationMetadata,
@@ -22,6 +22,7 @@ import type {
   SubmitMessageError,
 } from "@app/types/assistant/conversation";
 import type { MentionType, RichMention } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
@@ -39,7 +40,7 @@ export function useCreateConversationWithMessage({
 }) {
   const { fetcher } = useFetcher();
   const contextOrigin = useClientType();
-  const { hasFeature } = useFeatureFlags();
+  const sendNotification = useSendNotification();
   const { setPendingFirstMessage, clearPendingFirstMessage } =
     useContext(InputBarContext);
 
@@ -52,6 +53,7 @@ export function useCreateConversationWithMessage({
       title,
       visibility = "unlisted",
       deferMessage = false,
+      onError,
     }: {
       messageData: {
         input: string;
@@ -59,10 +61,13 @@ export function useCreateConversationWithMessage({
         contentFragments: ContentFragmentsType;
         clientSideMCPServerIds?: string[];
         selectedMCPServerViewIds?: string[];
+        selectedSpaceIds?: string[];
         origin?: ClientMessageOrigin;
         // Rich mentions used to render optimistic placeholder messages when the
         // first message is deferred and posted from `ConversationViewer`.
         richMentions?: RichMention[];
+        // Optional per-message model override from the input-bar model picker.
+        modelSelection?: ModelSelectionType;
       };
       visibility?: ConversationVisibility;
       title?: string;
@@ -74,6 +79,10 @@ export function useCreateConversationWithMessage({
       // posted in the background so the caller can navigate as soon as the `sId`
       // is known.
       deferMessage?: boolean;
+      // Called when the deferred background message-post fails. The caller decides
+      // how to surface it (e.g. a blocking popup for limit errors). When omitted,
+      // background failures fall back to an error notification.
+      onError?: (err: SubmitMessageError) => void;
     }): Promise<Result<ConversationType, SubmitMessageError>> => {
       if (!user) {
         return new Err({
@@ -89,20 +98,18 @@ export function useCreateConversationWithMessage({
         contentFragments,
         clientSideMCPServerIds,
         selectedMCPServerViewIds,
+        selectedSpaceIds: requestedSpaceIds,
         origin: messageOrigin,
         richMentions,
+        modelSelection,
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
+      const selectedSpaceIds =
+        requestedSpaceIds && requestedSpaceIds.length > 0
+          ? requestedSpaceIds
+          : undefined;
 
-      // `selectedMCPServerViewIds` (conversation-level tools) are only wired up by
-      // the conversations endpoint when an initial message is posted (it calls
-      // `upsertMCPServerViews` inside `if (message)`), and the messages endpoint drops
-      // them. Until that's wired through, deferring with tools would silently lose
-      // them, so we keep the combined call in that case.
-      const canDefer =
-        deferMessage && hasFeature("deferred_conversation_creation");
-
-      if (canDefer) {
+      if (deferMessage) {
         const createBody: z.infer<
           typeof InternalPostConversationsRequestBodySchema
         > = {
@@ -113,6 +120,7 @@ export function useCreateConversationWithMessage({
           skipToolsValidation,
           message: null,
           contentFragments: [],
+          selectedSpaceIds,
         };
 
         try {
@@ -134,6 +142,7 @@ export function useCreateConversationWithMessage({
             input,
             mentions: richMentions ?? [],
             contentFragments,
+            modelSelection,
           });
 
           // Post the message in the background so navigation isn't blocked on it.
@@ -145,9 +154,20 @@ export function useCreateConversationWithMessage({
             contentFragments,
             clientSideMCPServerIds,
             selectedMCPServerViewIds,
+            selectedSpaceIds,
             origin,
             skipToolsValidation,
             profilePictureUrl: user.image,
+            modelSelection,
+            onError:
+              onError ??
+              ((err) => {
+                sendNotification({
+                  title: err.title,
+                  description: err.message,
+                  type: "error",
+                });
+              }),
           }).finally(() => {
             clearPendingFirstMessage(conversationId);
           });
@@ -164,6 +184,7 @@ export function useCreateConversationWithMessage({
         spaceId: spaceId ?? null,
         metadata,
         skipToolsValidation,
+        selectedSpaceIds,
         message: {
           content: input,
           context: {
@@ -171,9 +192,11 @@ export function useCreateConversationWithMessage({
             profilePictureUrl: user.image,
             clientSideMCPServerIds,
             selectedMCPServerViewIds,
+            selectedSpaceIds,
             origin,
           },
           mentions,
+          modelSelection,
         },
         contentFragments: [
           ...contentFragments.uploaded.map((cf) => ({
@@ -230,7 +253,7 @@ export function useCreateConversationWithMessage({
       user,
       fetcher,
       contextOrigin,
-      hasFeature,
+      sendNotification,
       setPendingFirstMessage,
       clearPendingFirstMessage,
     ]
@@ -248,9 +271,12 @@ async function postFirstMessageInBackground({
   contentFragments,
   clientSideMCPServerIds,
   selectedMCPServerViewIds,
+  selectedSpaceIds,
   origin,
   skipToolsValidation,
   profilePictureUrl,
+  modelSelection,
+  onError,
 }: {
   workspaceId: string;
   conversationId: string;
@@ -259,9 +285,12 @@ async function postFirstMessageInBackground({
   contentFragments: ContentFragmentsType;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
+  selectedSpaceIds?: string[];
   origin: ClientMessageOrigin;
   skipToolsValidation: boolean;
   profilePictureUrl: string | null;
+  modelSelection?: ModelSelectionType;
+  onError?: (err: SubmitMessageError) => void;
 }): Promise<void> {
   const timezone =
     Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC";
@@ -319,7 +348,7 @@ async function postFirstMessageInBackground({
       );
     }
 
-    await clientFetch(
+    const msgRes = await clientFetch(
       `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
       {
         method: "POST",
@@ -331,15 +360,34 @@ async function postFirstMessageInBackground({
             profilePictureUrl,
             clientSideMCPServerIds,
             selectedMCPServerViewIds,
+            selectedSpaceIds,
             origin,
           },
           mentions,
           skipToolsValidation,
+          modelSelection,
         }),
       }
     );
+    if (!msgRes.ok) {
+      const body = await msgRes.json().catch(() => null);
+      if (onError) {
+        const errResult = toConversationCreationError(
+          isAPIErrorResponse(body) ? body : new Error("Failed to post message")
+        );
+        if (errResult.isErr()) {
+          onError(errResult.error);
+        }
+      }
+    }
   } catch (e) {
     logger.error({ err: e }, "Failed to post first message in background");
+    if (onError) {
+      const err = toConversationCreationError(e);
+      if (err.isErr()) {
+        onError(err.error);
+      }
+    }
   }
 }
 
@@ -365,7 +413,9 @@ function toConversationCreationError(
           ? "credits_exhausted_error"
           : isApiError && e.error.type === "user_cap_reached"
             ? "user_cap_reached_error"
-            : "message_send_error",
+            : isApiError && e.error.type === "no_seat"
+              ? "no_seat_error"
+              : "message_send_error",
     title: "Your message could not be sent.",
     message: isApiError
       ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

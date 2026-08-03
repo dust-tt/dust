@@ -3,11 +3,11 @@ import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ActionTimeIcon,
-  ActionTrashIcon,
+  Clock,
   ContentMessageAction,
   ContentMessageInline,
   Tooltip,
+  Trash04,
 } from "@dust-tt/sparkle";
 
 interface WakeUpBannerProps {
@@ -32,9 +32,9 @@ export const WakeUpBanner = ({
 
   return (
     <ContentMessageInline
-      icon={ActionTimeIcon}
+      icon={Clock}
       variant="outline"
-      className="mb-5 flex max-h-dvh w-full bg-background dark:bg-background-night"
+      className="mb-3 flex max-h-dvh w-full bg-background"
     >
       {/* ContentMessageInline variant="outline" renders all content children
           in text-muted-foreground by default; override the reason to the
@@ -45,7 +45,7 @@ export const WakeUpBanner = ({
           label={wakeUp.reason}
           tooltipTriggerAsChild
           trigger={
-            <span className="min-w-0 truncate text-foreground dark:text-foreground-night">
+            <span className="min-w-0 truncate text-foreground">
               {wakeUp.reason}
             </span>
           }
@@ -54,11 +54,11 @@ export const WakeUpBanner = ({
       </div>
       {isOwner && (
         <ContentMessageAction
-          icon={ActionTrashIcon}
+          icon={Trash04}
           variant="ghost"
           size="xs"
           tooltip="Cancel wake-up"
-          className="text-muted-foreground dark:text-muted-foreground-night"
+          className="text-muted-foreground"
           onClick={() => {
             void cancelWakeUp(wakeUp.sId);
           }}

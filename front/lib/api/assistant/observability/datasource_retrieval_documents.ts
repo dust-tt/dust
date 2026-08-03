@@ -22,7 +22,7 @@ type DatasourceRetrievalParentGroupData = {
   count: number;
 };
 
-export type DatasourceRetrievalDocumentData = {
+type DatasourceRetrievalDocumentData = {
   documentId: string;
   displayName: string;
   parentId: string | null;
@@ -342,3 +342,6 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
 
   return new Ok({ documents: enrichedDocuments, groups, total });
 }
+
+export type GetDatasourceRetrievalDocumentsResponse =
+  DatasourceRetrievalDocuments;

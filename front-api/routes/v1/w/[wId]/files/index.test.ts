@@ -93,11 +93,10 @@ describe("POST /api/v1/w/[wId]/files", () => {
     expect(response.status).toBe(200);
   });
 
-  it("accepts and stamps raw sandbox CSV uploads when sandbox_tools is enabled", async () => {
+  it("accepts and stamps raw sandbox CSV uploads when Computer is enabled", async () => {
     const { workspace, key, auth } = await createPublicApiMockRequest({
       method: "POST",
     });
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const response = await postFile(workspace, key, {
       contentType: "text/csv",
@@ -113,10 +112,11 @@ describe("POST /api/v1/w/[wId]/files", () => {
     expect(file?.useCaseMetadata?.skipDataSourceIndexing).toBe(true);
   });
 
-  it("keeps the 50 MB CSV limit when sandbox_tools is not enabled", async () => {
-    const { workspace, key } = await createPublicApiMockRequest({
+  it("keeps the 50 MB CSV limit when disable_computer_feature is enabled", async () => {
+    const { workspace, key, auth } = await createPublicApiMockRequest({
       method: "POST",
     });
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
 
     const response = await postFile(workspace, key, {
       contentType: "text/csv",
@@ -129,11 +129,10 @@ describe("POST /api/v1/w/[wId]/files", () => {
   });
 
   it("does not raise the CSV limit for upsert_table system-key uploads", async () => {
-    const { workspace, key, auth } = await createPublicApiMockRequest({
+    const { workspace, key } = await createPublicApiMockRequest({
       method: "POST",
       systemKey: true,
     });
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const response = await postFile(workspace, key, {
       contentType: "text/csv",

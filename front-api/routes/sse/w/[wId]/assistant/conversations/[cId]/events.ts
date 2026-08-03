@@ -24,6 +24,7 @@ const PRIVATE_OPTIONS: ConversationEventsOptions = {
 const app = workspaceApp();
 
 app.use("*", streamingTag);
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ConversationParamSchema),

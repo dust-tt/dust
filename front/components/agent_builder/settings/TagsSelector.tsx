@@ -1,8 +1,9 @@
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useCreateTag, useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -14,7 +15,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  PlusIcon,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { KeyboardEvent } from "react";
@@ -52,6 +53,8 @@ export const TagsSelector = ({
     owner,
   });
   const { createTag } = useCreateTag({ owner });
+  const { hasPermission } = useWorkspacePermissions();
+  const canManageProtectedTags = hasPermission("publish", "agent");
 
   const onMenuOpenChange = (open: boolean) => {
     setIsMenuOpen(open);
@@ -91,7 +94,7 @@ export const TagsSelector = ({
 
     const allFiltered = allTags
       .filter((t) => t.name.toLowerCase().includes(searchText.toLowerCase()))
-      .filter((t) => isBuilder(owner) || t.kind !== "protected")
+      .filter((t) => canManageProtectedTags || t.kind !== "protected")
       .sort(tagsSorter);
 
     const suggested = allFiltered.filter((t) => suggestedTagIds.has(t.sId));
@@ -99,7 +102,7 @@ export const TagsSelector = ({
       suggestedFilteredTags: suggested,
       otherFilteredTags: allFiltered,
     };
-  }, [suggestedTags, allTags, searchText, owner]);
+  }, [suggestedTags, allTags, searchText, canManageProtectedTags]);
 
   const exactMatch = allTags.find(
     (t) => t.name.toLowerCase() === searchText.toLowerCase()
@@ -144,7 +147,7 @@ export const TagsSelector = ({
         >
           <DropdownMenuTrigger asChild>
             <Button
-              icon={PlusIcon}
+              icon={Plus}
               variant="outline"
               label="Add"
               isSelect
@@ -166,7 +169,7 @@ export const TagsSelector = ({
               {showCreateOption && (
                 <DropdownMenuItem
                   label={`Create "${searchText.trim()}"`}
-                  icon={PlusIcon}
+                  icon={Plus}
                   onClick={() => handleCreateTag(searchText.trim())}
                 />
               )}
@@ -236,12 +239,12 @@ export const TagsSelector = ({
             <Chip
               key={tag.sId}
               onRemove={
-                tag.kind === "protected" && !isBuilder(owner)
+                tag.kind === "protected" && !canManageProtectedTags
                   ? undefined
                   : () => onRemoveTag(tag.sId)
               }
               size="xs"
-              color="golden"
+              color="info"
               label={tag.name}
             />
           ))}

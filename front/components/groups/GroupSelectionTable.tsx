@@ -5,7 +5,7 @@ import {
   createSelectionColumn,
   DataTable,
   SearchInput,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 import type {
   CellContext,
@@ -116,7 +116,7 @@ export function GroupSelectionTable({
           className: "w-full",
         },
         cell: (info: CellContext<GroupRowData, unknown>) => (
-          <DataTable.CellContent icon={UserGroupIcon}>
+          <DataTable.CellContent icon={Users01}>
             {info.row.original.name}
           </DataTable.CellContent>
         ),
@@ -147,7 +147,7 @@ export function GroupSelectionTable({
       <div className="flex min-h-0 flex-1 flex-col">
         {isGroupsLoading ? (
           <div className="flex items-center justify-center p-4">
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground">
               Loading groups...
             </span>
           </div>

@@ -3,39 +3,23 @@ import { listMetronomeDraftInvoices } from "@app/lib/metronome/client";
 import {
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
-  getProductMauId,
-  getProductMauTierIds,
   getProductWorkspaceSeatId,
 } from "@app/lib/metronome/constants";
+import type {
+  GetMetronomeInvoiceLinesResponseBody,
+  GetMetronomeInvoiceResponseBody,
+  MetronomeInvoiceLineItem,
+  MetronomeInvoiceSummary,
+} from "@app/lib/metronome/invoice";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { BillingPeriod } from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
-export type MetronomeInvoiceSummary = {
-  currency: SupportedCurrency;
-  billingPeriod: BillingPeriod;
-  currentPeriodStartMs: number;
-  currentPeriodEndMs: number;
-  estimatedAmountCents: number;
-  mau: number | null;
-  /** Pro: effective per-seat unit price from the seat line item. */
-  seatUnitPriceCents: number | null;
-  /** Enterprise simple MAU: effective unit price from the MAU line item. */
-  mauUnitPriceCents: number | null;
-  /**
-   * Enterprise tiered MAU: effective per-tier unit prices, indexed by tier
-   * position (same order as getProductMauTierIds()). `null` at a position
-   * means that tier is not present on this contract / not charged this period.
-   */
-  mauTierUnitPricesCents: Array<number | null> | null;
-};
-
-export type GetMetronomeInvoiceResponseBody = {
-  invoice: MetronomeInvoiceSummary | null;
-};
+import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 
 function creditTypeIdToCurrency(
   creditTypeId: string
@@ -54,12 +38,82 @@ function inferBillingPeriod(startMs: number, endMs: number): BillingPeriod {
   return spanDays > 60 ? "yearly" : "monthly";
 }
 
+async function findCurrentInvoice(
+  metronomeCustomerId: string,
+  metronomeContractId: string
+): Promise<Result<Invoice | undefined, Error>> {
+  const invoicesResult = await listMetronomeDraftInvoices(metronomeCustomerId);
+  if (invoicesResult.isErr()) {
+    return new Err(invoicesResult.error);
+  }
+  const nowMs = Date.now();
+  const invoice = invoicesResult.value.find((inv) => {
+    if (inv.contract_id !== metronomeContractId) {
+      return false;
+    }
+    if (!inv.start_timestamp || !inv.end_timestamp) {
+      return false;
+    }
+    const startMs = new Date(inv.start_timestamp).getTime();
+    const endMs = new Date(inv.end_timestamp).getTime();
+    return startMs <= nowMs && nowMs < endMs;
+  });
+  return new Ok(invoice);
+}
+
+// When a credit partially covers a charge, Metronome splits the charge line
+// into a covered portion (fractional quantity, carrying
+// applied_commit_or_credit) and the uncovered remainder. Similarly, a single
+// coupon applied to several products yields one applied-credit line per
+// product. Merge those splits back so the invoice reads as one line per
+// charge and one line per coupon/credit.
+function mergeLineItems(
+  lineItems: MetronomeInvoiceLineItem[]
+): MetronomeInvoiceLineItem[] {
+  const merged: MetronomeInvoiceLineItem[] = [];
+  const indexByKey = new Map<string, number>();
+  for (const item of lineItems) {
+    // Lines merge only when everything but the quantity/total matches (for
+    // applied-credit lines, unit price and quantity are always null, so this
+    // amounts to merging by coupon/credit name and period).
+    const key = JSON.stringify([
+      item.name,
+      item.type,
+      item.unitPriceCents,
+      item.isProrated,
+      item.periodStartMs,
+      item.periodEndMs,
+    ]);
+    const index = indexByKey.get(key);
+    if (index === undefined) {
+      indexByKey.set(key, merged.length);
+      merged.push(item);
+      continue;
+    }
+    const existing = merged[index];
+    merged[index] = {
+      ...existing,
+      quantity:
+        existing.quantity !== null && item.quantity !== null
+          ? existing.quantity + item.quantity
+          : null,
+      totalCents: existing.totalCents + item.totalCents,
+    };
+  }
+  return merged;
+}
+
 // Mounted at /api/w/:wId/metronome/invoice.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<GetMetronomeInvoiceResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -75,31 +129,21 @@ app.get(
       return ctx.json({ invoice: null });
     }
 
-    const nowMs = Date.now();
-
-    const invoicesResult =
-      await listMetronomeDraftInvoices(metronomeCustomerId);
-    if (invoicesResult.isErr()) {
+    const invoiceResult = await findCurrentInvoice(
+      metronomeCustomerId,
+      metronomeContractId
+    );
+    if (invoiceResult.isErr()) {
       return apiError(ctx, {
         status_code: 502,
         api_error: {
           type: "internal_server_error",
-          message: `Failed to fetch Metronome draft invoices: ${invoicesResult.error.message}`,
+          message: `Failed to fetch Metronome draft invoices: ${invoiceResult.error.message}`,
         },
       });
     }
 
-    const invoice = invoicesResult.value.find((inv) => {
-      if (inv.contract_id !== metronomeContractId) {
-        return false;
-      }
-      if (!inv.start_timestamp || !inv.end_timestamp) {
-        return false;
-      }
-      const startMs = new Date(inv.start_timestamp).getTime();
-      const endMs = new Date(inv.end_timestamp).getTime();
-      return startMs <= nowMs && nowMs < endMs;
-    });
+    const invoice = invoiceResult.value;
 
     if (!invoice || !invoice.start_timestamp || !invoice.end_timestamp) {
       return ctx.json({ invoice: null });
@@ -111,52 +155,16 @@ app.get(
     }
 
     const seatProductId = getProductWorkspaceSeatId();
-    const simpleMauProductId = getProductMauId();
-    const tierProductIds = getProductMauTierIds();
-    const tierProductIdToIndex = new Map<string, number>(
-      tierProductIds.map((id, idx) => [id, idx])
-    );
 
-    const mauProductIds = new Set<string>([
-      simpleMauProductId,
-      ...tierProductIds,
-    ]);
-
-    let mau: number | null = null;
     let seatUnitPriceCents: number | null = null;
-    let mauUnitPriceCents: number | null = null;
-    const mauTierUnitPricesCents: Array<number | null> = tierProductIds.map(
-      () => null
-    );
-    let tieredMauSeenOnInvoice = false;
 
     for (const item of invoice.line_items) {
       const productId = item.product_id;
-      if (!productId) {
+      if (!productId || typeof item.unit_price !== "number") {
         continue;
       }
-
-      if (mauProductIds.has(productId) && typeof item.quantity === "number") {
-        mau = (mau ?? 0) + item.quantity;
-      }
-
-      if (typeof item.unit_price !== "number") {
-        continue;
-      }
-
       if (productId === seatProductId) {
         seatUnitPriceCents = amountCents(item.unit_price, currency);
-      } else if (productId === simpleMauProductId) {
-        mauUnitPriceCents = amountCents(item.unit_price, currency);
-      } else {
-        const tierIndex = tierProductIdToIndex.get(productId);
-        if (tierIndex !== undefined) {
-          mauTierUnitPricesCents[tierIndex] = amountCents(
-            item.unit_price,
-            currency
-          );
-          tieredMauSeenOnInvoice = true;
-        }
       }
     }
 
@@ -172,15 +180,92 @@ app.get(
       currentPeriodStartMs,
       currentPeriodEndMs,
       estimatedAmountCents: amountCents(invoice.total, currency),
-      mau,
       seatUnitPriceCents,
-      mauUnitPriceCents,
-      mauTierUnitPricesCents: tieredMauSeenOnInvoice
-        ? mauTierUnitPricesCents
-        : null,
     };
 
     return ctx.json({ invoice: summary });
+  }
+);
+
+/** @ignoreswagger */
+app.get(
+  "/lines",
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
+  async (ctx): HandlerResult<GetMetronomeInvoiceLinesResponseBody> => {
+    const auth = ctx.get("auth");
+
+    const subscription = auth.subscription();
+    const owner = auth.workspace();
+    if (!subscription || !owner) {
+      return ctx.json({ currency: null, lineItems: [] });
+    }
+
+    const { metronomeContractId } = subscription;
+    const { metronomeCustomerId } = owner;
+    if (!metronomeContractId || !metronomeCustomerId) {
+      return ctx.json({ currency: null, lineItems: [] });
+    }
+
+    const invoiceResult = await findCurrentInvoice(
+      metronomeCustomerId,
+      metronomeContractId
+    );
+    if (invoiceResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 502,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to fetch Metronome draft invoices: ${invoiceResult.error.message}`,
+        },
+      });
+    }
+
+    const invoice = invoiceResult.value;
+
+    if (!invoice) {
+      return ctx.json({ currency: null, lineItems: [] });
+    }
+
+    const currency = creditTypeIdToCurrency(invoice.credit_type.id);
+
+    const mappedLineItems = invoice.line_items
+      .filter((item) => {
+        const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
+        return !!currency && !!itemCurrency && itemCurrency === currency;
+      })
+      // Keep negative lines: applied commits/credits (coupons, free credits,
+      // commitments) explain why the invoice total is lower than the sum of
+      // the charge lines. Only drop sub-cent noise.
+      .filter((item) => Math.abs(item.total) >= 0.01)
+      .map((item) => {
+        const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
+        return {
+          name: item.name,
+          type: item.type,
+          quantity: typeof item.quantity === "number" ? item.quantity : null,
+          unitPriceCents:
+            typeof item.unit_price === "number" && itemCurrency
+              ? amountCents(item.unit_price, itemCurrency)
+              : null,
+          totalCents: itemCurrency
+            ? amountCents(item.total, itemCurrency)
+            : item.total,
+          isProrated: item.is_prorated ?? false,
+          periodStartMs: item.starting_at
+            ? new Date(item.starting_at).getTime()
+            : null,
+          // Exclusive end of the period covered by the line item.
+          periodEndMs: item.ending_before
+            ? new Date(item.ending_before).getTime()
+            : null,
+        };
+      });
+
+    return ctx.json({ currency, lineItems: mergeLineItems(mappedLineItems) });
   }
 );
 

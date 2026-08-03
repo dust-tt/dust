@@ -1,12 +1,10 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { ActiveUsersMetricsPoint } from "@app/lib/api/assistant/observability/active_users_metrics";
+import type { GetWorkspaceActiveUsersResponse } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
-import {
-  daysToDateRange,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -16,14 +14,11 @@ const QuerySchema = z.object({
   timezone: timezoneSchema,
 });
 
-export type GetWorkspaceActiveUsersResponse = {
-  points: ActiveUsersMetricsPoint[];
-};
-
 // Mounted at /api/w/:wId/analytics/active-users.
 const app = workspaceApp();
 
-app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
+/** @ignoreswagger */
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   const { days, timezone } = ctx.req.valid("query");

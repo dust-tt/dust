@@ -1,7 +1,3 @@
-import type {
-  ContentNodeAttachmentType,
-  ConversationAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
 import config from "@app/lib/api/config";
@@ -12,6 +8,10 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  ContentNodeAttachmentType,
+  ConversationAttachmentType,
+} from "@app/types/api/assistant/conversation/attachments";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { CoreAPI } from "@app/types/core/core_api";

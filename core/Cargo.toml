@@ -47,6 +47,10 @@ path = "bin/qdrant/create_collection.rs"
 name = "qdrant_shard_rebalance_suggestions"
 path = "bin/qdrant/qdrant_shard_rebalance_suggestions.rs"
 
+[[bin]]
+name = "qdrant_shard_key_breakdown"
+path = "bin/qdrant/shard_key_breakdown.rs"
+
 # [[bin]]
 # name = "qdrant_migrator"
 # path = "bin/qdrant/migrator.rs"
@@ -62,6 +66,14 @@ path = "bin/qdrant/delete_orphaned_points.rs"
 [[bin]]
 name = "qdrant_count_points_per_data_source"
 path = "bin/qdrant/count_points_per_data_source.rs"
+
+[[bin]]
+name = "qdrant_reshard"
+path = "bin/qdrant/qdrant_reshard.rs"
+
+[[bin]]
+name = "qdrant_fill_random_points"
+path = "bin/qdrant/test/fill_random_points.rs"
 
 # [[bin]]
 # name = "oauth_generate_key"
@@ -123,6 +135,7 @@ bb8 = "0.8"
 bb8-postgres = "0.8"
 blake3 = "1.3"
 bstr = "1.9"
+chardetng = "0.1"
 chrono = "0.4"
 clap = { version = "4.5", features = ["derive"] }
 cloud-storage = { version = "0.11", features = ["global-client"] }
@@ -133,6 +146,7 @@ deno_core = "0.292"
 dns-lookup = "1.0"
 elasticsearch = "8.15.0-alpha.1"
 elasticsearch-dsl = "0.4"
+encoding_rs = "0.8"
 eventsource-client = { git = "https://github.com/dust-tt/rust-eventsource-client", rev = "148050f8fb9f8abb25ca171aa68ea817277ca4f6" }
 fancy-regex = "0.13"
 flate2 = "1.0"
@@ -155,7 +169,7 @@ parking_lot = "0.12"
 pest = "2.7"
 pest_derive = "2.7"
 pkcs8 = { version = "0.10", features = ["pem", "pkcs5", "encryption"] }
-qdrant-client = "1.15"
+qdrant-client = "1.18"
 rand = "0.8"
 rayon = "1.10"
 redis = { version = "0.24.0", features = ["tokio-comp"] }
@@ -164,7 +178,7 @@ reqwest = { version = "0.12", features = ["json"] }
 ring = "0.17.14"
 rsa = { version = "0.9.4", features = ["pem"] }
 rslock = { version = "0.4.0", default-features = false, features = ["tokio-comp"] }
-rusqlite = { version = "0.31", features = ["bundled", "csvtab"] }
+rusqlite = { version = "0.31", features = ["bundled", "csvtab", "hooks"] }
 rustc-hash = "1.1"
 sentencepiece = { version = "0.11", features = ["static"] }
 serde = { version = "1.0", features = ["rc", "derive"] }

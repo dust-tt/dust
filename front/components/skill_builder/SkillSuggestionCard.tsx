@@ -1,87 +1,15 @@
-import { useMaybeMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import type {
   SkillAgentFacingDescriptionEditType,
   SkillInstructionEditItemType,
   SkillSuggestionType,
-  SkillToolEditItemType,
 } from "@app/types/suggestions/skill_suggestion";
-import { Button, Card, Chip, DiffBlock, Hoverable } from "@dust-tt/sparkle";
+import { Button, Card, DiffBlock, Hoverable } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useMemo } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
-
-function useToolDisplayNames(
-  toolEdits: SkillToolEditItemType[]
-): Map<string, string> {
-  const ctx = useMaybeMCPServerViewsContext();
-
-  return useMemo(() => {
-    const map = new Map<string, string>();
-    for (const edit of toolEdits) {
-      const view = ctx?.mcpServerViews.find((v) => v.sId === edit.toolId);
-      map.set(
-        edit.toolId,
-        view ? getMcpServerViewDisplayName(view) : edit.toolId
-      );
-    }
-    return map;
-  }, [toolEdits, ctx]);
-}
-
-interface ToolEditsSectionProps {
-  toolEdits: SkillToolEditItemType[];
-}
-
-function ToolEditsSection({ toolEdits }: ToolEditsSectionProps) {
-  const displayNames = useToolDisplayNames(toolEdits);
-
-  const toolsToAdd = toolEdits.filter((e) => e.action === "add");
-  const toolsToRemove = toolEdits.filter((e) => e.action === "remove");
-
-  return (
-    <div className="flex flex-col gap-2">
-      {toolsToAdd.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-            Tools to add
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {toolsToAdd.map((edit) => (
-              <Chip
-                key={edit.toolId}
-                size="sm"
-                color="highlight"
-                label={displayNames.get(edit.toolId) ?? edit.toolId}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-      {toolsToRemove.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-            Tools to remove
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {toolsToRemove.map((edit) => (
-              <Chip
-                key={edit.toolId}
-                size="sm"
-                color="warning"
-                label={displayNames.get(edit.toolId) ?? edit.toolId}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface AgentFacingDescriptionEditSectionProps {
   edit: SkillAgentFacingDescriptionEditType;
@@ -94,19 +22,17 @@ function AgentFacingDescriptionEditSection({
 }: AgentFacingDescriptionEditSectionProps) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+      <span className="text-sm font-medium text-foreground">
         Description change
       </span>
       <DiffBlock>
         <div className="flex flex-col gap-1 p-3 text-sm">
           {currentAgentFacingDescription && (
-            <p className="text-muted-foreground line-through dark:text-muted-foreground-night">
+            <p className="text-muted-foreground line-through">
               {currentAgentFacingDescription}
             </p>
           )}
-          <p className="text-foreground dark:text-foreground-night">
-            {edit.content}
-          </p>
+          <p className="text-foreground">{edit.content}</p>
         </div>
       </DiffBlock>
     </div>
@@ -123,8 +49,6 @@ function InstructionEditDiffBlock({
   getSkillInstructionsHtml,
 }: InstructionEditDiffBlockProps) {
   const { targetBlockId, content } = edit;
-  const { hasFeature } = useFeatureFlags();
-  const enableSkillReferences = hasFeature("nested_skills");
 
   const blockHtml = useMemo(() => {
     const instructionsHtml = getSkillInstructionsHtml();
@@ -136,11 +60,7 @@ function InstructionEditDiffBlock({
 
   const editor = useEditor(
     {
-      extensions: [
-        ...buildSkillInstructionsExtensions(true, [], {
-          enableSkillReferences,
-        }),
-      ],
+      extensions: [...buildSkillInstructionsExtensions(true)],
       editable: false,
       content: blockHtml,
       immediatelyRender: false,
@@ -156,7 +76,7 @@ function InstructionEditDiffBlock({
         e.commands.setHighlightedSuggestion(targetBlockId);
       },
     },
-    [blockHtml, enableSkillReferences]
+    [blockHtml]
   );
 
   return <DiffBlock>{editor && <EditorContent editor={editor} />}</DiffBlock>;
@@ -185,7 +105,7 @@ function ConversationFooter({
 
   if (shownIds.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-xs text-muted-foreground">
         Based on {sourceConversationsCount} conversation
         {sourceConversationsCount > 1 ? "s" : ""}
       </p>
@@ -205,7 +125,7 @@ function ConversationFooter({
   ));
 
   return (
-    <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+    <p className="text-xs text-muted-foreground">
       Based on conversation
       {shownIds.length > 1 || remainingCount > 0 ? "s" : ""}{" "}
       {indexedLinks.map((link, i) => (
@@ -237,6 +157,7 @@ interface SkillSuggestionCardProps {
   isSelected?: boolean;
   onSelect?: () => void;
   workspaceId: string;
+  disabled?: boolean;
 }
 
 export function SkillSuggestionCard({
@@ -248,20 +169,21 @@ export function SkillSuggestionCard({
   isSelected = false,
   onSelect,
   workspaceId,
+  disabled = false,
 }: SkillSuggestionCardProps) {
-  const { instructionEdits, toolEdits, agentFacingDescriptionEdit } =
+  const { instructionEdits, agentFacingDescriptionEdit } =
     suggestion.suggestion;
   const isClickable = !!onSelect;
   const hasActions = !!onAccept && !!onDecline;
 
   return (
     <div
-      className={`rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night" : ""}`}
+      className={`rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`}
       onClick={onSelect}
     >
       <Card variant="primary" size="md" className="flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="heading-base text-foreground dark:text-foreground-night">
+          <span className="heading-base text-foreground">
             {suggestion.title ?? "Suggestion"}
           </span>
           {hasActions && (
@@ -271,21 +193,21 @@ export function SkillSuggestionCard({
                 size="sm"
                 label="Decline"
                 onClick={() => onDecline(suggestion)}
+                disabled={disabled}
               />
               <Button
                 variant="highlight"
                 size="sm"
                 label="Accept"
                 onClick={() => onAccept(suggestion)}
+                disabled={disabled}
               />
             </div>
           )}
         </div>
 
         {suggestion.analysis && (
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {suggestion.analysis}
-          </p>
+          <p className="text-sm text-muted-foreground">{suggestion.analysis}</p>
         )}
 
         {agentFacingDescriptionEdit && (
@@ -295,13 +217,9 @@ export function SkillSuggestionCard({
           />
         )}
 
-        {toolEdits && toolEdits.length > 0 && (
-          <ToolEditsSection toolEdits={toolEdits} />
-        )}
-
         {instructionEdits && instructionEdits.length > 0 && (
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+            <span className="text-sm font-medium text-foreground">
               Instruction changes
             </span>
             {instructionEdits.map((edit, index) => (

@@ -2,9 +2,9 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import {
-  BookOpenIcon,
+  BookOpen01,
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRight,
   Hoverable,
   Page,
   Sheet,
@@ -73,16 +73,16 @@ export function CreateConnectionOAuthModal({
                 variant="outline"
                 href={connectorUIConfiguration.guideLink ?? ""}
                 target="_blank"
-                icon={BookOpenIcon}
+                icon={BookOpen01}
               />
               {connectorProviderConfiguration.connectorProvider ===
                 "google_drive" && (
                 <>
                   <div className="flex flex-col gap-y-2">
-                    <div className="copy-sm grow text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="copy-sm grow text-muted-foreground">
                       <strong>Disclosure</strong>
                     </div>
-                    <div className="copy-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="copy-sm font-normal text-muted-foreground">
                       Dust's use of information received from the Google APIs
                       will adhere to{" "}
                       <Hoverable
@@ -96,10 +96,10 @@ export function CreateConnectionOAuthModal({
                   </div>
 
                   <div className="flex flex-col gap-y-2">
-                    <div className="copy-sm grow font-medium text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="copy-sm grow font-medium text-muted-foreground">
                       Notice on data processing
                     </div>
-                    <div className="copy-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="copy-sm font-normal text-muted-foreground">
                       By connecting Google Drive, you acknowledge and agree that
                       within your Google Drive, the data contained in the files
                       and folders that you choose to synchronize with Dust will
@@ -116,10 +116,10 @@ export function CreateConnectionOAuthModal({
 
               {connectorUIConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
-                  <div className="copy-sm grow font-medium text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="copy-sm grow font-medium text-muted-foreground">
                     Limitations
                   </div>
-                  <div className="copy-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="copy-sm font-normal text-muted-foreground">
                     {connectorUIConfiguration.limitations}
                   </div>
                 </div>
@@ -138,7 +138,7 @@ export function CreateConnectionOAuthModal({
                   <Button
                     variant="highlight"
                     size="md"
-                    icon={CloudArrowLeftRightIcon}
+                    icon={CloudArrowLeftRight}
                     onClick={() => {
                       setIsLoading(true);
                       onConfirm(extraConfig);

@@ -9,6 +9,7 @@ import {
   isPubliclySupportedUseCase,
   isSupportedFileContentType,
 } from "@app/types/files";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { FileUploadRequestResponseType } from "@dust-tt/client";
 import { FileUploadUrlRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -154,11 +155,11 @@ app.post(
     }
 
     const flags = await getFeatureFlags(auth);
-    const hasSandboxTools = flags.includes("sandbox_tools");
+    const hasComputerAccess = isComputerFeatureEnabled(flags);
 
     if (
       !ensureFileSize(contentType, fileSize, {
-        hasSandboxTools,
+        hasSandboxTools: hasComputerAccess,
         useCase,
       })
     ) {
@@ -181,7 +182,7 @@ app.post(
       useCaseMetadata: buildEffectiveUseCaseMetadata({
         contentType,
         fileName,
-        flags: { hasSandboxTools },
+        flags: { hasSandboxTools: hasComputerAccess },
         providedMetadata: useCaseMetadata,
         useCase,
       }),

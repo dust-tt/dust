@@ -3,22 +3,22 @@ import type {
   SkillUsageType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Avatar,
   Button,
-  ChevronDownIcon,
-  cn,
+  ChevronDown,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  PuzzleIcon,
-  RobotIcon,
+  PuzzlePiece01,
+  Robot,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -77,7 +77,7 @@ function UsedByButtonIcon({
     <span className="mx-0.5 flex h-5 items-center justify-center gap-1.5 leading-none">
       {(hasAgents || !hasSkills) && (
         <span className="inline-flex h-5 items-center gap-1">
-          <RobotIcon className="h-4 w-4 shrink-0" />
+          <Robot className="h-4 w-4 shrink-0" />
           <span className="inline-flex h-5 items-center text-sm leading-none tabular-nums">
             {agentCount}
           </span>
@@ -85,13 +85,13 @@ function UsedByButtonIcon({
       )}
       {hasSkills && (
         <span className="inline-flex h-5 items-center gap-1">
-          <PuzzleIcon className="h-4 w-4 shrink-0" />
+          <PuzzlePiece01 className="h-4 w-4 shrink-0" />
           <span className="inline-flex h-5 items-center text-sm leading-none tabular-nums">
             {skillCount}
           </span>
         </span>
       )}
-      <ChevronDownIcon
+      <ChevronDown
         className={
           showChevron
             ? "-mr-px h-4 w-4 shrink-0 text-faint"
@@ -102,8 +102,13 @@ function UsedByButtonIcon({
   );
 }
 
+// The composite icon (robot + count + chevron) is wider than the icon-only
+// fixed width (w-6 on xs); size to content instead.
+const USED_BY_BUTTON_CLASSES =
+  "w-auto border-0 px-2 hover:bg-muted-background hover:text-foreground";
+
 interface UsedByButtonProps {
-  usage: SkillUsageType | null;
+  usage: AgentsUsageType | SkillUsageType | null;
   onItemClick: (assistantSid: string) => void;
   onSkillClick?: (skillId: string) => void;
 }
@@ -117,7 +122,7 @@ export function UsedByButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const agents = usage?.agents ?? [];
-  const skills = usage?.skills ?? [];
+  const skills = usage && "skills" in usage ? usage.skills : [];
   const agentCount = agents.length;
   const skillCount = skills.length;
   const totalCount = agentCount + skillCount;
@@ -137,10 +142,7 @@ export function UsedByButton({
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
-        className={cn(
-          "border-0 hover:bg-muted-background hover:text-foreground",
-          "dark:hover:bg-muted-background-night dark:hover:text-foreground-night"
-        )}
+        className={USED_BY_BUTTON_CLASSES}
         aria-label="Used by 0 agents"
         disabled
       />
@@ -220,10 +222,7 @@ export function UsedByButton({
           variant="ghost-secondary"
           isSelect={false}
           size="xs"
-          className={cn(
-            "border-0 hover:bg-muted-background hover:text-foreground",
-            "dark:hover:bg-muted-background-night dark:hover:text-foreground-night"
-          )}
+          className={USED_BY_BUTTON_CLASSES}
           aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();

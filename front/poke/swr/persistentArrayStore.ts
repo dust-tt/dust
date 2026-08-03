@@ -5,7 +5,7 @@ import {
 
 // localStorage-backed array store shared across React consumers, synced across tabs via the
 // `storage` event. Client-only (poke favorites).
-export interface PersistentArrayStore<T> {
+interface PersistentArrayStore<T> {
   useItems: () => T[];
   setItems: (updater: (prev: T[]) => T[]) => void;
 }

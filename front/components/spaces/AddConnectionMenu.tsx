@@ -23,7 +23,7 @@ import {
   trackEvent,
   withTracking,
 } from "@app/lib/tracking";
-import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type { PostDataSourceRequestBody } from "@app/types/api/data_sources";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -41,7 +41,7 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRight,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -540,7 +540,7 @@ export const AddConnectionMenu = ({
             <Button
               label="Add Connections"
               variant="primary"
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRight}
               size="sm"
               onClick={withTracking(
                 TRACKING_AREAS.DATA_SOURCES,

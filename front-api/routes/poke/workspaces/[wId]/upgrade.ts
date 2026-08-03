@@ -16,6 +16,7 @@ export type PokeUpgradeWorkspaceResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/upgrade.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PokeUpgradeWorkspaceResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
@@ -56,11 +57,21 @@ app.post("/", async (ctx): HandlerResult<PokeUpgradeWorkspaceResponseBody> => {
     });
   }
 
-  await SubscriptionResource.pokeUpgradeWorkspaceToPlan({
+  const upgradeResult = await SubscriptionResource.pokeUpgradeWorkspaceToPlan({
     auth,
     planCode,
     endDate: endDate ? new Date(endDate) : null,
   });
+  if (upgradeResult.isErr()) {
+    await pluginRun.recordError(upgradeResult.error.message);
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: upgradeResult.error.message,
+      },
+    });
+  }
 
   await restoreWorkspaceAfterSubscription(auth);
 

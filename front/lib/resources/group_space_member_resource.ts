@@ -6,6 +6,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { GroupKind } from "@app/types/groups";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
@@ -45,6 +46,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
     const groupSpace = await GroupSpaceModel.create(
       {
         groupId: group.id,
+        groupKind: group.kind,
         vaultId: space.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         kind: "member",
@@ -105,8 +107,8 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       );
       if (filterOnManagementMode) {
         // Keep only regular groups in manual mode, provisioned groups in provisioned mode
-        const filterOnKind =
-          space.managementMode === "manual" ? "regular" : "provisioned";
+        const filterOnKind: GroupKind =
+          space.managementMode === "manual" ? "regular_auto" : "provisioned";
         if (groupModel.kind !== filterOnKind) {
           return null;
         }

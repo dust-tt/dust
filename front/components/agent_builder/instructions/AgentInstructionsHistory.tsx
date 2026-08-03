@@ -3,6 +3,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  ClockRewind,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
@@ -10,7 +11,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  HistoryIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { compareDesc } from "date-fns";
@@ -114,7 +114,7 @@ export function AgentInstructionsHistory({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost-secondary"
-          icon={HistoryIcon}
+          icon={ClockRewind}
           size="icon"
           tooltip="Compare with previous versions"
           isSelect
@@ -154,7 +154,7 @@ export function AgentInstructionsHistory({
                 <div className="flex w-full items-center justify-between">
                   <div className="flex flex-col">
                     <span>{formatVersionLabel(config)}</span>
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="text-xs text-muted-foreground">
                       by {getAuthorName(config)}
                     </span>
                   </div>

@@ -579,6 +579,7 @@ describe("createDataSourceAndConnectorForProject", () => {
       expect(deleteProjectSpy).toHaveBeenCalledTimes(1);
       expect(deleteProjectSpy).toHaveBeenCalledWith({
         projectId: mockProjectId.toString(),
+        caller: "projects-connector-rollback-create-data-source",
       });
 
       createProjectSpy.mockRestore();
@@ -664,6 +665,7 @@ describe("createDataSourceAndConnectorForProject", () => {
       expect(deleteProjectSpy).toHaveBeenCalledTimes(1);
       expect(deleteProjectSpy).toHaveBeenCalledWith({
         projectId: mockProjectId.toString(),
+        caller: "projects-connector-rollback-folder-failed",
       });
 
       upsertFolderSpy.mockRestore();
@@ -799,10 +801,12 @@ describe("createDataSourceAndConnectorForProject", () => {
       expect(deleteCoreDataSourceSpy).toHaveBeenCalledWith({
         projectId: mockProjectId.toString(),
         dataSourceId: mockDataSourceId,
+        caller: "projects-connector-rollback-connector-failed",
       });
       expect(deleteProjectSpy).toHaveBeenCalledTimes(1);
       expect(deleteProjectSpy).toHaveBeenCalledWith({
         projectId: mockProjectId.toString(),
+        caller: "projects-connector-rollback-connector-failed",
       });
 
       createConnectorSpy.mockRestore();

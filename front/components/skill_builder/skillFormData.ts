@@ -1,10 +1,10 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { UserType } from "@app/types/user";
 
 /**
@@ -24,24 +24,16 @@ export function transformSkillTypeToFormData(
     tools: skill.tools.map(getDefaultMCPAction),
     fileAttachments: skill.fileAttachments,
     icon: skill.icon ?? null,
-    extendedSkillId: skill.extendedSkillId,
-    isDefault: skill.isDefault,
+    availability: skill.availability,
     reinforcement: skill.reinforcement,
     additionalSpaces: [],
     referencedSkills:
-      skill.relations?.childSkills?.map((childSkill) => ({
+      skill.relations?.childSkills.map((childSkill) => ({
         id: childSkill.sId,
         name: childSkill.name,
         icon: childSkill.icon,
         requestedSpaceIds: childSkill.requestedSpaceIds,
       })) ?? [],
-    referencedSkillIds: [
-      ...new Set([
-        ...(skill.relations?.childSkills?.map((childSkill) => childSkill.sId) ??
-          []),
-        ...extractUniqueSkillReferenceIds(skill.instructions ?? ""),
-      ]),
-    ],
   };
 }
 
@@ -50,10 +42,8 @@ export function transformSkillTypeToFormData(
  */
 export function getDefaultSkillFormData({
   user,
-  extendedSkillId = null,
 }: {
   user: UserType;
-  extendedSkillId?: string | null;
 }): SkillBuilderFormData {
   return {
     name: "",
@@ -65,11 +55,9 @@ export function getDefaultSkillFormData({
     tools: [],
     fileAttachments: [],
     icon: null,
-    extendedSkillId,
-    isDefault: false,
+    availability: DEFAULT_SKILL_AVAILABILITY,
     reinforcement: "on",
     additionalSpaces: [],
     referencedSkills: [],
-    referencedSkillIds: [],
   };
 }

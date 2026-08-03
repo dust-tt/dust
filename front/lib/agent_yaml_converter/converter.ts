@@ -1,5 +1,6 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { processAdditionalConfiguration } from "@app/components/agent_builder/submitAgentBuilderForm";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   isAutoInternalMCPServerName,
   isInternalMCPServerName,
@@ -18,7 +19,7 @@ import { agentYAMLConfigSchema } from "@app/lib/agent_yaml_converter/schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -49,8 +50,8 @@ export class AgentYAMLConverter {
         },
         instructions: formData.instructions,
         generation_settings: {
-          model_id: formData.generationSettings.modelSettings.modelId,
-          provider_id: formData.generationSettings.modelSettings.providerId,
+          model_id: formData.generationSettings.modelSettings?.modelId,
+          provider_id: formData.generationSettings.modelSettings?.providerId,
           temperature: formData.generationSettings.temperature,
           reasoning_effort: formData.generationSettings.reasoningEffort,
           response_format: formData.generationSettings.responseFormat,
@@ -85,8 +86,8 @@ export class AgentYAMLConverter {
     editors: AgentBuilderFormData["agentSettings"]["editors"]
   ): string[] {
     return editors
-      .filter((editor) => editor.email)
-      .map((editor) => editor.email);
+      .map((editor) => editor.email)
+      .filter((email): email is string => !!email);
   }
 
   private static convertSkills(
@@ -266,7 +267,15 @@ export class AgentYAMLConverter {
         auth,
         configuration.mcpServerViewId
       );
-      return mcpServerView?.toJSON().server.name ?? null;
+      if (!mcpServerView) {
+        return null;
+      }
+      // Match the precedence used to resolve names back on import
+      // (see MCPServerViewResource.resolveAttachableByName): the view's
+      // custom display name, if set, takes priority over the server's name.
+      return (
+        mcpServerView.name ?? mcpServerView.getServerDisplayMetadata().name
+      );
     } catch {
       return null;
     }
@@ -303,9 +312,25 @@ export class AgentYAMLConverter {
     }));
   }
 
+  private static async resolveAutoInternalMCPServerView(
+    auth: Authenticator,
+    name: AutoInternalMCPServerNameType
+  ): Promise<Result<MCPServerViewResource, Error>> {
+    const mcpServerView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        name
+      );
+    if (!mcpServerView) {
+      return new Err(new Error(`MCP server view not found for: ${name}`));
+    }
+    return new Ok(mcpServerView);
+  }
+
   static async convertYAMLActionToMCPConfiguration(
     auth: Authenticator,
-    action: AgentYAMLAction
+    action: AgentYAMLAction,
+    workspaceViews: MCPServerViewResource[]
   ): Promise<
     Result<
       | PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number]
@@ -318,32 +343,22 @@ export class AgentYAMLConverter {
       return new Err(new Error("MCP server name is required"));
     }
 
-    if (!isInternalMCPServerName(mcpServerName)) {
-      return new Err(
-        new Error(`Invalid internal MCP server name: ${mcpServerName}`)
-      );
-    }
-
-    if (!isAutoInternalMCPServerName(mcpServerName)) {
-      return new Err(
-        new Error(
-          `MCP server ${mcpServerName} is not available for auto configuration`
-        )
-      );
-    }
-
     try {
-      const mcpServerView =
-        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          mcpServerName
-        );
-
-      if (!mcpServerView) {
-        return new Err(
-          new Error(`MCP server view not found for: ${mcpServerName}`)
-        );
+      // Auto internal servers get a just-in-time global-space view; everything else is matched
+      // by name against the pre-fetched workspace views.
+      const mcpServerViewResult =
+        isInternalMCPServerName(mcpServerName) &&
+        isAutoInternalMCPServerName(mcpServerName)
+          ? await this.resolveAutoInternalMCPServerView(auth, mcpServerName)
+          : MCPServerViewResource.resolveAttachableByName(
+              auth,
+              workspaceViews,
+              mcpServerName
+            );
+      if (mcpServerViewResult.isErr()) {
+        return new Err(mcpServerViewResult.error);
       }
+      const mcpServerView = mcpServerViewResult.value;
 
       const workspaceId = auth.getNonNullableWorkspace().sId;
 
@@ -402,9 +417,16 @@ export class AgentYAMLConverter {
     >
   > {
     try {
+      // Fetch once to avoid an N+1 across toolset entries.
+      const workspaceViews = await MCPServerViewResource.listByWorkspace(auth);
       const results = await concurrentExecutor(
         yamlActions,
-        (action) => this.convertYAMLActionToMCPConfiguration(auth, action),
+        (action) =>
+          this.convertYAMLActionToMCPConfiguration(
+            auth,
+            action,
+            workspaceViews
+          ),
         { concurrency: 5 }
       );
 

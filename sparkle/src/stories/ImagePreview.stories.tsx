@@ -11,9 +11,24 @@ import { ImagePreview } from "../index_with_tw_base";
 const SAMPLE_IMAGE = "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg";
 
 const meta = {
-  title: "Conversation/ImagePreview",
+  title: "Product/Conversation/ImagePreview",
   component: ImagePreview,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Displays a single image from a conversation with hover affordances. Supports a **variant** (\`standalone\` / \`embedded\`), a hover \`title\` whose **titlePosition** can be \`bottom\` or \`center\`, an \`isLoading\` skeleton state, an optional \`onClose\` (remove) or \`downloadUrl\` (download) button, and \`manageZoomDialog\` to open a zoom view on click.
+
+**When to use**
+- To render an image attachment or an agent-generated image inline in a message.
+
+**Guidelines**
+- Always set \`alt\` for accessibility and a \`title\` for the hover label.
+- Provide \`downloadUrl\` for saving and \`onClose\` for removal; they render mutually distinct hover buttons.
+- For multiple images, use **InteractiveImageGrid**, which composes this component into a responsive layout.`,
+      },
+    },
+  },
   argTypes: {
     variant: {
       description: "Layout variant of the image preview",
@@ -45,13 +60,13 @@ const meta = {
   render: (args) => {
     if (args.variant === "embedded") {
       return (
-        <div className="s-relative s-h-48 s-w-48">
+        <div className="relative h-48 w-48">
           <ImagePreview {...args} />
         </div>
       );
     }
     return (
-      <div className="s-w-48">
+      <div className="w-48">
         <ImagePreview {...args} />
       </div>
     );
@@ -79,16 +94,16 @@ export const Variants: Story = {
     variant: "standalone",
   },
   render: (args) => (
-    <div className="s-flex s-flex-col s-gap-6">
-      <div className="s-flex s-flex-col s-gap-2">
-        <div className="s-text-sm s-font-medium s-text-primary dark:s-text-primary-night">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <div className="text-sm font-medium text-primary">
           Title Position: Bottom
         </div>
-        <div className="s-flex s-items-center s-gap-4">
-          <div className="s-w-32">
+        <div className="flex items-center gap-4">
+          <div className="w-32">
             <ImagePreview {...args} title="Normal" titlePosition="bottom" />
           </div>
-          <div className="s-w-32">
+          <div className="w-32">
             <ImagePreview
               {...args}
               title="With Close"
@@ -96,7 +111,7 @@ export const Variants: Story = {
               onClose={() => alert("Close clicked")}
             />
           </div>
-          <div className="s-w-32">
+          <div className="w-32">
             <ImagePreview
               {...args}
               title="With Download"
@@ -106,15 +121,15 @@ export const Variants: Story = {
           </div>
         </div>
       </div>
-      <div className="s-flex s-flex-col s-gap-2">
-        <div className="s-text-sm s-font-medium s-text-primary dark:s-text-primary-night">
+      <div className="flex flex-col gap-2">
+        <div className="text-sm font-medium text-primary">
           Title Position: Center
         </div>
-        <div className="s-flex s-items-center s-gap-4">
-          <div className="s-w-32">
+        <div className="flex items-center gap-4">
+          <div className="w-32">
             <ImagePreview {...args} title="Normal" titlePosition="center" />
           </div>
-          <div className="s-w-32">
+          <div className="w-32">
             <ImagePreview
               {...args}
               title="With Close"
@@ -122,7 +137,7 @@ export const Variants: Story = {
               onClose={() => alert("Close clicked")}
             />
           </div>
-          <div className="s-w-32">
+          <div className="w-32">
             <ImagePreview
               {...args}
               title="With Download"

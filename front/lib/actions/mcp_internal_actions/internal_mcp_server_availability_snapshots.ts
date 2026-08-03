@@ -4,10 +4,10 @@ import { fileURLToPath } from "node:url";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 
-export const INTERNAL_MCP_SERVER_AVAILABILITY_SNAPSHOT_FILE =
+const INTERNAL_MCP_SERVER_AVAILABILITY_SNAPSHOT_FILE =
   "internal_mcp_server_availability.snapshot.json";
 
-export const UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_ENV =
+const UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_ENV =
   "UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT";
 
 export const UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_COMMAND =
@@ -15,16 +15,13 @@ export const UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_COMMAND =
 
 const SNAPSHOT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
-export type InternalToolSnapshot = {
+type InternalToolSnapshot = {
   name: InternalMCPServerNameType | string;
   id: number;
 };
 
 export const MIGRATE_LEGACY_MANUAL_TO_AUTO_SCRIPT =
   "scripts/migrate_legacy_manual_internal_mcp_server_ids_to_auto.ts";
-
-export const ENSURE_AUTO_MCP_SERVER_VIEWS_SCRIPT =
-  "scripts/ensure_all_mcp_server_views_created.ts";
 
 type InternalToolAvailabilitySnapshot = {
   auto: InternalToolSnapshot[];
@@ -58,7 +55,7 @@ export function collectInternalToolsByAvailability(servers: {
   return { auto, manual };
 }
 
-export function getInternalToolAvailabilitySnapshotPath(): string {
+function getInternalToolAvailabilitySnapshotPath(): string {
   return path.join(
     SNAPSHOT_DIR,
     INTERNAL_MCP_SERVER_AVAILABILITY_SNAPSHOT_FILE
@@ -71,14 +68,28 @@ export function loadInternalToolAvailabilitySnapshot(): InternalToolAvailability
   return JSON.parse(content) as InternalToolAvailabilitySnapshot;
 }
 
+function formatInternalToolSnapshotList(tools: InternalToolSnapshot[]): string {
+  if (tools.length === 0) {
+    return "[]";
+  }
+  const entries = tools
+    .map(
+      (tool) => `    { "name": ${JSON.stringify(tool.name)}, "id": ${tool.id} }`
+    )
+    .join(",\n");
+  return `[\n${entries}\n  ]`;
+}
+
 export function writeInternalToolAvailabilitySnapshot(
   snapshot: InternalToolAvailabilitySnapshot
 ): void {
-  fs.writeFileSync(
-    getInternalToolAvailabilitySnapshotPath(),
-    `${JSON.stringify(snapshot, null, 2)}\n`,
-    "utf-8"
-  );
+  const content =
+    "{\n" +
+    `  "auto": ${formatInternalToolSnapshotList(snapshot.auto)},\n` +
+    `  "manual": ${formatInternalToolSnapshotList(snapshot.manual)}\n` +
+    "}\n";
+
+  fs.writeFileSync(getInternalToolAvailabilitySnapshotPath(), content, "utf-8");
 }
 
 export function shouldUpdateInternalToolAvailabilitySnapshot(): boolean {
@@ -167,8 +178,10 @@ export function validateInternalToolAvailabilitySnapshots({
       ok: false,
       message:
         `New auto internal tool(s) added: ${toolNames}.\n` +
-        "Ensure MCP server views exist across workspaces:\n" +
-        `  npx tsx ${ENSURE_AUTO_MCP_SERVER_VIEWS_SCRIPT} --execute`,
+        "MCP server views are created just-in-time per workspace " +
+        "(see MCPServerViewResource.unsafeEnsureAutoViewsForWorkspace), no backfill needed.\n" +
+        "Update the availability snapshot:\n" +
+        `  ${UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_COMMAND}`,
     };
   }
 

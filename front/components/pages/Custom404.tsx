@@ -1,0 +1,14 @@
+import CustomErrorPage from "@app/components/pages/CustomErrorPage";
+import { LogIn01 } from "@dust-tt/sparkle";
+
+export default function Custom404() {
+  return (
+    <CustomErrorPage
+      title="404: Page not found"
+      description="Looks like this page took an unscheduled coffee break."
+      href="/"
+      label="Back to homepage"
+      icon={LogIn01}
+    />
+  );
+}

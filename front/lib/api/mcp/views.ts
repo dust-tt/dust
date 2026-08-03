@@ -1,9 +1,36 @@
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { z } from "zod";
+
+export const PatchMCPServerViewBodySchema = z
+  .object({
+    oAuthUseCase: z.enum(["platform_actions", "personal_actions"]),
+  })
+  .or(
+    z.object({
+      name: z.string().nullable(),
+      description: z.string().nullable(),
+    })
+  )
+  .or(
+    z.object({
+      isRestrictedToSkills: z.boolean(),
+    })
+  );
+
+export type PatchMCPServerViewBody = z.infer<
+  typeof PatchMCPServerViewBodySchema
+>;
+
+export type PatchMCPServerViewResponseBody = {
+  success: true;
+  serverView: MCPServerViewType;
+};
 
 async function getAllMCPServerViewsInWorkspace(
   auth: Authenticator,
@@ -87,8 +114,7 @@ export async function updateNameAndDescriptionForMCPServerViews(
         if (v.mcpServerId === mcpServerId) {
           return false;
         }
-        const viewJson = v.toJSON();
-        return (viewJson.name ?? viewJson.server.name) === name;
+        return (v.name ?? v.getServerDisplayMetadata().name) === name;
       });
 
       if (hasConflict) {

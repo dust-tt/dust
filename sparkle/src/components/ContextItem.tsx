@@ -41,27 +41,27 @@ export function ContextItem({
       itemsAlignment={children ? "start" : "center"}
     >
       {visual}
-      <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-0">
-        <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-foreground dark:s-text-foreground-night sm:s-flex-row sm:s-gap-3">
+      <div className="mb-0.5 flex min-w-0 grow flex-col gap-0">
+        <div className="flex min-w-0 grow flex-col text-foreground sm:flex-row sm:gap-3">
           <div
             className={cn(
-              "s-heading-base",
+              "heading-base",
               truncateSubElement
-                ? "s-shrink-0"
-                : "s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap"
+                ? "shrink-0"
+                : "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
             )}
           >
             {title}
           </div>
           {subElement &&
             (truncateSubElement ? (
-              <div className="s-flex s-min-w-0 s-items-center s-gap-3 s-overflow-hidden s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
+              <div className="flex min-w-0 items-center gap-3 overflow-hidden text-sm text-muted-foreground">
+                <div className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
                   {subElement}
                 </div>
               </div>
             ) : (
-              <div className="s-flex s-items-center s-gap-3 s-overflow-hidden s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <div className="flex items-center gap-3 overflow-hidden text-sm text-muted-foreground">
                 {subElement}
               </div>
             ))}
@@ -71,7 +71,7 @@ export function ContextItem({
       <div
         className={cn(
           hoverAction &&
-            "s-opacity-0 s-transition-opacity s-duration-200 group-hover/context-item:s-opacity-100"
+            "opacity-0 transition-opacity duration-200 group-hover/context-item:opacity-100"
         )}
       >
         {action}
@@ -116,10 +116,9 @@ ContextItem.List = function ({
   return (
     <div
       className={cn(
-        "s-flex s-flex-col",
+        "flex flex-col",
         className,
-        hasBorder &&
-          "s-border-b s-border-t s-border-border dark:s-border-border-night"
+        hasBorder && "border-b border-t border-border"
       )}
     >
       {children}
@@ -139,7 +138,7 @@ ContextItem.Description = function ({
   return (
     <>
       {description && (
-        <div className="s-text-sm s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="text-sm font-normal text-muted-foreground">
           {description}
         </div>
       )}
@@ -170,17 +169,13 @@ ContextItem.SectionHeader = function ({
   return (
     <div
       className={cn(
-        "s-flex s-flex-col s-gap-0 s-pb-3 s-pt-7",
-        hasBorder && "s-border-b s-border-border dark:s-border-border-night"
+        "flex flex-col gap-0 pb-3 pt-7",
+        hasBorder && "border-b border-border"
       )}
     >
-      <div className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
-        {title}
-      </div>
+      <div className="heading-xl text-foreground">{title}</div>
       {description && (
-        <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-          {description}
-        </div>
+        <div className="copy-sm text-muted-foreground">{description}</div>
       )}
     </div>
   );

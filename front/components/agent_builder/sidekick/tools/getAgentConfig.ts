@@ -1,9 +1,10 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { splitInstructionsHtmlBlocks } from "@app/components/shared/utils";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-export interface GetAgentConfigCallbacks {
+interface GetAgentConfigCallbacks {
   getFormValues: () => AgentBuilderFormData;
   getPendingSuggestions?: () => AgentSuggestionType[];
   getCommittedInstructionsHtml?: () => string;
@@ -28,12 +29,14 @@ Use this to understand what the user is currently configuring for their agent.
 
 The response includes:
 - Agent settings (name, description, scope, model, tools, skills)
-- instructionsHtml: HTML version of instructions with data-block-id attributes on each block.
+- instructionsHtmlBlocks: instructions as an array of top-level HTML blocks, one per entry, each with a data-block-id attribute.
   Use these block IDs when making instruction suggestions to target specific blocks.
 - pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user`,
       _meta: {
         dust: {
           timeoutMs: 10_000,
+          // Never defer behind tool search: this is Sidekick's primary tool.
+          eager: true,
         },
       },
     },
@@ -64,11 +67,11 @@ The response includes:
       const config = {
         name: formData.agentSettings.name,
         description: formData.agentSettings.description,
-        instructionsHtml,
+        instructionsHtmlBlocks: splitInstructionsHtmlBlocks(instructionsHtml),
         scope: formData.agentSettings.scope,
         model: {
-          modelId: formData.generationSettings.modelSettings.modelId,
-          providerId: formData.generationSettings.modelSettings.providerId,
+          modelId: formData.generationSettings.modelSettings?.modelId,
+          providerId: formData.generationSettings.modelSettings?.providerId,
           reasoningEffort: formData.generationSettings.reasoningEffort,
         },
         tools: formData.actions.map((action) => ({

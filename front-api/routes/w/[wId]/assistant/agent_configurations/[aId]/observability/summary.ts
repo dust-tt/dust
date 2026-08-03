@@ -2,16 +2,13 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { generateAgentObservabilitySummary } from "@app/lib/api/assistant/observability/summary";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetAgentSummaryResponseBody = {
-  summaryText: string;
-};
 
 const ParamsSchema = z.object({
   aId: z.string(),
@@ -24,6 +21,7 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/observability/summary.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

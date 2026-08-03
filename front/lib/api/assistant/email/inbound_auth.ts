@@ -12,7 +12,7 @@ export type InboundEmailDkimResult = {
   result: string;
 };
 
-export type InboundAuthDecision = {
+type InboundAuthDecision = {
   authenticated: boolean;
   // Which path granted authentication (undefined when rejected).
   reason?: "aligned_dkim" | "aligned_spf";

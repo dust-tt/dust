@@ -5,7 +5,7 @@ export const WORKFLOW_TYPE_RUN_ALL_CHECKS = "runAllChecksWorkflow";
 export const WORKFLOW_TYPE_RUN_SINGLE_CHECK = "runSingleCheckWorkflow";
 export const MANUAL_CHECK_WORKFLOW_ID_PREFIX = "production_check_manual_";
 
-export type ProductionCheckWorkflowType =
+type ProductionCheckWorkflowType =
   | typeof WORKFLOW_TYPE_RUN_ALL_CHECKS
   | typeof WORKFLOW_TYPE_RUN_SINGLE_CHECK;
 

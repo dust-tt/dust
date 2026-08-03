@@ -3,6 +3,7 @@ import {
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
+import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import logger from "@app/logger/logger";
 import type {
@@ -167,6 +168,12 @@ const VariantQuerySchema = z.object({
  *                       type: string
  *               toolset:
  *                 type: array
+ *                 description: >-
+ *                   Replaces the full set of tools on the agent. Any tool not present in this
+ *                   array is removed, so send the complete desired toolset. Each entry resolves
+ *                   an MCP server by name (see configuration.mcp_server_name). Entries that cannot
+ *                   be resolved are not applied and are returned in the skippedActions field of
+ *                   the response rather than causing the whole request to fail.
  *                 items:
  *                   type: object
  *                   properties:
@@ -179,6 +186,15 @@ const VariantQuerySchema = z.object({
  *                       enum: [MCP]
  *                     configuration:
  *                       type: object
+ *                       properties:
+ *                         mcp_server_name:
+ *                           type: string
+ *                           description: >-
+ *                             Name of the MCP server to attach. Both built-in (internal) tools and
+ *                             remote MCP servers are supported. A remote MCP server must first be
+ *                             shared to a space (global or a regular space the caller can access);
+ *                             it is matched by its display name, which must be unambiguous within
+ *                             the workspace.
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -193,6 +209,11 @@ const VariantQuerySchema = z.object({
  *                   $ref: '#/components/schemas/AgentConfiguration'
  *                 skippedActions:
  *                   type: array
+ *                   description: >-
+ *                     Toolset entries that could not be applied (e.g. the referenced MCP server
+ *                     was not found, is not shared to an accessible space, or the name was
+ *                     ambiguous). The request still succeeds; inspect this list to confirm every
+ *                     intended tool was attached.
  *                   items:
  *                     type: object
  *                     properties:
@@ -271,10 +292,14 @@ app.get(
 
     const configVariant = variant ?? "light";
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: sId,
-      variant: configVariant,
-    });
+    // Retired global agents (e.g. gpt-4) stay resolvable internally for past conversations but
+    // must not be exposed through the public API.
+    const agentConfiguration = isRetiredGlobalAgent(sId)
+      ? null
+      : await getAgentConfiguration(auth, {
+          agentId: sId,
+          variant: configVariant,
+        });
 
     if (!agentConfiguration) {
       return apiError(ctx, {

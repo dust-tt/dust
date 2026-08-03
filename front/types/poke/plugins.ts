@@ -1,10 +1,13 @@
+import type { PokeRole } from "@app/lib/poke/roles";
 import { z } from "zod";
-
 import type { LightWorkspaceType } from "../user";
 
-export interface DependsOnCondition {
+interface DependsOnCondition {
   field: string;
-  value: boolean;
+  // The value the dependency field must hold for this field to render. For a
+  // boolean field this is the toggle state; for an enum field it's the value
+  // that must be selected (matched by membership against the selected values).
+  value: boolean | string;
 }
 
 interface BaseArgDefinition {
@@ -41,9 +44,11 @@ export function mapToEnumValues<T>(
 
 interface EnumArgDefinition extends BaseArgDefinition {
   type: "enum";
-  values: EnumValues;
+  values: EnumValues | readonly [EnumValue];
   async?: false;
   multiple: boolean;
+  /** Fetch enum options from the workspace member search API as the user types. */
+  serverSideSearch?: true;
 }
 
 interface AsyncEnumArgDefinition extends BaseArgDefinition {
@@ -51,6 +56,7 @@ interface AsyncEnumArgDefinition extends BaseArgDefinition {
   values: AsyncEnumValues;
   async: true;
   multiple: boolean;
+  serverSideSearch?: true;
 }
 
 interface StringArgDefinition extends BaseArgDefinition {
@@ -107,10 +113,6 @@ export type PluginArgDefinition =
   | FileArgDefinition
   | DateArgDefinition;
 
-export type StrictPluginArgs = {
-  [key: string]: PluginArgDefinition;
-};
-
 export type PluginArgs = Record<string, PluginArgDefinition>;
 
 // Utility types for async field detection.
@@ -138,6 +140,9 @@ export interface PluginManifest<
   isHidden?: boolean;
   readonly?: boolean;
   redactResult?: boolean;
+  // If set, only super-users with at least one of these roles (from GCS poke-roles.json) can see
+  // and run this plugin. Unset means all super-users have access.
+  requiredRoles?: PokeRole[];
 }
 
 interface PluginResourceScope {
@@ -181,9 +186,9 @@ export function createZodSchemaFromArgs(
           throw new Error(`Enum argument "${key}" must be an array`);
         }
 
-        // For async enums, allow empty arrays initially
-        // For non-async enums, require at least 2 values.
-        if (!arg.async && arg.values.length < 2) {
+        // For non-async enums, require at least 2 values unless server-side search
+        // is enabled (static values are optional placeholders such as "None").
+        if (!arg.async && !arg.serverSideSearch && arg.values.length < 2) {
           throw new Error(
             `Non-async enum argument "${key}" must have at least two values`
           );
@@ -192,9 +197,9 @@ export function createZodSchemaFromArgs(
         // Extract values from EnumValue objects.
         const enumValues = arg.values.map((v) => v.value) as string[];
 
-        // Handle empty async enums
-        if (enumValues.length === 0) {
-          schemaProps[key] = z.array(z.string()); // Allow any string for async enums initially.
+        // Server-side search enums load options dynamically (e.g. workspace members).
+        if (enumValues.length === 0 || arg.serverSideSearch) {
+          schemaProps[key] = z.array(z.string());
         } else if (enumValues.length === 1) {
           schemaProps[key] = z.array(z.literal(enumValues[0]));
         } else {

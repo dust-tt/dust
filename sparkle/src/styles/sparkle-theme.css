@@ -1,0 +1,214 @@
+/*
+ * Sparkle-only theme additions (was the sparkle-specific part of
+ * `sparkle/tailwind.config.js`, beyond the shared preset). Imported by
+ * sparkle's CSS entry points alongside the shared `theme.css`. App consumers
+ * do NOT import this — these utilities ship compiled in `dist/sparkle.css`.
+ */
+
+@theme {
+  /* Sparkle-specific animations. `--animate-pulse` intentionally overrides
+     the v4 default (box-shadow pulse driven by --pulse-color/--duration). */
+  --animate-shiny-text: shiny-text 2s infinite;
+  --animate-pulse: pulse var(--duration) ease-out infinite;
+  --animate-ring-pulse: ring-pulse 3s ease-out infinite;
+  --animate-ring-pulse-soft: ring-pulse-soft 3s cubic-bezier(0.4, 0, 0.6, 1)
+    infinite;
+  --animate-opacity-pulse: opacity-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-background-position-spin: background-position-spin 2000ms infinite
+    alternate;
+  --animate-rainbow: rainbow var(--speed, 16s) infinite linear;
+  --animate-collapse-down: collapse-down 150ms ease-out;
+  --animate-collapse-up: collapse-up 150ms ease-out;
+}
+
+/* Fixed heights (was theme.extend.height). Defined as `@utility` because v4's
+   `h-*` utilities are otherwise driven by the dynamic spacing scale. */
+@utility h-175 {
+  height: 700px;
+}
+@utility h-md {
+  height: 448px;
+}
+@utility h-lg {
+  height: 576px;
+}
+@utility h-xl {
+  height: 768px;
+}
+@utility h-2xl {
+  height: 1024px;
+}
+
+/* Rainbow gradient background (was theme.extend.backgroundImage). */
+@utility bg-rainbow-gradient {
+  background-image: linear-gradient(
+    90deg,
+    oklch(79.91% 0.111 242.35),
+    oklch(65.39% 0.1893 252.74),
+    oklch(62.68% 0.2325 303.9),
+    oklch(72.15% 0.1521 248.14),
+    oklch(53.19% 0.1614 253.34)
+  );
+}
+
+/* Sparkle-specific keyframes (was theme.extend.keyframes). */
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--pulse-color);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--pulse-color);
+  }
+}
+@keyframes ring-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 oklch(65.39% 0.1893 252.74 / 0.3137);
+  }
+  50% {
+    box-shadow: 0 0 0 3px oklch(65.39% 0.1893 252.74 / 0.3137);
+  }
+}
+/* Calmer ring pulse: smaller spread + lower opacity, gentle ease-in-out
+   breathe instead of the snappier ring-pulse above. */
+@keyframes ring-pulse-soft {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 oklch(65.39% 0.1893 252.74 / 0);
+  }
+  50% {
+    box-shadow: 0 0 0 2px oklch(65.39% 0.1893 252.74 / 0.2);
+  }
+}
+@keyframes opacity-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+@keyframes background-position-spin {
+  0% {
+    background-position: top center;
+  }
+  100% {
+    background-position: bottom center;
+  }
+}
+@keyframes shiny-text {
+  0% {
+    background-position: calc(-200%) 0;
+  }
+  100% {
+    background-position: calc(200%) 0;
+  }
+}
+@keyframes rainbow {
+  0% {
+    background-position: 0%;
+  }
+  100% {
+    background-position: 200%;
+  }
+}
+@keyframes collapse-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+@keyframes collapse-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+/* ─── Spinner ────────────────────────────────────────────────────────────────
+ * Styles for the <Spinner> component. The square path in the 0%/100% frame of
+ * `sss-morph` must stay in sync with the SQ constant in `components/Spinner.tsx`
+ * (the component renders SQ as the static, initial / reduced-motion shape). */
+
+/* Worm spinner */
+@keyframes ssp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ssp-dash {
+  0% {
+    stroke-dasharray: 2 98;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 70 30;
+    stroke-dashoffset: -48;
+  }
+  100% {
+    stroke-dasharray: 2 98;
+    stroke-dashoffset: -100;
+  }
+}
+.ssp-g {
+  animation: ssp-spin 2.2s linear infinite;
+  transform-origin: 12px 12px;
+}
+.ssp-arc {
+  animation: ssp-dash 2.2s ease-in-out infinite;
+}
+
+/* mono/revert track color, flipped by theme via a class on the SVG. The arc is
+ * primary-muted in both themes, so only the track needs a variable. */
+.ssp-mono {
+  --ssp-track: var(--color-border-dark);
+}
+.ssp-revert {
+  --ssp-track: var(--color-stone-700);
+}
+.dark .ssp-revert {
+  --ssp-track: var(--color-stone-150);
+}
+
+/* Shapes spinner: single path morphing square → circle → triangle → square. */
+@keyframes sss-morph {
+  0%,
+  15% {
+    d: path("M 12,3 C 21,3 21,3 21,12 C 21,21 21,21 12,21 C 3,21 3,21 3,12 C 3,3 3,3 12,3 Z");
+    animation-timing-function: ease-in-out;
+  }
+  33%,
+  48% {
+    d: path("M 12,3 C 16.97,3 21,7.03 21,12 C 21,16.97 16.97,21 12,21 C 7.03,21 3,16.97 3,12 C 3,7.03 7.03,3 12,3 Z");
+    animation-timing-function: ease-in-out;
+  }
+  67%,
+  82% {
+    d: path("M 12,3 C 14.6,7.5 17.19,12 19.79,16.5 C 17.2,16.5 14.6,16.5 12,16.5 C 9.4,16.5 6.6,16.5 4.21,16.5 C 6.8,12 9.4,7.5 12,3 Z");
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    d: path("M 12,3 C 21,3 21,3 21,12 C 21,21 21,21 12,21 C 3,21 3,21 3,12 C 3,3 3,3 12,3 Z");
+  }
+}
+.sss-p {
+  animation: sss-morph 2.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssp-g,
+  .ssp-arc,
+  .sss-p {
+    animation: none;
+  }
+}

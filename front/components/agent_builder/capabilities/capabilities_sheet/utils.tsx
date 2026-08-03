@@ -191,17 +191,13 @@ export function useCapabilitiesPageAndFooter({
 
     case "info":
       if (sheetState.kind === "skill") {
-        const title = sheetState.capability.relations.extendedSkill?.name
-          ? `${sheetState.capability.name} (extends ${sheetState.capability.relations.extendedSkill.name})`
-          : sheetState.capability.name;
-
         const handleClose = sheetState.hasPreviousPage
           ? () => onStateChange({ state: "selection" })
           : onClose;
 
         return {
           page: {
-            title,
+            title: sheetState.capability.name,
             description: sheetState.capability.userFacingDescription,
             id: sheetState.state,
             icon: getSkillIcon(sheetState.capability.icon),

@@ -1,20 +1,9 @@
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import SUPPORTED_MODEL_CONFIGS from "@app/types/assistant/models/models";
-import { O4_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
-  ModelConfigurationType,
   ModelIdType,
-  ModelProviderIdType,
   SupportedModel,
 } from "@app/types/assistant/models/types";
-
-export interface PrefetchedWhitelistedModels {
-  small: ModelConfigurationType | null;
-  large: ModelConfigurationType | null;
-  whitelistedProviders: Set<ModelProviderIdType>;
-}
-
-export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
 
@@ -62,9 +51,14 @@ export enum GLOBAL_AGENTS_SID {
   DUST_OAI = "dust-oai",
   DUST_OAI_MEDIUM = "dust-oai-medium",
   DUST_OAI_HIGH = "dust-oai-high",
+  DUST_OAI_LUNA = "dust-oai-luna",
+  DUST_OAI_LUNA_MEDIUM = "dust-oai-luna-medium",
+  DUST_OAI_LUNA_HIGH = "dust-oai-luna-high",
+  DUST_OAI_NANO_HIGH = "dust-oai-nano-high",
   DUST_GOOG = "dust-goog",
   DUST_GOOG_MEDIUM = "dust-goog-medium",
   DUST_GOOG_HIGH = "dust-goog-high",
+  DUST_GOOG_LITE = "dust-goog-lite",
   DUST_GOOG_PRO = "dust-goog-pro",
   DUST_GOOG_PRO_MEDIUM = "dust-goog-pro-medium",
   DUST_GOOG_PRO_HIGH = "dust-goog-pro-high",
@@ -76,6 +70,7 @@ export enum GLOBAL_AGENTS_SID {
   DUST_SOUPINOU = "dust-soupinou",
   DUST_SOUPINOU_MEDIUM = "dust-soupinou-medium",
   DUST_SOUPINOU_HIGH = "dust-soupinou-high",
+  DUST_SOUPINOU_NONE = "dust-soupinou-none",
   DUST_SUNDAE = "dust-sundae",
   DUST_SUNDAE_MEDIUM = "dust-sundae-medium",
   DUST_SUNDAE_HIGH = "dust-sundae-high",
@@ -85,11 +80,18 @@ export enum GLOBAL_AGENTS_SID {
   DUST_CHALOM = "dust-chalom",
   DUST_CHALOM_MEDIUM = "dust-chalom-medium",
   DUST_CHALOM_HIGH = "dust-chalom-high",
+  DUST_LIONEL = "dust-lionel",
+  DUST_LIONEL_MEDIUM = "dust-lionel-medium",
+  DUST_LIONEL_HIGH = "dust-lionel-high",
   DUST_ANT = "dust-ant",
   DUST_ANT_MEDIUM = "dust-ant-medium",
   DUST_ANT_HIGH = "dust-ant-high",
   DUST_ANT_MEDIUM_OMITTED = "dust-ant-medium-omitted",
   DUST_ANT_HIGH_OMITTED = "dust-ant-high-omitted",
+  DUST_ANT_SONNET_EDGE = "dust-ant-sonnet-edge",
+  DUST_ANT_SONNET_EDGE_LIGHT = "dust-ant-sonnet-edge-light",
+  DUST_HAIKU = "dust-haiku",
+  DUST_LIGHT = "dust-light",
   DUST_KIMI = "dust-kimi",
   DUST_KIMI_MEDIUM = "dust-kimi-medium",
   DUST_KIMI_HIGH = "dust-kimi-high",
@@ -126,6 +128,7 @@ export enum GLOBAL_AGENTS_SID {
   O3_MINI = "o3-mini",
   O3 = "o3",
   CLAUDE_4_5_HAIKU = "claude-4.5-haiku",
+  CLAUDE_5_SONNET = "claude-5-sonnet",
   CLAUDE_4_5_SONNET = "claude-4.5-sonnet",
   CLAUDE_4_SONNET = "claude-4-sonnet",
   CLAUDE_3_OPUS = "claude-3-opus",
@@ -139,13 +142,29 @@ export enum GLOBAL_AGENTS_SID {
   // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
   MISTRAL_SMALL = "mistral",
   GEMINI_PRO = "gemini-pro",
-  DEEPSEEK_R1 = "deepseek-r1",
+
+  ANALYST = "analyst",
 
   NOOP = "noop",
 }
 
 export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
   return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
+}
+
+// Hidden helper sub-agents that are only ever invoked internally (e.g. via
+// run_agent by the Deep Dive agent). On their own they are not meaningful to
+// users, so usage they generate should be attributed to the parent agent that
+// spawned them rather than to the helper itself. Other sub-agents (real user
+// agents invoked via run_agent / agent_handover) keep their own attribution.
+const HIDDEN_HELPER_SUB_AGENT_SIDS: ReadonlySet<string> = new Set<string>([
+  GLOBAL_AGENTS_SID.DUST_TASK,
+  GLOBAL_AGENTS_SID.DUST_PLANNING,
+  GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+]);
+
+export function isHiddenHelperSubAgentId(sId: string): boolean {
+  return HIDDEN_HELPER_SUB_AGENT_SIDS.has(sId);
 }
 
 // If you want to show feedback buttons for global agents, add sId here.
@@ -179,6 +198,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
     case GLOBAL_AGENTS_SID.O3_MINI:
     case GLOBAL_AGENTS_SID.O3:
       return "OpenAI";
+    case GLOBAL_AGENTS_SID.CLAUDE_5_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
@@ -187,8 +207,6 @@ export function getGlobalAgentAuthorName(agentId: string): string {
       return "Mistral";
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
       return "Google";
-    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
-      return "DeepSeek";
     case GLOBAL_AGENTS_SID.NOOP:
       return "Noop";
     default:
@@ -200,7 +218,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
   GLOBAL_AGENTS_SID.DEEP_DIVE,
-  GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_5_SONNET,
   GLOBAL_AGENTS_SID.GPT5,
   GLOBAL_AGENTS_SID.GEMINI_PRO,
   GLOBAL_AGENTS_SID.MISTRAL_LARGE,
@@ -212,12 +230,16 @@ const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST_OAI,
   GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+  GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+  GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
   GLOBAL_AGENTS_SID.DUST_CHAWI,
   GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
   GLOBAL_AGENTS_SID.DUST_SOUPINOU,
   GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
   GLOBAL_AGENTS_SID.DUST_SUNDAE,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
@@ -227,6 +249,9 @@ const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST_CHALOM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+  GLOBAL_AGENTS_SID.DUST_LIONEL,
+  GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
 ];
 const globalAgentIndexMap = new Map(
   GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])

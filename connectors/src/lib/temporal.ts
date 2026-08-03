@@ -161,20 +161,6 @@ export async function getConnectorId(
   return CONNECTOR_ID_CACHE[workflowId] || null;
 }
 
-export async function cancelWorkflow(workflowId: string) {
-  const client = await getTemporalClient();
-  try {
-    const workflowHandle = client.workflow.getHandle(workflowId);
-    await workflowHandle.cancel();
-    return true;
-  } catch (e) {
-    if (!(e instanceof WorkflowNotFoundError)) {
-      throw e;
-    }
-  }
-  return false;
-}
-
 export async function terminateWorkflow(workflowId: string, reason?: string) {
   const client = await getTemporalClient();
   try {

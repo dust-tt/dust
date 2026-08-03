@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import {
+  detectEnvironmentFromMetadata,
   type EnvironmentMetadata,
+  getEnvironmentWorktreeDir,
   isEnvironmentMetadata,
   validateEnvName,
 } from "../../src/lib/environment";
@@ -113,6 +115,92 @@ describe("environment", () => {
     it("allows extra properties", () => {
       const extended = { ...validMetadata, extraField: "value" };
       expect(isEnvironmentMetadata(extended)).toBe(true);
+    });
+
+    it("allows externally owned worktree metadata", () => {
+      const adoptedMetadata: EnvironmentMetadata = {
+        ...validMetadata,
+        worktreeOwner: "external",
+        worktreePath: "/path/to/repo/.hives/external/tool/workspaces/project/city",
+      };
+
+      expect(isEnvironmentMetadata(adoptedMetadata)).toBe(true);
+    });
+
+    it("rejects invalid worktree owners", () => {
+      const invalid = { ...validMetadata, worktreeOwner: "launcher" };
+
+      expect(isEnvironmentMetadata(invalid)).toBe(false);
+    });
+  });
+
+  describe("getEnvironmentWorktreeDir", () => {
+    it("returns the default Hive worktree path when metadata has no explicit path", () => {
+      const metadata: EnvironmentMetadata = {
+        name: "test",
+        baseBranch: "main",
+        workspaceBranch: "test",
+        createdAt: "2024-01-01T00:00:00Z",
+        repoRoot: "/path/to/repo",
+      };
+
+      expect(getEnvironmentWorktreeDir(metadata)).toBe("/path/to/repo/.hives/test");
+    });
+
+    it("returns the explicit worktree path for adopted environments", () => {
+      const metadata: EnvironmentMetadata = {
+        name: "port-louis",
+        baseBranch: "main",
+        workspaceBranch: "fontanierh/port-louis",
+        createdAt: "2024-01-01T00:00:00Z",
+        repoRoot: "/path/to/repo",
+        worktreePath: "/path/to/repo/.hives/external/tool/workspaces/project/port-louis",
+        worktreeOwner: "external",
+      };
+
+      expect(getEnvironmentWorktreeDir(metadata)).toBe(
+        "/path/to/repo/.hives/external/tool/workspaces/project/port-louis"
+      );
+    });
+  });
+
+  describe("detectEnvironmentFromMetadata", () => {
+    it("chooses the longest matching registered worktree path", () => {
+      const hiveMetadata: EnvironmentMetadata = {
+        name: "external",
+        baseBranch: "main",
+        workspaceBranch: "external",
+        createdAt: "2024-01-01T00:00:00Z",
+        repoRoot: "/path/to/repo",
+      };
+      const adoptedMetadata: EnvironmentMetadata = {
+        name: "port-louis",
+        baseBranch: "main",
+        workspaceBranch: "fontanierh/port-louis",
+        createdAt: "2024-01-01T00:00:00Z",
+        repoRoot: "/path/to/repo",
+        worktreePath: "/path/to/repo/.hives/external/tool/workspaces/project/port-louis",
+        worktreeOwner: "external",
+      };
+
+      expect(
+        detectEnvironmentFromMetadata(
+          "/path/to/repo/.hives/external/tool/workspaces/project/port-louis/front",
+          [hiveMetadata, adoptedMetadata]
+        )
+      ).toBe("port-louis");
+    });
+
+    it("returns null when the cwd is outside registered worktrees", () => {
+      const metadata: EnvironmentMetadata = {
+        name: "test",
+        baseBranch: "main",
+        workspaceBranch: "test",
+        createdAt: "2024-01-01T00:00:00Z",
+        repoRoot: "/path/to/repo",
+      };
+
+      expect(detectEnvironmentFromMetadata("/path/to/other/repo", [metadata])).toBe(null);
     });
   });
 });

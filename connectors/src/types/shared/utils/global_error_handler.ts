@@ -30,7 +30,16 @@ export function setupGlobalErrorHandler(logger: LoggerInterface) {
     promise.catch((error) => {
       // We'll get the call stack from error only if the promise was rejected with an error object.
       // Example: new Promise((_, reject) => reject(new Error("Some error")))
-      logger.error({ error, panic: true, uuid, reason }, "Unhandled Rejection");
+      logger.error(
+        {
+          error,
+          panic: true,
+          uuid,
+          reason: reason instanceof Error ? reason.stack : String(reason),
+          errorMessage: error instanceof Error ? error.message : String(error),
+        },
+        "Unhandled Rejection"
+      );
     });
   });
 
@@ -45,7 +54,7 @@ export function setupGlobalErrorHandler(logger: LoggerInterface) {
     }
 
     logger.error(
-      { error, message: error.message, panic: true },
+      { error, message: error.message, stack: error.stack, panic: true },
       "Uncaught Exception"
     );
   });

@@ -1,0 +1,28 @@
+<!-- Geist for the Storybook manager UI (sidebar, toolbar). The preview loads
+     these faces via src/styles/fonts.css; the manager needs its own copy.
+     Served from front/public/static via the /static staticDir in main.ts. -->
+<style>
+  @font-face {
+    font-family: "Geist";
+    src: url("/static/fonts/GeistVariable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "Geist";
+    src: url("/static/fonts/GeistVariable-Italic.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: italic;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("/static/fonts/GeistMonoVariable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+  }
+</style>

@@ -1,20 +1,11 @@
+import type { GetPokeWorkspaceAuthContextResponseType } from "@app/lib/api/poke/auth_context";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator } from "@app/lib/auth";
-import type { SubscriptionType } from "@app/types/plan";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { allWorkspacePermissions } from "@app/lib/resources/group_permission_registry";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetPokeWorkspaceAuthContextResponseType = {
-  user: UserType;
-  workspace: LightWorkspaceType;
-  subscription: SubscriptionType;
-  isAdmin: true;
-  isBuilder: true;
-  isSuperUser: true;
-};
 
 const ParamsSchema = z.object({
   wId: z.string(),
@@ -29,6 +20,7 @@ const ParamsSchema = z.object({
 // use here to resolve a workspace-scoped Authenticator inline.
 const app = sessionApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -71,13 +63,16 @@ app.get(
 
     const user = auth.getNonNullableUser();
 
+    const workspacePermissions = allWorkspacePermissions();
+
     return ctx.json({
       user: user.toJSON(),
       workspace,
       subscription,
       isAdmin: true,
-      isBuilder: true,
+      isManager: true,
       isSuperUser: true,
+      workspacePermissions,
     });
   }
 );

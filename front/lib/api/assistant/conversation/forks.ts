@@ -1,7 +1,5 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import {
-  type ContentNodeAttachmentType,
-  type FileAttachmentType,
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
@@ -17,6 +15,7 @@ import {
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import { getFileContent } from "@app/lib/api/files/utils";
+import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -32,12 +31,13 @@ import { launchConversationForkWorkflow } from "@app/temporal/conversation_fork_
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
-} from "@app/types/api/internal/assistant";
-import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
+} from "@app/types/api/assistant";
 import type {
-  ConversationType,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+  ContentNodeAttachmentType,
+  FileAttachmentType,
+} from "@app/types/api/assistant/conversation/attachments";
+import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isFileContentFragment } from "@app/types/content_fragment";
@@ -47,7 +47,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
-export type CreateConversationForkErrorCode =
+type CreateConversationForkErrorCode =
   | "conversation_not_found"
   | "failed_to_copy_files"
   | "internal_error"
@@ -71,19 +71,6 @@ type CarriedAttachmentResult = {
 
 const ATTACHMENT_CARRY_OVER_CONCURRENCY = 4;
 const INTERACTIVE_CONTENT_REWRITE_CONCURRENCY = 4;
-
-function filterConversationContentUpToRank(
-  conversation: ConversationType,
-  maxRank: number
-): ConversationType {
-  return {
-    ...conversation,
-    content: conversation.content.filter((versions) => {
-      const latestVersion = versions[versions.length - 1];
-      return latestVersion ? latestVersion.rank <= maxRank : false;
-    }),
-  };
-}
 
 async function getForkCompactionModel(
   auth: Authenticator,
@@ -200,7 +187,7 @@ async function copyConversationSkills(
   const upsertResult = await SkillResource.upsertConversationSkills(
     auth,
     {
-      conversationId: childConversation.id,
+      conversation: childConversation,
       skills: parentSkills,
       enabled: true,
     },
@@ -393,16 +380,15 @@ async function rewriteCopiedInteractiveContentAttachmentIds(
         return;
       }
 
-      try {
-        await file.uploadContent(auth, updatedContent);
-      } catch (error) {
+      const uploadResult = await uploadFrameContent(auth, file, updatedContent);
+      if (uploadResult.isErr()) {
         logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
             parentConversationId,
             childConversationId,
             copiedFileId: file.sId,
-            error,
+            error: uploadResult.error,
           },
           "Failed to rewrite copied interactive content file ids in forked conversation."
         );
@@ -419,17 +405,14 @@ async function carryOverConversationAttachments(
     childConversation,
     sourceMessageRank,
   }: {
-    parentConversation: ConversationType;
-    childConversation: ConversationType;
+    parentConversation: ConversationWithoutContentType;
+    childConversation: ConversationWithoutContentType;
     sourceMessageRank: number;
   }
 ): Promise<CompactionAttachmentIdReplacements> {
-  const parentConversationAtSource = filterConversationContentUpToRank(
-    parentConversation,
-    sourceMessageRank
-  );
   const attachments = await listAttachments(auth, {
-    conversation: parentConversationAtSource,
+    conversation: parentConversation,
+    upToRank: sourceMessageRank,
   });
   // We carry over direct conversation attachments and agent-generated tool outputs that were
   // attached before the fork point. Project-context files remain accessible via the shared
@@ -626,7 +609,10 @@ export async function createConversationFork(
         sId: generateRandomModelSId(),
         title: null,
         visibility: parentConversation.visibility,
-        depth: parentConversation.depth + 1,
+        // Forks are user-facing conversations, not run_agent sub-conversations:
+        // they must keep the parent's depth so depth-based behaviors (space
+        // listing, notifications, action limits) treat them as such.
+        depth: parentConversation.depth,
         triggerId: null,
         spaceId: parentConversation.space?.id ?? null,
         requestedSpaceIds: [...parentConversation.requestedSpaceIds],
@@ -694,11 +680,6 @@ export async function createConversationFork(
     return childConversationId;
   }
 
-  await ConversationResource.triggerEsIndexing(
-    auth,
-    childConversationId.value.childConversationId
-  );
-
   const launchForkWorkflowResult = await launchConversationForkWorkflow({
     workspaceId: auth.getNonNullableWorkspace().sId,
     sourceConversationId: parentConversation.sId,
@@ -725,6 +706,7 @@ export async function createConversationFork(
     );
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const childConversation = await getConversation(
     auth,
     childConversationId.value.childConversationId
@@ -747,6 +729,7 @@ export async function createConversationFork(
     });
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const parentConversationWithContent = await getConversation(
     auth,
     conversationId

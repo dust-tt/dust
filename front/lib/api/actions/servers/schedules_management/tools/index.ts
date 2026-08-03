@@ -1,11 +1,18 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
 import { SCHEDULES_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import type { Authenticator } from "@app/lib/auth";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  resolveTriggerSpaceId,
+  TriggerResource,
+} from "@app/lib/resources/trigger_resource";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -13,9 +20,13 @@ import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
 import { isScheduleTrigger } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 import { UniqueConstraintError } from "sequelize";
 
-function renderSchedule(schedule: ScheduleTriggerType): string {
+function renderSchedule(
+  schedule: ScheduleTriggerType,
+  podName?: string | null
+): string {
   const config = schedule.configuration;
   const scheduleDesc =
     schedule.naturalLanguageDescription ?? describeScheduleConfig(config);
@@ -24,6 +35,9 @@ function renderSchedule(schedule: ScheduleTriggerType): string {
     `- **${schedule.name}** (ID: ${schedule.sId})`,
     `  Schedule: ${scheduleInfo}`,
   ];
+  if (podName && schedule.spaceId) {
+    lines.push(`  Pod: ${podName} (${schedule.spaceId})`);
+  }
   if (schedule.customPrompt) {
     lines.push(`  Prompt: ${schedule.customPrompt}`);
   }
@@ -31,10 +45,12 @@ function renderSchedule(schedule: ScheduleTriggerType): string {
   return lines.join("\n");
 }
 
-function getUserTimezone(
-  agentLoopContext?: AgentLoopContextType
-): string | null {
-  const content = agentLoopContext?.runContext?.conversation?.content;
+function getUserTimezone(toolContext?: ToolContext): string | null {
+  if (!isAgentLoopRunContext(toolContext?.runContext)) {
+    return null;
+  }
+
+  const content = toolContext?.runContext?.conversation?.content;
   if (!content) {
     return null;
   }
@@ -45,21 +61,29 @@ function getUserTimezone(
 
 export function createSchedulesManagementTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContext
 ) {
   const handlers: ToolHandlers<typeof SCHEDULES_MANAGEMENT_TOOLS_METADATA> = {
-    create_schedule: async ({ name, schedule, prompt, timezone }) => {
+    create_schedule: async ({ name, schedule, prompt, timezone, podId }) => {
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
+
       const owner = auth.getNonNullableWorkspace();
       const user = auth.getNonNullableUser();
 
-      if (!agentLoopContext?.runContext) {
-        logger.error("Agent context missing");
-        return new Err(new MCPError("Agent context is required"));
+      const { agentConfiguration } = toolContext.runContext;
+
+      // When a podId is provided, attach the trigger to that Pod so the
+      // scheduled run lands in the Pod (where the pinned view lives).
+      const spaceIdRes = await resolveTriggerSpaceId(auth, podId);
+      if (spaceIdRes.isErr()) {
+        return new Err(new MCPError(spaceIdRes.error));
       }
+      const spaceId = spaceIdRes.value;
 
-      const { agentConfiguration } = agentLoopContext.runContext;
-
-      const resolvedTimezone = timezone ?? getUserTimezone(agentLoopContext);
+      const resolvedTimezone = timezone ?? getUserTimezone(toolContext);
 
       if (!resolvedTimezone) {
         logger.error("resolved timezone missing");
@@ -103,6 +127,7 @@ export function createSchedulesManagementTools(
           executionPerDayLimitOverride: null,
           executionMode: "fair_use",
           origin: "agent",
+          spaceId,
         });
 
         if (result.isErr()) {
@@ -137,21 +162,24 @@ export function createSchedulesManagementTools(
             `Created schedule "${name}"!\n\n` +
             `Schedule: ${schedule}\n` +
             `Configuration: ${configDesc} (${scheduleConfig.timezone})\n\n` +
-            `The agent will execute "${prompt}" according to this schedule.\n\n` +
+            `The agent will execute "${prompt}" according to this schedule.` +
+            (spaceId !== null ? " Its runs will land in the Pod." : "") +
+            `\n\n` +
             renderSchedule(trigger),
         },
       ]);
     },
 
     list_schedules: async () => {
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
+
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      if (!agentLoopContext?.runContext) {
-        return new Err(new MCPError("Agent context is required"));
-      }
-
-      const { agentConfiguration } = agentLoopContext.runContext;
+      const { agentConfiguration } = toolContext.runContext;
 
       const schedulesResult =
         await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
@@ -170,7 +198,11 @@ export function createSchedulesManagementTools(
         `agent_id:${agentConfiguration.sId}`,
       ]);
 
-      if (schedulesResult.value.length === 0) {
+      const schedules = schedulesResult.value
+        .map((s) => s.toJSON())
+        .filter(isScheduleTrigger);
+
+      if (schedules.length === 0) {
         return new Ok([
           {
             type: "text" as const,
@@ -179,10 +211,25 @@ export function createSchedulesManagementTools(
         ]);
       }
 
-      const scheduleList = schedulesResult.value
-        .map((s) => s.toJSON())
-        .filter(isScheduleTrigger)
-        .map((schedule) => renderSchedule(schedule))
+      // Resolve Pod names for schedules attached to a Pod (single batch query).
+      const podIds = [
+        ...new Set(
+          schedules
+            .map((s) => s.spaceId)
+            .filter((id): id is string => id !== null)
+        ),
+      ];
+      const pods =
+        podIds.length > 0 ? await SpaceResource.fetchByIds(auth, podIds) : [];
+      const podNameById = new Map(pods.map((p) => [p.sId, p.name]));
+
+      const scheduleList = schedules
+        .map((schedule) =>
+          renderSchedule(
+            schedule,
+            schedule.spaceId ? podNameById.get(schedule.spaceId) : null
+          )
+        )
         .join("\n\n");
 
       return new Ok([
@@ -194,14 +241,15 @@ export function createSchedulesManagementTools(
     },
 
     disable_schedule: async ({ scheduleId }) => {
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
+
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      if (!agentLoopContext?.runContext) {
-        return new Err(new MCPError("Agent context is required"));
-      }
-
-      const { agentConfiguration } = agentLoopContext.runContext;
+      const { agentConfiguration } = toolContext.runContext;
 
       const triggersResult =
         await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {

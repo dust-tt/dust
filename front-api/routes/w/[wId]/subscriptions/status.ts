@@ -1,17 +1,14 @@
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import type { GetSubscriptionStatusResponseBody } from "@app/lib/resources/subscription_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
-export type GetSubscriptionStatusResponseBody = {
-  shouldRedirect: boolean;
-  redirectUrl: string | null;
-};
-
 // Mounted at /api/w/:wId/subscriptions/status.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetSubscriptionStatusResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

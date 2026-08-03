@@ -30,19 +30,19 @@ const useButtonsSwitch = () => {
 
 const listStyles = cva(
   cn(
-    "s-inline-flex s-items-center s-gap-1",
-    "s-box-border s-bg-muted s-border s-border-border dark:s-border-border-night dark:s-bg-muted-night"
+    "inline-flex items-center gap-1",
+    "box-border bg-background border border-border-dark"
   ),
   {
     variants: {
       fullWidth: {
-        true: "s-w-full",
+        true: "w-full",
         false: "",
       },
       size: {
-        xs: "s-rounded-xl s-p-[3px]",
-        sm: "s-rounded-2xl s-p-1",
-        md: "s-rounded-3xl s-p-1.5",
+        xs: "rounded-xl p-[3px]",
+        sm: "rounded-2xl p-1",
+        md: "rounded-3xl p-1.5",
       },
     },
     defaultVariants: {
@@ -57,6 +57,7 @@ export interface ButtonsSwitchListProps
     VariantProps<typeof listStyles> {
   size?: ButtonSize;
   disabled?: boolean;
+  value?: string;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
 }
@@ -70,6 +71,7 @@ export const ButtonsSwitchList = React.forwardRef<
       className,
       children,
       size = "sm",
+      value,
       defaultValue,
       onValueChange,
       disabled,
@@ -82,14 +84,17 @@ export const ButtonsSwitchList = React.forwardRef<
       string | undefined
     >(defaultValue);
 
-    const selected = internalValue;
+    const isControlled = value !== undefined;
+    const selected = isControlled ? value : internalValue;
 
     const handleChange = React.useCallback(
       (next: string) => {
-        setInternalValue(next);
+        if (!isControlled) {
+          setInternalValue(next);
+        }
         onValueChange?.(next);
       },
-      [onValueChange]
+      [isControlled, onValueChange]
     );
 
     const context: ButtonsSwitchContextType = React.useMemo(
@@ -152,7 +157,7 @@ export const ButtonsSwitch = React.forwardRef<
       variant={isActive ? "outline" : "ghost"}
       label={label}
       icon={icon}
-      className={className}
+      className={cn(!isActive && "border border-transparent", className)}
       disabled={isDisabled}
       onClick={handleClick}
       {...props}

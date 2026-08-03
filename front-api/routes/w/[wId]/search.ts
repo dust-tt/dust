@@ -1,15 +1,10 @@
-import {
-  handleSearch,
-  SearchRequestBody,
-  type SearchResult,
-} from "@app/lib/api/search";
+import { handleSearch, type SearchResult } from "@app/lib/api/search";
 import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
-import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
+import type { DataSourceContentNode } from "@app/types/api/search";
+import { SearchRequestBody } from "@app/types/api/search";
 import type { SearchWarningCode } from "@app/types/core/core_api";
-import type { DataSourceType } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { setSSEHeaders } from "@front-api/middlewares/streaming";
@@ -17,11 +12,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { stream } from "hono/streaming";
 import { fromError } from "zod-validation-error";
-
-type DataSourceContentNode = ContentNodeWithParent & {
-  dataSource: DataSourceType;
-  dataSourceViews: DataSourceViewType[];
-};
 
 interface UnifiedSearchStreamChunk {
   knowledgeResults?: {
@@ -36,6 +26,7 @@ interface UnifiedSearchStreamChunk {
 // Mounted at /api/w/:wId/search.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
 

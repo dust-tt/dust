@@ -6,43 +6,47 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetCreditUsageConfigurationResponseBody } from "@app/pages/api/w/[wId]/credits/usage-configuration";
-import type {
-  GetDefaultUserSpendLimitResponseBody,
-  PutDefaultUserSpendLimitResponseBody,
-} from "@app/pages/api/w/[wId]/usage_settings/default_user_spend_limit";
 import type {
   GetProgrammaticUsageLimitResponseBody,
   PutProgrammaticUsageLimitResponseBody,
-} from "@app/pages/api/w/[wId]/usage_settings/programmatic_usage_limit";
+} from "@app/types/api/credits/programmatic_usage_limit";
+import type { GetCreditUsageConfigurationResponseBody } from "@app/types/api/credits/usage_configuration";
+import type {
+  GetDefaultUserSpendLimitResponseBody,
+  PutDefaultUserSpendLimitResponseBody,
+} from "@app/types/api/workspace/default_user_spend_limit";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
 import { z } from "zod";
 
 const GetDefaultUserSpendLimitResponseSchema = z.object({
-  awuCredits: z.number().int().nullable(),
+  awuCredits: z.number().int(),
 });
 
 const PutDefaultUserSpendLimitResponseSchema = z.object({
   awuCredits: z.number().int(),
 });
 
-export interface UsageSettings {
+interface UsageSettings {
   allowUpgradeRequest: boolean;
-  autoUpgradeFreeToPro: boolean;
+  autoSeatUpgradeEnabled: boolean;
+  autoSeatUpgradeAvailable: boolean;
+  topUpEnabled: boolean;
 }
 
-export interface UsageNotifications {
+interface UsageNotifications {
   creditUsageAlertPercent: number;
   balanceThresholdCredits: number | null;
   upgradeRequestEmail: boolean;
 }
 
 const DEFAULT_USAGE_SETTINGS: UsageSettings = {
-  allowUpgradeRequest: false,
-  autoUpgradeFreeToPro: false,
+  allowUpgradeRequest: true,
+  autoSeatUpgradeEnabled: false,
+  autoSeatUpgradeAvailable: false,
+  topUpEnabled: false,
 };
 
 const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
@@ -51,42 +55,61 @@ const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
   upgradeRequestEmail: true,
 };
 
-const usageSettingsStore = new Map<string, UsageSettings>();
-const usageNotificationsStore = new Map<string, UsageNotifications>();
-const listeners = new Set<() => void>();
-
-function subscribe(callback: () => void) {
-  listeners.add(callback);
-  return () => {
-    listeners.delete(callback);
-  };
+function getCreditUsageConfigurationEndpoint(workspaceId: string): string {
+  return `/api/w/${workspaceId}/credits/usage-configuration`;
 }
 
-function notify() {
-  listeners.forEach((listener) => listener());
-}
-
-function getUsageSettings(workspaceId: string): UsageSettings {
-  return usageSettingsStore.get(workspaceId) ?? DEFAULT_USAGE_SETTINGS;
-}
-
-function getUsageNotifications(workspaceId: string): UsageNotifications {
-  return (
-    usageNotificationsStore.get(workspaceId) ?? DEFAULT_USAGE_NOTIFICATIONS
-  );
+// Shared PATCH against the usage-configuration endpoint. Both the settings and
+// notifications update hooks write to the same endpoint with disjoint fields.
+async function patchCreditUsageConfiguration(
+  workspaceId: string,
+  body: Record<string, unknown>
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const res = await clientFetch(
+      getCreditUsageConfigurationEndpoint(workspaceId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    );
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      return { ok: false, message: errorData.message };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: normalizeError(e).message };
+  }
 }
 
 export function useUsageSettings({ workspaceId }: { workspaceId: string }) {
-  const settings = useSyncExternalStore(
-    subscribe,
-    () => getUsageSettings(workspaceId),
-    () => DEFAULT_USAGE_SETTINGS
+  const { fetcher } = useFetcher();
+  const configurationFetcher: Fetcher<GetCreditUsageConfigurationResponseBody> =
+    fetcher;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    getCreditUsageConfigurationEndpoint(workspaceId),
+    configurationFetcher
   );
 
+  const usageSettings: UsageSettings = {
+    ...DEFAULT_USAGE_SETTINGS,
+    ...(data
+      ? {
+          allowUpgradeRequest: data.configuration.allowMemberUpgradeRequests,
+          autoSeatUpgradeEnabled: data.configuration.autoSeatUpgradeEnabled,
+          autoSeatUpgradeAvailable: data.configuration.autoSeatUpgradeAvailable,
+          topUpEnabled: data.configuration.topUpEnabled,
+        }
+      : {}),
+  };
+
   return {
-    usageSettings: settings,
-    isUsageSettingsLoading: false,
-    isUsageSettingsError: false,
+    usageSettings,
+    isUsageSettingsLoading: !data && !error && isValidating,
+    isUsageSettingsError: !!error,
   };
 }
 
@@ -96,28 +119,46 @@ export function useUpdateUsageSettings({
   workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
+  const { mutate } = useSWRWithDefaults(
+    getCreditUsageConfigurationEndpoint(workspaceId),
+    null
+  );
 
   const doUpdateUsageSettings = useCallback(
     async (patch: Partial<UsageSettings>): Promise<boolean> => {
-      const next = { ...getUsageSettings(workspaceId), ...patch };
-      usageSettingsStore.set(workspaceId, next);
-      notify();
-      // TODO: replace with a real POST request once the backend is available.
+      const body: Record<string, unknown> = {};
+      if (patch.allowUpgradeRequest !== undefined) {
+        body.allowMemberUpgradeRequests = patch.allowUpgradeRequest;
+      }
+      if (patch.autoSeatUpgradeEnabled !== undefined) {
+        body.autoSeatUpgradeEnabled = patch.autoSeatUpgradeEnabled;
+      }
+
+      if (Object.keys(body).length === 0) {
+        return true;
+      }
+
+      const result = await patchCreditUsageConfiguration(workspaceId, body);
+      if (!result.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update usage settings",
+          description: result.message,
+        });
+        return false;
+      }
+
+      await mutate();
       sendNotification({
         type: "success",
         title: "Usage settings updated",
-        description: "Changes are not persisted yet — backend coming soon.",
       });
       return true;
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, mutate]
   );
 
   return { doUpdateUsageSettings };
-}
-
-function getCreditUsageConfigurationEndpoint(workspaceId: string): string {
-  return `/api/w/${workspaceId}/credits/usage-configuration`;
 }
 
 export function useUsageNotifications({
@@ -134,13 +175,14 @@ export function useUsageNotifications({
     configurationFetcher
   );
 
-  const fromServer: Partial<UsageNotifications> = data
-    ? { balanceThresholdCredits: data.configuration.balanceThresholdCredits }
-    : {};
-
   const usageNotifications: UsageNotifications = {
     ...DEFAULT_USAGE_NOTIFICATIONS,
-    ...fromServer,
+    ...(data
+      ? {
+          balanceThresholdCredits: data.configuration.balanceThresholdCredits,
+          upgradeRequestEmail: data.configuration.upgradeRequestEmailEnabled,
+        }
+      : {}),
   };
 
   return {
@@ -167,40 +209,25 @@ export function useUpdateUsageNotifications({
       if (patch.balanceThresholdCredits !== undefined) {
         body.balanceThresholdCredits = patch.balanceThresholdCredits;
       }
-
-      if (Object.keys(body).length > 0) {
-        try {
-          const res = await clientFetch(
-            getCreditUsageConfigurationEndpoint(workspaceId),
-            {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body),
-            }
-          );
-          if (!res.ok) {
-            const errorData = await getErrorFromResponse(res);
-            sendNotification({
-              type: "error",
-              title: "Failed to update notification settings",
-              description: errorData.message,
-            });
-            return false;
-          }
-        } catch (e) {
-          sendNotification({
-            type: "error",
-            title: "Failed to update notification settings",
-            description: normalizeError(e).message,
-          });
-          return false;
-        }
-        await mutate();
+      if (patch.upgradeRequestEmail !== undefined) {
+        body.upgradeRequestEmailEnabled = patch.upgradeRequestEmail;
       }
 
-      const next = { ...getUsageNotifications(workspaceId), ...patch };
-      usageNotificationsStore.set(workspaceId, next);
-      notify();
+      if (Object.keys(body).length === 0) {
+        return true;
+      }
+
+      const result = await patchCreditUsageConfiguration(workspaceId, body);
+      if (!result.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update notification settings",
+          description: result.message,
+        });
+        return false;
+      }
+
+      await mutate();
       sendNotification({
         type: "success",
         title: "Notification settings updated",
@@ -305,7 +332,7 @@ export function useUpdateDefaultUserSpendLimit({
 // Programmatic usage limit
 
 const GetProgrammaticUsageLimitResponseSchema = z.object({
-  monthlyCapCredits: z.number().int().nullable(),
+  monthlyCapCredits: z.number().int(),
 });
 
 function programmaticUsageLimitUrl(workspaceId: string): string {
@@ -314,8 +341,10 @@ function programmaticUsageLimitUrl(workspaceId: string): string {
 
 export function useProgrammaticUsageLimit({
   workspaceId,
+  disabled,
 }: {
   workspaceId: string;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const limitFetcher: Fetcher<GetProgrammaticUsageLimitResponseBody> = async (
@@ -326,12 +355,13 @@ export function useProgrammaticUsageLimit({
   };
   const { data, error } = useSWRWithDefaults(
     programmaticUsageLimitUrl(workspaceId),
-    limitFetcher
+    limitFetcher,
+    { disabled }
   );
 
   return {
     programmaticUsageLimit: data,
-    isProgrammaticUsageLimitLoading: !error && !data,
+    isProgrammaticUsageLimitLoading: !error && !data && !disabled,
     isProgrammaticUsageLimitError: !!error,
   };
 }
@@ -345,7 +375,7 @@ export function useUpdateProgrammaticUsageLimit({
 
   const doUpdateProgrammaticUsageLimit = useCallback(
     async (
-      monthlyCapCredits: number | null
+      monthlyCapCredits: number
     ): Promise<PutProgrammaticUsageLimitResponseBody | null> => {
       const res = await clientFetch(programmaticUsageLimitUrl(workspaceId), {
         method: "PUT",
@@ -367,20 +397,21 @@ export function useUpdateProgrammaticUsageLimit({
         await res.json()
       );
 
-      if (monthlyCapCredits === null) {
+      if (monthlyCapCredits === 0) {
         sendNotification({
           type: "success",
-          title: "Programmatic usage limit has been removed",
+          title: "Programmatic access disabled",
         });
       } else {
         sendNotification({
           type: "success",
           title: "Programmatic usage limit updated",
-          description: `The monthly programmatic usage limit has been set to ${monthlyCapCredits.toLocaleString("en-US")} credits.`,
+          description: `Monthly limit set to ${monthlyCapCredits.toLocaleString()} credits.`,
         });
       }
 
       await mutate(programmaticUsageLimitUrl(workspaceId));
+      await mutate(`/api/w/${workspaceId}/usage-status`);
       return body;
     },
     [workspaceId, sendNotification]

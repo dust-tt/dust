@@ -9,7 +9,7 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClipboardIcon,
+  Clipboard,
   Hoverable,
   Page,
   Sheet,
@@ -89,7 +89,7 @@ export function ViewFolderAPIModal({
         <SheetContainer className="pb-8">
           <div className="flex flex-col gap-6">
             <Page.P>
-              <div className="rounded-lg bg-muted-background p-4 shadow-sm dark:bg-muted-background-night">
+              <div className="rounded-lg bg-muted-background p-4 shadow-sm">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">
@@ -125,12 +125,11 @@ export function ViewFolderAPIModal({
                 value={`$ ${cURLRequest("upsert")}`}
                 language="shell"
                 padding={15}
-                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
+                className="mt-5 rounded-md bg-muted-background px-4 py-4 font-mono text-[13px]"
                 style={{
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  backgroundColor: "rgb(241 245 249)",
                   width: "100%",
                   marginTop: "0rem",
                 }}
@@ -140,7 +139,7 @@ export function ViewFolderAPIModal({
                   variant="outline"
                   onClick={() => handleCopyClick("upsert")}
                   label={copyUpsertButtonText}
-                  icon={ClipboardIcon}
+                  icon={Clipboard}
                 />
               </div>
             </div>
@@ -159,12 +158,11 @@ export function ViewFolderAPIModal({
                 value={`$ ${cURLRequest("search")}`}
                 language="shell"
                 padding={15}
-                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
+                className="mt-5 rounded-md bg-muted-background px-4 py-4 font-mono text-[13px]"
                 style={{
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  backgroundColor: "rgb(241 245 249)",
                   width: "100%",
                   marginTop: "0rem",
                 }}
@@ -174,7 +172,7 @@ export function ViewFolderAPIModal({
                   variant="outline"
                   onClick={() => handleCopyClick("search")}
                   label={copySearchButtonText}
-                  icon={ClipboardIcon}
+                  icon={Clipboard}
                 />
               </div>
             </div>

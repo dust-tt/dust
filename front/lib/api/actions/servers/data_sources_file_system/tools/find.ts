@@ -34,6 +34,9 @@ export async function find(
   }: DataSourceFilesystemFindInputType & TagsInputType,
   { auth }: { auth: Authenticator }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
+  const effectiveRootNodeId = !!rootNodeId ? rootNodeId : null;
+  const effectiveCursor = !!nextPageCursor ? nextPageCursor : undefined;
+
   const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
   if (invalidMimeTypes && invalidMimeTypes.length > 0) {
     return new Err(
@@ -60,8 +63,8 @@ export async function find(
     return new Err(new MCPError(conflictingTags, { tracked: false }));
   }
 
-  const dataSourceNodeId = rootNodeId
-    ? extractDataSourceIdFromNodeId(rootNodeId)
+  const dataSourceNodeId = effectiveRootNodeId
+    ? extractDataSourceIdFromNodeId(effectiveRootNodeId)
     : null;
 
   // If rootNodeId is provided and is a data source node ID, search only in
@@ -79,12 +82,12 @@ export async function find(
     viewFilter = viewFilter.filter(
       (view) => view.data_source_id === dataSourceNodeId
     );
-  } else if (rootNodeId) {
+  } else if (effectiveRootNodeId) {
     // Checking that we do have access to the root node.
     const rootNodeSearchResult = await coreAPI.searchNodes({
       filter: {
         data_source_views: viewFilter,
-        node_ids: [rootNodeId],
+        node_ids: [effectiveRootNodeId],
       },
     });
     if (rootNodeSearchResult.isErr()) {
@@ -97,10 +100,10 @@ export async function find(
     // If we could not access the root node, we return an error early here.
     if (
       rootNodeSearchResult.value.nodes.length === 0 ||
-      rootNodeSearchResult.value.nodes[0].node_id !== rootNodeId
+      rootNodeSearchResult.value.nodes[0].node_id !== effectiveRootNodeId
     ) {
       return new Err(
-        new MCPError(`Could not find node: ${rootNodeId}`, {
+        new MCPError(`Could not find node: ${effectiveRootNodeId}`, {
           tracked: false,
         })
       );
@@ -108,7 +111,7 @@ export async function find(
 
     viewFilter = viewFilter.map((view) => ({
       ...view,
-      filter: [rootNodeId],
+      filter: [effectiveRootNodeId],
     }));
   }
 
@@ -119,7 +122,7 @@ export async function find(
       mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
     },
     options: {
-      cursor: nextPageCursor,
+      cursor: effectiveCursor,
       limit: limit ?? DEFAULT_FIND_LIMIT,
     },
   });

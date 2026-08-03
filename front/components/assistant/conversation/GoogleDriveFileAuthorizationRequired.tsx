@@ -1,9 +1,8 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
-import { useResolveAuthentication } from "@app/hooks/useResolveAuthentication";
 import type {
-  BlockedToolExecution,
+  AgentLoopBlockedToolExecution,
   FileAuthorizationInfo,
 } from "@app/lib/actions/mcp";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
@@ -11,20 +10,21 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
+import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
+import type { PickerTokenResponseType } from "@app/types/api/google_drive";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
-  CheckCircleIcon,
+  CheckCircle,
   ContentMessage,
-  DocumentTextIcon,
-  ExternalLinkIcon,
-  XMarkIcon,
+  File04,
+  LinkExternal01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface GoogleDriveFileAuthorizationRequiredProps {
-  blockedAction: BlockedToolExecution;
+  blockedAction: AgentLoopBlockedToolExecution;
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   fileAuthorizationInfo: FileAuthorizationInfo;
@@ -56,7 +56,6 @@ export function GoogleDriveFileAuthorizationRequired({
   const { removeCompletedAction } = useBlockedActionsContext();
   const { resolveAuthentication, isResolving } = useResolveAuthentication({
     owner,
-    kind: "file_authorization",
   });
   const isExtension = clientType === "extension";
 
@@ -161,6 +160,8 @@ export function GoogleDriveFileAuthorizationRequired({
 
   const handleSkip = useCallback(async () => {
     const denyRes = await resolveAuthentication({
+      contextType: "agent_loop",
+      kind: "file_authorization",
       outcome: "denied",
       actionId: blockedAction.actionId,
       conversationId: blockedAction.conversationId,
@@ -193,12 +194,12 @@ export function GoogleDriveFileAuthorizationRequired({
     <ContentMessage
       title={isAuthorized ? "File authorized" : "Authorization required"}
       variant={isAuthorized ? "success" : "primary"}
-      icon={isAuthorized ? CheckCircleIcon : DocumentTextIcon}
+      icon={isAuthorized ? CheckCircle : File04}
       className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
     >
       {canCurrentUserRespond ? (
         <>
-          <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
+          <div className="font-sm whitespace-normal break-words text-foreground">
             {isAuthorized ? (
               ` your file is now accessible. Continuing...`
             ) : isExtension ? (
@@ -216,7 +217,7 @@ export function GoogleDriveFileAuthorizationRequired({
                 variant="outline"
                 size="xs"
                 label="Skip"
-                icon={XMarkIcon}
+                icon={XClose}
                 disabled={isResolving || isOpeningPicker}
                 onClick={() => void handleSkip()}
               />
@@ -225,7 +226,7 @@ export function GoogleDriveFileAuthorizationRequired({
                   label="Open in Web App"
                   variant="highlight"
                   size="xs"
-                  icon={ExternalLinkIcon}
+                  icon={LinkExternal01}
                   onClick={handleOpenInWebApp}
                 />
               ) : (
@@ -233,7 +234,7 @@ export function GoogleDriveFileAuthorizationRequired({
                   label={isButtonLoading ? "Loading..." : "Open File Picker"}
                   variant="highlight"
                   size="xs"
-                  icon={DocumentTextIcon}
+                  icon={File04}
                   disabled={
                     isButtonLoading ||
                     isResolving ||
@@ -253,7 +254,7 @@ export function GoogleDriveFileAuthorizationRequired({
           )}
         </>
       ) : (
-        <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
+        <div className="font-sm whitespace-normal break-words text-foreground">
           {triggeringUser?.fullName} needs to authorize a file.
           <br />
           <span className="font-semibold">Waiting for them to continue...</span>

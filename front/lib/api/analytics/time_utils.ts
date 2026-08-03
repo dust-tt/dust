@@ -1,7 +1,7 @@
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const HOUR_MS = 3_600_000;
-export const FOUR_HOURS_MS = 4 * HOUR_MS;
+const FOUR_HOURS_MS = 4 * HOUR_MS;
 export const DAY_MS = 24 * HOUR_MS;
 
 export type WindowSize = "HOUR" | "FOUR_HOURS" | "DAY";

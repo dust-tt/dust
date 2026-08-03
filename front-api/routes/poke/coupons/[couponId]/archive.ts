@@ -32,6 +32,7 @@ const ParamsSchema = z.object({
 // parent poke sub-app.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

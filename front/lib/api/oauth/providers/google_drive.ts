@@ -24,7 +24,10 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
   }) {
     const scopes =
       useCase === "labs_transcripts"
-        ? ["https://www.googleapis.com/auth/drive.meet.readonly"]
+        ? [
+            "https://www.googleapis.com/auth/drive.meet.readonly",
+            "https://www.googleapis.com/auth/drive.readonly",
+          ]
         : [
             "https://www.googleapis.com/auth/drive.metadata.readonly",
             "https://www.googleapis.com/auth/drive.readonly",

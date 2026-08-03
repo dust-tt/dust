@@ -4,11 +4,28 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import type { GetContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
+import type { GetDatasourceRetrievalResponse } from "@app/lib/api/assistant/observability/datasource_retrieval";
+import type { GetDatasourceRetrievalDocumentsResponse } from "@app/lib/api/assistant/observability/datasource_retrieval_documents";
+import type { GetFeedbackDistributionResponse } from "@app/lib/api/assistant/observability/feedback_distribution";
 import type {
+  GetLatencyResponse,
+  GetUsageMetricsResponse,
+} from "@app/lib/api/assistant/observability/messages_metrics";
+import type { GetSkillExecutionResponse } from "@app/lib/api/assistant/observability/skill_execution";
+import type { GetToolExecutionResponse } from "@app/lib/api/assistant/observability/tool_execution";
+import type {
+  GetToolLatencyResponse,
   ToolLatencyRow,
   ToolLatencyView,
 } from "@app/lib/api/assistant/observability/tool_latency";
+import type { GetToolStepIndexResponse } from "@app/lib/api/assistant/observability/tool_step_index";
+import type { GetVersionMarkersResponse } from "@app/lib/api/assistant/observability/version_markers";
 import { clientFetch } from "@app/lib/egress/client";
+import type {
+  FetchAgentTemplateResponse,
+  FetchAssistantTemplatesResponse,
+} from "@app/lib/resources/template_resource";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -17,35 +34,26 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
-import type { GetDatasourceRetrievalResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval";
-import type { GetDatasourceRetrievalDocumentsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval-documents";
-import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
-import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
-import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
-import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/overview";
-import type { GetSkillExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/skill-execution";
-import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
-import type { GetAgentSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/summary";
-import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
-import type { GetToolLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-latency";
-import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
-import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
-import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
-import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
-import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
-import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
-import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
+import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
+import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
+import { BatchUpdateAgentModelResponseBodySchema } from "@app/types/api/assistant/configuration";
+import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
+import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
+import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
+import type { PostAgentUserFavoriteRequestBody } from "@app/types/api/assistant/user_relation";
+import type { GetMemberResponseBody } from "@app/types/api/user";
 import type {
   AgentConfigurationType,
   AgentsGetViewType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -198,6 +206,30 @@ export function useAgentConfigurations({
   };
 }
 
+export function useSimilarAgents({ owner }: { owner: LightWorkspaceType }) {
+  const { fetcher } = useFetcher();
+  const getSimilarAgents = useCallback(
+    async (
+      naturalDescription: string,
+      options: { signal?: AbortSignal } = {}
+    ) => {
+      const response: GetSimilarAgentsResponseBody = await fetcher(
+        `/api/w/${owner.sId}/assistant/agent_configurations/similar`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ naturalDescription }),
+          signal: options?.signal,
+        }
+      );
+      return new Ok(response.similar_agents);
+    },
+    [owner.sId, fetcher]
+  );
+
+  return { getSimilarAgents };
+}
+
 // This is the call that is required for the new conversation page to load all views on that page.
 // All elements that are involved in that page should rely on it to avoid concurrent calls to
 // getAgentConfigurations at the initial page load.
@@ -229,6 +261,20 @@ export function useUnifiedAgentConfigurations({
     mutate,
     mutateRegardlessOfQueryParams,
   };
+}
+
+export function useAccessibleAgentIds({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Set<string> {
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId,
+  });
+  return useMemo(
+    () => new Set(agentConfigurations.map((a) => a.sId)),
+    [agentConfigurations]
+  );
 }
 
 export function useAgentConfiguration({
@@ -381,30 +427,6 @@ export function useAgentConfigurationHistory({
     isAgentConfigurationHistoryLoading: !error && !data,
     isAgentConfigurationHistoryError: error,
     mutateAgentConfigurationHistory: mutate,
-  };
-}
-
-export function useAgentConfigurationLastAuthor({
-  workspaceId,
-  agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string | null;
-}) {
-  const { fetcher } = useFetcher();
-  const userFetcher: Fetcher<{
-    user: UserType;
-  }> = fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/last_author`,
-    userFetcher
-  );
-
-  return {
-    agentLastAuthor: data ? data.user : null,
-    isLoading: !error && !data,
-    isError: error,
   };
 }
 
@@ -686,7 +708,7 @@ export function useUpdateUserFavorite({
 
         if (res.ok) {
           sendNotification({
-            title: `Assistant ${
+            title: `Agent ${
               userFavorite ? "added to favorites" : "removed from favorites"
             }`,
             type: "success",
@@ -697,7 +719,7 @@ export function useUpdateUserFavorite({
         } else {
           const data = await res.json();
           sendNotification({
-            title: `Error ${userFavorite ? "adding" : "removing"} Assistant`,
+            title: `Error ${userFavorite ? "adding" : "removing"} Agent`,
             description: data.error.message,
             type: "error",
           });
@@ -810,6 +832,78 @@ export function useBatchUpdateAgentTags({
   );
 
   return batchUpdateAgentTags;
+}
+
+export function useBatchUpdateAgentModel({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const batchUpdateAgentModel = useCallback(
+    async (
+      agentIds: string[],
+      body: {
+        modelId: string;
+        reasoningEffort?: ReasoningEffort;
+        responseFormat?: string;
+      }
+    ) => {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_model`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...body,
+            agentIds,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+
+        sendNotification({
+          type: "error",
+          title: "Error updating model",
+          description: `Error: ${errorData.message}`,
+        });
+        return false;
+      }
+
+      // Each agent is saved on its own, so some of them may have been skipped.
+      const json = await res.json();
+      const parsed = BatchUpdateAgentModelResponseBodySchema.safeParse(json);
+      if (!parsed.success) {
+        sendNotification({
+          type: "error",
+          title: "Error updating model",
+          description: "An unknown error occurred.",
+        });
+        return true;
+      }
+
+      const { updatedAgentIds, skippedAgentIds } = parsed.data;
+
+      sendNotification({
+        type: skippedAgentIds.length > 0 ? "info" : "success",
+        title: "Model updated",
+        description:
+          skippedAgentIds.length > 0
+            ? `Model updated on ${updatedAgentIds.length} agent${pluralize(updatedAgentIds.length)}, ` +
+              `${skippedAgentIds.length} could not be updated.`
+            : `Model updated on ${updatedAgentIds.length} agent${pluralize(updatedAgentIds.length)}.`,
+      });
+      return true;
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return batchUpdateAgentModel;
 }
 
 export function useBatchUpdateAgentScope({
@@ -929,37 +1023,6 @@ export function useAgentLatency({
     isLatencyLoading: !error && !data && !disabled,
     isLatencyError: error,
     isLatencyValidating: isValidating,
-  };
-}
-
-export function useAgentErrorRate({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  version,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetErrorRateResponse> = fetcher;
-  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/error_rate?days=${days}${versionParam}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    errorRate: data?.points ?? emptyArray(),
-    isErrorRateLoading: !error && !data && !disabled,
-    isErrorRateError: error,
-    isErrorRateValidating: isValidating,
   };
 }
 

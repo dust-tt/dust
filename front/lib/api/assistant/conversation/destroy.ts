@@ -1,5 +1,7 @@
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
+import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
@@ -10,23 +12,26 @@ import {
   MessageReactionModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import {
   AgentMessageSkillModel,
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import {
   ProjectTaskConversationModel,
   ProjectTaskSourceModel,
 } from "@app/lib/resources/storage/models/project_task";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import { tracer } from "@app/logger/tracer";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -77,13 +82,6 @@ async function destroyMessageRelatedResources(
     sourceMessageModelIds: messageIds,
   });
 
-  await ConversationBranchModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      previousMessageId: messageIds,
-    },
-  });
-
   await MessageReactionModel.destroy({
     where: {
       workspaceId: owner.id,
@@ -107,50 +105,20 @@ async function destroyMessageRelatedResources(
 
 async function destroyContentFragments(
   auth: Authenticator,
-  messageAndContentFragmentIds: Array<{
-    contentFragmentId: ModelId;
-    messageId: string;
-  }>,
-  {
-    conversationId,
-  }: {
-    conversationId: string;
-  }
+  contentFragmentIds: ModelId[]
 ) {
-  const contentFragmentIds = messageAndContentFragmentIds.map(
-    (c) => c.contentFragmentId
-  );
   if (contentFragmentIds.length === 0) {
     return;
   }
 
-  const contentFragments = await ContentFragmentResource.fetchManyByModelIds(
-    auth,
-    contentFragmentIds
-  );
-
-  for (const contentFragment of contentFragments) {
-    const messageContentFragmentId = messageAndContentFragmentIds.find(
-      (c) => c.contentFragmentId === contentFragment.id
-    );
-
-    if (!messageContentFragmentId) {
-      throw new Error(
-        `Failed to destroy content fragment with id ${contentFragment.id}.`
-      );
-    }
-
-    const { messageId } = messageContentFragmentId;
-
-    const deletionRes = await contentFragment.destroy({
-      conversationId,
-      messageId,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    });
-    if (deletionRes.isErr()) {
-      throw deletionRes;
-    }
-  }
+  // GCS objects for this conversation were already removed via a single prefix
+  // delete in destroyConversation.
+  await ContentFragmentModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      id: contentFragmentIds,
+    },
+  });
 }
 
 async function destroyConversationDataSource(
@@ -182,150 +150,168 @@ export async function destroyConversation(
     conversation: ConversationResource;
   }
 ): Promise<Result<void, Error>> {
-  const owner = auth.getNonNullableWorkspace();
+  return tracer.trace("destroyConversation", async () => {
+    const owner = auth.getNonNullableWorkspace();
 
-  await ConversationForkResource.deleteForConversationModelId(auth, {
-    conversationModelId: conversation.id,
-  });
+    // Delete the conversation's sandbox egress allowlist file (owner-keyed, so
+    // it is not deleted with individual sandboxes). Pod conversations never own
+    // a file (they share the Pod's policy file, which is scrubbed by
+    // hardDeleteSpace) so skip them. A GCS failure aborts the destroy before
+    // any row is touched; callers run in Temporal activities, whose retry
+    // policy retries the whole destroy.
+    if (conversation.spaceId === null) {
+      const deleteOwnerPolicyRes = await deleteOwnerPolicy(
+        auth,
+        conversation.sId
+      );
+      if (deleteOwnerPolicyRes.isErr()) {
+        return deleteOwnerPolicyRes;
+      }
+    }
 
-  // Clean up all branches attached to this conversation before deleting messages.
-  await ConversationBranchModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
-    },
-  });
+    await ConversationForkResource.deleteForConversationModelId(auth, {
+      conversationModelId: conversation.id,
+    });
+    await ConversationSelectedSpaceResource.deleteForConversation(auth, {
+      conversation,
+    });
 
-  const messages = await MessageModel.findAll({
-    attributes: [
-      "id",
-      "sId",
-      "userMessageId",
-      "agentMessageId",
-      "contentFragmentId",
-      "compactionMessageId",
-    ],
-    where: {
-      conversationId: conversation.id,
-      workspaceId: owner.id,
-    },
-  });
-
-  // To preserve the DB, we delete messages in batches.
-  const messagesChunks = chunk(messages, DESTROY_MESSAGE_BATCH);
-  for (const messagesChunk of messagesChunks) {
-    const messageIds = messagesChunk.map((m) => m.id);
-    const userMessageIds = removeNulls(
-      messagesChunk.map((m) => m.userMessageId)
+    // One prefix covers every content-fragment attachment for this conversation
+    // (`.../conversations/{conversationId}/content_fragment/{messageId}/{text|raw}`).
+    // Failures abort destroy before DB rows are touched so Temporal can retry.
+    await getPrivateUploadBucket().deleteByPrefix(
+      `${getContentFragmentBaseCloudStorageForWorkspace(owner.sId)}${conversation.sId}/`
     );
-    const agentMessageIds = removeNulls(
-      messagesChunk.map((m) => m.agentMessageId)
-    );
-    const compactionMessageIds = removeNulls(
-      messagesChunk.map((m) => m.compactionMessageId)
-    );
-    const messageAndContentFragmentIds = removeNulls(
-      messagesChunk.map((m) => {
-        if (m.contentFragmentId) {
-          return { contentFragmentId: m.contentFragmentId, messageId: m.sId };
+
+    const messages = await MessageModel.findAll({
+      attributes: [
+        "id",
+        "userMessageId",
+        "agentMessageId",
+        "contentFragmentId",
+        "compactionMessageId",
+      ],
+      where: {
+        conversationId: conversation.id,
+        workspaceId: owner.id,
+      },
+    });
+
+    // To preserve the DB, we delete messages in batches.
+    const messagesChunks = chunk(messages, DESTROY_MESSAGE_BATCH);
+    for (const messagesChunk of messagesChunks) {
+      const messageIds = messagesChunk.map((m) => m.id);
+      const userMessageIds = removeNulls(
+        messagesChunk.map((m) => m.userMessageId)
+      );
+      const agentMessageIds = removeNulls(
+        messagesChunk.map((m) => m.agentMessageId)
+      );
+      const compactionMessageIds = removeNulls(
+        messagesChunk.map((m) => m.compactionMessageId)
+      );
+      const contentFragmentIds = removeNulls(
+        messagesChunk.map((m) => m.contentFragmentId)
+      );
+
+      await AgentMessageConsumptionItemResource.deleteByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: agentMessageIds,
         }
+      );
 
-        return null;
-      })
-    );
+      await destroyActionsRelatedResources(auth, agentMessageIds);
 
-    await destroyActionsRelatedResources(auth, agentMessageIds);
+      await UserMessageModel.destroy({
+        where: {
+          id: userMessageIds,
+          workspaceId: owner.id,
+        },
+      });
+      await AgentStepContentResource.deleteByAgentMessageIds(auth, {
+        agentMessageIds,
+      });
+      await AgentMessageFeedbackModel.destroy({
+        where: {
+          agentMessageId: agentMessageIds,
+          workspaceId: owner.id,
+        },
+      });
 
-    await UserMessageModel.destroy({
-      where: {
-        id: userMessageIds,
-        workspaceId: owner.id,
-      },
-    });
-    await AgentStepContentResource.deleteByAgentMessageIds(auth, {
-      agentMessageIds,
-    });
-    await AgentMessageFeedbackModel.destroy({
-      where: {
+      const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
+        workspaceId: auth.getNonNullableWorkspace().id,
         agentMessageId: agentMessageIds,
-        workspaceId: owner.id,
-      },
+      };
+      await AgentMessageSkillModel.destroy({
+        where: whereAgentMessageSkill,
+      });
+
+      await AgentMessageModel.destroy({
+        where: {
+          id: agentMessageIds,
+          workspaceId: owner.id,
+        },
+      });
+
+      await destroyContentFragments(auth, contentFragmentIds);
+
+      await CompactionMessageModel.destroy({
+        where: {
+          id: compactionMessageIds,
+          workspaceId: owner.id,
+        },
+      });
+
+      await destroyMessageRelatedResources(auth, messageIds);
+    }
+
+    await destroyConversationDataSource(auth, {
+      conversation: conversation.toJSON(),
     });
 
-    const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      agentMessageId: agentMessageIds,
-    };
-    await AgentMessageSkillModel.destroy({
-      where: whereAgentMessageSkill,
-    });
-
-    await AgentMessageModel.destroy({
+    await AgentSuggestionModel.destroy({
       where: {
-        id: agentMessageIds,
         workspaceId: owner.id,
+        conversationId: conversation.id,
       },
     });
 
-    await destroyContentFragments(auth, messageAndContentFragmentIds, {
-      conversationId: conversation.sId,
-    });
-
-    await CompactionMessageModel.destroy({
+    await ConversationSkillModel.destroy({
       where: {
-        id: compactionMessageIds,
         workspaceId: owner.id,
+        conversationId: conversation.id,
       },
     });
 
-    await destroyMessageRelatedResources(auth, messageIds);
-  }
+    await WakeUpResource.deleteByConversation(auth, conversation.toJSON());
 
-  await destroyConversationDataSource(auth, {
-    conversation: conversation.toJSON(),
+    await ProjectTaskConversationModel.destroy({
+      where: { workspaceId: owner.id, conversationId: conversation.id },
+    });
+    await ProjectTaskSourceModel.destroy({
+      where: { workspaceId: owner.id, sourceId: conversation.sId },
+    });
+
+    await ConversationSandboxAdapter.deleteSandbox(auth, conversation);
+
+    // TODO(2026-03-09 SANDBOX): Implement proper file deletion.
+    // FileResource records associated with this conversation (via
+    // useCaseMetadata.conversationId) are never deleted here. Both the DB rows and their GCS files
+    // at the canonical path (files/w/{wId}/{fileId}/*) are left orphaned.
+    // Delete all conversation mount path files from GCS. This is temporary and should be self
+    // contained in the FileResource.
+    // await getPrivateUploadBucket().deleteByPrefix(
+    //   getConversationFilesBasePath({
+    //     workspaceId: owner.sId,
+    //     conversationId: conversation.sId,
+    //   })
+    // );
+    const result = await conversation.delete(auth);
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok(undefined);
   });
-
-  await AgentSuggestionModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
-    },
-  });
-
-  await ConversationSkillModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
-    },
-  });
-
-  await WakeUpResource.deleteByConversation(auth, conversation.toJSON());
-
-  await ProjectTaskConversationModel.destroy({
-    where: { workspaceId: owner.id, conversationId: conversation.id },
-  });
-  await ProjectTaskSourceModel.destroy({
-    where: { workspaceId: owner.id, sourceId: conversation.sId },
-  });
-
-  await SandboxResource.deleteByConversationId(auth, conversation.sId);
-
-  // TODO(2026-03-09 SANDBOX): Implement proper file deletion.
-  // FileResource records associated with this conversation (via
-  // useCaseMetadata.conversationId) are never deleted here. Both the DB rows and their GCS files
-  // at the canonical path (files/w/{wId}/{fileId}/*) are left orphaned.
-  // Delete all conversation mount path files from GCS. This is temporary and should be self
-  // contained in the FileResource.
-  // await getPrivateUploadBucket().deleteByPrefix(
-  //   getConversationFilesBasePath({
-  //     workspaceId: owner.sId,
-  //     conversationId: conversation.sId,
-  //   })
-  // );
-  const result = await conversation.delete(auth);
-  if (result.isErr()) {
-    return result;
-  }
-
-  return new Ok(undefined);
 }

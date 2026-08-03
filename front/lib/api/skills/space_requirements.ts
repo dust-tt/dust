@@ -1,5 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -43,4 +45,31 @@ export async function resolveAdditionalRequestedSpaceModelIds(
   }
 
   return new Ok(additionalRequestedSpaceModelIds);
+}
+
+export async function getReferencedSkillSpaceModelIds(
+  auth: Authenticator,
+  instructions: string,
+  excludedSkillId?: string
+): Promise<ModelId[]> {
+  const referencedSkillIds = extractUniqueSkillReferenceIds(
+    instructions
+  ).filter((skillId) => skillId !== excludedSkillId);
+
+  if (referencedSkillIds.length === 0) {
+    return [];
+  }
+
+  // fetchByIds applies skill visibility. Unreadable references stay unavailable
+  // during tag normalization instead of silently expanding the parent skill.
+  const referencedSkills = await SkillResource.fetchByIds(
+    auth,
+    referencedSkillIds
+  );
+
+  return uniq(
+    referencedSkills
+      .filter((skill) => skill.status === "active")
+      .flatMap((skill) => skill.requestedSpaceIds)
+  );
 }

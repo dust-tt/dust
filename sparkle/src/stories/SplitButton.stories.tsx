@@ -1,188 +1,76 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ArrowUpIcon, ChevronDownIcon } from "@sparkle/icons/app";
+import { ArrowUp, ChevronDown } from "@sparkle/icons/v2-stroke";
 
 import { Button, FlexSplitButton } from "../index_with_tw_base";
 
 const meta: Meta<React.ComponentProps<typeof FlexSplitButton>> = {
-  title: "Primitives/SplitButton",
+  title: "Actions/SplitButton",
   component: FlexSplitButton,
+  parameters: {
+    docs: {
+      description: {
+        component: `A primary action paired with an attached secondary affordance. **FlexSplitButton** renders a labelled **Button** (with \`label\`, \`icon\`, \`variant\`, and an \`isLoading\` state) joined to a \`splitAction\` — typically a chevron **Button** that opens a menu of related options. An opaque divider separates the two so the main button's hover/active overlay doesn't bleed through it.
+
+**When to use**
+- When one action is the obvious default but a few related variants should be one click away (e.g. "Send" + send options).
+
+**Guidelines**
+- Match the \`variant\` of the main button and the \`splitAction\` button so they read as one control.
+- Use an icon-only \`xs\` Button as the \`splitAction\`.`,
+      },
+    },
+  },
 };
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const FlexSplitButtonVariants: Story = {
+const VARIANTS = [
+  "primary",
+  "highlight",
+  "outline",
+  "warning",
+  "ghost",
+  "ghost-secondary",
+  "highlight-ghost",
+  "warning-ghost",
+] as const;
+
+export const Variants: Story = {
   render: () => (
-    <div className="s-flex s-gap-3">
-      <FlexSplitButton
-        label="Send"
-        variant="highlight"
-        icon={ArrowUpIcon}
-        splitAction={
-          <Button size="icon" variant="highlight" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Send"
-        variant="primary"
-        icon={ArrowUpIcon}
-        splitAction={
-          <Button size="icon" variant="primary" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Send"
-        variant="outline"
-        icon={ArrowUpIcon}
-        splitAction={
-          <Button size="icon" variant="outline" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Send"
-        variant="highlight-secondary"
-        icon={ArrowUpIcon}
-        splitAction={
-          <Button
-            size="icon"
-            variant="highlight-secondary"
-            icon={ChevronDownIcon}
-          />
-        }
-      />
-      <FlexSplitButton
-        label="Send"
-        variant="warning"
-        icon={ArrowUpIcon}
-        splitAction={
-          <Button size="icon" variant="warning" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Send"
-        variant="warning-secondary"
-        icon={ArrowUpIcon}
-        splitAction={
-          <Button
-            size="icon"
-            variant="warning-secondary"
-            icon={ChevronDownIcon}
-          />
-        }
-      />
-      <FlexSplitButton
-        label="Send"
-        variant="ghost"
-        icon={ArrowUpIcon}
-        splitAction={
-          <Button size="icon" variant="ghost" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Send"
-        variant="ghost-secondary"
-        icon={ArrowUpIcon}
-        splitAction={
-          <Button
-            size="icon"
-            variant="ghost-secondary"
-            icon={ChevronDownIcon}
-          />
-        }
-      />
+    <div className="flex flex-wrap gap-3">
+      {VARIANTS.map((variant) => (
+        <FlexSplitButton
+          key={variant}
+          label="Send"
+          variant={variant}
+          icon={ArrowUp}
+          splitAction={
+            <Button size="xs" variant={variant} icon={ChevronDown} />
+          }
+        />
+      ))}
     </div>
   ),
 };
 
-export const FlexSplitButtonLoading: Story = {
+export const Loading: Story = {
   render: () => (
-    <div className="s-flex s-gap-3">
-      <FlexSplitButton
-        label="Sending"
-        variant="highlight"
-        icon={ArrowUpIcon}
-        isLoading
-        splitAction={
-          <Button size="icon" variant="highlight" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Sending"
-        variant="primary"
-        icon={ArrowUpIcon}
-        isLoading
-        splitAction={
-          <Button size="icon" variant="primary" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Sending"
-        variant="outline"
-        icon={ArrowUpIcon}
-        isLoading
-        splitAction={
-          <Button size="icon" variant="outline" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Sending"
-        variant="highlight-secondary"
-        icon={ArrowUpIcon}
-        isLoading
-        splitAction={
-          <Button
-            size="icon"
-            variant="highlight-secondary"
-            icon={ChevronDownIcon}
-          />
-        }
-      />
-      <FlexSplitButton
-        label="Sending"
-        variant="warning"
-        icon={ArrowUpIcon}
-        isLoading
-        splitAction={
-          <Button size="icon" variant="warning" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Sending"
-        variant="warning-secondary"
-        icon={ArrowUpIcon}
-        isLoading
-        splitAction={
-          <Button
-            size="icon"
-            variant="warning-secondary"
-            icon={ChevronDownIcon}
-          />
-        }
-      />
-      <FlexSplitButton
-        label="Sending"
-        variant="ghost"
-        icon={ArrowUpIcon}
-        isLoading
-        splitAction={
-          <Button size="icon" variant="ghost" icon={ChevronDownIcon} />
-        }
-      />
-      <FlexSplitButton
-        label="Sending"
-        variant="ghost-secondary"
-        icon={ArrowUpIcon}
-        isLoading
-        splitAction={
-          <Button
-            size="icon"
-            variant="ghost-secondary"
-            icon={ChevronDownIcon}
-          />
-        }
-      />
+    <div className="flex flex-wrap gap-3">
+      {(["highlight", "primary", "outline"] as const).map((variant) => (
+        <FlexSplitButton
+          key={variant}
+          label="Sending"
+          variant={variant}
+          icon={ArrowUp}
+          isLoading
+          splitAction={
+            <Button size="xs" variant={variant} icon={ChevronDown} />
+          }
+        />
+      ))}
     </div>
   ),
 };

@@ -1,4 +1,4 @@
-import { GlobeAltIcon } from "@sparkle/icons";
+import { Globe01 } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { useCallback, useState } from "react";
@@ -6,9 +6,9 @@ import React, { useCallback, useState } from "react";
 const faviconVariants = cva("", {
   variants: {
     size: {
-      sm: "s-w-3 s-h-3",
-      md: "s-w-5 s-h-5",
-      lg: "s-w-6 s-h-6",
+      sm: "w-3 h-3",
+      md: "w-5 h-5",
+      lg: "w-6 h-6",
     },
   },
   defaultVariants: {
@@ -24,9 +24,9 @@ interface FaviconIconProps {
 }
 
 /**
- * Component that displays a website favicon with fallback to GlobeAltIcon
+ * Component that displays a website favicon with fallback to Globe01
  * If faviconUrl is provided, uses that. If websiteUrl is provided, generates favicon URL.
- * Falls back to GlobeAltIcon if favicon fails to load.
+ * Falls back to Globe01 if favicon fails to load.
  */
 export function FaviconIcon({
   faviconUrl,
@@ -59,13 +59,13 @@ export function FaviconIcon({
 
   // If no favicon URL or it failed to load, show fallback icon
   if (!finalFaviconUrl || hasError) {
-    return <GlobeAltIcon className={className} />;
+    return <Globe01 className={className} />;
   }
 
   return (
     <div
       className={cn(
-        "s-relative s-flex s-items-center s-justify-center",
+        "relative flex items-center justify-center",
         faviconVariants({ size }),
         className
       )}
@@ -73,7 +73,7 @@ export function FaviconIcon({
       <img
         src={finalFaviconUrl}
         alt="Website icon"
-        className={cn("s-object-contain", faviconVariants({ size }))}
+        className={cn("object-contain", faviconVariants({ size }))}
         onError={handleError}
         onLoad={handleLoad}
         style={{
@@ -82,10 +82,10 @@ export function FaviconIcon({
         }}
       />
       {(isLoading || hasError) && (
-        <GlobeAltIcon
+        <Globe01
           className={cn(
             faviconVariants({ size }),
-            isLoading ? "s-absolute s-inset-0" : "s-hidden"
+            isLoading ? "absolute inset-0" : "hidden"
           )}
         />
       )}

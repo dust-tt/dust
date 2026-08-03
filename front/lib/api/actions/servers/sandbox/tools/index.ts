@@ -7,9 +7,16 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isSandboxResumeState } from "@app/lib/actions/types";
-import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
+import type { ToolContext } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxResumeState,
+} from "@app/lib/actions/types";
+import {
+  SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
+  SANDBOX_EXEC_TIMEOUT_BUFFER_MS,
+  SANDBOX_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -22,7 +29,7 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { readNewDenyLogEntries } from "@app/lib/api/sandbox/egress";
 import {
-  addSandboxPolicyDomain,
+  addOwnerPolicyDomain,
   parseExactEgressDomain,
 } from "@app/lib/api/sandbox/egress_policy";
 import {
@@ -36,7 +43,7 @@ import {
   wrapCommandWithCapture,
 } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
-import { ensureSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -45,8 +52,10 @@ import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_san
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 import { z } from "zod";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
@@ -217,13 +226,14 @@ function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
 
 export async function createSandboxTools(
   auth: Authenticator,
-  _agentLoopContext?: AgentLoopContextType
+  _toolContext?: ToolContext
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
     bash: runSandboxBashTool,
-    describe_toolset: async ({ format }, { auth, agentLoopContext }) => {
-      const providerId =
-        agentLoopContext?.runContext?.agentConfiguration.model.providerId;
+    describe_toolset: async ({ format }, { auth, runContext }) => {
+      const providerId = isAgentLoopRunContext(runContext)
+        ? runContext.modelInfo.endpoint.modelConfig.providerId
+        : null;
       if (!providerId) {
         return new Err(new MCPError("Missing model provider ID"));
       }
@@ -235,12 +245,11 @@ export async function createSandboxTools(
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
-  // The add_egress_domain tool requires both the workspace admin flag
-  // (gates the whole agent-egress-requests configuration) and the
+  // The add_egress_domain tool requires Computer access and the
   // per-workspace setting that admins toggle on top of it.
   const flags = await getFeatureFlags(auth);
   if (
-    flags.includes("sandbox_workspace_admin") &&
+    isComputerFeatureEnabled(flags) &&
     isSandboxAgentEgressRequestsAllowed(auth)
   ) {
     return tools;
@@ -256,7 +265,7 @@ export async function buildDescribeToolsetOutput(
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
   const flags = await getFeatureFlags(auth);
   const toolsResult = getToolsForProvider(auth, providerId, {
-    includeDsbxTools: flags.includes("sandbox_dsbx_tools"),
+    includeDsbxTools: isComputerFeatureEnabled(flags),
   });
   if (toolsResult.isErr()) {
     return new Err(new MCPError(toolsResult.error.message));
@@ -281,7 +290,7 @@ export async function runSandboxBashTool(
     timeoutMs?: number;
     workingDirectory?: string;
   },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<
   Result<
     Array<
@@ -294,15 +303,14 @@ export async function runSandboxBashTool(
     MCPError
   >
 > {
-  const runContext = agentLoopContext?.runContext;
-  if (!runContext) {
-    return new Err(new MCPError("No conversation context available."));
-  }
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
   const {
     conversation,
     agentConfiguration,
+    modelInfo,
     agentMessage,
-    currentAction: sandboxAction,
+    action: sandboxAction,
     stepContext,
   } = runContext;
 
@@ -316,7 +324,7 @@ export async function runSandboxBashTool(
     : null;
   const isResumeMode = resumeExecId !== null;
 
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
@@ -355,14 +363,19 @@ export async function runSandboxBashTool(
     // Token must outlive the longest plausible pause/resume cycle. Redis
     // revocation list bounds the real lifetime.
     expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
-    sandboxAction,
+    sandboxAction: sandboxAction.toJSON(),
   });
 
-  const metricsCtx = { workspaceId: auth.getNonNullableWorkspace().sId };
   const startMs = performance.now();
 
-  const providerId = agentConfiguration.model.providerId;
-  const timeoutSec = timeoutMs ? Math.ceil(timeoutMs / 1000) : 60;
+  const providerId = modelInfo.endpoint.modelConfig.providerId;
+  const commandTimeoutMs = timeoutMs ?? SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS;
+  const timeoutSec = Math.ceil(commandTimeoutMs / 1000);
+  // Give the provider a slightly longer timeout than the in-container one, so
+  // the in-container `timeout` wrapper always stops the command first and we
+  // get its partial output, instead of the provider cutting the call short
+  // with no output.
+  const execTimeoutMs = commandTimeoutMs + SANDBOX_EXEC_TIMEOUT_BUFFER_MS;
   const commandToRun = isResumeMode
     ? buildWaitAndCollectCommand(execId)
     : wrapCommandWithCapture(command, execId, providerId, { timeoutSec });
@@ -378,6 +391,7 @@ export async function runSandboxBashTool(
       DUST_SANDBOX_TOKEN: sandboxToken,
       DUST_API_URL: `${sandboxAPIBase}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
     },
+    timeoutMs: execTimeoutMs,
     user: "agent-proxied",
   });
 
@@ -400,7 +414,6 @@ export async function runSandboxBashTool(
     recordToolDuration(
       "bash",
       durationMs,
-      metricsCtx,
       execResult.isOk() ? "success" : "error"
     );
   }
@@ -471,11 +484,12 @@ export async function runSandboxBashTool(
 
 export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
-  // Defense-in-depth: createSandboxTools already filters this tool out when the
-  // sandbox_workspace_admin flag is off, so this metadata-only check is enough
-  // to reject any caller that bypasses tool-list filtering.
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+  // Defense-in-depth: createSandboxTools already filters this tool out when
+  // the workspace setting is off, so this metadata-only check is enough to
+  // reject any caller that bypasses tool-list filtering.
   if (!isSandboxAgentEgressRequestsAllowed(auth)) {
     return new Err(
       new MCPError(
@@ -484,12 +498,9 @@ export async function addEgressDomainTool(
     );
   }
 
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(new MCPError("No conversation context available."));
-  }
+  const { conversation } = runContext;
 
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
@@ -500,8 +511,16 @@ export async function addEgressDomainTool(
     return new Err(new MCPError(parsed.error.message));
   }
 
-  const result = await addSandboxPolicyDomain(auth, {
-    sandboxProviderId: sandbox.providerId,
+  // Approvals write to the sandbox's egress policy owner file. For a normal
+  // conversation that is the conversation itself (approvals persist for the
+  // conversation's lifetime, across sandbox destroy/recreate cycles). For a
+  // conversation inside a Pod it is the POD: pod network settings are shared,
+  // so the approval applies to every conversation in the Pod and the Pod's
+  // shared sandbox. Interim v0 behavior (internal-only, FF-gated) pending the
+  // approval-governance decision.
+  const egressPolicyOwnerId = conversation.spaceId ?? conversation.sId;
+  const result = await addOwnerPolicyDomain(auth, {
+    ownerId: egressPolicyOwnerId,
     domain: parsed.value,
   });
   if (result.isErr()) {
@@ -521,19 +540,26 @@ export async function addEgressDomainTool(
     ],
     metadata: {
       sandbox_provider_id: sandbox.providerId,
+      // The approval's durable scope: policies are owner-keyed, so the
+      // conversation outlives any individual sandbox.
+      conversation_id: conversation.sId,
       domain: parsed.value,
       added: String(result.value.addedDomain !== null),
       reason,
     },
   });
 
+  // Scope wording matches the tool description: pod approvals apply Pod-wide.
+  const scope =
+    conversation.spaceId !== null
+      ? "this Pod (every conversation in it and the Pod's shared sandbox)"
+      : "this conversation";
   const text =
     result.value.addedDomain !== null
       ? `Allowed: ${result.value.addedDomain}\n` +
-        "The change is in effect for the current sandbox only and applies to " +
-        "subsequent commands in this conversation."
+        `The change applies to ${scope} and persists across sandbox restarts.`
       : `Already allowed: ${parsed.value}\n` +
-        "No change made; this domain was already in the sandbox's allowlist.";
+        `No change made; this domain is already allowed for ${scope}.`;
 
   return new Ok([{ type: "text" as const, text }]);
 }

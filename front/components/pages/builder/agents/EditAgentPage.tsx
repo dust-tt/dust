@@ -1,11 +1,11 @@
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
+import Custom404 from "@app/components/pages/Custom404";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
-import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
 
 export function EditAgentPage() {

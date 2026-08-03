@@ -8,29 +8,49 @@ import { cn } from "@sparkle/lib";
 import { cva } from "class-variance-authority";
 import React, { memo } from "react";
 
-export const ulBlockVariants = cva([
-  "s-list-disc s-pb-2 s-pl-6 s-flex s-flex-col s-gap-1",
-]);
+export const ulBlockVariants = cva("pb-2 flex flex-col gap-1", {
+  variants: {
+    taskList: {
+      false: "list-disc pl-6",
+      true: "",
+    },
+  },
+  defaultVariants: {
+    taskList: false,
+  },
+});
 
 interface UlBlockProps {
   children: React.ReactNode;
+  className?: string;
   node?: MarkdownNode;
 }
 
 export const UlBlock = memo(
-  ({ children }: UlBlockProps) => {
+  ({ children, className }: UlBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
+    const isTaskList = className?.includes("contains-task-list");
     return (
-      <ul className={cn(ulBlockVariants(), textColor, textSize)}>{children}</ul>
+      <ul
+        className={cn(
+          ulBlockVariants({ taskList: isTaskList }),
+          textColor,
+          textSize,
+          className
+        )}
+      >
+        {children}
+      </ul>
     );
   },
-  (prev, next) => sameNodePosition(prev.node, next.node)
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) && prev.className === next.className
 );
 UlBlock.displayName = "UlBlock";
 
 export const olBlockVariants = cva([
-  "s-list-decimal s-pb-2 s-pl-6 s-flex s-flex-col s-gap-1",
+  "list-decimal pb-2 pl-6 flex flex-col gap-1",
 ]);
 
 interface OlBlockProps {
@@ -54,7 +74,7 @@ export const OlBlock = memo(
 );
 OlBlock.displayName = "OlBlock";
 
-export const liBlockVariants = cva(["s-break-words"]);
+export const liBlockVariants = cva(["break-words"]);
 
 interface LiBlockProps {
   children: React.ReactNode;
@@ -66,8 +86,17 @@ export const LiBlock = memo(
   ({ children, className }: LiBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
+    const isTaskListItem = className?.includes("task-list-item");
     return (
-      <li className={cn(liBlockVariants(), textColor, textSize, className)}>
+      <li
+        className={cn(
+          liBlockVariants(),
+          isTaskListItem && "list-none",
+          textColor,
+          textSize,
+          className
+        )}
+      >
         {children}
       </li>
     );

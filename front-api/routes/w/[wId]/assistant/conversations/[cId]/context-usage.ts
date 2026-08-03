@@ -25,6 +25,7 @@ const PENDING_CONTEXT_USAGE_RESPONSE: GetConversationContextUsageResponse = {
 // Mounted at /api/w/:wId/assistant/conversations/:cId/context-usage.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId } = ctx.req.valid("param");

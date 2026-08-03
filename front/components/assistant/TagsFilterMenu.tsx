@@ -10,7 +10,7 @@ import {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
-  TagIcon,
+  Tag01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -60,7 +60,7 @@ export const TagsFilterMenu = ({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            icon={TagIcon}
+            icon={Tag01}
             label="Tags"
             counterValue={selectedTags.length.toString()}
             isCounter={selectedTags.length > 0}
@@ -101,7 +101,7 @@ export const TagsFilterMenu = ({
                 <DropdownMenuTagItem
                   key={tag.sId}
                   label={tag.name}
-                  color="golden"
+                  color="info"
                   className="m-0.5"
                   onClick={() => {
                     setSelectedTags([...selectedTags, tag]);

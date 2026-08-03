@@ -15,14 +15,14 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  ArchiveIcon,
+  Archive,
   Button,
-  ChevronDownIcon,
-  ChevronRightIcon,
+  ChevronDown,
+  ChevronRight,
   Chip,
   DataTable,
   LinkWrapper,
-  PlusIcon,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -36,7 +36,7 @@ function getStatusChipColor(status: CouponRedemptionStatus) {
     case "pending":
       return "primary";
     case "failed":
-      return "rose";
+      return "warning";
     case "revoked":
       return "warning";
     default:
@@ -77,9 +77,9 @@ const couponColumns: ColumnDef<CouponRowData>[] = [
     header: "",
     cell: ({ row }) =>
       row.original.isExpanded ? (
-        <ChevronDownIcon className="h-4 w-4" />
+        <ChevronDown className="h-4 w-4" />
       ) : (
-        <ChevronRightIcon className="h-4 w-4" />
+        <ChevronRight className="h-4 w-4" />
       ),
     meta: { className: "w-8" },
   },
@@ -261,9 +261,7 @@ function CouponRedemptionsPanel({ coupon }: CouponRedemptionsPanelProps) {
         Redemptions for <span className="font-mono">{coupon.code}</span>
       </p>
       {redemptions.length === 0 ? (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          No redemptions yet.
-        </p>
+        <p className="text-sm text-muted-foreground">No redemptions yet.</p>
       ) : (
         <DataTable
           data={data}
@@ -278,7 +276,8 @@ function CouponRedemptionsPanel({ coupon }: CouponRedemptionsPanelProps) {
 export function CouponsPage() {
   usePokePageMetadata({ name: "Coupons" });
 
-  const { coupons, isCouponsLoading, mutate } = usePokeCoupons();
+  const { coupons, canCreateCoupon, isCouponsLoading, mutate } =
+    usePokeCoupons();
   const archiveCoupon = usePokeArchiveCoupon();
 
   const [expandedCouponId, setExpandedCouponId] = useState<string | null>(null);
@@ -299,7 +298,7 @@ export function CouponsPage() {
               {
                 kind: "item" as const,
                 label: "Archive",
-                icon: ArchiveIcon,
+                icon: Archive,
                 onClick: (e: MouseEvent) => {
                   e.stopPropagation();
                   void archiveCoupon(coupon.sId);
@@ -327,27 +326,37 @@ export function CouponsPage() {
     <div className="flex h-full flex-col items-center">
       <div className="py-8 text-2xl font-bold">Coupons</div>
 
-      {showCreateForm && (
-        <div className="mb-6 w-full max-w-3xl">
-          <CreateCouponForm
-            onCreated={async () => {
-              await mutate();
-              setShowCreateForm(false);
-            }}
-            onCancel={() => setShowCreateForm(false)}
-          />
+      {canCreateCoupon ? (
+        <>
+          {showCreateForm && (
+            <div className="mb-6 w-full max-w-3xl">
+              <CreateCouponForm
+                onCreated={async () => {
+                  await mutate();
+                  setShowCreateForm(false);
+                }}
+                onCancel={() => setShowCreateForm(false)}
+              />
+            </div>
+          )}
+          <div className="mb-4 flex w-full justify-end">
+            <Button
+              icon={Plus}
+              label="Create coupon"
+              variant="outline"
+              disabled={showCreateForm}
+              onClick={() => setShowCreateForm(true)}
+            />
+          </div>
+        </>
+      ) : (
+        <div className="mb-4 w-full rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-800 dark:border-warning-800 dark:bg-warning-950 dark:text-warning-200">
+          Coupons can only be created from the{" "}
+          <span className="font-semibold">US region</span>. Use the region
+          switcher in the top-right corner to switch to US, then create the
+          coupon — it will be automatically synced to EU.
         </div>
       )}
-
-      <div className="mb-4 flex w-full justify-end">
-        <Button
-          icon={PlusIcon}
-          label="Create coupon"
-          variant="outline"
-          disabled={showCreateForm}
-          onClick={() => setShowCreateForm(true)}
-        />
-      </div>
 
       <div className="w-full pb-24">
         <DataTable

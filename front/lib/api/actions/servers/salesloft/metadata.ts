@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SALESLOFT_TOOLS_METADATA = createToolsRecord({
-  get_actions: {
+export const SALESLOFT_TOOLS_METADATA = [
+  {
+    name: "get_actions",
     description:
       "Get actions owned by the current user with complete related information for full context. " +
       "By default, returns only currently due or overdue actions, but can be configured to return all actions. " +
@@ -28,26 +26,20 @@ export const SALESLOFT_TOOLS_METADATA = createToolsRecord({
       running: "Getting Salesloft actions",
       done: "Get Salesloft actions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const SALESLOFT_SERVER = {
   serverInfo: {
     name: "salesloft",
     version: "1.0.0",
-    description: "Access Salesloft cadences, tasks, and actions.",
+    description:
+      "Access Salesloft sales cadences (outreach sequences), tasks, and due actions for sales engagement and pipeline outreach.",
     authorization: null,
     icon: "SalesloftLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesloft-mcp",
-    instructions: null,
   },
-  tools: Object.values(SALESLOFT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(SALESLOFT_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: SALESLOFT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

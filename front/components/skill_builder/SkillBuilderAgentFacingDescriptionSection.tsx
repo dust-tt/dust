@@ -9,9 +9,10 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { ArrowGoBackIcon, Button, cn } from "@dust-tt/sparkle";
+import { Button, cn, ReverseLeft } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useState } from "react";
@@ -31,6 +32,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     useController<SkillBuilderFormData, typeof FIELD_NAME>({
       name: FIELD_NAME,
     });
+  const isReadOnly = descriptionField.disabled ?? false;
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skills } = useSkills({ owner });
@@ -133,14 +135,14 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           class: cn(
             editorVariants({
               error: !!descriptionFieldState.error,
-              disabled: isDiffMode,
+              disabled: isDiffMode || isReadOnly,
             }),
             DESCRIPTION_EDITOR_SIZE
           ),
         },
       },
     });
-  }, [editor, descriptionFieldState.error, isDiffMode]);
+  }, [editor, descriptionFieldState.error, isDiffMode, isReadOnly]);
 
   // Sync external changes to the editor content.
   useEffect(() => {
@@ -178,26 +180,32 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         emitUpdate: false,
       });
       editor.commands.applyDiff(compareText, currentText);
-      editor.setEditable(false);
     } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
       editor.commands.exitDiff();
-      editor.setEditable(true);
     }
-  }, [compareVersion, editor, descriptionField.value]);
+
+    editor.setEditable(!compareVersion && !isReadOnly);
+  }, [compareVersion, editor, descriptionField.value, isReadOnly]);
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          What will this skill be used for?
-        </h3>
+      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row">
+        <div className="space-y-1">
+          <h3 className="heading-lg font-semibold text-foreground">
+            {SKILL_INVOCATION_LABEL}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Tell the agent when it should use this skill.
+          </p>
+        </div>
         {descriptionDiffers && (
           <Button
             variant="outline"
             size="sm"
-            icon={ArrowGoBackIcon}
+            icon={ReverseLeft}
             onClick={restoreDescription}
             label="Restore description"
+            disabled={isReadOnly}
           />
         )}
       </div>
@@ -207,7 +215,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           <SkillDescriptionEditorContent editor={editor} />
 
           {descriptionFieldState.error && (
-            <div className="dark:text-warning-night ml-2 text-xs text-warning">
+            <div className="ml-2 text-xs text-warning">
               {descriptionFieldState.error.message}
             </div>
           )}

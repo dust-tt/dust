@@ -1,36 +1,29 @@
+import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
+import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import type { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
-import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-} from "@app/types/assistant/models/anthropic";
-import {
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
-  GEMINI_3_FLASH_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
-} from "@app/types/assistant/models/google_ai_studio";
-import {
-  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
-} from "@app/types/assistant/models/mistral";
-import {
-  GPT_5_5_MODEL_CONFIG,
-  GPT_5_MINI_MODEL_CONFIG,
-} from "@app/types/assistant/models/openai";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { GEMINI_3_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import { isModelId } from "@app/types/assistant/models/models";
+import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import {
   BYOK_MODEL_PROVIDER_IDS,
+  isModelProviderId,
   MODEL_PROVIDER_IDS,
 } from "@app/types/assistant/models/providers";
+import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
+  ReasoningEffort,
+  ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
-import {
-  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
-  GROK_4_MODEL_CONFIG,
-} from "@app/types/assistant/models/xai";
+import { GROK_4_5_MODEL_CONFIG } from "@app/types/assistant/models/xai";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function getWhitelistedProviders(
   auth: Authenticator
@@ -72,24 +65,26 @@ export function getWhitelistedProviders(
   return whiteListedProviders.intersection(configuredProviders);
 }
 
-export function isProviderWhitelisted(
+export { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
+
+export function isProviderWhitelistedForAuth(
   auth: Authenticator,
   providerId: ModelProviderIdType
 ): boolean {
-  const whitelistedProviders = getWhitelistedProviders(auth);
-  return whitelistedProviders.has(providerId);
+  return isProviderWhitelisted(getWhitelistedProviders(auth), providerId);
 }
 
 type ModelEnablementContext = Parameters<typeof isModelEnabled>[1];
 
-function getModelEnablementContextWithoutFeatureFlag(
+function getModelEnablementContext(
   auth: Authenticator,
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  featureFlags: WhitelistableFeature[] = []
 ): ModelEnablementContext {
   const owner = auth.getNonNullableWorkspace();
 
   return {
-    featureFlags: [],
+    featureFlags,
     plan: auth.plan(),
     regionalModelsOnly: owner.regionalModelsOnly,
     region: regionConfig.getCurrentRegion(),
@@ -98,15 +93,46 @@ function getModelEnablementContextWithoutFeatureFlag(
   };
 }
 
+// Returns the first candidate model that is enabled for the workspace. This is
+// the canonical way to pick a model from a preference-ordered list: it runs the
+// exact same isModelEnabled predicate (provider whitelist plus plan, region and
+// feature-flag availability) that is enforced when a message is posted, so the
+// chosen model can never be rejected later as "not supported". It falls through
+// to the next candidate instead.
+//
+// The workspace feature flags must be passed in: selection happens in
+// synchronous global-agent builders where they are not otherwise in scope, and
+// using the real flags here is what keeps this check identical to the one
+// enforced at message time rather than a second, divergent check.
+export function selectEnabledModel(
+  auth: Authenticator,
+  candidates: ModelConfigurationType[],
+  {
+    featureFlags,
+    excludeProviders = new Set(),
+  }: {
+    featureFlags: WhitelistableFeature[];
+    excludeProviders?: ReadonlySet<ModelProviderIdType>;
+  }
+): ModelConfigurationType | null {
+  const context = getModelEnablementContext(
+    auth,
+    excludeProviders,
+    featureFlags
+  );
+
+  return candidates.find((m) => isModelEnabled(m, context)) ?? null;
+}
+
 const ORDERED_FAST_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_SMALL_MODEL_CONFIG,
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_5_FLASH_MODEL_CONFIG,
 ];
 
 export function getFastestWhitelistedModel(
   auth: Authenticator
 ): ModelConfigurationType | null {
-  const context = getModelEnablementContextWithoutFeatureFlag(auth);
+  const context = getModelEnablementContext(auth);
 
   return (
     ORDERED_FAST_MODEL_CONFIGS.find((m) => isModelEnabled(m, context)) ??
@@ -116,20 +142,24 @@ export function getFastestWhitelistedModel(
 
 export function getSmallWhitelistedModel(
   auth: Authenticator,
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  { featureFlags = [] }: { featureFlags?: WhitelistableFeature[] } = {}
 ): ModelConfigurationType | null {
   return _getSmallWhitelistedModel(
-    getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders)
+    getModelEnablementContext(auth, excludeProviders, featureFlags)
   );
 }
 
 export function getLargeWhitelistedModel(
   auth: Authenticator,
   excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
-  { forBatch = false }: { forBatch?: boolean } = {}
+  {
+    forBatch = false,
+    featureFlags = [],
+  }: { forBatch?: boolean; featureFlags?: WhitelistableFeature[] } = {}
 ): ModelConfigurationType | null {
   return _getLargeWhitelistedModel(
-    getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders),
+    getModelEnablementContext(auth, excludeProviders, featureFlags),
     { forBatch }
   );
 }
@@ -137,9 +167,9 @@ export function getLargeWhitelistedModel(
 const ORDERED_SMALL_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_5_MINI_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_5_FLASH_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
+  GROK_4_5_MODEL_CONFIG,
 ];
 
 function _getSmallWhitelistedModel(
@@ -150,22 +180,67 @@ function _getSmallWhitelistedModel(
   );
 }
 
-const ORDERED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
-  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-  GPT_5_5_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
-  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
-  GROK_4_MODEL_CONFIG,
-];
-
 function _getLargeWhitelistedModel(
   context: ModelEnablementContext,
   { forBatch: hasBatch }: { forBatch?: boolean } = {}
 ): ModelConfigurationType | null {
   return (
-    ORDERED_LARGE_MODEL_CONFIGS.find(
+    PREFERRED_LARGE_MODEL_CONFIGS.find(
       (m) =>
         isModelEnabled(m, context) && (!hasBatch || m.supportsBatchProcessing)
     ) ?? null
   );
+}
+
+function isResolvedModel(m: {
+  providerId: string | null;
+  modelId: string | null;
+  reasoningEffort: string | null;
+}): m is ResolvedRequestedModel {
+  return (
+    m.providerId !== null &&
+    m.modelId !== null &&
+    m.reasoningEffort !== null &&
+    isModelProviderId(m.providerId) &&
+    isModelId(m.modelId) &&
+    isReasoningEffort(m.reasoningEffort as ReasoningEffort)
+  );
+}
+
+export function resolvedModelFromUserMessageRow(
+  row: UserMessageModel
+): ResolvedRequestedModel | null {
+  const { requestedProviderId, requestedModelId, requestedReasoningEffort } =
+    row;
+  const resolvedModel = {
+    providerId: requestedProviderId,
+    modelId: requestedModelId,
+    reasoningEffort: requestedReasoningEffort,
+  };
+  if (!isResolvedModel(resolvedModel)) {
+    return null;
+  }
+
+  return resolvedModel;
+}
+
+// Rebuilds a `ResolvedRequestedModel` from the raw agent|user-message columns, or null
+// when no override was stored (or the stored values fail validation). Values are
+// written by the resolver above, so validation is defensive.
+export function resolvedModelFromAgentMessageRow(row: {
+  resolvedProviderId: string | null;
+  resolvedModelId: string | null;
+  resolvedReasoningEffort: string | null;
+}): ResolvedRequestedModel | null {
+  const { resolvedProviderId, resolvedModelId, resolvedReasoningEffort } = row;
+  const resolvedModel = {
+    providerId: resolvedProviderId,
+    modelId: resolvedModelId,
+    reasoningEffort: resolvedReasoningEffort,
+  };
+  if (!isResolvedModel(resolvedModel)) {
+    return null;
+  }
+
+  return resolvedModel;
 }

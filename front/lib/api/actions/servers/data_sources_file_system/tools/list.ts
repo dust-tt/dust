@@ -42,6 +42,9 @@ export async function list(
   },
   { auth }: { auth: Authenticator }
 ) {
+  const effectiveNodeId = !!nodeId ? nodeId : null;
+  const effectiveCursor = !!nextPageCursor ? nextPageCursor : undefined;
+
   const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
   if (invalidMimeTypes && invalidMimeTypes.length > 0) {
     return new Err(
@@ -61,7 +64,7 @@ export async function list(
   const agentDataSourceConfigurations = fetchResult.value;
 
   const options = {
-    cursor: nextPageCursor,
+    cursor: effectiveCursor,
     limit: limit ?? DEFAULT_LIST_LIMIT,
     sort: sortBy
       ? [
@@ -78,7 +81,7 @@ export async function list(
   // By-pass tag filters when exploring the filesystem hierarchy
   const includeTagFilters = false;
 
-  if (!nodeId) {
+  if (!effectiveNodeId) {
     // When nodeId is null, search for data sources only.
     const dataSourceViewFilter = makeCoreSearchNodesFilters({
       agentDataSourceConfigurations,
@@ -95,9 +98,9 @@ export async function list(
       },
       options,
     });
-  } else if (isDataSourceNodeId(nodeId)) {
+  } else if (isDataSourceNodeId(effectiveNodeId)) {
     // If it's a data source node ID, extract the data source ID and list its root contents.
-    const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+    const dataSourceId = extractDataSourceIdFromNodeId(effectiveNodeId);
     if (!dataSourceId) {
       return new Err(
         new MCPError("Invalid data source node ID format", {
@@ -140,7 +143,7 @@ export async function list(
           agentDataSourceConfigurations,
           includeTagFilters,
         }),
-        parent_id: nodeId,
+        parent_id: effectiveNodeId,
         mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
       },
       options,

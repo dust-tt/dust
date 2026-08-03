@@ -1,27 +1,16 @@
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
+import type { ManagedPermissionsQuery } from "@app/types/api/data_sources/managed_permissions";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { z } from "zod";
-
-export const ManagedPermissionsQuerySchema = z.object({
-  parentId: z.string().optional(),
-  filterPermission: z.enum(["read", "write"]).optional(),
-  viewType: ContentNodesViewTypeCodec,
-});
-
-export type ManagedPermissionsQuery = z.infer<
-  typeof ManagedPermissionsQuerySchema
->;
 
 export type ManagedPermissionsResponse = {
   resources: ContentNode[];
 };
 
-export type ManagedPermissionsError =
+type ManagedPermissionsError =
   | { type: "connector_rate_limit" }
   | { type: "connector_authorization_error" }
   | { type: "internal_error" };

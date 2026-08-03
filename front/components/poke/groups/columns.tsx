@@ -7,14 +7,14 @@ import type { ColumnDef } from "@tanstack/react-table";
 export const getPokeGroupKindChipColor = (kind: GroupKind) => {
   switch (kind) {
     case "provisioned":
-      return "blue";
+      return "highlight";
     case "global":
-      return "green";
+      return "success";
     case "system":
       return "warning";
     case "agent_editors":
     case "skill_editors":
-      return "rose";
+      return "warning";
     default:
       return "primary";
   }

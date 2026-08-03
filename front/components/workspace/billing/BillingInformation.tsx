@@ -2,25 +2,21 @@ import {
   CardBrandIcon,
   formatBrandName,
 } from "@app/components/checkout/PaymentMethodRow";
+import { useBillingInfo } from "@app/lib/swr/workspaces";
 import type {
   BillingAddress,
   BillingPaymentMethod,
-} from "@app/lib/api/billing/info";
-import { useBillingInfo } from "@app/lib/swr/workspaces";
-import type { LightWorkspaceType } from "@app/types/user";
+} from "@app/types/api/billing/info";
 import {
-  ActionHashtagIcon,
-  ActionMailIcon,
-  ActionMapPinIcon,
   Button,
+  Hash01,
   Icon,
+  Mail01,
+  MarkerPin01,
   Spinner,
-  UserIcon,
+  User01,
 } from "@dust-tt/sparkle";
-
-interface BillingInformationProps {
-  owner: LightWorkspaceType;
-}
+import { useSubscriptionContext } from "./SubscriptionContext";
 
 function formatAddress(address: BillingAddress | null): string | null {
   if (!address) {
@@ -65,7 +61,8 @@ function formatPaymentMethod(
     : "Payment method";
 }
 
-export function BillingInformation({ owner }: BillingInformationProps) {
+export function BillingInformation() {
+  const { owner } = useSubscriptionContext();
   const { billingInfo, isBillingInfoLoading } = useBillingInfo({
     workspaceId: owner.sId,
   });
@@ -73,10 +70,10 @@ export function BillingInformation({ owner }: BillingInformationProps) {
   if (isBillingInfoLoading) {
     return (
       <div className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+        <h2 className="text-xl font-semibold text-foreground">
           Billing information
         </h2>
-        <div className="w-full rounded-lg bg-muted-background p-6 dark:bg-muted-background-night">
+        <div className="w-full rounded-lg bg-muted-background p-6">
           <Spinner />
         </div>
       </div>
@@ -86,21 +83,21 @@ export function BillingInformation({ owner }: BillingInformationProps) {
   const portalHref = `/w/${owner.sId}/subscription/manage`;
   const address = formatAddress(billingInfo?.profile.address ?? null);
   const addressRows = [
-    { icon: UserIcon, value: billingInfo?.profile.name },
-    { icon: ActionMailIcon, value: billingInfo?.profile.email },
-    { icon: ActionHashtagIcon, value: billingInfo?.profile.phone },
-    { icon: ActionMapPinIcon, value: address },
+    { icon: User01, value: billingInfo?.profile.name },
+    { icon: Mail01, value: billingInfo?.profile.email },
+    { icon: Hash01, value: billingInfo?.profile.phone },
+    { icon: MarkerPin01, value: address },
   ].filter((row) => row.value);
   const paymentMethod = billingInfo?.paymentMethod ?? null;
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+      <h2 className="text-xl font-semibold text-foreground">
         Billing information
       </h2>
 
-      <div className="relative flex flex-col gap-2 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
-        <h3 className="text-base font-semibold text-foreground dark:text-foreground-night">
+      <div className="relative flex flex-col gap-2 rounded-lg bg-muted-background p-4">
+        <h3 className="text-base font-semibold text-foreground">
           Billing contact
         </h3>
 
@@ -114,13 +111,13 @@ export function BillingInformation({ owner }: BillingInformationProps) {
               target="_blank"
               className="absolute right-4 top-3"
             />
-            <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div className="flex flex-col gap-2 text-xs text-muted-foreground">
               {addressRows.map(({ icon, value }) => (
                 <div key={value} className="flex items-center gap-2">
                   <Icon
                     visual={icon}
                     size="xs"
-                    className="shrink-0 text-foreground dark:text-foreground-night"
+                    className="shrink-0 text-foreground"
                   />
                   <span>{value}</span>
                 </div>
@@ -128,13 +125,13 @@ export function BillingInformation({ owner }: BillingInformationProps) {
             </div>
           </>
         ) : (
-          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-xs text-muted-foreground">
             No billing address on file.
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
+      <div className="flex items-center justify-between gap-3 rounded-lg bg-muted-background p-4">
         <div className="flex min-w-0 items-center gap-2">
           <div className="flex h-6 w-[34px] shrink-0 items-center justify-center overflow-hidden rounded">
             <CardBrandIcon
@@ -143,7 +140,7 @@ export function BillingInformation({ owner }: BillingInformationProps) {
               height={22}
             />
           </div>
-          <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+          <div className="truncate text-sm font-semibold text-foreground">
             {formatPaymentMethod(paymentMethod)}
           </div>
         </div>

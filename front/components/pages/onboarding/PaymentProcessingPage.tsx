@@ -78,7 +78,7 @@ export function PaymentProcessingPage() {
             </>
           ) : (
             <>
-              <Spinner size="xl" />
+              <Spinner size="lg" />
               <Page.P>Processing</Page.P>
             </>
           )}

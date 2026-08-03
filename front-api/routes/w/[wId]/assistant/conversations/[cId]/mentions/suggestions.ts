@@ -25,6 +25,7 @@ const MentionSuggestionsQuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/mentions/suggestions.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

@@ -23,8 +23,10 @@ import {
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -39,6 +41,7 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { MAX_WORKSPACES_TO_DOWNGRADE_PER_RUN } from "@app/temporal/scrub_workspace/config";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -128,6 +131,7 @@ export async function scrubWorkspaceData({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
     dangerouslyRequestAllGroups: true,
   });
+  await deleteGroupPermissions(auth);
   await deleteAllConversations(auth);
   await deleteTakeaways(auth);
   await deleteKeys(auth);
@@ -135,6 +139,7 @@ export async function scrubWorkspaceData({
   await deleteAgentMemories(auth);
   await deleteSkills(auth);
   await deleteOnboardingTasks(auth);
+  await deleteMembershipUpgradeRequests(auth);
   await deleteTags(auth);
   await deleteSandboxEnvVars(auth);
   await deleteDatasources(auth);
@@ -182,6 +187,10 @@ export async function pauseAllTriggers({
       "Failed to disable workspace triggers during scrub"
     );
   }
+}
+
+async function deleteGroupPermissions(auth: Authenticator) {
+  await GroupPermissionResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteTakeaways(auth: Authenticator) {
@@ -246,6 +255,10 @@ async function deleteSkills(auth: Authenticator) {
 
 async function deleteOnboardingTasks(auth: Authenticator) {
   await OnboardingTaskResource.deleteAllForWorkspace(auth);
+}
+
+async function deleteMembershipUpgradeRequests(auth: Authenticator) {
+  await MembershipUpgradeRequestResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteTags(auth: Authenticator) {
@@ -407,7 +420,9 @@ export async function endSubscriptionFreeEndedWorkspacesActivity(): Promise<{
   workspaceIds: string[];
 }> {
   const { workspaces } =
-    await SubscriptionResource.internalFetchWorkspacesWithFreeEndedSubscriptions();
+    await SubscriptionResource.internalFetchWorkspacesWithFreeEndedSubscriptions(
+      { limit: MAX_WORKSPACES_TO_DOWNGRADE_PER_RUN }
+    );
 
   await concurrentExecutor(
     workspaces,

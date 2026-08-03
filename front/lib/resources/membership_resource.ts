@@ -19,6 +19,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import {
+  initialCreditStateForSeatType,
   isMembershipSeatType,
   type MembershipOriginType,
   type MembershipRoleType,
@@ -47,6 +48,7 @@ type GetMembershipsOptions = RequireAtLeastOne<{
   workspace: LightWorkspaceType;
 }> & {
   roles?: MembershipRoleType[];
+  seatTypes?: MembershipSeatType[];
   transaction?: Transaction;
 };
 
@@ -87,6 +89,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   get isBuilder(): boolean {
     switch (this.role) {
       case "admin":
+      case "manager":
       case "builder":
         return true;
       case "user":
@@ -134,6 +137,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     users,
     workspace,
     roles,
+    seatTypes,
     transaction,
     paginationParams,
   }: GetMembershipsOptions & {
@@ -173,6 +177,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (roles) {
       whereClause.role = {
         [Op.in]: roles,
+      };
+    }
+    if (seatTypes) {
+      whereClause.seatType = {
+        [Op.in]: seatTypes,
       };
     }
 
@@ -286,6 +295,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
   }
 
+  /**
+   * Returns the most recent membership row per (user, workspace), including
+   * revoked ones (endAt in the past). Excludes not-yet-started scheduled
+   * seat changes (startAt in the future) — use
+   * `getScheduledFutureMemberships` / `getScheduledMembershipsByUserIdInWorkspace`
+   * to read those separately.
+   */
   static async getLatestMemberships({
     users,
     workspace,
@@ -302,7 +318,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           (resource) => new MembershipResource(MembershipModel, resource.get())
         );
 
-    const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {};
+    const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
+      // Exclude not-yet-started scheduled seat changes: "latest" means the
+      // latest membership that has actually taken effect, not a future one.
+      startAt: { [Op.lte]: new Date() },
+    };
     if (roles) {
       whereClause.role = roles;
     }
@@ -411,11 +431,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Returns true when the user has *any* prior membership row in the
-   * workspace — current, future-scheduled, or revoked. Used to enforce
-   * that `"free"` is a one-shot starter tier: it can only be assigned at
-   * the very first membership creation; any subsequent change refuses
-   * `"free"` (including re-joining after revoke).
+   * Returns true when the user has any prior membership row in the workspace
+   * with a real seat (i.e. `seatType != "none"`). `"none"` is the initial
+   * placeholder assigned before a Metronome contract exists and is not counted
+   * as a "real" membership for the one-shot `free` rule. A user who only ever
+   * held `"none"` seats is treated as a new member and is eligible for `free`.
    */
   static async hasAnyMembershipOfUserInWorkspace({
     user,
@@ -430,10 +450,41 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where: {
         userId: user.id,
         workspaceId: workspace.id,
+        seatType: { [Op.ne]: "none" },
       },
       transaction,
     });
     return count > 0;
+  }
+
+  /**
+   * Batch version of `hasAnyMembershipOfUserInWorkspace` for use in the
+   * contract remap loop. Returns the subset of `userIds` (numeric model IDs)
+   * that have at least one membership row with `seatType != "none"` in the
+   * workspace.
+   */
+  static async getUserIdsWithRealSeatHistory({
+    workspace,
+    userIds,
+  }: {
+    workspace: LightWorkspaceType;
+    userIds: number[];
+  }): Promise<Set<number>> {
+    if (userIds.length === 0) {
+      return new Set();
+    }
+    const rows = await this.model.findAll({
+      attributes: ["userId"],
+      where: {
+        workspaceId: workspace.id,
+        userId: { [Op.in]: userIds },
+        seatType: { [Op.ne]: "none" },
+        // Exclude future-scheduled rows: a pending upgrade should not count as
+        // prior real-seat history when deciding free-tier eligibility.
+        startAt: { [Op.lte]: new Date() },
+      },
+    });
+    return new Set(rows.map((r) => r.userId));
   }
 
   /**
@@ -619,6 +670,31 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
+  // Returns the active seat type for a user (by model id) in a workspace, or
+  // null when the user has no active membership. Lightweight single-column read
+  // for hot paths (e.g. analytics indexing) that only need the seat type.
+  static async getActiveSeatTypeForUserModelId({
+    workspace,
+    userModelId,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    userModelId: ModelId;
+    transaction?: Transaction;
+  }): Promise<MembershipSeatType | null> {
+    const row = await this.model.findOne({
+      attributes: ["seatType"],
+      where: {
+        workspaceId: workspace.id,
+        userId: userModelId,
+        startAt: { [Op.lte]: new Date() },
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+      },
+      transaction,
+    });
+    return row ? row.seatType : null;
+  }
+
   static async getMembersCountForWorkspace({
     workspace,
     activeOnly,
@@ -776,6 +852,34 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     return counts;
+  }
+
+  static async resetAllSeatsToNoneForWorkspace({
+    workspace,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<void> {
+    const now = new Date();
+    await MembershipModel.update(
+      {
+        seatType: "none",
+        creditState: initialCreditStateForSeatType("none"),
+      },
+      {
+        where: {
+          workspaceId: workspace.id,
+          endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: now }] },
+        },
+        transaction,
+      }
+    );
+
+    const workspaceId = workspace.sId;
+    invalidateCacheAfterCommit(transaction, () =>
+      MembershipResource.invalidateActiveSeatsCache(workspaceId)
+    );
   }
 
   /**
@@ -984,7 +1088,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Caller of this method should call `ServerSideTracking.trackCreateMembership`.
+   * Caller of this method should call `ServerSideTracking.trackCreateMembership` and
+   * `GroupResource.syncBuilderGroupMembership` (builder role deprecation). Prefer
+   * `createAndTrackMembership` from `@app/lib/api/membership` which handles both.
    */
   static async createMembership({
     user,
@@ -1030,6 +1136,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         role,
         origin,
         seatType,
+        // Optimistic initial state from the seat type (pro/max → user_seat) so a
+        // new seat user isn't stuck at the "on_pool" DB default during the seat
+        // sync's debounce window; the post-sync reconcile refines it from the
+        // live Metronome balance.
+        creditState: initialCreditStateForSeatType(seatType),
         firstUsedAt: origin === "provisioned" ? null : new Date(),
       },
       { transaction }
@@ -1082,7 +1193,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   // Use `revokeAndTrackMembership` from `@app/lib/api/membership` instead which
-  // handles tracking and usage updates.
+  // handles tracking, usage updates and the builders group sync (builder
+  // role deprecation).
   static async revokeMembership({
     user,
     workspace,
@@ -1208,7 +1320,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole`.
+   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole` and
+   * `GroupResource.syncBuilderGroupMembership` (builder role deprecation). Prefer
+   * `updateMembershipRoleAndTrack` from `@app/lib/api/membership` which handles both.
    */
   static async updateMembershipRole({
     user,
@@ -1454,7 +1568,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       return { previousSeatType, newSeatType };
     }
 
-    await this.update({ seatType: newSeatType }, transaction);
+    await this.update(
+      {
+        seatType: newSeatType,
+        // Reset credit state to the optimistic initial state for the new seat
+        // type (same logic as createMembership) so the member isn't stuck in
+        // the wrong state during the seat sync's debounce window.
+        creditState: initialCreditStateForSeatType(newSeatType),
+      },
+      transaction
+    );
 
     auditLog(
       {
@@ -1471,6 +1594,19 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
+   * Update the per-user pool cap override (in AWU credits, seat allowance
+   * excluded) of an active membership in place. `null` clears the override,
+   * letting the seat-type default apply. Callers are responsible for syncing
+   * the derived Metronome alerts.
+   */
+  async updatePoolCapOverride(
+    poolCapOverrideAwuCredits: number | null,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update({ poolCapOverrideAwuCredits }, transaction);
+  }
+
+  /**
    * Schedule a seat-type change at a future date by closing the current
    * row at `scheduledAt` and inserting a future row that becomes active
    * once `scheduledAt` is reached. Both rows coexist during the window;
@@ -1483,15 +1619,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     newSeatType,
     scheduledAt,
     author,
+    transaction: parentTransaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     newSeatType: MembershipSeatType;
     scheduledAt: Date;
     author: UserType | "no-author";
+    transaction?: Transaction;
   }): Promise<void> {
     const previousSeatType = this.seatType;
-    await frontSequelize.transaction(async (transaction) => {
+    const txOptions = parentTransaction
+      ? { transaction: parentTransaction }
+      : {};
+    await frontSequelize.transaction(txOptions, async (transaction) => {
       // Replace any existing future row (re-scheduling is idempotent).
       await MembershipModel.destroy({
         where: {
@@ -1511,6 +1652,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           origin: this.origin,
           seatType: newSeatType,
           firstUsedAt: this.firstUsedAt,
+          creditState: initialCreditStateForSeatType(newSeatType),
+          // The pool cap override survives the seat change: it's the
+          // pool-only portion, independent of the seat allowance.
+          poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
         },
         { transaction }
       );
@@ -1561,7 +1706,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       {
         author,
         userId: user.id,
-        workspaceId: workspace.id,
+        workspaceId: workspace.sId,
       },
       "Membership scheduled seat change cancelled"
     );

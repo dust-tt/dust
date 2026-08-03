@@ -2,11 +2,15 @@ import type { Authenticator } from "@app/lib/auth";
 import * as metronomeContracts from "@app/lib/metronome/contracts";
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import {
+  DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS,
   DEFAULT_REINFORCEMENT_CAP_MICRO_USD,
+  DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS,
   DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
 } from "@app/lib/reinforcement/constants";
 import {
+  getReinforcementMonthlyCapAwuCredits,
   getReinforcementMonthlyCapMicroUsd,
+  getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits,
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { Err, Ok } from "@app/types/shared/result";
@@ -14,23 +18,20 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function makeAuth({
-  metronomeContractId = null,
-  metronomeCustomerId = null,
+  hasWorkspace = false,
 }: {
-  metronomeContractId?: string | null;
-  metronomeCustomerId?: string | null;
+  hasWorkspace?: boolean;
 } = {}): Authenticator {
   return {
-    subscription: () =>
-      metronomeContractId !== null ? { metronomeContractId } : null,
-    workspace: () =>
-      metronomeCustomerId !== null ? { metronomeCustomerId } : null,
+    workspace: () => (hasWorkspace ? { sId: "ws-1" } : null),
   } as unknown as Authenticator;
 }
 
 function makeWorkspace(metadata?: {
   reinforcementCapMicroUsd?: number;
   selfImprovementCapPerSkillMicroUsd?: number;
+  reinforcementCapAwuCredits?: number;
+  selfImprovementCapPerSkillAwuCredits?: number;
 }): LightWorkspaceType {
   return { sId: "ws-1", metadata: metadata ?? null } as LightWorkspaceType;
 }
@@ -60,6 +61,44 @@ describe("getReinforcementMonthlyCapMicroUsd", () => {
     expect(
       getReinforcementMonthlyCapMicroUsd(
         makeWorkspace({ reinforcementCapMicroUsd: 0 })
+      )
+    ).toBe(0);
+  });
+});
+
+describe("getReinforcementMonthlyCapAwuCredits", () => {
+  it("returns default cap when workspace has no metadata", () => {
+    expect(getReinforcementMonthlyCapAwuCredits(makeWorkspace())).toBe(
+      DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS
+    );
+  });
+
+  it("returns default cap when metadata has no reinforcementCapAwuCredits", () => {
+    expect(getReinforcementMonthlyCapAwuCredits(makeWorkspace({}))).toBe(
+      DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS
+    );
+  });
+
+  it("ignores the microUSD override", () => {
+    expect(
+      getReinforcementMonthlyCapAwuCredits(
+        makeWorkspace({ reinforcementCapMicroUsd: 50_000_000 })
+      )
+    ).toBe(DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS);
+  });
+
+  it("returns workspace override when set", () => {
+    expect(
+      getReinforcementMonthlyCapAwuCredits(
+        makeWorkspace({ reinforcementCapAwuCredits: 5_000 })
+      )
+    ).toBe(5_000);
+  });
+
+  it("allows cap of 0", () => {
+    expect(
+      getReinforcementMonthlyCapAwuCredits(
+        makeWorkspace({ reinforcementCapAwuCredits: 0 })
       )
     ).toBe(0);
   });
@@ -95,10 +134,48 @@ describe("getSelfImprovementCapPerSkillMicroUsd", () => {
   });
 });
 
+describe("getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits", () => {
+  it("returns default cap when workspace has no metadata", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(makeWorkspace())
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS);
+  });
+
+  it("returns default cap when metadata has no selfImprovementCapPerSkillAwuCredits", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(makeWorkspace({}))
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS);
+  });
+
+  it("ignores the microUSD override", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(
+        makeWorkspace({ selfImprovementCapPerSkillMicroUsd: 10_000_000 })
+      )
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS);
+  });
+
+  it("returns workspace override when set", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(
+        makeWorkspace({ selfImprovementCapPerSkillAwuCredits: 1_000 })
+      )
+    ).toBe(1_000);
+  });
+
+  it("allows cap of 0", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(
+        makeWorkspace({ selfImprovementCapPerSkillAwuCredits: 0 })
+      )
+    ).toBe(0);
+  });
+});
+
 describe("getCurrentPeriod", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(metronomeContracts, "getMetronomeCurrentBillingPeriod");
+    vi.spyOn(metronomeContracts, "getCachedMetronomeCurrentBillingPeriod");
   });
 
   afterEach(() => {
@@ -107,7 +184,7 @@ describe("getCurrentPeriod", () => {
   });
 
   describe("fallback to current calendar month", () => {
-    it("falls back when auth has no metronome IDs", async () => {
+    it("falls back when auth has no workspace", async () => {
       vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
       const { cycleStart, cycleEnd } = await getCurrentPeriod(makeAuth());
       expect(cycleStart.toISOString()).toBe("2026-03-01T00:00:00.000Z");
@@ -117,13 +194,10 @@ describe("getCurrentPeriod", () => {
     it("falls back when the Metronome API returns an error", async () => {
       vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
       vi.mocked(
-        metronomeContracts.getMetronomeCurrentBillingPeriod
+        metronomeContracts.getCachedMetronomeCurrentBillingPeriod
       ).mockResolvedValue(new Err(new Error("Metronome unavailable")));
       const { cycleStart, cycleEnd } = await getCurrentPeriod(
-        makeAuth({
-          metronomeContractId: "contract-1",
-          metronomeCustomerId: "customer-1",
-        })
+        makeAuth({ hasWorkspace: true })
       );
       expect(cycleStart.toISOString()).toBe("2026-03-01T00:00:00.000Z");
       expect(cycleEnd.toISOString()).toBe("2026-04-01T00:00:00.000Z");
@@ -132,13 +206,10 @@ describe("getCurrentPeriod", () => {
     it("falls back when Metronome has no billing period (Ok(null))", async () => {
       vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
       vi.mocked(
-        metronomeContracts.getMetronomeCurrentBillingPeriod
+        metronomeContracts.getCachedMetronomeCurrentBillingPeriod
       ).mockResolvedValue(new Ok(null));
       const { cycleStart, cycleEnd } = await getCurrentPeriod(
-        makeAuth({
-          metronomeContractId: "contract-1",
-          metronomeCustomerId: "customer-1",
-        })
+        makeAuth({ hasWorkspace: true })
       );
       expect(cycleStart.toISOString()).toBe("2026-03-01T00:00:00.000Z");
       expect(cycleEnd.toISOString()).toBe("2026-04-01T00:00:00.000Z");
@@ -148,7 +219,7 @@ describe("getCurrentPeriod", () => {
   describe("using Metronome billing period", () => {
     it("returns the period from Metronome", async () => {
       vi.mocked(
-        metronomeContracts.getMetronomeCurrentBillingPeriod
+        metronomeContracts.getCachedMetronomeCurrentBillingPeriod
       ).mockResolvedValue(
         new Ok({
           cycleStart: new Date("2026-03-04T00:00:00.000Z"),
@@ -156,10 +227,7 @@ describe("getCurrentPeriod", () => {
         })
       );
       const { cycleStart, cycleEnd } = await getCurrentPeriod(
-        makeAuth({
-          metronomeContractId: "contract-1",
-          metronomeCustomerId: "customer-1",
-        })
+        makeAuth({ hasWorkspace: true })
       );
       expect(cycleStart.toISOString()).toBe("2026-03-04T00:00:00.000Z");
       expect(cycleEnd.toISOString()).toBe("2026-04-04T00:00:00.000Z");

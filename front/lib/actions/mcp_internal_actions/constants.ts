@@ -3,7 +3,11 @@ import {
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ServerMetadata,
+  ToolMeta,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
   AGENT_ROUTER_SERVER,
@@ -11,6 +15,7 @@ import {
 } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
 import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_TEMPLATES_SERVER } from "@app/lib/api/actions/servers/agent_templates/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { ASK_USER_QUESTION_SERVER } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
@@ -20,6 +25,7 @@ import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversa
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
+import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
@@ -63,21 +69,27 @@ import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadat
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
-import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
+import {
+  SANDBOX_MCP_REQUEST_TIMEOUT_MS,
+  SANDBOX_SERVER,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
+import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
+import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
+import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
-import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/api/actions/servers/slideshow/instructions";
-import { SLIDESHOW_SERVER } from "@app/lib/api/actions/servers/slideshow/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import { USER_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/user_analytics/metadata";
+import { USER_MEMORY_SERVER } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
@@ -86,18 +98,27 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
+import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
@@ -109,8 +130,6 @@ export const PROCESS_TOOL_NAME = "extract_information_from_documents";
 export const WEBSEARCH_TOOL_NAME = "websearch";
 export const WEBBROWSER_TOOL_NAME = "webbrowser";
 
-export const CREATE_AGENT_TOOL_NAME = "create_agent";
-
 export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
 export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
@@ -120,10 +139,9 @@ export const TOOLSETS_ENABLE_TOOL_NAME = "enable";
 export const TOOLSETS_LIST_TOOL_NAME = "list";
 
 export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
+export const SKILL_AUTHORING_SERVER_NAME = "skill_authoring";
 
 export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
-// Kept for backward compatibility with existing actions in conversations.
-export const EDIT_IMAGE_TOOL_NAME = "edit_image";
 
 export const SEARCH_SERVER_NAME = "search";
 
@@ -133,15 +151,18 @@ export const ASHBY_SERVER_NAME = "ashby";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
-export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4];
+export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4, 28];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "user_analytics",
+  "user_memory",
   "agent_sidekick_agent_state",
   "agent_sidekick_context",
+  "agent_templates",
   "agent_memory",
   "agent_router",
   ASHBY_SERVER_NAME,
@@ -153,6 +174,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
+  "exa_people_and_company",
   "file_generation",
   "fathom",
   "freshservice",
@@ -167,7 +189,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "image_generation",
   "include_data",
   "interactive_content",
-  "slideshow",
   "jira",
   "luma",
   "microsoft_drive",
@@ -187,6 +208,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "salesloft",
+  "servicenow",
   "slab",
   "slack",
   "slack_bot",
@@ -199,20 +221,25 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "user_mentions",
   "val_town",
   "vanta",
+  "workday",
   "front",
   "web_search_&_browse",
   "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+  SKILL_AUTHORING_SERVER_NAME,
   "skill_management",
   "schedules_management",
   "pod_manager",
   "pod_tasks",
   "poke",
   "sandbox",
+  "sandbox_functions",
   "ask_user_question",
   "wakeups",
   "plan_mode",
+  "workspace_analytics",
+  "activation_recommendations",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -229,7 +256,41 @@ export const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
-export const INTERNAL_MCP_SERVERS = {
+type HasUniqueNames<Tools extends readonly ToolMeta[]> = {
+  // Loop over each item in the array.
+  [I in keyof Tools]: {
+    // Only check the "name" property.
+    [Key in keyof Tools[I]]: Key extends "name"
+      ? Tools[I][Key] extends {
+          // Build an array of all the other names.
+          [J in keyof Tools]: J extends I ? never : Tools[J];
+        }[number]["name"]
+        ? // The current name (Tools[I][Key]) matches another name: we error.
+          `ERROR: Duplicate tool name detected: ${Tools[I][Key] & string}`
+        : // No match, we just fall through.
+          Tools[I][Key]
+      : // Property other than the name: we just fall through as well.
+        Tools[I][Key];
+  };
+};
+
+function ensureUniqueToolNames<
+  const T extends {
+    [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
+  },
+>(
+  servers: T & {
+    [ServerName in InternalMCPServerNameType]: {
+      metadata: {
+        tools: HasUniqueNames<T[ServerName]["metadata"]["tools"]>;
+      };
+    };
+  }
+): T {
+  return servers;
+}
+
+export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
@@ -534,26 +595,6 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: GOOGLE_DRIVE_SERVER,
   },
-  slideshow: {
-    id: 28,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("slideshow");
-    },
-    isPreview: true,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: {
-      ...SLIDESHOW_SERVER,
-      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
-      serverInfo: {
-        ...SLIDESHOW_SERVER.serverInfo,
-        instructions: SLIDESHOW_INSTRUCTIONS,
-      },
-    },
-  },
   slack_bot: {
     id: 31,
     availability: "manual" as const,
@@ -607,13 +648,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search_in_files: "never_ask",
-      search_drive_items: "never_ask",
-      update_word_document: "high",
-      get_file_content: "never_ask",
-      upload_file: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -625,15 +659,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search_messages_content: "never_ask",
-      list_teams: "never_ask",
-      list_users: "never_ask",
-      list_channels: "never_ask",
-      list_chats: "never_ask",
-      list_messages: "never_ask",
-      post_message: "medium",
-    },
     tools_arguments_requiring_approval: {
       post_message: ["channelId"],
     },
@@ -671,11 +696,6 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("http_client_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      send_request: "low",
-      websearch: "never_ask",
-      webbrowser: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -971,6 +991,17 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: SKILL_MANAGEMENT_SERVER,
   },
+  [SKILL_AUTHORING_SERVER_NAME]: {
+    id: 1034,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SKILL_AUTHORING_SERVER,
+  },
   schedules_management: {
     id: 1020,
     availability: "auto_hidden_builder",
@@ -1035,12 +1066,27 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("sandbox_tools");
+      return !isComputerFeatureEnabled(featureFlags);
     },
     metadata: SANDBOX_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
-    timeoutMs: 120000, // 2 minutes for command execution
+    // Derived from the max command timeout plus a buffer so the in-container
+    // timeout returns captured output before this MCP deadline aborts the call.
+    timeoutMs: SANDBOX_MCP_REQUEST_TIMEOUT_MS,
+  },
+  sandbox_functions: {
+    id: 1037,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("sandbox_functions");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SANDBOX_FUNCTIONS_SERVER,
   },
   user_mentions: {
     id: 1026,
@@ -1066,7 +1112,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   ask_user_question: {
     id: 1028,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
@@ -1081,6 +1127,17 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
+    runtimeToolStakeLevelCallback: ({
+      toolName,
+      plan,
+      configuredStakeLevel,
+    }) => {
+      if (toolName !== "schedule_wakeup") {
+        return configuredStakeLevel;
+      }
+
+      return plan && isCreditPricedPlanPrefix(plan.code) ? "low" : "high";
+    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1090,9 +1147,8 @@ export const INTERNAL_MCP_SERVERS = {
     id: 1030,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("clari_copilot_mcp"),
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1121,26 +1177,138 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: FILES_SERVER,
   },
+  workspace_analytics: {
+    id: 1035,
+    // Available to all workspaces unless the admin opts out, and hidden from the
+    // builder tool-picker; the skill wires it by name. Data access is enforced
+    // per-tool via auth.isAdmin().
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ isWorkspaceAnalyticsEnabled }) =>
+      !isWorkspaceAnalyticsEnabled,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKSPACE_ANALYTICS_SERVER,
+  },
+  exa_people_and_company: {
+    id: 1036,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("exa_people_and_company"),
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: EXA_SERVER,
+  },
+  workday: {
+    id: 1038,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("workday_mcp"),
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKDAY_SERVER,
+  },
+  user_analytics: {
+    id: 1039,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("activation_skill"),
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: USER_ANALYTICS_SERVER,
+  },
+  activation_recommendations: {
+    id: 1040,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("activation_skill"),
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: ACTIVATION_RECOMMENDATIONS_SERVER,
+  },
+  agent_templates: {
+    id: 1041,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: AGENT_TEMPLATES_SERVER,
+  },
+  servicenow: {
+    id: 1042,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("servicenow_tool");
+    },
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SERVICENOW_SERVER,
+  },
+  user_memory: {
+    id: 1043,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("user_memory");
+    },
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: USER_MEMORY_SERVER,
+  },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
-  [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
-};
+  [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
+});
 
 type IsRestrictedCallback = (params: {
   plan: PlanType;
   featureFlags: WhitelistableFeature[];
   isDeepDiveDisabled: boolean;
+  isWorkspaceAnalyticsEnabled: boolean;
 }) => boolean;
 
-type InternalMCPServerEntryCommon = {
+type RuntimeToolStakeLevelCallbackParams = {
+  toolName: string;
+  plan: PlanType | null;
+  configuredStakeLevel: MCPToolStakeLevelType;
+};
+
+type RuntimeToolStakeLevelCallback = (
+  params: RuntimeToolStakeLevelCallbackParams
+) => MCPToolStakeLevelType;
+
+type InternalMCPServerEntry<
+  K extends InternalMCPServerNameType = InternalMCPServerNameType,
+> = {
   id: number;
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
   isRestricted: IsRestrictedCallback | undefined;
   isPreview: boolean;
-  // Defines which arguments require per-agent approval for "medium" stake tools.
-  // When a tool has "medium" stake, the user must approve the specific combination
-  // of (agent, tool, argument values) before the tool can execute.
+  runtimeToolStakeLevelCallback?: RuntimeToolStakeLevelCallback;
+  // Defines which argument values scope approval for "medium" stake tools.
+  // The user must approve each specific combination before the tool can execute.
   tools_arguments_requiring_approval: Record<string, string[]> | undefined;
   tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
   timeoutMs: number | undefined;
@@ -1148,6 +1316,9 @@ type InternalMCPServerEntryCommon = {
   sensitivityLabelProvider?: string;
   // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
   // Defaults to true.
+  metadata: ServerMetadata & {
+    serverInfo: InternalMCPServerDefinitionType & { name: K };
+  };
 } & (
   | {
       // A restricted server is not necessarily in preview (can be restricted based on the plan for instance).
@@ -1157,28 +1328,6 @@ type InternalMCPServerEntryCommon = {
   // Non restricted server cannot be in preview
   | { isPreview: false; isRestricted: undefined }
 );
-
-type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
-  InternalMCPServerEntryCommon & {
-    metadata: ServerMetadata<K>;
-    serverInfo?: InternalMCPServerDefinitionType & { name: K };
-    tools_stakes?: Record<string, MCPToolStakeLevelType>;
-  };
-
-type InternalMCPServerEntryWithoutMetadata<
-  K extends InternalMCPServerNameType,
-> = InternalMCPServerEntryCommon & {
-  metadata?: undefined;
-  serverInfo: InternalMCPServerDefinitionType & { name: K };
-  tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
-};
-
-type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
-  | InternalMCPServerEntryWithMetadata<K>
-  | InternalMCPServerEntryWithoutMetadata<K>;
-
-type InternalMCPServerEntry =
-  InternalMCPServerEntryBase<InternalMCPServerNameType>;
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
@@ -1210,6 +1359,32 @@ type AutoServerKeys<T> = {
 export type AutoInternalMCPServerNameType = AutoServerKeys<
   typeof INTERNAL_MCP_SERVERS
 >;
+
+export function validateToolInputs<
+  S extends InternalMCPServerNameType,
+  T extends InternalMCPToolNameType<S>,
+>(
+  serverName: S,
+  toolName: T,
+  inputs: Record<string, unknown>
+): inputs is z.infer<
+  z.ZodObject<
+    Extract<
+      (typeof INTERNAL_MCP_SERVERS)[S]["metadata"]["tools"][number],
+      { name: T }
+    >["schema"]
+  >
+> {
+  const toolMetadata = INTERNAL_MCP_SERVERS[serverName].metadata.tools.find(
+    (tool) => tool.name === toolName
+  );
+  // The type enforces that this exists, but we return false out of retro-compatibility over tool/server name changes.
+  if (!toolMetadata) {
+    return false;
+  }
+
+  return z.object(toolMetadata.schema).safeParse(inputs).success;
+}
 
 export function isAutoInternalMCPServerName(
   name: InternalMCPServerNameType
@@ -1249,7 +1424,7 @@ export function allowsMultipleInstancesOfInternalMCPServerById(
   if (r.isErr()) {
     return false;
   }
-  return !!INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
+  return INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
 }
 
 export function getInternalMCPServerNameAndWorkspaceId(sId: string): Result<
@@ -1348,17 +1523,30 @@ export function getInternalMCPServerDisplayedAs(
   return server.metadata.serverInfo.displayedAs;
 }
 
-export function getInternalMCPServerToolStakes(
-  name: InternalMCPServerNameType
-): Record<string, MCPToolStakeLevelType> {
+export function getInternalMCPServerToolArgumentsRequiringApproval(
+  name: InternalMCPServerNameType,
+  toolName: string
+): string[] | undefined {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
-  return server.metadata.tools_stakes;
+  return server.tools_arguments_requiring_approval?.[toolName];
 }
 
-export function getInternalMCPServerToolDisplayLabels<
-  N extends InternalMCPServerNameType,
->(name: N): Record<string, ToolDisplayLabels> | null {
+export function resolveInternalMCPServerToolStakeLevel(
+  name: InternalMCPServerNameType,
+  params: RuntimeToolStakeLevelCallbackParams
+): MCPToolStakeLevelType {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+
+  return (
+    server.runtimeToolStakeLevelCallback?.(params) ??
+    params.configuredStakeLevel
+  );
+}
+
+export function getInternalMCPServerToolDisplayLabels(
+  name: InternalMCPServerNameType
+): Record<string, ToolDisplayLabels> | null {
   const server = INTERNAL_MCP_SERVERS[name];
   const displayLabelsByTool: Record<string, ToolDisplayLabels> = {};
   let hasDisplayLabels = false;
@@ -1421,12 +1609,19 @@ export function matchesInternalMCPServerName(
   return false;
 }
 
-export function getInternalMCPServerMetadata<
-  N extends InternalMCPServerNameType,
->(name: N): (typeof INTERNAL_MCP_SERVERS)[N]["metadata"] {
-  const server = INTERNAL_MCP_SERVERS[name];
+export function getInternalMCPServerMetadata(name: InternalMCPServerNameType) {
+  const { serverInfo, tools }: ServerMetadata =
+    INTERNAL_MCP_SERVERS[name].metadata;
 
-  return server.metadata;
+  return {
+    serverInfo,
+    tools: tools.map(({ schema, ...tool }) => ({
+      ...tool,
+      // For the input schema we store a zod schema on the tool metadata, it's what's easier to use in the code because
+      // we can infer a type from it, but tool specifications expect a JSON schema.
+      inputSchema: zodToJsonSchema(z.object(schema)) as JSONSchema,
+    })),
+  };
 }
 
 const SENSITIVITY_LABEL_PROVIDER_BY_SERVER: Partial<

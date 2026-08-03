@@ -4,9 +4,9 @@ import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
 const SIZE_CLASSES = {
-  sm: "s-relative s-h-24 s-w-24",
-  md: "s-relative s-h-48 s-w-48",
-  lg: "s-relative s-h-80 s-w-80",
+  sm: "relative h-24 w-24",
+  md: "relative h-48 w-48",
+  lg: "relative h-80 w-80",
 } as const;
 
 type InteractiveImageGridSize = keyof typeof SIZE_CLASSES;
@@ -18,6 +18,7 @@ interface InteractiveImageGridProps {
     downloadUrl?: string;
     imageUrl?: string;
     isLoading?: boolean;
+    isGenerating?: boolean;
     title: string;
   }[];
   onClose?: () => void;
@@ -73,7 +74,7 @@ function InteractiveImageGrid({
 
   return (
     <>
-      <div className={cn("s-@container", className)}>
+      <div className={cn("@container", className)}>
         {images.length === 1 ? (
           <div className={SIZE_CLASSES[size]}>
             <ImagePreview
@@ -82,6 +83,7 @@ function InteractiveImageGrid({
               title={images[0].title}
               downloadUrl={images[0].downloadUrl}
               isLoading={images[0].isLoading}
+              isGenerating={images[0].isGenerating}
               onClick={() => setCurrentImageIndex(0)}
               onClose={onClose ? () => onClose() : undefined}
               variant="embedded"
@@ -90,7 +92,7 @@ function InteractiveImageGrid({
             />
           </div>
         ) : (
-          <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 @xxs:grid-cols-3 @xs:grid-cols-4">
             {images.map((image, idx) => (
               <ImagePreview
                 key={idx}
@@ -99,6 +101,7 @@ function InteractiveImageGrid({
                 title={image.title}
                 downloadUrl={image.downloadUrl}
                 isLoading={image.isLoading}
+                isGenerating={image.isGenerating}
                 onClick={() => setCurrentImageIndex(idx)}
                 variant="standalone"
                 titlePosition="center"

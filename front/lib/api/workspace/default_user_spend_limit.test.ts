@@ -7,8 +7,9 @@ import { Authenticator } from "@app/lib/auth";
 import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
-import { buildCustomerAlertMock } from "@app/tests/utils/metronome_alerts";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS } from "@app/types/credits";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Subscription } from "@metronome/sdk/resources";
@@ -54,7 +55,7 @@ vi.mock("@app/lib/metronome/seat_types", async () => {
     ...actual,
     getProductSeatTypes: vi.fn(),
     getSeatSubscriptionsFromContract: vi.fn(),
-    getAwuAllocationForSeatType: vi.fn(),
+    getAwuAllocationForNormalizedSeatType: vi.fn(),
   };
 });
 
@@ -97,37 +98,33 @@ beforeEach(() => {
   vi.mocked(seatTypes.getSeatSubscriptionsFromContract).mockReturnValue(
     FAKE_SEAT_SUBSCRIPTIONS
   );
-  vi.mocked(seatTypes.getAwuAllocationForSeatType).mockReturnValue(8000);
+  vi.mocked(seatTypes.getAwuAllocationForNormalizedSeatType).mockReturnValue(
+    8000
+  );
 });
 
 describe("getDefaultUserSpendLimit", () => {
-  it("returns the configured threshold minus seat allowance", async () => {
+  it("returns the configured workspace default pool cap", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
-    ).mockResolvedValue(
-      new Ok(
-        buildCustomerAlertMock({
-          id: "alert_default_xxx",
-          threshold: 50_000,
-          customerStatus: "ok",
-        })
-      )
-    );
+
+    await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      defaultPoolCapAwuCredits: 25_000,
+    });
 
     const result = await getDefaultUserSpendLimit(auth);
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      // 50_000 (Metronome threshold) - 8_000 (seat allowance) = 42_000
-      expect(result.value).toEqual({ awuCredits: 42_000 });
+      expect(result.value).toEqual({ awuCredits: 25_000 });
     }
   });
 
-  it("returns not_found when no default is configured", async () => {
+  it("returns 0 when no workspace default is configured (no plan-tier fallback, no unlimited)", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -135,9 +132,9 @@ describe("getDefaultUserSpendLimit", () => {
 
     const result = await getDefaultUserSpendLimit(auth);
 
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe("not_found");
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({ awuCredits: 0 });
     }
   });
 
@@ -150,26 +147,6 @@ describe("getDefaultUserSpendLimit", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe("workspace_not_metronome_billed");
-    }
-    expect(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
-    ).not.toHaveBeenCalled();
-  });
-
-  it("surfaces Metronome errors as metronome_error", async () => {
-    const workspace = await WorkspaceFactory.metronome({
-      metronomeCustomerId: METRONOME_CUSTOMER_ID,
-    });
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
-    ).mockResolvedValue(new Err(new Error("metronome down")));
-
-    const result = await getDefaultUserSpendLimit(auth);
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe("metronome_error");
     }
   });
 });
@@ -206,17 +183,11 @@ describe("setDefaultUserSpendLimit", () => {
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
-    ).mockResolvedValue(
-      new Ok(
-        buildCustomerAlertMock({
-          id: "alert_default_xxx",
-          threshold: 18_000, // 8_000 seat + 10_000 pool
-          customerStatus: "ok",
-        })
-      )
-    );
+    await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      defaultPoolCapAwuCredits: 10_000,
+    });
 
     await setDefaultUserSpendLimit(auth, {
       awuCredits: 25_000,
@@ -234,7 +205,7 @@ describe("setDefaultUserSpendLimit", () => {
     );
   });
 
-  it("records previous_awu_credits as 'unset' when no default existed", async () => {
+  it("records previous_awu_credits as '0' when no default existed", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -248,7 +219,7 @@ describe("setDefaultUserSpendLimit", () => {
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: {
-          previous_awu_credits: "unset",
+          previous_awu_credits: "0",
           new_awu_credits: "1000",
         },
       })
@@ -261,7 +232,11 @@ describe("setDefaultUserSpendLimit", () => {
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    for (const awuCredits of [0, -1, 1_000_001, 1.5]) {
+    for (const awuCredits of [
+      -1,
+      MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS + 1,
+      1.5,
+    ]) {
       const result = await setDefaultUserSpendLimit(auth, {
         awuCredits,
         auditContext: AUDIT_CONTEXT,

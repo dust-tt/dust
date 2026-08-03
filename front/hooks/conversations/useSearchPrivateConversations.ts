@@ -3,7 +3,7 @@ import {
   useFetcher,
   useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
-import type { SearchConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/search";
+import type { SearchConversationsResponseBody } from "@app/types/api/assistant/conversation/search";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";

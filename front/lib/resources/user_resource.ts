@@ -2,13 +2,18 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import {
   UserMetadataModel,
   UserModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { searchUsers } from "@app/lib/user_search/search";
+import type { SearchUsersOrderBy } from "@app/lib/user_search/search";
+import {
+  searchAllUsers as searchAllUserDocuments,
+  searchUsers as searchUserDocuments,
+} from "@app/lib/user_search/search";
 import {
   cacheWithRedis,
   invalidateCacheAfterCommit,
@@ -30,6 +35,7 @@ import type {
 } from "@app/types/user";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 import { escape } from "html-escaper";
+import chunk from "lodash/chunk";
 import fromPairs from "lodash/fromPairs";
 import sortBy from "lodash/sortBy";
 import type {
@@ -45,9 +51,23 @@ export interface SearchMembersPaginationParams {
   limit: number;
 }
 
+export interface GetUserApprovalsResponseBody {
+  approvals: {
+    mcpServerId: string;
+    toolNames: string[];
+    serverName: string;
+  }[];
+}
+
+export interface DeleteUserApprovalsResponseBody {
+  success: boolean;
+}
+
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
+const USER_MEMORY_ENABLED_METADATA_KEY = "userMemoryEnabled";
 const TOOLS_VALIDATION_WILDCARD = "*";
+const USER_SEARCH_DB_BATCH_SIZE = 1000;
 
 type CachedUserData = {
   id: ModelId;
@@ -153,6 +173,32 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     return users.map((user) => new UserResource(UserModel, user.get()));
+  }
+
+  // Batch-reads a single user-scoped metadata value for
+  // many users in one query. Returns a Map keyed by user model id, omitting
+  // users that have no value for the key. Pass `value` to filter in the DB.
+  static async fetchUserScopedMetadataValuesByUserModelIds(
+    key: string,
+    userModelIds: ModelId[],
+    { value }: { value?: string } = {}
+  ): Promise<Map<ModelId, string>> {
+    if (userModelIds.length === 0) {
+      return new Map();
+    }
+    const where: Record<string, unknown> = {
+      key,
+      userId: { [Op.in]: userModelIds },
+      workspaceId: null,
+    };
+    if (value !== undefined) {
+      where["value"] = value;
+    }
+    const rows = await UserMetadataModel.findAll({
+      attributes: ["userId", "value"],
+      where,
+    });
+    return new Map(rows.map((row) => [row.userId, row.value]));
   }
 
   static async listByUsername(username: string): Promise<UserResource[]> {
@@ -348,56 +394,44 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  static async searchUsers(
-    auth: Authenticator,
-    {
-      searchTerm,
-      offset,
-      limit,
-    }: {
-      searchTerm: string;
-      offset: number;
-      limit: number;
-    }
-  ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
-    const owner = auth.getNonNullableWorkspace();
-
-    // Search users in Elasticsearch
-    const searchResult = await searchUsers({
-      owner,
-      searchTerm,
-      offset,
-      limit,
-    });
-    if (searchResult.isErr()) {
-      return searchResult;
-    }
-
-    const { users: userDocs, total } = searchResult.value;
+  private static async hydrateSearchUsers({
+    owner,
+    userDocs,
+    total,
+  }: {
+    owner: LightWorkspaceType;
+    userDocs: UserSearchDocument[];
+    total: number;
+  }): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
     const userIds = userDocs.map((doc) => doc.user_id);
 
     if (userIds.length === 0) {
-      return new Ok({ users: [], total: 0 });
+      return new Ok({ users: [], total });
     }
 
-    // Note that UserResource has stored sIds, not generated ones.
-    const users = await UserModel.findAll({
-      where: {
-        sId: { [Op.in]: userIds },
-      },
-      include: [
-        {
-          model: MembershipModel,
-          as: "memberships",
-          required: true, // INNER JOIN
-          where: {
-            workspaceId: owner.id,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-          },
+    const now = new Date();
+    const users: UserModel[] = [];
+    for (const userIdBatch of chunk(userIds, USER_SEARCH_DB_BATCH_SIZE)) {
+      // Note that UserResource has stored sIds, not generated ones.
+      const batchUsers = await UserModel.findAll({
+        where: {
+          sId: { [Op.in]: userIdBatch },
         },
-      ],
-    });
+        include: [
+          {
+            model: MembershipModel,
+            as: "memberships",
+            required: true, // INNER JOIN
+            where: {
+              workspaceId: owner.id,
+              startAt: { [Op.lte]: now },
+              endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }] },
+            },
+          },
+        ],
+      });
+      users.push(...batchUsers);
+    }
 
     // Check if we found fewer users than expected (means some were revoked)
     if (users.length < userIds.length) {
@@ -422,19 +456,84 @@ export class UserResource extends BaseResource<UserModel> {
       );
     }
 
-    // Create a map to maintain the order from Elasticsearch results
+    // Create a map to maintain the order from Elasticsearch results.
     const userResourceMap = new Map<string, UserResource>();
     users.forEach((u) => {
       const userBlob = u.get();
       userResourceMap.set(u.sId, new UserResource(UserModel, userBlob));
     });
 
-    // Return users in the order from Elasticsearch results
+    // Return users in the order from Elasticsearch results.
     const orderedUsers = userIds
       .map((sId) => userResourceMap.get(sId))
       .filter((user): user is UserResource => user !== undefined);
 
     return new Ok({ users: orderedUsers, total });
+  }
+
+  static async searchUsers(
+    auth: Authenticator,
+    {
+      searchTerm,
+      offset,
+      limit,
+      orderBy,
+      restrictToUserIds,
+    }: {
+      searchTerm: string;
+      offset: number;
+      limit: number;
+      orderBy?: SearchUsersOrderBy;
+      restrictToUserIds?: string[];
+    }
+  ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const searchResult = await searchUserDocuments({
+      owner,
+      searchTerm,
+      offset,
+      limit,
+      orderBy,
+      userIds: restrictToUserIds,
+    });
+    if (searchResult.isErr()) {
+      return searchResult;
+    }
+
+    return this.hydrateSearchUsers({
+      owner,
+      userDocs: searchResult.value.users,
+      total: searchResult.value.total,
+    });
+  }
+
+  static async searchAllUsers(
+    auth: Authenticator,
+    {
+      searchTerm,
+      restrictToUserIds,
+    }: {
+      searchTerm: string;
+      restrictToUserIds?: string[];
+    }
+  ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const searchResult = await searchAllUserDocuments({
+      owner,
+      searchTerm,
+      userIds: restrictToUserIds,
+    });
+    if (searchResult.isErr()) {
+      return searchResult;
+    }
+
+    return this.hydrateSearchUsers({
+      owner,
+      userDocs: searchResult.value.users,
+      total: searchResult.value.total,
+    });
   }
 
   async updateName(firstName: string, lastName: string | null) {
@@ -529,6 +628,17 @@ export class UserResource extends BaseResource<UserModel> {
     await this.deleteAllMetadata(auth);
 
     try {
+      // Upgrade requests reference the user with an `ON DELETE RESTRICT` FK on
+      // `userId`, so they must be removed before the user row. Rows where the
+      // user is only the resolver (`resolvedByUserId`, `ON DELETE SET NULL`)
+      // clean up on their own.
+      await MembershipUpgradeRequestModel.destroy({
+        where: {
+          userId: this.id,
+        },
+        transaction,
+      });
+
       await this.model.destroy({
         where: {
           id: this.id,
@@ -550,6 +660,15 @@ export class UserResource extends BaseResource<UserModel> {
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
+      // See `delete` — the `ON DELETE RESTRICT` FK on `userId` requires removing
+      // upgrade requests before the user row.
+      await MembershipUpgradeRequestModel.destroy({
+        where: {
+          userId: this.id,
+        },
+        transaction,
+      });
+
       await this.model.destroy({
         where: {
           id: this.id,
@@ -601,6 +720,22 @@ export class UserResource extends BaseResource<UserModel> {
     }
 
     await metadata.update({ value });
+  }
+
+  async isMemoryEnabled(auth: Authenticator): Promise<boolean> {
+    const metadata = await this.getMetadata(
+      USER_MEMORY_ENABLED_METADATA_KEY,
+      auth.getNonNullableWorkspace().id
+    );
+    return metadata?.value !== "false";
+  }
+
+  async setMemoryEnabled(auth: Authenticator, enabled: boolean): Promise<void> {
+    await this.setMetadata(
+      USER_MEMORY_ENABLED_METADATA_KEY,
+      enabled ? "true" : "false",
+      auth.getNonNullableWorkspace().id
+    );
   }
 
   async deleteMetadata(where: WhereOptions<UserMetadataModel>) {
@@ -709,20 +844,18 @@ export class UserResource extends BaseResource<UserModel> {
   /**
    * Create a tool approval for this user.
    *
-   * For low stake (tool-level): omit agentId and argsAndValues (both default to null)
-   * For medium stake (per-agent, per-args): pass agentId and argsAndValues
+   * For low stake (tool-level): omit argsAndValues (defaults to null).
+   * For medium stake (per-args): pass argsAndValues.
    */
   async createToolApproval(
     auth: Authenticator,
     {
       mcpServerId,
       toolName,
-      agentId = null,
       argsAndValues = null,
     }: {
       mcpServerId: string;
       toolName: string;
-      agentId?: string | null;
       argsAndValues?: Record<string, string> | null;
     }
   ): Promise<void> {
@@ -738,7 +871,6 @@ export class UserResource extends BaseResource<UserModel> {
       userId: this.id,
       mcpServerId,
       toolName,
-      agentId: agentId ?? { [Op.is]: null },
       argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : { [Op.is]: null },
     };
 
@@ -746,7 +878,6 @@ export class UserResource extends BaseResource<UserModel> {
       where: findClause,
       defaults: {
         ...findClause,
-        agentId,
         argsAndValues: sortedArgsAndValues,
         argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : null,
       },
@@ -758,12 +889,10 @@ export class UserResource extends BaseResource<UserModel> {
     {
       mcpServerId,
       toolName,
-      agentId = null,
       argsAndValues = null,
     }: {
       mcpServerId: string;
       toolName: string;
-      agentId?: string | null;
       argsAndValues?: Record<string, string> | null;
     }
   ): Promise<boolean> {
@@ -771,9 +900,9 @@ export class UserResource extends BaseResource<UserModel> {
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
-    // For low-stake tools (agentId=null, argsAndValues=null), also check for
-    // wildcard "*" approval which approves all tools for the server.
-    const isLowStake = agentId === null && argsAndValues === null;
+    // For low-stake tools (argsAndValues=null), also check for wildcard "*"
+    // approval which approves all tools for the server.
+    const isLowStake = argsAndValues === null;
 
     const approval = await UserToolApprovalModel.findOne({
       where: {
@@ -783,7 +912,6 @@ export class UserResource extends BaseResource<UserModel> {
         toolName: isLowStake
           ? { [Op.in]: [toolName, TOOLS_VALIDATION_WILDCARD] }
           : toolName,
-        agentId: agentId ?? { [Op.is]: null },
         argsAndValuesMd5: argsAndValues
           ? md5(JSON.stringify(sortedArgsAndValues))
           : { [Op.is]: null },

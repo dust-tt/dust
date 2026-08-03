@@ -21,6 +21,7 @@ export const getMcpServerViewConnectionMetadataPlugin = createPlugin({
           "User ID to get personal connection metadata for. Leave empty to get the workspace connection metadata.",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     return !!resource;

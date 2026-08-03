@@ -14,7 +14,7 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, Chip, LogIn01, XClose } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface MCPServerSettingsProps {
@@ -102,14 +102,14 @@ export function MCPServerSettings({
           {connection ? (
             <Button
               label="Deactivate"
-              icon={XMarkIcon}
+              icon={XClose}
               variant="outline"
               onClick={handleDeleteConnection}
             />
           ) : (
             <Button
               label="Activate"
-              icon={LoginIcon}
+              icon={LogIn01}
               variant="primary"
               onClick={() => setIsConnectDialogOpen(true)}
               disabled={isLoading}
@@ -122,7 +122,7 @@ export function MCPServerSettings({
       {connection && (
         <div className="space-y-2">
           <div className="heading-base">Credentials</div>
-          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
+          <div className="w-full text-muted-foreground">
             {useCase === "platform_actions" && (
               <>
                 <span className="font-semibold">

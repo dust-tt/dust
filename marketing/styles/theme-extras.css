@@ -1,0 +1,99 @@
+/*
+ * Marketing-specific theme extras (ported 1:1 from the old tailwind.config.js).
+ * Imported by marketing's unified Tailwind build (components.css).
+ *
+ * Font weights (medium/semibold), the size scale (100/125/150),
+ * max-w-conversation, and the shared move-square/breathing keyframes already
+ * come from `@dust-tt/sparkle/styles/theme.css`. `max-w-48` is native in v4.
+ * Only the marketing-only overrides and keyframes live here.
+ */
+
+/* Map the border-darker token (defined in global.css :root/.dark). */
+@theme inline {
+  --color-border-darker: var(--color-border-darker);
+}
+
+@theme {
+  /* Marketing overrides the shared move-square/breathing timings (3s -> 4s). */
+  --animate-move-square: move-square 4s ease-out infinite;
+  --animate-breathing: breathing 4s infinite ease-in-out;
+  --animate-cursor-blink: cursor-blink 0.9s infinite;
+  --animate-shake: shake 0.5s ease-in-out both;
+  --animate-reload: reload 1000ms ease-out;
+  --animate-fadeout: fadeout 500ms ease-out;
+  --animate-marquee: marquee 25s linear infinite;
+  --animate-fade-in-up: fade-in-up 0.5s ease-in-out;
+}
+
+@keyframes appear {
+  0% {
+    opacity: 0;
+    width: 0;
+  }
+  100% {
+    opacity: 1;
+    width: 320px;
+  }
+}
+@keyframes cursor-blink {
+  0% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes fadeout {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes reload {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.99);
+    opacity: 0.4;
+  }
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  20%,
+  60% {
+    transform: translate3d(-1.5px, 0, 0);
+  }
+  40%,
+  80% {
+    transform: translate3d(1.5px, 0, 0);
+  }
+}
+@keyframes marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

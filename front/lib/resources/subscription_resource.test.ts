@@ -81,10 +81,11 @@ vi.mock("@app/lib/utils/cache", () => ({
 
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { SUBSCRIPTION_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceModelId: number): string {
-  return `cacheWithRedis-_fetchActiveByWorkspaceModelIdUncached-subscription:active:workspaceId:${workspaceModelId}`;
+  return `cacheWithRedis-_fetchActiveByWorkspaceModelIdUncached-subscription:active:workspaceId:${workspaceModelId}:v${SUBSCRIPTION_CACHE_KEY_VERSION}`;
 }
 
 describe("SubscriptionResource", () => {

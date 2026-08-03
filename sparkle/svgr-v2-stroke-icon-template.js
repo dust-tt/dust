@@ -4,7 +4,10 @@ const path = require("path");
 function defaultIndexTemplate(filePaths) {
   const exportEntries = filePaths.map(({ path: filePath, originalPath }) => {
     const basename = path.basename(filePath, path.extname(filePath));
-    return `export { default as ${basename}V2 } from './${basename}'`;
+    // "Container" would collide with the existing `Container` component export
+    // from sparkle, so it is exported as `ContainerIcon` instead.
+    const exportName = basename === "Container" ? "ContainerIcon" : basename;
+    return `export { default as ${exportName} } from './${basename}'`;
   });
   return exportEntries.join("\n");
 }

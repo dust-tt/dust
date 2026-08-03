@@ -13,7 +13,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Label,
-  PlusIcon,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -153,7 +153,7 @@ export function CreateWebhookGithubConnection({
                   <span className="text-warning">*</span>
                 )}
             </Label>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Choose which repositories can activate this trigger
             </p>
             <div className="mt-2 flex flex-col gap-2">
@@ -179,7 +179,7 @@ export function CreateWebhookGithubConnection({
                       <Button
                         label="Add repository"
                         variant="outline"
-                        icon={PlusIcon}
+                        icon={Plus}
                         size="sm"
                       />
                     </DropdownMenuTrigger>
@@ -221,7 +221,7 @@ export function CreateWebhookGithubConnection({
                   <span className="text-warning">*</span>
                 )}
             </Label>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Choose which organizations can activate this trigger
             </p>
             <div className="mt-2 flex flex-col gap-2">
@@ -247,7 +247,7 @@ export function CreateWebhookGithubConnection({
                       <Button
                         label="Add organization"
                         variant="outline"
-                        icon={PlusIcon}
+                        icon={Plus}
                         size="sm"
                       />
                     </DropdownMenuTrigger>
@@ -283,7 +283,7 @@ export function CreateWebhookGithubConnection({
 
           {selectedRepositories.length === 0 &&
             selectedOrganizations.length === 0 && (
-              <p className="dark:text-warning-night mt-1 text-xs text-warning">
+              <p className="mt-1 text-xs text-warning">
                 Please select at least one repository or organization to create
                 the webhook
               </p>

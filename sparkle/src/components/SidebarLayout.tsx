@@ -179,7 +179,7 @@ export const SidebarLayout = React.forwardRef<
   );
 
   return (
-    <div className={cn("s-relative s-flex s-h-full s-w-full", className)}>
+    <div className={cn("relative flex h-full w-full", className)}>
       {/* Allotment CSS variables for resize border customization */}
       <style>{`
         :root {
@@ -188,7 +188,7 @@ export const SidebarLayout = React.forwardRef<
           --sash-size: 8px;
           --sash-hover-size: 2px;
         }
-        .s-dark {
+        .dark {
           --focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]}); /* border.focus.night */
           --separator-border: transparent; /* border.dark.night */
         }
@@ -202,7 +202,7 @@ export const SidebarLayout = React.forwardRef<
       {/* Hover zone when collapsed */}
       {isSidebarCollapsed && collapsible && (
         <div
-          className="s-fixed s-left-0 s-top-0 s-z-50 s-h-full s-w-2 s-cursor-pointer"
+          className="fixed left-0 top-0 z-50 h-full w-2 cursor-pointer"
           onMouseEnter={handleLeftEdgeHover}
           aria-hidden="true"
         />
@@ -212,15 +212,15 @@ export const SidebarLayout = React.forwardRef<
       {isSidebarCollapsed && collapsible && (
         <div
           className={cn(
-            "s-fixed s-left-0 s-top-0 s-z-50 s-flex s-h-full s-flex-col s-shadow-lg",
-            "s-transition-transform s-duration-300 s-ease-in-out",
-            isHovering ? "s-translate-x-0" : "s-translate-x-[-100%]",
+            "fixed left-0 top-0 z-50 flex h-full flex-col shadow-lg",
+            "transition-transform duration-300 ease-in-out",
+            isHovering ? "translate-x-0" : "translate-x-[-100%]",
             sidebarClassName
           )}
           style={{ width: `${defaultSidebarWidth}px` }}
           onMouseLeave={handleSidebarMouseLeave}
         >
-          <div className="s-flex s-h-full s-w-full s-flex-col">{sidebar}</div>
+          <div className="flex h-full w-full flex-col">{sidebar}</div>
         </div>
       )}
 
@@ -229,29 +229,26 @@ export const SidebarLayout = React.forwardRef<
         vertical={false}
         proportionalLayout={false}
         onChange={handleChange}
-        className="s-h-full s-w-full"
+        className="h-full w-full"
       >
         {/* Always render sidebar pane, but keep at width 0 when collapsed */}
         <Allotment.Pane
           minSize={minSidebarWidth}
           maxSize={maxSidebarWidth}
           preferredSize={isSidebarCollapsed ? 0 : sidebarWidth}
-          className={cn(
-            "s-flex s-flex-col s-overflow-hidden",
-            sidebarClassName
-          )}
+          className={cn("flex flex-col overflow-hidden", sidebarClassName)}
         >
           {/* Show content when visible (not collapsed) */}
           {!isSidebarCollapsed && (
-            <div className="s-flex s-h-full s-w-full s-flex-col">{sidebar}</div>
+            <div className="flex h-full w-full flex-col">{sidebar}</div>
           )}
         </Allotment.Pane>
 
         <Allotment.Pane
           priority={LayoutPriority.High}
-          className={cn("s-flex s-flex-col", contentClassName)}
+          className={cn("flex flex-col", contentClassName)}
         >
-          <div className="s-flex s-h-full s-w-full s-flex-col">{content}</div>
+          <div className="flex h-full w-full flex-col">{content}</div>
         </Allotment.Pane>
       </Allotment>
     </div>

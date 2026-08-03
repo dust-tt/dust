@@ -1,13 +1,13 @@
 import { Button } from "@sparkle/components/Button";
-import { ChevronDownIcon, ChevronUpIcon } from "@sparkle/icons/app";
+import { ChevronDown, ChevronUp } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { useEffect, useRef, useState } from "react";
 
-const contentVariants = cva("s-relative", {
+const contentVariants = cva("relative", {
   variants: {
     collapsed: {
-      true: "s-overflow-hidden",
+      true: "overflow-hidden",
     },
   },
   defaultVariants: {
@@ -79,13 +79,11 @@ export function TruncatedContent({
       >
         {children}
         {isCurrentlyCollapsed && (
-          <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-24 s-bg-gradient-to-t s-from-background dark:s-from-background-night" />
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-linear-to-t from-background" />
         )}
       </div>
       {(shouldShowToggle || footer) && (
-        <div
-          className={cn("s-flex s-items-center", shouldShowToggle && "s-gap-3")}
-        >
+        <div className={cn("flex items-center", shouldShowToggle && "gap-3")}>
           {shouldShowToggle && (
             <Button
               variant={variant === "light" ? "ghost-secondary" : "outline"}
@@ -95,8 +93,8 @@ export function TruncatedContent({
                 variant === "light"
                   ? undefined
                   : isCollapsed
-                    ? ChevronDownIcon
-                    : ChevronUpIcon
+                    ? ChevronDown
+                    : ChevronUp
               }
               onClick={handleToggle}
               className={buttonClassName}

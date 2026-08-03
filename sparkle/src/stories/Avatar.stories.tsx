@@ -5,15 +5,10 @@ import { AVATAR_SIZES } from "@sparkle/components/Avatar";
 import {
   ActionBeerIcon,
   ActionFlagIcon,
-  ActionImageIcon,
-  ActionMagnifyingGlassIcon,
-  ActionScanIcon,
   ActionShirtIcon,
-  ActionTableIcon,
   ActionUmbrellaIcon,
 } from "@sparkle/icons/actions";
 import SvgHome from "@sparkle/icons/actions/Home";
-import { SidekickIcon, StarStrokeIcon } from "@sparkle/icons/app";
 
 import {
   Avatar,
@@ -21,17 +16,34 @@ import {
   NotionLogo,
   SlackLogo,
 } from "../index_with_tw_base";
+import { Image01, Sidekick } from "@sparkle/icons/v2-stroke";
+import { Scan, SearchMd, Star01, Table } from "@sparkle/icons/v2-stroke";
 
 const ICONS = {
   none: null,
   ActionBeerIcon: ActionBeerIcon,
-  StarStrokeIcon: StarStrokeIcon,
+  Star01: Star01,
 } as const;
 
 const meta = {
-  title: "Components/Avatar",
+  title: "Data Display/Avatar",
   component: Avatar,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Represents a user, agent, or entity with an image, emoji, icon, or initials. Avatars support a range of **sizes**, busy and clickable states, and stacking via **AvatarSet**.
+
+**When to use**
+- To identify the author of a message, a workspace member, or an agent.
+
+**Guidelines**
+- Always provide a **name** so there is a sensible initials fallback when no image is available, and for accessibility.
+- Keep avatar **size** consistent within a given context (a list, a header).
+- For a group of people or entities, use **AvatarSet** rather than several loose avatars.`,
+      },
+    },
+  },
   argTypes: {
     size: {
       options: AVATAR_SIZES,
@@ -59,12 +71,11 @@ const meta = {
     },
     backgroundColor: {
       control: "text",
-      description: "Tailwind background color class (e.g., 's-bg-blue-200')",
+      description: "Tailwind background color class (e.g., 'bg-blue-200')",
     },
     iconColor: {
       control: "text",
-      description:
-        "Tailwind text color class for icon (e.g., 's-text-gray-50')",
+      description: "Tailwind text color class for icon (e.g., 'text-gray-50')",
     },
     clickable: {
       control: "boolean",
@@ -107,9 +118,9 @@ const gridStyle = {
 
 export const AvatarExample: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4 s-text-foreground dark:s-text-foreground-night">
+    <div className="flex flex-col gap-4 text-foreground">
       <div>With nothing</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar size="xs" />
         <Avatar size="sm" />
         <Avatar size="md" />
@@ -118,7 +129,7 @@ export const AvatarExample: Story = {
         <Avatar size="2xl" />
       </div>
       <div>With name</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar size="xs" name="Isabelle Doe" />
         <Avatar size="sm" name="Rafael Doe" />
         <Avatar size="md" name="Aria Doe" />
@@ -127,22 +138,22 @@ export const AvatarExample: Story = {
         <Avatar size="2xl" name="Omar Doe" />
       </div>
       <div>With emoji url</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar
           size="xs"
           visual="https://dust.tt/static/emojis/bg-cyan-100/lotus/1fab7"
         />
       </div>
       <div>With emoji</div>
-      <div className="s-flex s-gap-4">
-        <Avatar size="xs" emoji="❤️" backgroundColor="s-bg-red-100" />
-        <Avatar size="sm" emoji="💀" backgroundColor="s-bg-gray-800" />
-        <Avatar size="md" emoji="😂" backgroundColor="s-bg-info-200" />
-        <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-gray-200" />
-        <Avatar size="xl" emoji="👕" backgroundColor="s-bg-blue-200" />
-        <Avatar size="2xl" emoji="👕" backgroundColor="s-bg-blue-200" />
+      <div className="flex gap-4">
+        <Avatar size="xs" emoji="❤️" backgroundColor="bg-red-100" />
+        <Avatar size="sm" emoji="💀" backgroundColor="bg-gray-800" />
+        <Avatar size="md" emoji="😂" backgroundColor="bg-info-200" />
+        <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="bg-gray-200" />
+        <Avatar size="xl" emoji="👕" backgroundColor="bg-blue-200" />
+        <Avatar size="2xl" emoji="👕" backgroundColor="bg-blue-200" />
       </div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar size="sm" name="Eleanor Wright" />
         <Avatar size="sm" name="Mason Johnson" />
         <Avatar size="sm" name="Oliver Bennett" />
@@ -165,7 +176,7 @@ export const AvatarExample: Story = {
         <Avatar size="sm" name="Aria Mitchell" />
       </div>
       <div>With image</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar
           size="xs"
           name="Isabelle Doe"
@@ -188,68 +199,68 @@ export const AvatarExample: Story = {
         />
       </div>
       <div>Visual as empty string should be treated as null</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar size="xs" name="Soupinou Meow" visual={""} />
       </div>
       <div>With icon</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar size="xs" icon={SvgHome} />
         <Avatar size="xs" icon={DriveLogo} />
         <Avatar size="sm" icon={ActionBeerIcon} />
-        <Avatar size="sm" icon={NotionLogo} backgroundColor="s-bg-blue-50" />
+        <Avatar size="sm" icon={NotionLogo} backgroundColor="bg-blue-50" />
         <Avatar size="md" icon={ActionUmbrellaIcon} />
         <Avatar size="lg" icon={ActionFlagIcon} />
         <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
         <Avatar size="xl" icon={ActionShirtIcon} />
-        <Avatar size="2xl" icon={StarStrokeIcon} />
+        <Avatar size="2xl" icon={Star01} />
       </div>
       <div className="heading-2xl">Tools example</div>
       <div>Remote MCP Servers</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar size="md" icon={SvgHome} />
         <Avatar size="md" icon={ActionBeerIcon} />
         <Avatar size="md" icon={ActionUmbrellaIcon} />
         <Avatar size="md" icon={ActionFlagIcon} />
         <Avatar size="md" icon={ActionShirtIcon} />
-        <Avatar size="md" icon={StarStrokeIcon} />
+        <Avatar size="md" icon={Star01} />
       </div>
       <div>Internal Tools Servers</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar
           size="md"
-          icon={ActionTableIcon}
-          backgroundColor="s-bg-gray-700"
-          iconColor="s-text-gray-50"
+          icon={Table}
+          backgroundColor="bg-gray-700"
+          iconColor="text-gray-50"
         />
         <Avatar
           size="md"
-          icon={ActionMagnifyingGlassIcon}
-          backgroundColor="s-bg-gray-700"
-          iconColor="s-text-gray-50"
+          icon={SearchMd}
+          backgroundColor="bg-gray-700"
+          iconColor="text-gray-50"
         />
         <Avatar
           size="md"
-          icon={ActionImageIcon}
-          backgroundColor="s-bg-gray-700"
-          iconColor="s-text-gray-50"
+          icon={Image01}
+          backgroundColor="bg-gray-700"
+          iconColor="text-gray-50"
         />
         <Avatar
           size="md"
-          icon={ActionScanIcon}
-          backgroundColor="s-bg-gray-700"
-          iconColor="s-text-gray-50"
+          icon={Scan}
+          backgroundColor="bg-gray-700"
+          iconColor="text-gray-50"
         />
       </div>
       <div>Platforms integrations</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar
           size="md"
-          icon={SidekickIcon}
-          backgroundColor="s-bg-warning-200"
-          iconColor="s-text-warning-800"
+          icon={Sidekick}
+          backgroundColor="bg-warning-200"
+          iconColor="text-warning-800"
         />
-        <Avatar size="md" icon={DriveLogo} backgroundColor="s-bg-gray-900" />
-        <Avatar size="md" icon={NotionLogo} backgroundColor="s-bg-white" />
+        <Avatar size="md" icon={DriveLogo} backgroundColor="bg-gray-900" />
+        <Avatar size="md" icon={NotionLogo} backgroundColor="bg-white" />
         <Avatar size="md" icon={SlackLogo} hexBgColor="#421D51" />
       </div>
     </div>
@@ -258,8 +269,8 @@ export const AvatarExample: Story = {
 
 export const AvatarStackExample: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-6">
-      <div className="s-flex s-flex-row s-gap-2">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-row gap-2">
         <Avatar.Stack
           size="xs"
           nbVisibleItems={3}
@@ -351,7 +362,7 @@ export const AvatarStackExample: Story = {
         />
       </div>
 
-      <div className="s-flex s-flex-row s-gap-2">
+      <div className="flex flex-row gap-2">
         <Avatar.Stack
           size="sm"
           nbVisibleItems={4}
@@ -432,7 +443,7 @@ export const AvatarStackExample: Story = {
         />
       </div>
 
-      <div className="s-flex s-flex-row s-gap-4">
+      <div className="flex flex-row gap-4">
         <Avatar.Stack
           nbVisibleItems={4}
           size="md"
@@ -516,10 +527,8 @@ export const AvatarStackExample: Story = {
         />
       </div>
 
-      <div className="s-mt-8 s-text-lg s-font-semibold">
-        Vertical Orientation
-      </div>
-      <div className="s-flex s-flex-row s-items-start s-gap-4">
+      <div className="mt-8 text-lg font-semibold">Vertical Orientation</div>
+      <div className="flex flex-row items-start gap-4">
         <Avatar.Stack
           size="xs"
           nbVisibleItems={3}
@@ -599,17 +608,15 @@ export const AvatarStackExample: Story = {
         />
       </div>
 
-      <div className="s-mt-8 s-text-lg s-font-semibold">
-        onTop Prop Examples
-      </div>
-      <div className="s-flex s-flex-col s-gap-4">
+      <div className="mt-8 text-lg font-semibold">onTop Prop Examples</div>
+      <div className="flex flex-col gap-4">
         <div>
-          <div className="s-mb-2 s-text-sm s-font-medium">
+          <div className="mb-2 text-sm font-medium">
             Horizontal: onTop="last" (default) vs onTop="first"
           </div>
-          <div className="s-flex s-flex-row s-items-center s-gap-4">
-            <div className="s-flex s-flex-col s-gap-2">
-              <div className="s-text-xs s-text-muted-foreground">
+          <div className="flex flex-row items-center gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="text-xs text-muted-foreground">
                 onTop="last" (default)
               </div>
               <Avatar.Stack
@@ -640,10 +647,8 @@ export const AvatarStackExample: Story = {
                 ]}
               />
             </div>
-            <div className="s-flex s-flex-col s-gap-2">
-              <div className="s-text-xs s-text-muted-foreground">
-                onTop="first"
-              </div>
+            <div className="flex flex-col gap-2">
+              <div className="text-xs text-muted-foreground">onTop="first"</div>
               <div>
                 <Avatar.Stack
                   size="sm"
@@ -678,12 +683,12 @@ export const AvatarStackExample: Story = {
         </div>
 
         <div>
-          <div className="s-mb-2 s-text-sm s-font-medium">
+          <div className="mb-2 text-sm font-medium">
             Vertical: onTop="last" (default) vs onTop="first"
           </div>
-          <div className="s-flex s-flex-row s-items-start s-gap-4">
-            <div className="s-flex s-flex-col s-gap-2">
-              <div className="s-text-xs s-text-muted-foreground">
+          <div className="flex flex-row items-start gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="text-xs text-muted-foreground">
                 onTop="last" (default)
               </div>
               <div>
@@ -721,10 +726,8 @@ export const AvatarStackExample: Story = {
                 />
               </div>
             </div>
-            <div className="s-flex s-flex-col s-gap-2">
-              <div className="s-text-xs s-text-muted-foreground">
-                onTop="first"
-              </div>
+            <div className="flex flex-col gap-2">
+              <div className="text-xs text-muted-foreground">onTop="first"</div>
               <div>
                 <Avatar.Stack
                   size="sm"
@@ -826,9 +829,9 @@ export const AvatarGridExample: Story = {
 
 export const AvatarBusyExample: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       <div>With nothing</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar busy size="xs" />
         <Avatar busy size="sm" />
         <Avatar busy size="md" />
@@ -836,14 +839,14 @@ export const AvatarBusyExample: Story = {
         <Avatar busy size="xl" />
       </div>
       <div>With name</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar busy size="xs" name="Isabelle Doe" />
         <Avatar busy size="sm" name="Rafael Doe" />
         <Avatar busy size="md" name="Aria Doe" />
         <Avatar busy size="lg" name="Omar Doe" />
         <Avatar busy size="xl" name="Eleanor Doe" />
       </div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar busy size="sm" name="Eleanor Wright" />
         <Avatar busy size="sm" name="Mason Johnson" />
         <Avatar busy size="sm" name="Oliver Bennett" />
@@ -866,7 +869,7 @@ export const AvatarBusyExample: Story = {
         <Avatar busy size="sm" name="Aria Mitchell" />
       </div>
       <div>With image</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar
           busy
           size="xs"
@@ -898,22 +901,22 @@ export const AvatarBusyExample: Story = {
 
 export const AvatarClickableExample: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       <div>With nothing</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar size="xs" clickable />
         <Avatar size="sm" clickable />
         <Avatar size="md" clickable />
         <Avatar size="lg" clickable />
       </div>
       <div>With name</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar size="xs" name="Isabelle Doe" clickable />
         <Avatar size="sm" name="Rafael Doe" clickable />
         <Avatar size="md" name="Aria Doe" clickable />
         <Avatar size="lg" name="Omar Doe" clickable />
       </div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar size="sm" name="Eleanor Wright" clickable />
         <Avatar size="sm" name="Mason Johnson" clickable />
         <Avatar size="sm" name="Oliver Bennett" clickable />
@@ -936,7 +939,7 @@ export const AvatarClickableExample: Story = {
         <Avatar size="sm" name="Aria Mitchell" clickable />
       </div>
       <div>With image</div>
-      <div className="s-flex s-gap-4">
+      <div className="flex gap-4">
         <Avatar
           size="xs"
           name="Isabelle Doe"

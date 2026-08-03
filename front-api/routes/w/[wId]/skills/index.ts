@@ -1,56 +1,49 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
-import { getFeatureFlags } from "@app/lib/auth";
+import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
+import {
+  getReferencedSkillSpaceModelIds,
+  resolveAdditionalRequestedSpaceModelIds,
+} from "@app/lib/api/skills/space_requirements";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
+import type {
+  GetSkillsResponseBody,
+  GetSkillsWithRelationsResponseBody,
+  PostSkillResponseBody,
+} from "@app/types/api/skills";
 import {
+  availabilityFromIsDefault,
+  DEFAULT_SKILL_AVAILABILITY,
+  SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
-  type SkillType,
-  type SkillWithoutInstructionsAndToolsType,
+  type SkillAvailability,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
-  type UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
-import { removeNulls } from "@app/types/shared/utils/general";
-import { isBuilder } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import uniq from "lodash/uniq";
 import { z } from "zod";
 import skill from "./[sId]";
+import availability from "./availability";
 import detect from "./detect";
 import importRoute from "./import";
 import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
 import similar from "./similar";
 
-export type GetSkillsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsType[];
-};
-
-export type GetSkillsWithRelationsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
-};
-
-export type PostSkillResponseBody = {
-  skill: SkillType;
-};
-
 const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])
   .optional();
 
-// Schema for attached knowledge.
-export const AttachedKnowledgeSchema = z.object({
-  dataSourceViewId: z.string(),
-  nodeId: z.string(),
-  spaceId: z.string(),
-  title: z.string(),
-});
+const SkillAvailabilitiesSchema = z
+  .array(z.enum(SKILL_AVAILABILITIES))
+  .optional();
 
 // Request body schema for POST.
 const PostSkillRequestBodySchema = z.intersection(
@@ -65,13 +58,13 @@ const PostSkillRequestBodySchema = z.intersection(
         mcpServerViewId: z.string(),
       })
     ),
-    extendedSkillId: z.string().nullable(),
     attachedKnowledge: z.array(AttachedKnowledgeSchema),
     instructionsHtml: z.string().nullable(),
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
-    referencedSkillIds: z.array(z.string()).optional(),
     fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+    // @deprecated Use availability instead. Kept while old clients still send it.
     isDefault: z.boolean().optional(),
+    availability: z.enum(SKILL_AVAILABILITIES).optional(),
     reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
   }),
   z.union([
@@ -93,16 +86,36 @@ const PostSkillRequestBodySchema = z.intersection(
   ])
 );
 
+// isDefault is a deprecated alias; an explicit availability takes priority over it. Returns
+// undefined when the caller did not request any availability.
+function resolveRequestedAvailability({
+  availability,
+  isDefault,
+}: {
+  availability?: SkillAvailability;
+  isDefault?: boolean;
+}): SkillAvailability | undefined {
+  if (availability !== undefined) {
+    return availability;
+  }
+  if (isDefault !== undefined) {
+    return availabilityFromIsDefault(isDefault);
+  }
+  return undefined;
+}
+
 // Mounted at /api/w/:wId/skills.
 const app = workspaceApp();
 
 // Static sub-paths must be registered before the param sub-app.
+app.route("/availability", availability);
 app.route("/detect", detect);
 app.route("/import", importRoute);
 app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
 app.route("/similar", similar);
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (
@@ -118,7 +131,12 @@ app.get(
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
+    // @deprecated Use availability instead. Kept while old clients still send it.
     const isDefault = ctx.req.query("isDefault");
+    const bypassEditorVisibility =
+      ctx.req.query("bypassEditorVisibility") === "true";
+    // Repeatable: ?availability=workspace_users&availability=users_and_agents.
+    const availabilityParams = ctx.req.queries("availability");
 
     const statusValidation = SkillStatusSchema.safeParse(status);
     if (!statusValidation.success) {
@@ -132,41 +150,78 @@ app.get(
     }
     const skillStatus = statusValidation.data;
 
-    const skills = await SkillResource.listByWorkspace(auth, {
+    const availabilityValidation =
+      SkillAvailabilitiesSchema.safeParse(availabilityParams);
+    if (!availabilityValidation.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid availability: ${availabilityParams}. Expected "editors", "workspace_users", or "users_and_agents".`,
+        },
+      });
+    }
+    // An explicit availability takes priority over the deprecated isDefault alias.
+    const availability =
+      availabilityValidation.data && availabilityValidation.data.length > 0
+        ? availabilityValidation.data
+        : isDefault === "true"
+          ? ["users_and_agents" as const]
+          : undefined;
+
+    // Only admins may list unpublished skills they don't edit (e.g. for governance views).
+    if (bypassEditorVisibility && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can bypass editor visibility.",
+        },
+      });
+    }
+
+    const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
       onlyCustom: onlyCustom === "true",
-      isDefault: isDefault === "true" ? true : undefined,
+      availability,
       withInstructions: false,
       withTools: false,
+      withFileAttachments: false,
     });
 
-    if (withRelations === "true") {
-      const featureFlags = await getFeatureFlags(auth);
-      const includeNestedSkills = featureFlags.includes("nested_skills");
+    const canCreateSkill = await auth.hasWorkspacePermission("create", "skill");
 
-      const extendedSkills = await SkillResource.fetchByIds(
-        auth,
-        removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
-      );
+    // Skills with editors-only availability (unpublished) are only listed for members of
+    // their editor group. Suggestions are the exception: they are created with an empty
+    // editor group, so nobody can write them and the rule would hide them from everyone.
+    // They are listed instead to the skill administrators allowed to create skills.
+    const skills = bypassEditorVisibility
+      ? allSkills
+      : allSkills.filter(
+          (skill) =>
+            skill.availability !== "editors" ||
+            skill.canWrite(auth) ||
+            (skill.status === "suggested" &&
+              canCreateSkill &&
+              skill.canAdministrate(auth))
+        );
+
+    if (withRelations === "true") {
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);
       const editorsMap = await SkillResource.batchListEditors(auth, skills);
       const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
         auth,
         skills
       );
-      let childSkillsMap = new Map<string, SkillResource[]>();
-      if (includeNestedSkills) {
-        childSkillsMap = await SkillResource.batchFetchChildSkills(
-          auth,
-          skills
-        );
-      }
-      const usedBySkillsMap = includeNestedSkills
-        ? await SkillResource.batchFetchUsedBySkills(auth, skills)
-        : new Map<string, UsedBySkillType[]>();
-
-      const extendedSkillsMap = new Map(extendedSkills.map((s) => [s.sId, s]));
+      const childSkillsMap = await SkillResource.batchFetchChildSkills(
+        auth,
+        skills
+      );
+      const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(
+        auth,
+        skills
+      );
 
       const skillsWithRelations = skills.map((sc) => {
         const {
@@ -180,13 +235,11 @@ app.get(
         const editors = editorsMap.get(sc.sId) ?? null;
         const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
         const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
-        const usageWithSkills = includeNestedSkills
-          ? {
-              ...usage,
-              count: usage.count + usedBySkills.length,
-              skills: usedBySkills,
-            }
-          : usage;
+        const usageWithSkills = {
+          ...usage,
+          count: usage.count + usedBySkills.length,
+          skills: usedBySkills,
+        };
 
         return {
           ...skillWithoutInstructionsAndTools,
@@ -194,26 +247,18 @@ app.get(
             usage: usageWithSkills,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
             editedByUser: editedByUser ? editedByUser.toJSON() : null,
-            extendedSkill: sc.extendedSkillId
-              ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
-                null)
-              : null,
-            ...(includeNestedSkills
-              ? {
-                  childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
-                    (childSkill) => {
-                      const {
-                        instructions,
-                        instructionsHtml,
-                        tools,
-                        ...childSkillWithoutInstructionsAndTools
-                      } = childSkill.toJSON(auth);
+            childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
+              (childSkill) => {
+                const {
+                  instructions,
+                  instructionsHtml,
+                  tools,
+                  ...childSkillWithoutInstructionsAndTools
+                } = childSkill.toJSON(auth);
 
-                      return childSkillWithoutInstructionsAndTools;
-                    }
-                  ),
-                }
-              : {}),
+                return childSkillWithoutInstructionsAndTools;
+              }
+            ),
           },
         } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
       });
@@ -239,19 +284,14 @@ app.get(
 app.post(
   "/",
   validate("json", PostSkillRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "create",
+    "skill",
+    "Creating skills is restricted.",
+    "app_auth_error"
+  ),
   async (ctx): HandlerResult<PostSkillResponseBody> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
-
-    if (!isBuilder(owner)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "User is not a builder.",
-        },
-      });
-    }
 
     const user = auth.getNonNullableUser();
 
@@ -268,7 +308,42 @@ app.post(
       });
     }
 
-    const existingSkill = await SkillResource.fetchActiveByName(auth, name);
+    const requestedAvailability = resolveRequestedAvailability(body);
+
+    // Explicitly creating a skill already published (anything other than editors-only) requires
+    // the workspace-level permission to publish skills. The default availability is exempt so
+    // plain creation keeps working.
+    if (
+      requestedAvailability !== undefined &&
+      requestedAvailability !== "editors" &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to change this skill's availability.",
+        },
+      });
+    }
+    if (
+      requestedAvailability === "users_and_agents" &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to create a skill with that availability.",
+        },
+      });
+    }
+
+    const availability = requestedAvailability ?? DEFAULT_SKILL_AVAILABILITY;
+
+    const existingSkill = await SkillResource.fetchByName(auth, name);
 
     if (existingSkill) {
       return apiError(ctx, {
@@ -280,11 +355,21 @@ app.post(
       });
     }
 
-    // Validate all MCP server views exist before creating anything.
+    // Validate all MCP server views exist before creating anything. The views end up on the
+    // created skill, whose serialized response includes their tools — fetch the heavy attributes.
     const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
     const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
-      mcpServerViewIds
+      mcpServerViewIds,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     if (mcpServerViewIds.length !== mcpServerViews.length) {
@@ -333,6 +418,10 @@ app.post(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       });
+    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
+      auth,
+      body.instructions
+    );
 
     const additionalRequestedSpaceIdsRes =
       await resolveAdditionalRequestedSpaceModelIds(
@@ -352,44 +441,13 @@ app.post(
 
     const requestedSpaceIds = uniq([
       ...computedRequestedSpaceIds,
+      ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIdsRes.value,
     ]);
 
-    const extendedSkill = body.extendedSkillId
-      ? await SkillResource.fetchById(auth, body.extendedSkillId)
-      : null;
-
-    // Only global skills can be extended.
-    if (extendedSkill !== null && !extendedSkill.isExtendable) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `The extended skill with id "${body.extendedSkillId}" cannot be extended.`,
-        },
-      });
-    }
-
-    const featureFlags = await getFeatureFlags(auth);
-    const enableSkillReferences = featureFlags.includes("nested_skills");
-    const referencedSkillIds = uniq(body.referencedSkillIds ?? []);
-
-    // Validate file attachments if provided (gated behind sandbox_tools).
+    // Validate file attachments if provided.
     let files: FileResource[] | undefined;
     if (fileAttachments) {
-      if (
-        !featureFlags.includes("sandbox_tools") &&
-        fileAttachments.length > 0
-      ) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: "File attachments are not supported.",
-          },
-        });
-      }
-
       const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
       files = await FileResource.fetchByIds(auth, fileAttachmentIds);
       if (files.length !== fileAttachmentIds.length) {
@@ -445,19 +503,16 @@ app.post(
         instructionsHtml: body.instructionsHtml,
         editedBy: user.id,
         requestedSpaceIds,
-        extendedSkillId: body.extendedSkillId,
         icon,
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,
-        isDefault: body.isDefault ?? false,
+        availability,
         reinforcement: body.reinforcement ?? "on",
       },
       {
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
-        enableSkillReferences,
-        referencedSkillIds,
       }
     );
 

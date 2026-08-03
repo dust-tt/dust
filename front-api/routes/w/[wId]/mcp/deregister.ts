@@ -14,6 +14,7 @@ export type PostMCPDeregisterRequestBody = z.infer<
 // Mounted at /api/w/:wId/mcp/deregister.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostMCPDeregisterRequestBodySchema),

@@ -30,7 +30,7 @@ export function ArchiveSkillDialog({
   const [isArchiving, setIsArchiving] = useState(false);
   const doArchive = useArchiveSkill({ owner, skill: skill });
   const agentsUsageCount = skill.relations.usage.agents.length;
-  const skillsUsageCount = skill.relations.usage.skills?.length ?? 0;
+  const skillsUsageCount = skill.relations.usage.skills.length;
   const usageLabels = removeNulls([
     agentsUsageCount > 0
       ? `${agentsUsageCount} agent${pluralize(agentsUsageCount)}`

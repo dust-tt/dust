@@ -13,22 +13,38 @@ import {
   NavigationListItemAction,
   NavigationListCollapsibleSection,
   NavigationListLabel,
-  PencilSquareIcon,
-  TrashIcon,
-  MoreIcon,
-  PlusIcon,
+  Edit04,
+  Trash01,
+  DotsHorizontal,
+  Plus,
   NavigationListCompactLabel,
-  ChatBubbleLeftRightIcon,
-  SpaceOpenIcon,
-  SpaceClosedIcon,
-  CheckDoubleIcon,
-  FullscreenIcon,
-  FullscreenExitIcon,
+  MessageChatSquare,
+  FolderOpen,
+  Folder,
+  CheckDouble,
+  Maximize01,
+  Minimize01,
 } from "../index_with_tw_base";
 import type { NavigationListItemStatus } from "../components/NavigationList";
 
 const meta = {
-  title: "Modules/NavigationList",
+  title: "Navigation/NavigationList",
+  parameters: {
+    docs: {
+      description: {
+        component: `A vertical list of navigation entries for sidebars, built from composable parts. **NavigationListItem** renders each entry with a \`label\`, optional \`icon\` or \`avatar\`, \`selected\` state, \`status\` (\`idle\`, \`unread\`, \`blocked\`, \`error\`), \`count\` badge, \`hasActivity\` dot, and a \`moreMenu\` slot (typically a **DropdownMenu** triggered by **NavigationListItemAction**). Group entries with **NavigationListLabel** / **NavigationListCompactLabel** (both support \`isSticky\`) or wrap them in a **NavigationListCollapsibleSection** (\`type\` \`collapse\` or \`static\`, with \`defaultOpen\`, \`visibleItems\`, and an \`action\` slot).
+
+**When to use**
+- For the primary sidebar navigation of an app — conversations, projects, spaces, agents.
+- To present grouped, scrollable lists of items that may carry status, counts, or per-item actions.
+
+**Guidelines**
+- Use **NavigationListCollapsibleSection** for sections users may want to expand/collapse, and plain **NavigationListLabel** for always-visible grouping.
+- Drive selection with the item's \`selected\` prop and keep it in sync with the active route.
+- For breadcrumb-style hierarchy or tabbed content switching, use **Breadcrumbs** or **Tabs** instead.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;
@@ -61,7 +77,7 @@ export const Demo = () => {
       <DropdownMenuContent>
         <DropdownMenuItem
           label="Rename"
-          icon={PencilSquareIcon}
+          icon={Edit04}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -70,7 +86,7 @@ export const Demo = () => {
         />
         <DropdownMenuItem
           label="Delete"
-          icon={TrashIcon}
+          icon={Trash01}
           variant="warning"
           onClick={(e) => {
             e.preventDefault();
@@ -83,9 +99,9 @@ export const Demo = () => {
   );
 
   return (
-    <div className="s-flex s-h-[400px] s-w-full s-flex-row s-gap-12">
-      <div className="s-h-[400px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
+    <div className="flex h-[400px] w-full flex-row gap-12">
+      <div className="h-[400px] w-[240px]">
+        <NavigationList className="relative h-full w-full px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} />
@@ -117,7 +133,7 @@ export const Demo = () => {
                       }
                     }}
                     label={title}
-                    className="s-w-full"
+                    className="w-full"
                     moreMenu={getMoreMenu(title)}
                     status={getStatus(index)}
                   />
@@ -127,8 +143,8 @@ export const Demo = () => {
           ))}
         </NavigationList>
       </div>
-      <div className="s-h-[400px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
+      <div className="h-[400px] w-[240px]">
+        <NavigationList className="relative h-full w-full px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} isSticky />
@@ -160,7 +176,7 @@ export const Demo = () => {
                       }
                     }}
                     label={title}
-                    className="s-w-full"
+                    className="w-full"
                     moreMenu={getMoreMenu(title)}
                     status={getStatus(index)}
                   />
@@ -198,7 +214,7 @@ export const CollapsibleSection = () => {
       <DropdownMenuContent>
         <DropdownMenuItem
           label="Rename"
-          icon={PencilSquareIcon}
+          icon={Edit04}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -206,7 +222,7 @@ export const CollapsibleSection = () => {
         />
         <DropdownMenuItem
           label="Delete"
-          icon={TrashIcon}
+          icon={Trash01}
           variant="warning"
           onClick={(e) => {
             e.preventDefault();
@@ -218,20 +234,19 @@ export const CollapsibleSection = () => {
   );
 
   return (
-    <div className="s-dark:bg-muted-background-night s-flex s-h-[800px] s-w-[260px] s-flex-col s-border-r s-border-border s-bg-muted-background">
-      <NavigationList className="s-h-full s-w-[260px]">
+    <div className="flex h-[800px] w-[260px] flex-col border-r border-border bg-muted-background">
+      <NavigationList className="h-full w-[260px]">
         <NavigationListCollapsibleSection
           label="Inbox"
-          className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
-          actionOnHover={false}
+          className="border-b border-t border-border bg-background/50 px-2 pb-2"
           action={
             <>
-              {/* <div className="s-heading-xs s-h-5 s-cursor-pointer s-px-2 s-text-muted-foreground hover:s-text-foreground">
+              {/* <div className="heading-xs h-5 cursor-pointer px-2 text-muted-foreground hover:text-foreground">
                 Mark as read
               </div> */}
               <Button
                 size="xmini"
-                icon={CheckDoubleIcon}
+                icon={CheckDouble}
                 variant="ghost"
                 aria-label="Add new item"
                 tooltip="Mark all as read"
@@ -275,7 +290,7 @@ export const CollapsibleSection = () => {
                   }
                 }}
                 label={title}
-                className="s-w-full"
+                className="w-full"
                 moreMenu={getMoreMenu(title)}
               />
             );
@@ -286,12 +301,12 @@ export const CollapsibleSection = () => {
           type="collapse"
           defaultOpen={true}
           visibleItems={4}
-          className="s-px-2 s-maw-w-full"
+          className="px-2 maw-w-full"
           action={
             <>
               <Button
                 size="xmini"
-                icon={PlusIcon}
+                icon={Plus}
                 variant="ghost"
                 aria-label="Add new item"
                 tooltip="New project"
@@ -302,7 +317,7 @@ export const CollapsibleSection = () => {
               />
               <Button
                 size="xmini"
-                icon={MoreIcon}
+                icon={DotsHorizontal}
                 variant="ghost"
                 aria-label="More options"
                 onClick={(e) => {
@@ -314,7 +329,7 @@ export const CollapsibleSection = () => {
           }
         >
           <NavigationListItem
-            icon={SpaceOpenIcon}
+            icon={FolderOpen}
             label="Engineering"
             count={12}
             href="#"
@@ -324,7 +339,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceOpenIcon}
+            icon={FolderOpen}
             label="Design"
             count={8}
             href="#"
@@ -334,7 +349,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceOpenIcon}
+            icon={FolderOpen}
             label="Product"
             count={5}
             href="#"
@@ -344,7 +359,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceOpenIcon}
+            icon={FolderOpen}
             label="Company"
             href="#"
             count={3}
@@ -354,7 +369,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceClosedIcon}
+            icon={Folder}
             label="Operations"
             href="#"
             hasActivity
@@ -363,7 +378,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceClosedIcon}
+            icon={Folder}
             label="SeriesB"
             href="#"
             onClick={(e) => {
@@ -371,7 +386,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceClosedIcon}
+            icon={Folder}
             label="Marketing"
             href="#"
             onClick={(e) => {
@@ -383,12 +398,12 @@ export const CollapsibleSection = () => {
           label="Conversations"
           type="static"
           defaultOpen={true}
-          className="s-px-2"
+          className="px-2"
           action={
             <>
               <Button
                 size="xmini"
-                icon={ChatBubbleLeftRightIcon}
+                icon={MessageChatSquare}
                 variant="ghost"
                 aria-label="Add new item"
                 tooltip="New Conversation"
@@ -400,7 +415,7 @@ export const CollapsibleSection = () => {
               />
               <Button
                 size="xmini"
-                icon={MoreIcon}
+                icon={DotsHorizontal}
                 variant="ghost"
                 aria-label="Add new item"
                 onClick={(e) => {
@@ -434,7 +449,7 @@ export const CollapsibleSection = () => {
                       }
                     }}
                     label={title}
-                    className="s-w-full"
+                    className="w-full"
                     moreMenu={getMoreMenu(title)}
                   />
                 );
@@ -450,7 +465,7 @@ export const CollapsibleSection = () => {
             <>
               <Button
                 size="xmini"
-                icon={PlusIcon}
+                icon={Plus}
                 variant="ghost"
                 aria-label="Add new item"
                 onClick={(e) => {
@@ -461,7 +476,7 @@ export const CollapsibleSection = () => {
               />
               <Button
                 size="xmini"
-                icon={MoreIcon}
+                icon={DotsHorizontal}
                 variant="ghost"
                 aria-label="Add new item"
                 onClick={(e) => {
@@ -478,37 +493,37 @@ export const CollapsibleSection = () => {
               handle: "alex",
               name: "Alex",
               emoji: "🤖",
-              color: "s-bg-blue-300",
+              color: "bg-blue-300",
             },
             {
               handle: "sam",
               name: "Sam",
               emoji: "🎨",
-              color: "s-bg-violet-300",
+              color: "bg-violet-300",
             },
             {
               handle: "taylor",
               name: "Taylor",
               emoji: "🚀",
-              color: "s-bg-pink-300",
+              color: "bg-pink-300",
             },
             {
               handle: "jordan",
               name: "Jordan",
               emoji: "⚡",
-              color: "s-bg-orange-300",
+              color: "bg-orange-300",
             },
             {
               handle: "riley",
               name: "Riley",
               emoji: "🌟",
-              color: "s-bg-golden-300",
+              color: "bg-golden-300",
             },
             {
               handle: "casey",
               name: "Casey",
               emoji: "💡",
-              color: "s-bg-emerald-300",
+              color: "bg-emerald-300",
             },
           ].map((agent, index) => (
             <NavigationListItem
@@ -527,7 +542,7 @@ export const CollapsibleSection = () => {
                   backgroundColor={agent.color}
                 />
               }
-              className="s-w-full"
+              className="w-full"
             />
           ))}
         </NavigationListCollapsibleSection>

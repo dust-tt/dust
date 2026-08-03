@@ -1,12 +1,13 @@
 import {
-  BellIcon,
-  CheckCircleIcon,
-  InformationCircleIcon,
-  XCircleIcon,
-} from "@sparkle/icons/app";
+  AlertCircle,
+  Bell01,
+  CheckCircle,
+  InfoCircle,
+  XCircle,
+  XClose,
+} from "@sparkle/icons/v2-stroke";
 import { assertNever } from "@sparkle/lib/internal_utils";
 import { cn } from "@sparkle/lib/utils";
-import { cva } from "class-variance-authority";
 import React from "react";
 import { Toaster, toast } from "sonner";
 
@@ -17,37 +18,46 @@ const NOTIFICATION_DELAY_MS = 5000;
 export type NotificationType = {
   title?: string;
   description?: string;
-  type: "success" | "error" | "info" | "hello";
+  type: "success" | "error" | "info" | "warning" | "hello";
 };
 
 const NotificationsContext = React.createContext<(n: NotificationType) => void>(
   (n) => n
 );
 
-const notificationVariants = cva("", {
-  variants: {
-    type: {
-      success: "s-text-success-600 dark:s-text-success-600-night",
-      error: "s-text-warning-600 dark:s-text-warning-600-night",
-      info: "s-text-info-700 dark:s-text-info-700-night",
-      hello: "s-text-primary-700 dark:s-text-highlight-700-night",
-    },
-  },
-});
-
-const notificationIconBgVariants = cva(
-  "s-h-8 s-w-8 s-flex s-items-center s-justify-center s-rounded-lg s-shrink-0",
-  {
-    variants: {
-      type: {
-        success: "s-bg-success-100 dark:s-bg-success-100-night",
-        error: "s-bg-warning-100 dark:s-bg-warning-100-night",
-        info: "s-bg-info-100 dark:s-bg-info-100-night",
-        hello: "s-bg-primary-100 dark:s-bg-primary-100-night",
-      },
-    },
+function resolveIcon(type: NotificationType["type"]): React.FC {
+  switch (type) {
+    case "success":
+      return CheckCircle;
+    case "error":
+      return XCircle;
+    case "info":
+      return InfoCircle;
+    case "warning":
+      return AlertCircle;
+    case "hello":
+      return Bell01;
+    default:
+      return assertNever(type);
   }
-);
+}
+
+function resolveIconColor(type: NotificationType["type"]): string {
+  switch (type) {
+    case "success":
+      return "text-success-500";
+    case "error":
+      return "text-warning-500";
+    case "info":
+      return "text-info-700";
+    case "warning":
+      return "text-amber-500";
+    case "hello":
+      return "text-primary-500";
+    default:
+      return assertNever(type);
+  }
+}
 
 export function NotificationContent({
   type,
@@ -55,58 +65,53 @@ export function NotificationContent({
   description,
   onDismiss,
 }: NotificationType & { onDismiss?: () => void }) {
-  const icon = (() => {
-    switch (type) {
-      case "success":
-        return CheckCircleIcon;
-      case "error":
-        return XCircleIcon;
-      case "info":
-        return InformationCircleIcon;
-      case "hello":
-        return BellIcon;
-      default:
-        assertNever(type);
-    }
-  })();
+  const icon = resolveIcon(type);
+  const iconColor = resolveIconColor(type);
 
   return (
     <div
       className={cn(
-        "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-start s-gap-2 s-rounded-2xl s-border",
-        "s-border-border dark:s-border-border-night",
-        "s-bg-background dark:s-bg-background-night s-shadow-md s-backdrop-blur-sm",
-        "s-cursor-pointer s-p-2 s-pb-3 s-pr-3 s-transition-colors hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50 s-border-border/50 dark:s-border-border-night/50"
+        "pointer-events-auto relative flex w-[246px] flex-col overflow-clip",
+        "rounded-xl border border-border bg-background p-2",
+        "shadow-[0px_0.5px_1px_0px_rgba(0,0,0,0.04),0px_1px_1px_0px_rgba(0,0,0,0.06),inset_2px_-2px_7px_0px_rgba(0,0,0,0.01),inset_0px_4px_4px_0px_rgba(255,255,255,0.08)]",
+        "dark:shadow-[0px_2px_8px_0px_rgba(0,0,0,0.45),inset_0px_-1px_0px_0px_rgba(255,255,255,0.08)]",
+        "dark:border-stone-800/60",
+        "animate-in fade-in-0 zoom-in-95 duration-200 ease-emphasized",
+        "origin-bottom-right motion-reduce:animate-none"
       )}
-      onClick={onDismiss}
     >
-      <div className={notificationIconBgVariants({ type })}>
-        <Icon
-          size="sm"
-          visual={icon}
-          className={notificationVariants({ type })}
-          aria-hidden="true"
-        />
-      </div>
-
-      <div className="s-flex s-min-w-0 s-flex-grow s-flex-col">
-        <div
-          className={cn(
-            "s-heading-base s-line-clamp-1 s-pt-1",
-            notificationVariants({ type })
-          )}
-        >
-          {title || type}
-        </div>
-        {description && (
-          <div
-            className={cn(
-              "s-text-muted-foreground dark:s-text-muted-foreground-night",
-              "s-line-clamp-3 s-text-sm s-font-normal"
-            )}
-          >
-            {description}
+      <div className="flex items-start justify-between gap-1">
+        <div className="flex min-w-0 flex-1 items-start gap-1">
+          <div className="mt-[2px] shrink-0">
+            <Icon
+              visual={icon}
+              size="xs"
+              className={iconColor}
+              aria-hidden="true"
+            />
           </div>
+          <div className="flex min-w-0 flex-col">
+            {title && (
+              <span className="text-sm font-medium leading-5 tracking-[-0.02em] text-foreground">
+                {title}
+              </span>
+            )}
+            {description && (
+              <span className="text-xs leading-4 text-muted-foreground">
+                {description}
+              </span>
+            )}
+          </div>
+        </div>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="mt-[2px] shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Dismiss notification"
+          >
+            <Icon visual={XClose} size="xs" />
+          </button>
         )}
       </div>
     </div>
@@ -138,23 +143,17 @@ export const Notification = {
       <NotificationsContext.Provider value={sendNotification}>
         {children}
         <Toaster
-          toastOptions={{
-            className: cn(
-              "s-transition-all s-duration-300 s-select-none",
-              "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
-              "data-[swipe=move]:s-translate-x-[var(--toast-swipe-move-x)]",
-              "data-[swipe=move]:s-translate-y-[var(--toast-swipe-move-y)]",
-              "data-[state=closed]:s-fade-out-80 data-[state=closed]:s-slide-out-to-right-full",
-              "data-[state=open]:s-slide-in-from-right-full"
-            ),
-          }}
-          className="s-flex s-flex-col s-items-end"
+          className="flex flex-col items-end"
           duration={NOTIFICATION_DELAY_MS}
-          visibleToasts={9}
+          visibleToasts={5}
           closeButton={false}
           expand={false}
           invert={false}
           swipeDirections={["right"]}
+          toastOptions={{
+            unstyled: true,
+            className: "w-fit select-none",
+          }}
         />
       </NotificationsContext.Provider>
     );

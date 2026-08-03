@@ -123,7 +123,3 @@ export type ClariCallDetails = z.infer<typeof ClariCallDetailsSchema>;
 export const ClariCallDetailsResponseSchema = z.object({
   call: ClariCallDetailsSchema,
 });
-
-export type ClariCallDetailsResponse = z.infer<
-  typeof ClariCallDetailsResponseSchema
->;

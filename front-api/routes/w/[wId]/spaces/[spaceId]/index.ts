@@ -1,4 +1,4 @@
-import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
+import { getDataSourceViewsUsageByModelIds } from "@app/lib/api/agent_data_sources";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -11,11 +11,14 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { PatchSpaceRequestBodySchema } from "@app/types/api/internal/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
-import type { AgentsUsageType } from "@app/types/data_source";
+import type {
+  GetSpaceResponseBody,
+  PatchSpaceResponseBody,
+  SpaceCategoryInfo,
+} from "@app/types/api/spaces";
+import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -37,42 +40,10 @@ import projectContext from "./project_context";
 import projectMetadata from "./project_metadata";
 import projectNotificationPreferences from "./project_notification_preferences";
 import projectTasks from "./project_tasks";
+import sandbox from "./sandbox";
 import searchConversations from "./search_conversations";
 import star from "./star";
 import webhookSourceViews from "./webhook_source_views";
-
-export type SpaceCategoryInfo = {
-  usage: AgentsUsageType;
-  count: number;
-};
-
-export type RichSpaceType = SpaceType & {
-  categories: { [key: string]: SpaceCategoryInfo };
-  canWrite: boolean;
-  canRead: boolean;
-  isMember: boolean;
-  members: SpaceUserType[];
-  isEditor: boolean;
-  // Useful in case of projects
-  description: string | null;
-  archivedAt: number | null;
-  /** Background todo suggestions from project activity (project spaces only). */
-  todoGenerationEnabled: boolean;
-  lastTodoAnalysisAt: number | null;
-  pinnedFramePath: string | null;
-};
-
-export type GetSpaceResponseBody = {
-  space: RichSpaceType;
-};
-
-export type PatchSpaceResponseBody = {
-  space: SpaceType;
-};
-
-export type DeleteSpaceResponseBody = {
-  space: SpaceType;
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId. The bare `/` handles GET, PATCH,
 // and DELETE on the space resource itself. Per-space sub-resource sub-apps
@@ -80,6 +51,189 @@ export type DeleteSpaceResponseBody = {
 // `withSpace(...)` middleware so different permission options can be used
 // per route.
 const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/spaces/{spaceId}:
+ *   get:
+ *     summary: Get a space
+ *     description: Returns the details of a specific space including categories, members, and permissions.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: includeAllMembers
+ *         required: false
+ *         description: Include all members (including inactive)
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/PrivateSpace'
+ *                     - type: object
+ *                       properties:
+ *                         categories:
+ *                           type: object
+ *                           additionalProperties:
+ *                             type: object
+ *                             properties:
+ *                               count:
+ *                                 type: integer
+ *                               usage:
+ *                                 type: object
+ *                                 properties:
+ *                                   count:
+ *                                     type: integer
+ *                                   agents:
+ *                                     type: array
+ *                                     items:
+ *                                       type: object
+ *                         canWrite:
+ *                           type: boolean
+ *                         canRead:
+ *                           type: boolean
+ *                         isMember:
+ *                           type: boolean
+ *                         isEditor:
+ *                           type: boolean
+ *                         members:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                         description:
+ *                           type: string
+ *                           nullable: true
+ *                         archivedAt:
+ *                           type: integer
+ *                           nullable: true
+ *                         todoGenerationEnabled:
+ *                           type: boolean
+ *                           description: Whether automatic todo suggestions from project activity are enabled.
+ *                         lastTodoAnalysisAt:
+ *                           type: integer
+ *                           nullable: true
+ *                           description: Unix timestamp (ms) of the last automatic todo suggestion scan, if any.
+ *                         pinnedFramePath:
+ *                           type: string
+ *                           nullable: true
+ *                           description: Scoped path to the frame file pinned as the Pod banner.
+ *       401:
+ *         description: Unauthorized
+ *   patch:
+ *     summary: Update a space
+ *     description: Updates the properties of a specific space.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               content:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     dataSourceId:
+ *                       type: string
+ *                     parentsIn:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   $ref: '#/components/schemas/PrivateSpace'
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Delete a space
+ *     description: Deletes a specific space from the workspace.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: force
+ *         required: false
+ *         description: Force deletion even if space is in use
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   $ref: '#/components/schemas/PrivateSpace'
+ *       401:
+ *         description: Unauthorized
+ */
 
 app.get(
   "/",
@@ -95,43 +249,31 @@ app.get(
     const appsList = await AppResource.listBySpace(auth, space);
     const actions = await MCPServerViewResource.listBySpace(auth, space);
     const actionsCount = actions.filter(
-      (a) => a.toJSON().server.availability === "manual"
+      (a) => a.getServerDisplayMetadata().availability === "manual"
     ).length;
+
+    const usages = await getDataSourceViewsUsageByModelIds({
+      auth,
+      dataSourceViewModelIds: dataSourceViewsList.map((dsv) => dsv.id),
+    });
 
     const categories: { [key: string]: SpaceCategoryInfo } = {};
     for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
-      categories[category] = {
-        count: 0,
-        usage: { count: 0, agents: [] },
-      };
-
       const dataSourceViewsInCategory = dataSourceViewsList.filter(
         (view) => view.toJSON().category === category
       );
 
-      // The usage call is expensive, so only run it when there are views.
-      if (dataSourceViewsInCategory.length > 0) {
-        const usages = await getDataSourceViewsUsageByCategory({
-          auth,
-          category,
-        });
+      const agents = uniqBy(
+        dataSourceViewsInCategory.flatMap(
+          (view) => usages[view.id]?.agents ?? []
+        ),
+        "sId"
+      );
 
-        for (const dsView of dataSourceViewsInCategory) {
-          categories[category].count += 1;
-          const usage = usages[dsView.id];
-          if (usage) {
-            categories[category].usage.agents = categories[
-              category
-            ].usage.agents.concat(usage.agents);
-            categories[category].usage.agents = uniqBy(
-              categories[category].usage.agents,
-              "sId"
-            );
-          }
-        }
-        categories[category].usage.count =
-          categories[category].usage.agents.length;
-      }
+      categories[category] = {
+        count: dataSourceViewsInCategory.length,
+        usage: { count: agents.length, agents },
+      };
     }
 
     categories["apps"].count = appsList.length;
@@ -166,8 +308,7 @@ app.get(
             const groupMemberships = membershipMap.get(group.id);
             return groupMembers.map((member) => ({
               ...member.toJSON(),
-              // group_vaults tells us if the group is an editor group.
-              isEditor: group.group_vaults?.kind === "project_editor",
+              isEditor: group.kind === "space_editors",
               joinedAt: groupMemberships?.get(member.id),
             }));
           },
@@ -286,7 +427,7 @@ app.patch(
 app.delete(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  async (ctx): HandlerResult<DeleteSpaceResponseBody> => {
+  async (ctx): HandlerResult<PatchSpaceResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
@@ -358,6 +499,7 @@ app.route("/project_context", projectContext);
 app.route("/project_metadata", projectMetadata);
 app.route("/project_notification_preferences", projectNotificationPreferences);
 app.route("/project_tasks", projectTasks);
+app.route("/sandbox", sandbox);
 app.route("/search_conversations", searchConversations);
 app.route("/star", star);
 app.route("/webhook_source_views", webhookSourceViews);

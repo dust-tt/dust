@@ -38,11 +38,13 @@ function isValidContentFormat(
 // handler.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
   const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return apiErrorForConversation(ctx, conversationRes.error);
@@ -89,6 +91,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const owner = auth.getNonNullableWorkspace();
   const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return apiErrorForConversation(ctx, conversationRes.error);

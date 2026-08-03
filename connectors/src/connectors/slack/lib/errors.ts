@@ -41,6 +41,26 @@ export function isSlackWebAPIPlatformErrorBotNotFound(
   return isSlackWebAPIPlatformError(err) && err.data.error === "bot_not_found";
 }
 
+// Slack rejects the bot's posts when the channel restricts who can post (e.g.
+// "Who can post" is limited to specific members/apps, the channel is read-only,
+// or the bot was never added to the channel).
+const SLACK_POSTING_PERMISSION_ERRORS = [
+  "restricted_action",
+  "restricted_action_read_only_channel",
+  "restricted_action_thread_only_channel",
+  "restricted_action_non_threadable_channel",
+  "not_in_channel",
+];
+
+export function isSlackPostingPermissionError(
+  err: unknown
+): err is WebAPIPlatformError {
+  return (
+    isSlackWebAPIPlatformError(err) &&
+    SLACK_POSTING_PERMISSION_ERRORS.includes(err.data.error)
+  );
+}
+
 // Type guards for Slack errors
 // See https://github.com/slackapi/node-slack-sdk/blob/main/packages/web-api/src/errors.ts.
 export function isWebAPIRateLimitedError(

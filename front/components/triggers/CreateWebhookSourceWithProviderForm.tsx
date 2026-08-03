@@ -7,12 +7,7 @@ import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Button,
-  CloudArrowLeftRightIcon,
-  Label,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Button, CloudArrowLeftRight, Label, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 type CreateWebhookSourceWithProviderFormProps = {
@@ -99,7 +94,7 @@ export function CreateWebhookSourceWithProviderForm({
     <div className="flex flex-col space-y-4">
       <div>
         <Label>{preset.name} Connection</Label>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p className="text-sm text-muted-foreground">
           {preset.name} connection is required
         </p>
         {OAuthExtraConfigInput && (
@@ -116,7 +111,7 @@ export function CreateWebhookSourceWithProviderForm({
           <Button
             variant={"outline"}
             label={buttonLabel}
-            icon={CloudArrowLeftRightIcon}
+            icon={CloudArrowLeftRight}
             // if we are not connected, click starts the OAuth flow
             // if we are connected with a connection page URL, click opens that page
             // otherwise button is disabled

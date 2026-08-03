@@ -3,11 +3,7 @@ import type { ModelId } from "./shared/model_id";
 
 // Constants
 
-export const labsTranscriptsProviders = [
-  "google_drive",
-  "gong",
-  "modjo",
-] as const;
+export const labsTranscriptsProviders = ["google_drive", "gong"] as const;
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 
@@ -19,19 +15,7 @@ export const LABS_TRANSCRIPTS_CONFIGURATION_STATUSES = [
 export type LabsTranscriptsConfigurationStatus =
   (typeof LABS_TRANSCRIPTS_CONFIGURATION_STATUSES)[number];
 
-export function isValidLabsTranscriptsConfigurationStatus(
-  status: string
-): status is LabsTranscriptsConfigurationStatus {
-  return (
-    LABS_TRANSCRIPTS_CONFIGURATION_STATUSES as readonly string[]
-  ).includes(status);
-}
-
-export const labsFeatures = [
-  "transcripts",
-  "mcp_actions",
-  "transcription",
-] as const;
+const labsFeatures = ["transcripts", "transcription"] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
 // Types

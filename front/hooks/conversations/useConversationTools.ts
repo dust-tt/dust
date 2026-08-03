@@ -1,10 +1,10 @@
-import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import logger from "@app/logger/logger";
 import type {
   ConversationToolActionRequest,
   FetchConversationToolsResponse,
-} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
+} from "@app/lib/api/assistant/conversation/tools";
+import { clientFetch } from "@app/lib/egress/client";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import logger from "@app/logger/logger";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 

@@ -8,7 +8,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { withRetries } from "@app/types/shared/retries";
 import { QueryTypes } from "sequelize";
 
-export type CoreDSDocument = {
+type CoreDSDocument = {
   id: number;
   document_id: string;
 };

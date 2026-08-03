@@ -10,7 +10,7 @@ import {
 import { PokeFormControl } from "@app/components/poke/shadcn/ui/form";
 import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
 import {
-  ChevronDownIcon,
+  ChevronDown,
   cn,
   PopoverContent,
   PopoverRoot,
@@ -38,7 +38,17 @@ export function EnumSelect({
 }: EnumSelectProps) {
   const [open, setOpen] = React.useState(false);
 
-  let title = values?.length ? values.sort().join(", ") : placeholder;
+  const optionLabelByValue = React.useMemo(
+    () => new Map(options.map((option) => [option.value, option.label])),
+    [options]
+  );
+
+  let title = values?.length
+    ? values
+        .map((value) => optionLabelByValue.get(value) ?? value)
+        .sort()
+        .join(", ")
+    : placeholder;
 
   if (title.length > 80) {
     title = `${values?.length} items selected`;
@@ -52,14 +62,12 @@ export function EnumSelect({
             variant="outline"
             role="combobox"
             className={cn(
-              "w-auto justify-between border-border-dark bg-background " +
-                "dark:border-border-darker-night dark:bg-background-night",
-              !values?.length &&
-                "text-muted-foreground dark:text-muted-foreground-night"
+              "w-auto justify-between border-border-dark bg-background " + "",
+              !values?.length && "text-muted-foreground"
             )}
           >
             {title}
-            <ChevronDownIcon className="opacity-50" />
+            <ChevronDown className="opacity-50" />
           </PokeButton>
         </PokeFormControl>
       </PopoverTrigger>
@@ -110,15 +118,15 @@ export function EnumSelect({
                     <div className="flex w-full items-center gap-2">
                       {multiple ? (
                         isSelected ? (
-                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-600-night" />
+                          <CheckCircle className="h-4 w-4 text-success-600" />
                         ) : (
-                          <Circle className="h-4 w-4 text-gray-400 dark:text-gray-400-night" />
+                          <Circle className="h-4 w-4 text-primary-400" />
                         )
                       ) : null}
                       <span
                         className={cn(
                           option.checked && "font-medium",
-                          "text-gray-900 dark:text-gray-900-night"
+                          "text-primary-900"
                         )}
                       >
                         {option.label}

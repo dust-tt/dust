@@ -19,6 +19,7 @@ vi.mock("@app/temporal/project_task/client", () => ({
 
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import { honoApp } from "@front-api/app";
@@ -104,7 +105,14 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const [spaceGroup] = projectSpace.groups.filter((g) => !g.isGlobal());
+    const [spaceGroup] = await projectSpace.fetchGroupResources(adminAuth, {
+      groupReferences: projectSpace.groups.filter((group) =>
+        group.isRegularAuto()
+      ),
+    });
+    if (!spaceGroup) {
+      throw new Error("Expected the project member group to exist.");
+    }
     await spaceGroup.dangerouslyAddMembers(adminAuth, {
       users: [user.toJSON()],
     });
@@ -159,6 +167,64 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     expect(data.projectMetadata.todoGenerationEnabled).toBe(true);
     expect(mockLaunchOrSignalProjectTodoWorkflow).toHaveBeenCalledTimes(1);
     expect(mockStartImmediateProjectTodoWorkflowOnce).toHaveBeenCalledTimes(1);
+  });
+
+  it("sets, returns, replaces, and clears default skills (custom + global)", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const projectSpace = await SpaceFactory.project(workspace);
+    const skillA = await SkillFactory.create(auth, { name: "Skill A" });
+    const skillB = await SkillFactory.create(auth, { name: "Skill B" });
+    // A code-defined global skill, addressed by its fixed sId (no "skl_" prefix).
+    const globalSkillId = "frames";
+
+    // Set two custom skills and one global skill.
+    const setResponse = await patchMetadata(workspace, projectSpace.sId, {
+      defaultSkillIds: [skillA.sId, skillB.sId, globalSkillId],
+    });
+    expect(setResponse.status).toBe(200);
+    expect(
+      (await setResponse.json()).projectMetadata.defaultSkillIds.sort()
+    ).toEqual([skillA.sId, skillB.sId, globalSkillId].sort());
+
+    // GET reflects the stored set.
+    const getResponse = await getMetadata(workspace, projectSpace.sId);
+    expect(
+      (await getResponse.json()).projectMetadata.defaultSkillIds.sort()
+    ).toEqual([skillA.sId, skillB.sId, globalSkillId].sort());
+
+    // Replacing drops the omitted skills; keep one custom + the global one.
+    const replaceResponse = await patchMetadata(workspace, projectSpace.sId, {
+      defaultSkillIds: [skillB.sId, globalSkillId],
+    });
+    expect(
+      (await replaceResponse.json()).projectMetadata.defaultSkillIds.sort()
+    ).toEqual([skillB.sId, globalSkillId].sort());
+
+    // An empty array clears all default skills.
+    const clearResponse = await patchMetadata(workspace, projectSpace.sId, {
+      defaultSkillIds: [],
+    });
+    expect(
+      (await clearResponse.json()).projectMetadata.defaultSkillIds
+    ).toEqual([]);
+  });
+
+  it("rejects unknown default skill ids", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const projectSpace = await SpaceFactory.project(workspace);
+
+    const response = await patchMetadata(workspace, projectSpace.sId, {
+      defaultSkillIds: ["skill_does_not_exist"],
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 
   it("restarts project tasks workflow when unarchiving a project", async () => {

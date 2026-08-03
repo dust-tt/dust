@@ -1,15 +1,12 @@
 import apiConfig from "@app/lib/api/config";
 import logger from "@app/logger/logger";
+import type { GetSlackClientIdResponseBody } from "@app/types/api/credentials/slack_is_legacy";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetSlackClientIdResponseBody = {
-  isLegacySlackApp: boolean;
-};
 
 const SlackCredentialContentSchema = z.object({
   client_id: z.string(),
@@ -23,6 +20,7 @@ const app = workspaceApp();
 
 app.use("*", ensureIsAdmin());
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", SlackIsLegacyQuerySchema),

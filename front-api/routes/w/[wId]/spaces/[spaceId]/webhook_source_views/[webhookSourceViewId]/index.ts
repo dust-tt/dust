@@ -21,6 +21,7 @@ export type DeleteWebhookSourceViewResponseBody = {
 // /api/w/:wId/spaces/:spaceId/webhook_source_views/:webhookSourceViewId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
   validate("param", ParamsSchema),

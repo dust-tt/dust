@@ -1,16 +1,12 @@
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
-import type { ProviderType } from "@app/types/provider";
+import type { GetProvidersResponseBody } from "@app/types/api/providers";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import check from "./[pId]/check";
 import provider from "./[pId]/index";
 import models from "./[pId]/models";
-
-export type GetProvidersResponseBody = {
-  providers: ProviderType[];
-};
 
 function redactConfig(config: string) {
   const parsedConfig = JSON.parse(config);
@@ -24,9 +20,10 @@ function redactConfig(config: string) {
 // Mounted at /api/w/:wId/providers.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   async (ctx): HandlerResult<GetProvidersResponseBody> => {
     const auth = ctx.get("auth");
 

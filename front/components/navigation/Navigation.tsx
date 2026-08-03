@@ -1,3 +1,4 @@
+import { INPUT_BAR_COMPACT_SURFACE_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
   NavigationSidebar,
@@ -7,22 +8,27 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { SubscriptionType } from "@app/types/plan";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   cn,
-  MenuIcon,
+  Menu01,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  useWindowSize,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type React from "react";
-import { useContext, useMemo } from "react";
+import { useContext } from "react";
+
+const MOBILE_NAV_MENU_BUTTON_CLASSES = cn(
+  INPUT_BAR_COMPACT_SURFACE_CLASSES,
+  "transition-none",
+  "hover:border-transparent hover:bg-hover hover:backdrop-blur-none",
+  "active:border-transparent active:bg-primary-300 active:backdrop-blur-none"
+);
 
 interface NavigationProps {
   hideSidebar: boolean;
@@ -32,6 +38,8 @@ interface NavigationProps {
   subNavigation?: SidebarNavigation[] | null;
   isNavigationBarOpen: boolean;
   setNavigationBarOpen: (isOpen: boolean) => void;
+  isFullScreen: boolean;
+  isMobile: boolean;
 }
 
 export function Navigation({
@@ -42,29 +50,12 @@ export function Navigation({
   subNavigation,
   isNavigationBarOpen,
   setNavigationBarOpen,
+  isFullScreen,
+  isMobile,
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
   const { user } = useUser();
-
-  const windowSizeState = useWindowSize();
-
-  const showMobileSidebar = useMemo(() => {
-    switch (windowSizeState.activeBreakpoint) {
-      case "xxs":
-      case "xs":
-      case "sm":
-      case "md":
-        return true;
-
-      case "lg":
-      case "xl":
-      case "2xl":
-        return false;
-      default:
-        assertNever(windowSizeState.activeBreakpoint);
-    }
-  }, [windowSizeState.activeBreakpoint]);
 
   if (hideSidebar) {
     return null;
@@ -73,26 +64,29 @@ export function Navigation({
   return (
     <div
       className={cn(
-        "flex shrink-0 overflow-x-hidden border-r",
-        "border-border-dark dark:border-border-dark-night"
+        "flex shrink-0 overflow-x-hidden",
+        "text-primary",
+        "bg-app-background"
       )}
     >
-      {showMobileSidebar ? (
+      {isMobile ? (
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <div className="fixed left-0 top-0 z-40 flex h-14 shrink-0 items-center gap-x-4 px-2">
+          <div className="fixed left-0 top-0 z-40 flex shrink-0 items-center px-2 pt-2">
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
-                icon={MenuIcon}
+                icon={Menu01}
+                className={MOBILE_NAV_MENU_BUTTON_CLASSES}
                 onClick={() => setSidebarOpen(true)}
+                aria-label="Open navigation"
               />
             </SheetTrigger>
           </div>
           <SheetContent
             side="left"
-            className="flex w-full max-w-xs flex-1 bg-muted-background dark:bg-muted-background-night"
+            className="flex w-full max-w-xs flex-1 bg-app-background"
           >
-            <SheetHeader className="bg-muted-background p-0" hideButton={true}>
+            <SheetHeader className="bg-app-background p-0" hideButton={true}>
               <VisuallyHidden>
                 <SheetTitle className="hidden" />
               </VisuallyHidden>
@@ -112,11 +106,11 @@ export function Navigation({
         <>
           <div
             className={cn(
-              "transition-width flex-none overflow-hidden duration-150 ease-out lg:flex lg:flex-col",
+              "transition-width flex-none overflow-hidden duration-150 ease-out flex flex-col",
               isNavigationBarOpen ? "w-80" : "w-0"
             )}
           >
-            <div className="flex-1 bg-muted-background dark:bg-muted-background-night lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+            <div className="flex-1 bg-app-background inset-y-0 z-0 flex w-80 flex-col">
               <NavigationSidebar
                 owner={owner}
                 subscription={subscription}
@@ -140,6 +134,7 @@ export function Navigation({
               toggleNavigationBarVisibility={(navigationBar) => {
                 setNavigationBarOpen(navigationBar);
               }}
+              isFullScreen={isFullScreen}
             />
           </div>
         </>

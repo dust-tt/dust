@@ -34,6 +34,7 @@ export const toggleGlobalFeatureFlagPlugin = createPlugin({
           "Percentage of workspaces to enable this flag for. 0 = off (removes global flag), 100 = on for all.",
       },
     },
+    requiredRoles: ["engineering"],
   },
   populateAsyncArgs: async () => {
     const globalFlags = await GlobalFeatureFlagResource.listAll();

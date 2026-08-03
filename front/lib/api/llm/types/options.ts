@@ -1,16 +1,20 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
 import type {
   LLMTraceContext,
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
+import type { Region } from "@app/lib/model_constructors/types/regions";
+import type { ModelInfo } from "@app/types/assistant/agent_run";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
   ModelProviderIdType,
-  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { isString } from "@app/types/shared/utils/general";
+
+export type { InferenceRegionType };
 
 export interface SystemPromptInstruction {
   role: "instruction";
@@ -96,48 +100,81 @@ export function systemPromptToText(input: SystemPromptInput): string {
     .join("\n");
 }
 
-export type LLMParameters = {
+export type LLMParameters<E> = {
   bypassFeatureFlag?: boolean;
   context?: LLMTraceContext;
   credentials: LLMCredentialsType;
-  modelId: ModelIdType;
-  reasoningEffort?: ReasoningEffort | null;
-  responseFormat?: string | null;
-  metaData?: Record<string, unknown>;
-  temperature?: number | null;
+  modelInfo: Omit<ModelInfo<E>, "temperature"> & { temperature?: number };
   omittedThinking?: boolean;
 } & LLMTraceCustomization;
 
-export type LLMParameterOverwrites = Partial<
-  Omit<LLMParameters, "modelId" | "credentials">
+export type LLMParameterOverwrites<E> = Partial<
+  Omit<LLMParameters<E>, "credentials">
 >;
 
 export type LLMClientMetadata = {
   clientId: ModelProviderIdType;
+  // Holds the inference provider for legacy clients (e.g. "google_vertex_ai")
+  // and the new router's `providerApi` value (e.g. "agent-platform").
   inferenceProvider: string;
+  inferenceRegion: InferenceRegionType;
+  region?: Region;
   modelId: ModelIdType;
 };
 
-export type ForceToolCall = string;
+type ForceToolCall = string;
 
-export interface LLMStreamParameters {
+// A forced tool call and forbidden tool use are contradictory instructions, so
+// the type makes them mutually exclusive: setting both is a compile error.
+export type ExclusiveToolChoiceParameters =
+  | {
+      /**
+       * Forces the model to use a specific tool. The tool name must match one of the tools defined
+       * in the `specifications` array.
+       */
+      forceToolCall?: ForceToolCall;
+      disableToolUse?: never;
+    }
+  | {
+      forceToolCall?: never;
+      /**
+       * Presents the tools to the model but forbids calling them (tool choice "none"). Used on the
+       * last agent step to force a final generation while keeping the request's tool definitions
+       * stable across steps.
+       */
+      disableToolUse?: boolean;
+    };
+
+interface LLMStreamParametersBase {
   conversation: ModelConversationTypeMultiActions;
-  hasConditionalJITTools?: boolean;
+  // When true, supporting provider clients defer non-eager tools behind tool
+  // search.
+  toolSearchEnabled?: boolean;
   prompt: SystemPromptInput;
   specifications: AgentActionSpecification[];
-  /**
-   * Forces the model to use a specific tool. The tool name must match one of the
-   * tools defined in the `specifications` array.
-   */
-  forceToolCall?: ForceToolCall;
   omittedThinking?: boolean;
+  /**
+   * Opt into Anthropic prompt-cache diagnostics (Anthropic direct only). Tri-state:
+   * - `undefined`: feature off, send nothing.
+   * - `null`: feature on, first call with no prior to compare against.
+   * - `string`: feature on, the previous response id to compare this request against.
+   */
+  previousMessageId?: string | null;
 }
+
+export type LLMStreamParameters = LLMStreamParametersBase &
+  ExclusiveToolChoiceParameters;
 
 export interface LLMStreamMetadata {
-  conversationId: string;
+  agentConfigurationId: string;
+  workspaceId: string;
 }
 
+// Omit the base fields only and re-intersect the tool-choice union: a plain
+// Omit over the union would flatten it and lose the mutual exclusivity of
+// `forceToolCall` and `disableToolUse`.
 export type LLMParametersWithoutConversation = Omit<
-  LLMStreamParameters,
+  LLMStreamParametersBase,
   "conversation"
->;
+> &
+  ExclusiveToolChoiceParameters;

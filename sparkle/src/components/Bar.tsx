@@ -1,42 +1,40 @@
 import { Tooltip } from "@sparkle/components/Tooltip";
 import {
-  ArrowUpOnSquareIcon,
-  ChevronLeftIcon,
-  TrashIcon,
-  XMarkIcon,
-} from "@sparkle/icons/app";
+  ChevronLeft,
+  Trash01,
+  Upload01,
+  XClose,
+} from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
-
 import { Button, type ButtonProps } from "./Button";
 
-const barVariants = cva("s-flex s-flex-row s-items-center s-gap-3 s-px-4", {
+const barVariants = cva("flex flex-row items-center gap-3 px-4", {
   variants: {
     position: {
-      top: "s-border-b",
-      bottom: "s-border-t",
+      top: "border-b",
+      bottom: "border-t",
     },
     variant: {
-      full: "s-fixed s-left-0 s-right-0 s-z-30 s-backdrop-blur s-border-border-dark/70 s-bg-background/80 dark:s-border-border-dark-night/70 dark:s-bg-background-night/80",
-      default:
-        "s-relative s-z-10 s-border-border s-bg-background dark:s-border-border-night dark:s-bg-background-night",
+      full: "fixed left-0 right-0 z-30 backdrop-blur border-border-dark/70 bg-background/80",
+      default: "relative z-10 border-border bg-background",
     },
     size: {
-      sm: "s-h-14",
-      md: "s-h-16",
+      sm: "h-12",
+      md: "h-14",
     },
   },
   compoundVariants: [
     {
       position: "top",
       variant: "full",
-      class: "s-top-0",
+      class: "top-0",
     },
     {
       position: "bottom",
       variant: "full",
-      class: "s-bottom-0",
+      class: "bottom-0",
     },
   ],
   defaultVariants: {
@@ -68,14 +66,11 @@ export function Bar({
   variant,
   size,
 }: BarProps) {
-  const titleClasses = cn(
-    "s-text-foreground dark:s-text-foreground-night",
-    "s-heading-base s-truncate"
-  );
+  const titleClasses = cn("text-foreground", "heading-base truncate");
 
   return (
     <div className={cn(barVariants({ position, variant, size }), className)}>
-      {leftActions && <div className="s-flex s-gap-1">{leftActions}</div>}
+      {leftActions && <div className="flex gap-1">{leftActions}</div>}
       {title && (
         <div className={titleClasses}>
           {tooltip ? (
@@ -97,9 +92,9 @@ export function Bar({
           )}
         </div>
       )}
-      {centerActions && <div className="s-flex s-gap-1">{centerActions}</div>}
-      <div className="s-flex-grow" />
-      {rightActions && <div className="s-flex s-gap-1">{rightActions}</div>}
+      {centerActions && <div className="flex gap-1">{centerActions}</div>}
+      <div className="flex-grow" />
+      {rightActions && <div className="flex gap-1">{rightActions}</div>}
     </div>
   );
 }
@@ -138,7 +133,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
       return (
         <Button
           size="sm"
-          icon={ChevronLeftIcon}
+          icon={ChevronLeft}
           variant="ghost"
           tooltip="Back"
           onClick={props.onBack}
@@ -148,7 +143,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
       return (
         <Button
           size="sm"
-          icon={XMarkIcon}
+          icon={XClose}
           variant="ghost"
           tooltip="Close"
           onClick={props.onClose}
@@ -166,7 +161,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
         <>
           <Button
             size="sm"
-            icon={TrashIcon}
+            icon={Trash01}
             tooltip="Delete"
             variant="ghost"
             onClick={props.onDelete}
@@ -174,7 +169,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
           <Button
             size="sm"
             label="Share"
-            icon={ArrowUpOnSquareIcon}
+            icon={Upload01}
             variant="ghost"
             onClick={props.onShare}
           />

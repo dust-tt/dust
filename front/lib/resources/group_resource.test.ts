@@ -71,7 +71,11 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
 });
 
 import type { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  BUILDER_GROUP_NAME,
+  GroupResource,
+  MANUAL_BUILDERS_GROUP_NAME,
+} from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -116,7 +120,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -158,12 +162,63 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("listGroupNamesByUserModelIdInWorkspace", () => {
+    it("returns regular + provisioned group names per user, sorted, excluding global", async () => {
+      const user2 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user2, { role: "user" });
+      const user3 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user3, { role: "user" });
+
+      const sales = await GroupResource.makeNew({
+        name: "Sales",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      await sales.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON()],
+      });
+      // Provisioned groups are synced from WorkOS; members are seeded directly.
+      await GroupResource.makeNew(
+        {
+          name: "Engineering",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-eng-group",
+        },
+        { memberIds: [user.id, user2.id] }
+      );
+
+      const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
+        {
+          workspace,
+          userModelIds: [user.id, user2.id, user3.id],
+        }
+      );
+
+      // user is implicitly in the global group, which must be excluded.
+      expect(result.get(user.id)).toEqual(["Engineering", "Sales"]);
+      expect(result.get(user2.id)).toEqual(["Engineering"]);
+      expect(result.has(user3.id)).toBe(false);
+    });
+
+    it("returns an empty map when no user ids are given", async () => {
+      const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
+        {
+          workspace,
+          userModelIds: [],
+        }
+      );
+
+      expect(result.size).toBe(0);
+    });
+  });
+
   describe("dangerouslyListUserGroupsForAuth caching", () => {
     it("returns groups for authenticated user", async () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Auth Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -208,12 +263,42 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("dangerouslySetMembers", () => {
+    it("returns the diff of added and removed users", async () => {
+      const keptUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, keptUser, { role: "user" });
+      const addedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, addedUser, { role: "user" });
+
+      const group = await GroupResource.makeNew({
+        name: "Set Members Test Group",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      await group.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON(), keptUser.toJSON()],
+      });
+
+      const result = await group.dangerouslySetMembers(authenticator, {
+        users: [keptUser.toJSON(), addedUser.toJSON()],
+      });
+
+      if (result.isErr()) {
+        throw new Error(`dangerouslySetMembers failed: ${result.error}`);
+      }
+      expect(result.value.addedUsers.map((u) => u.sId)).toEqual([
+        addedUser.sId,
+      ]);
+      expect(result.value.removedUsers.map((u) => u.sId)).toEqual([user.sId]);
+    });
+  });
+
   describe("suspendMembers", () => {
     it("suspends active members and returns affected user IDs", async () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Suspend Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -246,7 +331,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Cache Invalidation Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -267,7 +352,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Restore Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -301,7 +386,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Restore Cache Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -329,7 +414,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Migration Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [secondaryUser.toJSON()],
@@ -377,7 +462,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Duplicate Migration Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       await regularGroup.dangerouslyAddMembers(authenticator, {
@@ -420,7 +505,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Cache Migration Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [secondaryUser.toJSON()],
@@ -460,7 +545,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Add Member Cache Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -473,7 +558,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Remove Member Cache Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -494,7 +579,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Delete Group Cache Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -520,7 +605,7 @@ describe("GroupResource", () => {
         {
           name: "makeNew Initial Member Cache Test",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         },
         { memberIds: [user.id] }
       );
@@ -551,7 +636,7 @@ describe("GroupResource", () => {
           {
             name: "Transaction Cache Test",
             workspaceId: workspace.id,
-            kind: "regular",
+            kind: "regular_auto",
           },
           { memberIds: [user.id], transaction }
         );
@@ -568,6 +653,107 @@ describe("GroupResource", () => {
         await transaction.rollback();
         throw err;
       }
+    });
+  });
+
+  describe("updatePoolCap", () => {
+    it("persists a cap and clears it with null", async () => {
+      const regularGroup = await GroupResource.makeNew({
+        name: "Pool Cap Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      expect(regularGroup.poolCapAwuCredits).toBeNull();
+
+      const setResult = await regularGroup.updatePoolCap(authenticator, 5000);
+      expect(setResult.isOk()).toBe(true);
+
+      const afterSet = await GroupResource.fetchById(
+        authenticator,
+        regularGroup.sId
+      );
+      if (afterSet.isErr()) {
+        throw afterSet.error;
+      }
+      expect(afterSet.value.poolCapAwuCredits).toBe(5000);
+
+      const clearResult = await regularGroup.updatePoolCap(authenticator, null);
+      expect(clearResult.isOk()).toBe(true);
+
+      const afterClear = await GroupResource.fetchById(
+        authenticator,
+        regularGroup.sId
+      );
+      if (afterClear.isErr()) {
+        throw afterClear.error;
+      }
+      expect(afterClear.value.poolCapAwuCredits).toBeNull();
+    });
+  });
+
+  describe("listMaxPoolCapAwuCreditsByUserModelIdInWorkspace", () => {
+    it("returns the highest cap across a user's provisioned groups, ignoring uncapped and non-provisioned groups", async () => {
+      const user2 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user2, { role: "user" });
+
+      // Provisioned groups are synced from WorkOS; members are seeded directly.
+      const capped500 = await GroupResource.makeNew(
+        {
+          name: "Capped 500",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-capped-500",
+        },
+        { memberIds: [user.id] }
+      );
+      await capped500.updatePoolCap(authenticator, 500);
+
+      const capped800 = await GroupResource.makeNew(
+        {
+          name: "Capped 800",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-capped-800",
+        },
+        { memberIds: [user.id] }
+      );
+      await capped800.updatePoolCap(authenticator, 800);
+
+      // Uncapped group: user2 belongs only here, so they have no group cap.
+      await GroupResource.makeNew(
+        {
+          name: "Uncapped",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-uncapped",
+        },
+        { memberIds: [user.id, user2.id] }
+      );
+
+      // Regular (Space-backed) groups are not cap-eligible: even with a higher
+      // cap, they must not contribute to any member's group cap.
+      const regularGroup = await GroupResource.makeNew(
+        {
+          name: "Regular capped",
+          workspaceId: workspace.id,
+          kind: "regular_auto",
+        },
+        { memberIds: [user.id, user2.id] }
+      );
+      await regularGroup.updatePoolCap(authenticator, 10_000);
+
+      const result =
+        await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+          workspace,
+          userModelIds: [user.id, user2.id],
+        });
+
+      // user is in both capped provisioned groups → the highest cap wins; the
+      // regular group's higher cap is ignored.
+      expect(result.get(user.id)).toBe(800);
+      // user2 is only in uncapped/non-eligible groups → absent (falls back to
+      // the workspace default).
+      expect(result.has(user2.id)).toBe(false);
     });
   });
 
@@ -593,7 +779,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Listed Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       const key = await KeyFactory.system(systemGroup);
 
@@ -625,7 +811,7 @@ describe("GroupResource", () => {
       const newGroup = await GroupResource.makeNew({
         name: "Cache Invalidation Regular",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
@@ -638,7 +824,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Delete Invalidates System Key Cache",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       const key = await KeyFactory.system(systemGroup);
       const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
@@ -660,7 +846,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Name Before",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       const key = await KeyFactory.system(systemGroup);
       const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
@@ -697,7 +883,7 @@ describe("GroupResource", () => {
           {
             name: "Deferred Invalidation Group",
             workspaceId: workspace.id,
-            kind: "regular",
+            kind: "regular_auto",
           },
           { transaction }
         );
@@ -711,6 +897,163 @@ describe("GroupResource", () => {
         await transaction.rollback();
         throw err;
       }
+    });
+  });
+
+  describe("syncBuilderGroupMembership", () => {
+    it("creates a regular_manual Builders group with the user when they become a builder", async () => {
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+
+      const group = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      expect(group).not.toBeNull();
+      expect(group?.kind).toBe("regular_manual");
+
+      const members = await group?.getActiveMembers(authenticator);
+      expect(members?.map((m) => m.id)).toEqual([user.id]);
+    });
+
+    it("does not create the group when the user is not a builder", async () => {
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: false,
+      });
+
+      const group = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      expect(group).toBeNull();
+    });
+
+    it("adds then removes the user as the builder role comes and goes", async () => {
+      const group = await GroupResource.makeNew({
+        name: MANUAL_BUILDERS_GROUP_NAME,
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+      let members = await group.getActiveMembers(authenticator);
+      expect(members.map((m) => m.id)).toEqual([user.id]);
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: false,
+      });
+      members = await group.getActiveMembers(authenticator);
+      expect(members).toEqual([]);
+    });
+
+    it("is idempotent", async () => {
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+
+      const group = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      const membershipCount = await GroupMembershipModel.count({
+        where: {
+          groupId: group?.id,
+          userId: user.id,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(membershipCount).toBe(1);
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: false,
+      });
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: false,
+      });
+      const members = await group?.getActiveMembers(authenticator);
+      expect(members).toEqual([]);
+    });
+
+    it("coexists with a provisioned dust-builders group", async () => {
+      const provisionedGroup = await GroupResource.makeNew({
+        name: BUILDER_GROUP_NAME,
+        workspaceId: workspace.id,
+        kind: "provisioned",
+        workOSGroupId: "workos-group-dust-builders",
+      });
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+
+      const manualGroup = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      expect(manualGroup?.kind).toBe("regular_manual");
+      const members = await manualGroup?.getActiveMembers(authenticator);
+      expect(members?.map((m) => m.id)).toEqual([user.id]);
+
+      const provisionedMembers =
+        await provisionedGroup.getActiveMembers(authenticator);
+      expect(provisionedMembers).toEqual([]);
+    });
+
+    it("does not create the group when createIfMissing is false", async () => {
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+        createIfMissing: false,
+      });
+
+      const group = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      expect(group).toBeNull();
+    });
+
+    it("adds the user to an existing group when createIfMissing is false", async () => {
+      const group = await GroupResource.makeNew({
+        name: MANUAL_BUILDERS_GROUP_NAME,
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+        createIfMissing: false,
+      });
+
+      const members = await group.getActiveMembers(authenticator);
+      expect(members.map((m) => m.id)).toEqual([user.id]);
     });
   });
 });

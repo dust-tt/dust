@@ -17,7 +17,9 @@ const transformForV1: ConversationEventsOptions["transformEvent"] = async (
   if (
     event.data.type === "compaction_message_new" ||
     event.data.type === "compaction_message_done" ||
-    event.data.type === "plan_updated"
+    event.data.type === "conversation_fork_prepared" ||
+    event.data.type === "plan_updated" ||
+    event.data.type === "wake_up_updated"
   ) {
     return null;
   }
@@ -50,6 +52,7 @@ export const V1_OPTIONS: ConversationEventsOptions = {
 const app = publicApiApp();
 
 app.use("*", streamingTag);
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ConversationParamSchema),

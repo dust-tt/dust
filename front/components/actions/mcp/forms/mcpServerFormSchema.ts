@@ -2,7 +2,6 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
-  MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import {
   getMcpServerViewDescription,
@@ -10,7 +9,7 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import {
-  getInternalMCPServerToolStakes,
+  getInternalMCPServerToolArgumentsRequiringApproval,
   INTERNAL_MCP_SERVERS,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -31,7 +30,7 @@ export function encodeMCPToolNameForForm(toolName: string): string {
   return encodeURIComponent(toolName).replaceAll(".", "%2E");
 }
 
-export function decodeMCPToolNameFromForm(encodedToolName: string): string {
+function decodeMCPToolNameFromForm(encodedToolName: string): string {
   return decodeURIComponent(encodedToolName);
 }
 
@@ -61,6 +60,7 @@ function decodeToolSettingsFromForm(
 export type ServerSettings = {
   name: string;
   description: string;
+  isRestrictedToSkills: boolean;
   icon?: string;
   sharedSecret?: string;
   customHeaders?: HeaderRow[] | null;
@@ -76,25 +76,6 @@ export type MCPServerFormValues = ServerSettings & {
   sharingSettings: Record<string, boolean>;
 };
 
-function isToolStakesRecord(
-  value: unknown
-): value is Record<string, MCPToolStakeLevelType> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-
-  return Object.values(value).every((v): v is MCPToolStakeLevelType =>
-    MCP_TOOL_STAKE_LEVELS.includes(v as MCPToolStakeLevelType)
-  );
-}
-
-function getToolStake(
-  stakes: Record<string, MCPToolStakeLevelType>,
-  toolName: string
-): MCPToolStakeLevelType | undefined {
-  return toolName in stakes ? stakes[toolName] : undefined;
-}
-
 export function getDefaultInternalToolStakeLevel(
   server: MCPServerViewType["server"],
   toolName: string
@@ -103,19 +84,31 @@ export function getDefaultInternalToolStakeLevel(
     return FALLBACK_MCP_TOOL_STAKE_LEVEL;
   }
 
-  const serverToolStakes = getInternalMCPServerToolStakes(server.name);
+  const {
+    metadata: { tools },
+    availability,
+  } = INTERNAL_MCP_SERVERS[server.name];
 
-  if (isToolStakesRecord(serverToolStakes)) {
-    const configuredStake = getToolStake(serverToolStakes, toolName);
-    if (configuredStake) {
-      return configuredStake;
-    }
+  return (
+    tools.find((tool) => tool.name === toolName)?.stake ??
+    (availability === "manual"
+      ? FALLBACK_MCP_TOOL_STAKE_LEVEL
+      : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL)
+  );
+}
+
+export function canToolUseMediumStakeLevel(
+  server: MCPServerViewType["server"],
+  toolName: string
+): boolean {
+  if (isRemoteMCPServerType(server) || !isInternalMCPServerName(server.name)) {
+    return false;
   }
 
-  const serverConfig = INTERNAL_MCP_SERVERS[server.name];
-  return serverConfig.availability === "manual"
-    ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-    : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL;
+  return Boolean(
+    getInternalMCPServerToolArgumentsRequiringApproval(server.name, toolName)
+      ?.length
+  );
 }
 
 export function getMCPServerFormDefaults(
@@ -169,6 +162,7 @@ export function getMCPServerFormDefaults(
   const defaults: MCPServerFormValues = {
     name: view.name ?? view.server.name,
     description: getMcpServerViewDescription(view),
+    isRestrictedToSkills: view.isRestrictedToSkills,
     toolSettings: encodeToolSettingsForForm(toolSettings),
     sharingSettings,
   };
@@ -217,6 +211,7 @@ export function getMCPServerFormSchema(
         { message: "This name is already in use." }
       ),
     description: z.string().min(1, "Description is required."),
+    isRestrictedToSkills: z.boolean(),
     toolSettings: z.record(
       z.object({
         enabled: z.boolean(),
@@ -256,6 +251,7 @@ export function getMCPServerFormSchema(
 
 type FormDiffType = {
   serverView?: { name: string; description: string };
+  isRestrictedToSkills?: boolean;
   icon?: string;
   authSharedSecret?: string;
   authCustomHeaders?: HeaderRow[] | null;
@@ -293,6 +289,10 @@ export function diffMCPServerForm(
       name: current.name,
       description: current.description,
     };
+  }
+
+  if (current.isRestrictedToSkills !== initial.isRestrictedToSkills) {
+    out.isRestrictedToSkills = current.isRestrictedToSkills;
   }
 
   // Check remote-specific changes.

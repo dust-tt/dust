@@ -1,4 +1,8 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import type { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -10,8 +14,8 @@ import type {
   SupportedContentFragmentType,
 } from "@app/types/content_fragment";
 import type { ContentNodeType } from "@app/types/core/content_node";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentModel> {
   declare createdAt: CreationOptional<Date>;
@@ -40,6 +44,11 @@ export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentMod
   declare nodeDataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare nodeType: ContentNodeType | null;
 
+  // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
+  // is derived from messages at write time). Permanently nullable: project-context fragments live
+  // on a space and have no owning conversation.
+  declare conversationId: CreationOptional<ModelId | null>;
+
   declare version: ContentFragmentVersion;
   declare expiredReason: ContentFragmentExpiredReason | null;
 }
@@ -61,7 +70,7 @@ ContentFragmentModel.init(
       allowNull: false,
     },
     title: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     contentType: {
@@ -69,7 +78,7 @@ ContentFragmentModel.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     textBytes: {
@@ -113,6 +122,10 @@ ContentFragmentModel.init(
       type: DataTypes.BIGINT,
       allowNull: true,
     },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
   },
   {
     modelName: "content_fragment",
@@ -135,6 +148,7 @@ ContentFragmentModel.init(
         concurrently: true,
         name: "content_fragments_node_dsv_id",
       },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
     ],
   }
 );

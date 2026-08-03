@@ -24,7 +24,7 @@ export function InternalMCPBearerTokenForm({
   const { label, placeholder, tooltip } = getTokenFieldLabel(serverName);
 
   return (
-    <div className="space-y-5 text-foreground dark:text-foreground-night">
+    <div className="space-y-5 text-foreground">
       <Collapsible>
         <CollapsibleTrigger className="pb-2">
           <div className="heading-lg">Authorization</div>
@@ -38,9 +38,7 @@ export function InternalMCPBearerTokenForm({
               message={form.formState.errors.sharedSecret?.message}
               placeholder={placeholder}
             />
-            <p className="text-xs text-gray-500 dark:text-gray-500-night">
-              {tooltip}
-            </p>
+            <p className="text-xs text-primary-500">{tooltip}</p>
           </div>
         </CollapsibleContent>
       </Collapsible>

@@ -1,16 +1,8 @@
+import { contextOriginFilter } from "@app/lib/api/assistant/observability/context_origin";
+import type { Authenticator } from "@app/lib/auth";
+import { FREE_ORIGINS } from "@app/lib/metronome/events";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
-import { z } from "zod";
-
-const VALID_TIMEZONES = new Set(moment.tz.names());
-
-export const timezoneSchema = z
-  .string()
-  .optional()
-  .default("UTC")
-  .refine((tz) => VALID_TIMEZONES.has(tz), {
-    message: "Invalid IANA timezone",
-  });
 
 export function daysToDateRange(
   days: number,
@@ -24,9 +16,88 @@ export function daysToDateRange(
   return { startDate: start, endDate: end };
 }
 
+// Tz-aware [start-of-day (days-1 ago), now] window as ISO instants. Mirrors the
+// window the workspace_analytics tools resolve for a relative "last N days"
+// period, so the dashboard and the analyst agent query the exact same range.
+export function daysToInstantRange(
+  days: number,
+  timezone: string = "UTC"
+): { startDate: string; endDate: string } {
+  const now = moment.tz(timezone);
+  return {
+    startDate: now
+      .clone()
+      .subtract(days - 1, "days")
+      .startOf("day")
+      .toISOString(),
+    endDate: now.toISOString(),
+  };
+}
+
+// Sentinel group key for messages sent without an API key (no `api_key_name`
+// on the document). Used both as the terms-agg `missing` bucket key and as a
+// filterable id, so grouping by API key still sums to the total consumption.
+export const NOT_API_GROUP_KEY = "__not_api__";
+export const NOT_API_GROUP_NAME = "Not API";
+
+// Model that actually ran the message, resolved at message creation.
+export const MODEL_ID_FIELD = "model.model_id";
+
+// api_key_name is only set on API-key authenticated messages. The sentinel
+// selects everything else (missing field), so a mixed selection becomes a
+// disjunction of the two.
+function apiKeyNamesFilter(
+  apiKeyNames: string[] | undefined
+): estypes.QueryDslQueryContainer[] {
+  if (!apiKeyNames || apiKeyNames.length === 0) {
+    return [];
+  }
+  const names = apiKeyNames.filter((name) => name !== NOT_API_GROUP_KEY);
+  const clauses: estypes.QueryDslQueryContainer[] = [
+    ...termFilter("api_key_name", names),
+    ...(apiKeyNames.includes(NOT_API_GROUP_KEY)
+      ? [
+          {
+            bool: { must_not: [{ exists: { field: "api_key_name" } }] },
+          },
+        ]
+      : []),
+  ];
+  if (clauses.length <= 1) {
+    return clauses;
+  }
+  return [{ bool: { should: clauses, minimum_should_match: 1 } }];
+}
+
+function termFilter(
+  field: string,
+  value: string | string[] | undefined
+): estypes.QueryDslQueryContainer[] {
+  if (value === undefined) {
+    return [];
+  }
+  const values = (Array.isArray(value) ? value : [value]).filter(
+    (v) => v.length > 0
+  );
+  if (values.length === 0) {
+    return [];
+  }
+  return [
+    values.length === 1
+      ? { term: { [field]: values[0] } }
+      : { terms: { [field]: values } },
+  ];
+}
+
 export function buildAgentAnalyticsBaseQuery({
   workspaceId,
   agentId,
+  agentIds,
+  agentTagIds,
+  userIds,
+  apiKeyNames,
+  contextOrigin,
+  modelIds,
   days,
   startDate,
   endDate,
@@ -34,16 +105,29 @@ export function buildAgentAnalyticsBaseQuery({
   feedbackNestedQuery,
 }: {
   workspaceId: string;
-  agentId?: string;
+  agentTagIds?: string[];
+  userIds?: string[];
+  apiKeyNames?: string[];
+  contextOrigin?: string | string[];
+  modelIds?: string[];
   days?: number;
   startDate?: string;
   endDate?: string;
   version?: string;
   feedbackNestedQuery?: estypes.QueryDslQueryContainer;
-}): estypes.QueryDslQueryContainer {
+} & (
+  | { agentId?: string; agentIds?: never }
+  | { agentId?: never; agentIds?: string[] }
+)): estypes.QueryDslQueryContainer {
   const filters: estypes.QueryDslQueryContainer[] = [
     { term: { workspace_id: workspaceId } },
     ...(agentId ? [{ term: { agent_id: agentId } }] : []),
+    ...termFilter("agent_id", agentIds),
+    ...termFilter("agent_tag_ids", agentTagIds),
+    ...termFilter("user_id", userIds),
+    ...apiKeyNamesFilter(apiKeyNames),
+    ...contextOriginFilter(contextOrigin),
+    ...termFilter(MODEL_ID_FIELD, modelIds),
   ];
 
   if (startDate && endDate) {
@@ -63,6 +147,64 @@ export function buildAgentAnalyticsBaseQuery({
   return {
     bool: {
       filter: filters,
+    },
+  };
+}
+
+// Workspace query scoped to the window, with free origins excluded. No status
+// filter: credit sums use `cost.billable_awu`, which already encodes the billed
+// amount per execution (a failed-terminal message contributes only its non-error
+// executions' work, 0 when the only/last execution errored), so it matches
+// Metronome without excluding `failed` docs — and, unlike a status filter, it
+// keeps the non-error work of failed multi-execution messages. Shared by the
+// credit fetchers (timeseries, breakdown, per-user and per-agent tables) so the
+// scope stays identical across them. `extraFilters` / `extraMustNot` carry
+// per-caller constraints (e.g. requiring an agent_id, or excluding the
+// programmatic "unknown" user).
+export function buildCreditsScopeQuery(
+  auth: Authenticator,
+  {
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+    apiKeyNames,
+    agentTagIds,
+    modelIds,
+    extraFilters = [],
+    extraMustNot = [],
+  }: {
+    startDate: string;
+    endDate: string;
+    contextOrigin?: string | string[];
+    agentIds?: string[];
+    userIds?: string[];
+    apiKeyNames?: string[];
+    agentTagIds?: string[];
+    modelIds?: string[];
+    extraFilters?: estypes.QueryDslQueryContainer[];
+    extraMustNot?: estypes.QueryDslQueryContainer[];
+  }
+): estypes.QueryDslQueryContainer {
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+    apiKeyNames,
+    agentTagIds,
+    modelIds,
+  });
+  return {
+    bool: {
+      filter: [baseQuery, ...extraFilters],
+      must_not: [
+        { terms: { context_origin: [...FREE_ORIGINS] } },
+        ...extraMustNot,
+      ],
     },
   };
 }

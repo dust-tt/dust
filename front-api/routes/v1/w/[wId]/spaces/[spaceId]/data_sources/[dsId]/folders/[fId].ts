@@ -261,6 +261,7 @@ app.delete(
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       folderId: fId,
+      caller: "public-api",
     });
 
     if (delRes.isErr()) {

@@ -4,8 +4,11 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   isContentFragmentInput,
   isContentFragmentInputWithInlinedContent,
-} from "@app/types/api/internal/assistant";
-import { isInteractiveContentType } from "@app/types/files";
+} from "@app/types/api/assistant";
+import {
+  isInteractiveContentType,
+  isSandboxFunctionContentType,
+} from "@app/types/files";
 import {
   type PostContentFragmentResponseType,
   PublicPostContentFragmentRequestBodySchema,
@@ -75,6 +78,7 @@ app.post(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(auth, cId);
     if (conversationRes.isErr()) {
       return apiErrorForConversation(ctx, conversationRes.error);
@@ -154,7 +158,8 @@ app.post(
 
     const publicContentFragment =
       !contentFragmentRes.value ||
-      isInteractiveContentType(contentFragmentRes.value.contentType)
+      isInteractiveContentType(contentFragmentRes.value.contentType) ||
+      isSandboxFunctionContentType(contentFragmentRes.value.contentType)
         ? undefined
         : {
             ...contentFragmentRes.value,

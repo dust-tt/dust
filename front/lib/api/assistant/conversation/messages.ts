@@ -1,10 +1,9 @@
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import {
-  canAgentBeUsedInProjectConversation,
-  updateConversationRequirements,
-} from "@app/lib/api/assistant/conversation/permissions";
+import { updateConversationRequirements } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
-import type { Authenticator } from "@app/lib/auth";
+import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
+import { resolveModel } from "@app/lib/api/assistant/resolve_model";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessageModel,
   CompactionMessageModel,
@@ -13,7 +12,6 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
@@ -32,11 +30,16 @@ import type {
   UserMessageType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
-import { isPodConversation } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
+import type {
+  ModelResolutionMethodType,
+  ModelSelectionType,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -44,7 +47,35 @@ import uniqBy from "lodash/uniqBy";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-async function attributeUserFromWorkspaceAndEmail(
+function signalAgentUsageAfterCommit(
+  {
+    agentConfigurationId,
+    workspaceId,
+  }: {
+    agentConfigurationId: string;
+    workspaceId: string;
+  },
+  transaction?: Transaction
+) {
+  const signal = () => {
+    void signalAgentUsage({ agentConfigurationId, workspaceId }).catch(
+      (err) => {
+        logger.warn(
+          { err: normalizeError(err), agentConfigurationId, workspaceId },
+          "Failed to signal agent usage"
+        );
+      }
+    );
+  };
+
+  if (transaction) {
+    transaction.afterCommit(signal);
+  } else {
+    signal();
+  }
+}
+
+export async function attributeUserFromWorkspaceAndEmail(
   workspace: WorkspaceType | null,
   email: string | null
 ): Promise<UserType | null> {
@@ -92,6 +123,7 @@ export async function createUserMessage(
           context: UserMessageContext;
           agenticMessageData?: AgenticMessageData;
           visibility?: MessageVisibility;
+          requestedModel: ModelSelectionType | null;
         };
     transaction: Transaction;
   }
@@ -105,6 +137,7 @@ export async function createUserMessage(
   let context: UserMessageContext | null = null;
   let agenticMessageData: AgenticMessageData | undefined = undefined;
   let visibility: MessageVisibility = "visible";
+  let requestedModel: ModelSelectionType | null = null;
 
   switch (metadata.type) {
     case "edit":
@@ -116,6 +149,7 @@ export async function createUserMessage(
 
       context = metadata.message.context;
       agenticMessageData = metadata.message.agenticMessageData;
+      requestedModel = metadata.message.requestedModel;
       break;
     case "delete":
       // See softDeleteUserMessageAndReplies for why a v+1 placeholder is used instead of an UPDATE.
@@ -131,17 +165,10 @@ export async function createUserMessage(
     case "create":
       // Otherwise, we create a new user message from the metadata.
       rank = metadata.rank;
-
-      // TODO: this allow spoofing as we trust blindly the user email from the metadata.
-      user =
-        metadata.user ??
-        (await attributeUserFromWorkspaceAndEmail(
-          workspace,
-          metadata.context.email
-        ));
-
+      user = metadata.user;
       context = metadata.context;
       agenticMessageData = metadata.agenticMessageData;
+      requestedModel = metadata.requestedModel;
       if (metadata.visibility) {
         visibility = metadata.visibility;
       }
@@ -159,6 +186,7 @@ export async function createUserMessage(
           sId: originMessageId,
           agentMessageId: { [Op.not]: null },
         },
+        transaction,
       })
     : null;
 
@@ -194,7 +222,11 @@ export async function createUserMessage(
       userContextAuthMethod: context.authMethod ?? null,
       agenticMessageType,
       agenticOriginMessageId,
+      requestedModelId: requestedModel?.modelId ?? null,
+      requestedProviderId: requestedModel?.providerId ?? null,
+      requestedReasoningEffort: requestedModel?.reasoningEffort ?? null,
       userId: user?.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
     },
     { transaction }
@@ -205,9 +237,7 @@ export async function createUserMessage(
       sId: generateRandomModelSId(),
       rank,
       conversationId: conversation.id,
-      branchId: conversation.branchId
-        ? getResourceIdFromSId(conversation.branchId)
-        : null,
+      branchId: null,
       parentId,
       version,
       userMessageId: userMessage.id,
@@ -231,10 +261,38 @@ export async function createUserMessage(
     context,
     agenticMessageData: agenticMessageData ?? undefined,
     rank: m.rank,
-    branchId: conversation.branchId,
+    branchId: null,
     reactions: [],
+    requestedModel,
   };
   return createdUserMessage;
+}
+
+export interface AgentMessageModelResolution {
+  resolvedModel: ResolvedRequestedModel;
+  modelResolutionMethod: ModelResolutionMethodType;
+}
+
+export async function resolveModelsForMentionedAgents(
+  auth: Authenticator,
+  {
+    agentConfigurations,
+    selection,
+  }: {
+    agentConfigurations: LightAgentConfigurationType[];
+    selection?: ModelSelectionType;
+  }
+): Promise<Map<string, AgentMessageModelResolution>> {
+  const featureFlags = await getFeatureFlags(auth);
+
+  const resolutions = new Map<string, AgentMessageModelResolution>();
+  for (const configuration of agentConfigurations) {
+    resolutions.set(
+      configuration.sId,
+      await resolveModel(auth, { selection, configuration, featureFlags })
+    );
+  }
+  return resolutions;
 }
 
 export const createAgentMessages = async (
@@ -249,6 +307,7 @@ export const createAgentMessages = async (
       | {
           type: "retry";
           agentMessage: AgentMessageType;
+          agentMessageRow: AgentMessageModel;
           parentId: number;
         }
       | {
@@ -263,6 +322,17 @@ export const createAgentMessages = async (
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
+          resolvedModels: Map<string, AgentMessageModelResolution>;
+          restrictedAgentIds: Set<string>;
+        }
+      | {
+          type: "approve_existing_mention";
+          mentionRow: MentionModel;
+          configuration: LightAgentConfigurationType;
+          skipToolsValidation: boolean;
+          nextMessageRank: number;
+          userMessage: UserMessageTypeWithoutMentions;
+          resolvedModels: Map<string, AgentMessageModelResolution>;
         };
     transaction?: Transaction;
   }
@@ -291,8 +361,16 @@ export const createAgentMessages = async (
             status: "created",
             agentConfigurationId: agentConfiguration.sId,
             agentConfigurationVersion: agentConfiguration.version,
+            conversationId: conversation.id,
             workspaceId: owner.id,
-            skipToolsValidation: metadata.agentMessage.skipToolsValidation,
+            // Copy over the values from the original agent message row.
+            skipToolsValidation: metadata.agentMessageRow.skipToolsValidation,
+            resolvedProviderId: metadata.agentMessageRow.resolvedProviderId,
+            resolvedModelId: metadata.agentMessageRow.resolvedModelId,
+            resolvedReasoningEffort:
+              metadata.agentMessageRow.resolvedReasoningEffort,
+            modelResolutionMethod:
+              metadata.agentMessageRow.modelResolutionMethod,
           },
           { transaction }
         );
@@ -301,9 +379,7 @@ export const createAgentMessages = async (
             sId: generateRandomModelSId(),
             rank: metadata.agentMessage.rank,
             conversationId: conversation.id,
-            branchId: conversation.branchId
-              ? getResourceIdFromSId(conversation.branchId)
-              : null,
+            branchId: null,
             parentId: metadata.parentId,
             version: metadata.agentMessage.version + 1,
             agentMessageId: agentMessageRow.id,
@@ -315,10 +391,13 @@ export const createAgentMessages = async (
         );
 
         // Track agent usage when retrying an agent message.
-        void signalAgentUsage({
-          agentConfigurationId: agentConfiguration.sId,
-          workspaceId: owner.sId,
-        });
+        signalAgentUsageAfterCommit(
+          {
+            agentConfigurationId: agentConfiguration.sId,
+            workspaceId: owner.sId,
+          },
+          transaction
+        );
 
         results.push({
           agentAnswer: {
@@ -339,21 +418,23 @@ export const createAgentMessages = async (
         // instead of an UPDATE. MessageModel's exclusivity constraint forces us to anchor the v+1
         // row with a new AgentMessageModel (status "cancelled", it never ran).
         const agentConfiguration = metadata.agentMessage.configuration;
-        const agentMessageRow = await AgentMessageModel.create({
-          status: "cancelled",
-          agentConfigurationId: agentConfiguration.sId,
-          agentConfigurationVersion: agentConfiguration.version,
-          workspaceId: owner.id,
-          skipToolsValidation: metadata.agentMessage.skipToolsValidation,
-        });
+        const agentMessageRow = await AgentMessageModel.create(
+          {
+            status: "cancelled",
+            agentConfigurationId: agentConfiguration.sId,
+            agentConfigurationVersion: agentConfiguration.version,
+            conversationId: conversation.id,
+            workspaceId: owner.id,
+            skipToolsValidation: metadata.agentMessage.skipToolsValidation,
+          },
+          { transaction }
+        );
         const messageRow = await MessageModel.create(
           {
             sId: generateRandomModelSId(),
             rank: metadata.agentMessage.rank,
             conversationId: conversation.id,
-            branchId: conversation.branchId
-              ? getResourceIdFromSId(conversation.branchId)
-              : null,
+            branchId: null,
             parentId: metadata.parentId,
             version: metadata.agentMessage.version + 1,
             agentMessageId: agentMessageRow.id,
@@ -378,41 +459,55 @@ export const createAgentMessages = async (
       }
       break;
 
+    case "approve_existing_mention":
+      // Fall through into the shared create path after marking the existing
+      // mention approved (do not insert a duplicate MentionModel row).
+      await metadata.mentionRow.update({ status: "approved" }, { transaction });
+    // falls through
     case "create":
       {
-        // Deduplicate agent mentions before processing
-        const uniqueAgentMentions = uniqBy(
-          metadata.mentions.filter(isAgentMention),
-          (mention) => mention.configurationId
-        );
+        const uniqueAgentMentions =
+          metadata.type === "approve_existing_mention"
+            ? [{ configurationId: metadata.configuration.sId }]
+            : uniqBy(
+                metadata.mentions.filter(isAgentMention),
+                (mention) => mention.configurationId
+              );
+
+        // Multiple agent mentions are still accepted (the public API relies on them), we only
+        // track them while we move to a single mention per message.
+        if (uniqueAgentMentions.length > 1) {
+          logger.warn(
+            {
+              agentMentionCount: uniqueAgentMentions.length,
+              conversationId: conversation.sId,
+              workspaceId: owner.sId,
+            },
+            "Creating agent messages for multiple agent mentions."
+          );
+        }
 
         await concurrentExecutor(
           uniqueAgentMentions,
           async (mention) => {
-            const configuration = metadata.agentConfigurations.find(
-              (ac) => ac.sId === mention.configurationId
-            );
+            const configuration =
+              metadata.type === "approve_existing_mention"
+                ? metadata.configuration
+                : metadata.agentConfigurations.find(
+                    (ac) => ac.sId === mention.configurationId
+                  );
             if (!configuration) {
               return;
             }
 
-            // In case of Project's conversation, we need to check if the agent configuration is
-            // using only the project spaces or public spaces/ Otherwise we reject the mention and
-            // do not create the agent message.
-            if (isPodConversation(conversation)) {
-              const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
-                auth,
-                {
-                  configuration,
-                  conversation,
-                  transaction,
-                }
-              );
-
-              if (!canAgentBeUsed) {
+            let mentionRow: MentionModel;
+            if (metadata.type === "approve_existing_mention") {
+              mentionRow = metadata.mentionRow;
+            } else {
+              if (metadata.restrictedAgentIds.has(configuration.sId)) {
                 // This create the mentions from the original user message. Not to be mixed with
                 // the mentions from the agent message (which will be filled later).
-                const mentionRow = await MentionModel.create(
+                const restrictedMentionRow = await MentionModel.create(
                   {
                     messageId: metadata.userMessage.id,
                     agentConfigurationId: configuration.sId,
@@ -423,7 +518,7 @@ export const createAgentMessages = async (
                 );
 
                 results.push({
-                  mentionRow,
+                  mentionRow: restrictedMentionRow,
                   agentAnswer: null,
                   parentMessageId: metadata.userMessage.sId,
                   parentAgentMessageId: null,
@@ -432,27 +527,39 @@ export const createAgentMessages = async (
 
                 return;
               }
+
+              // This create the mentions from the original user message. Not to be mixed with the
+              // mentions from the agent message (which will be filled later).
+              mentionRow = await MentionModel.create(
+                {
+                  messageId: metadata.userMessage.id,
+                  agentConfigurationId: configuration.sId,
+                  workspaceId: owner.id,
+                  status: "approved",
+                },
+                { transaction }
+              );
             }
 
-            // This create the mentions from the original user message. Not to be mixed with the
-            // mentions from the agent message (which will be filled later).
-            const mentionRow = await MentionModel.create(
-              {
-                messageId: metadata.userMessage.id,
-                agentConfigurationId: configuration.sId,
-                workspaceId: owner.id,
-                status: "approved",
-              },
-              { transaction }
+            const resolution = metadata.resolvedModels.get(configuration.sId);
+            assert(
+              resolution,
+              `Missing model resolution for agent configuration ${configuration.sId}`
             );
+            const { resolvedModel, modelResolutionMethod } = resolution;
 
             const agentMessageRow = await AgentMessageModel.create(
               {
                 status: "created",
                 agentConfigurationId: configuration.sId,
                 agentConfigurationVersion: configuration.version,
+                conversationId: conversation.id,
                 workspaceId: owner.id,
                 skipToolsValidation: metadata.skipToolsValidation,
+                resolvedProviderId: resolvedModel.providerId,
+                resolvedModelId: resolvedModel.modelId,
+                resolvedReasoningEffort: resolvedModel.reasoningEffort,
+                modelResolutionMethod,
               },
               { transaction }
             );
@@ -461,9 +568,7 @@ export const createAgentMessages = async (
                 sId: generateRandomModelSId(),
                 rank: metadata.nextMessageRank++,
                 conversationId: conversation.id,
-                branchId: conversation.branchId
-                  ? getResourceIdFromSId(conversation.branchId)
-                  : null,
+                branchId: null,
                 parentId: metadata.userMessage.id,
                 agentMessageId: agentMessageRow.id,
                 workspaceId: owner.id,
@@ -478,10 +583,13 @@ export const createAgentMessages = async (
                 : null;
 
             // Track agent usage when creating a new agent message.
-            void signalAgentUsage({
-              agentConfigurationId: configuration.sId,
-              workspaceId: owner.sId,
-            });
+            signalAgentUsageAfterCommit(
+              {
+                agentConfigurationId: configuration.sId,
+                workspaceId: owner.sId,
+              },
+              transaction
+            );
 
             results.push({
               agentAnswer: {
@@ -539,7 +647,7 @@ export const createAgentMessages = async (
             error: null,
             configuration,
             rank: messageRow.rank,
-            branchId: conversation.branchId,
+            branchId: null,
             skipToolsValidation: agentMessageRow.skipToolsValidation,
             contents: [],
             parsedContents: {},
@@ -552,6 +660,9 @@ export const createAgentMessages = async (
             ),
             richMentions: [],
             reactions: [],
+            costCredits: null,
+            resolvedModel: resolvedModelFromAgentMessageRow(agentMessageRow),
+            modelResolutionMethod: agentMessageRow.modelResolutionMethod,
           };
         }
       }
@@ -602,7 +713,7 @@ export async function getUserMessageIdFromMessageId(
       sId: messageId,
       agentMessageId: { [Op.ne]: null },
     },
-    attributes: ["parentId", "version", "sId"],
+    attributes: ["parentId", "version", "sId", "branchId", "workspaceId"],
   });
 
   assert(
@@ -665,6 +776,7 @@ export async function createCompactionMessage(
       content: null,
       runIds: null,
       sourceConversationId: sourceConversationId ?? null,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
     },
     { transaction }
@@ -675,9 +787,7 @@ export async function createCompactionMessage(
       sId: generateRandomModelSId(),
       rank,
       conversationId: conversation.id,
-      branchId: conversation.branchId
-        ? getResourceIdFromSId(conversation.branchId)
-        : null,
+      branchId: null,
       version: 0,
       compactionMessageId: compactionMessageRow.id,
       workspaceId: workspace.id,
@@ -694,7 +804,7 @@ export async function createCompactionMessage(
     visibility: messageRow.visibility,
     version: messageRow.version,
     rank: messageRow.rank,
-    branchId: conversation.branchId,
+    branchId: null,
     status: "created",
     content: null,
     ...(sourceConversationId ? { sourceConversationId } : {}),

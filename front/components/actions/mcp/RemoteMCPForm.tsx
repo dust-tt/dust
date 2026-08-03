@@ -5,15 +5,15 @@ import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ActionBookOpenIcon,
   ActionIcons,
+  AlertCircle,
+  BookOpen01,
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRight,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   ContentMessage,
-  ExclamationCircleIcon,
   IconPicker,
   Input,
   Label,
@@ -59,11 +59,11 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   };
 
   return (
-    <div className="space-y-5 text-foreground dark:text-foreground-night">
+    <div className="space-y-5 text-foreground">
       {lastError && (
         <ContentMessage
           variant="warning"
-          icon={ExclamationCircleIcon}
+          icon={AlertCircle}
           size="sm"
           title="Synchronization Error"
         >
@@ -86,7 +86,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           <Button
             label={isSynchronizing ? "Syncing..." : "Sync"}
             isLoading={isSynchronizing}
-            icon={CloudArrowLeftRightIcon}
+            icon={CloudArrowLeftRight}
             variant="outline"
             onClick={handleSynchronize}
             disabled={isSynchronizing}
@@ -104,8 +104,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
               toActionIconKey(iconField.value) ??
               toActionIconKey(mcpServer.icon as string) ??
               defaultKey;
-            const IconComponent =
-              ActionIcons[selectedIconName] ?? ActionBookOpenIcon;
+            const IconComponent = ActionIcons[selectedIconName] ?? BookOpen01;
 
             return (
               <PopoverRoot open={isPopoverOpen}>
@@ -152,7 +151,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 message={form.formState.errors.sharedSecret?.message}
                 placeholder="Paste the Bearer Token here"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-500-night">
+              <p className="text-xs text-primary-500">
                 This will be sent alongside the request made to your server as a
                 Bearer token in the headers.
               </p>
@@ -182,7 +181,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-2">
-            <p className="text-xs text-gray-500 dark:text-gray-500-night">
+            <p className="text-xs text-primary-500">
               Key-value pairs sent as <code className="font-mono">_meta</code>{" "}
               on every tool call to this server.
             </p>

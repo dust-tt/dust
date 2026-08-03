@@ -30,7 +30,7 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
   return (
     <div className="rounded border p-3">
       <Chip
-        color="green"
+        color="success"
         size="xs"
         label={`tool_call: ${toolCall.name}`}
         className="mb-2"

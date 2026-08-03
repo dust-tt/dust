@@ -54,13 +54,6 @@ export type SkillInstructionEditItemType = z.infer<
   typeof SkillInstructionEditItemSchema
 >;
 
-export const SkillToolEditItemSchema = z.object({
-  action: z.enum(["add", "remove"]),
-  toolId: z.string(),
-});
-
-export type SkillToolEditItemType = z.infer<typeof SkillToolEditItemSchema>;
-
 export const SkillAgentFacingDescriptionEditSchema = z.object({
   content: z
     .string()
@@ -80,10 +73,6 @@ export const SkillEditSuggestionSchema = z
       .array(SkillInstructionEditItemSchema)
       .optional()
       .describe("Block-targeted edits to the skill instructions."),
-    toolEdits: z
-      .array(SkillToolEditItemSchema)
-      .optional()
-      .describe("Tools to add or remove from the skill."),
     agentFacingDescriptionEdit:
       SkillAgentFacingDescriptionEditSchema.optional().describe(
         "Replacement for the skill's agent-facing description."
@@ -92,27 +81,20 @@ export const SkillEditSuggestionSchema = z
   .refine(
     (d) =>
       (d.instructionEdits && d.instructionEdits.length > 0) ||
-      (d.toolEdits && d.toolEdits.length > 0) ||
       d.agentFacingDescriptionEdit !== undefined,
-    "At least one of instructionEdits, toolEdits, or agentFacingDescriptionEdit must be provided."
+    "At least one of instructionEdits or agentFacingDescriptionEdit must be provided."
   );
 
 export type SkillEditSuggestionType = z.infer<typeof SkillEditSuggestionSchema>;
 
-export function isSkillEditSuggestion(
-  data: unknown
-): data is SkillEditSuggestionType {
-  return SkillEditSuggestionSchema.safeParse(data).success;
-}
-
 export type SkillSuggestionPayload = SkillEditSuggestionType;
 
-export const SkillSuggestionDataSchema = z.object({
+const SkillSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
   suggestion: SkillEditSuggestionSchema,
 });
 
-export type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
+type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
 
 export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
   return SkillSuggestionDataSchema.parse(data);

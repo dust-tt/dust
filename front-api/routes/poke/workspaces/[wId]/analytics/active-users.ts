@@ -1,10 +1,8 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { ActiveUsersMetricsPoint } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
-import {
-  daysToDateRange,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -22,6 +20,7 @@ export type PokeGetWorkspaceActiveUsersResponse = {
 // Mounted at /api/poke/workspaces/:wId/analytics/active-users.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

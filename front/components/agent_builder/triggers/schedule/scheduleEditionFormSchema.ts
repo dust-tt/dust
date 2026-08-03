@@ -21,6 +21,7 @@ const commonFields = {
   naturalLanguageDescription: z.string().optional(),
   customPrompt: z.string(),
   timezone: z.string().min(1, "Timezone is required"),
+  spaceId: z.string().nullable(),
 };
 
 const cronScheduleSchema = z.object({
@@ -55,6 +56,7 @@ export function getScheduleFormDefaultValues(
     status: trigger?.status ?? "enabled",
     naturalLanguageDescription: trigger?.naturalLanguageDescription ?? "",
     customPrompt: trigger?.customPrompt ?? "",
+    spaceId: trigger?.spaceId ?? null,
   };
 
   if (!config) {
@@ -134,5 +136,6 @@ export function formValuesToScheduleTriggerData({
       editTrigger?.kind === "schedule"
         ? editTrigger.editorName
         : (user.fullName ?? undefined),
+    spaceId: schedule.spaceId,
   };
 }

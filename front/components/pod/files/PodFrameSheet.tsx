@@ -1,4 +1,4 @@
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
@@ -13,7 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useRef } from "react";
 
@@ -86,7 +86,7 @@ export function PodFrameSheet({
               </div>
             )}
             <SheetClose asChild>
-              <Button icon={XMarkIcon} variant="ghost" size="sm" />
+              <Button icon={XClose} variant="ghost" size="sm" />
             </SheetClose>
           </div>
         </SheetHeader>
@@ -98,7 +98,7 @@ export function PodFrameSheet({
           ) : (
             fileId &&
             vizUrl && (
-              <VisualizationActionIframe
+              <AuthenticatedVisualizationActionIframe
                 agentConfigurationId={
                   fileMetadata?.useCaseMetadata
                     .lastEditedByAgentConfigurationId ?? null

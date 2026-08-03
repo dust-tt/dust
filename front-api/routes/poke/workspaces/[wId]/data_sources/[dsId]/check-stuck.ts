@@ -1,6 +1,6 @@
-import type { CheckStuckResponseBody } from "@app/lib/api/data_sources/check_stuck";
 import { checkConnectorStuckForDataSource } from "@app/lib/api/data_sources/check_stuck";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { CheckStuckResponseBody } from "@app/types/api/data_sources/check_stuck";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -15,6 +15,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/check-stuck.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

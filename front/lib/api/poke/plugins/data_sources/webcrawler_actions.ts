@@ -18,6 +18,7 @@ export const setWebcrawlerActions = createPlugin({
         description: "",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_, dataSource) => {
     if (!dataSource) {

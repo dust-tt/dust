@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import logger from "@app/logger/logger";
-import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import {
   isCredentialProvider,
   isProviderWithDefaultWorkspaceConfiguration,
@@ -20,13 +20,10 @@ import {
   PostLabsTranscriptsConfigurationBodySchema,
 } from "./schemas";
 
-export type GetLabsTranscriptsConfigurationResponseBody = {
-  configuration: LabsTranscriptsConfigurationType | null;
-};
-
 // Mounted at /api/w/:wId/labs/transcripts.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetLabsTranscriptsConfigurationResponseBody> => {

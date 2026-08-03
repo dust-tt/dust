@@ -3,7 +3,10 @@ import type { WorkspaceType } from "@app/types/user";
 import type { CaptureService } from "@extension/shared/services/capture";
 import { McpService } from "@extension/shared/services/mcp";
 import { registerAllTools } from "@extension/shared/tools";
+import { getBrowserMCPServerInstructions } from "@extension/shared/tools/metadata";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+const FIREFOX_MCP_SERVER_NAME = "firefox-mcp-server";
 
 export class FirefoxMcpService extends McpService {
   private captureService: CaptureService | null = null;
@@ -23,17 +26,14 @@ export class FirefoxMcpService extends McpService {
     try {
       const server = new McpServer(
         {
-          name: "firefox-mcp-server",
+          name: FIREFOX_MCP_SERVER_NAME,
           version: "1.0.0",
         },
         {
-          instructions:
-            "You are running inside a Dust Firefox extension. " +
-            "The user is actively browsing the web, so their questions often relate to content on their current browser tab. " +
-            "When the user's message implicitly or explicitly refers to a page, article, document, or 'this' / 'it' / 'the page' without further specification, " +
-            "proactively call `get-current-browser-page` to fetch the page title, URL, and text content before answering. " +
-            "For pages that are visual or non-text (images, PDFs, dashboards), call `get-current-browser-page-view` instead — it will attach the file directly when possible. " +
-            "Do not ask the user to paste the content themselves — retrieve it directly with the available tools.",
+          instructions: getBrowserMCPServerInstructions({
+            platformName: "Firefox",
+            serverName: FIREFOX_MCP_SERVER_NAME,
+          }),
         }
       );
 
@@ -55,25 +55,35 @@ export class FirefoxMcpService extends McpService {
       throw new Error("Cannot connect null server");
     }
 
-    try {
-      if (this.transport) {
-        return;
+    if (this.transport) {
+      return;
+    }
+
+    const transport = new BrowserMCPTransport(
+      owner.sId,
+      "dust-firefox-extension",
+      (serverId) => {
+        this.serverId = serverId;
+        onServerIdReceived(serverId);
       }
+    );
 
-      const transport = new BrowserMCPTransport(
-        owner.sId,
-        "dust-firefox-extension",
-        (serverId) => {
-          this.serverId = serverId;
-          onServerIdReceived(serverId);
-        }
-      );
+    // Claim the slot synchronously, before the async `server.connect` round-trip,
+    // so a concurrent getOrCreateServer/connectServer call short-circuits on the
+    // guard above instead of creating a second transport. A leaked transport keeps
+    // a heartbeat timer alive forever; many such timers firing on the same tick
+    // produce bursts of register/heartbeat calls.
+    this.server = server;
+    this.transport = transport;
 
+    try {
       await server.connect(transport);
-
-      this.server = server;
-      this.transport = transport;
     } catch (error) {
+      // Roll back the claim and tear down the half-open transport so a later
+      // attempt can retry cleanly.
+      this.server = null;
+      this.transport = null;
+      await transport.close();
       console.error("Failed to connect MCP server:", error);
       throw error;
     }

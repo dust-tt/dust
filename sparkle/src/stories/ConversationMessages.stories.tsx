@@ -5,18 +5,18 @@ import {
   ActionCardBlock,
   AttachmentChip,
   Avatar,
-  BoltIcon,
+  Zap,
   Citation,
   CitationIcons,
   CitationTitle,
-  DocumentIcon,
+  File02,
   DriveLogo,
-  FolderIcon,
+  Folder,
   Icon,
   Markdown,
   NotionLogo,
   SlackLogo,
-  TableIcon,
+  Table,
 } from "../index_with_tw_base";
 import {
   ConversationMessageAvatar,
@@ -27,7 +27,22 @@ import {
 import { ConversationContainer } from "../components/ConversationMessage";
 
 const meta = {
-  title: "Conversation/ConversationMessages",
+  title: "Product/Conversation/ConversationMessages",
+  parameters: {
+    docs: {
+      description: {
+        component: `The building blocks for laying out a chat thread of user and agent messages. Compose each turn from **ConversationMessageContainer** (with \`messageType\` and \`type\` to distinguish user vs. agent), **ConversationMessageAvatar**, **ConversationMessageTitle** (name, timestamp, optional \`infoChip\` and \`completionStatus\`), and **ConversationMessageContent** (which accepts message body plus a \`citations\` array).
+
+**When to use**
+- To render a full conversation between people and agents, including attachments, citations, and action cards.
+
+**Guidelines**
+- Set both \`messageType\` and \`type\` on the container so user and agent messages are styled and aligned correctly.
+- Put **Markdown** in the content for agent text, pass source references through the \`citations\` prop (using **Citation**), and embed **AttachmentChip** or **ActionCardBlock** inline as needed.
+- Use \`completionStatus\` on the title for agent timing/approval states rather than inventing custom labels.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;
@@ -35,8 +50,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Example: Story = {
   render: () => (
-    <div className="s-flex s-w-full s-justify-center s-gap-6">
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
+    <div className="flex w-full justify-center gap-6">
+      <div className="flex w-full max-w-4xl flex-col gap-6 p-2 @sm-conversation:gap-8 @md-conversation:gap-10">
         <ConversationMessageContainer messageType="me" type="user">
           <ConversationMessageAvatar
             avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
@@ -47,7 +62,7 @@ export const Example: Story = {
             name="Edouard"
             timestamp="14:30"
             renderName={(name) => <span>{name}</span>}
-            infoChip={<Icon size="xs" visual={BoltIcon} />}
+            infoChip={<Icon size="xs" visual={Zap} />}
           />
           <ConversationMessageContent type="user">
             Can you summarize the customer feedback from this week?
@@ -80,17 +95,17 @@ export const Example: Story = {
             renderName={(name) => <span>{name}</span>}
           />
           <ConversationMessageContent type="user">
-            <div className="s-flex s-flex-col s-gap-2">
+            <div className="flex flex-col gap-2">
               <span>Here are the related docs and a drive folder.</span>
-              <div className="s-flex s-flex-wrap s-gap-2">
+              <div className="flex flex-wrap gap-2">
                 <AttachmentChip
                   label="Q1_feedback_summary.pdf"
-                  icon={{ visual: DocumentIcon }}
+                  icon={{ visual: File02 }}
                 />
                 <AttachmentChip
                   label="Customer interviews"
                   doubleIcon={{
-                    mainIcon: FolderIcon,
+                    mainIcon: Folder,
                     secondaryIcon: DriveLogo,
                     size: "sm",
                   }}
@@ -111,13 +126,13 @@ export const Example: Story = {
             renderName={(name) => <span>{name}</span>}
           />
           <ConversationMessageContent type="user">
-            <div className="s-flex s-flex-col s-gap-2">
+            <div className="flex flex-col gap-2">
               <span>Adding meeting notes from last week.</span>
-              <div className="s-flex s-flex-wrap s-gap-2">
+              <div className="flex flex-wrap gap-2">
                 <AttachmentChip
                   label="Notes — Interviews"
                   doubleIcon={{
-                    mainIcon: DocumentIcon,
+                    mainIcon: File02,
                     secondaryIcon: NotionLogo,
                     size: "sm",
                   }}
@@ -140,7 +155,7 @@ export const Example: Story = {
             timestamp="14:31"
             renderName={(name) => <span>{name}</span>}
             completionStatus={
-              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="text-xs text-muted-foreground">
                 Completed in 18 sec
               </span>
             }
@@ -150,7 +165,7 @@ export const Example: Story = {
             citations={[
               <Citation key="table">
                 <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
+                  <Icon visual={Table} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Weekly support report</CitationTitle>
               </Citation>,
@@ -177,7 +192,7 @@ export const Example: Story = {
             timestamp="14:33"
             renderName={(name) => <span>{name}</span>}
             completionStatus={
-              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="text-xs text-muted-foreground">
                 Awaiting approval
               </span>
             }
@@ -191,7 +206,7 @@ export const Example: Story = {
               cardVariant="highlight"
               actionsPosition="header"
               visual={
-                <Avatar size="sm" emoji="🗞️" backgroundColor="s-bg-blue-100" />
+                <Avatar size="sm" emoji="🗞️" backgroundColor="bg-blue-100" />
               }
             />
           </ConversationMessageContent>
@@ -208,7 +223,7 @@ export const Example: Story = {
             timestamp="14:34"
             renderName={(name) => <span>{name}</span>}
             completionStatus={
-              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="text-xs text-muted-foreground">
                 Completed in 46 sec
               </span>
             }
@@ -218,7 +233,7 @@ export const Example: Story = {
             citations={[
               <Citation key="long-table">
                 <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
+                  <Icon visual={Table} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Support queue trends</CitationTitle>
               </Citation>,
@@ -238,7 +253,7 @@ export const Example: Story = {
               rejectLabel="Skip"
               cardVariant="secondary"
               visual={
-                <Avatar size="sm" emoji="📁" backgroundColor="s-bg-green-100" />
+                <Avatar size="sm" emoji="📁" backgroundColor="bg-green-100" />
               }
             />
           </ConversationMessageContent>

@@ -2,21 +2,16 @@ import config from "@app/lib/api/config";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   CREDIT_PRICED_FREE_PLAN_CODE,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
-import type { SubscriptionType } from "@app/types/plan";
-import type { LightWorkspaceType } from "@app/types/user";
 import { Button } from "@dust-tt/sparkle";
+import { useSubscriptionContext } from "./SubscriptionContext";
 
-interface BillingUpgradeProps {
-  owner: LightWorkspaceType;
-  subscription: SubscriptionType;
-}
-
-export function BillingUpgrade({ owner, subscription }: BillingUpgradeProps) {
+export function BillingUpgrade() {
+  const { owner, subscription } = useSubscriptionContext();
   const { code } = subscription.plan;
 
-  if (subscription.endDate !== null || isEntreprisePlanPrefix(code)) {
+  if (subscription.endDate !== null || isEnterprisePlanPrefix(code)) {
     return null;
   }
 
@@ -52,17 +47,17 @@ export function BillingUpgrade({ owner, subscription }: BillingUpgradeProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+      <h2 className="text-xl font-semibold text-foreground">
         Upgrade your workspace
       </h2>
-      <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
+      <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4">
         <div className="flex items-center justify-between gap-4">
-          <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
+          <div className="truncate text-base font-semibold text-foreground">
             {planName}
           </div>
           <Button size="sm" {...buttonProps} />
         </div>
-        <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+        <div className="flex flex-col gap-2 text-xs text-muted-foreground">
           {features.map((feature) => (
             <div key={feature}>{feature}</div>
           ))}

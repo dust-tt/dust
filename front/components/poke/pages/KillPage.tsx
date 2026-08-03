@@ -10,19 +10,19 @@ import {
 } from "@app/poke/swr/sandbox_kill";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
-  ActionFireIcon,
+  AlertCircle,
   AnthropicLogo,
-  ArrowPathIcon,
-  BoltIcon,
   Button,
-  CardIcon,
-  CloudArrowLeftRightIcon,
-  Cog6ToothIcon,
-  ExclamationCircleIcon,
+  CloudArrowLeftRight,
+  Fire,
   OpenaiLogo,
+  PauseCircle,
+  RefreshCw02,
+  Settings01,
   SliderToggle,
   Spinner,
-  TrashIcon,
+  Trash01,
+  Zap,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useState } from "react";
@@ -38,12 +38,12 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
   save_agent_configurations: {
     title: "Agent Configurations",
     description: "Disable saving of agent configurations.",
-    icon: Cog6ToothIcon,
+    icon: Settings01,
   },
   save_data_source_views: {
     title: "Data Source Views",
     description: "Disable saving of data source views.",
-    icon: CloudArrowLeftRightIcon,
+    icon: CloudArrowLeftRight,
   },
   global_blacklist_anthropic: {
     title: "Anthropic Models",
@@ -59,33 +59,31 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     title: "Firecrawl",
     description:
       "Disable Firecrawl for web browsing and use Spider.cloud instead.",
-    icon: ActionFireIcon,
+    icon: Fire,
   },
   global_dust_agents_fallback: {
     title: "Dust Agents Fallback Provider",
     description:
       "Force Dust and Deep Dive agents to use non-Anthropic providers.",
     note: "Use only when the latest Sonnet or Opus models are down.",
-    icon: ArrowPathIcon,
+    icon: RefreshCw02,
   },
-  global_disable_metronome_billing: {
-    title: "Metronome Billing",
+  pause_upsert_queue: {
+    title: "Upsert Queue",
     description:
-      "Disable Metronome billing globally and fall back to legacy Stripe subscriptions.",
-    note: "Workspaces with the `metronome_billing` feature flag bypass this kill switch.",
-    icon: CardIcon,
+      "Pause the document upsert queue: parked upserts retry every 5 minutes until the switch is disabled.",
+    note: "Enqueues keep succeeding and in-flight upserts finish. Use to shed Qdrant write load (e.g. during resharding).",
+    icon: PauseCircle,
   },
 };
 
 const PANEL_HEADING_CLASSES =
-  "flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-foreground dark:text-foreground-night";
-const PANEL_ICON_CLASSES =
-  "h-4 w-4 text-muted-foreground dark:text-muted-foreground-night";
-const PANEL_DESCRIPTION_CLASSES =
-  "text-sm text-muted-foreground dark:text-muted-foreground-night";
+  "flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-foreground";
+const PANEL_ICON_CLASSES = "h-4 w-4 text-muted-foreground";
+const PANEL_DESCRIPTION_CLASSES = "text-sm text-muted-foreground";
 const PANEL_SECTION_CLASSES = cn(
   "mt-6 rounded-2xl border border-border",
-  "bg-background shadow-sm dark:border-border-night dark:bg-background-night"
+  "bg-background shadow-sm"
 );
 
 type SandboxKillRequestKey = string;
@@ -197,7 +195,7 @@ export function KillPage() {
     <main className="mx-auto max-w-4xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
       <section className="space-y-2">
         <h2 className={PANEL_HEADING_CLASSES}>
-          <BoltIcon className={PANEL_ICON_CLASSES} />
+          <Zap className={PANEL_ICON_CLASSES} />
           <span>Kill switches</span>
         </h2>
         <p className={PANEL_DESCRIPTION_CLASSES}>
@@ -226,22 +224,21 @@ export function KillPage() {
                   key={type}
                   className={cn(
                     "grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
-                    index > 0 &&
-                      "border-t border-border dark:border-border-night"
+                    index > 0 && "border-t border-border"
                   )}
                 >
                   <div className="space-y-1">
-                    <h3 className="flex items-center gap-3 text-sm font-medium text-foreground dark:text-foreground-night">
-                      <Icon className="h-4 w-4 text-foreground dark:text-foreground-night" />
+                    <h3 className="flex items-center gap-3 text-sm font-medium text-foreground">
+                      <Icon className="h-4 w-4 text-foreground" />
                       <span>{title}</span>
                     </h3>
 
-                    <p className="text-sm leading-6 text-muted-foreground dark:text-muted-foreground-night">
+                    <p className="text-sm leading-6 text-muted-foreground">
                       {description}
                     </p>
 
                     {note && (
-                      <p className="text-xs leading-5 text-muted-foreground dark:text-muted-foreground-night">
+                      <p className="text-xs leading-5 text-muted-foreground">
                         {note}
                       </p>
                     )}
@@ -255,7 +252,6 @@ export function KillPage() {
                         disabled={updatingKillSwitch !== null}
                         onClick={() => void updateKillSwitch(type, !isEnabled)}
                         selected={isEnabled}
-                        size="xs"
                       />
                     )}
                   </div>
@@ -268,7 +264,7 @@ export function KillPage() {
 
       <section className="space-y-2">
         <h2 className={PANEL_HEADING_CLASSES}>
-          <TrashIcon className={PANEL_ICON_CLASSES} />
+          <Trash01 className={PANEL_ICON_CLASSES} />
           <span>Sandbox Kill Requester</span>
         </h2>
         <p className={PANEL_DESCRIPTION_CLASSES}>
@@ -282,8 +278,8 @@ export function KillPage() {
             <Spinner />
           </div>
         ) : images.length === 0 ? (
-          <div className="mt-6 flex items-center gap-2 rounded-2xl border border-border bg-background p-5 text-sm text-muted-foreground dark:border-border-night dark:bg-background-night dark:text-muted-foreground-night">
-            <ExclamationCircleIcon className="h-4 w-4" />
+          <div className="mt-6 flex items-center gap-2 rounded-2xl border border-border bg-background p-5 text-sm text-muted-foreground">
+            <AlertCircle className="h-4 w-4" />
             <span>No registered sandbox images found.</span>
           </div>
         ) : (
@@ -299,18 +295,15 @@ export function KillPage() {
                   key={olderKey}
                   className={cn(
                     "grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
-                    index > 0 &&
-                      "border-t border-border dark:border-border-night"
+                    index > 0 && "border-t border-border"
                   )}
                 >
                   <div className="space-y-1">
-                    <h3 className="text-sm font-medium text-foreground dark:text-foreground-night">
+                    <h3 className="text-sm font-medium text-foreground">
                       {baseImage}
-                      <span className="text-muted-foreground dark:text-muted-foreground-night">
-                        :{version}
-                      </span>
+                      <span className="text-muted-foreground">:{version}</span>
                     </h3>
-                    <p className="text-xs leading-5 text-muted-foreground dark:text-muted-foreground-night">
+                    <p className="text-xs leading-5 text-muted-foreground">
                       Current registered version.
                     </p>
                   </div>

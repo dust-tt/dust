@@ -1,12 +1,22 @@
+import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
+  convertCanonicalFileToPdf,
   deleteCanonicalFile,
+  fetchLinkedFileResource,
   moveCanonicalFile,
   renameCanonicalFile,
   streamThumbnail,
+  WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+  WriteCanonicalFileContentError,
+  writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
-import logger from "@app/logger/logger";
+import {
+  DUST_FILE_ID_HEADER,
+  getFileFormat,
+  normalizeMimeType,
+} from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -14,6 +24,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
+import { bodyLimit as honoBodyLimit } from "hono/body-limit";
 import path from "path";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -31,9 +42,8 @@ const ParamsSchema = z.object({
  *   HEAD   /api/w/:wId/files/path/{...canonicalPath}                    metadata only
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
+ *   PUT    /api/w/:wId/files/path/{...canonicalPath}                    replace text content
  *   DELETE /api/w/:wId/files/path/{...canonicalPath}
- *
- * Mirrors pages/api/w/[wId]/files/path/[...canonicalPath].ts
  */
 const app = workspaceApp();
 
@@ -52,6 +62,41 @@ const PatchBodySchema = z.discriminatedUnion("action", [
     dest: z.string().min(1),
   }),
 ]);
+
+function isBodyLimitError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err.name === "BodyLimitError" || err.message === "Payload Too Large")
+  );
+}
+
+function putContentTooLargeError(ctx: Context) {
+  return apiError(ctx, {
+    status_code: 413,
+    api_error: {
+      type: "invalid_request_error",
+      message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
+    },
+  });
+}
+
+function isContentTypeSafeToDisplay(contentType: string): boolean {
+  // Mirrors the isSafeToDisplay policy from getSecureFileAction (FileResource-backed serving),
+  // applied to the raw stored content type since canonical-path files may lack a FileResource.
+  return (
+    getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay ?? false
+  );
+}
+
+function contentDispositionAttachment(fileName: string): string {
+  const asciiFallback = fileName.replace(/[^\x20-\x7E\/\\]/g, "_");
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
+const putBodyLimit = honoBodyLimit({
+  maxSize: WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+  onError: putContentTooLargeError,
+});
 
 /** Resolve and validate the canonical path from the URL, returning an error response if invalid. */
 async function resolveFs(
@@ -82,9 +127,57 @@ async function resolveFs(
   return { fs: fsResult.value, err: null };
 }
 
-app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
+async function handleHeadRequest(
+  ctx: Context<WorkspaceAwareCtx>,
+  canonicalPath: string
+) {
   const auth = ctx.get("auth");
+  const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
+  if (err) {
+    return err;
+  }
+
+  const statResult = await dustFs.stat(canonicalPath);
+  if (statResult.isErr()) {
+    return apiError(ctx, mapDustFsError(statResult.error));
+  }
+  if (!statResult.value) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
+
+  const linkedFileResource = await fetchLinkedFileResource(
+    auth,
+    dustFs,
+    canonicalPath
+  );
+  const headers: Record<string, string> = {
+    "Content-Type": statResult.value.contentType,
+    "Content-Length": String(statResult.value.sizeBytes),
+    "X-Content-Type-Options": "nosniff",
+  };
+  if (linkedFileResource) {
+    headers[DUST_FILE_ID_HEADER] = linkedFileResource.sId;
+  }
+
+  return new Response(null, {
+    status: 200,
+    headers,
+  });
+}
+
+/** @ignoreswagger */
+app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   const { canonicalPath } = ctx.req.valid("param");
+
+  // Hono dispatches HEAD requests through the matching GET route.
+  if (ctx.req.method === "HEAD") {
+    return handleHeadRequest(ctx, canonicalPath);
+  }
+
+  const auth = ctx.get("auth");
   const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
   if (err) {
     return err;
@@ -92,6 +185,76 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
 
   const thumbnail = ctx.req.query("thumbnail");
   const download = ctx.req.query("download");
+  const previewPdf = ctx.req.query("preview") === "pdf";
+
+  // ?preview=pdf converts Office files to PDF via Gotenberg's LibreOffice route.
+  if (previewPdf) {
+    const rendererUrl = config.getDocumentRendererUrl();
+    if (!rendererUrl) {
+      return apiError(ctx, {
+        status_code: 503,
+        api_error: {
+          type: "internal_server_error",
+          message: "PDF preview is not configured.",
+        },
+      });
+    }
+
+    const conversionResult = await convertCanonicalFileToPdf(
+      dustFs,
+      canonicalPath,
+      rendererUrl
+    );
+    if (conversionResult.isErr()) {
+      const e = conversionResult.error;
+
+      switch (e.code) {
+        case "not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: { type: "file_not_found", message: e.message },
+          });
+
+        case "too_large":
+          return apiError(ctx, {
+            status_code: 413,
+            api_error: { type: "invalid_request_error", message: e.message },
+          });
+
+        case "unsupported_type":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: "invalid_request_error", message: e.message },
+          });
+
+        case "conversion_failed":
+        case "internal":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: { type: "internal_server_error", message: e.message },
+          });
+
+        default:
+          assertNever(e.code);
+      }
+    }
+
+    const { pdfBuffer, pdfFileName } = conversionResult.value;
+    // RFC 5987: filename= must be ASCII-safe; filename*= carries the UTF-8 encoded name.
+    const asciiFallback = pdfFileName.replace(/[^\x20-\x7E]/g, "_");
+    const encodedName = encodeURIComponent(pdfFileName);
+
+    return new Response(new Uint8Array(pdfBuffer), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${asciiFallback}"; filename*=UTF-8''${encodedName}`,
+        "Content-Length": String(pdfBuffer.length),
+        "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  }
 
   // ?thumbnail=1 serves the resized/processed version (images only).
   if (thumbnail && thumbnail !== "0") {
@@ -125,6 +288,7 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   }
@@ -154,64 +318,27 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const headers: Record<string, string> = { "Content-Type": contentType };
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "X-Content-Type-Options": "nosniff",
+  };
 
-  // ?download=1 sets Content-Disposition: attachment.
-  if (download && download !== "0") {
+  // Unsafe content types and ?download=1 must always be served as attachments.
+  if (
+    !isContentTypeSafeToDisplay(contentType) ||
+    (download && download !== "0")
+  ) {
     const fileName = path.posix.basename(canonicalPath);
-    headers["Content-Disposition"] =
-      `attachment; filename="${encodeURIComponent(fileName)}"`;
+    headers["Content-Disposition"] = contentDispositionAttachment(fileName);
   }
 
   const nodeStream = readResult.value;
-  const webStream = new ReadableStream({
-    start(controller) {
-      nodeStream.on("data", (chunk) => controller.enqueue(chunk));
-      nodeStream.on("end", () => controller.close());
-      nodeStream.on("error", (err) => {
-        logger.error({ err, canonicalPath }, "Error streaming canonical file");
-        controller.error(err);
-      });
-    },
-    cancel() {
-      nodeStream.destroy();
-    },
+
+  return new Response(readableToReadableStream(nodeStream), {
+    status: 200,
+    headers,
   });
-
-  return new Response(webStream, { status: 200, headers });
 });
-
-app.on(
-  "HEAD",
-  "/:canonicalPath{.+}",
-  validate("param", ParamsSchema),
-  async (ctx) => {
-    const { canonicalPath } = ctx.req.valid("param");
-    const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
-    if (err) {
-      return err;
-    }
-
-    const statResult = await dustFs.stat(canonicalPath);
-    if (statResult.isErr()) {
-      return apiError(ctx, mapDustFsError(statResult.error));
-    }
-    if (!statResult.value) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: { type: "file_not_found", message: "File not found." },
-      });
-    }
-
-    return new Response(null, {
-      status: 200,
-      headers: {
-        "Content-Type": statResult.value.contentType,
-        "Content-Length": String(statResult.value.sizeBytes),
-      },
-    });
-  }
-);
 
 app.patch(
   "/:canonicalPath{.+}",
@@ -285,6 +412,92 @@ app.patch(
     }
 
     return new Response(null, { status: 200 });
+  }
+);
+
+/** @ignoreswagger */
+app.put(
+  "/:canonicalPath{.+}",
+  putBodyLimit,
+  validate("param", ParamsSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { canonicalPath } = ctx.req.valid("param");
+    const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
+    if (err) {
+      return err;
+    }
+
+    const contentLengthHeader = ctx.req.header("content-length");
+    if (contentLengthHeader) {
+      const contentLength = Number.parseInt(contentLengthHeader, 10);
+      if (
+        Number.isFinite(contentLength) &&
+        contentLength > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES
+      ) {
+        return putContentTooLargeError(ctx);
+      }
+    }
+
+    let contentBuffer: ArrayBuffer;
+    try {
+      contentBuffer = await ctx.req.arrayBuffer();
+    } catch (err) {
+      if (isBodyLimitError(err)) {
+        return putContentTooLargeError(ctx);
+      }
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Failed to read request body.",
+        },
+      });
+    }
+
+    if (contentBuffer.byteLength > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES) {
+      return putContentTooLargeError(ctx);
+    }
+
+    const writeResult = await writeCanonicalFileContent(
+      auth,
+      dustFs,
+      canonicalPath,
+      new Uint8Array(contentBuffer),
+      ctx.req.header("content-type") ?? undefined
+    );
+
+    if (writeResult.isErr()) {
+      const error = writeResult.error;
+      if (error instanceof WriteCanonicalFileContentError) {
+        const { code } = error;
+        switch (code) {
+          case "too_large":
+            return apiError(ctx, {
+              status_code: 413,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          case "unsupported_content_type":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          default:
+            return assertNever(code);
+        }
+      }
+      return apiError(ctx, mapDustFsError(error));
+    }
+
+    return new Response(null, {
+      status: writeResult.value.created ? 201 : 200,
+    });
   }
 );
 

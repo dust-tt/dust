@@ -1,12 +1,15 @@
 // Types.
+import type { DustError } from "@app/lib/error";
 import { z } from "zod";
 
+import { assertNever } from "./shared/utils/assert_never";
 import { removeNulls } from "./shared/utils/general";
 import type { UserType } from "./user";
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
 export const TABLE_PREFIX = "TABLE:";
+export const DUST_FILE_ID_HEADER = "X-Dust-File-Id";
 
 export type FileStatus = "created" | "failed" | "ready";
 
@@ -29,15 +32,9 @@ export type FileUseCase =
   | "project_context"
   // Skill attachment: file attached to a skill configuration, synced to the
   // sandbox at /dust/skills/<skill-name>/<filename>.
-  | "skill_attachment";
-
-// Audit trail for a plan-mode approval. Recorded on `plan.md.useCaseMetadata` when the user
-// approves a `request_plan_approval` call.
-export type PlanModeApproval = {
-  approvedAt: string; // ISO timestamp.
-  approvedByUserId: string; // sId of the approving user.
-  fileVersion: number; // FileModel.version at the moment of approval.
-};
+  | "skill_attachment"
+  // Workspace branding: logo/favicon uploaded by workspace admins.
+  | "workspace_branding";
 
 export type FileUseCaseMetadata = {
   conversationId?: string;
@@ -55,13 +52,18 @@ export type FileUseCaseMetadata = {
   // only the original blob exists. Stamped together for sandbox-mounted raw delimited files.
   skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
-  // Plan mode. `isPlanFile: true` marks a file as agent-owned (user can't directly mutate).
-  // `planModeLastApproval` is set when the agent's `request_plan_approval` is approved.
-  // `isPlanClosed: true` marks the plan as retired — hidden from UI and ignored by the skill.
-  // Active plans omit `isPlanClosed` (only closed plans have it set).
-  isPlanFile?: boolean;
-  planModeLastApproval?: PlanModeApproval | null;
-  isPlanClosed?: boolean;
+  // Which branding asset this file was uploaded for (workspace_branding use case only).
+  asset?: string;
+  // Root scoped path of a published Frame's source tree in the mount (interactive content
+  // only). Set when the frame has been published: its presence means a built bundle exists
+  // (stored as the processed version) and records where to re-read sources on republish.
+  frameBundleRootPath?: string;
+  // Scoped path of the Frame's entry file, relative to frameBundleRootPath, as of the last
+  // successful publish. The model names the entry's full path directly when publishing (see the
+  // publish tool), so fileName has no guaranteed relationship to it: this is the only durable
+  // record of what the entry actually is. Live edits (no model in the loop, triggered by a UI
+  // click) reuse it to know what to rebuild from, rather than guessing from fileName.
+  frameEntryRelPath?: string;
 };
 
 export function isConversationFileUseCase(
@@ -80,6 +82,158 @@ export const fileShareScopeSchema = z.enum([
 ]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
+
+/**
+ * Allowlist of files a shared Frame may load via useFile().
+ * AuthorizedFileAccessModel stores one row per authorized file ref for the
+ * current frame version (replaced on recompute).
+ */
+export const authorizedFileAccessKindSchema = z.enum([
+  "file_id",
+  "canonical_path",
+  "unverifiable",
+]);
+
+export type AuthorizedFileAccessKind = z.infer<
+  typeof authorizedFileAccessKindSchema
+>;
+
+const authorizedFileAccessEntryBaseSchema = {
+  shareScope: fileShareScopeSchema,
+  frameContentHash: z.string(),
+  allowedAt: z.string(),
+};
+
+const authorizedFileIdAccessEntrySchema = z
+  .object({
+    kind: z.literal("file_id"),
+    ref: z.string(),
+    fileName: z.string().optional(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+const authorizedCanonicalPathAccessEntrySchema = z
+  .object({
+    kind: z.literal("canonical_path"),
+    ref: z.string(),
+    legacyPath: z.string().optional(),
+    fileName: z.string().optional(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+const authorizedUnverifiableAccessEntrySchema = z
+  .object({
+    kind: z.literal("unverifiable"),
+    ref: z.string(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+export const authorizedFileAccessEntrySchema = z.discriminatedUnion("kind", [
+  authorizedFileIdAccessEntrySchema,
+  authorizedCanonicalPathAccessEntrySchema,
+  authorizedUnverifiableAccessEntrySchema,
+]);
+
+type AuthorizedFileAccessEntry = z.infer<
+  typeof authorizedFileAccessEntrySchema
+>;
+
+const authorizedFileIdRefSchema = z
+  .object({
+    kind: z.literal("file_id"),
+    ref: z.string(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+
+const authorizedCanonicalPathRefSchema = z
+  .object({
+    kind: z.literal("canonical_path"),
+    ref: z.string(),
+    legacyPath: z.string().optional(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+
+export const authorizedFileRefSchema = z.discriminatedUnion("kind", [
+  authorizedFileIdRefSchema,
+  authorizedCanonicalPathRefSchema,
+]);
+
+export type AuthorizedFileRef = z.infer<typeof authorizedFileRefSchema>;
+
+export function getAuthorizedFileRefLabel(ref: AuthorizedFileRef): string {
+  if (ref.fileName) {
+    return ref.fileName;
+  }
+  if (ref.kind === "file_id") {
+    return ref.ref;
+  }
+  return ref.ref.split("/").pop() ?? ref.ref;
+}
+
+export function entryToAuthorizedFileRef(
+  entry: AuthorizedFileAccessEntry
+): AuthorizedFileRef | null {
+  switch (entry.kind) {
+    case "unverifiable":
+      return null;
+    case "file_id":
+      return {
+        kind: "file_id",
+        ref: entry.ref,
+        ...(entry.fileName ? { fileName: entry.fileName } : {}),
+      };
+    case "canonical_path":
+      return {
+        kind: "canonical_path",
+        ref: entry.ref,
+        ...(entry.legacyPath ? { legacyPath: entry.legacyPath } : {}),
+        ...(entry.fileName ? { fileName: entry.fileName } : {}),
+      };
+    default:
+      return assertNever(entry);
+  }
+}
+
+/** Active allowlist view derived from non-revoked DB rows. */
+export type AuthorizedFileAccessAllowlist = {
+  generatedByUserId: number | null;
+  frameContentHash: string;
+  refs: AuthorizedFileRef[];
+};
+
+/** Result of scanning frame content before persisting rows. */
+export type ComputedAuthorizedFileAccess = AuthorizedFileAccessAllowlist & {
+  unverifiableRefs?: string[];
+};
+
+export function parseAuthorizedFileAccessEntry(
+  data: unknown
+): AuthorizedFileAccessEntry {
+  return authorizedFileAccessEntrySchema.parse(data);
+}
+
+export type AuthorizedFileAccessShareError = Omit<DustError, "code"> & {
+  code: "invalid_request_error" | "internal_error";
+  unverifiableRefs?: string[];
+};
+
+export function isUnverifiableFrameFileRefsShareError(
+  error: AuthorizedFileAccessShareError
+): error is AuthorizedFileAccessShareError & {
+  code: "invalid_request_error";
+  unverifiableRefs: string[];
+} {
+  return (
+    error.code === "invalid_request_error" &&
+    Array.isArray(error.unverifiableRefs) &&
+    error.unverifiableRefs.length > 0
+  );
+}
 
 export interface SharingGrantType {
   id: number;
@@ -119,15 +273,10 @@ export type FileTypeWithMetadata = FileType & {
   useCaseMetadata: FileUseCaseMetadata;
 };
 
-export type FileFormatCategory =
-  | "image"
-  | "data"
-  | "code"
-  | "delimited"
-  | "audio";
+type FileFormatCategory = "image" | "data" | "code" | "delimited" | "audio";
 
 // Define max sizes for each category.
-export const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
+const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
   data: 50 * 1024 * 1024, // 50MB.
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
@@ -135,15 +284,59 @@ export const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
   audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
-export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
-  FileFormatCategory,
-  number
-> = {
+export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+
+// Conversations: large delimited files (CSV/XLSX) are mounted into the sandbox and read as-is by
+// the agent's code rather than loaded into its context, so they can be much larger than regular
+// uploads.
+const MAX_FILE_SIZES_LARGE_DELIMITED: Record<FileFormatCategory, number> = {
   ...MAX_FILE_SIZES_DEFAULT,
   delimited: 350 * 1024 * 1024,
 };
 
-export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+// Skill attachments: tabular files (CSV/XLSX -> delimited) AND documents (PDF/DOCX/PPTX -> data)
+// are mounted into the sandbox and read as-is, so both categories can be much larger than regular
+// uploads.
+const MAX_FILE_SIZES_LARGE_SKILL: Record<FileFormatCategory, number> = {
+  ...MAX_FILE_SIZES_DEFAULT,
+  delimited: 350 * 1024 * 1024,
+  data: 350 * 1024 * 1024,
+};
+
+// Whether an upload is stored as a raw sandbox file: kept as-is with no upload-time processing
+// (no Tika extraction / image resize) and not indexed. Always requires sandbox tools.
+//  - conversation: large delimited files are served raw to the sandbox instead of indexed as tables;
+//  - skill_attachment: delimited tables and data documents (PDF/DOCX/PPTX) are mounted raw.
+export function allowsSandboxRawUpload({
+  category,
+  hasSandboxTools,
+  useCase,
+}: {
+  category: FileFormatCategory;
+  hasSandboxTools: boolean;
+  useCase: FileUseCase;
+}): boolean {
+  if (!hasSandboxTools) {
+    return false;
+  }
+
+  switch (useCase) {
+    case "conversation":
+      return category === "delimited";
+    case "skill_attachment":
+      return category === "delimited" || category === "data";
+    case "avatar":
+    case "tool_output":
+    case "upsert_document":
+    case "folders_document":
+    case "upsert_table":
+    case "project_context":
+    case "workspace_branding":
+      return false;
+    default:
+      assertNever(useCase);
+  }
+}
 
 export function resolveMaxFileSizes({
   hasSandboxTools,
@@ -152,9 +345,26 @@ export function resolveMaxFileSizes({
   hasSandboxTools: boolean;
   useCase: FileUseCase;
 }): Record<FileFormatCategory, number> {
-  const eligible = hasSandboxTools && useCase === "conversation";
+  if (!hasSandboxTools) {
+    return MAX_FILE_SIZES_DEFAULT;
+  }
 
-  return eligible ? MAX_FILE_SIZES_LARGE_DELIMITED : MAX_FILE_SIZES_DEFAULT;
+  switch (useCase) {
+    case "conversation":
+      return MAX_FILE_SIZES_LARGE_DELIMITED;
+    case "skill_attachment":
+      return MAX_FILE_SIZES_LARGE_SKILL;
+    case "avatar":
+    case "tool_output":
+    case "upsert_document":
+    case "folders_document":
+    case "upsert_table":
+    case "project_context":
+    case "workspace_branding":
+      return MAX_FILE_SIZES_DEFAULT;
+    default:
+      return assertNever(useCase);
+  }
 }
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {
@@ -233,6 +443,18 @@ type FileFormat = {
    * - Any file type that could contain executable code
    */
   isSafeToDisplay: boolean;
+  /**
+   * When true, this format opens in the resizable conversation side panel
+   * (like frames) rather than the cramped file preview modal. This is the
+   * source of truth for the open-in-side-panel behavior per content type.
+   * Note: the side panel preview relies on the path-based conversion route, so
+   * a file path is still required at the call site.
+   */
+  opensInSidePanel?: boolean;
+  // When set, restricts which upload use cases expose this format in their file picker.
+  // Possible values: conversation, avatar, tool_output, skill_attachment, upsert_document,
+  // folders_document, upsert_table, project_context. Omit to allow in all contexts.
+  allowedFileUploadUseCases?: readonly FileUseCase[];
 };
 
 // NOTE: if we add more content types, we need to update the public api package. (but the
@@ -249,6 +471,12 @@ export const FILE_FORMATS = {
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
   "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: false },
   "image/bmp": { cat: "image", exts: [".bmp"], isSafeToDisplay: true },
+  "image/x-icon": {
+    cat: "image",
+    exts: [".ico"],
+    isSafeToDisplay: true,
+    allowedFileUploadUseCases: ["workspace_branding"],
+  },
 
   // Structured.
   "text/csv": { cat: "delimited", exts: [".csv"], isSafeToDisplay: true },
@@ -285,7 +513,6 @@ export const FILE_FORMATS = {
     exts: [".json"],
     isSafeToDisplay: true,
   },
-
   // Data.
   "text/plain": {
     cat: "data",
@@ -324,11 +551,13 @@ export const FILE_FORMATS = {
     cat: "data",
     exts: [".ppt", ".pptx"],
     isSafeToDisplay: true,
+    opensInSidePanel: true,
   },
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
     cat: "data",
     exts: [".ppt", ".pptx"],
     isSafeToDisplay: true,
+    opensInSidePanel: true,
   },
   "application/pdf": { cat: "data", exts: [".pdf"], isSafeToDisplay: true },
   "application/vnd.google-apps.document": {
@@ -432,6 +661,38 @@ export const FILE_FORMATS = {
   // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
   "video/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
+  // Fonts — skill attachments only.
+  "font/woff": {
+    cat: "data",
+    exts: [".woff"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/woff2": {
+    cat: "data",
+    exts: [".woff2"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/otf": {
+    cat: "data",
+    exts: [".otf"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/ttf": {
+    cat: "data",
+    exts: [".ttf"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/collection": {
+    cat: "data",
+    exts: [".ttc", ".otc"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+
   // Unknown.
   "application/octet-stream": {
     cat: "data",
@@ -448,6 +709,8 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
 export const frameContentType = "application/vnd.dust.frame";
 export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
+export const sandboxFunctionContentType =
+  "application/vnd.dust.sandbox.function";
 
 // Interactive Content MIME types for specialized use cases (not exposed via APIs).
 export const INTERACTIVE_CONTENT_FILE_FORMATS = {
@@ -470,13 +733,26 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
 export type InteractiveContentFileContentType =
   keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
 
+const SANDBOX_FUNCTION_FILE_FORMATS = {
+  [sandboxFunctionContentType]: {
+    cat: "code",
+    exts: [".ts"],
+    isSafeToDisplay: false,
+  },
+} as const satisfies Record<string, FileFormat>;
+
+export type SandboxFunctionFileContentType =
+  keyof typeof SANDBOX_FUNCTION_FILE_FORMATS;
+
 export const ALL_FILE_FORMATS = {
   ...INTERACTIVE_CONTENT_FILE_FORMATS,
+  ...SANDBOX_FUNCTION_FILE_FORMATS,
   ...FILE_FORMATS,
 };
-// Union type for all supported content types (public + Interactive Content).
+// Union type for all supported content types.
 export type AllSupportedFileContentType =
   | InteractiveContentFileContentType
+  | SandboxFunctionFileContentType
   | SupportedFileContentType;
 
 export type AllSupportedWithDustSpecificFileContentType =
@@ -493,7 +769,7 @@ export type SupportedImageContentType = {
     : never;
 }[keyof typeof FILE_FORMATS];
 
-export type SupportedDelimitedTextContentType = {
+type SupportedDelimitedTextContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
     cat: "delimited";
   }
@@ -509,7 +785,7 @@ export type SupportedNonImageContentType = {
     : K;
 }[keyof typeof FILE_FORMATS];
 
-export type SupportedAudioContentType = {
+type SupportedAudioContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
     cat: "audio";
   }
@@ -537,11 +813,20 @@ export function isInteractiveContentType(
   ];
 }
 
+export function isSandboxFunctionContentType(
+  contentType: string
+): contentType is SandboxFunctionFileContentType {
+  return !!SANDBOX_FUNCTION_FILE_FORMATS[
+    contentType as SandboxFunctionFileContentType
+  ];
+}
+
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
     isInteractiveContentType(contentType) ||
+    isSandboxFunctionContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }
@@ -601,6 +886,25 @@ export function isSupportedAudioContentType(
   return false;
 }
 
+type SupportedFontContentType =
+  | "font/woff"
+  | "font/woff2"
+  | "font/otf"
+  | "font/ttf"
+  | "font/collection";
+
+export function isSupportedFontContentType(
+  contentType: string
+): contentType is SupportedFontContentType {
+  return (
+    contentType === "font/woff" ||
+    contentType === "font/woff2" ||
+    contentType === "font/otf" ||
+    contentType === "font/ttf" ||
+    contentType === "font/collection"
+  );
+}
+
 export function getFileFormatCategory(
   contentType: string
 ): FileFormatCategory | null {
@@ -636,33 +940,53 @@ export function extensionsForContentType(
   return [];
 }
 
+function isFormatAllowedForUseCase(
+  format: (typeof FILE_FORMATS)[keyof typeof FILE_FORMATS],
+  useCase?: FileUseCase
+): boolean {
+  if (!("allowedFileUploadUseCases" in format)) {
+    return true;
+  }
+  return useCase
+    ? format.allowedFileUploadUseCases.some((uc) => uc === useCase)
+    : false;
+}
+
 export function getSupportedFileExtensions(
-  cat: FileFormatCategory | undefined = undefined
+  cat?: FileFormatCategory,
+  useCase?: FileUseCase
 ) {
   return uniq(
     removeNulls(
       Object.values(FILE_FORMATS).flatMap((format) =>
-        !cat || format.cat === cat ? format.exts : []
+        isFormatAllowedForUseCase(format, useCase) &&
+        (!cat || format.cat === cat)
+          ? format.exts
+          : []
       )
     )
   );
 }
 
-export function getSupportedNonImageFileExtensions() {
+export function getSupportedNonImageFileExtensions(useCase?: FileUseCase) {
   return uniq(
     removeNulls(
       Object.values(FILE_FORMATS).flatMap((format) =>
-        format.cat !== "image" ? format.exts : []
+        isFormatAllowedForUseCase(format, useCase) && format.cat !== "image"
+          ? format.exts
+          : []
       )
     )
   );
 }
 
-export function getSupportedNonImageMimeTypes() {
+export function getSupportedNonImageMimeTypes(useCase?: FileUseCase) {
   return uniq(
     removeNulls(
       Object.entries(FILE_FORMATS).map(([key, value]) =>
-        value.cat !== "image" ? (key as SupportedNonImageContentType) : null
+        isFormatAllowedForUseCase(value, useCase) && value.cat !== "image"
+          ? (key as SupportedNonImageContentType)
+          : null
       )
     )
   );
@@ -680,10 +1004,24 @@ const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
   ".tsv": "text/tsv",
   ".xls": "application/vnd.ms-excel",
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".otf": "font/otf",
+  ".ttf": "font/ttf",
+  ".ttc": "font/collection",
+  ".otc": "font/collection",
 };
 
 export function stripMimeParameters(contentType: string): string {
   return contentType.split(";")[0];
+}
+
+/**
+ * MIME types are case-insensitive per RFC 2045. Use this at every upload and
+ * serving boundary so mixed-case values like TEXT/HTML cannot bypass content-type safety gating.
+ */
+export function normalizeMimeType(contentType: string): string {
+  return stripMimeParameters(contentType).toLowerCase();
 }
 
 export function stripFileExtension(fileName: string): string {
@@ -713,6 +1051,10 @@ export function isPdfContentType(contentType: string): boolean {
 
 export function isMarkdownContentType(contentType: string): boolean {
   return contentType === "text/markdown";
+}
+
+export function opensInSidePanel(contentType: string): boolean {
+  return getFileFormat(contentType)?.opensInSidePanel ?? false;
 }
 
 /**

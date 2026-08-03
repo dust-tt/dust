@@ -1,12 +1,12 @@
 // Service registry - centralized configuration for all services
 
 import { stat } from "node:fs/promises";
-import type { Environment } from "./environment";
+import { type Environment, getEnvironmentWorktreeDir } from "./environment";
 import { logger } from "./logger";
-import { getEnvFilePath, getLogPath, getWorktreeDir } from "./paths";
+import { getEnvFilePath, getLogPath } from "./paths";
 import type { PortAllocation } from "./ports";
 import { isServiceRunning, readFileTail, spawnShellDaemon } from "./process";
-import { ALL_SERVICES, type ServiceName, getActiveServices } from "./services";
+import { ALL_SERVICES, type ServiceName } from "./services";
 import { buildShell } from "./shell";
 
 // Readiness check types - how to determine if a service is ready
@@ -39,7 +39,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     buildCommand: () => "npm run watch",
     readinessCheck: {
       type: "file",
-      path: (env) => `${getWorktreeDir(env.name, env.metadata.repoRoot)}/sparkle/dist/esm/index.js`,
+      path: (env) => `${getEnvironmentWorktreeDir(env.metadata)}/sparkle/dist/esm/index.js`,
     },
   },
   sdk: {
@@ -49,29 +49,50 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     buildCommand: () => "npm run watch",
     readinessCheck: {
       type: "file",
-      path: (env) =>
-        `${getWorktreeDir(env.name, env.metadata.repoRoot)}/sdks/js/dist/client.esm.js`,
+      path: (env) => `${getEnvironmentWorktreeDir(env.metadata)}/sdks/js/dist/client.esm.js`,
     },
-  },
-  front: {
-    cwd: "front",
-    needsNvm: true,
-    needsEnvSh: true,
-    buildCommand: () => "npm run dev",
-    readinessCheck: {
-      type: "http",
-      url: (ports) => `http://localhost:${ports.front}/api/healthz`,
-    },
-    portKey: "front",
   },
   "front-api": {
     cwd: "front-api",
     needsNvm: true,
     needsEnvSh: true,
-    buildCommand: () => "npm run dev",
+    // forbid-next.cjs throws if anything loads `next` at runtime, guaranteeing
+    // the Hono server (not Next) serves every request. Mirrors the front-hono
+    // proc in tools/mprocs.yaml.
+    // HOSTNAME=127.0.0.1 forces an IPv4 bind: "localhost" resolves to ::1 on
+    // macOS, but the port forwarder connects upstream over IPv4, so without
+    // this the forwarded port (3000) cannot reach front-api.
+    // Inline PORT= shadows the env.sh `PORT=ports.front` export so front-api
+    // binds its own dedicated port instead of stealing the proxy port.
+    buildCommand: (env) =>
+      `HOSTNAME=127.0.0.1 PORT=${env.ports.frontApi} NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev`,
     readinessCheck: {
       type: "http",
-      url: (ports) => `http://localhost:${ports.front}/api/healthz`,
+      url: (ports) => `http://localhost:${ports.frontApi}/api/healthz`,
+    },
+    portKey: "frontApi",
+  },
+  marketing: {
+    cwd: "marketing",
+    needsNvm: true,
+    needsEnvSh: true,
+    // -p overrides PORT inherited from env.sh.
+    buildCommand: (env) => `npm run dev -- -p ${env.ports.marketing}`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.marketing}/`,
+    },
+    portKey: "marketing",
+  },
+  proxy: {
+    cwd: "x/henry/dust-hive",
+    needsNvm: false,
+    needsEnvSh: false,
+    buildCommand: (env) =>
+      `bun run src/proxy-daemon.ts ${env.ports.front} ${env.ports.frontApi} ${env.ports.marketing}`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.front}/__hive/healthz`,
     },
     portKey: "front",
   },
@@ -157,9 +178,8 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all active services except sparkle, SDK, and viz which start at spawn/manually).
-// Uses getActiveServices() so only the active front variant (front or front-api) is included.
-export const WARM_SERVICES: ServiceName[] = getActiveServices().filter(
+// Services to start during warm (all services except sparkle, SDK, and viz which start at spawn/manually).
+export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
   (service) => service !== "sparkle" && service !== "sdk" && service !== "viz"
 );
 
@@ -186,7 +206,7 @@ function buildServiceCommand(env: Environment, service: ServiceName): string {
 // Get the working directory for a service
 function getServiceCwd(env: Environment, service: ServiceName): string {
   const config = SERVICE_REGISTRY[service];
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   return `${worktreePath}/${config.cwd}`;
 }
 
@@ -330,7 +350,7 @@ export function getHealthChecks(
 ): Array<{ service: ServiceName; url: string }> {
   const checks: Array<{ service: ServiceName; url: string }> = [];
 
-  for (const service of getActiveServices()) {
+  for (const service of ALL_SERVICES) {
     const config = SERVICE_REGISTRY[service];
     if (config.readinessCheck?.type === "http") {
       checks.push({

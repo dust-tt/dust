@@ -129,14 +129,24 @@ export interface RecurringCreditDef {
   }>;
   recurrence_frequency?: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
   // Optional. Offset relative to the recurring credit start that determines
-  // when the contract will stop creating recurring commits. Use a very small
-  // value (e.g. 1 day) to make the credit one-shot — Metronome fires the
-  // first commit on contract start, then the duration expires before the
-  // next would be issued.
+  // when the contract will stop creating recurring commits. Set the duration to
+  // exactly one recurrence period (e.g. 1 year for an ANNUAL credit) to make the
+  // credit one-shot: Metronome fires the first commit on contract start, and the
+  // schedule closes before the next occurrence would be issued.
+  //
+  // A duration SHORTER than the recurrence period also stops recurrence, but
+  // prorates the single commit down to the duration's fraction of the period
+  // (e.g. ANNUAL + 1 DAY granted 1/365 of the amount). Pair a sub-period
+  // duration with `proration: "NONE"` if you need the full amount.
   duration?: {
     unit: "DAYS" | "WEEKS" | "MONTHS" | "YEARS";
     value: number;
   };
+  // Whether the first and/or last commit is prorated by time. Metronome
+  // defaults to "FIRST_AND_LAST" when omitted, which prorates the first commit
+  // to its share of the recurrence period — set "NONE" to grant the full
+  // `access_amount` on a one-shot credit.
+  proration?: "NONE" | "FIRST" | "LAST" | "FIRST_AND_LAST";
   name?: string;
   // Attach the credit to a SEAT_BASED subscription so each seat gets its own
   // allocation (INDIVIDUAL) or all seats share one pool (POOLED).
@@ -213,10 +223,6 @@ export function getCreditTypeProgrammaticUsdId(): string {
     : PROD_CREDIT_TYPE_PROG_USD_ID;
 }
 
-// Number of pricing tiers for any tiered seat-style product (MAU, future).
-// Tier products and rates are derived from the prefix.
-const SEAT_TIER_COUNT = 6;
-
 export const getOverageAwuRate = (currency: SupportedCurrency) => {
   return metronomeAmount(AWU_PRICE_PER_CREDIT[currency] * 100, currency) * 2;
 };
@@ -224,7 +230,7 @@ export const getOverageAwuRate = (currency: SupportedCurrency) => {
 // Setup-only display names. Runtime code identifies seat-style subscriptions
 // via the `DUST_SEAT_TYPE` custom field on the product (see
 // SEAT_TYPE_CUSTOM_FIELD_KEY), not by name comparison.
-export const WORKSPACE_SEAT_PRODUCT_NAME = "Workspace Seat";
+export const WORKSPACE_SEAT_PRODUCT_NAME = "Platform Seat";
 export const PRO_SEAT_PRODUCT_NAME = "Pro Seat";
 export const MAX_SEAT_PRODUCT_NAME = "Max Seat";
 export const FREE_SEAT_PRODUCT_NAME = "Free Seat";
@@ -238,7 +244,7 @@ export const USAGE_TAG = "usage";
 
 // Tag shared by all seat SUBSCRIPTION products (Workspace / Pro / Max / Free,
 // monthly + yearly).
-const SEAT_TAG = "seat";
+export const SEAT_TAG = "seat";
 
 // Billing-frequency tags stamped on seat products alongside SEAT_TAG so credits
 // / commits can target a single cadence (e.g. `applicable_product_tags:
@@ -268,43 +274,6 @@ export const BILLING_CYCLE_CONFIG_FIRST_OF_MONTH = {
   },
 };
 
-// "MAU Tier 1", …, "MAU Tier 6".
-function buildSeatTierProductNames(prefix: string): string[] {
-  return Array.from(
-    { length: SEAT_TIER_COUNT },
-    (_, i) => `${prefix} Tier ${i + 1}`
-  );
-}
-
-// SUBSCRIPTION product entries to inject into PRODUCTS for a tiered seat family.
-function buildSeatTierProducts(prefix: string): ProductDef[] {
-  return buildSeatTierProductNames(prefix).map(
-    (name): ProductDef => ({ name, type: "SUBSCRIPTION" })
-  );
-}
-
-// Default rate entries for a tiered seat family on a rate card. Not entitled
-// by default — enabled per contract via overrides with per-tier pricing.
-export function buildSeatTierRates({
-  prefix,
-  creditTypeId,
-}: {
-  prefix: string;
-  creditTypeId: string;
-}): RateDef[] {
-  return buildSeatTierProductNames(prefix).map(
-    (name): RateDef => ({
-      product_name: name,
-      starting_at: "2026-04-01T00:00:00.000Z",
-      entitled: false,
-      rate_type: "FLAT",
-      billing_frequency: "MONTHLY",
-      price: 0,
-      credit_type_id: creditTypeId,
-    })
-  );
-}
-
 export const PRODUCTS: ProductDef[] = [
   // --- Legacy usage product (USD, 30% markup baked into quantity_conversion) ---
   {
@@ -331,7 +300,7 @@ export const PRODUCTS: ProductDef[] = [
   {
     name: "AI Usage",
     type: "USAGE",
-    billable_metric_name: "LLM Provider Cost AWU",
+    billable_metric_name: "LLM Provider Cost AWU v2",
     pricing_group_key: [USAGE_TYPE_GROUP_KEY],
     presentation_group_key: ["user_id"],
     tags: [USAGE_TAG],
@@ -339,7 +308,7 @@ export const PRODUCTS: ProductDef[] = [
   {
     name: "Tool Usage",
     type: "USAGE",
-    billable_metric_name: "Tool Invocations",
+    billable_metric_name: "Tool Invocations v2",
     pricing_group_key: [USAGE_TYPE_GROUP_KEY, "tool_category"],
     presentation_group_key: ["user_id"],
     tags: [USAGE_TAG],
@@ -396,16 +365,6 @@ export const PRODUCTS: ProductDef[] = [
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "free" },
     tags: [SEAT_TAG, MONTHLY_TAG],
   },
-  // MAU product — single subscription for simple (non-tiered) enterprise contracts.
-  // Used when no MAU_TIERS custom field is set on the contract.
-  { name: "MAU", type: "SUBSCRIPTION" },
-  // Tiered seat products — one per pricing tier for contracts with graduated
-  // pricing. Not entitled by default; enabled per contract via overrides.
-  // Quantity managed by the MAU/seat sync flow based on the contract's tier
-  // custom field.
-  ...buildSeatTierProducts("MAU"),
-  // MAU Commit — appears as a line item on invoices for the monthly minimum charge.
-  { name: "MAU Commit", type: "FIXED" },
   // FIXED products for credit grants — separate products for distinct invoice line items.
   {
     name: "Free Credits",
@@ -425,6 +384,18 @@ export const PRODUCTS: ProductDef[] = [
   },
   {
     name: "Seat Subscription Credits",
+    type: "FIXED",
+  },
+  {
+    name: "Seat Subscription Commit",
+    type: "FIXED",
+  },
+  // FIXED product for arbitrary scheduled/one-off invoice charges (e.g.
+  // professional services, setup fees) added via `add_scheduled_charges`.
+  // Unlike the credit products above, this grants no contract credit — it's
+  // a pure invoice line item.
+  {
+    name: "Platform Fee",
     type: "FIXED",
   },
 ];

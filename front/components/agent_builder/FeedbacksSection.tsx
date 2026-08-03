@@ -20,14 +20,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
+  Eye,
+  EyeOff,
   Hoverable,
   Icon,
+  LinkExternal01,
   Spinner,
+  ThumbsDown,
+  ThumbsUp,
   Timeline,
 } from "@dust-tt/sparkle";
 import { memo, useEffect, useState } from "react";
@@ -122,7 +122,7 @@ export const FeedbacksSection = ({
 
   if (!agentConfigurationHistory) {
     return (
-      <div className="mt-3 text-sm text-foreground dark:text-foreground-night">
+      <div className="mt-3 text-sm text-foreground">
         Error loading the previous agent versions.
       </div>
     );
@@ -186,7 +186,7 @@ export const FeedbacksSection = ({
     >
       {!agentConfigurationFeedbacks ||
       agentConfigurationFeedbacks.length === 0 ? (
-        <div className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="mt-3 text-sm text-muted-foreground">
           No feedback yet.
         </div>
       ) : (
@@ -293,7 +293,7 @@ function FeedbackCard({
         <div className="flex gap-1">
           <CardActionButton
             size="icon"
-            icon={feedback.dismissed ? EyeIcon : EyeSlashIcon}
+            icon={feedback.dismissed ? Eye : EyeOff}
             onClick={() => toggleDismiss(!feedback.dismissed)}
             disabled={isDismissing}
             tooltip={`Mark feedback as ${feedback.dismissed ? "unseen" : "seen"}`}
@@ -301,7 +301,7 @@ function FeedbackCard({
           {conversationUrl && (
             <CardActionButton
               size="icon"
-              icon={ExternalLinkIcon}
+              icon={LinkExternal01}
               href={conversationUrl ?? ""}
               disabled={!conversationUrl}
               tooltip="View conversation"
@@ -320,7 +320,7 @@ function FeedbackCard({
         />
         <div className="flex flex-col">
           <div className="font-semibold">{feedback.userName}</div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-sm text-muted-foreground">
             {timeSinceFeedback} ago
           </div>
         </div>
@@ -332,23 +332,19 @@ function FeedbackCard({
             className={cn(
               "flex-shrink-0 rounded-full p-2",
               feedback.thumbDirection === "up"
-                ? "bg-success-200 dark:bg-success-200-night"
-                : "bg-info-200 dark:bg-info-200-night"
+                ? "bg-success-200"
+                : "bg-info-200"
             )}
           >
             <Icon
               size="xs"
               className={cn(
-                "text-foreground dark:text-foreground-night",
+                "text-foreground",
                 feedback.thumbDirection === "up"
-                  ? "text-success-800 dark:text-success-800-night"
-                  : "text-info-800 dark:text-info-800-night"
+                  ? "text-success-800"
+                  : "text-info-800"
               )}
-              visual={
-                feedback.thumbDirection === "up"
-                  ? HandThumbUpIcon
-                  : HandThumbDownIcon
-              }
+              visual={feedback.thumbDirection === "up" ? ThumbsUp : ThumbsDown}
             />
           </div>
           <div className="flex-grow overflow-hidden">{feedback.content}</div>

@@ -1,11 +1,17 @@
-import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
+import {
+  isLightServerSideMCPToolConfiguration,
+  isServerSideMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
 import type { ProcessActionOutputsType } from "@app/lib/api/actions/servers/extract_data/helpers";
 import {
   generateProcessToolOutput,
@@ -13,26 +19,59 @@ import {
   getPromptForProcessDustApp,
 } from "@app/lib/api/actions/servers/extract_data/helpers";
 import {
-  EXTRACT_DATA_BASE_TOOLS_METADATA,
-  EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA,
+  EXTRACT_DATA_MAIN_TOOL_NAME,
+  makeExtractDataBaseToolsMetadata,
+  makeExtractDataToolsWithTagsMetadata,
 } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { processDataSources } from "@app/lib/api/assistant/process_data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
+import {
+  isJSONSchemaObject,
+  validateJsonSchema,
+} from "@app/lib/utils/json_schemas";
 import { Err, Ok } from "@app/types/shared/result";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+function getServerSideConfiguration(toolContext?: ToolContext) {
+  if (
+    toolContext?.listToolsContext &&
+    isServerSideMCPServerConfiguration(
+      toolContext.listToolsContext.agentActionConfiguration
+    )
+  ) {
+    return toolContext.listToolsContext.agentActionConfiguration;
+  }
+
+  if (
+    toolContext?.runContext &&
+    isLightServerSideMCPToolConfiguration(
+      toolContext.runContext.toolConfiguration
+    )
+  ) {
+    return toolContext.runContext.toolConfiguration;
+  }
+
+  return null;
+}
+
 // Create tools with access to auth via closure
 export function createExtractDataTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContext
 ) {
-  const areTagsDynamic = agentLoopContext
-    ? shouldAutoGenerateTags(agentLoopContext)
+  const areTagsDynamic = toolContext
+    ? shouldAutoGenerateTags(toolContext)
     : false;
+  const serverSideConfiguration = getServerSideConfiguration(toolContext);
+  const isJsonSchemaConfigured =
+    serverSideConfiguration !== null &&
+    serverSideConfiguration.jsonSchema !== null;
+  const isTimeFrameConfigured =
+    serverSideConfiguration !== null &&
+    serverSideConfiguration.timeFrame !== null;
 
   async function extractFunction({
     dataSources,
@@ -49,13 +88,12 @@ export function createExtractDataTools(
     tagsIn?: string[];
     tagsNot?: string[];
   }) {
-    // Unwrap and prepare variables.
     assert(
-      agentLoopContext?.runContext,
-      "agentLoopContext is required to run the extract_data tool"
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
     );
-    const { agentConfiguration, conversation } = agentLoopContext.runContext;
-    const { model } = agentConfiguration;
+    const { agentConfiguration, modelInfo, conversation } =
+      toolContext.runContext;
 
     // Defensive handling: parse jsonSchema if it arrives as a JSON string.
     // This can happen when the LLM generates a stringified JSON schema instead of an object,
@@ -73,10 +111,39 @@ export function createExtractDataTools(
       }
     }
 
+    if (!isJSONSchemaObject(jsonSchema)) {
+      return new Err(
+        new MCPError(
+          `Invalid jsonSchema: expected a valid JSON object but received ${Array.isArray(jsonSchema) ? "an array" : typeof jsonSchema}`,
+          { tracked: false }
+        )
+      );
+    }
+
+    // If jsonSchema was pre-configured by the user, it has an additional
+    // mimeType property, as is convention. Remove it before validating the
+    // schema and passing it to the LLM.
+    const jsonSchemaForExtraction =
+      "mimeType" in jsonSchema
+        ? Object.fromEntries(
+            Object.entries(jsonSchema).filter(([key]) => key !== "mimeType")
+          )
+        : jsonSchema;
+
+    // Similarly, if timeFrame was pre-configured by the user, it has an
+    // additional mimeType property. Remove it before using it for extraction.
+    const timeFrameForExtraction =
+      timeFrame && "mimeType" in timeFrame
+        ? {
+            duration: timeFrame.duration,
+            unit: timeFrame.unit,
+          }
+        : timeFrame;
+
     // Validate the jsonSchema structure regardless of whether it was pre-configured
     // or generated by the LLM at runtime, to catch malformed schemas early before
     // sending them to the LLM.
-    const validationResult = validateJsonSchema(jsonSchema, {
+    const validationResult = validateJsonSchema(jsonSchemaForExtraction, {
       // LLMs often do this mistake which Mistral considers as invalid JSON schema.
       enforceRequiredFields: true,
     });
@@ -89,29 +156,16 @@ export function createExtractDataTools(
       );
     }
 
-    // If jsonSchema was pre-configured by the user, i.e. not generated by the
-    // tool, then it has an additional mimeType property, as is convention.
-    // We remove it here before passing the jsonSchema to the LLM.
-    // Thus the any cast.
-    if ("mimeType" in jsonSchema) {
-      delete (jsonSchema as any).mimeType;
-    }
-
-    // Similarly, if timeFrame was pre-configured by the user, it has an additional mimeType property.
-    // We remove it here before passing the timeFrame to the LLM.
-    if (timeFrame && "mimeType" in timeFrame) {
-      delete (timeFrame as any).mimeType;
-    }
-
     const prompt = await getPromptForProcessDustApp({
       auth,
       agentConfiguration,
+      modelInfo,
       conversation,
     });
 
     const coreDataSourceSearchCriteriasResult =
       await getCoreDataSourceSearchCriterias(auth, dataSources, {
-        timeFrame,
+        timeFrame: timeFrameForExtraction,
         tagsIn,
         tagsNot,
       });
@@ -126,10 +180,10 @@ export function createExtractDataTools(
     const res = await processDataSources({
       auth,
       coreDataSourceSearchCriterias: coreDataSourceSearchCriteriasResult.value,
-      model,
+      modelInfo,
       prompt,
       objective,
-      jsonSchema,
+      jsonSchema: jsonSchemaForExtraction,
       topK: PROCESS_ACTION_TOP_K,
     });
 
@@ -144,44 +198,49 @@ export function createExtractDataTools(
       total_documents: res.value.totalDocuments,
     };
 
-    // Generate file and process tool output
-    const { jsonFile, processToolOutput } = await generateProcessToolOutput({
+    const result = await generateProcessToolOutput({
       auth,
-      conversation,
+      runContext: toolContext.runContext,
       outputs,
-      jsonSchema,
-      timeFrame: timeFrame ?? null,
+      jsonSchema: jsonSchemaForExtraction,
+      timeFrame: timeFrameForExtraction ?? null,
       objective,
     });
+    if (result.isErr()) {
+      return new Err(new MCPError(result.error.message));
+    }
 
-    // Upload the file to the conversation data source.
-    // This step is critical for file persistence across sessions.
-    await uploadFileToConversationDataSource({
-      auth,
-      file: jsonFile,
-    });
-
-    return new Ok(processToolOutput);
+    return new Ok(result.value.processToolOutput);
   }
 
   if (!areTagsDynamic) {
+    const toolsMetadata = makeExtractDataBaseToolsMetadata({
+      isJsonSchemaConfigured,
+      isTimeFrameConfigured,
+    });
+
     // Return base tools without tags
-    const handlers: ToolHandlers<typeof EXTRACT_DATA_BASE_TOOLS_METADATA> = {
-      extract_information_from_documents: async (params, _extra) => {
+    const handlers: ToolHandlers<typeof toolsMetadata> = {
+      [EXTRACT_DATA_MAIN_TOOL_NAME]: async (params) => {
         return extractFunction(params);
       },
     };
-    return buildTools(EXTRACT_DATA_BASE_TOOLS_METADATA, handlers);
+    return buildTools(toolsMetadata, handlers);
   }
 
+  const toolsMetadata = makeExtractDataToolsWithTagsMetadata({
+    isJsonSchemaConfigured,
+    isTimeFrameConfigured,
+  });
+
   // Return tools with tags support
-  const handlers: ToolHandlers<typeof EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA> = {
-    extract_information_from_documents: async (params, _extra) => {
+  const handlers: ToolHandlers<typeof toolsMetadata> = {
+    [EXTRACT_DATA_MAIN_TOOL_NAME]: async (params) => {
       return extractFunction(params);
     },
-    find_tags: async ({ query, dataSources }, _extra) => {
+    find_tags: async ({ query, dataSources }) => {
       return executeFindTags(auth, query, dataSources);
     },
   };
-  return buildTools(EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA, handlers);
+  return buildTools(toolsMetadata, handlers);
 }

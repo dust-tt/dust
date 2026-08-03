@@ -4,9 +4,7 @@ import { useUser } from "@app/lib/swr/user";
 import { timeAgoFrom } from "@app/lib/utils";
 import {
   POD_MANAGER_AGENT_SID,
-  POD_TASK_NO_ASSIGNEE_LABEL,
   type PodTaskActorType,
-  type PodTaskAssigneeType,
   type PodTaskType,
 } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -15,14 +13,13 @@ import type {
   UserTypeWithWorkspaces,
 } from "@app/types/user";
 import {
-  Avatar,
-  BookOpenIcon,
-  ChatBubbleLeftRightIcon,
+  BookOpen01,
   ConfluenceLogo,
   cn,
   DriveLogo,
   GithubLogo,
   Icon,
+  MessageChatSquare,
   MicrosoftLogo,
   NotionLogo,
   SlackLogo,
@@ -102,7 +99,7 @@ export function TaskMetadataTooltip({
   const label = (
     <div className="flex flex-col gap-1">
       {isAssistantWorkInProgress && (
-        <div className="text-xs font-medium text-foreground dark:text-foreground-night">
+        <div className="text-xs font-medium text-foreground">
           An agent is working on this task.
         </div>
       )}
@@ -120,7 +117,7 @@ export function TaskMetadataTooltip({
         </div>
       )}
       {task.agentSuggestionStatus === "pending" ? (
-        <div className="break-all font-mono text-[11px] tabular-nums text-muted-foreground dark:text-muted-foreground-night">
+        <div className="break-all font-mono text-[11px] tabular-nums text-muted-foreground">
           ID: {task.sId}
         </div>
       ) : null}
@@ -155,8 +152,8 @@ function getSourceDisplay(source: PodTaskType["sources"][number]) {
     PodTaskType["sources"][number]["sourceType"],
     React.ComponentType
   > = {
-    project_conversation: ChatBubbleLeftRightIcon,
-    project_knowledge: BookOpenIcon,
+    project_conversation: MessageChatSquare,
+    project_knowledge: BookOpen01,
     slack: SlackLogo,
     notion: NotionLogo,
     gdrive: DriveLogo,
@@ -195,9 +192,7 @@ export function TaskSources({
     <span
       className={cn(
         "hidden text-xs md:block",
-        isDone
-          ? "text-faint dark:text-faint-night line-through"
-          : "text-muted-foreground dark:text-muted-foreground-night"
+        isDone ? "text-faint line-through" : "text-muted-foreground"
       )}
     >
       From{" "}
@@ -269,49 +264,5 @@ export function TaskSources({
         </span>
       ))}
     </span>
-  );
-}
-
-export function TaskAssigneeHeader({
-  user,
-  viewerUserId,
-  className,
-}: {
-  user: PodTaskAssigneeType | null;
-  viewerUserId: string | null;
-  className?: string;
-}) {
-  const isYou = viewerUserId !== null && user?.sId === viewerUserId;
-  const displayName =
-    user === null ? POD_TASK_NO_ASSIGNEE_LABEL : user.fullName;
-
-  return (
-    <div className={cn("mb-1 mt-2 flex items-center gap-2", className)}>
-      <Tooltip
-        label={displayName}
-        trigger={
-          <span className="inline-flex shrink-0 items-center justify-center">
-            {user !== null ? (
-              <Avatar
-                size="xxs"
-                isRounded
-                visual={user.image ?? "/static/humanavatar/anonymous.png"}
-              />
-            ) : (
-              <Avatar
-                size="xxs"
-                isRounded
-                visual={null}
-                className="bg-background dark:bg-background-night"
-              />
-            )}
-          </span>
-        }
-      />
-      <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
-        {displayName}
-        {user !== null && isYou ? " (you)" : ""}
-      </span>
-    </div>
   );
 }

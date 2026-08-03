@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { getPokeRolesForUser } from "@app/lib/poke/roles";
 import type { PokeCtx } from "@front-api/middlewares/ctx";
 import { resolveSession } from "@front-api/middlewares/session_resolution";
 import { apiError } from "@front-api/middlewares/utils";
@@ -30,8 +31,11 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
     });
   }
 
+  const pokeRoles = await getPokeRolesForUser(auth.getNonNullableUser().email);
+
   ctx.set("auth", auth);
   ctx.set("session", sessionResult);
+  ctx.set("pokeRoles", pokeRoles);
   await next();
 });
 

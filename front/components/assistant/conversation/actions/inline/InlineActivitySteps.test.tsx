@@ -58,6 +58,7 @@ const mockAgentMessage: LightAgentMessageType = {
   richMentions: [],
   completionDurationMs: null,
   reactions: [],
+  costCredits: null,
   configuration: {
     sId: "agent_123",
     name: "dust",
@@ -68,6 +69,8 @@ const mockAgentMessage: LightAgentMessageType = {
   citations: {},
   generatedFiles: [],
   activitySteps: [],
+  resolvedModel: null,
+  modelResolutionMethod: null,
 };
 
 describe("InlineActivitySteps", () => {

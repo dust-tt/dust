@@ -3,7 +3,7 @@ import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartLegend } from "@app/components/charts/ChartLegend";
 import {
   Button,
-  FullscreenIcon,
+  Maximize01,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -48,19 +48,17 @@ export function ChartContainer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   return (
     <>
-      <div className="observability-chart-container rounded-lg border border-border bg-card p-4 dark:border-border-night">
+      <div className="observability-chart-container rounded-lg border border-border bg-background p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-base font-medium text-foreground dark:text-foreground-night">
-              {title}
-            </h3>
+          <div className="flex shrink-0 items-center justify-between gap-2">
+            <h3 className="text-base font-medium text-foreground">{title}</h3>
             {statusChip}
           </div>
           <div className="flex items-center gap-3">
             {additionalControls}
             {isAllowFullScreen && (
               <Button
-                icon={FullscreenIcon}
+                icon={Maximize01}
                 variant="ghost"
                 size="xs"
                 onClick={() => setIsFullscreen(true)}
@@ -70,7 +68,7 @@ export function ChartContainer({
           </div>
         </div>
         {description && (
-          <div className="mb-3 text-xs text-muted-foreground dark:text-muted-foreground-night">
+          <div className="mb-3 text-xs text-muted-foreground">
             {description}
           </div>
         )}
@@ -82,9 +80,7 @@ export function ChartContainer({
             {isLoading ? (
               <Spinner size="lg" />
             ) : (
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {message}
-              </span>
+              <span className="text-sm text-muted-foreground">{message}</span>
             )}
           </div>
         ) : (

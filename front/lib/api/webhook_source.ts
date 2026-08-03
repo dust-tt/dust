@@ -97,7 +97,7 @@ export async function deleteWebhookSource(
   return new Ok(undefined);
 }
 
-export type WebhookSourceWithCounts = WebhookSourceType & {
+type WebhookSourceWithCounts = WebhookSourceType & {
   viewCount: number;
   triggerCount: number;
 };
@@ -140,7 +140,7 @@ export async function listWebhookSourcesWithCounts(
   return results;
 }
 
-export type WebhookSourceAdminDetails = {
+type WebhookSourceAdminDetails = {
   webhookSource: WebhookSourceForAdminType;
   views: WebhookSourceViewForAdminType[];
   triggers: Array<TriggerType & { editorUser: UserType | null }>;

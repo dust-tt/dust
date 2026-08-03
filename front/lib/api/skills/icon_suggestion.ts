@@ -70,7 +70,7 @@ const specifications: AgentActionSpecification[] = [
   },
 ];
 
-export interface SkillIconSuggestionInputs {
+interface SkillIconSuggestionInputs {
   name: string;
   instructions: string;
   agentFacingDescription: string;

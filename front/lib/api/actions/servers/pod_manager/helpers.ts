@@ -5,7 +5,11 @@ import type {
   DustPodConfigurationType,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
 import type { DataSourceFilter } from "@app/lib/api/assistant/configuration/types";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
@@ -14,8 +18,8 @@ import {
 } from "@app/lib/api/projects/context";
 import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -99,9 +103,7 @@ export async function buildProjectRetrieveDataSources(
  */
 export async function getPod(
   auth: Authenticator,
-  from:
-    | { agentLoopContext?: AgentLoopContextType }
-    | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   if ("dustPod" in from && from.dustPod) {
     const { dustPod } = from;
@@ -137,52 +139,46 @@ export async function getPod(
       );
     }
 
+    // `SpaceResource.fetchById` filters by workspace only, not by the caller's space
+    // membership, so a caller passing an arbitrary pod id could otherwise read its members,
+    // conversations, documents and tasks. Report unreadable pods as not-found so this cannot
+    // probe which pod sIds exist.
+    if (!pod.canRead(auth)) {
+      return new Err(
+        new MCPError(`Pod not found: ${podId}`, { tracked: false })
+      );
+    }
+
     return new Ok({ pod });
   }
 
   // Otherwise, use the existing logic to get space from conversation context.
-  if ("agentLoopContext" in from && from.agentLoopContext) {
-    const { agentLoopContext } = from;
-    if (!agentLoopContext.runContext?.conversation) {
-      return new Err(
-        new MCPError("No conversation context available", { tracked: false })
-      );
+  if ("toolContext" in from && from.toolContext) {
+    const { toolContext } = from;
+    if (isAgentLoopRunContext(toolContext.runContext)) {
+      const conversation = toolContext.runContext.conversation;
+
+      if (!isPodConversation(conversation)) {
+        return new Err(
+          new MCPError(
+            "This conversation is not in a Pod. Pod context management is only available in Pod conversations.",
+            { tracked: false }
+          )
+        );
+      }
+
+      const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+      if (!space) {
+        return new Err(new MCPError("Pod not found", { tracked: false }));
+      }
+
+      return new Ok({ pod: space });
     }
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        agentLoopContext.runContext.conversation.sId
-      );
-
-    if (conversationRes.isErr()) {
-      return new Err(
-        new MCPError(
-          `Conversation not found: ${conversationRes.error.message}`,
-          {
-            tracked: false,
-          }
-        )
-      );
+    if (isSandboxFunctionRunContext(toolContext.runContext)) {
+      const space = toolContext.runContext.invocation.sandboxFunction.space;
+      return new Ok({ pod: space });
     }
-
-    const conversation = conversationRes.value;
-
-    if (!isPodConversation(conversation)) {
-      return new Err(
-        new MCPError(
-          "This conversation is not in a Pod. Pod context management is only available in Pod conversations.",
-          { tracked: false }
-        )
-      );
-    }
-
-    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-    if (!space) {
-      return new Err(new MCPError("Pod not found", { tracked: false }));
-    }
-
-    return new Ok({ pod: space });
   }
 
   return new Err(new MCPError("No Pod context available", { tracked: false }));
@@ -192,7 +188,7 @@ export async function getPod(
  * Checks if the user has write permissions for the space.
  * Returns an error if they don't.
  */
-export function checkWritePermission(
+function checkWritePermission(
   auth: Authenticator,
   space: SpaceResource
 ): Result<void, MCPError> {
@@ -212,9 +208,7 @@ export function checkWritePermission(
  */
 export async function getWritablePodContext(
   auth: Authenticator,
-  from:
-    | { agentLoopContext?: AgentLoopContextType }
-    | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   const contextRes = await getPod(auth, from);
   if (contextRes.isErr()) {
@@ -251,6 +245,86 @@ export function makeSuccessResponse(data: Record<string, unknown>): {
  * Wraps an async operation with standardized error handling.
  * Catches exceptions and converts them to MCPError results.
  */
+export async function resolvePodUserRolesBySId(
+  auth: Authenticator,
+  pod: SpaceResource
+): Promise<Map<string, "editor" | "member">> {
+  const { groupsToProcess, allGroupMemberships } =
+    await pod.fetchManualGroupsMemberships(auth, {
+      shouldIncludeAllMembers: false,
+    });
+
+  const groupById = new Map(
+    groupsToProcess.map((group) => [group.id, group] as const)
+  );
+  const membershipByUserId = new Map<number, { isEditor: boolean }>();
+
+  for (const membership of allGroupMemberships) {
+    const group = groupById.get(membership.groupId);
+    if (!group) {
+      continue;
+    }
+
+    const previous = membershipByUserId.get(membership.userId);
+    membershipByUserId.set(membership.userId, {
+      isEditor: Boolean(previous?.isEditor) || group.kind === "space_editors",
+    });
+  }
+
+  const users = await UserResource.fetchByModelIds([
+    ...membershipByUserId.keys(),
+  ]);
+  const roleByUserSId = new Map<string, "editor" | "member">();
+
+  for (const user of users) {
+    const membership = membershipByUserId.get(user.id);
+    if (!membership) {
+      continue;
+    }
+    roleByUserSId.set(user.sId, membership.isEditor ? "editor" : "member");
+  }
+
+  return roleByUserSId;
+}
+
+export async function getPodMemberAndEditorSIds(
+  auth: Authenticator,
+  pod: SpaceResource
+): Promise<{ editorIds: string[]; memberIds: string[] }> {
+  const roleByUserSId = await resolvePodUserRolesBySId(auth, pod);
+  const editorIds: string[] = [];
+  const memberIds: string[] = [];
+
+  for (const [userSId, role] of roleByUserSId.entries()) {
+    if (role === "editor") {
+      editorIds.push(userSId);
+    } else {
+      memberIds.push(userSId);
+    }
+  }
+
+  return { editorIds, memberIds };
+}
+
+export function partitionMembersToRemove(
+  membersToRemove: string[],
+  roleByUserSId: Map<string, "editor" | "member">
+): { editorIds: string[]; memberIds: string[] } {
+  const editorIds: string[] = [];
+  const memberIds: string[] = [];
+
+  for (const userId of membersToRemove) {
+    const role = roleByUserSId.get(userId);
+    if (role === "editor") {
+      editorIds.push(userId);
+    } else if (role === "member") {
+      memberIds.push(userId);
+    }
+  }
+
+  return { editorIds, memberIds };
+}
+
 export async function withErrorHandling<T>(
   operation: () => Promise<Result<T, MCPError>>,
   errorMessage: string

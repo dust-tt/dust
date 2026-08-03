@@ -12,7 +12,10 @@ import { usePresetActionHandler } from "@app/components/agent_builder/capabiliti
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
 import { useSkillsAndActionsState } from "@app/components/agent_builder/skills/skillsAndActionsState";
-import type { SheetState } from "@app/components/agent_builder/skills/types";
+import type {
+  CapabilitiesSheetState,
+  SheetState,
+} from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -30,15 +33,15 @@ import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import {
   ActionCard,
-  BookOpenIcon,
+  BookOpen01,
   Button,
   CardGrid,
   EmptyCTA,
   Hoverable,
+  ShapesPlus,
   Spinner,
-  ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 interface SkillCardProps {
@@ -78,14 +81,14 @@ function ActionButtons({
         type="button"
         onClick={onClickCapability}
         label="Add capabilities"
-        icon={ToolsIcon}
+        icon={ShapesPlus}
         variant="primary"
       />
       <Button
         type="button"
         onClick={onClickKnowledge}
         label="Add knowledge"
-        icon={BookOpenIcon}
+        icon={BookOpen01}
         variant="outline"
       />
     </div>
@@ -252,9 +255,16 @@ export function AgentBuilderCapabilitiesBlock({
     setSheetState({ state: "selection" });
   };
 
+  const lastCapabilitiesState = useRef<CapabilitiesSheetState>({
+    state: "selection",
+  });
+
   const handleCloseSheet = useCallback(() => {
+    if (isCapabilitiesSheetOpen(sheetState)) {
+      lastCapabilitiesState.current = sheetState;
+    }
     setSheetState({ state: "closed" });
-  }, []);
+  }, [sheetState]);
 
   const hasCapabilitiesConfigured =
     actionFields.length > 0 || skillFields.length > 0;
@@ -344,7 +354,7 @@ export function AgentBuilderCapabilitiesBlock({
         sheetState={
           isCapabilitiesSheetOpen(sheetState)
             ? sheetState
-            : { state: "selection" }
+            : lastCapabilitiesState.current
         }
         onClose={handleCloseSheet}
         onCapabilitiesSave={handleCapabilitiesSave}

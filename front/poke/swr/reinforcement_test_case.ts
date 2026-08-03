@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetReinforcementTestCaseResponseBody } from "@app/lib/api/poke/conversations";
 import { clientFetch } from "@app/lib/egress/client";
-import type { GetReinforcementTestCaseResponseBody } from "@app/pages/api/poke/workspaces/[wId]/conversations/[cId]/reinforcement_test_case";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 

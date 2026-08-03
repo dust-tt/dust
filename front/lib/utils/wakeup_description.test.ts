@@ -1,7 +1,7 @@
 import {
   describeWakeUpSchedule,
   formatWakeUpSidebarLabel,
-  getNextWakeUpFireAt,
+  getNextWakeUpFireAtFromScheduleConfig,
 } from "@app/lib/utils/wakeup_description";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -161,11 +161,12 @@ describe("formatWakeUpSidebarLabel", () => {
   });
 });
 
-describe("getNextWakeUpFireAt", () => {
+describe("getNextWakeUpFireAtFromScheduleConfig", () => {
   it("returns fireAt as-is for one-shot schedules", () => {
     const fireAt = new Date(2026, 3, 27, 9, 0).getTime();
-    const wakeUp = makeWakeUp({ type: "one_shot", fireAt });
-    expect(getNextWakeUpFireAt(wakeUp)).toBe(fireAt);
+    expect(
+      getNextWakeUpFireAtFromScheduleConfig({ type: "one_shot", fireAt })
+    ).toBe(fireAt);
   });
 
   it("resolves the next cron firing in the schedule's stored timezone", () => {
@@ -173,12 +174,11 @@ describe("getNextWakeUpFireAt", () => {
     // is a Monday.
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 3, 27, 12, 0));
-    const wakeUp = makeWakeUp({
+    const nextFire = getNextWakeUpFireAtFromScheduleConfig({
       type: "cron",
       cron: "0 9 * * *",
       timezone: "America/New_York",
     });
-    const nextFire = getNextWakeUpFireAt(wakeUp);
     expect(nextFire).toBeGreaterThan(Date.now());
     vi.useRealTimers();
   });

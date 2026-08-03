@@ -73,29 +73,38 @@ export class FrontMcpService extends McpService {
       throw new Error("Cannot connect null server");
     }
 
-    try {
-      // If we already have a transport for this workspace, reuse it.
-      if (this.transport) {
-        return;
+    // If we already have a transport for this workspace, reuse it.
+    if (this.transport) {
+      return;
+    }
+
+    // Create our custom transport with workspace-scoped registration.
+    const transport = new BrowserMCPTransport(
+      owner.sId,
+      "front-extension-client",
+      (serverId) => {
+        this.serverId = serverId;
+        onServerIdReceived(serverId);
       }
+    );
 
-      // Create our custom transport with workspace-scoped registration.
-      const transport = new BrowserMCPTransport(
-        owner.sId,
-        "front-extension-client",
-        (serverId) => {
-          this.serverId = serverId;
-          onServerIdReceived(serverId);
-        }
-      );
+    // Claim the slot synchronously, before the async `server.connect` round-trip,
+    // so a concurrent getOrCreateServer/connectServer call short-circuits on the
+    // guard above instead of creating a second transport. A leaked transport keeps
+    // a heartbeat timer alive forever; many such timers firing on the same tick
+    // produce bursts of register/heartbeat calls.
+    this.server = server;
+    this.transport = transport;
 
+    try {
       // Connect the server to the transport.
       await server.connect(transport);
-
-      // Store the server and transport for future reuse.
-      this.server = server;
-      this.transport = transport;
     } catch (error) {
+      // Roll back the claim and tear down the half-open transport so a later
+      // attempt can retry cleanly.
+      this.server = null;
+      this.transport = null;
+      await transport.close();
       logger.error({ err: error }, "Failed to connect MCP server.");
       throw error;
     }

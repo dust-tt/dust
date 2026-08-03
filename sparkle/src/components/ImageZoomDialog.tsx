@@ -3,11 +3,11 @@ import { Dialog, DialogClose, DialogContent } from "@sparkle/components/Dialog";
 import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import { Spinner } from "@sparkle/components/Spinner";
 import {
-  ArrowDownOnSquareIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  XMarkIcon,
-} from "@sparkle/icons/app";
+  ChevronLeft,
+  ChevronRight,
+  Download01,
+  XClose,
+} from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, { useCallback, useState } from "react";
 
@@ -63,14 +63,14 @@ function ImageZoomDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="fit" className="s-overflow-hidden s-p-3 !s-w-fit">
-        <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
+      <DialogContent size="fit" className="overflow-hidden p-3 w-fit">
+        <div className="relative flex items-center justify-center gap-2">
           {/* Previous button */}
           {navigation?.hasPrevious && (
             <Button
               variant="ghost"
               size="sm"
-              icon={ChevronLeftIcon}
+              icon={ChevronLeft}
               onClick={(e) => {
                 e.stopPropagation();
                 navigation.onPrevious();
@@ -79,13 +79,13 @@ function ImageZoomDialog({
           )}
 
           {/* Image container */}
-          <div className="s-relative s-rounded s-overflow-hidden">
+          <div className="relative rounded overflow-hidden">
             {image.isLoading ? (
               <div
                 className={cn(
-                  "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[50vh]",
-                  "s-max-w-[80vh] s-items-center s-justify-center",
-                  "s-bg-muted-background dark:s-bg-muted-background-night"
+                  "mx-auto flex aspect-square w-full min-w-[50vh]",
+                  "max-w-[80vh] items-center justify-center",
+                  "bg-muted-background"
                 )}
               >
                 <Spinner variant="dark" size="lg" />
@@ -95,24 +95,24 @@ function ImageZoomDialog({
                 <ImageWrapper
                   src={image.src}
                   alt={image.alt ?? ""}
-                  className="s-max-h-[calc(90vh-1.5rem)] s-max-w-[calc(90vw-1.5rem)]"
+                  className="max-h-[calc(90vh-1.5rem)] max-w-[calc(90vw-1.5rem)]"
                   onLoad={() => setImageLoaded(true)}
                 />
                 <DialogClose asChild>
                   <Button
                     variant="outline"
                     size="xs"
-                    icon={XMarkIcon}
-                    className="s-absolute s-right-2 s-top-2"
+                    icon={XClose}
+                    className="absolute right-2 top-2"
                   />
                 </DialogClose>
                 {imageLoaded && image.downloadUrl && (
                   <Button
                     variant="outline"
                     size="xs"
-                    icon={ArrowDownOnSquareIcon}
+                    icon={Download01}
                     tooltip="Download"
-                    className="s-absolute s-bottom-2 s-right-2"
+                    className="absolute bottom-2 right-2"
                     onClick={handleDownload}
                   />
                 )}
@@ -125,7 +125,7 @@ function ImageZoomDialog({
             <Button
               variant="ghost"
               size="sm"
-              icon={ChevronRightIcon}
+              icon={ChevronRight}
               onClick={(e) => {
                 e.stopPropagation();
                 navigation.onNext();

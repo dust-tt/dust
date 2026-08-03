@@ -10,8 +10,7 @@ import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { getPodRoute } from "@app/lib/utils/router";
-import { AttachmentIcon, Button, MoreIcon } from "@dust-tt/sparkle";
-import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
+import { Attachment01, Button, DotsHorizontal } from "@dust-tt/sparkle";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { useMemo } from "react";
@@ -19,7 +18,6 @@ import { ConversationContainer } from "../components/conversation/ConversationCo
 
 export const MainPage = () => {
   const { user, workspace, subscription } = useAuth();
-  const { serverId } = useMcpServer();
   useSetupNotifications();
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
@@ -63,7 +61,7 @@ export const MainPage = () => {
             <Button
               size="sm"
               label="Files"
-              icon={AttachmentIcon}
+              icon={Attachment01}
               variant="ghost"
               onClick={() => openPanel({ type: "files" })}
             />
@@ -75,7 +73,7 @@ export const MainPage = () => {
                 <Button
                   size="sm"
                   variant="ghost"
-                  icon={MoreIcon}
+                  icon={DotsHorizontal}
                   aria-label="Conversation menu"
                 />
               }
@@ -96,7 +94,7 @@ export const MainPage = () => {
     >
       {!conversationId && (
         <div className="element fixed bottom-0 right-0 z-10 p-2 text-sm">
-          <p className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
+          <p className="text-muted-foreground text-sm font-normal">
             {shortcut}
           </p>
         </div>
@@ -109,7 +107,6 @@ export const MainPage = () => {
             subscription={subscription}
             conversationId={conversationId}
             conversation={conversation}
-            serverId={serverId}
           />
         </GenerationContextProvider>
       </BlockedActionsProvider>

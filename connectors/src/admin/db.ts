@@ -90,14 +90,16 @@ import {
 import logger from "@connectors/logger/logger";
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { sendInitDbMessage } from "@connectors/types";
+import { isDevelopment, isTest } from "@connectors/types";
 import type { Sequelize } from "sequelize";
 
 async function main(): Promise<void> {
-  await sendInitDbMessage({
-    service: "connectors",
-    logger: logger,
-  });
+  if (!isDevelopment() && !isTest()) {
+    throw new Error(
+      "This script should only be run in development or test mode"
+    );
+  }
+
   await ConnectorModel.sync({ alter: true });
   await ConfluenceConfigurationModel.sync({ alter: true });
   await ConfluenceFolderModel.sync({ alter: true });

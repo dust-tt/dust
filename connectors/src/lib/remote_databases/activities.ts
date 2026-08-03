@@ -21,6 +21,17 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, INTERNAL_MIME_TYPES } from "@connectors/types";
 
+type RemoteDatabaseHierarchyModel =
+  | RemoteDatabaseModel
+  | RemoteSchemaModel
+  | RemoteTableModel;
+
+type CleanupUnusedRemoteDatabaseHierarchyModel = {
+  destroy: () => Promise<unknown>;
+  permission: RemoteDatabaseHierarchyModel["permission"];
+  update: (fields: { lastUpsertedAt: null }) => Promise<unknown>;
+};
+
 const isDatabaseReadGranted = ({
   readGrantedInternalIds,
   internalId,
@@ -343,11 +354,28 @@ const createTableAndHierarchy = async ({
   return { newDatabase, newSchema, newTable, usedInternalIds };
 };
 
+async function cleanupUnusedRemoteDatabaseHierarchyModel({
+  model,
+  preserveSelectedPermissions,
+}: {
+  model: CleanupUnusedRemoteDatabaseHierarchyModel;
+  preserveSelectedPermissions: boolean;
+}) {
+  if (model.permission === "selected" && preserveSelectedPermissions) {
+    await model.update({
+      lastUpsertedAt: null,
+    });
+  } else {
+    await model.destroy();
+  }
+}
+
 export async function sync({
   remoteDBTree,
   connector,
   mimeTypes,
   internalTableIdToRemoteTableId = (internalTableId: string) => internalTableId,
+  preserveSelectedPermissions = false,
   tags,
 }: {
   remoteDBTree?: RemoteDBTree;
@@ -357,6 +385,7 @@ export async function sync({
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
     | typeof INTERNAL_MIME_TYPES.SALESFORCE;
   internalTableIdToRemoteTableId?: (internalTableId: string) => string;
+  preserveSelectedPermissions?: boolean;
   tags: string[];
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -583,9 +612,12 @@ export async function sync({
       dataSourceConfig,
       folderId: unusedDb.internalId,
     });
-    await unusedDb.destroy();
+    await cleanupUnusedRemoteDatabaseHierarchyModel({
+      model: unusedDb,
+      preserveSelectedPermissions,
+    });
 
-    if (unusedDb.permission === "selected") {
+    if (unusedDb.permission === "selected" && !preserveSelectedPermissions) {
       localLogger.error(
         {
           databaseInternalId: unusedDb.internalId,
@@ -602,9 +634,15 @@ export async function sync({
       dataSourceConfig,
       folderId: unusedSchema.internalId,
     });
-    await unusedSchema.destroy();
+    await cleanupUnusedRemoteDatabaseHierarchyModel({
+      model: unusedSchema,
+      preserveSelectedPermissions,
+    });
 
-    if (unusedSchema.permission === "selected") {
+    if (
+      unusedSchema.permission === "selected" &&
+      !preserveSelectedPermissions
+    ) {
       localLogger.error(
         {
           schemaInternalId: unusedSchema.internalId,
@@ -621,9 +659,12 @@ export async function sync({
       dataSourceConfig,
       tableId: unusedTable.internalId,
     });
-    await unusedTable.destroy();
+    await cleanupUnusedRemoteDatabaseHierarchyModel({
+      model: unusedTable,
+      preserveSelectedPermissions,
+    });
 
-    if (unusedTable.permission === "selected") {
+    if (unusedTable.permission === "selected" && !preserveSelectedPermissions) {
       localLogger.error(
         {
           tableInternalId: unusedTable.internalId,

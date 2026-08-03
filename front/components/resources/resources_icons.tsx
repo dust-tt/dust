@@ -1,50 +1,38 @@
 import type { Avatar, Icon } from "@dust-tt/sparkle";
 import {
-  ActionAtomIcon,
-  ActionBrainIcon,
-  ActionChatBubbleBottomCenterTextIcon,
-  ActionChatBubbleThoughtIcon,
-  ActionCheckCircleIcon,
-  ActionCloudArrowLeftRightIcon,
-  ActionDocumentTextIcon,
-  ActionEmotionLaughIcon,
-  ActionFrameIcon,
-  ActionGitBranchIcon,
-  ActionGlobeAltIcon,
+  ActionFrame,
   ActionIcons,
-  ActionImageIcon,
-  ActionLightbulbIcon,
-  ActionListCheckIcon,
-  ActionLockIcon,
-  ActionMagnifyingGlassIcon,
-  ActionMegaphoneIcon,
-  ActionNoiseIcon,
-  ActionPieChartIcon,
-  ActionRobotIcon,
-  ActionScanIcon,
-  ActionSlideshowIcon,
-  ActionSpeakIcon,
-  ActionTableIcon,
-  ActionTimeIcon,
+  AdomikLogo,
   AmplitudeLogo,
+  Announcement01,
   ApifyLogo,
   AsanaLogo,
   AshbyLogo,
+  Atom01,
   AttioLogo,
   BigQueryLogo,
+  Brain,
   CanvaLogo,
+  CheckCircle,
   ClariLogo,
-  CommandLineIcon,
+  Clock,
+  CloudArrowLeftRight,
   ConfluenceLogo,
   ContentsquareLogo,
   CostoryLogo,
+  cn,
   DriveLogo,
+  FaceSmile,
   FathomLogo,
+  File06,
   FreshserviceLogo,
   FrontLogo,
+  GammaLogo,
   GcalLogo,
+  GitBranch01,
   GithubLogo,
   GitlabLogo,
+  Globe01,
   GmailLogo,
   GongLogo,
   GoogleSpreadsheetLogo,
@@ -52,26 +40,41 @@ import {
   GuruLogo,
   HexLogo,
   HubspotLogo,
+  Image01,
   IntercomLogo,
   JiraLogo,
+  LemlistLogo,
+  Lightbulb04,
   LinearLogo,
+  ListSelect,
+  Lock01,
   LumaLogo,
+  MessageCircle01,
+  MessageDotsCircle,
+  MessageSmileCircle,
   MicrosoftExcelLogo,
   MicrosoftLogo,
   MicrosoftOutlookLogo,
   MicrosoftTeamsLogo,
   MiroLogo,
   MondayLogo,
+  NaptaLogo,
   NetSuiteLogo,
   NotionLogo,
   OpenaiLogo,
+  PieChart01,
   PowerBiLogo,
   PraizLogo,
+  PresentationChart01,
   ProductboardLogo,
-  PuzzleIcon,
+  PuzzlePiece01,
+  Robot,
   SalesforceLogo,
   SalesloftLogo,
+  Scan,
+  SearchMd,
   SemrushLogo,
+  ShapesPlus,
   SlabLogo,
   SlackLogo,
   SnowflakeLogo,
@@ -79,10 +82,13 @@ import {
   StatuspageLogo,
   StripeLogo,
   SupabaseLogo,
-  ToolsIcon,
+  Table,
+  Terminal,
   UkgLogo,
   ValTownLogo,
   VantaLogo,
+  VolumeMax,
+  YoutrustLogo,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
@@ -108,6 +114,27 @@ import { isCustomResourceIconType } from "@app/components/resources/resources_ic
 
 interface ResourceAvatarProps extends ComponentProps<typeof Avatar> {}
 
+type ResourceAvatarSize = NonNullable<ComponentProps<typeof Avatar>["size"]>;
+
+const AVATAR_BADGE_CLASSES: Record<
+  ResourceAvatarSize,
+  { badge: string; icon: string }
+> = {
+  xxs: { badge: "h-3 w-3 rounded-[2px]", icon: "h-2 w-2" },
+  xs: { badge: "h-3.5 w-3.5 rounded-[3px]", icon: "h-2.5 w-2.5" },
+  sm: { badge: "h-4 w-4 rounded-[3px]", icon: "h-3 w-3" },
+  md: { badge: "h-5 w-5 rounded", icon: "h-3.5 w-3.5" },
+  lg: { badge: "h-6 w-6 rounded-md", icon: "h-4 w-4" },
+  xl: { badge: "h-7 w-7 rounded-md", icon: "h-5 w-5" },
+  "2xl": { badge: "h-9 w-9 rounded-lg", icon: "h-7 w-7" },
+  auto: { badge: "h-7 w-7 rounded-md", icon: "h-5 w-5" },
+};
+
+interface ResourceAvatarWithBadgeProps extends ResourceAvatarProps {
+  badgeIcon: ComponentType<{ className?: string }>;
+  badgeSize: ResourceAvatarSize;
+}
+
 /**
  * As Avatar are not made to support dark/light mode switch, this renders a `Avatar` component for resources icons with support for dark mode.
  * If `iconColor` or `backgroundColor` are not provided, sensible defaults are applied for both light and dark themes.
@@ -119,12 +146,35 @@ export function ResourceAvatar({
 }: ResourceAvatarProps) {
   return (
     <SparkleAvatar
-      iconColor={iconColor ?? "text-foreground dark:text-foreground-night"}
-      backgroundColor={
-        backgroundColor ?? "bg-muted-background dark:bg-muted-background-night"
-      }
+      iconColor={iconColor ?? "text-foreground"}
+      backgroundColor={backgroundColor ?? "bg-muted-background"}
       {...props}
     />
+  );
+}
+
+export function ResourceAvatarWithBadge({
+  badgeIcon: BadgeIcon,
+  badgeSize,
+  className,
+  ...props
+}: ResourceAvatarWithBadgeProps) {
+  const badgeClasses = AVATAR_BADGE_CLASSES[badgeSize];
+
+  return (
+    <div className={cn("relative inline-flex overflow-visible", className)}>
+      <ResourceAvatar className={className} {...props} />
+      <span
+        className={cn(
+          "pointer-events-none absolute bottom-0 right-0",
+          "flex items-center justify-center bg-background shadow-sm ring-1 ring-border",
+          "",
+          badgeClasses.badge
+        )}
+      >
+        <BadgeIcon className={badgeClasses.icon} />
+      </span>
+    </div>
   );
 }
 
@@ -134,41 +184,42 @@ const _customCheck: Record<CustomResourceIconType, unknown> = ActionIcons;
 void _customCheck;
 
 export const InternalActionIcons = {
-  ActionAtomIcon,
-  ActionBrainIcon,
-  ActionChatBubbleBottomCenterTextIcon,
-  ActionChatBubbleThoughtIcon,
-  ActionCheckCircleIcon,
-  ActionCloudArrowLeftRightIcon,
-  ActionDocumentTextIcon,
-  ActionEmotionLaughIcon,
-  ActionFrameIcon,
-  ActionGitBranchIcon,
-  ActionGlobeAltIcon,
-  ActionImageIcon,
-  ActionLightbulbIcon,
-  ActionListCheckIcon,
-  ActionLockIcon,
-  ActionMagnifyingGlassIcon,
-  ActionMegaphoneIcon,
-  ActionNoiseIcon,
-  ActionPieChartIcon,
-  ActionRobotIcon,
-  ActionScanIcon,
-  ActionSlideshowIcon,
-  ActionSpeakIcon,
-  ActionTableIcon,
-  ActionTimeIcon,
+  ActionAtomIcon: Atom01,
+  ActionBrainIcon: Brain,
+  ActionChatBubbleBottomCenterTextIcon: MessageCircle01,
+  ActionChatBubbleThoughtIcon: MessageDotsCircle,
+  ActionCheckCircleIcon: CheckCircle,
+  ActionCloudArrowLeftRightIcon: CloudArrowLeftRight,
+  ActionDocumentTextIcon: File06,
+  ActionEmotionLaughIcon: FaceSmile,
+  ActionFrameIcon: ActionFrame,
+  ActionGitBranchIcon: GitBranch01,
+  ActionGlobeAltIcon: Globe01,
+  ActionImageIcon: Image01,
+  ActionLightbulbIcon: Lightbulb04,
+  ActionListCheckIcon: ListSelect,
+  ActionLockIcon: Lock01,
+  ActionMagnifyingGlassIcon: SearchMd,
+  ActionMegaphoneIcon: Announcement01,
+  ActionNoiseIcon: VolumeMax,
+  ActionPieChartIcon: PieChart01,
+  ActionRobotIcon: Robot,
+  ActionScanIcon: Scan,
+  ActionSlideshowIcon: PresentationChart01,
+  ActionSpeakIcon: MessageSmileCircle,
+  ActionTableIcon: Table,
+  ActionTimeIcon: Clock,
+  AdomikLogo,
   AmplitudeLogo,
   ApifyLogo,
   AsanaLogo,
   AttioLogo,
   AshbyLogo,
   BigQueryLogo,
-  ToolsIcon,
+  ToolsIcon: ShapesPlus,
   CanvaLogo,
   ClariLogo,
-  CommandLineIcon,
+  CommandLineIcon: Terminal,
   ConfluenceLogo,
   ContentsquareLogo,
   CostoryLogo,
@@ -176,6 +227,7 @@ export const InternalActionIcons = {
   FathomLogo,
   FreshserviceLogo,
   FrontLogo,
+  GammaLogo,
   GcalLogo,
   GithubLogo,
   GitlabLogo,
@@ -188,6 +240,7 @@ export const InternalActionIcons = {
   HubspotLogo,
   IntercomLogo,
   JiraLogo,
+  LemlistLogo,
   LinearLogo,
   LumaLogo,
   MicrosoftExcelLogo,
@@ -196,13 +249,14 @@ export const InternalActionIcons = {
   MicrosoftTeamsLogo,
   MiroLogo,
   MondayLogo,
+  NaptaLogo,
   NetSuiteLogo,
   NotionLogo,
   OpenaiLogo,
   PowerBiLogo,
   PraizLogo,
   ProductboardLogo,
-  PuzzleIcon,
+  PuzzleIcon: PuzzlePiece01,
   SalesforceLogo,
   SemrushLogo,
   SalesloftLogo,
@@ -215,6 +269,7 @@ export const InternalActionIcons = {
   UkgLogo,
   ValTownLogo,
   VantaLogo,
+  YoutrustLogo,
   ZendeskLogo,
 };
 

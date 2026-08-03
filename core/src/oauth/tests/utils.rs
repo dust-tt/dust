@@ -12,6 +12,7 @@ async fn get_server() -> TestServer {
 pub enum HttpMethod {
     GET,
     POST,
+    PATCH,
     DELETE,
 }
 
@@ -27,6 +28,8 @@ pub async fn do_failing_api_call(
         response = server.get(&url).json(body).await;
     } else if method == HttpMethod::POST {
         response = server.post(&url).json(body).await;
+    } else if method == HttpMethod::PATCH {
+        response = server.patch(&url).json(body).await;
     } else if method == HttpMethod::DELETE {
         response = server.delete(&url).json(body).await;
     } else {
@@ -44,6 +47,8 @@ pub async fn do_api_call(url: String, method: HttpMethod, body: &serde_json::Val
         response = server.get(&url).json(body).await;
     } else if method == HttpMethod::POST {
         response = server.post(&url).json(body).await;
+    } else if method == HttpMethod::PATCH {
+        response = server.patch(&url).json(body).await;
     } else if method == HttpMethod::DELETE {
         response = server.delete(&url).json(body).await;
     } else {

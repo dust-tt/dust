@@ -2,7 +2,6 @@ import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -10,10 +9,11 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
+import { getStreamEndpoints } from "@app/lib/llms/stream";
+import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { makeScript } from "@app/scripts/helpers";
@@ -58,6 +58,7 @@ makeScript(
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
     const [conversationRes, agentConfiguration] = await Promise.all([
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       getConversation(auth, conversationId, true),
       getAgentConfiguration(auth, { agentId, variant: "full" }),
     ]);
@@ -76,14 +77,23 @@ makeScript(
       return;
     }
 
-    const model = getSupportedModelConfig(agentConfiguration.model);
-    if (!model) {
+    // Script-only: no workspace routing needed, so pass permissive filters and
+    // just select any endpoint for the agent's model.
+    const routerModel = legacyModelIdToModel(agentConfiguration.model.modelId);
+    const endpoint = routerModel
+      ? getStreamEndpoints(
+          { featureFlags: [], isEnterprise: true, isCreditPriced: false },
+          { model: { eq: routerModel } }
+        )[0]
+      : undefined;
+    if (!endpoint) {
       logger.error(
         { modelId: agentConfiguration.model.modelId },
         "Unsupported model"
       );
       return;
     }
+    const model = endpoint.modelConfig;
 
     const lastUserMessage = conversation.content
       .map((tuple) => tuple[0])
@@ -96,21 +106,27 @@ makeScript(
     const userMessage: UserMessageType = lastUserMessage;
 
     const attachments = await listAttachments(auth, { conversation });
-    const { servers: jitServers } = await getJITServers(auth, {
+    const jitServers = await getJITServers(auth, {
       agentConfiguration,
       conversation,
       attachments,
     });
 
-    const { enabledSkills, systemSkills, equippedSkills } =
-      await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration,
-        conversation,
-      });
-
-    const skillServers = await getSkillServers(auth, {
+    const {
+      effectiveSpaceIds,
+      enabledSkills,
+      systemSkills,
+      equippedSkills,
+      hasSelectedSpacesOutsideAgentScope,
+    } = await SkillResource.listForAgentLoop(auth, {
       agentConfiguration,
-      skills: [...systemSkills, ...enabledSkills],
+      conversation,
+    });
+
+    const { skillServers, systemSkillServers } = await getSkillServers(auth, {
+      effectiveSpaceIds,
+      enabledSkills,
+      systemSkills,
     });
 
     const clientSideMCPActionConfigurations =
@@ -144,19 +160,21 @@ makeScript(
       completionDurationMs: null,
       richMentions: [],
       reactions: [],
+      costCredits: null,
+      resolvedModel: null,
+      modelResolutionMethod: null,
     };
 
-    const { serverToolsAndInstructions, error: mcpToolsListingError } =
-      await tryListMCPTools(
-        auth,
-        {
-          agentConfiguration,
-          conversation,
-          agentMessage: placeholderAgentMessage,
-          clientSideActionConfigurations: clientSideMCPActionConfigurations,
-        },
-        { jitServers, skillServers }
-      );
+    const serverToolsAndInstructions = await tryListMCPTools(
+      auth,
+      {
+        agentConfiguration,
+        conversation,
+        agentMessage: placeholderAgentMessage,
+        clientSideActionConfigurations: clientSideMCPActionConfigurations,
+      },
+      { jitServers, skillServers, systemSkillServers }
+    );
 
     const availableActions = serverToolsAndInstructions.flatMap((s) => s.tools);
 
@@ -166,16 +184,6 @@ makeScript(
     } else {
       fallbackPrompt += ".";
     }
-
-    const agentsList = agentConfiguration.instructions?.includes(
-      "{ASSISTANTS_LIST}"
-    )
-      ? await getAgentConfigurationsForView({
-          auth,
-          agentsGetView: auth.user() ? "list" : "all",
-          variant: "light",
-        })
-      : null;
 
     const projectContext = await constructProjectContext(auth, {
       conversation,
@@ -187,17 +195,17 @@ makeScript(
       userMessage,
       agentConfiguration,
       fallbackPrompt,
-      model,
+      modelInfo: {
+        endpoint,
+        ...agentConfiguration.model,
+      },
       hasAvailableActions: availableActions.length > 0,
-      errorContext: mcpToolsListingError,
-      agentsList,
       conversation,
       serverToolsAndInstructions,
-      enabledSkills,
       systemSkills,
-      equippedSkills,
       projectContext,
       isNewFileExplorer,
+      hasSelectedSpacesOutsideAgentScope,
     });
     const prompt = systemPromptToText(promptSections);
     const leadingMessages = removeNulls([

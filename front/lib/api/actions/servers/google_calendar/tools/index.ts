@@ -48,7 +48,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
 
   list_events: async (
     { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
-    { authInfo, agentLoopContext }
+    { authInfo, runContext }
   ) => {
     const calendar = await getCalendarClient(authInfo);
     assert(
@@ -68,7 +68,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         orderBy: "startTime",
       });
 
-      const userTimezone = getUserTimezone(agentLoopContext);
+      const userTimezone = getUserTimezone({ runContext });
 
       const enrichedEvents = res.data.items
         ? res.data.items
@@ -92,7 +92,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
 
   get_event: async (
     { calendarId = "primary", eventId },
-    { authInfo, agentLoopContext }
+    { authInfo, runContext }
   ) => {
     const calendar = await getCalendarClient(authInfo);
     assert(
@@ -106,7 +106,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         eventId,
       });
 
-      const userTimezone = getUserTimezone(agentLoopContext);
+      const userTimezone = getUserTimezone({ runContext });
       const enrichedEvent = isGoogleCalendarEvent(res.data)
         ? enrichEventWithDayOfWeek(res.data, userTimezone)
         : null;
@@ -142,7 +142,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       extendedProperties,
       eventType,
     },
-    { authInfo, agentLoopContext }
+    { authInfo, runContext }
   ) => {
     const calendar = await getCalendarClient(authInfo);
     assert(
@@ -156,7 +156,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         conferenceDataVersion: 1,
         requestBody: {
           summary,
-          description,
+          ...(description !== undefined && { description }),
           start,
           end,
           ...(attendees && {
@@ -192,7 +192,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         },
       });
 
-      const userTimezone = getUserTimezone(agentLoopContext);
+      const userTimezone = getUserTimezone({ runContext });
       const enrichedEvent = isGoogleCalendarEvent(res.data)
         ? enrichEventWithDayOfWeek(res.data, userTimezone)
         : null;
@@ -233,7 +233,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       reminders,
       extendedProperties,
     },
-    { authInfo, agentLoopContext }
+    { authInfo, runContext }
   ) => {
     const calendar = await getCalendarClient(authInfo);
     assert(
@@ -271,7 +271,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         },
       });
 
-      const userTimezone = getUserTimezone(agentLoopContext);
+      const userTimezone = getUserTimezone({ runContext });
       const enrichedEvent = isGoogleCalendarEvent(res.data)
         ? enrichEventWithDayOfWeek(res.data, userTimezone)
         : null;

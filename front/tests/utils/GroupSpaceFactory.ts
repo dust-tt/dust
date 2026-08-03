@@ -10,6 +10,7 @@ export class GroupSpaceFactory {
   ): Promise<GroupSpaceModel> {
     return GroupSpaceModel.create({
       groupId: group.id,
+      groupKind: group.kind,
       vaultId: space.id,
       workspaceId: space.workspaceId,
       kind,

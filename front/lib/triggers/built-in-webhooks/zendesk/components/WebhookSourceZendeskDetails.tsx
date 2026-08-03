@@ -1,6 +1,6 @@
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { ZendeskWebhookStoredMetadataSchema } from "@app/lib/triggers/built-in-webhooks/zendesk/types";
-import { ExternalLinkIcon, IconButton, Page } from "@dust-tt/sparkle";
+import { IconButton, LinkExternal01, Page } from "@dust-tt/sparkle";
 
 export function WebhookSourceZendeskDetails({
   webhookSource,
@@ -35,10 +35,10 @@ export function WebhookSourceZendeskDetails({
               href={`https://${zendeskSubdomain}.zendesk.com/admin/apps-integrations/webhooks/webhooks/${webhookId}/details`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-xs"
+              className="text-action-500 hover:text-action-600 inline-flex items-center gap-1 text-xs"
             >
               <IconButton
-                icon={ExternalLinkIcon}
+                icon={LinkExternal01}
                 size="xs"
                 tooltip="See webhook"
               />{" "}

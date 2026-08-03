@@ -30,6 +30,14 @@ describe("redirectToSse", () => {
       path: "/api/w/w1/mcp/requests",
       expected: "/api/sse/w/w1/mcp/requests",
     },
+    {
+      name: "sandbox function invocation events",
+      routePattern:
+        "/api/w/:wId/sandbox-functions/:functionId/invocations/:invocationId/events",
+      path: "/api/w/w1/sandbox-functions/sfn_1/invocations/sfi_1/events",
+      expected:
+        "/api/sse/w/w1/sandbox-functions/sfn_1/invocations/sfi_1/events",
+    },
   ])("rewrites the leading /api/ segment to /api/sse/ for the $name path", async ({
     routePattern,
     path,

@@ -16,7 +16,7 @@ import tokenize from "./[dsId]/tokenize";
 // live in the canonical space-scoped routes; the children below re-export
 // them, and those space-scoped handlers fall back to the workspace global
 // space when `:spaceId` is absent (via `resolveLegacyDataSourceSpaceId`). This
-// mirrors the Next legacy tree under `pages/api/v1/w/[wId]/data_sources`.
+// preserves the legacy (non-spaced) `/data_sources` URL layout.
 const app = publicApiApp();
 
 // `/blob` is non-spaced only and must be matched before the documents sub-app.

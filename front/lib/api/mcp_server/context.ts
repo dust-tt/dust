@@ -1,21 +1,37 @@
-import { AsyncLocalStorage } from "node:async_hooks";
+import {
+  isWorkOSWorkspaceAuthenticator,
+  type WorkOSWorkspaceAuthenticator,
+} from "@app/lib/api/workos_authenticator";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
-import type { Authenticator } from "@app/lib/auth";
+export type { WorkOSWorkspaceAuthenticator } from "@app/lib/api/workos_authenticator";
 
-type McpContext = {
-  auth: Authenticator;
+export const MCP_AUTHENTICATOR_AUTH_EXTRA_KEY = "dustAuthenticator";
+
+type McpRequestExtra = {
+  authInfo?: AuthInfo;
 };
 
-const mcpContext = new AsyncLocalStorage<McpContext>();
-
-export function runWithMcpContext<T>(context: McpContext, fn: () => T): T {
-  return mcpContext.run(context, fn);
+export function buildMcpAuthInfo(
+  auth: WorkOSWorkspaceAuthenticator,
+  token: string
+): AuthInfo {
+  return {
+    token,
+    clientId: "",
+    scopes: [],
+    extra: {
+      [MCP_AUTHENTICATOR_AUTH_EXTRA_KEY]: auth,
+    },
+  };
 }
 
-export function getMcpContext(): McpContext | undefined {
-  return mcpContext.getStore();
-}
-
-export function getAuthenticatorFromMcpContext(): Authenticator | undefined {
-  return getMcpContext()?.auth;
+export function getAuthenticatorFromMcpContext(
+  extra: McpRequestExtra
+): WorkOSWorkspaceAuthenticator {
+  const auth = extra.authInfo?.extra?.[MCP_AUTHENTICATOR_AUTH_EXTRA_KEY];
+  if (!isWorkOSWorkspaceAuthenticator(auth)) {
+    throw new Error("MCP tool called without authenticated request context.");
+  }
+  return auth;
 }

@@ -1,7 +1,7 @@
 import { Button } from "@sparkle/components/Button";
-import { ChatBubbleLeftRightIcon } from "@sparkle/icons/app";
+import { MessageChatSquare } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
-import React, { useContext, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import type { Node } from "unist";
 import { visit } from "unist-util-visit";
 
@@ -34,19 +34,22 @@ export function QuickReplyContainer({
 }: QuickReplyContainerProps) {
   const [isOpen, setIsOpen] = useState(true);
 
+  const quickReplyContextValue = useMemo(
+    () => ({ onItemExecuted: () => setIsOpen(false) }),
+    []
+  );
+
   return (
-    <QuickReplyContainerContext.Provider
-      value={{ onItemExecuted: () => setIsOpen(false) }}
-    >
+    <QuickReplyContainerContext.Provider value={quickReplyContextValue}>
       <div
         className={cn(
-          "s-overflow-hidden s-transition-all s-duration-200 s-ease-in-out",
-          isOpen ? "s-max-h-[500px] s-opacity-100" : "s-max-h-0 s-opacity-0",
+          "overflow-hidden transition-all duration-200 ease-in-out",
+          isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0",
           className
         )}
         aria-hidden={!isOpen}
       >
-        <div className="s-flex s-flex-col s-gap-1">{children}</div>
+        <div className="flex flex-col gap-1">{children}</div>
       </div>
     </QuickReplyContainerContext.Provider>
   );
@@ -58,7 +61,7 @@ export function QuickReplyBlock({
   onSend,
   onTrack,
   disabled = false,
-  icon = ChatBubbleLeftRightIcon,
+  icon = MessageChatSquare,
   className,
   buttonClassName,
 }: QuickReplyBlockProps) {
@@ -82,7 +85,7 @@ export function QuickReplyBlock({
   };
 
   return (
-    <span className={cn("s-float-left s-clear-left s-my-0.5", className)}>
+    <span className={cn("float-left clear-left my-0.5", className)}>
       <Button
         size="sm"
         variant="outline"
@@ -92,7 +95,7 @@ export function QuickReplyBlock({
         disabled={disabled || isSending || !onSend}
         isLoading={isSending}
         className={cn(
-          "s-h-auto s-whitespace-normal s-py-1.5 s-text-left",
+          "h-auto whitespace-normal py-1.5 text-left",
           buttonClassName
         )}
       />

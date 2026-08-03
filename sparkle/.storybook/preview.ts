@@ -1,11 +1,20 @@
 import "../src/styles/fonts.css";
-import "../src/styles/global.css";
+import "../src/styles/tailwind.css";
 
 import { withThemeByClassName } from "@storybook/addon-themes";
 import type { Preview } from "@storybook/react";
+import { create } from "storybook/theming/create";
 
 const preview: Preview = {
   parameters: {
+    docs: {
+      // Render docs pages in the system fonts (Geist is loaded by fonts.css).
+      theme: create({
+        base: "light",
+        fontBase: "Geist, sans-serif",
+        fontCode: "'Geist Mono', monospace",
+      }),
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
@@ -15,20 +24,40 @@ const preview: Preview = {
     options: {
       storySort: {
         order: [
+          "Getting Started",
+          "Foundations",
+          ["Colors", "Typography", "Shadows", "Motion"],
           "Assets",
-          "Primitives",
-          "Components",
-          "Modules",
-          "Styles",
+          [
+            "Logo",
+            "Platform Logos",
+            "Icons",
+            ["Used in Product", "All Icons"],
+            "Avatars",
+            "*",
+          ],
+          "Actions",
+          "Forms & Inputs",
+          "Data Display",
+          "Feedback & Status",
+          "Navigation",
+          "Overlays",
+          "Layout",
+          "Lists",
+          "Product",
+          ["Conversation", "Agent"],
+          "Effects & Motion",
+          "Lab",
           "Example",
-        ], // Define your order here
+          "*",
+        ],
       },
     },
     themes: {
       default: "light",
       list: [
         { name: "light", class: "", color: "#ffffff" },
-        { name: "dark", class: "s-dark", color: "#000000" },
+        { name: "dark", class: "dark", color: "#000000" },
       ],
     },
     backgrounds: {
@@ -70,7 +99,7 @@ const preview: Preview = {
     withThemeByClassName({
       themes: {
         light: "",
-        dark: "s-dark",
+        dark: "dark",
       },
       defaultTheme: "light",
     }),

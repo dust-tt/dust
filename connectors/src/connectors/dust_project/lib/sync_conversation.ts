@@ -3,6 +3,7 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { DustProjectConversationResource } from "@connectors/resources/dust_project_conversation_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -310,6 +311,13 @@ export async function syncConversation({
 
     localLogger.info({ totalParts }, "Successfully synced conversation");
   } catch (error) {
+    if (error instanceof DataSourceQuotaExceededError) {
+      localLogger.warn(
+        { error },
+        "Skipping conversation exceeding plan document size limit."
+      );
+      return;
+    }
     localLogger.error({ error }, "Failed to sync conversation");
     throw error;
   }

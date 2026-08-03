@@ -1,5 +1,5 @@
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
-import type { AssistantTemplateListType } from "@app/pages/api/templates";
+import type { AssistantTemplateListType } from "@app/lib/resources/template_resource";
 import type {
   TemplateTagCodeType,
   TemplateTagsType,

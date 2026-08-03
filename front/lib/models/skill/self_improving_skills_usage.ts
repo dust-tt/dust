@@ -1,9 +1,9 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class SelfImprovingSkillsUsageModel extends WorkspaceAwareModel<SelfImprovingSkillsUsageModel> {
   declare createdAt: CreationOptional<Date>;
@@ -11,7 +11,13 @@ export class SelfImprovingSkillsUsageModel extends WorkspaceAwareModel<SelfImpro
 
   declare skillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
+  // Old deprecated Micro USD values, kept for legacy workspaces not
+  // yet using metronome.
+  // margin not included
   declare priceMicroUsd: number;
+  // AWU credits as billed to Metronome (margin baked in). 0 on rows recorded
+  // before the column was introduced.
+  declare priceAwuCredits: CreationOptional<number>;
 }
 
 SelfImprovingSkillsUsageModel.init(
@@ -45,6 +51,11 @@ SelfImprovingSkillsUsageModel.init(
     priceMicroUsd: {
       type: DataTypes.BIGINT,
       allowNull: false,
+    },
+    priceAwuCredits: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      defaultValue: 0,
     },
   },
   {

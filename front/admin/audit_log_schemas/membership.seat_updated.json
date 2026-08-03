@@ -1,0 +1,17 @@
+{
+  "action": "membership.seat_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "previous_seat_type": "string",
+    "new_seat_type": "string",
+    "scheduled_seat_change_at": "string",
+    "actor_type": "string"
+  }
+}

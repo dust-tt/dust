@@ -47,3 +47,14 @@ export function computeHasChildren(node: DataSourceViewContentNode): boolean {
   // For non-Notion sources, use the childrenCount field.
   return node.childrenCount > 0;
 }
+
+export function knowledgeNodeToItem(node: DataSourceViewContentNode) {
+  return {
+    dataSourceViewId: node.dataSourceView.sId,
+    hasChildren: computeHasChildren(node),
+    label: node.title,
+    node,
+    nodeId: node.internalId,
+    spaceId: node.dataSourceView.spaceId,
+  };
+}

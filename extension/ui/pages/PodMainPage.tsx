@@ -10,21 +10,22 @@ import {
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
-  ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
-  FolderIcon,
+  CheckCircle,
+  Folder,
+  MessageChatSquare,
   Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
-import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
+import { useClientSideMCPServerIds } from "@extension/ui/components/conversation/ExtensionClientSideMCPServerProvider";
 import { useParams } from "react-router-dom";
 
 export const PodMainPage = () => {
   const { workspace } = useAuth();
   const { podId } = useParams<{ podId: string }>();
+  const clientSideMCPServerIds = useClientSideMCPServerIds();
 
   const {
     spaceInfo: podInfo,
@@ -84,7 +85,7 @@ export const PodMainPage = () => {
       <ConversationLayout
         title=""
         centerActions={
-          <div className="flex h-14 items-end">
+          <div className="flex h-title items-end">
             <TabsList border={false}>
               <TabsTrigger
                 value="conversations"
@@ -94,19 +95,19 @@ export const PodMainPage = () => {
                 tooltip={
                   currentTab !== "conversations" ? "Conversations" : undefined
                 }
-                icon={ChatBubbleLeftRightIcon}
+                icon={MessageChatSquare}
               />
               <TabsTrigger
                 value="tasks"
                 label={currentTab === "tasks" ? "Tasks" : undefined}
                 tooltip={currentTab !== "tasks" ? "Tasks" : undefined}
-                icon={CheckCircleIcon}
+                icon={CheckCircle}
               />
               <TabsTrigger
                 value="files"
                 label={currentTab === "files" ? "Files" : undefined}
                 tooltip={currentTab !== "files" ? "Files" : undefined}
-                icon={FolderIcon}
+                icon={Folder}
               />
             </TabsList>
           </div>
@@ -114,15 +115,14 @@ export const PodMainPage = () => {
       >
         <BlockedActionsProvider owner={workspace}>
           <GenerationContextProvider>
-            <ExtensionInputBarProvider workspace={workspace}>
-              <PodPageContent
-                podInfo={podInfo}
-                onTabChange={handleTabChange}
-                podUiPreferences={podUiPreferences}
-                setPodUiPreferences={setPodUiPreferences}
-                mutatePodInfo={mutatePodInfo}
-              />
-            </ExtensionInputBarProvider>
+            <PodPageContent
+              podInfo={podInfo}
+              onTabChange={handleTabChange}
+              podUiPreferences={podUiPreferences}
+              setPodUiPreferences={setPodUiPreferences}
+              mutatePodInfo={mutatePodInfo}
+              clientSideMCPServerIds={clientSideMCPServerIds}
+            />
           </GenerationContextProvider>
         </BlockedActionsProvider>
       </ConversationLayout>

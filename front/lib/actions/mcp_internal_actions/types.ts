@@ -111,7 +111,7 @@ export const WebsearchInputSchema = z.object({
     ),
 });
 
-export type WebsearchInputType = z.infer<typeof WebsearchInputSchema>;
+type WebsearchInputType = z.infer<typeof WebsearchInputSchema>;
 
 export function isWebsearchInputType(
   input: Record<string, unknown>
@@ -135,7 +135,7 @@ export const WebbrowseInputSchema = z.object({
     .describe("If true, also retrieve outgoing links from the page."),
 });
 
-export type WebbrowseInputType = z.infer<typeof WebbrowseInputSchema>;
+type WebbrowseInputType = z.infer<typeof WebbrowseInputSchema>;
 
 export function isWebbrowseInputType(
   input: Record<string, unknown>
@@ -211,32 +211,26 @@ export const DataSourceFilesystemCatInputSchema = z.object({
     .optional()
     .describe(
       "The character position to start reading from (0-based). If not provided, starts from " +
-        "the beginning."
+        "the beginning. The tool output reports the total document size and, when more content " +
+        "remains, the offset to use to continue reading."
     ),
   limit: z
     .number()
     .optional()
     .describe(
-      "The maximum number of characters to read. If not provided, reads all characters."
+      "The maximum number of characters to read. If not provided, reads all characters. For " +
+        "large documents, do not page through the whole document by repeatedly incrementing " +
+        "offset (this exhausts the context window). Prefer grep to extract only the relevant content."
     ),
   grep: z
     .string()
     .optional()
     .describe(
       "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
-        "matching this pattern will be returned."
+        "matching this pattern will be returned. Prefer this over reading a large document in " +
+        "full when you are looking for specific content."
     ),
 });
-
-export type DataSourceFilesystemCatInputType = z.infer<
-  typeof DataSourceFilesystemCatInputSchema
->;
-
-export function isDataSourceFilesystemCatInputType(
-  input: Record<string, unknown>
-): input is DataSourceFilesystemCatInputType {
-  return DataSourceFilesystemCatInputSchema.safeParse(input).success;
-}
 
 export const DataSourceFilesystemListInputSchema = z.object({
   nodeId: z
@@ -301,11 +295,11 @@ export type DataSourceFilesystemLocateTreeInputType = z.infer<
   typeof DataSourceFilesystemLocateTreeInputSchema
 >;
 
-export const SkillEnableInputSchema = z.object({
+const SkillEnableInputSchema = z.object({
   skillName: z.string().describe("The name of the skill to enable"),
 });
 
-export type SkillEnableInputType = z.infer<typeof SkillEnableInputSchema>;
+type SkillEnableInputType = z.infer<typeof SkillEnableInputSchema>;
 
 export function isSkillEnableInputType(
   input: Record<string, unknown>
@@ -371,20 +365,4 @@ export function isGenerateImageInputType(
   input: Record<string, unknown>
 ): input is GenerateImageInputType {
   return GenerateImageInputSchema.safeParse(input).success;
-}
-
-// Kept for backward compatibility with existing actions in conversations.
-const EditImageInputSchema = z.object({
-  imageFileId: z.string(),
-  editPrompt: z.string().max(4000),
-  outputName: z.string().max(64),
-  quality: z.enum(["auto", "low", "medium", "high"]).optional().default("auto"),
-  aspectRatio: z.enum(["1:1", "3:2", "2:3"]).optional(),
-});
-export type EditImageInputType = z.infer<typeof EditImageInputSchema>;
-
-export function isEditImageInputType(
-  input: Record<string, unknown>
-): input is EditImageInputType {
-  return EditImageInputSchema.safeParse(input).success;
 }

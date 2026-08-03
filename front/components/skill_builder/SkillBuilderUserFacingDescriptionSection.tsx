@@ -9,7 +9,7 @@ import { getSkillDescriptionSuggestion } from "@app/components/skill_builder/uti
 import { useAutoGenerateOnBlur } from "@app/hooks/useAutoGenerateOnBlur";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isEmptyString } from "@app/types/shared/utils/general";
-import { Button, Input, SparklesIcon, Spinner } from "@dust-tt/sparkle";
+import { Button, Input, Spinner, Stars02 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
@@ -27,6 +27,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
   >({
     name: USER_FACING_DESCRIPTION_FIELD_NAME,
   });
+  const isReadOnly = field.disabled ?? false;
 
   const instructions = useWatch<SkillBuilderFormData, "instructions">({
     name: "instructions",
@@ -51,7 +52,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
   );
 
   const generateDescription = async (): Promise<boolean> => {
-    if (isGenerating || !canGenerate) {
+    if (isReadOnly || isGenerating || !canGenerate) {
       return false;
     }
 
@@ -126,19 +127,17 @@ export function SkillBuilderUserFacingDescriptionSection() {
               {...registerProps}
             />
             <Button
-              icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
+              icon={isGenerating ? () => <Spinner size="xs" /> : Stars02}
               variant="outline"
               size="xs"
               className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
-              disabled={isGenerating || !canGenerate}
+              disabled={isReadOnly || isGenerating || !canGenerate}
               onClick={generate}
               tooltip={getTooltip()}
             />
           </div>
           {errorMessage && (
-            <div className="dark:text-warning-night mt-1 text-xs text-warning">
-              {errorMessage}
-            </div>
+            <div className="mt-1 text-xs text-warning">{errorMessage}</div>
           )}
         </>
       )}

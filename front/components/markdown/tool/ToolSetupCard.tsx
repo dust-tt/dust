@@ -179,7 +179,7 @@ export function ToolSetupCard({
         size="sm"
       >
         <div className="flex flex-col gap-3">
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <span className="text-sm text-muted-foreground">
             {matchingMCPServer.description}
           </span>
           <div className="flex justify-between gap-2">

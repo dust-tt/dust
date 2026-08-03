@@ -1,3 +1,6 @@
+import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
+import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
+import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -20,6 +23,7 @@ import {
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
+import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
@@ -35,8 +39,9 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
+import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
@@ -66,6 +71,7 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
+import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { TagModel } from "@app/lib/models/tags";
 import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
@@ -85,12 +91,14 @@ import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import {
+  AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -101,6 +109,7 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
@@ -116,7 +125,16 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
+import {
+  SandboxModel,
+  SandboxOwnerModel,
+} from "@app/lib/resources/storage/models/sandbox";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
+import { SandboxFunctionMCPActionModel } from "@app/lib/resources/storage/models/sandbox_function_mcp_action";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   TakeawaySourcesModel,
@@ -133,11 +151,9 @@ import { UserProjectPreferencesModel } from "@app/lib/resources/storage/models/u
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
-import logger from "@app/logger/logger";
-import { sendInitDbMessage } from "@app/types/shared/deployment";
+import { isDevelopment, isTest } from "@app/types/shared/env";
 
 /**
  * Loads all Sequelize models, useful for some tests
@@ -150,6 +166,7 @@ export function loadAllModels() {
     UserMetadataModel,
     WorkspaceHasDomainModel,
     MembershipModel,
+    MembershipUpgradeRequestModel,
     MembershipInvitationModel,
     GroupModel,
     GroupMembershipModel,
@@ -162,17 +179,22 @@ export function loadAllModels() {
     CloneModel,
     KeyModel,
     FileModel,
+    SandboxFunctionModel,
+    SandboxFunctionInvocationModel,
     ShareableFileModel,
+    AuthorizedFileAccessModel,
     SharingGrantModel,
     ExternalViewerSessionModel,
     DustAppSecretModel,
     GroupSpaceModel,
+    GroupPermissionModel,
     WebhookSourceModel,
     WebhookSourcesViewModel,
     TriggerModel,
     WebhookRequestModel,
     WebhookRequestTriggerModel,
     ConversationModel,
+    ConversationSelectedSpaceModel,
     ConversationParticipantModel,
     UserConversationReadsModel,
     WakeUpModel,
@@ -201,6 +223,7 @@ export function loadAllModels() {
     RemoteMCPServerToolMetadataModel,
     InternalMCPServerCredentialModel,
     ConversationMCPServerViewModel,
+    SandboxFunctionMCPActionModel,
     AgentMCPServerConfigurationModel,
     AgentTablesQueryConfigurationTableModel,
     AgentDataSourceConfigurationModel,
@@ -217,6 +240,7 @@ export function loadAllModels() {
     AgentStepContentModel,
     AgentMCPActionModel,
     AgentMCPActionOutputItemModel,
+    AgentMessageConsumptionItemModel,
     AgentStepContentToolExecutionModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,
@@ -236,6 +260,7 @@ export function loadAllModels() {
     AgentSkillModel,
     ConversationSkillModel,
     AgentMessageSkillModel,
+    SkillUserFavoriteModel,
     SkillMCPServerConfigurationModel,
     SkillFileAttachmentModel,
     SkillSuggestionModel,
@@ -245,7 +270,7 @@ export function loadAllModels() {
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
     SandboxModel,
-    ConversationBranchModel,
+    SandboxOwnerModel,
     ConversationForkModel,
     ProjectTaskModel,
     ProjectTaskConversationModel,
@@ -257,16 +282,20 @@ export function loadAllModels() {
     TakeawaysVersionModel,
     UserProjectPreferencesModel,
     WorkspaceSensitivityLabelConfigModel,
-    WorkspaceSandboxEnvVarModel,
+    SandboxEnvVarModel,
     WorkspaceSeatLimitModel,
+    ActivationPodModel,
+    ActivationRecommendationModel,
+    ActivationNudgeModel,
   ];
 }
 
 async function main() {
-  await sendInitDbMessage({
-    service: "front",
-    logger: logger,
-  });
+  if (!isDevelopment() && !isTest()) {
+    throw new Error(
+      "This script should only be run in development or test mode"
+    );
+  }
 
   for (const model of loadAllModels()) {
     await model.sync({ alter: true });

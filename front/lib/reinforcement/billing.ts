@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
-import { getMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
+import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import logger from "@app/logger/logger";
 
 function currentCalendarMonth(): BillingCycle {
@@ -22,13 +22,12 @@ function currentCalendarMonth(): BillingCycle {
 export async function getCurrentPeriod(
   auth: Authenticator
 ): Promise<BillingCycle> {
-  const subscription = auth.subscription();
   const workspace = auth.workspace();
+  if (!workspace) {
+    return currentCalendarMonth();
+  }
 
-  const result = await getMetronomeCurrentBillingPeriod({
-    metronomeContractId: subscription?.metronomeContractId ?? null,
-    metronomeCustomerId: workspace?.metronomeCustomerId ?? null,
-  });
+  const result = await getCachedMetronomeCurrentBillingPeriod(workspace.sId);
 
   if (result.isOk() && result.value !== null) {
     return result.value;

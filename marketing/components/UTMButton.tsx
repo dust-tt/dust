@@ -1,0 +1,20 @@
+"use client";
+
+import { appendUTMParams } from "@marketing/lib/utils/utm";
+import type { LegacyRegularButtonProps } from "@dust-tt/sparkle";
+import { LegacyButton as Button } from "@dust-tt/sparkle";
+
+interface UTMButtonProps extends Omit<LegacyRegularButtonProps, "href"> {
+  href?: string;
+}
+
+const UTMButton = ({ href, ...props }: UTMButtonProps) => {
+  const finalHref =
+    href && !href.startsWith("http") && !href.startsWith("mailto:")
+      ? appendUTMParams(href)
+      : href;
+
+  return <Button href={finalHref} {...props} />;
+};
+
+export default UTMButton;

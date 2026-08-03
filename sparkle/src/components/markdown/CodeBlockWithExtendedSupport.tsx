@@ -13,10 +13,13 @@ import {
   type MarkdownNode,
   sameNodePosition,
 } from "@sparkle/components/markdown/utils";
-import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
+import { Stars02, Terminal } from "@sparkle/icons/v2-stroke";
+import { cssColorToHex } from "@sparkle/lib/colors";
 import { cn } from "@sparkle/lib/utils";
 import React, { memo, useContext, useEffect, useRef, useState } from "react";
-import {
+import colors from "tailwindcss/colors";
+
+const {
   amber,
   blue,
   gray,
@@ -28,7 +31,7 @@ import {
   sky,
   violet,
   yellow,
-} from "tailwindcss/colors";
+} = colors;
 
 const PRETTY_JSON_PREFERENCE_KEY = "pretty-json-preference";
 
@@ -66,78 +69,62 @@ const setPrettyJsonPreference = (value: boolean) => {
   }
 };
 
-// Helper function to ensure we get hex values
-const toHex = (color: string) => {
-  if (color.startsWith("#")) {
-    return color;
-  }
-  // For handling rgb/rgba values if they exist
-  if (color.startsWith("rgb")) {
-    const matches = color.match(/\d+/g);
-    if (matches && matches.length >= 3) {
-      const [r, g, b] = matches.map(Number);
-      return `#${[r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
-    }
-  }
-  return color;
-};
-
-const palette = {
+const getMermaidPalette = () => ({
   gray: {
-    50: toHex(gray[50]), // background, labelBoxBkgColor, groupBkgColor, edgeLabelBackground
-    100: toHex(gray[100]), // primaryColor
-    200: toHex(gray[200]), // tertiaryBorderColor, clusterBorder, labelBoxBorderColor, groupBorderColor, pieOuterStrokeColor
-    400: toHex(gray[400]), // lineColor, signalColor
-    600: toHex(gray[600]), // tertiaryTextColor, sequenceNumberColor
-    700: toHex(gray[700]), // signalTextColor, labelTextColor, loopTextColor, messageTextColor, groupTextColor, pieSectionTextColor
-    800: toHex(gray[800]), // textColor, titleColor, nodeTextColor, pieTitleTextColor, pieLegendTextColor
+    50: cssColorToHex(gray[50]), // background, labelBoxBkgColor, groupBkgColor, edgeLabelBackground
+    100: cssColorToHex(gray[100]), // primaryColor
+    200: cssColorToHex(gray[200]), // tertiaryBorderColor, clusterBorder, labelBoxBorderColor, groupBorderColor, pieOuterStrokeColor
+    400: cssColorToHex(gray[400]), // lineColor, signalColor
+    600: cssColorToHex(gray[600]), // tertiaryTextColor, sequenceNumberColor
+    700: cssColorToHex(gray[700]), // signalTextColor, labelTextColor, loopTextColor, messageTextColor, groupTextColor, pieSectionTextColor
+    800: cssColorToHex(gray[800]), // textColor, titleColor, nodeTextColor, pieTitleTextColor, pieLegendTextColor
   },
   sky: {
-    100: toHex(sky[100]), // primaryColor, nodeBorder, actorBkg, activationBkgColor
-    200: toHex(sky[200]), // actorBorder, activationBorderColor
-    300: toHex(sky[300]), // actorLineColor, pie1
-    800: toHex(sky[800]), // primaryTextColor, nodeTextColor, actorTextColor, defaultLinkColor
+    100: cssColorToHex(sky[100]), // primaryColor, nodeBorder, actorBkg, activationBkgColor
+    200: cssColorToHex(sky[200]), // actorBorder, activationBorderColor
+    300: cssColorToHex(sky[300]), // actorLineColor, pie1
+    800: cssColorToHex(sky[800]), // primaryTextColor, nodeTextColor, actorTextColor, defaultLinkColor
   },
   green: {
-    100: toHex(green[100]), // secondaryColor
-    200: toHex(green[200]), // secondaryBorderColor
-    300: toHex(green[300]), // pie3
-    800: toHex(green[800]), // secondaryTextColor
+    100: cssColorToHex(green[100]), // secondaryColor
+    200: cssColorToHex(green[200]), // secondaryBorderColor
+    300: cssColorToHex(green[300]), // pie3
+    800: cssColorToHex(green[800]), // secondaryTextColor
   },
   amber: {
-    50: toHex(amber[50]), // noteBkgColor
-    200: toHex(amber[200]), // noteBorderColor
-    300: toHex(amber[300]), // pie4
+    50: cssColorToHex(amber[50]), // noteBkgColor
+    200: cssColorToHex(amber[200]), // noteBorderColor
+    300: cssColorToHex(amber[300]), // pie4
   },
   red: {
-    100: toHex(red[100]), // errorBkgColor
-    300: toHex(red[300]), // pie8
-    800: toHex(red[800]), // errorTextColor
+    100: cssColorToHex(red[100]), // errorBkgColor
+    300: cssColorToHex(red[300]), // pie8
+    800: cssColorToHex(red[800]), // errorTextColor
   },
   blue: {
-    300: toHex(blue[300]), // pie2
+    300: cssColorToHex(blue[300]), // pie2
   },
   purple: {
-    400: toHex(purple[400]), // pie5
+    400: cssColorToHex(purple[400]), // pie5
   },
   yellow: {
-    300: toHex(yellow[300]), // pie7
+    300: cssColorToHex(yellow[300]), // pie7
   },
   rose: {
-    300: toHex(rose[300]), // pie10
+    300: cssColorToHex(rose[300]), // pie10
   },
   violet: {
-    300: toHex(violet[300]), // pie11
+    300: cssColorToHex(violet[300]), // pie11
   },
   indigo: {
-    300: toHex(indigo[300]), // pie12
+    300: cssColorToHex(indigo[300]), // pie12
   },
-} as const;
+});
 
 const mermaidStyles = `
   /* Base diagram styles */
   .mermaid {
-    background: ${palette.gray[100]};
+    background: ${gray[100]};
     cursor: default;
   }
 
@@ -152,8 +139,8 @@ const mermaidStyles = `
     rx: 8px;
     ry: 8px;
     stroke-width: 1px;
-    fill: ${palette.gray["100"]};
-    stroke: ${palette.gray["200"]};
+    fill: ${gray["100"]};
+    stroke: ${gray["200"]};
   }
 
   /* Section styles */
@@ -176,13 +163,17 @@ const mermaidStyles = `
 
 const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
   const graphRef = useRef<HTMLDivElement | null>(null);
+  const graphId = `mermaid-${React.useId().replaceAll(":", "")}`;
 
   useEffect(() => {
+    let cancelled = false;
+
     const renderMermaid = async () => {
       if (!graphRef.current) {
         return;
       }
 
+      const palette = getMermaidPalette();
       const mermaid = (await import("mermaid")).default;
 
       mermaid.initialize({
@@ -285,12 +276,19 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         },
       });
 
-      graphRef.current.textContent = chart;
-      await mermaid.run(undefined);
+      const { bindFunctions, svg } = await mermaid.render(graphId, chart);
+      if (cancelled || !graphRef.current) {
+        return;
+      }
+      graphRef.current.innerHTML = svg;
+      bindFunctions?.(graphRef.current);
     };
 
     void renderMermaid();
-  }, [chart]);
+    return () => {
+      cancelled = true;
+    };
+  }, [chart, graphId]);
 
   return (
     <>
@@ -299,8 +297,8 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         ref={graphRef}
         className={cn(
           "mermaid",
-          "s-w-full",
-          "s-rounded-2xl s-transition-all s-duration-200"
+          "w-full",
+          "rounded-2xl transition-all duration-200"
         )}
       />
     </>
@@ -319,7 +317,7 @@ export function StyledMermaidGraph({
   const validChildrenContent = String(children).trim();
 
   return (
-    <div className={cn("s-relative", className)}>
+    <div className={cn("relative", className)}>
       <MermaidGraph chart={validChildrenContent} />
     </div>
   );
@@ -403,11 +401,11 @@ export const CodeBlockWithExtendedSupport = memo(
           getContentToDownload={getContentToDownload}
           actions={
             <Button
-              className="s-font-sans"
+              className="font-sans"
               size="xs"
               variant={"outline"}
               label={showMermaid ? "Markdown" : "Mermaid"}
-              icon={showMermaid ? CommandLineIcon : SparklesIcon}
+              icon={showMermaid ? Terminal : Stars02}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -435,11 +433,11 @@ export const CodeBlockWithExtendedSupport = memo(
           getContentToDownload={getContentToDownload}
           actions={
             <Button
-              className="s-font-sans"
+              className="font-sans"
               size="xs"
               variant={"outline"}
               label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
-              icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
+              icon={showPrettyJson ? Terminal : Stars02}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 e.stopPropagation();

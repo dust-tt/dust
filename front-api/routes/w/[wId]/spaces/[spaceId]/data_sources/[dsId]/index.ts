@@ -25,6 +25,7 @@ const PatchDataSourceWithoutProviderRequestBodySchema = z.object({
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

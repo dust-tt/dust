@@ -51,7 +51,23 @@ if [[ "$NO_BUILD" == false ]]; then
     echo "(Requires Docker running)"
     exit 1
   fi
-  (cd "$SCRIPT_DIR" && cross build --release --target "$TARGET")
+  if ! command -v bun &>/dev/null; then
+    echo "Error: 'bun' is not installed (needed to build the functions runner bundle)."
+    echo "Install it from https://bun.com/ (or: curl -fsSL https://bun.sh/install | bash)"
+    exit 1
+  fi
+  # runner.js is a generated bundle (not committed); build it on the host so
+  # cross only mounts and embeds it (bun is not needed inside the container).
+  echo "==> Building functions runner bundle..."
+  (cd "$SCRIPT_DIR/functions-runner" && bun install --frozen-lockfile && bun run build)
+  # Force the rustc wrapper empty for the cross build. A common host setup is
+  # `rustc-wrapper = "sccache"` in ~/.cargo/config.toml, which cross mounts into
+  # the build container — but sccache isn't installed there, so the compile fails
+  # with `sccache rustc` exit 127. Empty env vars (forwarded via Cross.toml
+  # passthrough) override the mounted config and disable the wrapper in-container.
+  (cd "$SCRIPT_DIR" &&
+    RUSTC_WRAPPER="" CARGO_BUILD_RUSTC_WRAPPER="" \
+      cross build --release --target "$TARGET")
   echo "==> Build complete: $BINARY"
 else
   echo "==> Skipping build (--no-build)"
@@ -100,10 +116,10 @@ echo "==> Pushing dsbx to sandbox $SANDBOX_ID at $REMOTE_PATH..."
 BINARY_SIZE=$(wc -c < "$BINARY" | tr -d ' ')
 echo "    Binary size: $(( BINARY_SIZE / 1024 / 1024 ))MB ($(( BINARY_SIZE / 1024 ))KB)"
 
-e2b sandbox exec "$SANDBOX_ID" "mkdir -p $(dirname $REMOTE_PATH) && rm -f $REMOTE_PATH"
-base64 -i "$BINARY" | e2b sandbox exec "$SANDBOX_ID" "base64 -d > $REMOTE_PATH && chmod +x $REMOTE_PATH"
+e2b sandbox exec "$SANDBOX_ID" -u root "mkdir -p $(dirname $REMOTE_PATH) && rm -f $REMOTE_PATH"
+base64 -i "$BINARY" | e2b sandbox exec "$SANDBOX_ID" -u root "base64 -d > $REMOTE_PATH && chmod +x $REMOTE_PATH"
 
 echo "==> Verifying..."
-e2b sandbox exec "$SANDBOX_ID" "$REMOTE_PATH --version" 2>&1 || true
+e2b sandbox exec "$SANDBOX_ID" -u root "$REMOTE_PATH --version" 2>&1 || true
 
 echo "==> Done! dsbx deployed to sandbox $SANDBOX_ID"

@@ -19,6 +19,7 @@
     "mcp_server_name": "string",
     "conversation_id": "string",
     "message_id": "string",
+    "agent_message_id": "string",
     "trigger_id": "string",
     "accessed_data_source_ids": "string",
     "accessed_table_ids": "string",

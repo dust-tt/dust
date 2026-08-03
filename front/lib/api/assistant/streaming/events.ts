@@ -130,8 +130,10 @@ function isMessageEventParams(
     case "agent_message_done":
     case "compaction_message_new":
     case "compaction_message_done":
+    case "conversation_fork_prepared":
     case "conversation_title":
     case "plan_updated":
+    case "wake_up_updated":
       return false;
     default:
       assertNever(eventType);

@@ -8,7 +8,6 @@ import {
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
@@ -22,7 +21,6 @@ import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -99,20 +97,7 @@ async function emitToolApprovalDecidedAuditEvent({
   try {
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
-    const agentMessage = await AgentMessageModel.findOne({
-      where: {
-        workspaceId: owner.id,
-        id: action.agentMessageId,
-      },
-      attributes: ["agentConfigurationId", "agentConfigurationVersion"],
-    });
-    const agentConfiguration = agentMessage
-      ? await getAgentConfiguration(auth, {
-          agentId: agentMessage.agentConfigurationId,
-          agentVersion: agentMessage.agentConfigurationVersion,
-          variant: "extra_light",
-        })
-      : null;
+    const agentConfiguration = await action.getLightAgentConfiguration(auth);
 
     const auditEvent = emitAuditLogEvent({
       auth,
@@ -120,11 +105,8 @@ async function emitToolApprovalDecidedAuditEvent({
       targets: [
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("agent", {
-          sId: agentMessage?.agentConfigurationId ?? "unknown",
-          name:
-            agentConfiguration?.name ??
-            agentMessage?.agentConfigurationId ??
-            "unknown",
+          sId: agentConfiguration?.sId ?? "unknown",
+          name: agentConfiguration?.name ?? "unknown",
         }),
         buildAuditLogTarget("tool", {
           sId: action.toolConfiguration.name,
@@ -180,12 +162,10 @@ export async function validateAction(
     actionId,
     approvalState,
     messageId,
-    resumeAncestorConversations = false,
   }: {
     actionId: string;
     approvalState: ActionApprovalStateType;
     messageId: string;
-    resumeAncestorConversations?: boolean;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -211,7 +191,6 @@ export async function validateAction(
     userMessageVersion,
     userMessageUserId,
     userMessageOrigin,
-    branchId,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
@@ -249,17 +228,8 @@ export async function validateAction(
     );
   }
 
-  const currentBlockedActions =
-    await AgentMCPActionResource.listBlockedActionsForConversation(
-      auth,
-      conversation
-    );
-  const isCurrentBlockedAction = currentBlockedActions.some(
-    (blockedAction) =>
-      blockedAction.actionId === actionId && blockedAction.messageId === messageId
-  );
-
-  if (!isCurrentBlockedAction) {
+  // Stale approval links must not relaunch an already terminated agent message.
+  if (!(await action.canAgentMessageResume(auth))) {
     void emitToolApprovalDecidedAuditEvent({
       action,
       approvalState,
@@ -277,40 +247,38 @@ export async function validateAction(
     );
   }
 
-  const [updatedCount] = await action.updateStatus(
-    getMCPApprovalStateFromUserApprovalState(approvalState)
-  );
+  const [updatedCount] = await action.updateStatusFromExpected(auth, {
+    status: getMCPApprovalStateFromUserApprovalState(approvalState),
+    expectedStatus: "blocked_validation_required",
+  });
 
-  if (approvalState === "always_approved" && user) {
+  if (updatedCount > 0 && approvalState === "always_approved" && user) {
     switch (action.toolConfiguration.permission) {
       case "low":
+        // Key the approval on the configuration name, not the step content's
+        // function-call name: sandbox child actions share their parent's step
+        // content, so `action.functionCallName` would be the parent sandbox
+        // tool there. Both names are identical for direct tool calls.
         await setUserAlwaysApprovedTool(auth, {
           mcpServerId: action.toolConfiguration.toolServerId,
-          functionCallName: action.functionCallName,
+          functionCallName: action.toolConfiguration.name,
         });
         break;
       case "medium":
-        const agentMessage = await AgentMessageModel.findOne({
-          where: {
-            workspaceId: owner.id,
-            id: action.agentMessageId,
-          },
-        });
-        if (agentMessage) {
-          const argumentsRequiringApproval =
-            action.toolConfiguration.argumentsRequiringApproval ?? [];
-          const argsAndValues = extractArgRequiringApprovalValues(
-            argumentsRequiringApproval,
-            action.augmentedInputs
-          );
+        const argumentsRequiringApproval =
+          action.toolConfiguration.argumentsRequiringApproval ?? [];
+        const argsAndValues = extractArgRequiringApprovalValues(
+          argumentsRequiringApproval,
+          action.augmentedInputs
+        );
 
-          await user.createToolApproval(auth, {
-            mcpServerId: action.toolConfiguration.toolServerId,
-            toolName: action.functionCallName,
-            agentId: agentMessage.agentConfigurationId,
-            argsAndValues,
-          });
-        }
+        // Same as the "low" case: use the configuration name so sandbox
+        // child approvals are keyed on the tool, not the parent sandbox tool.
+        await user.createToolApproval(auth, {
+          mcpServerId: action.toolConfiguration.toolServerId,
+          toolName: action.toolConfiguration.name,
+          argsAndValues,
+        });
         break;
       default:
         break;
@@ -341,6 +309,52 @@ export async function validateAction(
     requestStatus: activeRequestStatus,
   });
 
+  // Emit an audit event for the approval decision. Fire-and-forget and fully
+  // isolated: the agent-config lookup must never block or break the approval
+  // flow (AUDIT1). auth is the deciding user (HTTP request).
+  void (async () => {
+    try {
+      // Resolved via the resource so the agent-message model lookup stays in
+      // the resource layer (BACK3/BACK5).
+      const auditAgentConfig = await action.getLightAgentConfiguration(auth);
+      if (!auditAgentConfig) {
+        return;
+      }
+      void emitAuditLogEvent({
+        auth,
+        action: "tool.approval_resolved",
+        targets: [
+          buildAuditLogTarget("workspace", owner),
+          buildAuditLogTarget("agent", auditAgentConfig),
+          buildAuditLogTarget("tool", {
+            sId: action.toolConfiguration.name,
+            name: action.toolConfiguration.originalName,
+          }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          decision: approvalState,
+          tool_name: action.toolConfiguration.originalName,
+          mcp_server_name: action.toolConfiguration.mcpServerName,
+          stake_level: action.toolConfiguration.permission,
+          conversation_id: conversationId,
+          // The string sId of the agent message being validated (the numeric
+          // DB id is `action.agentMessageId`); matches agent.executed's
+          // agent_message_id for run correlation.
+          agent_message_id: agentMessageId,
+          action_id: action.sId,
+          deciding_user_id: user?.sId ?? "unknown",
+          deciding_user_email: user?.email ?? "unknown",
+        },
+      });
+    } catch (err) {
+      logger.error(
+        { err, actionId, conversationId },
+        "Failed to emit tool.approval_resolved audit event"
+      );
+    }
+  })();
+
   // Remove the tool approval request event from the message channel.
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
@@ -362,7 +376,7 @@ export async function validateAction(
       agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        conversationBranchId: branchId,
+        conversationBranchId: null,
         conversationId,
         conversationTitle,
         userMessageId,
@@ -404,7 +418,7 @@ export async function validateAction(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: branchId,
+      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,
@@ -428,11 +442,12 @@ export async function validateAction(
     `Action ${approvalState === "approved" ? "approved" : "rejected"} by user`
   );
 
-  if (!resumeAncestorConversations) {
-    return new Ok(undefined);
-  }
-
-  return resumeAncestorConversationsHelper(auth, conversation, {
+  // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it, so
+  // this must run whatever the surface the approval came from (web, Slack, Teams, public API).
+  // The approval is already committed, so a failed wake-up is logged, never returned.
+  await resumeAncestorConversationsHelper(auth, conversation, {
     agentMessageId,
   });
+
+  return new Ok(undefined);
 }

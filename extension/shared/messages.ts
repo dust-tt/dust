@@ -58,6 +58,14 @@ export type TabActionResponse = {
   tabs?: TabInfo[];
 };
 
+export type SnapshotTabStateMessage = {
+  type: "SNAPSHOT_TAB_STATE";
+};
+
+export type SnapshotTabStateResponse = {
+  success: boolean;
+};
+
 export type InputBarStatusMessage = {
   type: "INPUT_BAR_STATUS";
   available: boolean;

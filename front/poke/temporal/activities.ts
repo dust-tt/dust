@@ -2,12 +2,14 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
+import { deletePodStatePrefix } from "@app/lib/api/sandbox/db";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
+import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -25,6 +27,8 @@ import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { SubscriptionModel } from "@app/lib/models/plan";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -36,6 +40,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -50,6 +55,7 @@ import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -81,6 +87,7 @@ import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspa
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { deleteActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types/core/core_api";
 import assert from "assert";
@@ -159,6 +166,22 @@ export async function scrubSpaceActivity({
 
   assert(space.isDeletable(), "Space cannot be deleted.");
 
+  if (space.isProject()) {
+    const deleteSandboxFunctionsResult =
+      await SandboxFunctionResource.deleteAllForSpace(auth, space);
+    if (deleteSandboxFunctionsResult.isErr()) {
+      throw deleteSandboxFunctionsResult.error;
+    }
+
+    // Pod state (litestream replica) objects are never FileResources, so the
+    // per-function deletes above cannot reach them — scrub the whole GCS
+    // prefix or the replica chain leaks forever.
+    const deletePodStateResult = await deletePodStatePrefix(auth, space);
+    if (deletePodStateResult.isErr()) {
+      throw deletePodStateResult.error;
+    }
+  }
+
   // Delete all the data sources of the spaces.
   const dataSources = await DataSourceResource.listBySpace(auth, space, {
     includeDeleted: true,
@@ -225,9 +248,45 @@ export async function scrubSpaceActivity({
     await UserProjectPreferencesResource.deleteAllBySpace(auth, space.id);
   }
 
+  // Delete activation nudges sent for this Pod. The FK to spaces is
+  // `onDelete: "RESTRICT"`, so these rows must be removed before the space
+  // can be hard-deleted.
+  await ActivationNudgeModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      spaceId: space.id,
+    },
+  });
+
+  // Delete recommendations made in this Pod before deleting the activation
+  // pod record itself. The FK from activation_recommendations to
+  // activation_pods is `onDelete: "RESTRICT"`, so the recommendations must
+  // be removed first or the destroy below fails. The FK from spaces to
+  // activation_pods is `onDelete: "RESTRICT"` too, so this row must be
+  // removed before the space can be hard-deleted.
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+  if (activationPod) {
+    await ActivationRecommendationResource.deleteAllForActivationPod(
+      auth,
+      activationPod
+    );
+    const deletePodRes = await activationPod.delete(auth, {});
+    if (deletePodRes.isErr()) {
+      throw deletePodRes.error;
+    }
+  }
+
+  // Detach triggers from this Pod before hard-deleting the space. The trigger
+  // FK is `onDelete: "RESTRICT"`, so references must be cleared first; the
+  // triggers keep running and fall back to the default target.
+  await TriggerResource.detachAllFromSpace(auth, space.id);
+
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
-  await hardDeleteSpace(auth, space);
+  const hardDeleteRes = await hardDeleteSpace(auth, space);
+  if (hardDeleteRes.isErr()) {
+    throw hardDeleteRes.error;
+  }
 }
 
 async function deleteSpaceConversations(
@@ -534,14 +593,15 @@ export async function deleteMembersActivity({
           users: [user],
         });
 
-      // If the user we're removing the membership of only has one membership, we delete the user.
+      // If the user we're removing the membership of only has one membership, we delete their
+      // workspace data but keep the user row to avoid expensive FK constraint scans.
       if (membershipsOfUser.length === 1) {
         childLogger.info(
           {
             membershipId: membership.id,
             userId: user.sId,
           },
-          "Deleting Membership and user"
+          "Deleting Membership and user data"
         );
 
         // Delete the user's files.
@@ -551,6 +611,7 @@ export async function deleteMembersActivity({
         // Delete the user's agent memories.
         await AgentMemoryModel.destroy({
           where: {
+            workspaceId: workspace.id,
             userId: user.id,
           },
         });
@@ -559,8 +620,6 @@ export async function deleteMembersActivity({
         // Cancel any remaining Temporal workflows/schedules and delete wake-up rows owned by the
         // user in this workspace.
         await WakeUpResource.deleteAllForUser(auth, user.toJSON());
-
-        await user.delete(auth, {});
       }
     } else {
       hardDeleteLogger.info(
@@ -633,20 +692,21 @@ export async function deleteSpacesActivity({
     return a.createdAt.getTime() - b.createdAt.getTime();
   });
 
+  // Data sources can have views in several spaces, so soft-delete every view before deleting any
+  // data source.
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(
+    auth,
+    sortedSpaces,
+    { includeDeleted: true }
+  );
+  for (const dataSourceView of dataSourceViews) {
+    await dataSourceView.delete(auth, { hardDelete: false });
+  }
+
   for (const space of sortedSpaces) {
     const res = await space.delete(auth, { hardDelete: false });
     if (res.isErr()) {
       throw res.error;
-    }
-
-    // Soft delete all the data source views of the space.
-    const dataSourceViews = await DataSourceViewResource.listBySpace(
-      auth,
-      space,
-      { includeDeleted: true }
-    );
-    for (const ds of dataSourceViews) {
-      await ds.delete(auth, { hardDelete: false });
     }
 
     // Soft delete all the data sources of the space.
@@ -745,9 +805,11 @@ export async function deleteWorkspaceActivity({
     },
   });
   await TriggerResource.deleteAllForWorkspace(auth);
+  await deleteActivationWorkspaceSchedule({ workspaceId });
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);
+  await GroupPermissionResource.deleteAllForWorkspace(auth);
   await GroupMembershipModel.destroy({
     where: { workspaceId: workspace.id },
   });
@@ -778,7 +840,7 @@ export async function deleteWorkspaceActivity({
   await ProgrammaticUsageConfigurationResource.deleteAllForWorkspace(auth);
   await SelfImprovingSkillsUsageResource.deleteAllForWorkspace(auth);
   await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
-  await WorkspaceSeatLimitResource.deleteAllForWorkspace(auth);
+  await WorkspaceSeatLimitResource.deleteAllForWorkspace({ workspace });
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
@@ -788,7 +850,10 @@ export async function deleteWorkspaceActivity({
 
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
   if (workspaceResource) {
-    await workspaceResource.delete(auth, {});
+    const deleteResult = await workspaceResource.delete(auth, {});
+    if (deleteResult.isErr()) {
+      throw deleteResult.error;
+    }
   }
 }
 
@@ -808,6 +873,7 @@ export async function deleteTranscriptsActivity({
 
   await LabsTranscriptsHistoryModel.destroy({
     where: {
+      workspaceId: workspace.id,
       configurationId: {
         [Op.in]: configs.map((c) => c.id),
       },

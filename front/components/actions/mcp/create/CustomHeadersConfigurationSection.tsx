@@ -5,7 +5,7 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   Icon,
-  InformationCircleIcon,
+  InfoCircle,
   Label,
   SliderToggle,
   Tooltip,
@@ -45,9 +45,9 @@ export function CustomHeadersConfigurationSection({
               <Tooltip
                 trigger={
                   <Icon
-                    visual={InformationCircleIcon}
+                    visual={InfoCircle}
                     size="xs"
-                    className="text-gray-400"
+                    className="text-muted-foreground"
                   />
                 }
                 label="Custom headers can be added for advanced networking such as firewalls."

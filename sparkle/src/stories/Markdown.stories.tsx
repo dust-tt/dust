@@ -1,20 +1,32 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { expect, waitFor } from "storybook/test";
 
 import { Markdown } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/Markdown",
+  title: "Product/Conversation/Markdown",
   component: Markdown,
+  parameters: {
+    docs: {
+      description: {
+        component: `Renders agent message bodies from a Markdown \`content\` string. Supports the full GitHub-flavored set — headings, lists, task lists, tables, blockquotes, links, and footnotes — plus fenced code (via **CodeBlock**), LaTeX math, CSV/JSON pretty-printing, and Mermaid diagrams. Typography can be tuned with \`textColor\` and \`forcedTextSize\`.
+
+**When to use**
+- To display formatted text produced by an agent, wherever rich content (code, tables, math, diagrams) may appear.
+
+**Guidelines**
+- Pass raw Markdown through \`content\`; the component handles escaping and rendering, so avoid pre-formatting to HTML.
+- Use \`forcedTextSize\` to match the surrounding context (e.g. inside an **ActionCardBlock** detail section).
+- Code fences are delegated to **CodeBlock**; rely on language hints (\`ts\`, \`json\`) for correct highlighting and formatting.`,
+      },
+    },
+  },
   tags: ["autodocs"],
   decorators: [(Story) => <Story />],
   argTypes: {
     textColor: {
-      options: [
-        "s-text-foreground",
-        "s-text-muted-foreground",
-        "s-text-green-700",
-      ],
+      options: ["text-foreground", "text-muted-foreground", "text-green-700"],
       control: { type: "radio" },
     },
   },
@@ -378,6 +390,11 @@ pie title Distribution
 export const ExtendedMarkdownStory: Story = {
   args: {
     content: example,
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      expect(canvasElement.querySelector(".mermaid svg")).not.toBeNull();
+    });
   },
 };
 

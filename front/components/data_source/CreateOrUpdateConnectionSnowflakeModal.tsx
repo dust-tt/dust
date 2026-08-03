@@ -15,7 +15,7 @@ import type { WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
-  BookOpenIcon,
+  BookOpen01,
   Button,
   Chip,
   Icon,
@@ -320,15 +320,15 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 variant="outline"
-                icon={BookOpenIcon}
+                icon={BookOpen01}
               />
 
               {connectorUIConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
-                  <div className="grow text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="grow text-sm font-medium text-muted-foreground">
                     Limitations
                   </div>
-                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="text-sm font-normal text-muted-foreground">
                     {connectorUIConfiguration.limitations}
                   </div>
                 </div>
@@ -377,7 +377,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               />
               {credentials.account.trim().length > 0 &&
                 !isValidSnowflakeAccount(credentials.account) && (
-                  <div className="dark:text-warning-night text-xs text-warning">
+                  <div className="text-xs text-warning">
                     Invalid format. Use an account identifier like{" "}
                     <span className="font-mono">abc123.us-east-1</span> or{" "}
                     <span className="font-mono">myorg-myaccount</span>.

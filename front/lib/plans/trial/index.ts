@@ -8,6 +8,12 @@ import {
   TRIAL_DURATION_DAYS,
 } from "@app/lib/plans/trial/constants";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import type { Country } from "react-phone-number-input";
+
+export type GetVerifyResponseBody = {
+  isEligibleForTrial: boolean;
+  initialCountryCode: Country;
+};
 
 /**
  * Checks if a workspace is eligible for the trial page.

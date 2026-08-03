@@ -27,6 +27,7 @@ export const changeWebcrawlerFrequency = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_, dataSource) => {
     if (!dataSource) {

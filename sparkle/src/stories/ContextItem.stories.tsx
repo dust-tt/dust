@@ -12,19 +12,34 @@ import {
   Avatar,
   Button,
   Chip,
-  Cog6ToothIcon,
+  Settings01,
   ContextItem,
-  FolderIcon,
+  Folder,
   Icon,
-  PencilSquareIcon,
-  RobotIcon,
+  Edit04,
+  Robot,
   SliderToggle,
-  TrashIcon,
+  Trash01,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "List/ContextItem",
+  title: "Lists/ContextItem",
   component: ContextItem,
+  parameters: {
+    docs: {
+      description: {
+        component: `A rich list row for representing a resource, connection, or agent, with a leading **visual**, a **title**, optional **subElement** metadata, free-form children (descriptions, chips), and a trailing **action**. Rows can be made interactive with **onClick** and can reveal their **action** only on hover via **hoverAction**.
+
+**When to use**
+- To list connected platforms, data sources, agents, or settings entries that each carry a visual, metadata, and an action.
+
+**Guidelines**
+- Compose rows inside **ContextItem.List**, and use the **ContextItem.Visual**, **ContextItem.Description**, and **ContextItem.SectionHeader** subcomponents for consistent layout.
+- Use **hoverAction** to keep rows clean and surface controls (e.g. Edit / Remove **Button**s) only on hover.
+- For a denser settings layout with a title, description, and a single control, prefer **SettingsList.Row**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof ContextItem>;
 
 export default meta;
@@ -37,17 +52,17 @@ export const ListItemExample = () => (
         subElement={
           <>
             Added by: Edouard Wautier
-            <span className="s-h-3 s-w-0.5 s-bg-primary-500" />
-            <div className="s-flex s-items-center s-gap-1">
+            <span className="h-3 w-0.5 bg-primary-500" />
+            <div className="flex items-center gap-1">
               Used by: 3
-              <Icon visual={RobotIcon} size="xs" />
+              <Icon visual={Robot} size="xs" />
             </div>
           </>
         }
-        visual={<Icon visual={FolderIcon} size="md" />}
+        visual={<Icon visual={Folder} size="md" />}
       >
-        <div className="s-py-2">
-          <Chip size="xs" label="Last Sync ~7 days ago" color="green" />
+        <div className="py-2">
+          <Chip size="xs" label="Last Sync ~7 days ago" color="success" />
         </div>
         <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
       </ContextItem>
@@ -79,14 +94,9 @@ export const ListItemExample = () => (
         visual={<ContextItem.Visual visual={SlackLogo} />}
         hoverAction
         action={
-          <div className="s-flex s-gap-1">
-            <Button icon={TrashIcon} variant="warning" label="Remove" />
-            <Button
-              variant="outline"
-              label="Edit"
-              size="sm"
-              icon={PencilSquareIcon}
-            />
+          <div className="flex gap-1">
+            <Button icon={Trash01} variant="warning" label="Remove" />
+            <Button variant="outline" label="Edit" size="sm" icon={Edit04} />
           </div>
         }
       >
@@ -95,11 +105,11 @@ export const ListItemExample = () => (
       <ContextItem
         title="Github"
         subElement={<>By: Stan</>}
-        action={<SliderToggle size="xs" />}
+        action={<SliderToggle />}
         visual={<ContextItem.Visual visual={GithubLogo} />}
       >
         <>
-          <div className="s-py-2">
+          <div className="py-2">
             <Chip label="Syncing…" color="info" size="sm" isBusy />
           </div>
           <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
@@ -107,12 +117,9 @@ export const ListItemExample = () => (
       </ContextItem>
       <ContextItem
         title="@Gpt4"
-        action={<SliderToggle size="xs" />}
+        action={<SliderToggle />}
         visual={
-          <Avatar
-            visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
-            size="sm"
-          />
+          <Avatar visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png" />
         }
       >
         <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
@@ -125,7 +132,7 @@ export const ListItemExample = () => (
             variant="outline"
             label="Manage"
             size="sm"
-            icon={Cog6ToothIcon}
+            icon={Settings01}
           />
         }
         visual={
@@ -145,7 +152,7 @@ export const ListItemExample = () => (
             variant="outline"
             label="Manage"
             size="sm"
-            icon={Cog6ToothIcon}
+            icon={Settings01}
           />
         }
         visual={

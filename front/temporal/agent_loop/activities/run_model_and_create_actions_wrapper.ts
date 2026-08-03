@@ -5,6 +5,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -35,6 +36,9 @@ import { Context } from "@temporalio/activity";
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
   runId: string | null;
+  // The model returned nothing at all: the loop should run one more step with
+  // tool use disabled to force a final answer.
+  retryWithoutTools?: boolean;
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -66,12 +70,14 @@ export async function runModelAndCreateActionsActivity({
   runAgentArgs,
   runIds,
   step,
+  forceDisableToolUse = false,
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
+  forceDisableToolUse?: boolean;
 }): Promise<RunModelAndCreateActionsResult | null> {
   return tracer.trace("runModelAndCreateActionsActivity", async () =>
     _runModelAndCreateActionsActivity({
@@ -80,6 +86,7 @@ export async function runModelAndCreateActionsActivity({
       runAgentArgs,
       runIds,
       step,
+      forceDisableToolUse,
     })
   );
 }
@@ -90,12 +97,14 @@ async function _runModelAndCreateActionsActivity({
   runAgentArgs,
   runIds,
   step,
+  forceDisableToolUse,
 }: {
   authType: AuthenticatorType;
   checkForResume: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
+  forceDisableToolUse: boolean;
 }): Promise<RunModelAndCreateActionsResult | null> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
   const durationRecorder = DurationRecorder.create([]);
@@ -247,6 +256,7 @@ async function _runModelAndCreateActionsActivity({
     functionCallStepContentIds,
     durationRecorder,
     activityTimeoutDeadlineMs,
+    forceDisableToolUse,
   });
 
   if (!modelResult) {
@@ -258,12 +268,13 @@ async function _runModelAndCreateActionsActivity({
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     runId,
     stepContexts,
+    retryWithoutTools,
   } = modelResult;
 
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    return { runId, actionBlobs: [] };
+    return { runId, actionBlobs: [], retryWithoutTools };
   }
 
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
@@ -292,6 +303,12 @@ async function _runModelAndCreateActionsActivity({
     await ConversationResource.markAsActionRequired(auth, {
       conversation: runAgentData.conversation,
     });
+
+    if (!runAgentData.conversation.actionRequired) {
+      notifyManualActionRequired(auth, {
+        conversationId: runAgentData.conversation.sId,
+      });
+    }
   }
 
   return {

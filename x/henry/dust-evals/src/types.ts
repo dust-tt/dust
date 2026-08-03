@@ -58,6 +58,7 @@ export const SCALES: Record<ScaleType, ScaleConfig> = {
 export interface EvalRow {
   prompt: string
   judge_prompt: string
+  files: string[]
 }
 
 export interface AgentResponse {
@@ -69,6 +70,7 @@ export interface AgentResponse {
   conversationId: string
   messageId: string
   retryCount: number
+  costCredits: number | null
   error?: string
   wasTimeout?: boolean
 }
@@ -100,6 +102,7 @@ export interface EvalResult {
   agentConversationId: string
   agentMessageId: string
   agentRetryCount: number
+  agentCostCredits: number | null
   error: string | undefined
   wasTimeout: boolean | undefined
 }
@@ -118,6 +121,8 @@ export interface EvalStatistics {
   averageDurationMs: number
   averageRetryCount: number
   averageJudgeAgreement: number
+  averageCostCredits: number | null 
+  totalCostCredits: number
 }
 
 export interface EvalConfig {
@@ -158,6 +163,8 @@ export interface EvalReport {
     normalizedAverageScore: number
     averageJudgeAgreement: number
     lowAgreementCount: number // Results where agreement < minAgreement
+    totalCostCredits: number
+    averageCostCredits: number | null
   }
   metadata: {
     scaleUsed: ScaleConfig

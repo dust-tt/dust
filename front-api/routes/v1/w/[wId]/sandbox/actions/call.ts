@@ -1,5 +1,11 @@
+import {
+  isSandboxExecTokenPayload,
+  isSandboxFunctionInvocationTokenPayload,
+} from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
+import { createSandboxFunctionMCPAction } from "@app/lib/api/sandbox_functions/create_sandbox_function_mcp_action";
 import logger from "@app/logger/logger";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -11,9 +17,7 @@ type CallSandboxToolResponse = {
   actionId: string;
 };
 
-// Mounted at /api/v1/w/:wId/sandbox/actions/call. sandboxAuth is applied by
-// the parent sandbox sub-app, so ctx.get("auth") and ctx.get("sandboxClaims")
-// are always available here.
+// Mounted at /api/v1/w/:wId/sandbox/actions/call.
 const app = sandboxApp();
 
 /**
@@ -33,9 +37,64 @@ app.post(
       arguments: toolArgs,
     } = ctx.req.valid("json");
 
+    // Sandbox function invocations have no conversation: the action and any approval event are
+    // scoped to the invocation. The sandbox is never paused (function invocations are blocking
+    // execs), so the response can be returned directly.
+    if (isSandboxFunctionInvocationTokenPayload(claims)) {
+      const result = await createSandboxFunctionMCPAction(auth, {
+        sandboxFunctionId: claims.sandboxFunctionId,
+        invocationId: claims.invocationId,
+        podSpaceId: claims.spaceId,
+        serverViewId,
+        toolName,
+        rawInputs: toolArgs ?? {},
+      });
+
+      if (result.isErr()) {
+        switch (result.error.type) {
+          case "server_view_not_found":
+          case "invocation_not_found":
+            return apiError(ctx, {
+              status_code: 404,
+              api_error: {
+                type: "invalid_request_error",
+                message: result.error.message,
+              },
+            });
+          case "tool_not_available":
+          case "invalid_inputs":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: result.error.message,
+              },
+            });
+          default:
+            assertNever(result.error.type);
+        }
+      }
+
+      return ctx.json(
+        { status: "pending" as const, actionId: result.value.actionId },
+        202
+      );
+    }
+
+    if (!isSandboxExecTokenPayload(claims)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "This sandbox token cannot access sandbox actions.",
+        },
+      });
+    }
+
     const result = await createSandboxChildAction(auth, {
       parentActionId: claims.actionId,
       agentId: claims.aId,
+      agentVersion: claims.aV,
       conversationId: claims.cId,
       agentMessageId: claims.mId,
       serverViewId,

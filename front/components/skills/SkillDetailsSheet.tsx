@@ -1,9 +1,12 @@
-import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { getSkillAvatarIcon, hasRelations } from "@app/lib/skill";
+import {
+  getSkillAvatarIcon,
+  hasRelations,
+  isDustProvidedSkill,
+} from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type {
   SkillRelations,
@@ -12,10 +15,10 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  ArrowPathIcon,
   Button,
   ContentMessage,
-  InformationCircleIcon,
+  InfoCircle,
+  RefreshCw02,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -26,7 +29,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
@@ -36,6 +39,7 @@ type SkillDetailsProps = {
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
+  replaceOnEdit?: boolean;
 };
 
 export function SkillDetailsSheet({
@@ -43,6 +47,7 @@ export function SkillDetailsSheet({
   onClose,
   user,
   owner,
+  replaceOnEdit,
 }: SkillDetailsProps) {
   // Fetch the full skill (with instructions/tools) for the content section,
   // since the list endpoint may not include them.
@@ -65,6 +70,7 @@ export function SkillDetailsSheet({
                 skill={skill}
                 owner={owner}
                 onClose={onClose}
+                replaceOnEdit={replaceOnEdit}
               />
             </SheetHeader>
             <SheetContainer className="pb-4">
@@ -93,14 +99,18 @@ type SkillDetailsSheetContentProps = {
   user: UserType;
 };
 
-export function SkillDetailsSheetContent({
+function SkillDetailsSheetContent({
   skill,
   owner,
   user,
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const showEditorsTabs = skill.status !== "suggested" && skill.canWrite;
+  // The editors tab is shown to everyone (non-editors get a read-only list,
+  // SkillEditorsTab hides the remove column for them), except for global
+  // skills which have no editor group.
+  const showEditorsTabs =
+    skill.status !== "suggested" && !isDustProvidedSkill(skill);
 
   if (showEditorsTabs) {
     return (
@@ -109,13 +119,13 @@ export function SkillDetailsSheetContent({
           <TabsTrigger
             value="info"
             label="Info"
-            icon={InformationCircleIcon}
+            icon={InfoCircle}
             onClick={() => setSelectedTab("info")}
           />
           <TabsTrigger
             value="editors"
             label="Editors"
-            icon={UserGroupIcon}
+            icon={Users01}
             onClick={() => setSelectedTab("editors")}
           />
         </TabsList>
@@ -140,12 +150,14 @@ type DescriptionSectionProps = {
   skill: SkillWithoutInstructionsAndToolsWithRelationsType;
   owner: WorkspaceType;
   onClose: () => void;
+  replaceOnEdit?: boolean;
 };
 
 const DescriptionSection = ({
   skill,
   owner,
   onClose,
+  replaceOnEdit,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const { editedByUser } = skill.relations;
@@ -157,7 +169,7 @@ const DescriptionSection = ({
       day: "2-digit",
     });
 
-  const SkillAvatar = getSkillAvatarIcon(skill.icon);
+  const SkillAvatar = getSkillAvatarIcon(skill);
 
   return (
     <div className="flex flex-col items-center gap-4 pt-4">
@@ -168,15 +180,10 @@ const DescriptionSection = ({
 
       {/* Title and edit info */}
       <div className="flex flex-col items-center gap-1">
-        <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
-          {skill.name}
-        </h2>
-        {skill.relations.extendedSkill && (
-          <ExtendedSkillBadge extendedSkill={skill.relations.extendedSkill} />
-        )}
+        <h2 className="text-xl font-semibold text-foreground">{skill.name}</h2>
 
         {editedDate && (
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             Last edited: {editedDate}
             {editedByUser && ` by ${editedByUser.fullName}`}
           </p>
@@ -184,7 +191,12 @@ const DescriptionSection = ({
       </div>
 
       {skill.status === "active" && (
-        <SkillDetailsButtonBar owner={owner} skill={skill} onClose={onClose} />
+        <SkillDetailsButtonBar
+          owner={owner}
+          skill={skill}
+          onClose={onClose}
+          replaceOnEdit={replaceOnEdit}
+        />
       )}
 
       {skill.status === "archived" && (
@@ -192,11 +204,11 @@ const DescriptionSection = ({
           <ContentMessage
             title="This skill has been archived."
             variant="warning"
-            icon={InformationCircleIcon}
+            icon={InfoCircle}
             size="sm"
           >
             It is no longer active and cannot be used.
-            {skill.canWrite && (
+            {skill.canAdministrate && (
               <div className="mt-2">
                 <Button
                   variant="outline"
@@ -204,7 +216,7 @@ const DescriptionSection = ({
                   onClick={() => {
                     setShowRestoreModal(true);
                   }}
-                  icon={ArrowPathIcon}
+                  icon={RefreshCw02}
                 />
               </div>
             )}

@@ -46,13 +46,13 @@ import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
-  Cog6ToothIcon,
   cn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Settings01,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -514,7 +514,7 @@ export const SpaceDataSourceViewContentList = ({
       isAdmin ? (
         <Button
           label="Manage Data"
-          icon={Cog6ToothIcon}
+          icon={Settings01}
           onClick={() => {
             if (systemSpace) {
               void router.push(
@@ -602,7 +602,7 @@ export const SpaceDataSourceViewContentList = ({
         connector &&
         !parentId &&
         space.kind === "system" && (
-          <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
             {isEmpty && <div>Connection ready. Select the data to sync.</div>}
 
             <ConnectorPermissionsModal
@@ -633,14 +633,14 @@ export const SpaceDataSourceViewContentList = ({
       <DropzoneContainer
         description="Drag and drop your files here."
         title="Add Files"
-        disabled={!canWriteInSpace}
+        disabled={!canWriteInSpace || !isFolder(dataSourceView.dataSource)}
       >
         {isEmpty && (
           <div
             className={cn(
               "flex w-full gap-2",
               "h-36 items-center justify-center rounded-xl",
-              "bg-muted-background dark:bg-muted-background-night"
+              "bg-muted-background"
             )}
           >
             {emptyContent}

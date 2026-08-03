@@ -4,31 +4,34 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/types/assistant/models/mistral";
-import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
+import { GPT_5_6_TERRA_MODEL_ID } from "@app/types/assistant/models/openai";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelIdType,
-  ModelProviderIdType,
+  ModelMakerIdType,
 } from "@app/types/assistant/models/types";
 
-export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
-  GPT_5_5_MODEL_ID,
+const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
+  GPT_5_6_TERRA_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
   MISTRAL_MEDIUM_3_5_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
 ] as const;
 
-export function isBestPerformingModel(modelId: ModelIdType): boolean {
+function isBestPerformingModel(modelId: ModelIdType): boolean {
   return BEST_PERFORMING_MODELS_ID.includes(modelId);
 }
 
-export function categorizeModels(models: ModelConfigurationType[]): {
-  bestPerformingModelConfigs: ModelConfigurationType[];
-  otherModelConfigs: ModelConfigurationType[];
+function categorizeModels<T extends ModelConfigurationType>(
+  models: T[]
+): {
+  bestPerformingModelConfigs: T[];
+  otherModelConfigs: T[];
 } {
-  const bestPerformingModelConfigs: ModelConfigurationType[] = [];
-  const otherModelConfigs: ModelConfigurationType[] = [];
+  const bestPerformingModelConfigs: T[] = [];
+  const otherModelConfigs: T[] = [];
 
   for (const modelConfig of models) {
     if (isBestPerformingModel(modelConfig.modelId)) {
@@ -41,44 +44,49 @@ export function categorizeModels(models: ModelConfigurationType[]): {
   return { bestPerformingModelConfigs, otherModelConfigs };
 }
 
-export function getModelKey(modelConfig: ModelConfigurationType): string {
+export function getModelKey(
+  modelConfig: Pick<ModelConfigurationType, "modelId">
+): ModelIdType {
   return modelConfig.modelId;
 }
 
 // Enhanced categorization for new UI structure
-export interface ModelCategories {
-  bestGeneralModels: ModelConfigurationType[];
-  providerGroups: Map<
-    ModelProviderIdType,
+interface ModelCategories<
+  T extends ModelConfigurationType = ModelConfigurationType,
+> {
+  bestGeneralModels: T[];
+  makerGroups: Map<
+    ModelMakerIdType,
     {
-      recent: ModelConfigurationType[];
-      older: ModelConfigurationType[];
+      recent: T[];
+      older: T[];
     }
   >;
 }
 
-export function getModelsCategorization(
-  models: ModelConfigurationType[]
-): ModelCategories {
+export function getModelsCategorization<T extends ModelConfigurationType>(
+  models: T[]
+): ModelCategories<T> {
   // Use existing categorization to separate best performing models
   const { bestPerformingModelConfigs, otherModelConfigs } =
     categorizeModels(models);
 
-  // Group remaining models by provider and separate recent vs older
-  const providerGroups = new Map<
-    ModelProviderIdType,
+  // Group remaining models by maker (lab) and separate recent vs older
+  const makerGroups = new Map<
+    ModelMakerIdType,
     {
-      recent: ModelConfigurationType[];
-      older: ModelConfigurationType[];
+      recent: T[];
+      older: T[];
     }
   >();
 
   for (const model of otherModelConfigs) {
-    if (!providerGroups.has(model.providerId)) {
-      providerGroups.set(model.providerId, { recent: [], older: [] });
+    const makerId = getModelMaker(model);
+    if (!makerGroups.has(makerId)) {
+      makerGroups.set(makerId, { recent: [], older: [] });
     }
 
-    const group = providerGroups.get(model.providerId)!;
+    const group = makerGroups.get(makerId)!;
     if (model.isLatest) {
       group.recent.push(model);
     } else {
@@ -88,6 +96,6 @@ export function getModelsCategorization(
 
   return {
     bestGeneralModels: bestPerformingModelConfigs,
-    providerGroups,
+    makerGroups,
   };
 }

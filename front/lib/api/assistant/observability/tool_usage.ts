@@ -1,6 +1,6 @@
 import {
   bucketsToArray,
-  formatUTCDateFromMillis,
+  formatDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,6 +21,14 @@ export type AvailableTool = {
   serverName: string;
   displayName: string;
   totalExecutions: number;
+};
+
+export type GetWorkspaceToolsResponse = {
+  tools: AvailableTool[];
+};
+
+export type GetWorkspaceToolUsageResponse = {
+  points: ToolUsagePoint[];
 };
 
 type DateBucket = {
@@ -70,19 +78,22 @@ type ToolListAggs = {
   };
 };
 
-function bucketToPoint(bucket: DateBucket): ToolUsagePoint {
+function bucketToPoint(bucket: DateBucket, timezone: string): ToolUsagePoint {
   return {
     timestamp: bucket.key,
-    date: formatUTCDateFromMillis(bucket.key),
+    date: formatDateFromMillis(bucket.key, timezone),
     uniqueUsers: bucket.tools_nested?.unique_users?.cardinality?.value ?? 0,
     executionCount: bucket.tools_nested?.doc_count ?? 0,
   };
 }
 
-function filteredBucketToPoint(bucket: FilteredDateBucket): ToolUsagePoint {
+function filteredBucketToPoint(
+  bucket: FilteredDateBucket,
+  timezone: string
+): ToolUsagePoint {
   return {
     timestamp: bucket.key,
-    date: formatUTCDateFromMillis(bucket.key),
+    date: formatDateFromMillis(bucket.key, timezone),
     uniqueUsers:
       bucket.tools_nested?.filtered?.unique_users?.cardinality?.value ?? 0,
     executionCount: bucket.tools_nested?.filtered?.doc_count ?? 0,
@@ -154,7 +165,9 @@ export async function fetchToolUsageMetrics(
       result.value.aggregations?.by_date?.buckets
     );
 
-    return new Ok(dateBuckets.map(filteredBucketToPoint));
+    return new Ok(
+      dateBuckets.map((bucket) => filteredBucketToPoint(bucket, timezone))
+    );
   }
 
   const result = await searchAnalytics<never, ToolUsageAggs>(baseQuery, {
@@ -170,7 +183,7 @@ export async function fetchToolUsageMetrics(
     result.value.aggregations?.by_date?.buckets
   );
 
-  return new Ok(dateBuckets.map(bucketToPoint));
+  return new Ok(dateBuckets.map((bucket) => bucketToPoint(bucket, timezone)));
 }
 
 export async function fetchAvailableTools(

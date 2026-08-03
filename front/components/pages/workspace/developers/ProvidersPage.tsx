@@ -12,14 +12,7 @@ import {
 import { useProviders } from "@app/lib/swr/apps";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  Button,
-  Chip,
-  Container,
-  cn,
-  Page,
-  ShapesIcon,
-} from "@dust-tt/sparkle";
+import { Button, Chip, Container, cn, Page, Shapes } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface ProvidersProps {
@@ -104,10 +97,7 @@ export function Providers({ owner }: ProvidersProps) {
               title="Model Providers"
               description="Model providers available to your Dust apps."
             />
-            <ul
-              role="list"
-              className="divide-y divide-separator pt-4 dark:divide-separator-night"
-            >
+            <ul role="list" className="divide-y divide-separator pt-4">
               {filteredProviders.map((provider) => (
                 <ProviderListItem
                   key={provider.providerId}
@@ -128,10 +118,7 @@ export function Providers({ owner }: ProvidersProps) {
               title="Service Providers"
               description="Service providers enable your Dust Apps to query external data or write to external services."
             />
-            <ul
-              role="list"
-              className="divide-y divide-separator pt-4 dark:divide-separator-night"
-            >
+            <ul role="list" className="divide-y divide-separator pt-4">
               {serviceProviders.map((provider) => (
                 <ProviderListItem
                   key={provider.providerId}
@@ -173,9 +160,7 @@ function ProviderListItem({
             <p
               className={cn(
                 "heading-base truncate",
-                isEnabled
-                  ? "text-foreground dark:text-foreground-night"
-                  : "text-primary-500 dark:text-primary-500-night"
+                isEnabled ? "text-foreground" : "text-primary-500"
               )}
             >
               {name}
@@ -187,7 +172,7 @@ function ProviderListItem({
             />
           </div>
           {apiKey && (
-            <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
               <span className="shrink-0">API Key:</span>
               <div className="dd-privacy-mask max-w-72 truncate">
                 {redactString(apiKey, 4)}
@@ -212,7 +197,7 @@ export function ProvidersPage() {
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title="App Credentials"
-        icon={ShapesIcon}
+        icon={Shapes}
         description="Configure model and service providers to enable advanced capabilities in your Apps. Note: These providers are not used by Dust agents at all, but are required for running your own custom Dust Apps."
       />
       <Page.Vertical align="stretch" gap="md">

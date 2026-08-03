@@ -1,6 +1,7 @@
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -22,6 +23,60 @@ const PostMessageEventBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/cancel.
 const app = workspaceApp();
 
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/cancel:
+ *   post:
+ *     summary: Cancel message generation
+ *     description: Cancels the generation of messages in a conversation.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *               - messageIds
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [cancel, gracefully_stop, interrupt]
+ *               messageIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ */
+
 app.use("*", streamingTag);
 
 app.post(
@@ -32,13 +87,15 @@ app.post(
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversationId
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
       );
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
     const { action, messageIds } = ctx.req.valid("json");

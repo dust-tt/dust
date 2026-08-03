@@ -1,28 +1,16 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { DocumentOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/docs_resolver";
 import { SpreadsheetOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/sheets_resolver";
 import { PresentationOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/slides_resolver";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
-export const SUPPORTED_MIMETYPES = [
-  "application/vnd.google-apps.document",
-  "application/vnd.google-apps.presentation",
-  "application/vnd.google-apps.spreadsheet",
-  "text/plain",
-  "text/markdown",
-  "text/csv",
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
 
 export const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 export const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
 
 export const GOOGLE_DRIVE_TOOL_NAME = "google_drive" as const;
+
+export const GOOGLE_DRIVE_SCOPES =
+  "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
 
 const capabilitiesSchema = z
   .object({
@@ -36,9 +24,10 @@ const capabilitiesSchema = z
     "The capabilities object for this file, as returned by search_files or get_file_content. Pass this value if it was returned by a previous tool call."
   );
 
-export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
-  list_drives: {
-    description: "List all shared drives accessible by the user.",
+export const GOOGLE_DRIVE_TOOLS_METADATA = [
+  {
+    name: "list_drives",
+    description: "List all Google Drive shared drives accessible by the user.",
     schema: {
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
@@ -47,10 +36,13 @@ export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Google drives",
       done: "List Google drives",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  search_files: {
+  {
+    name: "search_files",
     description:
-      "Search for files in Google Drive. Can search in personal drive, all shared drives, or a specific drive.",
+      "Search and find files in Google Drive by name or content. Locate Google Docs documents, Google Sheets spreadsheets, Google Slides presentations, and folders in your personal drive, all shared drives, or a specific drive.",
     schema: {
       q: z
         .string()
@@ -120,9 +112,16 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Searching Google Drive files",
       done: "Search Google Drive files",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_file_content: {
-    description: `Get the content of a Google Drive file (Docs, Slides, Sheets, text, PDF, PowerPoint, Word) as text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
+  {
+    name: "get_file_content",
+    description:
+      "Read, open, and get the content of a Google Drive file as text with offset-based pagination. " +
+      "Google Docs and Slides are exported as plain text. Google Sheets are exported as XLSX. " +
+      "Any other file (XLSX, PDF, Office, images, ...) is downloaded in its original format. " +
+      "Binary files are attached to the conversation so other tools can use them, alongside extracted text when available.",
     schema: {
       fileId: z
         .string()
@@ -145,8 +144,11 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Getting Google Drive file content",
       done: "Get Google Drive file content",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_document_structure: {
+  {
+    name: "get_document_structure",
     description:
       "Get the full structure of a Google Docs document including text, headers, footers, tables, and element indices. Supports pagination for large documents.",
     schema: {
@@ -173,8 +175,11 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Getting Google Docs structure",
       done: "Get Google Docs structure",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_presentation_structure: {
+  {
+    name: "get_presentation_structure",
     description:
       "Get the full structure of a Google Slides presentation including slides, shapes, tables, text content, and object IDs. Supports pagination for large presentations.",
     schema: {
@@ -199,8 +204,11 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Getting Google Slides structure",
       done: "Get Google Slides structure",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_spreadsheet: {
+  {
+    name: "get_spreadsheet",
     description:
       "Get metadata and properties of a specific Google Sheets spreadsheet, including sheet names, IDs, row/column counts, and structure. " +
       "Does not return cell values.",
@@ -214,8 +222,11 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Retrieving Google spreadsheet",
       done: "Retrieve Google spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_worksheet: {
+  {
+    name: "get_worksheet",
     description:
       "Get cell values from a specific range in a Google Sheets spreadsheet. Returns values in the specified format (formatted, unformatted, or formulas).",
     schema: {
@@ -239,8 +250,11 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Retrieving Google worksheet",
       done: "Retrieve Google worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_file_permissions: {
+  {
+    name: "list_file_permissions",
     description:
       "List all permissions (sharing settings) on a Google Drive file, showing who has access and their roles. Requires sharing access to the file.",
     schema: {
@@ -252,8 +266,11 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Listing file permissions",
       done: "List file permissions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_comments: {
+  {
+    name: "list_comments",
     description:
       "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
     schema: {
@@ -275,11 +292,14 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Listing comments on Google Drive",
       done: "List comments on Google Drive",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
-export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
-  create_document: {
+export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
+  {
+    name: "create_document",
     description:
       "Create a new Google Docs document. Optionally specify a folder to create it in.",
     schema: {
@@ -296,8 +316,11 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google document",
       done: "Create Google document",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_spreadsheet: {
+  {
+    name: "create_spreadsheet",
     description:
       "Create a new Google Sheets spreadsheet. Optionally specify a folder to create it in.",
     schema: {
@@ -314,8 +337,11 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google spreadsheet",
       done: "Create Google spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_presentation: {
+  {
+    name: "create_presentation",
     description:
       "Create a new Google Slides presentation. Optionally specify a folder to create it in.",
     schema: {
@@ -332,10 +358,34 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google presentation",
       done: "Create Google presentation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  copy_file: {
+  {
+    name: "create_folder",
     description:
-      "Copy an existing Google Drive file (Doc, Sheet, or Presentation). " +
+      "Create a new Google Drive folder. Optionally specify a parent folder to create it in.",
+    schema: {
+      name: z.string().describe("The name of the new folder."),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the parent folder to create the folder in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Creating Google Drive folder",
+      done: "Create Google Drive folder",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "copy_file",
+    description:
+      "Copy, clone, or duplicate an existing Google Drive file (Doc, Sheet, or Presentation). " +
       "Creates a duplicate of the file with a new name in the same folder or a different location. " +
       "Prefer this over creating a new document when you want to preserve the formatting or structure of an existing template.",
     schema: {
@@ -359,8 +409,11 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Copying Google Drive file",
       done: "Copy Google Drive file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_comment: {
+  {
+    name: "create_comment",
     description:
       "Add a comment to a Google Drive file (Doc, Sheet, or Presentation).",
     schema: {
@@ -373,8 +426,11 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Adding comment on Google Drive",
       done: "Add comment on Google Drive",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_reply: {
+  {
+    name: "create_reply",
     description:
       "Reply to an existing comment on a Google Drive file (Doc, Sheet, or Presentation).",
     schema: {
@@ -388,8 +444,11 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Replying to comment on Google Drive",
       done: "Reply to comment on Google Drive",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_document: {
+  {
+    name: "update_document",
     description:
       "Update a Google Docs document by applying one or more operations: text find/replace, position-based insert/delete/format, table cell and row/column edits, and header/footer edits. No prior call to get_document_structure is needed. Pass a `raw` operation for any Google Docs batchUpdate request the named ops don't cover.",
     schema: {
@@ -399,13 +458,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         "An array of operations to apply to the document. Operations are resolved server-side from the current document state."
       ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating Google document",
       done: "Update Google document",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  append_to_spreadsheet: {
+  {
+    name: "append_to_spreadsheet",
     description:
       "Append rows of data to a Google Sheets spreadsheet. " +
       "This is a simple operation for adding new rows to the end of existing data. " +
@@ -434,13 +496,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .default("INSERT_ROWS")
         .describe("How the input data should be inserted."),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Appending to Google spreadsheet",
       done: "Append to Google spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_spreadsheet: {
+  {
+    name: "update_spreadsheet",
     description:
       "Update a Google Sheets spreadsheet by applying one or more operations: write cells, format ranges, find/replace, merge, sort, insert/delete rows and columns, add/delete sheets. Operations address cells by sheet name + A1 range. No prior call to get_spreadsheet is needed. Pass a `raw` operation for any Google Sheets batchUpdate request the named ops don't cover (e.g. data validation, conditional formatting, charts). For appending rows to existing data, append_to_spreadsheet is simpler.",
     schema: {
@@ -452,13 +517,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         "An array of operations to apply to the spreadsheet. Operations are resolved server-side from the current spreadsheet state."
       ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating Google spreadsheet",
       done: "Update Google spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_presentation: {
+  {
+    name: "update_presentation",
     description:
       "Update a Google Slides presentation by applying one or more operations: find/replace, shape text replacement and insertion, table cell edits, speaker notes, add/delete slides and elements. Operations address slides by 1-indexed number and shapes by text content, index, or placeholder type. No prior call to get_presentation_structure is needed. Pass a `raw` operation for any Google Slides batchUpdate request the named ops don't cover. For populating templates, replaceAllText with `{{placeholder}}` patterns is simplest.",
     schema: {
@@ -470,13 +538,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         "An array of operations to apply to the presentation. Operations are resolved server-side from the current presentation state."
       ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating Google presentation",
       done: "Update Google presentation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  share_file: {
+  {
+    name: "share_file",
     description:
       "Share a Google Drive file with a specific person by email, or with everyone in a Google Workspace domain.",
     schema: {
@@ -519,13 +590,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .describe("A custom message to include in the notification email."),
       capabilities: capabilitiesSchema,
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Sharing Google Drive file",
       done: "Share Google Drive file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_file_permission: {
+  {
+    name: "update_file_permission",
     description:
       "Update the role of an existing permission on a Google Drive file. Use list_file_permissions to find the permissionId first. To grant new access, use share_file instead.",
     schema: {
@@ -540,15 +614,18 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .describe("The new access level to set."),
       capabilities: capabilitiesSchema,
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating file permission",
       done: "Update file permission",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  revoke_file_sharing: {
+  {
+    name: "revoke_file_sharing",
     description:
-      "Remove access to a Google Drive file for a specific user or domain by deleting the matching permission. Use list_file_permissions to find the permissionId first.",
+      "Unshare a Google Drive file and stop sharing it: remove or revoke access for a specific user or domain by deleting the matching permission. Use list_file_permissions to find the permissionId first.",
     schema: {
       fileId: z
         .string()
@@ -560,13 +637,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         ),
       capabilities: capabilitiesSchema,
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Removing file access",
       done: "Remove file access",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  upload_file: {
+  {
+    name: "upload_file",
     description:
       "Upload a file from the Dust conversation to Google Drive. Optionally specify a folder to upload into.",
     schema: {
@@ -593,18 +673,20 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Uploading file to Google Drive",
       done: "Upload file to Google Drive",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
-const ALL_TOOLS_METADATA = {
+const ALL_TOOLS_METADATA = [
   ...GOOGLE_DRIVE_TOOLS_METADATA,
   ...GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
-};
+] as const;
 
 /**
  * Returns the Google Drive server metadata with all tools including write capabilities.
  */
-export function getGoogleDriveServerMetadata() {
+function getGoogleDriveServerMetadata() {
   return {
     serverInfo: {
       name: "google_drive",
@@ -614,22 +696,12 @@ export function getGoogleDriveServerMetadata() {
       authorization: {
         provider: "google_drive",
         supported_use_cases: ["personal_actions", "platform_actions"],
-        scope:
-          "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
+        scope: GOOGLE_DRIVE_SCOPES,
       },
       icon: "DriveLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-drive",
-      instructions: null,
     },
-    tools: Object.values(ALL_TOOLS_METADATA).map((t) => ({
-      name: t.name,
-      description: t.description,
-      inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-      displayLabels: t.displayLabels,
-    })),
-    tools_stakes: Object.fromEntries(
-      Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])
-    ),
+    tools: ALL_TOOLS_METADATA,
   } as const satisfies ServerMetadata;
 }
 

@@ -1,0 +1,236 @@
+import {
+  areCredentialOverridesValid,
+  PersonalAuthCredentialOverrides,
+} from "@app/components/oauth/PersonalAuthCredentialOverrides";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import type { MCPServerType } from "@app/lib/api/mcp";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import {
+  useCreatePersonalConnection,
+  useMCPServer,
+} from "@app/lib/swr/mcp_servers";
+import type { OAuthProvider } from "@app/types/oauth/lib";
+import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { ActionCardBlock, Button, Check, XClose } from "@dust-tt/sparkle";
+import { useMemo, useRef, useState } from "react";
+
+export type PersonalAuthResolutionOutcome = "completed" | "denied";
+
+interface PersonalAuthenticationCardProps {
+  triggeringUser: UserType | null;
+  mcpServerId: string;
+  owner: LightWorkspaceType;
+  provider: OAuthProvider;
+  scope?: string;
+  isResolving: boolean;
+  // Submits the resolution outcome; returns whether the submission succeeded.
+  onResolve: (outcome: PersonalAuthResolutionOutcome) => Promise<boolean>;
+}
+
+export function PersonalAuthenticationCard({
+  triggeringUser,
+  mcpServerId,
+  owner,
+  provider,
+  scope,
+  isResolving,
+  onResolve,
+}: PersonalAuthenticationCardProps) {
+  const { user } = useAuth();
+  const { server: mcpServer } = useMCPServer({
+    owner,
+    serverId: mcpServerId,
+  });
+
+  const { createPersonalConnection } = useCreatePersonalConnection(owner);
+
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [overriddenCredentials, setCredentialOverrides] = useState<
+    Record<string, string>
+  >({});
+
+  // Tracks whether the user abandoned (skipped) this action while a connection
+  // attempt is still in flight, so the post-await "completed" branch does not
+  // resolve an action that has already been denied.
+  const cancelledRef = useRef<boolean>(false);
+
+  const overridableInputs = getOverridablePersonalAuthInputs({ provider });
+
+  const visual = mcpServer?.icon
+    ? getAvatarFromIcon(mcpServer.icon, "xs")
+    : undefined;
+
+  const serverDisplayName =
+    mcpServer && mcpServer.name
+      ? getMcpServerDisplayName(mcpServer)
+      : undefined;
+
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: triggeringUser?.sId,
+        currentUserId: user?.sId,
+      }),
+    [triggeringUser, user?.sId]
+  );
+
+  const onConnectClick = async (mcpServer: MCPServerType) => {
+    cancelledRef.current = false;
+    setIsConnecting(true);
+    setConnectionError(null);
+
+    try {
+      const result = await createPersonalConnection({
+        mcpServerId: mcpServer.sId,
+        mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
+        authorization: mcpServer.authorization,
+        provider,
+        useCase: "personal_actions",
+        scope,
+        overriddenCredentials:
+          Object.keys(overriddenCredentials).length > 0
+            ? overriddenCredentials
+            : undefined,
+      });
+
+      if (!result.success) {
+        setIsConnected(false);
+        if (result.error) {
+          setConnectionError(result.error);
+        }
+        return;
+      }
+
+      // The user skipped while the connection attempt was still in flight: the
+      // action was already denied, so do not resolve it as completed.
+      if (cancelledRef.current) {
+        return;
+      }
+
+      const completed = await onResolve("completed");
+
+      if (!completed) {
+        setIsConnected(false);
+        return;
+      }
+
+      setIsConnected(true);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const onSkipClick = async () => {
+    // Signal any in-flight connection attempt to abandon its completed branch.
+    cancelledRef.current = true;
+    setConnectionError(null);
+
+    await onResolve("denied");
+  };
+
+  // Determine the ActionCardBlock state.
+  let cardState: "active" | "disabled" | "accepted";
+  if (!canCurrentUserRespond) {
+    cardState = "disabled";
+  } else if (isConnected) {
+    cardState = "accepted";
+  } else if (isConnecting || isResolving) {
+    cardState = "disabled";
+  } else {
+    cardState = "active";
+  }
+
+  const title = `${serverDisplayName ?? "Personal"} authentication`;
+
+  // Build description based on current state.
+  let description: React.ReactNode;
+  if (!canCurrentUserRespond) {
+    description = (
+      <div className="text-sm">
+        {`${triggeringUser?.fullName} is trying to use ${serverDisplayName ?? "a tool"}.`}
+        <br />
+        <span className="font-semibold">
+          Waiting on them to connect their account to continue...
+        </span>
+      </div>
+    );
+  } else if (connectionError) {
+    description = connectionError;
+  } else if (!isConnected) {
+    description = (
+      <div className="text-sm">
+        {`Your agent is trying to use ${serverDisplayName ?? "a tool"}.`}
+        <br />
+        <span className="font-semibold">Connect your account to continue.</span>
+        {overridableInputs && mcpServer && (
+          <div className="mt-2">
+            <PersonalAuthCredentialOverrides
+              inputs={overridableInputs}
+              values={overriddenCredentials}
+              idPrefix={mcpServerId}
+              onChange={(key, value) =>
+                setCredentialOverrides((prev) => ({
+                  ...prev,
+                  [key]: value,
+                }))
+              }
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Build actions — only show Connect/Retry button for current user when not yet connected.
+  const actions =
+    canCurrentUserRespond && !isConnected && mcpServer ? (
+      <div className="flex justify-end gap-3">
+        <Button
+          variant="outline"
+          size="xs"
+          label="Skip"
+          icon={XClose}
+          // Not gated on `isConnecting`: the user must always be able to abandon
+          // a connection attempt, even if it is (or appears) stuck.
+          disabled={isResolving}
+          onClick={() => void onSkipClick()}
+        />
+        <Button
+          variant="highlight"
+          size="xs"
+          label={connectionError ? "Retry" : "Connect"}
+          icon={Check}
+          disabled={
+            isConnecting ||
+            isResolving ||
+            !areCredentialOverridesValid(
+              overridableInputs,
+              overriddenCredentials
+            )
+          }
+          onClick={() => void onConnectClick(mcpServer)}
+        />
+      </div>
+    ) : (
+      <></>
+    );
+
+  return (
+    <div className="my-3">
+      <ActionCardBlock
+        title={title}
+        visual={visual}
+        state={cardState}
+        size="compact"
+        acceptedTitle="Connected successfully"
+        description={description}
+        actions={actions}
+      />
+    </div>
+  );
+}

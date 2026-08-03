@@ -12,7 +12,7 @@ import { z } from "zod";
 
 const MCP_OAUTH_USE_CASES = ["platform_actions", "personal_actions"] as const;
 
-export const ToolDisplayLabelsSchema = z.object({
+const ToolDisplayLabelsSchema = z.object({
   running: z.string(),
   done: z.string(),
 });
@@ -20,7 +20,7 @@ export const ToolDisplayLabelsSchema = z.object({
 // Types are kept in lib/api/mcp.ts to avoid breaking the Temporal bundle.
 // Only schemas are exported from this file.
 
-export const MCPToolSchema = z.object({
+const MCPToolSchema = z.object({
   name: z.string(),
   description: z.string(),
   inputSchema: z.custom<JSONSchema>().optional(),
@@ -39,7 +39,7 @@ const AuthorizationInfoSchema = z.object({
     .optional(),
 });
 
-export const MCPServerSchema = z.object({
+const MCPServerSchema = z.object({
   name: z.string(),
   version: z.string(),
   description: z.string(),
@@ -77,5 +77,50 @@ export const MCPServerViewSchema = z.object({
   server: MCPServerSchema,
   oAuthUseCase: z.enum(MCP_OAUTH_USE_CASES).nullable(),
   editedByUser: EditedByUserSchema.nullable(),
+  isRestrictedToSkills: z.boolean(),
   toolsMetadata: z.array(ToolsMetadataSchema).optional(),
 });
+
+export const PostRequestActionsAccessBodySchema = z.object({
+  emailMessage: z.string(),
+  mcpServerViewId: z.string(),
+});
+
+export const PatchMCPServerBodySchema = z
+  .object({
+    icon: z.string(),
+  })
+  .or(
+    z
+      .object({
+        sharedSecret: z.string().optional(),
+        customHeaders: z
+          .array(z.object({ key: z.string(), value: z.string() }))
+          .nullable()
+          .optional(),
+      })
+      .refine(
+        (data) =>
+          data.sharedSecret !== undefined || data.customHeaders !== undefined,
+        {
+          message: "Either sharedSecret or customHeaders must be provided",
+        }
+      )
+  )
+  .or(
+    z.object({
+      meta: z.record(z.string(), z.string()).nullable(),
+    })
+  );
+
+export const UpdateMCPToolSettingsBodySchema = z
+  .object({
+    permission: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
+    enabled: z.boolean().optional(),
+  })
+  .refine(
+    (data) => data.permission !== undefined || data.enabled !== undefined,
+    {
+      message: "At least one of 'permission' or 'enabled' must be provided.",
+    }
+  );

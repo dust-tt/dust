@@ -1,12 +1,6 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
-import {
-  Icon,
-  InformationCircleIcon,
-  Input,
-  Label,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Icon, InfoCircle, Input, Label, Tooltip } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
 interface InternalBearerTokenSectionProps {
@@ -30,9 +24,9 @@ export function InternalBearerTokenSection({
         <Tooltip
           trigger={
             <Icon
-              visual={InformationCircleIcon}
+              visual={InfoCircle}
               size="xs"
-              className="text-gray-400"
+              className="text-muted-foreground"
             />
           }
           label={tooltip}

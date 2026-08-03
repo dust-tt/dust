@@ -4,7 +4,9 @@ import {
   isKeyRole,
   KEY_ROLES,
   type KeyRole,
+  monthlyCapCreditsSchema,
   monthlyCapDollarsSchema,
+  parseCreditsString,
   prettifyGroupName,
 } from "@app/components/workspace/api-keys/utils";
 import type { GroupType } from "@app/types/groups";
@@ -19,7 +21,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  PlusIcon,
+  Plus,
   RadioGroup,
   RadioGroupItem,
   Sheet,
@@ -29,7 +31,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -40,6 +42,7 @@ import { z } from "zod";
 const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),
   monthlyCapDollars: monthlyCapDollarsSchema,
+  monthlyCapCredits: monthlyCapCreditsSchema,
   selectedGroupIds: z.array(z.number()),
   role: z.enum(KEY_ROLES),
 });
@@ -54,6 +57,7 @@ interface NewAPIKeyDialogProps {
     name: string;
     groups: GroupType[];
     monthlyCapMicroUsd: number | null;
+    monthlyCapAwuCredits: number | null;
     role: KeyRole;
   }) => Promise<void>;
   showLegacyUsdMonthlyCap: boolean;
@@ -75,8 +79,9 @@ export const NewAPIKeyDialog = ({
     defaultValues: {
       name: "",
       monthlyCapDollars: "",
+      monthlyCapCredits: "",
       selectedGroupIds: [],
-      role: "builder",
+      role: "user",
     },
   });
 
@@ -137,6 +142,7 @@ export const NewAPIKeyDialog = ({
       name: data.name,
       groups: selectedGroups,
       monthlyCapMicroUsd: dollarsToMicroUsd(dollars),
+      monthlyCapAwuCredits: parseCreditsString(data.monthlyCapCredits),
       role: data.role,
     });
     handleClose();
@@ -147,7 +153,7 @@ export const NewAPIKeyDialog = ({
       <SheetTrigger asChild>
         <Button
           label="Create API Key"
-          icon={PlusIcon}
+          icon={Plus}
           disabled={isGenerating || isRevoking}
         />
       </SheetTrigger>
@@ -245,7 +251,7 @@ export const NewAPIKeyDialog = ({
                       <Button
                         key={gId}
                         label={prettifyGroupName(group)}
-                        icon={XMarkIcon}
+                        icon={XClose}
                         size="xs"
                         variant="ghost"
                         onClick={() => removeGroupId(gId)}
@@ -273,12 +279,6 @@ export const NewAPIKeyDialog = ({
                     label="Can create conversations, read agents and data sources."
                   />
                   <RadioGroupItem
-                    id="api-key-scope-builder"
-                    value="builder"
-                    className="gap-2"
-                    label="Can also create and modify resources"
-                  />
-                  <RadioGroupItem
                     id="api-key-scope-admin"
                     value="admin"
                     className="gap-2"
@@ -287,10 +287,27 @@ export const NewAPIKeyDialog = ({
                 </RadioGroup>
               </div>
 
-              {showLegacyUsdMonthlyCap && (
+              {showLegacyUsdMonthlyCap ? (
                 <BaseFormFieldSection
                   title="Monthly cap (USD)"
                   fieldName="monthlyCapDollars"
+                >
+                  {({ registerRef, registerProps, onChange, errorMessage }) => (
+                    <Input
+                      ref={registerRef}
+                      {...registerProps}
+                      onChange={onChange}
+                      placeholder="Leave empty for unlimited"
+                      isError={!!errorMessage}
+                      message={errorMessage}
+                      messageStatus="error"
+                    />
+                  )}
+                </BaseFormFieldSection>
+              ) : (
+                <BaseFormFieldSection
+                  title="Monthly credit cap"
+                  fieldName="monthlyCapCredits"
                 >
                   {({ registerRef, registerProps, onChange, errorMessage }) => (
                     <Input

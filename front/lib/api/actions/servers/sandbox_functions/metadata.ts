@@ -1,0 +1,231 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  POD_DATABASE_NAME_REGEX,
+  SANDBOX_FUNCTION_SLUG_REGEX,
+} from "@app/types/api/sandbox_functions";
+import { z } from "zod";
+
+export const SANDBOX_FUNCTIONS_SERVER_NAME = "sandbox_functions" as const;
+
+export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
+  {
+    name: "list",
+    description:
+      "List the pod functions published in the current pod, with their " +
+      "slug and description. Use the get tool to retrieve a function's input " +
+      "and output schemas.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing pod functions...",
+      done: "Listed pod functions",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "get",
+    description:
+      "Get a pod function's user identity policy and input and output JSON schemas by its slug.",
+    schema: {
+      slug: z
+        .string()
+        .min(1)
+        .describe("The slug of the pod function, as shown by the list tool."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting pod function...",
+      done: "Got pod function",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "publish",
+    description:
+      "Publish a pod function from a TypeScript source file in the current pod. The source " +
+      "must default-export a `fetch(request: Request): Promise<Response>` handler and export a " +
+      "`schema` with zod `input` and `output`. Set `schema.userIdentity` to `optional`, " +
+      "`workspace_user_required`, or `interactive_workspace_user_required`. It is bundled on the " +
+      "pod sandbox (only `zod` is available to import), and its contract is extracted from the " +
+      "`schema` export. Re-publishing the same slug replaces the previous version.",
+    schema: {
+      slug: z
+        .string()
+        .regex(SANDBOX_FUNCTION_SLUG_REGEX)
+        .describe(
+          "Unique function identifier within the pod: lowercase alphanumeric with single hyphen " +
+            "separators (e.g. `send-slack-message`)."
+        ),
+      description: z
+        .string()
+        .min(1)
+        .describe(
+          "Short description of what the function does, shown by the list tool."
+        ),
+      path: z
+        .string()
+        .min(1)
+        .describe(
+          "Scoped path to the function's TypeScript source in the pod, as shown by the files " +
+            "tools (e.g. `pod-<id>/greet.ts`)."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Publishing pod function...",
+      done: "Published pod function",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "call",
+    description:
+      "Call a pod function published in the current pod by its slug, passing its input " +
+      "payload, and get back the function's output. Use the get tool first to see the function's " +
+      "input schema. Input is validated inside the sandbox.",
+    schema: {
+      slug: z
+        .string()
+        .min(1)
+        .describe(
+          "The slug of the pod function to call, as shown by the list tool."
+        ),
+      input: z
+        .record(z.unknown())
+        .optional()
+        .describe(
+          "The function's input payload as a JSON object, matching its input schema (see the get tool)."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Calling pod function...",
+      done: "Called pod function",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "inspect_invocations",
+    description:
+      "Inspect the most recent invocations of a pod function in the current pod, including " +
+      "their inputs, results, and errors.",
+    schema: {
+      slug: z
+        .string()
+        .min(1)
+        .describe("The slug of the pod function, as shown by the list tool."),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(20)
+        .optional()
+        .default(5)
+        .describe("Maximum number of recent invocations to return."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Inspecting pod function invocations...",
+      done: "Inspected pod function invocations",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "db_list",
+    description: "List the pod's SQLite databases and their sizes.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing pod databases...",
+      done: "Listed pod databases",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "db_schema",
+    description: "Get a pod database's live schema as a drizzle schema file.",
+    schema: {
+      database: z
+        .string()
+        .regex(POD_DATABASE_NAME_REGEX)
+        .describe("The database name, as shown by the db_list tool."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Reading database schema...",
+      done: "Read database schema",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "db_query",
+    description:
+      "Run a single SQL statement against a pod database: SELECT and DML.",
+    schema: {
+      database: z
+        .string()
+        .regex(POD_DATABASE_NAME_REGEX)
+        .describe("The database name, as shown by the db_list tool."),
+      sql: z
+        .string()
+        .min(1)
+        .describe(
+          "A SINGLE SQL statement (SELECT or INSERT/UPDATE/DELETE); multiple statements " +
+            "are rejected, issue one call per statement."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Querying pod database...",
+      done: "Queried pod database",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "db_reconcile",
+    description:
+      "Apply a pod database's drizzle schema file to its live database (additive changes only).",
+    schema: {
+      database: z
+        .string()
+        .regex(POD_DATABASE_NAME_REGEX)
+        .describe("The database name declared by the schema file."),
+      path: z
+        .string()
+        .min(1)
+        .describe(
+          "Scoped path to the database's drizzle schema file in the pod, as shown by the " +
+            "files tools (e.g. `pod-<id>/databases/chat.db.ts`)."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Reconciling pod database...",
+      done: "Reconciled pod database",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+] as const;
+
+export const SANDBOX_FUNCTIONS_SERVER = {
+  serverInfo: {
+    name: SANDBOX_FUNCTIONS_SERVER_NAME,
+    version: "1.0.0",
+    description:
+      "Pod functions: schema-typed callables bundled and run on the pod's " +
+      "sandbox.",
+    icon: "CommandLineIcon",
+    authorization: null,
+    documentationUrl: null,
+  },
+  tools: SANDBOX_FUNCTIONS_TOOLS_METADATA,
+} as const satisfies ServerMetadata;

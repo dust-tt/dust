@@ -1,0 +1,7 @@
+{
+  "action": "workspace.slack_personal_footer_removal_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}

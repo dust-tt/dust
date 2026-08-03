@@ -2,6 +2,7 @@ import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import type { Authenticator } from "@app/lib/auth";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
@@ -12,6 +13,7 @@ import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import {
@@ -22,21 +24,47 @@ import {
 import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_4_MINI_MODEL_CONFIG,
+  GPT_5_4_NANO_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
-  GPT_5_MINI_MODEL_CONFIG,
-  GPT_5_NANO_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O3_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+const GLOBAL_AGENT_AUDIENCES = ["everyone", "admins"] as const;
+type GlobalAgentAudience = (typeof GLOBAL_AGENT_AUDIENCES)[number];
+
 type AgentMetadata = {
   sId: string;
   name: string;
   description: string;
   pictureUrl: string;
+  audience?: GlobalAgentAudience;
 };
+
+export function canRoleSeeAudience(
+  audience: GlobalAgentAudience,
+  auth: Authenticator
+): boolean {
+  switch (audience) {
+    case "everyone":
+      return true;
+    case "admins":
+      return auth.isAdmin();
+    default:
+      return assertNever(audience);
+  }
+}
+
+export function canRoleSeeGlobalAgent(
+  sId: GLOBAL_AGENTS_SID,
+  auth: Authenticator
+): boolean {
+  const { audience = "everyone" } = getGlobalAgentMetadata(sId);
+  return canRoleSeeAudience(audience, auth);
+}
 
 export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
   switch (sId) {
@@ -80,14 +108,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.GPT5_NANO,
         name: "gpt5-nano",
-        description: GPT_5_NANO_MODEL_CONFIG.description,
+        description: GPT_5_4_NANO_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.GPT5_MINI:
       return {
         sId: GLOBAL_AGENTS_SID.GPT5_MINI,
         name: "gpt5-mini",
-        description: GPT_5_MINI_MODEL_CONFIG.description,
+        description: GPT_5_4_MINI_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O1:
@@ -157,6 +185,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",
       };
+    case GLOBAL_AGENTS_SID.CLAUDE_5_SONNET:
+      return {
+        sId: GLOBAL_AGENTS_SID.CLAUDE_5_SONNET,
+        name: "claude-sonnet",
+        description: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.description,
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+      };
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
       return {
         sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
@@ -213,15 +249,6 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
-      return {
-        sId: GLOBAL_AGENTS_SID.DEEPSEEK_R1,
-        name: "DeepSeek R1",
-        description:
-          "DeepSeek's reasoning model. Served from a US inference provider. Cannot use any tools",
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/deepseek_avatar_full.png",
-      };
     case GLOBAL_AGENTS_SID.SLACK:
       return {
         sId: GLOBAL_AGENTS_SID.SLACK,
@@ -266,7 +293,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_EDGE,
         name: "dust-edge",
         description:
-          "Same as dust but running Claude Opus 4.8 to experiment internally.",
+          "Same as dust but running Claude Opus 5 to experiment internally.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_QUICK:
@@ -281,7 +308,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_OAI,
         name: "dust-oai",
-        description: "Same as dust but running OpenAI models.",
+        description: "Same as dust but running GPT-5.6 Sol.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM:
@@ -296,6 +323,35 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
         name: "dust-oai-high",
         description: "Same as dust-oai but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+        name: "dust-oai-luna",
+        description: "Same as dust but running GPT-5.6 Luna.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+        name: "dust-oai-luna-medium",
+        description: "Same as dust-oai-luna but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
+        name: "dust-oai-luna-high",
+        description: "Same as dust-oai-luna but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH,
+        name: "dust-oai-nano-high",
+        description:
+          "Same as dust but running GPT-5.4 Nano with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_NEXT:
@@ -364,6 +420,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-soupinou but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+        name: "dust-soupinou-none",
+        description: "Same as dust-soupinou but with no reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_SUNDAE:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_SUNDAE,
@@ -390,8 +453,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
         name: "dust-pistache",
-        description:
-          "Same as dust but running a custom model for internal testing.",
+        description: "Same as dust but running GLM-5.2.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
@@ -430,6 +492,27 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-chalom but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_LIONEL:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIONEL,
+        name: "dust-lionel",
+        description: "Same as dust but running Claude Fable 5.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
+        name: "dust-lionel-medium",
+        description: "Same as dust-lionel but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
+        name: "dust-lionel-high",
+        description: "Same as dust-lionel but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_GOOG:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG,
@@ -449,6 +532,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
         name: "dust-goog-high",
         description: "Same as dust-goog but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GOOG_LITE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GOOG_LITE,
+        name: "dust-goog-lite",
+        description: "Same as dust but running Gemini 3.1 Flash Lite.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO:
@@ -476,7 +566,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_ANT,
         name: "dust-ant",
-        description: "Same as dust but running Sonnet 4.6.",
+        description: "Same as dust but running Claude Opus 5.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM:
@@ -509,11 +599,41 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
           "Same as dust-ant-high but with omitted reasoning summaries.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE,
+        name: "dust-ant-sonnet-edge",
+        description:
+          "Same as dust but running Claude Sonnet 5 to experiment internally.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE_LIGHT:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE_LIGHT,
+        name: "dust-ant-sonnet-edge-light",
+        description:
+          "Same as dust-ant-sonnet-edge but with light reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_HAIKU:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_HAIKU,
+        name: "dust-haiku",
+        description: "Same as dust but running Claude 4.5 Haiku.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LIGHT:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIGHT,
+        name: "dust-light",
+        description: "Same as dust but running Claude Sonnet 4.6.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_KIMI:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_KIMI,
         name: "dust-kimi",
-        description: "Same as dust but running Kimi K2.5.",
+        description: "Same as dust but running Kimi K3.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM:
@@ -687,6 +807,16 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "A no-op agent that does nothing.",
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.ANALYST:
+      return {
+        sId: GLOBAL_AGENTS_SID.ANALYST,
+        name: "analyst",
+        description:
+          "Admin-only agent that answers questions about how your workspace " +
+          "is being used.",
+        pictureUrl: DUST_AVATAR_URL,
+        audience: "admins",
       };
     default:
       assertNever(sId);

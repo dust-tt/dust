@@ -18,6 +18,7 @@ async function loadConnection(ctx: Context, cId: string) {
   return MCPServerConnectionResource.fetchById(auth, cId);
 }
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const { cId } = ctx.req.valid("param");
   const connectionRes = await loadConnection(ctx, cId);

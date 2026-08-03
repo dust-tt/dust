@@ -46,10 +46,15 @@ describe("canAgentBeUsedInProjectConversation", () => {
       ReturnType<Authenticator["getNonNullableUser"]>["toJSON"]
     >
   ) {
-    const regularGroup = space.groups.find((g) => g.kind === "regular");
-    if (!regularGroup) {
+    const regularGroupReference = space.groups.find((group) =>
+      group.isRegularAuto()
+    );
+    if (!regularGroupReference) {
       throw new Error("Expected a regular group on the space");
     }
+    const [regularGroup] = await space.fetchGroupResources(internalAdminAuth, {
+      groupReferences: [regularGroupReference],
+    });
     const addRes = await regularGroup.dangerouslyAddMember(internalAdminAuth, {
       user: userJson,
     });
@@ -77,41 +82,6 @@ describe("canAgentBeUsedInProjectConversation", () => {
         } as ConversationWithoutContentType,
       })
     ).rejects.toThrow("Unexpected: conversation is not a project conversation");
-  });
-
-  it("allows the agent on a branch conversation without evaluating space requirements", async () => {
-    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    const user = auth.getNonNullableUser();
-    const projectSpace = await SpaceFactory.project(workspace, user.id);
-    await addUserToSpaceRegularGroup(
-      internalAdminAuth,
-      projectSpace,
-      user.toJSON()
-    );
-    await auth.refresh();
-
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
-      messagesCreatedAt: [],
-      spaceId: projectSpace.id,
-    });
-    const conversationJson = await fetchConversationWithoutContent(
-      conversation.sId
-    );
-
-    const otherRestrictedSpace = await SpaceFactory.project(workspace);
-
-    await expect(
-      canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
-          projectSpace.sId,
-          otherRestrictedSpace.sId,
-        ]),
-        conversation: { ...conversationJson, branchId: "br_test_branch" },
-      })
-    ).resolves.toBe(true);
   });
 
   it("allows the agent when requestedSpaceIds is empty", async () => {
@@ -355,7 +325,40 @@ describe("canAgentBeUsedInProjectConversation", () => {
     ).resolves.toBe(false);
   });
 
-  it("allows the agent under the sole-member exception when multiple extra spaces are restricted", async () => {
+  it("rejects the agent when the sole project member is not in a required restricted space", async () => {
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const otherRestrictedSpace = await SpaceFactory.project(workspace);
+
+    await addUserToSpaceRegularGroup(internalAdminAuth, projectSpace, userJson);
+    await auth.refresh();
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+    const conversationJson = await fetchConversationWithoutContent(
+      conversation.sId
+    );
+
+    await expect(
+      canAgentBeUsedInProjectConversation(auth, {
+        configuration: lightConfiguration([
+          projectSpace.sId,
+          otherRestrictedSpace.sId,
+        ]),
+        conversation: conversationJson,
+      })
+    ).resolves.toBe(false);
+  });
+
+  it("allows the agent when all project members belong to every required restricted space", async () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -367,6 +370,16 @@ describe("canAgentBeUsedInProjectConversation", () => {
     const otherRestrictedSpaceB = await SpaceFactory.project(workspace);
 
     await addUserToSpaceRegularGroup(internalAdminAuth, projectSpace, userJson);
+    await addUserToSpaceRegularGroup(
+      internalAdminAuth,
+      otherRestrictedSpaceA,
+      userJson
+    );
+    await addUserToSpaceRegularGroup(
+      internalAdminAuth,
+      otherRestrictedSpaceB,
+      userJson
+    );
     await auth.refresh();
 
     const conversation = await ConversationFactory.create(auth, {
@@ -390,7 +403,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
     ).resolves.toBe(true);
   });
 
-  it("allows the agent under the sole-member exception when extra spaces mix open and restricted", async () => {
+  it("allows the agent when all project members belong to required restricted spaces mixed with open spaces", async () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -401,6 +414,11 @@ describe("canAgentBeUsedInProjectConversation", () => {
     const otherRestrictedSpace = await SpaceFactory.project(workspace);
 
     await addUserToSpaceRegularGroup(internalAdminAuth, projectSpace, userJson);
+    await addUserToSpaceRegularGroup(
+      internalAdminAuth,
+      otherRestrictedSpace,
+      userJson
+    );
     await auth.refresh();
 
     const conversation = await ConversationFactory.create(auth, {
@@ -424,7 +442,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
     ).resolves.toBe(true);
   });
 
-  it("allows the agent under the sole-member exception with a single extra restricted space", async () => {
+  it("allows the agent when all project members belong to a single required restricted space", async () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -435,6 +453,11 @@ describe("canAgentBeUsedInProjectConversation", () => {
     const otherRestrictedSpace = await SpaceFactory.project(workspace);
 
     await addUserToSpaceRegularGroup(internalAdminAuth, projectSpace, userJson);
+    await addUserToSpaceRegularGroup(
+      internalAdminAuth,
+      otherRestrictedSpace,
+      userJson
+    );
     await auth.refresh();
 
     const conversation = await ConversationFactory.create(auth, {
@@ -455,6 +478,115 @@ describe("canAgentBeUsedInProjectConversation", () => {
         conversation: conversationJson,
       })
     ).resolves.toBe(true);
+  });
+
+  it("allows the agent when a multi-member restricted project has all members in every required restricted space", async () => {
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const otherRestrictedSpaceA = await SpaceFactory.project(workspace);
+    const otherRestrictedSpaceB = await SpaceFactory.project(workspace);
+
+    await addUserToSpaceRegularGroup(internalAdminAuth, projectSpace, userJson);
+    const secondUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondUser, { role: "user" });
+    await addUserToSpaceRegularGroup(
+      internalAdminAuth,
+      projectSpace,
+      secondUser.toJSON()
+    );
+    for (const restrictedSpace of [
+      otherRestrictedSpaceA,
+      otherRestrictedSpaceB,
+    ]) {
+      await addUserToSpaceRegularGroup(
+        internalAdminAuth,
+        restrictedSpace,
+        userJson
+      );
+      await addUserToSpaceRegularGroup(
+        internalAdminAuth,
+        restrictedSpace,
+        secondUser.toJSON()
+      );
+    }
+    await auth.refresh();
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+    const conversationJson = await fetchConversationWithoutContent(
+      conversation.sId
+    );
+
+    await expect(
+      canAgentBeUsedInProjectConversation(auth, {
+        configuration: lightConfiguration([
+          projectSpace.sId,
+          otherRestrictedSpaceA.sId,
+          otherRestrictedSpaceB.sId,
+        ]),
+        conversation: conversationJson,
+      })
+    ).resolves.toBe(true);
+  });
+
+  it("rejects the agent when a project member is missing from one of multiple required restricted spaces", async () => {
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const otherRestrictedSpaceA = await SpaceFactory.project(workspace);
+    const otherRestrictedSpaceB = await SpaceFactory.project(workspace);
+
+    await addUserToSpaceRegularGroup(internalAdminAuth, projectSpace, userJson);
+    const secondUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondUser, { role: "user" });
+    await addUserToSpaceRegularGroup(
+      internalAdminAuth,
+      projectSpace,
+      secondUser.toJSON()
+    );
+    for (const restrictedSpace of [
+      otherRestrictedSpaceA,
+      otherRestrictedSpaceB,
+    ]) {
+      await addUserToSpaceRegularGroup(
+        internalAdminAuth,
+        restrictedSpace,
+        userJson
+      );
+    }
+    await auth.refresh();
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+    const conversationJson = await fetchConversationWithoutContent(
+      conversation.sId
+    );
+
+    await expect(
+      canAgentBeUsedInProjectConversation(auth, {
+        configuration: lightConfiguration([
+          projectSpace.sId,
+          otherRestrictedSpaceA.sId,
+          otherRestrictedSpaceB.sId,
+        ]),
+        conversation: conversationJson,
+      })
+    ).resolves.toBe(false);
   });
 
   it("rejects the agent when multiple extra spaces are restricted and the project has more than one manual member", async () => {
@@ -499,7 +631,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
     ).resolves.toBe(false);
   });
 
-  it("rejects the agent when another required space is restricted and the project has more than one manual member", async () => {
+  it("rejects the agent when a project member is missing from a required restricted space", async () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -562,12 +694,26 @@ describe("updateConversationRequirements", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroupReference = projectSpace.groups.find((group) =>
+      group.isRegularAuto()
     );
-    const anotherProjectSpaceGroup = anotherProjectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const anotherProjectSpaceGroupReference = anotherProjectSpace.groups.find(
+      (group) => group.isRegularAuto()
     );
+    const [projectSpaceGroup] = await projectSpace.fetchGroupResources(
+      internalAdminAuth,
+      {
+        groupReferences: projectSpaceGroupReference
+          ? [projectSpaceGroupReference]
+          : [],
+      }
+    );
+    const [anotherProjectSpaceGroup] =
+      await anotherProjectSpace.fetchGroupResources(internalAdminAuth, {
+        groupReferences: anotherProjectSpaceGroupReference
+          ? [anotherProjectSpaceGroupReference]
+          : [],
+      });
 
     if (projectSpaceGroup) {
       const addRes = await projectSpaceGroup.dangerouslyAddMember(
@@ -1194,10 +1340,15 @@ describe("rebuildConversationRequirements", () => {
     const userJson = auth.getNonNullableUser().toJSON();
 
     for (const space of [projectSpace, regularSpace, anotherRegularSpace]) {
-      const group = space.groups.find((g) => g.kind === "regular");
-      if (!group) {
+      const groupReference = space.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      if (!groupReference) {
         continue;
       }
+      const [group] = await space.fetchGroupResources(internalAdminAuth, {
+        groupReferences: [groupReference],
+      });
       const addRes = await group.dangerouslyAddMember(internalAdminAuth, {
         user: userJson,
       });

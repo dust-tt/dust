@@ -14,8 +14,23 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/Popover",
+  title: "Overlays/Popover",
   component: Popover,
+  parameters: {
+    docs: {
+      description: {
+        component: `Floating content revealed from a trigger. Built on Radix Popover, it offers two APIs: the convenience **Popover** (pass \`trigger\` and \`content\`, with \`side\`, \`sideOffset\`, and \`fullWidth\`) and the composable **PopoverRoot** / **PopoverTrigger** / **PopoverContent** primitives for full control over layout. Content can host arbitrary elements — forms, an **EmojiPicker**, or a scrollable list via **ScrollArea**.
+
+**When to use**
+- To show contextual content (a small form, picker, or details) on demand without leaving the page.
+
+**Guidelines**
+- Reach for the all-in-one **Popover** for simple cases; drop to **PopoverRoot** + parts when you need custom structure.
+- For tall content, wrap it in a **ScrollArea** with a fixed height rather than letting the popover grow unbounded.
+- To anchor to an element other than the trigger, use **AnchoredPopover**; for a menu of actions, use **Dropdown**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Popover>;
 
 export default meta;
@@ -25,7 +40,7 @@ export function SimplePopoverExample() {
     <Popover
       trigger={<Button label="Popover" variant="outline" />}
       content={
-        <div className="s-grid s-gap-2 s-p-2">
+        <div className="grid gap-2 p-2">
           <p>Lorem</p>
           <p>Ipsum</p>
           <p>Lorem</p>
@@ -44,38 +59,38 @@ export function PopoverExample() {
       <PopoverTrigger>
         <Button label="Popover" variant="primary" />
       </PopoverTrigger>
-      <PopoverContent className="s-p-4">
-        <div className="s-grid s-gap-4">
-          <div className="s-space-y-2">
-            <h4 className="s-pb-2 s-font-medium s-leading-none">Dimensions</h4>
-            <p className="s-text-sm s-text-muted-foreground">
+      <PopoverContent className="p-4">
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <h4 className="pb-2 font-medium leading-none">Dimensions</h4>
+            <p className="text-sm text-muted-foreground">
               Set the dimensions for the layer.
             </p>
           </div>
-          <div className="s-grid s-gap-4">
+          <div className="grid gap-4">
             <Input
               name="width"
               value="200px"
               placeholder="Width"
-              className="s-col-span-2 s-h-8"
+              className="col-span-2 h-8"
             />
             <Input
               name="max-width"
               value="300px"
               placeholder="Max. width"
-              className="s-col-span-2 s-h-8"
+              className="col-span-2 h-8"
             />
             <Input
               name="height"
               value="30px"
               placeholder="Height"
-              className="s-col-span-2 s-h-8"
+              className="col-span-2 h-8"
             />
             <Input
               name="max-height"
               value="100px"
               placeholder="Max. height"
-              className="s-col-span-2 s-h-8"
+              className="col-span-2 h-8"
             />
           </div>
         </div>
@@ -109,12 +124,12 @@ export function ScrollablePopoverExample() {
       <PopoverTrigger>
         <Button label="Popover" variant="primary" />
       </PopoverTrigger>
-      <PopoverContent className="s-p-4">
-        <ScrollArea className="s-h-[200px]">
+      <PopoverContent className="p-4">
+        <ScrollArea className="h-[200px]">
           {tags.map((tag) => (
             <div key={tag}>
-              <div className="s-text-sm">{tag}</div>
-              <Separator className="s-my-2" />
+              <div className="text-sm">{tag}</div>
+              <Separator className="my-2" />
             </div>
           ))}
         </ScrollArea>

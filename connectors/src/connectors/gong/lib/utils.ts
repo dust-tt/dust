@@ -40,5 +40,10 @@ export async function getGongClient(connector: ConnectorResource) {
     connectionId: connector.connectionId,
   });
 
-  return new GongClient(access_token, connector.id);
+  // The per-customer API host is captured at connector creation and stored on
+  // the configuration. Gong provisions customers on different cells, so this
+  // can differ from the default "https://api.gong.io".
+  const configuration = await fetchGongConfiguration(connector);
+
+  return new GongClient(access_token, connector.id, configuration.baseUrl);
 }

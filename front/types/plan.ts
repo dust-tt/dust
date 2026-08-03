@@ -10,11 +10,27 @@ export function isMaxMessagesTimeframeType(
   return (MAX_MESSAGE_TIMEFRAMES as unknown as string[]).includes(value);
 }
 
+export const MAX_AWU_CREDITS_TIMEFRAMES = [
+  "day",
+  "week",
+  "month",
+  "lifetime",
+] as const;
+export type MaxAwuCreditsTimeframeType =
+  (typeof MAX_AWU_CREDITS_TIMEFRAMES)[number];
+
+export function isMaxAwuCreditsTimeframeType(
+  value: string
+): value is MaxAwuCreditsTimeframeType {
+  return (MAX_AWU_CREDITS_TIMEFRAMES as unknown as string[]).includes(value);
+}
+
 /**
  *  Expresses limits for usage of the product
  * Any positive number enforces the limit, -1 means no limit.
  * */
 export type ManageDataSourcesLimitsType = {
+  count: number;
   isConfluenceAllowed: boolean;
   isSlackAllowed: boolean;
   isNotionAllowed: boolean;
@@ -29,6 +45,8 @@ export type LimitsType = {
     isSlackBotAllowed: boolean;
     maxMessages: number;
     maxMessagesTimeframe: MaxMessagesTimeframeType;
+    maxAwuCredits: number;
+    maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType;
     isDeepDiveAllowed: boolean;
   };
   connections: ManageDataSourcesLimitsType;
@@ -72,6 +90,7 @@ export type PlanType = {
   trialPeriodDays: number;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
+  hasAdvancedModelAccess: boolean;
 };
 
 export type SubscriptionType = {
@@ -99,7 +118,7 @@ type MetronomeBilledSubscriptionType = SubscriptionType & {
   metronomeContractId: string;
 };
 
-export function isSubscriptionStripeBilled(
+function isSubscriptionStripeBilled(
   subscription: SubscriptionType
 ): subscription is StripeBilledSubscriptionType {
   return subscription.stripeSubscriptionId !== null;
@@ -112,6 +131,14 @@ export function isSubscriptionMetronomeBilled(
     subscription.metronomeContractId !== null &&
     !isSubscriptionStripeBilled(subscription)
   );
+}
+
+// True once the subscription has a cancellation scheduled (immediate `endDate`
+// or a deferred `requestCancelAt`), whether or not that date has passed yet.
+export function isSubscriptionCancellationScheduled(
+  subscription: SubscriptionType
+): boolean {
+  return subscription.endDate !== null || subscription.requestCancelAt !== null;
 }
 
 /**
@@ -137,6 +164,7 @@ export type SubscriptionPerSeatPricing = {
   seatCurrency: string;
   billingPeriod: BillingPeriod;
   quantity: number;
+  currentPeriodEndMs: number | null;
 };
 
 export const EnterpriseUpgradeFormSchema = z.object({
@@ -171,10 +199,5 @@ export const FreePlanUpgradeFormSchema = z.object({
 export type FreePlanUpgradeFormType = z.infer<typeof FreePlanUpgradeFormSchema>;
 
 export type CheckoutUrlResult =
-  | { mode: "hosted"; checkoutUrl: string; plan: PlanType }
-  | {
-      mode: "embedded";
-      clientSecret: string;
-      sessionId: string;
-      plan: PlanType;
-    };
+  | { mode: "hosted"; checkoutUrl: string }
+  | { mode: "embedded"; clientSecret: string; sessionId: string };

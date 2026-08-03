@@ -11,6 +11,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
 import { stream } from "hono/streaming";
+import getToken from "./get-token";
 
 export type PostTranscribeResponseBody = { text: string };
 
@@ -22,6 +23,7 @@ export type PostTranscribeResponseBody = { text: string };
 // streamed the multipart body through formidable from the raw request.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
+/** @ignoreswagger */
 app.post("/", async (ctx) => {
   const auth = ctx.get("auth");
 
@@ -149,5 +151,7 @@ app.post("/", async (ctx) => {
     }
   });
 });
+
+app.route("/get-token", getToken);
 
 export default app;

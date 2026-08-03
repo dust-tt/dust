@@ -5,10 +5,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
-  BookOpenIcon,
-  BracesIcon,
+  BookOpen01,
+  Brackets,
   Button,
-  ClipboardIcon,
+  Clipboard,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -17,8 +17,8 @@ import {
   DialogTitle,
   Input,
   Page,
-  PlusIcon,
-  TrashIcon,
+  Plus,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
@@ -175,7 +175,7 @@ export function SecretsPage() {
                 })
               }
             />
-            <p className="text-xs text-gray-500"></p>
+            <p className="text-xs text-muted-foreground"></p>
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
@@ -195,7 +195,7 @@ export function SecretsPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Developer Secrets"
-          icon={BracesIcon}
+          icon={Brackets}
           description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
         />{" "}
         <Page.Vertical align="stretch" gap="md">
@@ -205,7 +205,7 @@ export function SecretsPage() {
               label="Read the API reference"
               size="sm"
               variant="outline"
-              icon={BookOpenIcon}
+              icon={BookOpen01}
               onClick={() => {
                 window.open(
                   "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
@@ -222,12 +222,12 @@ export function SecretsPage() {
                   setIsInputNameDisabled(false);
                   setIsNewSecretPromptOpen(true);
                 }}
-                icon={PlusIcon}
+                icon={Plus}
                 disabled={isGenerating || isRevoking}
               />
             )}
           </Page.Horizontal>
-          <div className="w-full space-y-4 divide-y divide-separator dark:divide-separator-night">
+          <div className="w-full space-y-4 divide-y divide-separator">
             <div className="flex w-full flex-col space-y-4 pt-4">
               {secrets
                 .sort((a, b) => a.name.localeCompare(b.name))
@@ -237,12 +237,12 @@ export function SecretsPage() {
                     className="flex items-center space-x-4"
                   >
                     <div className="flex items-center space-x-2">
-                      <pre className="rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
+                      <pre className="rounded bg-muted-background p-2 text-sm text-foreground">
                         env.secrets.{secret.name}
                       </pre>
                       <Button
                         variant="outline"
-                        icon={ClipboardIcon}
+                        icon={Clipboard}
                         onClick={() => {
                           const text = `env.secrets.${secret.name}`;
                           void navigator.clipboard.writeText(text);
@@ -274,7 +274,7 @@ export function SecretsPage() {
                             onClick={async () => {
                               setSecretToRevoke(secret);
                             }}
-                            icon={TrashIcon}
+                            icon={Trash01}
                           />
                         </div>
                       </>

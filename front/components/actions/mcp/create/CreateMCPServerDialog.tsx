@@ -41,13 +41,13 @@ import { validateOAuthCredentials } from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  AlertCircle,
   ContentMessage,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExclamationCircleIcon,
   Input,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -58,7 +58,7 @@ import { useForm, useWatch } from "react-hook-form";
  * Generate a unique view name for a multi-instance MCP server by trying
  * incrementing suffixes until one is not already taken.
  */
-export function generateUniqueViewName(
+function generateUniqueViewName(
   baseName: string,
   existingViewNames: string[]
 ): string {
@@ -529,7 +529,7 @@ export function CreateMCPServerDialog({
         resetState();
       }}
     >
-      <DialogContent size="xl" onClick={(e) => e.stopPropagation()}>
+      <DialogContent size="lg" onClick={(e) => e.stopPropagation()}>
         <FormProvider form={form} asForm={false}>
           <DialogHeader>
             <DialogTitle visual={getAvatarFromIcon(toolIcon, "sm")}>
@@ -541,7 +541,7 @@ export function CreateMCPServerDialog({
               {serverError && (
                 <ContentMessage
                   variant="warning"
-                  icon={ExclamationCircleIcon}
+                  icon={AlertCircle}
                   size="lg"
                   title={
                     serverError.isRemoteServerError
@@ -554,9 +554,7 @@ export function CreateMCPServerDialog({
               )}
               {needsCustomName && (
                 <div className="space-y-4">
-                  <div className="heading-lg text-foreground dark:text-foreground-night">
-                    Tool name
-                  </div>
+                  <div className="heading-lg text-foreground">Tool name</div>
                   <Input
                     placeholder="Enter a name for this instance"
                     {...form.register("viewName")}

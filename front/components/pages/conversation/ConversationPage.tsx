@@ -1,6 +1,7 @@
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAgentFromSearchParam } from "@app/hooks/useAgentFromSearchParam";
+import { useGoTemplateFromSearchParam } from "@app/hooks/useGoTemplateFromSearchParam";
 import { useOnboardingConversation } from "@app/hooks/useOnboardingConversation";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
@@ -37,6 +38,9 @@ export function ConversationPage() {
 
   // Consume ?agent= param: fetch agent, set it in input bar, clean up URL.
   useAgentFromSearchParam(owner.sId);
+
+  // Consume ?go= param: fetch Contentful template, prefill composer, clean up URL.
+  useGoTemplateFromSearchParam(owner.sId);
 
   return (
     <ConversationContainerVirtuoso

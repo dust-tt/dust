@@ -1,13 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const MAX_CONTENT_SIZE = 32000;
 
-export const SLAB_TOOLS_METADATA = createToolsRecord({
-  search_posts: {
+export const SLAB_TOOLS_METADATA = [
+  {
+    name: "search_posts",
     description:
       "Search for posts across the Slab workspace. Returns posts matching the query.",
     schema: {
@@ -47,8 +45,11 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
       running: "Searching Slab posts",
       done: "Search Slab posts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_post_contents: {
+  {
+    name: "get_post_contents",
     description:
       "Retrieve specific posts by their IDs or URLs with full content and metadata. Supports pagination for large posts.",
     schema: {
@@ -77,18 +78,24 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Slab post contents",
       done: "Get Slab post contents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_topics: {
+  {
+    name: "get_topics",
     description:
-      "Retrieve all topics for navigation and organization understanding.",
+      "Retrieve all Slab topics for navigation and organization understanding.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving Slab topics",
       done: "Get Slab topics",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_post_metadata: {
+  {
+    name: "get_post_metadata",
     description:
       "Get metadata about a post without retrieving full content (faster for large posts).",
     schema: {
@@ -99,8 +106,10 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Slab post metadata",
       done: "Get Slab post metadata",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const SLAB_SERVER = {
   serverInfo: {
@@ -110,15 +119,6 @@ export const SLAB_SERVER = {
     authorization: null,
     icon: "SlabLogo",
     documentationUrl: "https://docs.dust.tt/docs/slab-mcp",
-    instructions: null,
   },
-  tools: Object.values(SLAB_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(SLAB_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: SLAB_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

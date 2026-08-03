@@ -53,3 +53,37 @@ export async function resolveSession(
 
   return session;
 }
+
+/**
+ * Like {@link resolveSession} but for endpoints where a session is OPTIONAL:
+ * returns the resolved session when present, or `null` for anonymous requests
+ * (no/invalid bearer token and no session cookie). Never returns a `Response`
+ * and never logs an auth error, so callers can fall back to another identifier
+ * (e.g. an anonymous browser id) when this is `null`.
+ *
+ * Still refreshes the `workos_session` cookie via `Set-Cookie` when a cookie
+ * session is resolved, matching {@link resolveSession}.
+ */
+export async function resolveOptionalSession(
+  ctx: Context
+): Promise<SessionWithUser | null> {
+  const bearerRes = await getSessionFromBearerToken(
+    ctx.req.header("authorization")
+  );
+
+  let session: SessionWithUser | null = bearerRes.isOk()
+    ? (bearerRes.value ?? null)
+    : null;
+
+  if (!session) {
+    const result = await getWorkOSSessionWithSetCookies(
+      getCookie(ctx, "workos_session")
+    );
+    for (const cookie of result.setCookies) {
+      ctx.header("Set-Cookie", cookie, { append: true });
+    }
+    session = result.session ?? null;
+  }
+
+  return session;
+}

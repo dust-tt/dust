@@ -101,14 +101,26 @@ export async function listActiveAgentsUsingNonRegionalModels(
 export async function listAvailableTools(
   auth: Authenticator
 ): Promise<AvailableTool[]> {
-  // Get all spaces the user is member of.
-  const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+  // Get all spaces the user is member of that can provide tools.
+  const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth, {
+    kinds: ["global", "regular"],
+  });
 
   // Fetch all MCP server views from those spaces.
-  const mcpServerViews = await MCPServerViewResource.listBySpaces(
-    auth,
-    userSpaces
-  );
+  const mcpServerViews =
+    await MCPServerViewResource.listBySpacesEnsuringAutoViews(
+      auth,
+      userSpaces,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
+    );
 
   return mcpServerViews
     .map((v) => v.toJSON())
@@ -156,6 +168,14 @@ export async function describeMcpServer(
   auth: Authenticator,
   mcpId: string
 ): Promise<MCPServerType | null> {
-  const [view] = await MCPServerViewResource.fetchByIds(auth, [mcpId]);
+  const [view] = await MCPServerViewResource.fetchByIds(auth, [mcpId], {
+    includeHeavyAttributes: [
+      "authorization",
+      "cachedTools",
+      "customHeaders",
+      "lastError",
+      "sharedSecret",
+    ],
+  });
   return view?.toJSON()?.server ?? null;
 }

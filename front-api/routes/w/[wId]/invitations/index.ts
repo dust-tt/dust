@@ -3,10 +3,10 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import type {
   GetWorkspaceInvitationsResponseBody,
   PostInvitationResponseBody,
-} from "@app/pages/api/w/[wId]/invitations/index";
-import { PostInvitationRequestBodySchema } from "@app/pages/api/w/[wId]/invitations/index";
+} from "@app/types/api/invitation";
+import { PostInvitationRequestBodySchema } from "@app/types/api/invitation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -15,8 +15,9 @@ import invitationById from "./[iId]";
 // Mounted under /api/w/:wId/invitations.
 const app = workspaceApp();
 
-app.use("*", ensureIsAdmin());
+app.use("*", ensureIsManager());
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetWorkspaceInvitationsResponseBody> => {
@@ -53,6 +54,18 @@ app.post(
     }
 
     const invitationRequests = ctx.req.valid("json");
+
+    // Escalation guard: inviting a member as admin requires
+    // to be an admin
+    if (invitationRequests.some((r) => r.role === "admin") && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have permission to invite admins.",
+        },
+      });
+    }
 
     const invitationRes = await handleMembershipInvitations(auth, {
       owner,

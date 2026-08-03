@@ -1,4 +1,8 @@
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { createConversation } from "@app/lib/api/assistant/conversation";
+import {
+  DustFileSystem,
+  sanitizeFileSystemName,
+} from "@app/lib/api/file_system/dust_file_system";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -140,7 +144,7 @@ describe("DustFileSystem.forConversation", () => {
     expect(podMount!.scopedPrefix).toBe(`pod-${projectSpace.sId}`);
     expect(podMount!.sandboxMountPoint).toBe(`/files/pod-${projectSpace.sId}`);
     expect(podMount!.legacyPrefix).toBe("project");
-    expect(podMount!.legacySandboxMountPoint).toBe("/files/project");
+    expect(podMount!.legacySandboxMountPoint).toBe("/files/pod");
   });
 });
 
@@ -196,7 +200,64 @@ describe("DustFileSystem.forPod", () => {
     expect(mounts[0].kind).toBe("pod");
     expect(mounts[0].id).toBe(projectSpace.sId);
     expect(mounts[0].scopedPrefix).toBe(`pod-${projectSpace.sId}`);
+    expect(mounts[0].sandboxMountPoint).toBe(`/files/pod-${projectSpace.sId}`);
+    expect(mounts[0].legacyPrefix).toBeNull();
+    expect(mounts[0].legacySandboxMountPoint).toBeNull();
     expect(mounts[0].permissions.canRead).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// forUser
+// ---------------------------------------------------------------------------
+
+describe("DustFileSystem.forUser", () => {
+  it("returns Ok with a read-write user mount for the authenticated user", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+
+    const result = await DustFileSystem.forUser(auth);
+
+    assert(result.isOk());
+    const mounts = result.value.getMounts();
+    expect(mounts).toHaveLength(1);
+    expect(mounts[0].kind).toBe("user");
+    expect(mounts[0].id).toBe(user.sId);
+    expect(mounts[0].scopedPrefix).toBe(`user-${user.sId}`);
+    expect(mounts[0].sandboxMountPoint).toBeNull();
+    expect(mounts[0].legacyPrefix).toBeNull();
+    expect(mounts[0].legacySandboxMountPoint).toBeNull();
+    expect(mounts[0].permissions.canRead).toBe(true);
+    expect(mounts[0].permissions.canWrite).toBe(true);
+  });
+
+  it("returns Err(unauthorized) when there is no authenticated user", async () => {
+    const { workspace } = await createResourceTest({});
+    const noUserAuth = await Authenticator.internalBuilderForWorkspace(
+      workspace.sId
+    );
+    expect(noUserAuth.user()).toBeNull();
+
+    const result = await DustFileSystem.forUser(noUserAuth);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("unauthorized");
+    }
+  });
+
+  it("toSandboxPath rejects the user scope (never sandbox-mounted)", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+    const result = await DustFileSystem.forUser(auth);
+    assert(result.isOk());
+
+    const sandboxPath = result.value.toSandboxPath(
+      `user-${user.sId}/memory.md`
+    );
+
+    expect(sandboxPath.isErr()).toBe(true);
+    if (sandboxPath.isErr()) {
+      expect(sandboxPath.error.code).toBe("invalid_path");
+    }
   });
 });
 
@@ -274,6 +335,46 @@ describe("DustFileSystem.fromScopedPath", () => {
       mounts.some((m) => m.kind === "conversation" && m.id === conversation.sId)
     ).toBe(true);
   });
+
+  it("returns Ok with a user-scoped fs for the authenticated user's user- prefix", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+
+    const result = await DustFileSystem.fromScopedPath(
+      auth,
+      `user-${user.sId}/memory.md`
+    );
+
+    assert(result.isOk());
+    const mounts = result.value.getMounts();
+    expect(mounts.some((m) => m.kind === "user" && m.id === user.sId)).toBe(
+      true
+    );
+  });
+
+  it("returns Err(unauthorized) for another user's user- prefix", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+
+    const result = await DustFileSystem.fromScopedPath(
+      auth,
+      `user-${user.sId}-other/memory.md`
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("unauthorized");
+    }
+  });
+
+  it("returns Err(invalid_path) for a user- prefix with an empty id", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const result = await DustFileSystem.fromScopedPath(auth, "user-/memory.md");
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_path");
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -314,6 +415,25 @@ describe("DustFileSystem.forAgentLoop", () => {
     expect(forAgentLoop.value.getMounts()).toEqual(
       forConversation.value.getMounts()
     );
+  });
+
+  it("throws when scopedPaths references a user-scoped path", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    await expect(
+      DustFileSystem.forAgentLoop(auth, {
+        conversation,
+        scopedPaths: [`user-${user.sId}/memory.md`],
+      })
+    ).rejects.toThrow(/User-scoped paths are not supported/);
   });
 
   it("adds a second conversation mount when scopedPaths references another accessible conversation", async () => {
@@ -589,17 +709,15 @@ describe("DustFileSystem.forAgentLoop", () => {
         )
       ).toBeNull();
 
-      const userAgentConfig = await AgentConfigurationFactory.createTestAgent(
-        userSessionAuth,
-        { name: "User Agent", description: "User Agent" }
-      );
-      const userConversation = await ConversationFactory.create(
+      const userConversationResource = await createConversation(
         userSessionAuth,
         {
-          agentConfigurationId: userAgentConfig.sId,
-          messagesCreatedAt: [],
+          title: "User Conversation",
+          visibility: "unlisted",
+          spaceId: null,
         }
       );
+      const userConversation = userConversationResource.toJSON();
 
       const result = await DustFileSystem.forAgentLoop(userSessionAuth, {
         conversation: userConversation,
@@ -859,6 +977,7 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const workspaceId = auth.getNonNullableWorkspace().sId;
     const prefix = `w/${workspaceId}/conversations/${conversation.sId}/files/`;
+    const updatedAt = new Date("2025-01-01T00:00:00.000Z");
     getAllFilesByPrefixMock.mockResolvedValue({
       files: [
         {
@@ -866,7 +985,7 @@ describe("DustFileSystem.list thumbnail URLs", () => {
           metadata: {
             contentType: "image/png",
             size: "1024",
-            updated: new Date().toISOString(),
+            updated: updatedAt.toISOString(),
           },
         },
       ],
@@ -875,13 +994,14 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const fsResult = await DustFileSystem.forConversation(auth, conversation);
     assert(fsResult.isOk());
-    const entries = await fsResult.value.list();
+    const listResult = await fsResult.value.list();
+    assert(listResult.isOk());
 
-    const file = entries.find((e) => !e.isDirectory);
+    const file = listResult.value.find((e) => !e.isDirectory);
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBe(
       `https://dust.tt/api/w/${workspaceId}` +
-        `/files/path/conversation-${conversation.sId}/photo.png?thumbnail=1`
+        `/files/path/conversation-${conversation.sId}/photo.png?thumbnail=1&v=${updatedAt.getTime()}`
     );
   });
 
@@ -916,9 +1036,10 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const fsResult = await DustFileSystem.forConversation(auth, conversation);
     assert(fsResult.isOk());
-    const entries = await fsResult.value.list();
+    const listResult = await fsResult.value.list();
+    assert(listResult.isOk());
 
-    const file = entries.find((e) => !e.isDirectory);
+    const file = listResult.value.find((e) => !e.isDirectory);
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBeNull();
   });
@@ -1508,107 +1629,110 @@ describe("DustFileSystem.rename", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// forShareToken
-// ---------------------------------------------------------------------------
-
-describe("DustFileSystem.forShareToken", () => {
-  it("creates a single conversation mount with canRead:true when only a conversationId is given", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const conversationId = "conv_abc123";
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId,
-      spaceId: null,
-    });
-    const mounts = fs.getMounts();
-
-    expect(mounts).toHaveLength(1);
-    expect(mounts[0]).toMatchObject({
-      kind: "conversation",
-      id: conversationId,
-      scopedPrefix: `conversation-${conversationId}`,
-      permissions: { canRead: true, canWrite: false },
-    });
+describe("sanitizeFileSystemName", () => {
+  it("leaves a plain ASCII name unchanged", () => {
+    expect(sanitizeFileSystemName("quarterly-report.pdf")).toBe(
+      "quarterly-report.pdf"
+    );
   });
 
-  it("creates a single pod mount with canRead:true when only a spaceId is given", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const spaceId = "vlt_pod456";
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId: null,
-      spaceId,
-    });
-    const mounts = fs.getMounts();
-
-    expect(mounts).toHaveLength(1);
-    expect(mounts[0]).toMatchObject({
-      kind: "pod",
-      id: spaceId,
-      scopedPrefix: `pod-${spaceId}`,
-      permissions: { canRead: true, canWrite: false },
-    });
+  it("strips leading control characters", () => {
+    expect(sanitizeFileSystemName("\n\tsummary.txt")).toBe("summary.txt");
   });
 
-  it("creates both conversation and pod mounts when both IDs are provided", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const conversationId = "conv_abc123";
-    const spaceId = "vlt_pod456";
-    const fs = DustFileSystem.forShareToken(auth, { conversationId, spaceId });
-    const mounts = fs.getMounts();
-
-    expect(mounts).toHaveLength(2);
-    expect(mounts[0]).toMatchObject({
-      kind: "conversation",
-      id: conversationId,
-      permissions: { canRead: true, canWrite: false },
-    });
-    expect(mounts[1]).toMatchObject({
-      kind: "pod",
-      id: spaceId,
-      permissions: { canRead: true, canWrite: false },
-    });
+  it("strips embedded control characters", () => {
+    expect(sanitizeFileSystemName("my\x00file\x1Fname.txt")).toBe(
+      "myfilename.txt"
+    );
   });
 
-  it("creates no mounts when both IDs are null", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId: null,
-      spaceId: null,
-    });
-    const mounts = fs.getMounts();
-
-    expect(mounts).toHaveLength(0);
+  it("trims surrounding whitespace", () => {
+    expect(sanitizeFileSystemName("  notes.md  ")).toBe("notes.md");
   });
 
-  it("sets the legacy conversation prefix for the conversation mount", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const conversationId = "conv_abc123";
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId,
-      spaceId: null,
-    });
-    const mounts = fs.getMounts();
-
-    expect(mounts[0].legacyPrefix).toBe("conversation");
-    expect(mounts[0].legacySandboxMountPoint).toBe("/files/conversation");
+  it("preserves accented and non-ASCII printable characters", () => {
+    const name = "données — résumé.csv";
+    expect(sanitizeFileSystemName(name)).toBe(name);
   });
 
-  it("sets the legacy project prefix for the pod mount", async () => {
-    const { authenticator: auth } = await createResourceTest({});
+  it("NFC-normalizes the result", () => {
+    const nfd = "café".normalize("NFD");
+    const nfc = "café".normalize("NFC");
+    expect(sanitizeFileSystemName(nfd)).toBe(nfc);
+  });
 
-    const spaceId = "vlt_pod456";
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId: null,
-      spaceId,
-    });
-    const mounts = fs.getMounts();
+  it("replaces slashes with underscores", () => {
+    expect(sanitizeFileSystemName("q1/2024 report.pdf")).toBe(
+      "q1_2024 report.pdf"
+    );
+  });
+});
 
-    expect(mounts[0].legacyPrefix).toBe("project");
-    expect(mounts[0].legacySandboxMountPoint).toBe("/files/project");
+describe("DustFileSystem.normalizeScopedPath strips control characters", () => {
+  it("strips leading control characters from the filename segment", () => {
+    expect(
+      DustFileSystem.normalizeScopedPath("conversation-abc/\n\tsummary.txt")
+    ).toBe("conversation-abc/summary.txt");
+  });
+
+  it("strips control characters embedded in the mount prefix", () => {
+    expect(
+      DustFileSystem.normalizeScopedPath("conversation-abc\x00/notes.txt")
+    ).toBe("conversation-abc/notes.txt");
+  });
+
+  it("still rejects path traversal after stripping controls", () => {
+    expect(
+      DustFileSystem.normalizeScopedPath("conversation-abc/\n../../etc/passwd")
+    ).toBeNull();
+  });
+});
+
+describe("DustFileSystem.toSandboxPath", () => {
+  it("resolves a scoped pod path to its absolute sandbox mount path", async () => {
+    const { workspace, user } = await createResourceTest({ role: "admin" });
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    assert(auth);
+
+    const fsResult = await DustFileSystem.forPod(auth, projectSpace);
+    assert(fsResult.isOk());
+    const fs = fsResult.value;
+
+    expect(fs.toSandboxPath(`pod-${projectSpace.sId}/greet.ts`)).toEqual(
+      new Ok(`/files/pod-${projectSpace.sId}/greet.ts`)
+    );
+    expect(fs.toSandboxPath(`pod-${projectSpace.sId}/dir/greet.ts`)).toEqual(
+      new Ok(`/files/pod-${projectSpace.sId}/dir/greet.ts`)
+    );
+  });
+
+  it("rejects traversal, foreign mounts, and bare roots", async () => {
+    const { workspace, user } = await createResourceTest({ role: "admin" });
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    assert(auth);
+
+    const fsResult = await DustFileSystem.forPod(auth, projectSpace);
+    assert(fsResult.isOk());
+    const fs = fsResult.value;
+
+    const traversal = fs.toSandboxPath(`pod-${projectSpace.sId}/../escape.ts`);
+    assert(traversal.isErr());
+    expect(traversal.error.code).toBe("invalid_path");
+
+    const foreign = fs.toSandboxPath("pod-other/greet.ts");
+    assert(foreign.isErr());
+    expect(foreign.error.code).toBe("invalid_path");
+
+    const bareRoot = fs.toSandboxPath(`pod-${projectSpace.sId}`);
+    assert(bareRoot.isErr());
+    expect(bareRoot.error.code).toBe("invalid_path");
   });
 });

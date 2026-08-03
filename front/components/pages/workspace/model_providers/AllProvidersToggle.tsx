@@ -17,13 +17,12 @@ export function AllProvidersToggle({
   );
 
   return (
-    <div className="mt-8 divide-y divide-gray-200 dark:divide-gray-200-night p-3">
+    <div className="mt-8 divide-y divide-primary-200 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-left font-semibold text-foreground dark:text-foreground-night">
+        <span className="text-left font-semibold text-foreground">
           Make all providers available
         </span>
         <SliderToggle
-          size="xs"
           selected={selected}
           disabled={selected}
           onClick={onSelectAll}

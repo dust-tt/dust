@@ -58,6 +58,7 @@ export const upgradeEnterprisePlan = createPlugin({
         required: false,
       },
     },
+    requiredRoles: ["billing"],
   },
   execute: async () => {
     return new Err(new Error("NO_OP"));
@@ -87,6 +88,7 @@ export const upgradeFreePlan = createPlugin({
         required: false,
       },
     },
+    requiredRoles: ["billing"],
   },
   execute: async () => {
     return new Err(new Error("NO_OP"));
@@ -101,6 +103,7 @@ export const downgradeNoPlan = createPlugin({
     resourceTypes: ["workspaces"],
     isHidden: true,
     args: {},
+    requiredRoles: ["billing"],
   },
   execute: async () => {
     return new Err(new Error("NO_OP"));
@@ -118,6 +121,7 @@ export const cancelPendingContract = createPlugin({
     resourceTypes: ["workspaces"],
     isHidden: true,
     args: {},
+    requiredRoles: ["billing"],
   },
   execute: async () => {
     return new Err(new Error("NO_OP"));
@@ -162,6 +166,7 @@ export const switchContract = createPlugin({
         required: true,
       },
     },
+    requiredRoles: ["billing"],
   },
   execute: async () => {
     return new Err(new Error("NO_OP"));

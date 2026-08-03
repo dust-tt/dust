@@ -13,7 +13,7 @@ const sessionCache = new Map<string, ExcelSession>();
 /**
  * Create or get a persistent session for Excel operations
  */
-export async function getExcelSession(
+async function getExcelSession(
   client: Client,
   driveItemId: string,
   clientId: string

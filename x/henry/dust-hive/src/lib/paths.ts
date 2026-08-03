@@ -55,9 +55,15 @@ export function getEnvDir(name: string): string {
 const OLD_WORKTREES_DIR = join(homedir(), "dust-hive");
 
 // Returns the worktree path for an environment.
+// Explicit paths are used by externally managed worktrees adopted by dust-hive.
 // Falls back to the old ~/dust-hive/{name} location if the new path doesn't
-// exist yet (pre-migration hives). New hives always use {repoRoot}/.hives/{name}.
-export function getWorktreeDir(name: string, repoRoot: string): string {
+// exist yet (pre-migration hives). New Hive-owned worktrees use
+// {repoRoot}/.hives/{name}.
+export function getWorktreeDir(name: string, repoRoot: string, worktreePath?: string): string {
+  if (worktreePath) {
+    return worktreePath;
+  }
+
   const newPath = join(repoRoot, HIVES_DIR, name);
   if (!existsSync(newPath)) {
     const oldPath = join(OLD_WORKTREES_DIR, name);
@@ -151,36 +157,6 @@ export async function findRepoRoot(startPath?: string): Promise<string | null> {
       }
       // .git not found at this level, continue traversing up
       current = dirname(current);
-    }
-  }
-
-  return null;
-}
-
-// Detect if current working directory is inside a dust-hive worktree
-// Returns the environment name if found, null otherwise
-// Checks both new (.hives/{name}) and old (~/dust-hive/{name}) locations
-export function detectEnvFromCwd(): string | null {
-  const cwd = process.cwd();
-
-  // Check new location: .../.hives/{name}/...
-  const newMarker = `/${HIVES_DIR}/`;
-  const newIdx = cwd.indexOf(newMarker);
-  if (newIdx !== -1) {
-    const afterMarker = cwd.slice(newIdx + newMarker.length);
-    const envName = afterMarker.split("/")[0];
-    if (envName) {
-      return envName;
-    }
-  }
-
-  // Check old location: ~/dust-hive/{name}/...
-  const oldBase = `${OLD_WORKTREES_DIR}/`;
-  if (cwd.startsWith(oldBase)) {
-    const relativePath = cwd.slice(oldBase.length);
-    const envName = relativePath.split("/")[0];
-    if (envName) {
-      return envName;
     }
   }
 

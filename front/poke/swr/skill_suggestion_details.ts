@@ -1,5 +1,5 @@
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetSkillSuggestionDetails } from "@app/pages/api/poke/workspaces/[wId]/skill_suggestions/[suggestionId]/details";
+import type { PokeGetSkillSuggestionDetails } from "@app/types/api/poke/skills";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

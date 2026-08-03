@@ -1,24 +1,15 @@
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type {
+  DeleteUserApprovalsResponseBody,
+  GetUserApprovalsResponseBody,
+} from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export interface GetUserApprovalsResponseBody {
-  approvals: {
-    mcpServerId: string;
-    toolNames: string[];
-    serverName: string;
-  }[];
-}
-
-export interface DeleteUserApprovalsResponseBody {
-  success: boolean;
-}
 
 const DeleteQuerySchema = z.object({
   mcpServerId: z.string(),
@@ -27,6 +18,7 @@ const DeleteQuerySchema = z.object({
 // Mounted at /api/w/:wId/me/approvals.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetUserApprovalsResponseBody> => {
   const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();
@@ -47,11 +39,9 @@ app.get("/", async (ctx): HandlerResult<GetUserApprovalsResponseBody> => {
       const { serverType } = getServerTypeAndIdFromSId(validation.mcpServerId);
 
       if (serverType === "internal") {
-        const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
         const server = await InternalMCPServerInMemoryResource.fetchById(
           auth,
-          validation.mcpServerId,
-          systemSpace
+          validation.mcpServerId
         );
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         serverName = server?.toJSON().name || "Unknown Internal Server";
@@ -61,7 +51,7 @@ app.get("/", async (ctx): HandlerResult<GetUserApprovalsResponseBody> => {
           validation.mcpServerId
         );
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        serverName = server?.toJSON().name || "Unknown Remote Server";
+        serverName = server?.cachedName || "Unknown Remote Server";
       }
     } catch {
       // If we can't parse the server ID or fetch the server, use default name.

@@ -7,6 +7,10 @@ import {
   contentNodeMentionDirective,
 } from "@app/components/markdown/ContentNodeMentionBlock";
 import {
+  filePreviewDirective,
+  getFilePreviewPlugin,
+} from "@app/components/markdown/FilePreviewBlock";
+import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
@@ -52,6 +56,7 @@ export const UserMessageMarkdown = ({
       mention_user: getUserMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
       pasted_attachment: PastedAttachmentBlock,
+      file_preview: getFilePreviewPlugin(),
       skill: ({ skillIcon, skillId, skillName }: SkillDirectiveProps) => (
         <SkillBlock
           owner={owner}
@@ -73,6 +78,7 @@ export const UserMessageMarkdown = ({
       taskDirective,
       contentNodeMentionDirective,
       pastedAttachmentDirective,
+      filePreviewDirective,
       skillDirective,
     ],
     []

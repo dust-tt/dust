@@ -14,6 +14,7 @@ import type {
   FileExplorerEntry,
   FileExplorerFilter,
   FileExplorerMenuAction,
+  FileExplorerPathEntry,
   FileExplorerSortMode,
   FileSystemTreeNode,
   FolderEntry,
@@ -24,16 +25,12 @@ import {
   getFolderBreadcrumbSegments,
   getScopedRelativePath,
   isFileExplorerMovableFile,
+  isFilePreviewableContentType,
 } from "@app/components/file_explorer/utils";
-import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
-import {
-  cn,
-  FolderOpenIcon,
-  PencilSquareIcon,
-  TrashIcon,
-} from "@dust-tt/sparkle";
+import type { LightWorkspaceType } from "@app/types/user";
+import { cn, Edit04, FolderOpen, Trash01 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -43,7 +40,7 @@ interface FileExplorerProps {
   defaultViewMode?: ViewMode;
   emptyState?: React.ReactNode;
   hideBreadcrumbAtRoot?: boolean;
-  files: FileSystemEntry[];
+  files: FileExplorerPathEntry[];
   getFileUrl: (path: string) => string;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
@@ -56,10 +53,14 @@ interface FileExplorerProps {
     parentRelativePath: string
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
+  onOpenInPanel?: (entry: FileEntry) => boolean;
   onRename?: (entry: FileEntry | FolderEntry) => void;
+  owner?: LightWorkspaceType;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
   ) => FileExplorerMenuAction[];
+  /** Top-level scope folders at the virtual root (e.g. `conversation`, `pod`). */
+  virtualScopeRoots?: readonly string[];
 }
 
 export function FileExplorer({
@@ -78,8 +79,11 @@ export function FileExplorer({
   onFileDownload,
   onMoveFile,
   onOpenInteractive,
+  onOpenInPanel,
   onRename,
+  owner,
   getExtraFileMenuItems,
+  virtualScopeRoots,
 }: FileExplorerProps) {
   const [currentFolderPath, setCurrentFolderPath] = useState("");
   const prevNavigationResetKey = useRef(navigationResetKey);
@@ -100,6 +104,7 @@ export function FileExplorer({
 
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [searchQuery, setSearchQuery] = useState("");
+  const searchFolderPath = searchQuery.trim() ? currentFolderPath : undefined;
   const [activeFilter, setActiveFilter] = useState<FileExplorerFilter>("all");
   const [sortMode, setSortMode] =
     useState<FileExplorerSortMode>("last-modified");
@@ -124,6 +129,7 @@ export function FileExplorer({
         searchQuery,
         activeFilter,
         sortMode,
+        virtualScopeRoots,
       }),
     [
       contentNodes,
@@ -132,6 +138,7 @@ export function FileExplorer({
       searchQuery,
       activeFilter,
       sortMode,
+      virtualScopeRoots,
     ]
   );
 
@@ -148,7 +155,7 @@ export function FileExplorer({
       if (onRename && (entry.kind === "file" || entry.kind === "folder")) {
         items.push({
           label: "Rename",
-          icon: PencilSquareIcon,
+          icon: Edit04,
           onClick: (e) => {
             e.stopPropagation();
             onRename(entry);
@@ -163,7 +170,7 @@ export function FileExplorer({
       ) {
         items.push({
           label: "Move to…",
-          icon: FolderOpenIcon,
+          icon: FolderOpen,
           onClick: (e) => {
             e.stopPropagation();
             setFileToMove(entry);
@@ -174,7 +181,7 @@ export function FileExplorer({
       if (onDelete) {
         items.push({
           label: entry.kind === "node" ? "Remove" : "Delete",
-          icon: TrashIcon,
+          icon: Trash01,
           variant: "warning",
           onClick: (e) => {
             e.stopPropagation();
@@ -200,15 +207,18 @@ export function FileExplorer({
   const handleBreadcrumbNavigate = (index: number) => {
     if (index < 0) {
       setCurrentFolderPath("");
+      setActiveFilter("all");
       return;
     }
 
     const segments = getFolderBreadcrumbSegments(currentFolderPath);
     setCurrentFolderPath(segments[index]?.path ?? "");
+    setActiveFilter("all");
   };
 
   const handleFolderNavigate = (node: FileSystemTreeNode) => {
     setCurrentFolderPath(node.path);
+    setActiveFilter("all");
   };
 
   const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);
@@ -242,6 +252,9 @@ export function FileExplorer({
       onOpenInteractive({ ...entry, fileId: entry.fileId });
       return;
     }
+    if (onOpenInPanel?.(entry)) {
+      return;
+    }
     setPreviewFile(entry);
     setShowPreviewSheet(true);
   };
@@ -254,7 +267,8 @@ export function FileExplorer({
 
   // Only file entries participate in prev/next navigation.
   const fileEntriesAtLevel = filesAtLevel.filter(
-    (e): e is FileEntry => e.kind === "file"
+    (entry): entry is FileEntry =>
+      entry.kind === "file" && isFilePreviewableContentType(entry.contentType)
   );
   const previewIndex = previewFile
     ? fileEntriesAtLevel.findIndex((f) => f.path === previewFile.path)
@@ -277,7 +291,7 @@ export function FileExplorer({
           className={cn("flex flex-1 min-h-0 flex-col gap-5", contentClassName)}
         >
           {showBreadcrumb && (
-            <div className={cn("px-4", hideBreadcrumbAtRoot && "pt-5")}>
+            <div className="px-4 pt-5">
               <FileExplorerBreadcrumb
                 currentFolderPath={currentFolderPath}
                 onNavigate={handleBreadcrumbNavigate}
@@ -330,18 +344,20 @@ export function FileExplorer({
                 ? getMenuItems
                 : undefined
             }
+            searchFolderPath={searchFolderPath}
           />
         </div>
       </div>
 
       <FilePreviewDialog
         entry={previewFile}
-        getFileUrl={getFileUrl}
+        fileUrl={previewFile ? getFileUrl(previewFile.path) : null}
         isOpen={showPreviewSheet}
         onOpenChange={setShowPreviewSheet}
         onDownload={onFileDownload}
         onPrev={handlePreviewPrev}
         onNext={handlePreviewNext}
+        owner={owner}
       />
 
       {onMoveFile && (

@@ -2,6 +2,7 @@ import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import type { Context } from "hono";
@@ -32,16 +33,16 @@ export async function streamConversationEventsForRoute(
   }: { conversationId: string; lastEventId: string | null },
   opts: ConversationEventsOptions
 ) {
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      ctx,
+      new ConversationError("conversation_not_found")
     );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
   }
-
-  const conversation = conversationRes.value;
 
   return streamEvents({
     ctx,
@@ -52,5 +53,6 @@ export async function streamConversationEventsForRoute(
         signal,
       }),
     transform: (event) => opts.transformEvent(auth, event),
+    writeDoneSentinel: true,
   });
 }

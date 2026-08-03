@@ -18,6 +18,7 @@ export const extensionBlacklistDomainsPlugin = createPlugin({
           "Comma-separated list of domains or URLs to blacklist for the extension. This will override the existing list (if any).",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const domains = args.domains

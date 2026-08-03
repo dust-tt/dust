@@ -73,6 +73,44 @@ Override the simulator with `SIMULATOR`:
 make run SIMULATOR='iPhone 16 Pro'
 ```
 
+## Releasing to TestFlight
+
+The app is signed with automatic signing against the Dust Apple Developer team
+(`DEVELOPMENT_TEAM` is set in `project.yml`). The bundle id `com.dust.mobile` and the
+App Store Connect app record already exist, so releasing is just archive → upload.
+
+### One-time setup (per contributor)
+
+1. Be a member of the team in [App Store Connect](https://appstoreconnect.apple.com)
+   (Users and Access) with the **Developer** or **App Manager** role — an admin invites
+   you by email.
+2. Sign into Xcode with that Apple ID: **Xcode → Settings → Accounts → +**. Without this,
+   signing can't provision and the archive fails.
+
+That's it. On your first archive, signing provisions automatically (you may get a keychain
+prompt to allow `codesign` to use the signing key).
+
+### Cutting a release
+
+First, bump the build number — it **must** be unique and higher than the last upload:
+
+```
+# project.yml: CURRENT_PROJECT_VERSION: N -> N+1
+# Bump MARKETING_VERSION too for a user-facing version change (e.g. 0.1.0 -> 0.2.0).
+```
+
+Then archive and upload. The simplest path does both in Xcode, no extra tools:
+
+```bash
+make generate && open Dust.xcodeproj
+# set the destination to "Any iOS Device", then Product -> Archive,
+# then Distribute App -> App Store Connect -> Upload.
+```
+
+The build processes in App Store Connect (~5–15 min) and appears under the **TestFlight** tab.
+Internal testers get it immediately; external testers get it after Apple's one-time Beta App
+Review of the first build in a group.
+
 ## Architecture
 
 ```

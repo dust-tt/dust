@@ -1,14 +1,14 @@
+import Custom404 from "@app/components/pages/Custom404";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useJoinData } from "@app/lib/swr/workspaces";
-import Custom404 from "@app/pages/404";
 import {
+  AlertCircle,
   Button,
   DustLogoSquare,
-  ExclamationCircleIcon,
   Hoverable,
   Icon,
-  LoginIcon,
+  LogIn01,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -55,17 +55,17 @@ export function JoinPage() {
           <div className="flex max-w-md flex-col gap-3 text-center">
             <div className="flex flex-col items-center gap-2">
               <Icon
-                visual={ExclamationCircleIcon}
+                visual={AlertCircle}
                 size="lg"
-                className="dark:text-warning-400-night text-warning-400"
+                className="text-warning-400"
               />
-              <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+              <p className="heading-xl leading-7 text-foreground">
                 Something went wrong
               </p>
-              <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+              <p className="copy-sm leading-tight text-muted-foreground">
                 We couldn't load the invitation. Please try again.
               </p>
-              <p className="copy-xs font-mono text-muted-foreground dark:text-muted-foreground-night">
+              <p className="copy-xs font-mono text-muted-foreground">
                 {errorMessage}
               </p>
             </div>
@@ -134,7 +134,7 @@ export function JoinPage() {
             variant="primary"
             size="sm"
             label={userExists ? "Sign in" : "Sign up"}
-            icon={LoginIcon}
+            icon={LogIn01}
             onClick={() => (window.location.href = signInUrl)}
           />
         </div>

@@ -1,5 +1,4 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -9,6 +8,7 @@ import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
 import { assertNeverAndIgnore } from "../shared/utils/assert_never";
+import type { SpaceType } from "../space";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -16,6 +16,11 @@ import type {
   LightAgentConfigurationType,
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
+import type {
+  ModelResolutionMethodType,
+  ModelSelectionType,
+  ResolvedRequestedModel,
+} from "./models/types";
 
 export type MessageVisibility = "visible" | "deleted" | "pending";
 
@@ -118,10 +123,14 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
-  | "reinforcement"
-  // Internal anchor user message inserted at the start of an empty conversation so
-  // a branch can be created before any user-visible message exists.
-  | "branch_anchor";
+  | "reinforcement";
+
+export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "onboarding_conversation",
+  "project_kickoff",
+  "reinforced_skill_notification",
+  "wakeup",
+];
 
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
@@ -136,6 +145,7 @@ export type UserMessageContext = {
   lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
+  selectedSpaceIds?: string[];
   apiKeyId?: number | null;
   authMethod?: string | null;
 };
@@ -184,6 +194,8 @@ export type UserMessageType = {
   context: UserMessageContext;
   agenticMessageData?: AgenticMessageData;
   reactions: MessageReactionType[];
+  // Model's triplet requested by the user manually when running the agent. Null when the user did not request a specific model.
+  requestedModel: ModelSelectionType | null;
 };
 
 export type UserMessageTypeWithoutMentions = Omit<
@@ -208,13 +220,7 @@ export function isUserMessageTypeWithContentFragments(
 }
 
 export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
-  return (
-    origin === "onboarding_conversation" ||
-    origin === "project_kickoff" ||
-    origin === "reinforced_skill_notification" ||
-    origin === "branch_anchor" ||
-    origin === "wakeup"
-  );
+  return HIDDEN_MESSAGE_ORIGINS.includes(origin);
 }
 
 export function isVisibleMessage(m: LightMessageType): boolean {
@@ -245,6 +251,19 @@ export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
   // Message can be in "created" status when we stop the loop to ask for user permission for instance.
   "created",
   "succeeded",
+  "cancelled",
+  "interrupted",
+  "gracefully_stopped",
+];
+
+// Terminal statuses from which an agent message can never resume. Tools of such a message that
+// are still blocked on user input (e.g. a manual tool approval that was skipped when the message
+// got interrupted or gracefully stopped) are not actionable anymore. "gracefully_stopped" is
+// treated like "succeeded" in most places, but it belongs here for resumption: a graceful stop
+// ends the loop in place, so resolving a leftover approval would relaunch a direction the loop
+// already stopped (and that steering, if any, has since superseded via a newly promoted message).
+export const UNRESUMABLE_AGENT_MESSAGE_STATUSES: AgentMessageStatus[] = [
+  "failed",
   "cancelled",
   "interrupted",
   "gracefully_stopped",
@@ -302,11 +321,23 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
+  costCredits: number | null;
+  // Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned
+  // (recursively) by this message, separate from `costCredits` (this message's own
+  // intelligence + tools). Computed lazily on single-message fetches only, so it is
+  // `null` everywhere else (e.g. conversation list rendering). Optional during
+  // rollout. See [BACK12].
+  subAgentCostCredits?: number | null;
 };
 
+// `step` is the agent-loop step a given activity step was produced in. It lets
+// the streaming client discard the steps it built for a step that Temporal
+// re-ran (activity retry re-emits the step's events with a fresh traceId),
+// rebuilding it instead of appending duplicates. Optional: absent on the
+// server-rendered terminal view, which is already canonical.
 export type InlineActivityStep =
-  | { type: "thinking"; content: string; id: string }
-  | { type: "content"; content: string; id: string }
+  | { type: "thinking"; content: string; id: string; step?: number }
+  | { type: "content"; content: string; id: string; step?: number }
   | {
       type: "action";
       label: string;
@@ -314,6 +345,7 @@ export type InlineActivityStep =
       actionId: string;
       internalMCPServerName: InternalMCPServerNameType | null;
       toolName: string | null;
+      step?: number;
     };
 
 export type ParsedContentItem =
@@ -333,6 +365,12 @@ export type AgentMessageType = BaseAgentMessageType & {
   actions: AgentMCPActionWithOutputType[];
   contents: Array<{ step: number; content: AgentContentItemType }>;
   modelInteractionDurationMs: number | null;
+  // Model's triplet used to generate the message. Legacy: null, the agent ran its own configured model.
+  resolvedModel: ResolvedRequestedModel | null;
+  // How `resolvedModel` was chosen: "agent" (agent's configured model), "user"
+  // (per-message model picked from the input-bar picker), or "auto" (routed
+  // through the auto model). Legacy: null.
+  modelResolutionMethod: ModelResolutionMethodType | null;
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
@@ -354,6 +392,10 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
   activitySteps: InlineActivityStep[];
+  // Model's triplet used to generate the message, and how it was chosen. Used to
+  // label messages that ran on a per-message picker override. Legacy: null.
+  resolvedModel: ResolvedRequestedModel | null;
+  modelResolutionMethod: ModelResolutionMethodType | null;
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events
@@ -445,7 +487,7 @@ export const CONVERSATION_URL_ACCESS_MODES = [
 export type ConversationUrlAccessMode =
   (typeof CONVERSATION_URL_ACCESS_MODES)[number];
 
-export const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
+const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
 
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
@@ -453,7 +495,7 @@ export type ConversationMetadata = Record<string, unknown> & {
   useFileSystem?: boolean;
 };
 
-export function isConversationUrlAccessMode(
+function isConversationUrlAccessMode(
   value: unknown
 ): value is ConversationUrlAccessMode {
   return value === "participants_only" || value === "workspace_members";
@@ -544,6 +586,18 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   depth: number;
   branchId: string | null;
   forkingData?: ConversationForkingDataType;
+};
+
+export type SelectableConversationSpaceType = SpaceType & {
+  selected: boolean;
+};
+
+export type ConversationSelectedSpacesResponse = {
+  selectedSpaces: SelectableConversationSpaceType[];
+  effectiveAcl: {
+    spaceIds: string[];
+    viewerMustHaveAll: true;
+  };
 };
 
 type ConversationDisplayTitleInput = Pick<
@@ -649,7 +703,6 @@ export const CONVERSATION_ERROR_TYPES = [
   "user_already_participant",
   "message_not_found",
   "message_deletion_not_authorized",
-  "branch_not_found",
   "conversation_context_usage_not_found",
 ] as const;
 
@@ -672,6 +725,7 @@ export type SubmitMessageError = {
     | "plan_limit_reached_error"
     | "credits_exhausted_error"
     | "user_cap_reached_error"
+    | "no_seat_error"
     | "content_too_large";
   title: string;
   message: string;
@@ -738,34 +792,31 @@ export type ConversationTitleEvent = {
   title: string;
 };
 
-// Event sent when the conversation's plan.md is created, edited, approved, or closed. Carries
-// only metadata (id, version, status flags) — the UI refetches the full file contents via the
-// plan_mode GET endpoint on receipt.
+export type ConversationForkPreparedEvent = {
+  type: "conversation_fork_prepared";
+  created: number;
+};
+
+// Event sent when the conversation's plan.md is created, edited, or closed. A refetch signal: the
+// UI re-reads the plan content via the plan_mode GET endpoint on receipt. `isClosed` lets the UI
+// close the plan panel.
 export type PlanUpdatedEvent = {
   type: "plan_updated";
   created: number;
   conversationId: string;
-  planFileId: string;
-  version: number;
   isClosed: boolean;
-  hasApproval: boolean;
 };
 
-export const ConversationMCPServerViewOrigins = [
-  "agent_enabled",
-  "conversation",
-] as const;
-
-export type ConversationMCPServerViewOrigin =
-  (typeof ConversationMCPServerViewOrigins)[number];
-
-export function isConversationMCPServerViewOrigin(
-  value: unknown
-): value is ConversationMCPServerViewOrigin {
-  return ConversationMCPServerViewOrigins.includes(
-    value as ConversationMCPServerViewOrigin
-  );
-}
+// Event sent when a wake-up in the conversation is created or changes status. Thin payload: the
+// client refetches /wakeups on receipt, so the banner always reflects the committed state
+// regardless of when the event arrives.
+export type WakeUpUpdatedEvent = {
+  type: "wake_up_updated";
+  created: number;
+  conversationId: string;
+  wakeUpId: string;
+  userId: string;
+};
 
 type BaseConversationMCPServerViewType = {
   id: ModelId;
@@ -783,8 +834,3 @@ export type ConversationMCPServerViewType = BaseConversationMCPServerViewType &
     | { source: "agent_enabled"; agentConfigurationId: string }
     | { source: "conversation"; agentConfigurationId: null }
   );
-
-export type MCPActionValidationRequest = Omit<
-  MCPApproveExecutionEvent,
-  "type" | "created" | "configurationId"
->;

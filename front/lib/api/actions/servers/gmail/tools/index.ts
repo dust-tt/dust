@@ -13,6 +13,10 @@ import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import {
+  type AgentLoopRunContext,
+  isAgentLoopRunContext,
+} from "@app/lib/actions/types";
 import type {
   GmailMessage,
   MessageDetail,
@@ -21,11 +25,13 @@ import {
   buildReplyBody,
   createThreadingHeaders,
   decodeMessageBody,
+  encodeEmailAddressHeader,
   encodeMessageForGmail,
   encodeSubject,
   extractAttachments,
   fetchFromGmail,
   findAttachmentData,
+  findAttachmentIdByPartId,
   getErrorText,
   getHeaderValue,
   isGmailMessage,
@@ -35,6 +41,7 @@ import {
 } from "@app/lib/api/actions/servers/gmail/helpers";
 import { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { unescape } from "html-escaper";
@@ -91,10 +98,14 @@ function buildAndEncodeEmail(params: {
   let messageLines: string[];
 
   const commonLines = [
-    `To: ${params.to.join(", ")}`,
-    params.from ? `From: ${params.from}` : null,
-    params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
-    params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
+    `To: ${params.to.map(encodeEmailAddressHeader).join(", ")}`,
+    params.from ? `From: ${encodeEmailAddressHeader(params.from)}` : null,
+    params.cc?.length
+      ? `Cc: ${params.cc.map(encodeEmailAddressHeader).join(", ")}`
+      : null,
+    params.bcc?.length
+      ? `Bcc: ${params.bcc.map(encodeEmailAddressHeader).join(", ")}`
+      : null,
     `Subject: ${encodedSubject}`,
   ].filter((line): line is string => line !== null);
 
@@ -202,11 +213,7 @@ async function buildReplyContext(params: {
   const headers = originalMessage.payload?.headers || [];
   const originalFrom = getHeaderValue(headers, "From");
   const originalDate = getHeaderValue(headers, "Date");
-  const rawBody = decodeMessageBody(originalMessage.payload);
-  const originalBody = unescape(rawBody)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const decodedBody = decodeMessageBody(originalMessage.payload);
   const originalCc = getHeaderValue(headers, "Cc");
   const originalBcc = getHeaderValue(headers, "Bcc");
   const originalSubject = getHeaderValue(headers, "Subject") ?? null;
@@ -222,7 +229,8 @@ async function buildReplyContext(params: {
   const fullBody = buildReplyBody(
     params.body,
     "text/html",
-    originalBody,
+    decodedBody?.body ?? "",
+    decodedBody?.mimeType ?? "text/plain",
     originalDate,
     originalFrom
   );
@@ -255,24 +263,15 @@ async function buildReplyContext(params: {
 
 async function fetchAttachment(
   auth: ToolHandlerExtra["auth"],
-  attachmentFilePath: string | undefined,
-  agentLoopContext: ToolHandlerExtra["agentLoopContext"]
+  attachmentFilePath: string,
+  runContext: AgentLoopRunContext
 ): Promise<
-  | Ok<{ buffer: Buffer; filename: string; contentType: string } | null>
-  | Err<MCPError>
+  Result<{ buffer: Buffer; filename: string; contentType: string }, MCPError>
 > {
-  if (!attachmentFilePath) {
-    return new Ok(null);
-  }
-
-  if (!agentLoopContext) {
-    return new Err(new MCPError("No agent context available"));
-  }
-
   const fileResult = await getFileFromConversationAttachment(
     auth,
     attachmentFilePath,
-    agentLoopContext
+    runContext
   );
 
   if (fileResult.isErr()) {
@@ -366,8 +365,14 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       replyToMessageId,
       attachmentFilePath,
     },
-    { authInfo, auth, agentLoopContext }
+    { authInfo, auth, runContext }
   ) => {
+    let attachmentRunContext: AgentLoopRunContext | undefined;
+    if (attachmentFilePath) {
+      assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+      attachmentRunContext = runContext;
+    }
+
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
@@ -397,15 +402,18 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         }
       }
     }
-    const attachmentResult = await fetchAttachment(
-      auth,
-      attachmentFilePath,
-      agentLoopContext
-    );
-    if (attachmentResult.isErr()) {
-      return attachmentResult;
+    let attachment = null;
+    if (attachmentFilePath && attachmentRunContext) {
+      const attachmentResult = await fetchAttachment(
+        auth,
+        attachmentFilePath,
+        attachmentRunContext
+      );
+      if (attachmentResult.isErr()) {
+        return attachmentResult;
+      }
+      attachment = attachmentResult.value;
     }
-    const attachment = attachmentResult.value;
 
     let encodedMessage: string | undefined = undefined;
     let threadId: string | undefined = undefined;
@@ -621,7 +629,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         const date = getHeaderValue(headers, "Date");
         const subject = getHeaderValue(headers, "Subject");
         const body = unescape(
-          decodeMessageBody(message.payload)
+          (decodeMessageBody(message.payload)?.body ?? "")
             .replace(/<[^>]*>/g, " ")
             .replace(/\s+/g, " ")
             .trim()
@@ -777,7 +785,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         const date = getHeaderValue(headers, "Date");
 
         // Decode the full email body
-        const body = decodeMessageBody(messageData.payload);
+        const body = decodeMessageBody(messageData.payload)?.body ?? "";
 
         // Extract attachment metadata
         const attachments = includeAttachments
@@ -838,29 +846,43 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const encodedMessageId = encodeURIComponent(messageId);
     let base64Data: string | null = null;
 
-    // Only try the attachments API if we have a real attachment ID
-    if (hasRealAttachmentId && attachmentId) {
-      const encodedAttachmentId = encodeURIComponent(attachmentId);
+    const fetchAttachmentFromApi = async (
+      gmailAttachmentId: string
+    ): Promise<Result<string, string>> => {
       const response = await fetchFromGmail(
-        `/gmail/v1/users/me/messages/${encodedMessageId}/attachments/${encodedAttachmentId}`,
+        `/gmail/v1/users/me/messages/${encodedMessageId}/attachments/${encodeURIComponent(gmailAttachmentId)}`,
         accessToken,
         { method: "GET" }
       );
+      if (!response.ok) {
+        return new Err(await getErrorText(response));
+      }
+      const body = await response.json();
+      if (typeof body.data !== "string") {
+        return new Err("Gmail API returned no attachment data");
+      }
+      return new Ok(body.data);
+    };
 
-      if (response.ok) {
-        const result = await response.json();
-        base64Data = result.data;
+    let attachmentApiErrorText: string | null = null;
+
+    // Only try the attachments API if we have a real attachment ID
+    if (hasRealAttachmentId && attachmentId) {
+      const fetchResult = await fetchAttachmentFromApi(attachmentId);
+      if (fetchResult.isOk()) {
+        base64Data = fetchResult.value;
       } else {
-        const attachmentErrorText = await getErrorText(response);
-        const lowerError = attachmentErrorText.toLowerCase();
+        attachmentApiErrorText = fetchResult.error;
+        const lowerError = attachmentApiErrorText.toLowerCase();
 
-        // Gmail sometimes returns attachmentIds that look valid but fail with
-        // "invalid attachment token". Fall back to fetching from the MIME body.
+        // Gmail attachment IDs are short-lived tokens: an ID obtained from an
+        // earlier get_messages call can expire and fail with "invalid
+        // attachment token". Fall back to re-fetching the message.
         if (!lowerError.includes("invalid") && !lowerError.includes("token")) {
           return new Err(
             new MCPError(
               `Failed to fetch attachment via Gmail API (messageId: ${messageId}, ` +
-                `filename: "${filename}"): ${attachmentErrorText}`,
+                `filename: "${filename}"): ${attachmentApiErrorText}`,
               { tracked: false }
             )
           );
@@ -868,9 +890,9 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
     }
 
-    // Fallback: fetch attachment data from the message MIME body.
-    // Used when hasRealAttachmentId is false (inline content) or when the
-    // attachments API returned an invalid token error.
+    // Fallback: re-fetch the message, then read inline data (content without a
+    // real attachment ID) or retry the attachments API with the fresh
+    // attachment ID found in the re-fetched message (expired token case).
     if (!base64Data) {
       const messageResponse = await fetchFromGmail(
         `/gmail/v1/users/me/messages/${encodedMessageId}?format=full`,
@@ -891,12 +913,31 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       base64Data = findAttachmentData(messageData.payload, partId);
 
       if (!base64Data) {
+        // Real attachments never carry inline data in the message payload, but
+        // the re-fetched message contains a fresh attachment ID for the part.
+        // Skip the retry if the ID is unchanged: the same ID just failed above.
+        const freshAttachmentId = findAttachmentIdByPartId(
+          messageData.payload,
+          partId
+        );
+        if (freshAttachmentId && freshAttachmentId !== attachmentId) {
+          const retryResult = await fetchAttachmentFromApi(freshAttachmentId);
+          if (retryResult.isOk()) {
+            base64Data = retryResult.value;
+          } else {
+            attachmentApiErrorText = retryResult.error;
+          }
+        }
+      }
+
+      if (!base64Data) {
         return new Err(
           new MCPError(
-            `Attachment data not found in message body (messageId: ${messageId}, ` +
-              `filename: "${filename}", partId: ${partId}, mimeType: ${mimeType}). ` +
-              `This can happen when Gmail returns an invalid attachment token and ` +
-              `the attachment is too large to be included inline in the message payload.`
+            `Attachment data not found (messageId: ${messageId}, ` +
+              `filename: "${filename}", partId: ${partId}, mimeType: ${mimeType})` +
+              (attachmentApiErrorText
+                ? `. Gmail API error: ${attachmentApiErrorText}`
+                : ".")
           )
         );
       }
@@ -946,8 +987,14 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       replyToMessageId,
       attachmentFilePath,
     },
-    { authInfo, auth, agentLoopContext }
+    { authInfo, auth, runContext }
   ) => {
+    let attachmentRunContext: AgentLoopRunContext | undefined;
+    if (attachmentFilePath) {
+      assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+      attachmentRunContext = runContext;
+    }
+
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
@@ -976,15 +1023,18 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         }
       }
     }
-    const attachmentResult = await fetchAttachment(
-      auth,
-      attachmentFilePath,
-      agentLoopContext
-    );
-    if (attachmentResult.isErr()) {
-      return attachmentResult;
+    let attachment = null;
+    if (attachmentFilePath && attachmentRunContext) {
+      const attachmentResult = await fetchAttachment(
+        auth,
+        attachmentFilePath,
+        attachmentRunContext
+      );
+      if (attachmentResult.isErr()) {
+        return attachmentResult;
+      }
+      attachment = attachmentResult.value;
     }
-    const attachment = attachmentResult.value;
 
     let encodedMessage: string | undefined = undefined;
     let threadId: string | undefined = undefined;

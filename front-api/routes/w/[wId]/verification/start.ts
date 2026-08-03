@@ -45,6 +45,7 @@ const PostStartVerificationRequestBody = z.object({
 // Mounted at /api/w/:wId/verification/start.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsAdmin(),
@@ -90,8 +91,12 @@ app.post(
       );
     }
 
+    if (result.value.status === "already_verified") {
+      return ctx.json({ status: "already_verified" as const });
+    }
+
     return ctx.json({
-      success: true as const,
+      status: "code_sent" as const,
       message: "Verification code sent successfully.",
     });
   }

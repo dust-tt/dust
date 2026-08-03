@@ -1,6 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
-import { listPrivateConversationsFromES } from "@app/lib/conversation_search/search";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import {
   AgentMessageModel,
@@ -12,10 +10,10 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
@@ -27,17 +25,19 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
-import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  AgentMessageStatus,
+  CompactionMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationForkingDataType,
@@ -48,12 +48,17 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   ParticipantActionType,
+  UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
+import {
+  ACTIVE_WAKE_UP_STATUSES,
+  type WakeUpScheduleConfig,
+} from "@app/types/assistant/wakeups";
 import type { ContentFragmentVersion } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -63,24 +68,27 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
-import isEqual from "lodash/isEqual";
-import omit from "lodash/omit";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
   InferAttributes,
+  Order,
   Transaction,
   WhereOptions,
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
-export type FetchConversationOptions = {
+type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
   includeForkingData?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
+  // Read within the given transaction, seeing its uncommitted writes. Only honored on the
+  // `baseFetchWithAuthorization` path (`fetchById`, `fetchByIds`, `listAll`, ...). Helpers that
+  // cherry-pick options, such as `fetchConversationWithParticipantState`, still read outside of it.
+  transaction?: Transaction;
 };
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
@@ -95,6 +103,31 @@ export type ConversationAccessType =
   | "conversation_not_found"
   | "conversation_access_restricted"
   | "conversation_access_restricted_by_private_by_default_url_restriction";
+
+export type RunningAgentMessageContext = {
+  sId: string;
+  agentMessageId: number;
+  agentConfigurationId: string;
+  rank: number;
+};
+
+type RunningCompactionMessageContext = {
+  sId: string;
+  rank: number;
+};
+
+type BranchCreationContext = {
+  isEmpty: boolean;
+  onlyContentFragments: boolean;
+  maxRank: number | null;
+  lastMessage: { id: ModelId; rank: number } | null;
+};
+
+type LatestMessageSummary = {
+  sId: string;
+  rank: number;
+  compactionStatus: CompactionMessageStatus | null;
+};
 
 const shouldByPassPrivateByDefaultUrlRestriction = (auth: Authenticator) => {
   // Dust super users (poke admins) can always access conversations regardless of participant
@@ -132,6 +165,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   // User-specific fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
   private userLastReadAt: Date | null = null;
+  private nextWakeupAt: number | null = null;
   private _forkingData?: ConversationForkingDataType;
 
   constructor(
@@ -273,6 +307,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const workspace = auth.getNonNullableWorkspace();
 
     const excludedVisibilities: ConversationVisibility[] = ["deleted"];
+
     if (excludeTest) {
       excludedVisibilities.push("test");
     }
@@ -311,6 +346,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           : null
       )
     );
+  }
+
+  /**
+   * Fetch conversations by ModelId across all workspaces (no auth scoping).
+   * Used by the sandbox reaper, which operates across every workspace and only
+   * needs the conversation rows to drive sandbox lifecycle transitions.
+   *
+   * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   */
+  static async dangerouslyFetchByModelIds(
+    ids: ModelId[]
+  ): Promise<ConversationResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    // The reaper needs to drive sandbox lifecycle transitions even for deleted
+    // conversations, so we include every visibility here.
+    const conversations = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        id: ids,
+      },
+    });
+
+    return conversations.map((c) => this.fromModel(c, null));
   }
 
   get forkingData(): ConversationForkingDataType | undefined {
@@ -521,8 +583,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       space
     );
 
-    await this.triggerEsIndexing(auth, resource.sId);
-
     return resource;
   }
 
@@ -659,6 +719,176 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return result;
   }
 
+  /**
+   * Fetches everything needed to compute an agent message's credit cost: the
+   * agent message model id (used to look up its runs and actions), its tracking
+   * status, its runIds, and the origin of the user message that triggered it
+   * (used to detect free-origin usage). Returns null when the agent message
+   * cannot be found.
+   */
+  static async fetchAgentMessageCreditContext(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<{
+    agentMessageModelId: ModelId;
+    status: AgentMessageStatus;
+    runIds: string[] | null;
+    triggeringUserMessageOrigin: UserMessageOrigin | null;
+    // The total cost already stored (and already recorded to the usage
+    // counters) by a prior finalize of this message. Used to record only the
+    // newly-accrued delta on re-finalize.
+    previousCostCredits: number | null;
+  } | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const messageRow = await MessageModel.findOne({
+      where: { sId: agentMessageId, workspaceId },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+      ],
+    });
+
+    const agentMessage = messageRow?.agentMessage;
+    if (!agentMessage) {
+      return null;
+    }
+
+    let triggeringUserMessageOrigin: UserMessageOrigin | null = null;
+    if (messageRow.parentId !== null) {
+      const parentRow = await MessageModel.findOne({
+        where: { id: messageRow.parentId, workspaceId },
+        include: [
+          { model: UserMessageModel, as: "userMessage", required: false },
+        ],
+      });
+      triggeringUserMessageOrigin =
+        parentRow?.userMessage?.userContextOrigin ?? null;
+    }
+
+    return {
+      agentMessageModelId: agentMessage.id,
+      status: agentMessage.status,
+      runIds: agentMessage.runIds,
+      triggeringUserMessageOrigin,
+      previousCostCredits: agentMessage.costCredits,
+    };
+  }
+
+  static async updateAgentMessageCostCredits(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      costCredits,
+    }: { agentMessageModelId: ModelId; costCredits: number | null }
+  ): Promise<void> {
+    await AgentMessageModel.update(
+      { costCredits },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  /**
+   * Recursively sums the `costCredits` of every sub-agent spawned by a single
+   * origin agent message (one recursive query, `maxDepth`-bounded). Only counts
+   * sub-agents whose triggering user message is a `run_agent` agentic origin
+   * (`agent_handover` and non-agentic origins are excluded). Single-message by
+   * design (and avoids an N+1); returns `0` when there are no sub-agents.
+   */
+  static async sumSubAgentCostCreditsByMessageId(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      maxDepth = 10,
+    }: { agentMessageId: string; maxDepth?: number }
+  ): Promise<number> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const query = `
+      WITH RECURSIVE sub_agents AS (
+        -- Direct sub-agent replies of the origin agent message.
+        SELECT
+          reply."sId"      AS agent_message_sid,
+          am."costCredits" AS cost_credits,
+          1                AS depth
+        FROM user_messages um
+        JOIN messages user_msg
+          ON user_msg."userMessageId" = um.id
+         AND user_msg."workspaceId" = um."workspaceId"
+        JOIN messages reply
+          ON reply."parentId" = user_msg.id
+         AND reply."workspaceId" = um."workspaceId"
+         AND reply."agentMessageId" IS NOT NULL
+        JOIN agent_messages am
+          ON am.id = reply."agentMessageId"
+         AND am."workspaceId" = um."workspaceId"
+        WHERE um."workspaceId" = :workspaceId
+          AND um."agenticOriginMessageId" = :agentMessageId
+          AND um."agenticMessageType" = 'run_agent'
+
+        UNION ALL
+
+        -- Sub-agents spawned (recursively) by previously found sub-agent replies.
+        SELECT
+          reply."sId",
+          am."costCredits",
+          s.depth + 1
+        FROM sub_agents s
+        JOIN user_messages um
+          ON um."agenticOriginMessageId" = s.agent_message_sid
+         AND um."workspaceId" = :workspaceId
+         AND um."agenticMessageType" = 'run_agent'
+        JOIN messages user_msg
+          ON user_msg."userMessageId" = um.id
+         AND user_msg."workspaceId" = :workspaceId
+        JOIN messages reply
+          ON reply."parentId" = user_msg.id
+         AND reply."workspaceId" = :workspaceId
+         AND reply."agentMessageId" IS NOT NULL
+        JOIN agent_messages am
+          ON am.id = reply."agentMessageId"
+         AND am."workspaceId" = :workspaceId
+        WHERE s.depth < :maxDepth
+      )
+      SELECT
+        SUM(COALESCE(cost_credits, 0))::float AS total_credits,
+        MAX(depth)::int                       AS max_depth
+      FROM sub_agents
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: recursive CTE has no Sequelize equivalent.
+    const rows = await frontSequelize.query<{
+      total_credits: number | null;
+      max_depth: number | null;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: { workspaceId, agentMessageId, maxDepth },
+    });
+
+    // No sub-agents: the CTE is empty and SUM/MAX over zero rows return NULL.
+    const row = rows[0];
+    if (!row || row.total_credits === null) {
+      return 0;
+    }
+
+    if (row.max_depth !== null && row.max_depth >= maxDepth) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentMessageId,
+          maxDepth,
+        },
+        "[Credits] Sub-agent cost aggregation hit the depth cap; total may be truncated."
+      );
+    }
+
+    return row.total_credits;
+  }
+
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {
@@ -696,6 +926,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const workspace = auth.getNonNullableWorkspace();
     const { where } = this.getOptions(fetchConversationOptions);
 
+    const { transaction } = fetchConversationOptions ?? {};
+
     const conversations = await this.model.findAll({
       where: {
         ...where,
@@ -707,12 +939,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         : {}),
       limit: options.limit,
       order: options.order,
+      transaction,
     });
 
-    const uniqueSpaceIds = uniq([
-      // Include requestedSpaceIds from conversations.
-      ...conversations.flatMap((c) => c.requestedSpaceIds),
-    ]);
+    // Include both `spaceId` (pod ACL) and `requestedSpaceIds` (private conversation
+    // conjunctive ACL). Pod conversations must load their project space even when
+    // `requestedSpaceIds` later accumulates spaces the viewer cannot read.
+    const uniqueSpaceIds = removeNulls(
+      uniq([
+        ...conversations
+          .filter((c) => c.spaceId !== null)
+          .map((c) => c.spaceId),
+        ...conversations.flatMap((c) => c.requestedSpaceIds),
+      ])
+    );
 
     // Only fetch spaces if there are any used spaces.
     const spaces =
@@ -720,6 +960,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ? []
         : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds, {
             includeDeleted: fetchConversationOptions?.includeDeleted,
+            transaction,
           });
 
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
@@ -733,15 +974,47 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     }
 
-    // Filter out conversations that reference missing/deleted spaces.
-    // There are two reasons why a space may be missing here:
+    const { podConversations, regularConversations } = conversations.reduce(
+      (acc, c) => {
+        if (c.spaceId !== null) {
+          acc.podConversations.push(
+            c as ConversationModel & { spaceId: ModelId }
+          );
+        } else {
+          acc.regularConversations.push(c);
+        }
+        return acc;
+      },
+      {
+        podConversations: [] as (ConversationModel & { spaceId: ModelId })[],
+        regularConversations: [] as ConversationModel[],
+      }
+    );
+
+    // Pod conversations (`spaceId` set): visibility is gated only on read access to
+    // the project space. Extra ids in `requestedSpaceIds` (agents, skills, …) do not
+    // further restrict who can open the conversation — they remain a runtime/scope
+    // concern, not a conjunctive ACL. Missing/deleted project spaces deny access.
+    const accessiblePodConversations: ConversationResource[] = podConversations
+      .filter(
+        (c) =>
+          spaceIdToSpaceMap.has(c.spaceId) &&
+          spaceIdToSpaceMap.get(c.spaceId)!.canRead(auth)
+      )
+      .map((c) => this.fromModel(c, spaceIdToSpaceMap.get(c.spaceId) ?? null));
+
+    // If there are no regular conversations, return the accessible pod conversations immediately.
+    if (regularConversations.length === 0) {
+      return accessiblePodConversations;
+    }
+
+    // Private conversations (`spaceId` null): viewer must be able to read every
+    // space in `requestedSpaceIds` (conjunctive ACL). Filter out conversations that
+    // reference missing/deleted spaces:
     // 1. When a space is deleted, conversations referencing it won't be deleted but should not be accessible.
     // 2. When a space belongs to another workspace (should not happen), conversations referencing it won't be accessible.
-
-    // Note from seb, for Space Conversations, we probably want to be more subtle about the conversation accessible logic.
-    // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
-    const validConversations = conversations
+    const validConversations = regularConversations
       .filter((c) => c.requestedSpaceIds.every((id) => foundSpaceIds.has(id)))
       .map((c) =>
         this.fromModel(
@@ -763,21 +1036,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     if (spaceBasedAccessible.length === 0) {
-      return [];
+      return [...accessiblePodConversations, ...spaceBasedAccessible];
     }
 
     if (
       !this.isPrivateConversationUrlsByDefaultEnabled(auth) ||
       shouldByPassPrivateByDefaultUrlRestriction(auth)
     ) {
-      return spaceBasedAccessible;
-    }
-
-    const user = auth.user();
-    if (!user) {
-      throw new Error(
-        "User not found while auth method is not api key, system api key, or internal"
-      );
+      return [...accessiblePodConversations, ...spaceBasedAccessible];
     }
 
     const participantRestrictedConversations = spaceBasedAccessible.filter(
@@ -789,20 +1055,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // No participant-restricted conversations, return the space-based accessible conversations.
     if (participantRestrictedConversations.length === 0) {
-      return spaceBasedAccessible;
+      return [...accessiblePodConversations, ...spaceBasedAccessible];
     }
 
-    // For all participant-restricted conversations, check if the user is a participant.
-    const participations = await ConversationParticipantModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        userId: user.id,
-        conversationId: {
-          [Op.in]: participantRestrictedConversations.map((c) => c.id),
-        },
-      },
-      attributes: ["conversationId"],
-    });
+    // For all participant-restricted conversations, check if the user is a participant. A userless
+    // authenticator (e.g. a userless sandbox token driven by a non-human actor, or a session/oauth
+    // request with no matching Dust user) can never be a participant, so it sees none of them. This
+    // mirrors the null-user handling in canUserAccessPrivateByDefaultConversation.
+    const user = auth.user();
+    const participations = user
+      ? await ConversationParticipantModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            userId: user.id,
+            conversationId: {
+              [Op.in]: participantRestrictedConversations.map((c) => c.id),
+            },
+          },
+          attributes: ["conversationId"],
+          transaction,
+        })
+      : [];
 
     const participantConversationIds = new Set(
       participations.map((p) => p.conversationId)
@@ -810,13 +1083,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Return the space-based accessible conversations that are not participant-restricted.
     // Or are participant-restricted and the user is a participant.
-    return spaceBasedAccessible.filter(
-      (conversation) =>
-        !this.shouldApplyPrivateByDefaultUrlRestriction(conversation) ||
-        this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
-          "workspace_members" ||
-        participantConversationIds.has(conversation.id)
-    );
+    return [
+      ...accessiblePodConversations,
+      ...spaceBasedAccessible.filter(
+        (conversation) =>
+          !this.shouldApplyPrivateByDefaultUrlRestriction(conversation) ||
+          this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
+            "workspace_members" ||
+          participantConversationIds.has(conversation.id)
+      ),
+    ];
   }
 
   private static async canUserAccessPrivateByDefaultConversation(
@@ -894,6 +1170,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return "conversation_not_found";
     }
 
+    // Pod conversations: same contract as `baseFetchWithAuthorization` — only the
+    // project space's readability matters, not the full `requestedSpaceIds` set.
+    if (conversation.spaceId !== null) {
+      const spaces = await SpaceResource.fetchByModelIds(auth, [
+        conversation.spaceId,
+      ]);
+      return spaces.length > 0 && spaces[0].canRead(auth)
+        ? "allowed"
+        : "conversation_access_restricted";
+    }
+
     try {
       if (
         !(await this.isConversationReadableFromRequestedSpaces(
@@ -966,22 +1253,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
       return [{ userId: p.user.sId, actionRequired: p.actionRequired }];
     });
-  }
-
-  static async triggerEsIndexing(
-    auth: Authenticator,
-    conversationId: string
-  ): Promise<void> {
-    if (!(await hasFeatureFlag(auth, "conversation_search_indexing"))) {
-      return;
-    }
-    const result = await launchIndexConversationEsWorkflow({
-      conversationId,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    });
-    if (result.isErr()) {
-      throw result.error;
-    }
   }
 
   static async fetchParticipationMapForUser(
@@ -1101,10 +1372,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return res.length > 0 ? res[0] : null;
   }
 
-  static async fetchByIdsWithReadState(auth: Authenticator, sIds: string[]) {
-    const conversations = await this.fetchByIds(auth, sIds);
+  static async fetchByIdsWithReadState(
+    auth: Authenticator,
+    sIds: string[],
+    options?: FetchConversationOptions
+  ) {
+    const conversations = await this.fetchByIds(auth, sIds, options);
     await this.enrichWithReadState(auth, conversations);
     return conversations;
+  }
+
+  static async fetchByIdWithReadState(
+    auth: Authenticator,
+    sId: string,
+    options?: FetchConversationOptions
+  ): Promise<ConversationResource | null> {
+    const res = await this.fetchByIdsWithReadState(auth, [sId], options);
+
+    return res.length > 0 ? res[0] : null;
   }
 
   /**
@@ -1125,6 +1410,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Map();
     }
     await this.enrichWithParticipationAndReadState(auth, conversations);
+    await this.enrichWithNextWakeupAt(auth, conversations);
     return new Map(conversations.map((c) => [c.sId, c.toListItem()]));
   }
 
@@ -1282,7 +1568,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const messageWithAgent = await MessageModel.findAll({
       attributes: [
         [
-          Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
+          // Qualified: agent_messages also carries a conversationId column since the
+          // side-table denormalization, so the bare name is ambiguous in this join.
+          Sequelize.fn("DISTINCT", Sequelize.col("message.conversationId")),
           "conversationId",
         ],
       ],
@@ -1452,17 +1740,58 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return result;
   }
 
-  static async fetchConversationWithoutContent(
+  /**
+   * Returns the timestamps of messages authored by `userId` in conversations
+   * created by any of `triggerIds`, created at or after `since`. Used by the
+   * activation scheduler to determine whether a user replied following a
+   * nudge (each nudge fires a trigger, which creates its own conversation).
+   */
+  static async listUserMessageTimestampsForTriggers(
     auth: Authenticator,
-    sId: string,
-    options?: FetchConversationOptions
-  ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
-    const conversation = await this.fetchById(auth, sId, {
-      includeDeleted: options?.includeDeleted,
-      dangerouslySkipPermissionFiltering:
-        options?.dangerouslySkipPermissionFiltering,
-      includeForkingData: options?.includeForkingData,
+    {
+      triggerIds,
+      userId,
+      since,
+    }: {
+      triggerIds: ModelId[];
+      userId: ModelId;
+      since: Date;
+    }
+  ): Promise<Date[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const messages = await MessageModel.findAll({
+      attributes: ["createdAt"],
+      where: {
+        workspaceId,
+        createdAt: { [Op.gte]: since },
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: [],
+          where: { userId },
+        },
+        {
+          model: ConversationModel,
+          as: "conversation",
+          required: true,
+          attributes: [],
+          where: { triggerId: { [Op.in]: triggerIds } },
+        },
+      ],
     });
+
+    return messages.map((m) => m.createdAt);
+  }
+
+  static async fetchConversationWithParticipantState(
+    auth: Authenticator,
+    sId: string
+  ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
+    const conversation = await this.fetchById(auth, sId);
 
     if (!conversation) {
       return new Err(new ConversationError("conversation_not_found"));
@@ -1473,9 +1802,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
-    const forkingData = options?.includeForkingData
-      ? await conversation.fetchForkingData(auth)
-      : undefined;
 
     return new Ok({
       actionRequired,
@@ -1495,7 +1821,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
       updated: conversation.updatedAt.getTime(),
       isRunningAgentLoop: conversation.isRunningAgentLoop,
-      ...(forkingData && { forkingData }),
     });
   }
 
@@ -1511,8 +1836,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     await conversation.update(blob, transaction);
-
-    await this.triggerEsIndexing(auth, sId);
 
     return new Ok(undefined);
   }
@@ -1614,24 +1937,37 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     const fetchLimit = pagination.limit + 1;
+    const order: Order = [
+      ["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"],
+    ];
+
+    // baseFetchWithAuthorization filters rows after the SQL limit (deleted
+    // space references, ACLs), which corrupts the +1 sentinel: one dropped row
+    // makes a full window look like the last page. Scan the raw window first
+    // and derive hasMore and the cursor from the scan, not the filtered rows.
+    const rawRows = await ConversationModel.findAll({
+      where: { ...whereClause, workspaceId: auth.getNonNullableWorkspace().id },
+      order,
+      limit: fetchLimit,
+      attributes: ["id", "updatedAt"],
+    });
+
+    if (rawRows.length === 0) {
+      return emptyResult;
+    }
+
+    const hasMore = rawRows.length === fetchLimit;
 
     const conversations = await this.baseFetchWithAuthorization(
       auth,
       {},
       {
-        where: whereClause,
-        order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
-        limit: fetchLimit,
+        where: { id: { [Op.in]: rawRows.map((r) => r.id) } },
+        order,
       }
     );
 
-    let hasMore = false;
-    let resultConversations = conversations;
-
-    if (conversations.length > pagination.limit) {
-      hasMore = true;
-      resultConversations = conversations.slice(0, pagination.limit);
-    }
+    const resultConversations = conversations.slice(0, pagination.limit);
 
     resultConversations.forEach((c) => {
       const participation = participationMap.get(c.id);
@@ -1642,11 +1978,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     await this.enrichWithReadState(auth, resultConversations);
 
-    const lastConversation =
-      resultConversations[resultConversations.length - 1];
-    const lastValue = lastConversation
-      ? lastConversation.updatedAt.getTime().toString()
-      : null;
+    // Advance the cursor past the scanned window, unless accessible rows were
+    // cut by the limit — those must reappear on the next page.
+    const lastReturned = resultConversations[resultConversations.length - 1];
+    const lastValue =
+      conversations.length > pagination.limit && lastReturned
+        ? lastReturned.updatedAt.getTime().toString()
+        : rawRows[rawRows.length - 1].updatedAt.getTime().toString();
 
     return {
       conversations: resultConversations,
@@ -1663,174 +2001,85 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       orderDirection?: "asc" | "desc";
     }
   ): Promise<{
-    conversations: ConversationResource[];
-    hasMore: boolean;
-    lastValue: string | null;
-  }> {
-    return this.fetchPrivateConversationsPaginated(auth, { pagination });
-  }
-
-  static async listPrivateConversationsForUserPaginatedFromES(
-    auth: Authenticator,
-    pagination: {
-      limit: number;
-      lastValue?: string;
-      orderDirection?: "asc" | "desc";
-    }
-  ): Promise<{
     conversations: ConversationListItemType[];
     hasMore: boolean;
     lastValue: string | null;
   }> {
-    const user = auth.user();
-    if (!user) {
-      return { conversations: [], hasMore: false, lastValue: null };
-    }
-
-    const hasFeature = await hasFeatureFlag(auth, "conversation_search_read");
-    if (!hasFeature) {
-      return this.listPrivateConversationsForUserPaginatedFromDB(
-        auth,
-        pagination
-      );
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
-    const orderDirection = pagination.orderDirection ?? "desc";
-
-    const accessibleSpaces =
-      await SpaceResource.listWorkspaceSpacesAsMember(auth);
-    const accessibleSpaceIds = accessibleSpaces.map((s) => s.sId);
-
-    const esResult = await listPrivateConversationsFromES({
-      accessibleSpaceIds,
-      lastValue: pagination.lastValue,
-      limit: pagination.limit,
-      orderDirection,
-      userId: user.sId,
-      workspaceId: workspace.sId,
+    const result = await this.fetchPrivateConversationsPaginated(auth, {
+      pagination,
     });
+    await this.enrichWithNextWakeupAt(auth, result.conversations);
 
-    if (esResult.isErr()) {
-      logger.error(
-        { workspaceId: workspace.sId, error: esResult.error },
-        "[conversation_search] ES query failed, falling back to DB"
-      );
-      return this.listPrivateConversationsForUserPaginatedFromDB(
-        auth,
-        pagination
-      );
-    }
-
-    const { items, hasMore, lastValue } = esResult.value;
-
-    if (items.length === 0) {
-      return { conversations: [], hasMore, lastValue };
-    }
-
-    // Hydrate lastReadMs / unread from DB with one bounded query. `last_read_at` is not stored in
-    // ES because every mark-as-read would force a full document re-index (write amplification).
-    const dbConversations = await this.fetchByIds(
-      auth,
-      items.map((i) => i.sId)
-    );
-    const readMap = await this.fetchReadMapForUser(
-      auth,
-      dbConversations.map((c) => c.id)
-    );
-    const idToModelId = new Map(dbConversations.map((c) => [c.sId, c.id]));
-
-    const hydratedItems = items.map((item) => {
-      const modelId = idToModelId.get(item.sId);
-      const lastReadAt =
-        modelId !== undefined ? readMap.get(modelId) : undefined;
-
-      const lastReadMs = lastReadAt ? lastReadAt.getTime() : null;
-
-      return {
-        ...item,
-        lastReadMs,
-        unread: lastReadMs === null || item.updated > lastReadMs,
-      };
-    });
-
-    // Shadow-validate ES structural fields against DB in the background so it doesn't add
-    // latency to the response.
-    void (async () => {
-      try {
-        await this.enrichWithParticipationAndReadState(auth, dbConversations);
-        const dbMap = new Map(dbConversations.map((c) => [c.sId, c]));
-
-        for (const esItem of hydratedItems) {
-          const dbResource = dbMap.get(esItem.sId);
-          if (!dbResource) {
-            logger.warn(
-              { workspaceId: workspace.sId, userId: user.sId, sId: esItem.sId },
-              "[conversation_search] ES returned conversation absent from DB (stale index)"
-            );
-            continue;
-          }
-
-          const dbItem = dbResource.toListItem();
-          // nextWakeupAt is ES-only. DB list items also derive title fallbacks for untitled
-          // conversations, which would require rehydrating fork data to compare here.
-          const keysToOmit =
-            dbResource.title === null
-              ? ["nextWakeupAt", "title"]
-              : ["nextWakeupAt"];
-          const esCleaned = omit(esItem, keysToOmit);
-          const dbCleaned = omit(dbItem, keysToOmit);
-          if (!isEqual(esCleaned, dbCleaned)) {
-            const divergingKeys = (
-              Object.keys({ ...esCleaned, ...dbCleaned }) as Array<
-                keyof typeof esCleaned
-              >
-            ).filter((k) => !isEqual(esCleaned[k], dbCleaned[k]));
-            logger.warn(
-              {
-                workspaceId: workspace.sId,
-                userId: user.sId,
-                sId: esItem.sId,
-                divergingKeys,
-                esItem,
-                dbItem,
-              },
-              "[conversation_search] ES item diverges from DB"
-            );
-          }
-        }
-      } catch (err) {
-        logger.error(
-          { workspaceId: workspace.sId, userId: user.sId, err },
-          "[conversation_search] Shadow validation failed"
-        );
-      }
-    })();
-
-    return { conversations: hydratedItems, hasMore, lastValue };
-  }
-
-  static async listPrivateConversationsForUserPaginatedFromDB(
-    auth: Authenticator,
-    pagination: {
-      limit: number;
-      lastValue?: string;
-      orderDirection?: "asc" | "desc";
-    }
-  ): Promise<{
-    conversations: ConversationListItemType[];
-    hasMore: boolean;
-    lastValue: string | null;
-  }> {
-    const result = await this.listPrivateConversationsForUserPaginated(
-      auth,
-      pagination
-    );
     return {
       conversations: result.conversations.map((c) => c.toListItem()),
       hasMore: result.hasMore,
       lastValue: result.lastValue,
     };
+  }
+
+  /**
+   * This wake-up hydration lives here instead of `WakeUpResource` because `WakeUpResource` already
+   * depends on `ConversationResource` to reuse the established conversation ES reindexing path.
+   * This is all to avoid import cycles.
+   */
+  private static async enrichWithNextWakeupAt(
+    auth: Authenticator,
+    conversations: ConversationResource[]
+  ): Promise<void> {
+    if (conversations.length === 0) {
+      return;
+    }
+
+    const wakeUps = await WakeUpModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: { [Op.in]: conversations.map((c) => c.id) },
+        status: ACTIVE_WAKE_UP_STATUSES,
+      },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+
+    const nextWakeupAtByConversationId = new Map<ModelId, number>();
+    for (const wakeUp of wakeUps) {
+      const scheduleConfig: WakeUpScheduleConfig | null = (() => {
+        switch (wakeUp.scheduleType) {
+          case "one_shot":
+            return wakeUp.fireAt
+              ? { type: "one_shot", fireAt: wakeUp.fireAt.getTime() }
+              : null;
+          case "cron":
+            return wakeUp.cronExpression && wakeUp.cronTimezone
+              ? {
+                  type: "cron",
+                  cron: wakeUp.cronExpression,
+                  timezone: wakeUp.cronTimezone,
+                }
+              : null;
+          default:
+            return assertNever(wakeUp.scheduleType);
+        }
+      })();
+
+      const nextWakeupAt = scheduleConfig
+        ? getNextWakeUpFireAtFromScheduleConfig(scheduleConfig)
+        : null;
+      if (nextWakeupAt === null) {
+        continue;
+      }
+
+      const previous = nextWakeupAtByConversationId.get(wakeUp.conversationId);
+      if (previous === undefined || nextWakeupAt < previous) {
+        nextWakeupAtByConversationId.set(wakeUp.conversationId, nextWakeupAt);
+      }
+    }
+
+    for (const conversation of conversations) {
+      conversation.nextWakeupAt =
+        nextWakeupAtByConversationId.get(conversation.id) ?? null;
+    }
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
@@ -1855,6 +2104,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           spaceId: { [Op.in]: spaceIds },
           visibility: { [Op.eq]: "unlisted" },
+          depth: { [Op.eq]: 0 }, // Only fetch root conversations
         },
       }
     );
@@ -1896,6 +2146,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         !participantConversationIds.has(c.id) &&
         (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
     );
+
+    // Hydrate next wake-up only for conversations returned to the summary (sidebar inbox).
+    await this.enrichWithNextWakeupAt(auth, [
+      ...unreadConversations,
+      ...nonParticipantUnreadConversations,
+    ]);
 
     const lastUserActivityBySpace = new Map<number, Date>();
 
@@ -2031,6 +2287,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
       ...filterWhere,
       spaceId: spaceModelId,
+      depth: { [Op.eq]: 0 }, // Only fetch root conversations
       ...(restrictToConversationModelIds && {
         id: { [Op.in]: restrictToConversationModelIds },
       }),
@@ -2384,7 +2641,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Ok([0]);
     }
 
-    // Update the conversation participant to set actionRequired to true
+    // Update the conversation participant to set actionRequired to true.
+    // Skip rows already at the target value to avoid a no-op row lock/write.
     const updated = await ConversationParticipantModel.update(
       { actionRequired: true },
       {
@@ -2392,11 +2650,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
           userId: user.id,
+          actionRequired: { [Op.ne]: true },
         },
       }
     );
-
-    await this.triggerEsIndexing(auth, conversation.sId);
 
     return new Ok(updated);
   }
@@ -2413,19 +2670,26 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
+    return this.clearActionRequiredForConversation(auth, conversation);
+  }
+
+  static async clearActionRequiredForConversation(
+    auth: Authenticator,
+    conversation: ConversationResource
+  ) {
+    // Skip rows already at the target value to avoid a no-op row lock/write.
     const updated = await ConversationParticipantModel.update(
       { actionRequired: false },
       {
         where: {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
+          actionRequired: { [Op.ne]: false },
         },
         // Do not update `updatedAt.
         silent: true,
       }
     );
-
-    await this.triggerEsIndexing(auth, conversation.sId);
 
     return new Ok(updated);
   }
@@ -2435,7 +2699,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       conversation,
       t,
-    }: { conversation: ConversationWithoutContentType; t?: Transaction }
+    }: {
+      conversation: ConversationWithoutContentType | ConversationResource;
+      t?: Transaction;
+    }
   ): Promise<Result<number, Error>> {
     const updated = await ConversationModel.update(
       {
@@ -2449,8 +2716,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         transaction: t,
       }
     );
-
-    await this.triggerEsIndexing(auth, conversation.sId);
 
     return new Ok(updated[0]);
   }
@@ -2480,8 +2745,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
-    await this.triggerEsIndexing(auth, conversation.sId);
-
     return new Ok(updated[0]);
   }
 
@@ -2492,7 +2755,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
       lastReadAt,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       transaction?: Transaction;
       // Optional override; defaults to now. Callers can pass a timestamp in the
       // future to keep the conversation marked as read through an imminent
@@ -2517,12 +2780,53 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated);
   }
 
+  /**
+   * Marks the conversation as read for every participant. Used for
+   * notification-style conversations once their purpose is fulfilled (e.g. all
+   * skill suggestions handled), so the remaining participants are not notified
+   * about an already-handled conversation.
+   */
+  static async markAsReadForAllParticipants(
+    auth: Authenticator,
+    {
+      conversation,
+      lastReadAt,
+    }: {
+      conversation: ConversationWithoutContentType | ConversationResource;
+      lastReadAt?: Date;
+    }
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const participants = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId,
+        conversationId: conversation.id,
+      },
+      attributes: ["userId"],
+    });
+
+    if (participants.length === 0) {
+      return;
+    }
+
+    await UserConversationReadsModel.bulkCreate(
+      participants.map((p) => ({
+        conversationId: conversation.id,
+        userId: p.userId,
+        workspaceId,
+        lastReadAt: lastReadAt ?? new Date(),
+      })),
+      { updateOnDuplicate: ["lastReadAt"] }
+    );
+  }
+
   static async markAsUnreadForAuthUser(
     auth: Authenticator,
     {
       conversation,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
     }
   ) {
     if (!auth.user()) {
@@ -2616,19 +2920,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (uniqueSpaceIds.length > 0) {
       const spaces = await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
-      for (const space of spaces) {
-        if (!space.isProject() || !space.isMember(auth)) {
-          continue;
-        }
-        const { conversations: spaceConvs } =
-          await this.listConversationsInSpacePaginated(auth, {
-            spaceId: space.sId,
-            // limit page size to the number of convs we are searching for to have a single page
-            pagination: { limit: modelIds.length },
-            restrictToConversationModelIds: modelIds,
-          });
-        for (const c of spaceConvs) {
-          visibleModelIds.add(c.id);
+      const spacesByModelId = new Map(spaces.map((s) => [s.id, s]));
+
+      for (const c of conversations) {
+        if (c.spaceId !== null) {
+          const space = spacesByModelId.get(c.spaceId);
+          // This almost replicates what we have in baseFetchWithAuthorization or canAccess.
+          // But with a slight difference: we do not only check if the space is readable by the auth.
+          // We check if the space is project (pod) and auth is a member.
+          // Theses are the same conversations as the ones that would be listed in the sidebar.
+          if (space && space.isProject() && space.isMember(auth)) {
+            visibleModelIds.add(c.id);
+          }
         }
       }
     }
@@ -2643,7 +2946,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       user,
       transaction,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       user: UserType;
       transaction?: Transaction;
     }
@@ -2668,7 +2971,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
       lastReadAt = new Date(),
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       action: ParticipantActionType;
       user: UserType | null;
       transaction?: Transaction;
@@ -2733,10 +3036,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         );
       }
     }, transaction);
-
-    if (status !== "none") {
-      await this.triggerEsIndexing(auth, conversation.sId);
-    }
 
     return status;
   }
@@ -2808,7 +3107,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * Get the latest agent message id by rank for a given conversation.
    * @returns The latest agent message id, version and rank.
    */
-  async getLatestAgentMessageIdByRank(auth: Authenticator): Promise<
+  static async getLatestAgentMessageIdByRank(
+    auth: Authenticator,
+    { conversationId }: { conversationId: ModelId }
+  ): Promise<
     {
       rank: number;
       agentMessageId: number;
@@ -2842,11 +3144,622 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       type: QueryTypes.SELECT,
       replacements: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: this.id,
+        conversationId,
       },
     });
 
     return results;
+  }
+
+  /**
+   * Resolve main-thread message view filters for Sequelize and raw SQL callers.
+   * Matches the scoping used in `_getConversation` in fetch.ts.
+   */
+  private resolveMessageViewScope(
+    auth: Authenticator,
+    {
+      transaction: _transaction,
+    }: {
+      transaction?: Transaction;
+    } = {}
+  ): {
+    scopeWhere: WhereOptions<MessageModel>;
+    branchFilterSql: string;
+    sqlReplacements: Record<string, unknown>;
+  } {
+    const owner = auth.getNonNullableWorkspace();
+    return {
+      scopeWhere: {
+        conversationId: this.id,
+        workspaceId: owner.id,
+        branchId: { [Op.is]: null },
+      },
+      branchFilterSql: `"branchId" IS NULL`,
+      sqlReplacements: {},
+    };
+  }
+
+  /**
+   * Build Sequelize `where` for messages visible in a conversation view (main thread only).
+   * Matches the scoping used in `_getConversation` in fetch.ts.
+   */
+  getMessageScopeWhere(
+    auth: Authenticator,
+    {
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): WhereOptions<MessageModel> {
+    const { scopeWhere } = this.resolveMessageViewScope(auth, {
+      transaction,
+    });
+    return scopeWhere;
+  }
+
+  /**
+   * Returns true when the conversation view contains a user message (latest version
+   * per rank) authored by someone other than `excludeUserId`.
+   */
+  async hasUserMessageFromOtherUser(
+    auth: Authenticator,
+    {
+      excludeUserId,
+      transaction,
+    }: {
+      excludeUserId?: ModelId | null;
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
+
+    const query = `
+      SELECT EXISTS (
+        SELECT 1
+        FROM (
+          SELECT DISTINCT ON (m.rank) um."userId"
+          FROM messages m
+          INNER JOIN user_messages um
+            ON um.id = m."userMessageId"
+            AND um."workspaceId" = m."workspaceId"
+            AND um."conversationId" = m."conversationId"
+          WHERE m."workspaceId" = :workspaceId
+            AND m."conversationId" = :conversationId
+            AND m.visibility != 'deleted'
+            AND m."userMessageId" IS NOT NULL
+            AND um."userId" IS NOT NULL
+            AND ${branchFilterSql}
+          ORDER BY m.rank ASC, m.version DESC
+        ) latest
+        WHERE latest."userId" IS NOT NULL
+          AND (:excludeUserId IS NULL OR latest."userId" != :excludeUserId)
+      ) AS "exists"
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        excludeUserId: excludeUserId ?? null,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    return result?.exists ?? false;
+  }
+
+  /**
+   * Returns true when the conversation view has an agent message (latest version
+   * per rank) at a rank strictly greater than `afterRank`.
+   */
+  async hasAgentMessageAfterRank(
+    auth: Authenticator,
+    {
+      afterRank,
+      transaction,
+    }: {
+      afterRank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
+
+    const query = `
+      SELECT EXISTS (
+        SELECT 1
+        FROM (
+          SELECT DISTINCT ON (m.rank) m."agentMessageId"
+          FROM messages m
+          WHERE m."workspaceId" = :workspaceId
+            AND m."conversationId" = :conversationId
+            AND m.visibility != 'deleted'
+            AND m.rank > :afterRank
+            AND ${branchFilterSql}
+          ORDER BY m.rank ASC, m.version DESC
+        ) latest
+        WHERE latest."agentMessageId" IS NOT NULL
+      ) AS "exists"
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        afterRank,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    return result?.exists ?? false;
+  }
+
+  async getLatestUserMessageModelAtRank(
+    auth: Authenticator,
+    {
+      rank,
+      transaction,
+    }: {
+      rank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<MessageModel | null> {
+    const scopeWhere = this.getMessageScopeWhere(auth, {
+      transaction,
+    });
+
+    return MessageModel.findOne({
+      where: {
+        ...scopeWhere,
+        rank,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+        },
+      ],
+      order: [["version", "DESC"]],
+      transaction,
+    });
+  }
+
+  /**
+   * Returns `clientSideMCPServerIds` from the most recent user message (latest
+   * version per rank) whose origin is not `wakeup`. Used when posting wake-up
+   * messages to inherit the previous human turn's client-side MCP selection.
+   */
+  async getClientSideMCPServerIdsFromLatestNonWakeUpUserMessage(
+    auth: Authenticator,
+    {
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<string[]> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
+
+    const query = `
+      SELECT latest."clientSideMCPServerIds"
+      FROM (
+        SELECT DISTINCT ON (m.rank)
+          m.rank,
+          um."userContextOrigin",
+          um."clientSideMCPServerIds"
+        FROM messages m
+        INNER JOIN user_messages um
+          ON um.id = m."userMessageId"
+          AND um."workspaceId" = m."workspaceId"
+          AND um."conversationId" = m."conversationId"
+        WHERE m."workspaceId" = :workspaceId
+          AND m."conversationId" = :conversationId
+          AND m.visibility != 'deleted'
+          AND m."userMessageId" IS NOT NULL
+          AND ${branchFilterSql}
+        ORDER BY m.rank ASC, m.version DESC
+      ) latest
+      WHERE latest."userContextOrigin" != 'wakeup'
+      ORDER BY latest.rank DESC
+      LIMIT 1
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: DISTINCT ON subquery with LIMIT 1
+    const [result] = await frontSequelize.query<{
+      clientSideMCPServerIds: string[] | null;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    return result?.clientSideMCPServerIds ?? [];
+  }
+
+  /**
+   * Returns the latest message row per rank for consecutive agent-message ranks
+   * immediately following `afterRank`, stopping at the first non-agent rank.
+   * Includes already-deleted agent placeholders (caller filters for cascade).
+   */
+  async getConsecutiveAgentReplyModelsAfterRank(
+    auth: Authenticator,
+    {
+      afterRank,
+      transaction,
+    }: {
+      afterRank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<MessageModel[]> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
+
+    const query = `
+      SELECT DISTINCT ON (m.rank)
+        m.id,
+        m.rank,
+        m."agentMessageId"
+      FROM messages m
+      WHERE m."workspaceId" = :workspaceId
+        AND m."conversationId" = :conversationId
+        AND m.rank > :afterRank
+        AND ${branchFilterSql}
+      ORDER BY m.rank ASC, m.version DESC
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: DISTINCT ON for latest version per rank
+    const latestPerRank = await frontSequelize.query<{
+      id: ModelId;
+      rank: number;
+      agentMessageId: ModelId | null;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        afterRank,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    const consecutiveMessageIds: ModelId[] = [];
+    for (const row of latestPerRank) {
+      if (!row.agentMessageId) {
+        break;
+      }
+      consecutiveMessageIds.push(row.id);
+    }
+
+    if (consecutiveMessageIds.length === 0) {
+      return [];
+    }
+
+    return MessageModel.findAll({
+      where: {
+        id: { [Op.in]: consecutiveMessageIds },
+        workspaceId: owner.id,
+        conversationId: this.id,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: false,
+        },
+      ],
+      order: [["rank", "ASC"]],
+      transaction,
+    });
+  }
+
+  /**
+   * Finds an in-flight agent reply using only the latest message version at each
+   * rank. Soft-delete writes a newer `visibility: "deleted"` placeholder while the
+   * older row can remain `status: "created"`; scanning historical versions would
+   * incorrectly treat that deleted turn as still running (see #29418).
+   */
+  async getRunningAgentMessage(
+    auth: Authenticator,
+    {
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<RunningAgentMessageContext | null> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
+
+    const query = `
+      SELECT
+        latest."sId",
+        latest.rank,
+        am.id AS "agentMessageId",
+        am."agentConfigurationId"
+      FROM (
+        SELECT DISTINCT ON (m.rank)
+          m."sId",
+          m.rank,
+          m.visibility,
+          m."agentMessageId"
+        FROM messages m
+        WHERE m."workspaceId" = :workspaceId
+          AND m."conversationId" = :conversationId
+          AND ${branchFilterSql}
+        ORDER BY m.rank DESC, m.version DESC
+      ) latest
+      INNER JOIN agent_messages am
+        ON am.id = latest."agentMessageId"
+        AND am."workspaceId" = :workspaceId
+        AND am."conversationId" = :conversationId
+      WHERE latest.visibility != 'deleted'
+        AND am.status = 'created'
+      ORDER BY latest.rank DESC
+      LIMIT 1
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: DISTINCT ON latest version per rank
+    const [message] = await frontSequelize.query<{
+      sId: string;
+      rank: number;
+      agentMessageId: number;
+      agentConfigurationId: string;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    if (!message) {
+      return null;
+    }
+
+    return {
+      sId: message.sId,
+      agentMessageId: message.agentMessageId,
+      agentConfigurationId: message.agentConfigurationId,
+      rank: message.rank,
+    };
+  }
+
+  async getRunningCompactionMessage(
+    auth: Authenticator,
+    {
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<RunningCompactionMessageContext | null> {
+    const { scopeWhere } = this.resolveMessageViewScope(auth, {
+      transaction,
+    });
+
+    const owner = auth.getNonNullableWorkspace();
+    const message = await MessageModel.findOne({
+      attributes: ["sId", "rank"],
+      where: {
+        ...scopeWhere,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: true,
+          attributes: ["id"],
+          where: {
+            status: "created",
+            conversationId: this.id,
+            workspaceId: owner.id,
+          },
+        },
+      ],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!message) {
+      return null;
+    }
+
+    return {
+      sId: message.sId,
+      rank: message.rank,
+    };
+  }
+
+  async getInFlightMessages(
+    auth: Authenticator,
+    {
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<{
+    runningAgentMessage: RunningAgentMessageContext | null;
+    runningCompactionMessage: RunningCompactionMessageContext | null;
+  }> {
+    const [runningAgentMessage, runningCompactionMessage] = await Promise.all([
+      this.getRunningAgentMessage(auth, { transaction }),
+      this.getRunningCompactionMessage(auth, { transaction }),
+    ]);
+
+    return { runningAgentMessage, runningCompactionMessage };
+  }
+
+  async getBranchCreationContext(
+    auth: Authenticator,
+    {
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<BranchCreationContext> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
+
+    const query = `
+      WITH latest AS (
+        SELECT DISTINCT ON (rank) id, rank, "contentFragmentId"
+        FROM messages
+        WHERE "workspaceId" = :workspaceId
+          AND "conversationId" = :conversationId
+          AND visibility != 'deleted'
+          AND ${branchFilterSql}
+        ORDER BY rank ASC, version DESC
+      )
+      SELECT
+        COUNT(*)::int AS "messageCount",
+        COUNT(*) FILTER (WHERE "contentFragmentId" IS NULL)::int AS "nonContentFragmentCount",
+        MAX(rank) AS "maxRank",
+        (ARRAY_AGG(id ORDER BY rank DESC))[1] AS "lastMessageId",
+        MAX(rank) AS "lastMessageRank"
+      FROM latest
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: DISTINCT ON aggregate for branch creation
+    const [stats] = await frontSequelize.query<{
+      messageCount: number;
+      nonContentFragmentCount: number;
+      maxRank: number | null;
+      lastMessageId: ModelId | null;
+      lastMessageRank: number | null;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    if (!stats || stats.messageCount === 0) {
+      return {
+        isEmpty: true,
+        onlyContentFragments: false,
+        maxRank: null,
+        lastMessage: null,
+      };
+    }
+
+    return {
+      isEmpty: false,
+      onlyContentFragments: stats.nonContentFragmentCount === 0,
+      maxRank: stats.maxRank,
+      lastMessage:
+        stats.lastMessageId !== null && stats.lastMessageRank !== null
+          ? { id: stats.lastMessageId, rank: stats.lastMessageRank }
+          : null,
+    };
+  }
+
+  /**
+   * Latest-version message at the highest rank in the conversation view.
+   */
+  async getLatestMessageSummary(
+    auth: Authenticator,
+    {
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<LatestMessageSummary | null> {
+    const { scopeWhere } = this.resolveMessageViewScope(auth, {
+      transaction,
+    });
+
+    const message = await MessageModel.findOne({
+      attributes: ["sId", "rank", "compactionMessageId"],
+      where: {
+        ...scopeWhere,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: false,
+          attributes: ["status"],
+        },
+      ],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!message) {
+      return null;
+    }
+
+    return {
+      sId: message.sId,
+      rank: message.rank,
+      compactionStatus: message.compactionMessage?.status ?? null,
+    };
+  }
+
+  async getLatestAgentMessageIdByRank(auth: Authenticator): Promise<
+    {
+      rank: number;
+      agentMessageId: number;
+      version: number;
+    }[]
+  > {
+    return ConversationResource.getLatestAgentMessageIdByRank(auth, {
+      conversationId: this.id,
+    });
   }
 
   async getMessageById(
@@ -2878,11 +3791,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: conversation.id,
         workspaceId: owner.id,
         visibility: "pending",
-        branchId: conversation.branchId
-          ? {
-              [Op.or]: [getResourceIdFromSId(conversation.branchId), null],
-            }
-          : null,
+        branchId: null,
       },
       include: [
         { model: UserMessageModel, as: "userMessage", required: false },
@@ -2909,50 +3818,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
-    let where: WhereOptions<MessageModel> = {
+    const where: WhereOptions<MessageModel> = {
       conversationId: conversation.id,
       workspaceId: owner.id,
+      branchId: null,
     };
-
-    if (conversation.branchId) {
-      const branch = await ConversationBranchResource.fetchById(
-        auth,
-        conversation.branchId
-      );
-      if (!branch || !branch.canRead(auth)) {
-        throw new Error("Unexpected: conversation branch not found.");
-      }
-
-      const previousMessage = await MessageModel.findOne({
-        attributes: ["rank"],
-        where: {
-          id: branch.previousMessageId,
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
-      if (!previousMessage) {
-        throw new Error("Unexpected: branch previous message not found.");
-      }
-
-      where = {
-        ...where,
-        [Op.or]: [
-          {
-            branchId: branch.id,
-          },
-          {
-            branchId: null,
-            rank: { [Op.lte]: previousMessage.rank },
-          },
-        ],
-      };
-    } else {
-      where = {
-        ...where,
-        branchId: null,
-      };
-    }
 
     const message = await MessageModel.findOne({
       attributes: ["id"],
@@ -3173,17 +4043,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     if (sourceMessage.branchId !== null) {
-      const [branch] = await ConversationBranchResource.fetchByModelIds(auth, [
-        sourceMessage.branchId,
-      ]);
-
-      if (!branch || !branch.canRead(auth)) {
-        return new Err(
-          new Error(
-            "The source message is missing or cannot be used for forking."
-          )
-        );
-      }
+      return new Err(
+        new Error(
+          "The source message is missing or cannot be used for forking."
+        )
+      );
     }
 
     return new Ok(sourceMessage);
@@ -3220,22 +4084,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new Error("Message not found"));
     }
 
-    if (message.getBranchId()) {
-      const branch = await ConversationBranchResource.fetchById(
-        auth,
-        message.getBranchId()!
-      );
-      if (!branch || !branch.canRead(auth)) {
-        return new Err(new Error("Message not found"));
-      }
-    }
-
     return new Ok(message);
   }
 
   static async getMessageByIds(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType,
+    conversation: ConversationWithoutContentType | ConversationResource,
     messageIds: string[]
   ): Promise<MessageModel[]> {
     return MessageModel.findAll({
@@ -3367,6 +4221,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       lastRank,
     });
 
+    // The include.where lands in the LEFT JOIN ON clause (required: false keeps the OUTER join),
+    // letting the planner use the side tables' (workspaceId, conversationId) indexes instead of
+    // one PK probe per message. Relies on conversationId being backfilled on side tables.
+    const sideTableWhere = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: this.id,
+    };
     // Fetch all messages (including content fragments and up to limit non-content-fragment messages)
     const messages = await MessageModel.findAll({
       where: {
@@ -3382,11 +4243,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: UserMessageModel,
           as: "userMessage",
           required: false,
+          where: sideTableWhere,
         },
         {
           model: AgentMessageModel,
           as: "agentMessage",
           required: false,
+          where: sideTableWhere,
         },
         // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
         // along with messages in one query). Only once we move to a MessageResource will we be able
@@ -3395,11 +4258,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: ContentFragmentModel,
           as: "contentFragment",
           required: false,
+          where: sideTableWhere,
         },
         {
           model: CompactionMessageModel,
           as: "compactionMessage",
           required: false,
+          where: sideTableWhere,
         },
       ],
     });
@@ -3410,19 +4275,194 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  /**
+   * Fetch message rows (with side-table includes) by model ids, ordered by rank/version ASC.
+   */
+  async fetchMessagesByModelIds(
+    auth: Authenticator,
+    messageIds: ModelId[]
+  ): Promise<MessageModel[]> {
+    if (messageIds.length === 0) {
+      return [];
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const sideTableWhere = {
+      workspaceId,
+      conversationId: this.id,
+    };
+
+    return MessageModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId,
+        id: { [Op.in]: messageIds },
+      },
+      order: [
+        ["rank", "ASC"],
+        ["version", "ASC"],
+      ],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: false,
+          where: sideTableWhere,
+        },
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: false,
+          where: sideTableWhere,
+        },
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          required: false,
+          where: sideTableWhere,
+        },
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: false,
+          where: sideTableWhere,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Message ids that are unread for the given lastReadAt.
+   * Unread = created after lastRead, or agent message completed after lastRead.
+   * When lastReadAt is null, every main-branch message is unread.
+   */
+  async fetchUnreadMessageIds(
+    auth: Authenticator,
+    lastReadAt: Date | null
+  ): Promise<ModelId[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const baseWhere: WhereOptions<MessageModel> = {
+      workspaceId,
+      conversationId: this.id,
+      branchId: { [Op.is]: null },
+    };
+
+    if (lastReadAt === null) {
+      const messages = await MessageModel.findAll({
+        attributes: ["id"],
+        where: baseWhere,
+      });
+      return messages.map((message) => message.id);
+    }
+
+    const [createdAfter, completedAfter] = await Promise.all([
+      MessageModel.findAll({
+        attributes: ["id"],
+        where: {
+          ...baseWhere,
+          createdAt: { [Op.gt]: lastReadAt },
+        },
+      }),
+      MessageModel.findAll({
+        attributes: ["id"],
+        where: baseWhere,
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            attributes: [],
+            where: {
+              workspaceId,
+              conversationId: this.id,
+              completedAt: { [Op.gt]: lastReadAt },
+            },
+          },
+        ],
+      }),
+    ]);
+
+    return [
+      ...new Set([
+        ...createdAfter.map((message) => message.id),
+        ...completedAfter.map((message) => message.id),
+      ]),
+    ];
+  }
+
+  /**
+   * Latest version message id per rank, earliest ranks first.
+   * Used to find the first visible message without loading the full conversation.
+   */
+  async fetchEarliestLatestVersionMessageIds(
+    auth: Authenticator,
+    { limit }: { limit: number }
+  ): Promise<ModelId[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const rankRows = await MessageModel.findAll({
+      attributes: [
+        [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
+        [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
+        [Sequelize.fn("MAX", Sequelize.col("rank")), "rank"],
+      ],
+      where: {
+        workspaceId,
+        conversationId: this.id,
+        branchId: { [Op.is]: null },
+        visibility: { [Op.ne]: "deleted" },
+      },
+      group: ["rank"],
+      order: [["rank", "ASC"]],
+      limit,
+    });
+
+    return rankRows.map((row) => row.id);
+  }
+
   static async updateRequirements(
     auth: Authenticator,
     sId: string,
     requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
-    const conversation = await ConversationResource.fetchById(auth, sId);
+    const conversation = await ConversationResource.fetchById(auth, sId, {
+      transaction,
+    });
     if (conversation === null) {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
     await conversation.updateRequirements(auth, requestedSpaceIds, transaction);
     return new Ok(undefined);
+  }
+
+  /**
+   * Atomically merges `spaceModelIds` into the conversation requirements and returns the resulting
+   * requirement set (as space sIds).
+   *
+   * `requestedSpaceIds` is a conjunctive ACL: a viewer must have read access to every listed Space.
+   * Computing the union from a caller-held snapshot lets two overlapping requests overwrite each
+   * other, which would leave a Space materialized in the agent runtime scope with no matching ACL
+   * requirement. The merge therefore has to happen against locked, current state.
+   */
+  static async appendRequestedSpaceIds(
+    auth: Authenticator,
+    sId: string,
+    spaceModelIds: ModelId[],
+    transaction: Transaction
+  ): Promise<Result<string[], ConversationError>> {
+    const conversation = await ConversationResource.fetchById(auth, sId, {
+      transaction,
+    });
+    if (conversation === null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    return conversation.appendRequestedSpaceIds(
+      auth,
+      spaceModelIds,
+      transaction
+    );
   }
 
   static async updateTitle(
@@ -3464,7 +4504,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async fetchMCPServerViews(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType,
+    conversation: ConversationWithoutContentType | ConversationResource,
     {
       onlyEnabled,
       agentConfigurationId,
@@ -3530,7 +4570,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       agentConfigurationId,
       transaction,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       mcpServerViews: MCPServerViewResource[];
       enabled: boolean;
       transaction?: Transaction;
@@ -3610,20 +4650,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   async updateTitle(auth: Authenticator, title: string) {
     await this.update({ title });
-
-    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   async updateVisibilityToDeleted(auth: Authenticator) {
     await this.update({ visibility: "deleted" });
-
-    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   async updateVisibilityToUnlisted(auth: Authenticator) {
     await this.update({ visibility: "unlisted" });
-
-    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   async updateRequirements(
@@ -3637,8 +4671,51 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       transaction
     );
+  }
 
-    await ConversationResource.triggerEsIndexing(auth, this.sId);
+  /**
+   * See {@link ConversationResource.appendRequestedSpaceIds}. The conversation row is re-read with
+   * `SELECT ... FOR UPDATE` inside the caller transaction, so concurrent appends serialize on the
+   * row instead of each writing the union of its own stale snapshot.
+   */
+  async appendRequestedSpaceIds(
+    auth: Authenticator,
+    spaceModelIds: ModelId[],
+    transaction: Transaction
+  ): Promise<Result<string[], ConversationError>> {
+    const lockedConversation = await ConversationResource.model.findOne({
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+    if (lockedConversation === null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    await this.updateRequirements(
+      auth,
+      [...lockedConversation.requestedSpaceIds, ...spaceModelIds],
+      transaction
+    );
+
+    // `update` refreshes the instance from the `RETURNING` row, so this is the persisted value.
+    return new Ok(this.getRequestedSpaceIdsFromModel());
+  }
+
+  isPodConversation() {
+    return this.spaceId !== null;
+  }
+
+  get spaceSId(): string | null {
+    return this.spaceId
+      ? SpaceResource.modelIdToSId({
+          id: this.spaceId,
+          workspaceId: this.workspaceId,
+        })
+      : null;
   }
 
   async updateSpaceId(
@@ -3650,8 +4727,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // TODO(2026-04-30): BaseResource.update does not reload joins, so we
     // manually refresh the space here.
     this._space = space;
-
-    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   /**
@@ -3850,7 +4925,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    */
   static async listParticipantDetails(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
+    conversation: ConversationWithoutContentType | ConversationResource
   ): Promise<{ userId: ModelId; action: ParticipantActionType }[]> {
     const participants = await ConversationParticipantModel.findAll({
       where: {
@@ -3906,11 +4981,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(normalizeError(err));
     }
 
-    // Trigger ES cleanup via the same Temporal worker used for all ES writes.
-    // The activity will find the conversation absent from DB and call
-    // deleteConversationDocument itself.
-    await ConversationResource.triggerEsIndexing(auth, this.sId);
-
     return new Ok(undefined);
   }
 
@@ -3939,6 +5009,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const userModelId = auth.getNonNullableUser().id;
     const workspaceModelId = auth.getNonNullableWorkspace().id;
 
+    // Skip rows already at the target value to avoid a no-op row lock/write.
     await ConversationParticipantModel.update(
       { actionRequired: false },
       {
@@ -3946,6 +5017,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           conversationId: { [Op.in]: conversationModelIds },
           workspaceId: workspaceModelId,
           userId: userModelId,
+          actionRequired: { [Op.ne]: false },
         },
       }
     );
@@ -3984,12 +5056,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: workspaceModelId,
         lastReadAt: new Date(),
       }))
-    );
-
-    await concurrentExecutor(
-      conversations,
-      (c) => ConversationResource.triggerEsIndexing(auth, c.sId),
-      { concurrency: 8 }
     );
 
     return new Ok(undefined);
@@ -4068,7 +5134,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       hasError: this.hasError,
       lastReadMs: this.userLastReadAt?.getTime() ?? null,
       metadata: this.metadata ?? {},
-      nextWakeupAt: null,
+      nextWakeupAt: this.nextWakeupAt,
       requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
       sId: this.sId,
       spaceId: this.space?.sId ?? null,

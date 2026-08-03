@@ -1,10 +1,10 @@
 import { Button } from "@sparkle/components/Button";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
-  ArrowDownOnSquareIcon,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-} from "@sparkle/icons/app";
+  Clipboard,
+  ClipboardCheck,
+  Download01,
+} from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { useCallback } from "react";
@@ -16,50 +16,38 @@ const contentTypeExtensions: Record<SupportedContentType, string> = {
   "text/csv": ".csv",
 };
 
-const wrapperVariants = cva("s-group s-relative s-w-full !s-overflow-visible", {
-  variants: {
-    buttonDisplay: {
-      inside: "s-mt-0",
-      outside: "s-mt-11",
-    },
-  },
-  defaultVariants: {
-    buttonDisplay: "outside",
-  },
-});
-
-const stickyContainerVariants = cva("s-sticky s-z-[1] s-h-0", {
-  variants: {
-    buttonDisplay: {
-      inside: "s-top-0",
-      outside: "s-top-11",
-    },
-  },
-  defaultVariants: {
-    buttonDisplay: "outside",
-  },
-});
-
-const actionsVariants = cva(
-  "s-absolute s-right-2 s-flex s-items-center s-gap-1 s-py-2",
+const wrapperVariants = cva(
+  "group relative w-full max-w-full min-w-0 overflow-visible",
   {
     variants: {
       buttonDisplay: {
-        inside: "",
-        outside: "s-bottom-0 s-h-11",
-      },
-      displayActions: {
-        hover:
-          "s-opacity-0 s-transition-opacity s-duration-200 group-hover:s-opacity-100",
-        always: "",
+        inside: "mt-0",
+        outside: "mt-11",
       },
     },
     defaultVariants: {
       buttonDisplay: "outside",
-      displayActions: "always",
     },
   }
 );
+
+const actionsVariants = cva("absolute right-2 flex items-center gap-1 py-2", {
+  variants: {
+    buttonDisplay: {
+      inside: "",
+      outside: "bottom-0 h-11",
+    },
+    displayActions: {
+      hover:
+        "opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+      always: "",
+    },
+  },
+  defaultVariants: {
+    buttonDisplay: "outside",
+    displayActions: "always",
+  },
+});
 
 export interface ContentToDownload {
   content: string;
@@ -147,12 +135,9 @@ export function ContentBlockWrapper({
   );
 
   return (
-    <div
-      id="BlockWrapper"
-      className={cn(wrapperVariants({ buttonDisplay }), className)}
-    >
+    <div className={cn(wrapperVariants({ buttonDisplay }), className)}>
       {buttonDisplay !== null && (
-        <div className={stickyContainerVariants({ buttonDisplay })}>
+        <div className="relative z-[1] h-0">
           <div
             id="BlockActions"
             className={actionsVariants({ buttonDisplay, displayActions })}
@@ -162,7 +147,7 @@ export function ContentBlockWrapper({
               <Button
                 variant={"outline"}
                 size="xs"
-                icon={ArrowDownOnSquareIcon}
+                icon={Download01}
                 onClick={handleDownload}
                 tooltip="Download"
               />
@@ -171,7 +156,7 @@ export function ContentBlockWrapper({
               <Button
                 variant={"outline"}
                 size="xs"
-                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                icon={isCopied ? ClipboardCheck : Clipboard}
                 onClick={handleCopyToClipboard}
                 tooltip="Copy"
               />
@@ -179,7 +164,7 @@ export function ContentBlockWrapper({
           </div>
         </div>
       )}
-      <div className={cn("s-z-0 s-w-full", innerClassName)}>{children}</div>
+      <div className={cn("z-0 w-full min-w-0", innerClassName)}>{children}</div>
     </div>
   );
 }

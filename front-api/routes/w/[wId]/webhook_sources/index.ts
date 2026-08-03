@@ -8,11 +8,11 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { buildWebhookUrl } from "@app/lib/webhook_source";
 import logger from "@app/logger/logger";
-import type { ModelId } from "@app/types/shared/model_id";
 import type {
-  WebhookSourceForAdminType,
-  WebhookSourceWithViewsAndUsageType,
-} from "@app/types/triggers/webhooks";
+  GetWebhookSourcesResponseBody,
+  PostWebhookSourcesResponseBody,
+} from "@app/types/api/webhook_source";
+import type { ModelId } from "@app/types/shared/model_id";
 import { WebhookSourcesSchema } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -23,19 +23,10 @@ import webhookSourceById from "./[webhookSourceId]";
 import serviceData from "./service-data";
 import views from "./views";
 
-export type GetWebhookSourcesResponseBody = {
-  success: true;
-  webhookSourcesWithViews: WebhookSourceWithViewsAndUsageType[];
-};
-
-export type PostWebhookSourcesResponseBody = {
-  success: true;
-  webhookSource: WebhookSourceForAdminType;
-};
-
 // Mounted at /api/w/:wId/webhook_sources.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

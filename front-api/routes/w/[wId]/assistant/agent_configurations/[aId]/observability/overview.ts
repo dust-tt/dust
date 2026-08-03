@@ -1,27 +1,18 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
+import {
+  fetchAgentCostStats,
+  fetchAgentOverview,
+  getAgentCostStats,
+} from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetAgentOverviewResponseBody = {
-  activeUsers: number;
-  mentions: {
-    messageCount: number;
-    conversationCount: number;
-    timePeriodSec: number;
-  };
-  feedbacks: {
-    positiveFeedbacks: number;
-    negativeFeedbacks: number;
-    timePeriodSec: number;
-  };
-};
 
 const ParamsSchema = z.object({
   aId: z.string(),
@@ -35,6 +26,7 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/observability/overview.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -67,7 +59,19 @@ app.get(
       version,
     });
 
-    const overview = await fetchAgentOverview(baseQuery, days);
+    const [overview, costStatsResult] = await Promise.all([
+      fetchAgentOverview(baseQuery, days),
+      fetchAgentCostStats(auth, {
+        agentIds: [assistant.sId],
+        days,
+        version,
+      }),
+    ]);
+    const costs = getAgentCostStats(
+      costStatsResult.isOk() ? costStatsResult.value : new Map(),
+      assistant.sId
+    );
+
     if (overview.isErr()) {
       return apiError(ctx, {
         status_code: 500,
@@ -98,6 +102,7 @@ app.get(
         negativeFeedbacks,
         timePeriodSec: days * 24 * 60 * 60,
       },
+      costs,
     });
   }
 );

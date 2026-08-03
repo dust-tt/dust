@@ -84,6 +84,18 @@ export class BrowserMCPTransport implements Transport {
    */
   private async registerServer(): Promise<boolean> {
     try {
+      // If we already hold a registration (e.g. re-registering after a failed
+      // heartbeat), release it first. serverIds are random and never recycled,
+      // so the new registration always gets a fresh id — deregistering here just
+      // frees the old id's Redis key immediately instead of waiting for its TTL
+      // to expire, and detaches us from the old request channel before we
+      // subscribe to the new one.
+      if (this.serverId) {
+        const previousServerId = this.serverId;
+        this.serverId = null;
+        await this.deregisterServer(previousServerId);
+      }
+
       const response = await clientFetch(
         `/api/w/${this.workspaceId}/mcp/register`,
         {
@@ -117,10 +129,54 @@ export class BrowserMCPTransport implements Transport {
       // Setup heartbeat to keep the server registration alive.
       this.setupHeartbeat(data.serverId);
 
+      // If an SSE stream was already opened (re-registration after a lost
+      // registration), it is still attached to the previous serverId's channel
+      // and would keep receiving requests that no longer
+      // belong to this transport. Reconnect to the new serverId's channel. The
+      // lastEventId belongs to the old channel's stream, so drop it.
+      if (this.eventSource) {
+        this.lastEventId = null;
+        await this.connectToRequestsStream();
+      }
+
       return true;
     } catch (error) {
       console.error(
         "[BrowserMCPTransport] Failed to register MCP server:",
+        error
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Send a single heartbeat for the given serverId.
+   * Returns true if the registration is still alive, false if it is gone or
+   * the request failed.
+   */
+  private async sendHeartbeat(serverId: string): Promise<boolean> {
+    try {
+      const response = await clientFetch(
+        `/api/w/${this.workspaceId}/mcp/heartbeat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ serverId }),
+        }
+      );
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = (await response.json()) as { success: boolean };
+      return data.success;
+    } catch (error) {
+      console.error(
+        "[BrowserMCPTransport] Failed to heartbeat MCP server:",
         error
       );
       return false;
@@ -142,36 +198,10 @@ export class BrowserMCPTransport implements Transport {
         return;
       }
 
-      try {
-        const response = await clientFetch(
-          `/api/w/${this.workspaceId}/mcp/heartbeat`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-            body: JSON.stringify({ serverId }),
-          }
-        );
-
-        if (!response.ok) {
-          console.error("[BrowserMCPTransport] Failed to heartbeat MCP server");
-          await this.registerServer();
-          return;
-        }
-
-        const data = (await response.json()) as { success: boolean };
-        if (!data.success) {
-          console.error(
-            "[BrowserMCPTransport] Server not registered, re-registering"
-          );
-          await this.registerServer();
-        }
-      } catch (error) {
+      const alive = await this.sendHeartbeat(serverId);
+      if (!alive && !this.isClosing) {
         console.error(
-          "[BrowserMCPTransport] Failed to heartbeat MCP server:",
-          error
+          "[BrowserMCPTransport] Server not registered, re-registering"
         );
         await this.registerServer();
       }
@@ -305,28 +335,68 @@ export class BrowserMCPTransport implements Transport {
           );
         });
       } else {
-        // Actual connection error. Propagate and reconnect after a delay.
+        // Actual connection error. Propagate and recover after a delay.
         console.error(
           "[BrowserMCPTransport] Error in MCP EventSource connection"
         );
         this.onerror?.(new Error("SSE connection error"));
 
-        setTimeout(() => {
-          if (!this.isClosing && this.serverId) {
-            void this.connectToRequestsStream().catch((reconnectError) => {
-              console.error(
-                "[BrowserMCPTransport] Failed to reconnect after error:",
-                reconnectError
-              );
-            });
-          }
-        }, RECONNECT_DELAY_MS);
+        this.scheduleStreamRecovery();
       }
     };
 
     this.eventSource.onopen = () => {
       console.log("[BrowserMCPTransport] MCP SSE connection established");
     };
+  }
+
+  private scheduleStreamRecovery(): void {
+    setTimeout(() => {
+      void this.recoverStream();
+    }, RECONNECT_DELAY_MS);
+  }
+
+  /**
+   * Recover from an SSE stream error.
+   *
+   * The error may be caused by an expired registration (e.g. the tab was
+   * frozen or the machine slept past the registration TTL), in which case
+   * reconnecting with the current serverId would keep failing. Verify the
+   * registration first: if it is still alive, reconnect the stream; otherwise
+   * re-register. If recovery fails entirely (e.g. network down), retry after a
+   * delay.
+   */
+  private async recoverStream(): Promise<void> {
+    if (this.isClosing) {
+      return;
+    }
+
+    try {
+      // serverId can be null if a previous re-registration attempt failed
+      // mid-way; in that case skip the liveness check and re-register.
+      const alive = this.serverId
+        ? await this.sendHeartbeat(this.serverId)
+        : false;
+      if (this.isClosing) {
+        return;
+      }
+
+      if (alive) {
+        await this.connectToRequestsStream();
+        return;
+      }
+
+      const registered = await this.registerServer();
+      if (!registered) {
+        this.scheduleStreamRecovery();
+      }
+    } catch (error) {
+      console.error(
+        "[BrowserMCPTransport] Failed to recover MCP SSE connection:",
+        error
+      );
+      this.scheduleStreamRecovery();
+    }
   }
 
   /**

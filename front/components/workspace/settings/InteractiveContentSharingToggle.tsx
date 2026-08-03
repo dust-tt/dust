@@ -1,9 +1,8 @@
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
 import {
-  ActionFrameIcon,
   Button,
-  ContextItem,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,39 +14,35 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  GlobeAltIcon,
-  LockIcon,
-  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const SHARING_POLICY_OPTIONS: {
   description: string;
-  icon: typeof LockIcon;
   label: string;
   value: WorkspaceSharingPolicy;
 }[] = [
   {
-    icon: LockIcon,
     label: "Workspace members only",
     description: "Frames can only be viewed by workspace members",
     value: "workspace_only",
   },
   {
-    icon: UserGroupIcon,
     label: "Members + email invites",
     description:
       "Frames can be shared with workspace members or via email invite",
     value: "workspace_and_emails",
   },
   {
-    icon: GlobeAltIcon,
     label: "No restrictions",
     description:
-      "Members can share Frames publicly, with the workspace, or via email invite",
+      "Members can share frames publicly, with the workspace, or via email invite",
     value: "all_scopes",
   },
 ];
+
+const LABEL = "Frame sharing";
+const DESCRIPTION = "Whether frames are shareable outside the workspace";
 
 interface InteractiveContentSharingToggleProps {
   owner: WorkspaceType;
@@ -56,8 +51,29 @@ interface InteractiveContentSharingToggleProps {
 export function InteractiveContentSharingToggle({
   owner,
 }: InteractiveContentSharingToggleProps) {
-  const { isChanging, sharingPolicy, doUpdateSharingPolicy } =
+  const { sharingPolicy, doUpdateSharingPolicy, isChanging } =
     useFrameSharingToggle({ owner });
+
+  return (
+    <InteractiveContentSharing
+      sharingPolicy={sharingPolicy}
+      doUpdateSharingPolicy={doUpdateSharingPolicy}
+      isChanging={isChanging}
+    />
+  );
+}
+
+interface InteractiveContentSharingProps {
+  isChanging: boolean;
+  sharingPolicy: WorkspaceSharingPolicy;
+  doUpdateSharingPolicy: (policy: WorkspaceSharingPolicy) => Promise<void>;
+}
+
+export function InteractiveContentSharing({
+  isChanging,
+  sharingPolicy,
+  doUpdateSharingPolicy,
+}: InteractiveContentSharingProps) {
   const [pendingPolicy, setPendingPolicy] =
     useState<WorkspaceSharingPolicy | null>(null);
 
@@ -84,41 +100,19 @@ export function InteractiveContentSharingToggle({
 
   return (
     <>
-      <ContextItem
-        title="Frame sharing policy"
-        subElement="Control how Frames can be shared in this workspace"
-        visual={<ActionFrameIcon className="h-6 w-6" />}
-        hasSeparatorIfLast={true}
+      <GovernanceSettingRowLayout
+        label={LABEL}
+        description={DESCRIPTION}
         action={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                isSelect
-                label={selectedOption?.label}
-                icon={selectedOption?.icon}
-                disabled={isChanging}
-                className="grid grid-cols-[auto_1fr_auto] truncate"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="max-w-[400px]" align="end">
-              <DropdownMenuRadioGroup value={sharingPolicy}>
-                {SHARING_POLICY_OPTIONS.map((option) => (
-                  <DropdownMenuRadioItem
-                    key={option.value}
-                    value={option.value}
-                    label={option.label}
-                    description={option.description}
-                    icon={option.icon}
-                    onClick={() => handlePolicyChange(option.value)}
-                  />
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <InteractiveContentSharingDropdown
+            selectedOption={selectedOption}
+            onPolicyChange={handlePolicyChange}
+            isChanging={isChanging}
+            sharingPolicy={sharingPolicy}
+          />
         }
       />
+
       <Dialog
         open={!!pendingPolicy}
         onOpenChange={(open) => {
@@ -176,3 +170,47 @@ export function InteractiveContentSharingToggle({
     </>
   );
 }
+
+interface InteractiveContentSharingDropdownProps {
+  selectedOption?: {
+    label: string;
+  };
+  isChanging: boolean;
+  sharingPolicy: WorkspaceSharingPolicy;
+  onPolicyChange: (newPolicy: WorkspaceSharingPolicy) => void;
+}
+
+const InteractiveContentSharingDropdown = ({
+  selectedOption,
+  isChanging,
+  sharingPolicy,
+  onPolicyChange,
+}: InteractiveContentSharingDropdownProps) => {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          isSelect
+          label={selectedOption?.label}
+          disabled={isChanging}
+          className="grid grid-cols-[auto_1fr_auto] truncate"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="max-w-100" align="end">
+        <DropdownMenuRadioGroup value={sharingPolicy}>
+          {SHARING_POLICY_OPTIONS.map((option) => (
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              label={option.label}
+              description={option.description}
+              onClick={() => onPolicyChange(option.value)}
+            />
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};

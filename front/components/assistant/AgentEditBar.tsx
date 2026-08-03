@@ -1,9 +1,9 @@
 import { useBatchUpdateAgentTags } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -14,12 +14,13 @@ import {
   DropdownMenuTagList,
   DropdownMenuTrigger,
   Spinner,
-  TagIcon,
-  XMarkIcon,
+  Tag01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { DeleteAssistantsDialog } from "./DeleteAssistantsDialog";
+import { SetModelAssistantsDialog } from "./SetModelAssistantsDialog";
 import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
 type AgentEditBarProps = {
@@ -44,8 +45,11 @@ export const AgentEditBar = ({
     owner,
   });
 
+  const { hasPermission } = useWorkspacePermissions();
+  const canPublishAgents = hasPermission("publish", "agent");
+
   const filteredTags = tags
-    .filter((t) => isBuilder(owner) || t.kind !== "protected")
+    .filter((t) => canPublishAgents || t.kind !== "protected")
     .filter((a) => {
       return subFilter(tagSearch, a.name.toLowerCase());
     })
@@ -63,13 +67,13 @@ export const AgentEditBar = ({
 
   return (
     <>
-      <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2 dark:bg-muted-background-night">
+      <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2">
         <Button
           size="xs"
           variant="outline"
           disabled={isLoading}
           label="Close edition"
-          icon={XMarkIcon}
+          icon={XClose}
           onClick={onClose}
         />
         {isLoading && <Spinner size="xs" variant="dark" />}
@@ -80,7 +84,7 @@ export const AgentEditBar = ({
               size="xs"
               variant="outline"
               isSelect
-              icon={TagIcon}
+              icon={Tag01}
               label="Tag selection"
               disabled={selectedAgents.length === 0 || isLoading}
             />
@@ -105,7 +109,7 @@ export const AgentEditBar = ({
                   <DropdownMenuTagItem
                     key={t.sId}
                     label={t.name}
-                    color="golden"
+                    color="info"
                     onClick={async () => {
                       setIsLoading(true);
                       const agentIds = selectedAgents.map((a) => a.sId);
@@ -141,6 +145,11 @@ export const AgentEditBar = ({
             </DropdownMenuTagList>
           </DropdownMenuContent>
         </DropdownMenu>
+        <SetModelAssistantsDialog
+          owner={owner}
+          agentConfigurations={selectedAgents}
+          disabled={selectedAgents.length === 0 || isLoading}
+        />
         <UnpublishAssistantsDialog
           owner={owner}
           agentConfigurations={selectedAgents}

@@ -7,7 +7,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getPodRoute } from "@app/lib/utils/router";
-import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
+import type { GetBySpacesSummaryResponseBody } from "@app/types/api/assistant/conversation/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";

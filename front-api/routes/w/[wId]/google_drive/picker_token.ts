@@ -4,6 +4,7 @@ import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import logger from "@app/logger/logger";
+import type { PickerTokenResponseType } from "@app/types/api/google_drive";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -13,13 +14,6 @@ const RequestBodySchema = z.object({
   // The MCP server ID (e.g., "google_drive") - used to look up the OAuth connection
   mcpServerId: z.string().min(1, "mcpServerId is required"),
 });
-
-export interface PickerTokenResponseType {
-  accessToken: string;
-  clientId: string;
-  developerKey: string;
-  appId: string; // Project number extracted from clientId
-}
 
 // Mounted at /api/w/:wId/google_drive/picker_token.
 const app = workspaceApp();

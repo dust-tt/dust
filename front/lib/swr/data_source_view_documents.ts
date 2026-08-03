@@ -6,9 +6,11 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/documents/[documentId]";
-import type { PostDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents";
-import type { PatchDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
+import type { GetDataSourceViewDocumentResponseBody } from "@app/types/api/data_source_view";
+import type {
+  PatchDocumentResponseBody,
+  PostDocumentResponseBody,
+} from "@app/types/api/data_sources";
 import type {
   PatchDataSourceDocumentRequestBody,
   PostDataSourceDocumentRequestBody,

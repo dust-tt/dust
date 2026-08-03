@@ -767,12 +767,20 @@ pub async fn tables_rows_delete(
                     .delete_row(state.databases_store.clone(), &row_id)
                     .await
                 {
-                    Err(e) => error_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "internal_server_error",
-                        "Failed to delete row",
-                        Some(e),
-                    ),
+                    Err(e) => match e.downcast_ref::<TableUpsertError>() {
+                        Some(TableUpsertError::TooManyPendingUpserts { .. }) => error_response(
+                            StatusCode::TOO_MANY_REQUESTS,
+                            "too_many_pending_upserts",
+                            "Too many pending upserts for this table, retry later",
+                            Some(e),
+                        ),
+                        None => error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to delete row",
+                            Some(e),
+                        ),
+                    },
                     Ok(_) => (
                         StatusCode::OK,
                         Json(APIResponse {

@@ -1,19 +1,13 @@
 import config from "@app/lib/api/config";
 import { LinkWrapper, useSearchParam } from "@app/lib/platform";
-import {
-  Button,
-  DustLogoSquare,
-  Icon,
-  LoginIcon,
-  Page,
-} from "@dust-tt/sparkle";
+import { Button, DustLogoSquare, Icon, LogIn01, Page } from "@dust-tt/sparkle";
 
 const defaultErrorMessageClassName = "text-base text-primary-100";
 
 function getErrorMessage(domain: string | null, reason: string | null) {
   const headerNode = (
     <Page.Header
-      title={<span className="text-white">We couldn't log you in.</span>}
+      title={<span className="text-primary-50">We couldn't log you in.</span>}
     />
   );
 
@@ -67,7 +61,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         <>
           <Page.Header
             title={
-              <span className="text-white">
+              <span className="text-primary-50">
                 Keep an eye
                 <br />
                 on your inbox!
@@ -89,7 +83,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             variant="outline"
             size="sm"
             label="Sign in"
-            icon={LoginIcon}
+            icon={LogIn01}
             onClick={() => {
               window.location.href = `${config.getApiBaseUrl()}/api/workos/login?returnTo=/api/login`;
             }}

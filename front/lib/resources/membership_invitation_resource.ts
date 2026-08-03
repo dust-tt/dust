@@ -14,6 +14,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { getInvitationTokenStartMs } from "@app/lib/utils/invitation_token";
 import logger from "@app/logger/logger";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -101,9 +102,9 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         revoked: [],
       };
     }
-    if (!auth.isAdmin()) {
+    if (!auth.isManager()) {
       throw new Error(
-        "Only users that are `admins` for the current workspace can see membership invitations or modify it."
+        "You do not have permission to manage membership invitations."
       );
     }
     const oneDayAgo = new Date();
@@ -231,7 +232,11 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       blobs,
       transaction,
     }: {
-      blobs: { inviteEmail: string; initialRole: ActiveRoleType }[];
+      blobs: {
+        inviteEmail: string;
+        initialRole: ActiveRoleType;
+        seatType?: MembershipSeatType | null;
+      }[];
       transaction?: Transaction;
     }
   ): Promise<MembershipInvitationResource[]> {
@@ -298,6 +303,22 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
   }
 
+  static async getPendingInvitationsCountForWorkspace({
+    workspace,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<number> {
+    return this.model.count({
+      where: {
+        workspaceId: workspace.id,
+        status: "pending",
+      },
+      transaction,
+    });
+  }
+
   static async getPendingInvitations(
     auth: Authenticator,
     { includeExpired = false }: { includeExpired?: boolean } = {}
@@ -306,9 +327,9 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     if (!owner) {
       return [];
     }
-    if (!auth.isAdmin()) {
+    if (!auth.isManager()) {
       throw new Error(
-        "Only users that are `admins` for the current workspace can see membership invitations or modify it."
+        "You do not have permission to manage membership invitations."
       );
     }
 
@@ -514,6 +535,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       sId: this.sId,
       status: this.status,
       isExpired: this.isExpired(),
+      seatType: this.seatType,
     };
   }
 }

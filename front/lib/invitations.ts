@@ -5,13 +5,21 @@ import { clientFetch } from "@app/lib/egress/client";
 import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
-} from "@app/pages/api/w/[wId]/invitations";
+} from "@app/types/api/invitation";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { MembershipSeatType } from "@app/types/memberships";
+import { isString } from "@app/types/shared/utils/general";
 import type { ActiveRoleType, RoleType, WorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import { mutate } from "swr";
 
 export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 300;
+
+// Matches the invitations list regardless of query params (e.g. `?includeExpired=true`).
+export async function mutateWorkspaceInvitations(owner: WorkspaceType) {
+  const invitationsPath = `/api/w/${owner.sId}/invitations`;
+  await mutate((key) => isString(key) && key.split("?")[0] === invitationsPath);
+}
 
 export async function updateInvitation({
   owner,
@@ -75,25 +83,28 @@ export async function updateInvitation({
     title: `${newRole ? "Role updated" : "Invitation Revoked"}`,
     description: `${successMessage} for ${invitation.inviteEmail}.`,
   });
-  await mutate(`/api/w/${owner.sId}/invitations`);
+  await mutateWorkspaceInvitations(owner);
 }
 
 export async function sendInvitations({
   owner,
   emails,
   invitationRole,
+  seatType,
   sendNotification,
   isNewInvitation,
 }: {
   owner: WorkspaceType;
   emails: string[];
   invitationRole: ActiveRoleType;
+  seatType?: MembershipSeatType | null;
   sendNotification: any;
   isNewInvitation: boolean;
 }) {
   const body: PostInvitationRequestBody = emails.map((email) => ({
     email,
     role: invitationRole,
+    seatType: seatType ?? null,
   }));
 
   const res = await clientFetch(`/api/w/${owner.sId}/invitations`, {

@@ -8,9 +8,9 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
+  DotsHorizontal,
   Icon,
   LoadingBlock,
-  MoreIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -18,7 +18,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 interface PodsBrowsePopoverProps {
   owner: WorkspaceType;
@@ -47,7 +47,7 @@ function PodBrowseItemSkeleton({ count = 5 }: { count?: number }) {
 function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
   return (
     <div
-      className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background dark:hover:bg-muted-background-night"
+      className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background"
       onClick={onClick}
     >
       <Icon visual={getSpaceIcon(pod)} size="sm" className="mt-0.5 shrink-0" />
@@ -63,7 +63,7 @@ function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
             label={pod.description}
             tooltipTriggerAsChild
             trigger={
-              <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <div className="truncate text-xs text-muted-foreground">
                 {pod.description}
               </div>
             }
@@ -88,20 +88,14 @@ export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
     }
   );
 
-  const filteredPods = useMemo(() => {
-    return pods.filter(
-      ({ isMember, archivedAt }) => (!isMember && !archivedAt) || archivedAt
-    );
-  }, [pods]);
-
   return (
     <div>
       <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal>
         <PopoverTrigger asChild>
-          <Button size="xs" icon={MoreIcon} variant="ghost" />
+          <Button size="xs" icon={DotsHorizontal} variant="ghost" />
         </PopoverTrigger>
         <PopoverContent
-          className="flex w-80 max-h-[--radix-popover-content-available-height] flex-col p-0"
+          className="flex w-80 max-h-(--radix-popover-content-available-height) flex-col p-0"
           align="start"
           collisionPadding={16}
         >
@@ -114,15 +108,15 @@ export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
             />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-            {isSearching && filteredPods.length === 0 ? (
+            {isSearching && pods.length === 0 ? (
               <PodBrowseItemSkeleton count={5} />
-            ) : filteredPods.length === 0 ? (
-              <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+            ) : pods.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                 No Pods found
               </div>
             ) : (
               <>
-                {filteredPods.map((pod) => (
+                {pods.map((pod) => (
                   <PodBrowseItem
                     key={pod.sId}
                     pod={pod}

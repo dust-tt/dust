@@ -236,15 +236,8 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
 
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: async (
     { tables, query, fileName },
-    { auth, agentLoopContext }
+    { auth, runContext }
   ) => {
-    // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-    if (!agentLoopContext?.runContext) {
-      throw new Error("Unreachable: missing agentLoopContext.");
-    }
-
-    const agentLoopRunContext = agentLoopContext.runContext;
-
     const resolvedRes = await resolveTableConfigurations(auth, tables);
     if (resolvedRes.isErr()) {
       return resolvedRes;
@@ -281,7 +274,7 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
         };
       }),
       query,
-      conversationId: agentLoopRunContext.conversation.sId,
+      runContext,
       fileName,
       connectorProvider,
     });

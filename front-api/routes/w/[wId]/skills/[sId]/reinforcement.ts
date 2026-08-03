@@ -22,12 +22,19 @@ const PatchSkillReinforcementBodySchema = z
       .nonnegative()
       .nullable() // use default
       .optional(), // not updated
+    selfImprovementCostsCapAwuCredits: z
+      .number()
+      .int()
+      .nonnegative()
+      .nullable() // use default
+      .optional(), // not updated
   })
   .refine(
     (b) =>
       b.reinforcement !== undefined ||
       b.selfImprovementLock !== undefined ||
-      b.selfImprovementCostsCapMicroUsd !== undefined,
+      b.selfImprovementCostsCapMicroUsd !== undefined ||
+      b.selfImprovementCostsCapAwuCredits !== undefined,
     { message: "At least one field must be provided." }
   );
 
@@ -42,6 +49,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/skills/:sId/reinforcement.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),
@@ -65,12 +73,14 @@ app.patch(
       reinforcement,
       selfImprovementLock,
       selfImprovementCostsCapMicroUsd,
+      selfImprovementCostsCapAwuCredits,
     } = ctx.req.valid("json");
 
-    // The lock and per-skill cap are admin-only controls.
+    // The lock and per-skill caps are admin-only controls.
     const requiresAdmin =
       selfImprovementLock !== undefined ||
-      selfImprovementCostsCapMicroUsd !== undefined;
+      selfImprovementCostsCapMicroUsd !== undefined ||
+      selfImprovementCostsCapAwuCredits !== undefined;
     if (requiresAdmin && !auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
@@ -82,15 +92,15 @@ app.patch(
       });
     }
 
-    // Toggling reinforcement requires editor access; if the skill is locked,
-    // only admins can flip it.
+    // Toggling reinforcement requires skill administration access; if the
+    // skill is locked, only admins can flip it.
     if (reinforcement !== undefined) {
-      if (!skill.canWrite(auth)) {
+      if (!skill.canAdministrate(auth)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "app_auth_error",
-            message: "Only editors can modify this skill.",
+            message: "Only admins and editors can modify this skill.",
           },
         });
       }
@@ -128,6 +138,11 @@ app.patch(
     if (selfImprovementCostsCapMicroUsd !== undefined) {
       await skill.updateSelfImprovementCostsCap(
         selfImprovementCostsCapMicroUsd
+      );
+    }
+    if (selfImprovementCostsCapAwuCredits !== undefined) {
+      await skill.updateSelfImprovementCostsCapAwuCredits(
+        selfImprovementCostsCapAwuCredits
       );
     }
 

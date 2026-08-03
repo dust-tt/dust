@@ -7,10 +7,15 @@ import { markShuttingDownWithDelayedAbort } from "@app/lib/shutdown_signal";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { compactionActivity } from "@app/temporal/agent_loop/activities/compaction";
+import {
+  compactionActivity,
+  compactionCleanupActivity,
+} from "@app/temporal/agent_loop/activities/compaction";
+import { checkCreditsActivity } from "@app/temporal/agent_loop/activities/credit_check";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
   finalizeCancelledAgentLoopActivity,
+  finalizeCreditStoppedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
@@ -54,12 +59,15 @@ export async function runAgentLoopWorker() {
     }),
     activities: {
       compactionActivity,
+      compactionCleanupActivity,
       ensureConversationTitleActivity,
       finalizeSuccessfulAgentLoopActivity,
       finalizeGracefullyStoppedAgentLoopActivity,
+      finalizeCreditStoppedAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeInterruptedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
+      checkCreditsActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,

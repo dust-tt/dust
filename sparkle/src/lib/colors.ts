@@ -67,3 +67,36 @@ export const customColors = {
     50: "#FFF1F7",
   },
 } as const;
+
+export type Rgb = { r: number; g: number; b: number };
+
+let sharedCanvasContext: CanvasRenderingContext2D | null | undefined;
+
+// Let the browser normalize any CSS color syntax, including OKLCH, to sRGB.
+export function cssColorToRgb(color: string): Rgb | null {
+  if (typeof document === "undefined" || !color) {
+    return null;
+  }
+  if (sharedCanvasContext === undefined) {
+    sharedCanvasContext = document.createElement("canvas").getContext("2d");
+  }
+  if (!sharedCanvasContext) {
+    return null;
+  }
+  sharedCanvasContext.clearRect(0, 0, 1, 1);
+  sharedCanvasContext.fillStyle = "#000";
+  sharedCanvasContext.fillStyle = color;
+  sharedCanvasContext.fillRect(0, 0, 1, 1);
+  const [r, g, b] = sharedCanvasContext.getImageData(0, 0, 1, 1).data;
+  return { r, g, b };
+}
+
+export function cssColorToHex(color: string): string {
+  const rgb = cssColorToRgb(color);
+  if (!rgb) {
+    throw new Error("CSS color conversion requires a browser canvas.");
+  }
+  return `#${[rgb.r, rgb.g, rgb.b]
+    .map((channel) => channel.toString(16).padStart(2, "0"))
+    .join("")}`;
+}

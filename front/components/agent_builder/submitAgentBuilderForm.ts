@@ -9,6 +9,10 @@ import {
 } from "@app/components/agent_builder/shared/tables";
 import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
+import type {
+  GetContentNodesOrChildrenRequestBodyType,
+  GetDataSourceViewContentNodes,
+} from "@app/lib/api/data_source_view";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
@@ -20,17 +24,13 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
-  PatchTriggersRequestBody,
-  PostTriggersRequestBody,
-} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
-import type {
-  GetContentNodesOrChildrenRequestBodyType,
-  GetDataSourceViewContentNodes,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
-import type {
   DataSourcesConfigurationsCodecType,
   PostOrPatchAgentConfigurationRequestBody,
-} from "@app/types/api/internal/agent_configuration";
+} from "@app/types/api/agent_configuration";
+import type {
+  PatchTriggersRequestBody,
+  PostTriggersRequestBody,
+} from "@app/types/api/assistant/configuration/triggers";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -224,6 +224,7 @@ function serializeTrigger(
         kind: trigger.kind,
         executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
         webhookSourceViewId: trigger.webhookSourceViewId,
+        spaceId: trigger.spaceId ?? null,
       };
     }
     case "schedule":
@@ -234,6 +235,7 @@ function serializeTrigger(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         kind: trigger.kind,
+        spaceId: trigger.spaceId ?? null,
       };
     default:
       assertNever(trigger);
@@ -390,6 +392,10 @@ export async function submitAgentBuilderForm({
   const pictureUrlToUse =
     formData.agentSettings.pictureUrl ?? getRandomDefaultAvatar();
 
+  if (!formData.generationSettings.modelSettings) {
+    return new Err(new Error("Model settings are required"));
+  }
+
   // Process actions asynchronously to handle folder-to-table expansion
   const mcpActions = formData.actions;
 
@@ -464,7 +470,8 @@ export async function submitAgentBuilderForm({
         modelId: formData.generationSettings.modelSettings.modelId,
         providerId: formData.generationSettings.modelSettings.providerId,
         temperature: formData.generationSettings.temperature,
-        reasoningEffort: formData.generationSettings.reasoningEffort,
+        reasoningEffort:
+          formData.generationSettings.reasoningEffort ?? undefined,
         responseFormat: formData.generationSettings.responseFormat,
       },
       skills: formData.skills.map((skill) => ({

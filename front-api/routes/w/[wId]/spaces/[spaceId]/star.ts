@@ -1,25 +1,16 @@
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
+import type { PostUserPodStarResponseBody } from "@app/types/api/projects/preferences";
+import { PostUserPodStarBodySchema } from "@app/types/api/projects/preferences";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
-import { z } from "zod";
-
-export type PostUserPodStarResponseBody = {
-  sId: string;
-  spaceId: string;
-  userId: string;
-  isStarred: boolean;
-};
-
-const PostUserPodStarBodySchema = z.object({
-  starred: z.boolean(),
-});
 
 // Mounted under /api/w/:wId/spaces/:spaceId/star.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
@@ -44,7 +35,10 @@ app.post(
       isStarred: starred,
     });
 
-    return ctx.json(pref.toJSON());
+    return ctx.json({
+      ...pref.toJSON(),
+      userId: auth.getNonNullableUser().sId,
+    });
   }
 );
 

@@ -10,6 +10,7 @@ const {
   DUST_MANAGED_FIRECRAWL_API_KEY = "",
   DUST_MANAGED_ELEVENLABS_API_KEY = "",
   DUST_MANAGED_SPIDER_API_KEY = "",
+  DUST_MANAGED_EXA_API_KEY = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -58,9 +59,6 @@ export const credentialsFromProviders = (
       case "google_ai_studio":
         credentials["GOOGLE_AI_STUDIO_API_KEY"] = config.api_key;
         break;
-      case "togetherai":
-        credentials["TOGETHERAI_API_KEY"] = config.api_key;
-        break;
       case "deepseek":
         credentials["DEEPSEEK_API_KEY"] = config.api_key;
         break;
@@ -76,6 +74,9 @@ export const credentialsFromProviders = (
       case "spider":
         credentials["SPIDER_API_KEY"] = config.api_key;
         break;
+      case "exa":
+        credentials["EXA_API_KEY"] = config.api_key;
+        break;
     }
   });
   return credentials;
@@ -88,5 +89,6 @@ export const dustManagedServiceCredentials = (): DustManagedCredentialsType => {
     FIRECRAWL_API_KEY: DUST_MANAGED_FIRECRAWL_API_KEY,
     ELEVENLABS_API_KEY: DUST_MANAGED_ELEVENLABS_API_KEY,
     SPIDER_API_KEY: DUST_MANAGED_SPIDER_API_KEY,
+    EXA_API_KEY: DUST_MANAGED_EXA_API_KEY,
   };
 };

@@ -139,6 +139,14 @@ async function runWithStdin(
     });
     return await handle.wait();
   } catch (err) {
+    if (err instanceof NotFoundError) {
+      // The process can exit between `run` returning its handle and the stdin
+      // RPC reaching E2B. The handle consumes process events from startup, so
+      // waiting recovers the actual exit code and output instead of replacing
+      // them with a misleading "process with pid ... not found" error.
+      return await handle.wait();
+    }
+
     try {
       await handle.kill();
     } catch {
@@ -547,11 +555,34 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async readFile(
-    _providerId: string,
-    _path: string,
-    _tracingOpts: { workspaceId: string }
+    providerId: string,
+    path: string,
+    tracingOpts: { workspaceId: string }
   ): Promise<Buffer> {
-    throw new Error("readFile is not implemented yet.");
+    return traceSandboxOperation(
+      "readFile",
+      async () => {
+        let sandbox: Sandbox;
+        try {
+          sandbox = await Sandbox.connect(providerId, {
+            ...this.connectionOpts(),
+            timeoutMs: SANDBOX_LIFETIME_MS,
+          });
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            throw new SandboxNotFoundError(providerId);
+          }
+          throw normalizeError(err);
+        }
+
+        const bytes = await sandbox.files.read(path, { format: "bytes" });
+        return Buffer.from(bytes);
+      },
+      {
+        provider_id: providerId,
+        workspace_id: tracingOpts.workspaceId,
+      }
+    );
   }
 
   async listFiles(

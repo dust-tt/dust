@@ -1,13 +1,14 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import DatasetView from "@app/components/app/DatasetView";
+import Custom404 from "@app/components/pages/Custom404";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
-import Custom404 from "@app/pages/404";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { DatasetSchema, DatasetType } from "@app/types/dataset";
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
@@ -17,7 +18,8 @@ export function NewDatasetPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { isBuilder } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const canAdministrateApps = hasPermission("admin", "dust_app");
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -40,14 +42,14 @@ export function NewDatasetPage() {
 
   useNavigationLock(editorDirty);
 
-  // Redirect non-builders
+  // Redirect users without app administration permission.
   useEffect(() => {
-    if (!isBuilder && app) {
+    if (!canAdministrateApps && app) {
       void router.push(
         `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`
       );
     }
-  }, [isBuilder, app, router, owner.sId]);
+  }, [canAdministrateApps, app, router, owner.sId]);
 
   // This is a little wonky, but in order to redirect to the dataset's main page and not pop up the
   // "You have unsaved changes" dialog, we need to set editorDirty to false and then do the router
@@ -121,7 +123,7 @@ export function NewDatasetPage() {
   return (
     <div className="mt-8 flex flex-col">
       <div className="flex flex-1">
-        <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
+        <div className="space-y-6 divide-y divide-primary-200">
           <DatasetView
             readOnly={false}
             datasets={datasets}

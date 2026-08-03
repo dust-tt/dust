@@ -1,4 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  AuditLogsPortal,
+  AuditLogsPortalResponse,
+} from "@app/lib/api/audit/workos_audit";
+import type { GetProvisioningStatusResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -7,12 +12,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type {
-  AuditLogsPortal,
-  AuditLogsPortalResponse,
-} from "@app/pages/api/w/[wId]/audit-logs";
-import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
-import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
+import type { GetWorkspaceDomainsResponseBody } from "@app/types/api/workos/organization";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -243,6 +243,7 @@ export function useProvisioningStatus({
     if (!data) {
       return {
         hasAdminGroup: false,
+        hasManagerGroup: false,
         hasBuilderGroup: false,
       };
     }

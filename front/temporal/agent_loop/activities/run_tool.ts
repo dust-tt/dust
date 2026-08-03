@@ -1,3 +1,5 @@
+import { isAgentLoopToolEvent } from "@app/lib/actions/mcp";
+import type { ToolContext } from "@app/lib/actions/types";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -7,12 +9,15 @@ import {
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getShutdownSignal } from "@app/lib/shutdown_signal";
+import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { TOOL_SETUP_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type {
@@ -138,6 +143,7 @@ export function emitToolExecutedAuditEvent({
       mcp_server_name: action.toolConfiguration.mcpServerName,
       conversation_id: conversation.sId,
       message_id: messageId,
+      agent_message_id: messageId,
       ...(conversation.triggerId ? { trigger_id: conversation.triggerId } : {}),
       initiating_user_id: auth.user()?.sId ?? "unknown",
       initiating_user_email: auth.user()?.email ?? "unknown",
@@ -160,25 +166,53 @@ export async function runToolActivity(
     runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
-  const auth = await Authenticator.fromJSON(authType);
+  // The setup phase below is DB-bound and can stall past the heartbeat timeout under
+  // connection-pool contention. Tool activities are not retried, so a missed first heartbeat
+  // kills the whole run: heartbeat immediately and periodically until setup completes.
+  heartbeat();
+
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
-  const [runAgentDataRes, action] = await startActiveObservation(
-    "get-agent-loop-data",
-    () =>
-      Promise.all([
-        // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
-        // during the same step. Each tool would otherwise fetch the same conversation independently.
-        getAgentLoopDataWithAuth(auth, {
-          ...runAgentArgs,
-          caching: {
-            useCachedGetConversation: true,
-            unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
-            ttlMs: CONVERSATION_CACHE_TTL_MS,
+  const { auth, runAgentDataRes, action } = await withPeriodicHeartbeat(
+    async () => {
+      const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+      const [runAgentDataRes, action] = await startActiveObservation(
+        "get-agent-loop-data",
+        () =>
+          Promise.all([
+            // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
+            // during the same step. Each tool would otherwise fetch the same conversation independently.
+            getAgentLoopDataWithAuth(auth, {
+              ...runAgentArgs,
+              caching: {
+                useCachedGetConversation: true,
+                unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
+                ttlMs: CONVERSATION_CACHE_TTL_MS,
+              },
+            }),
+            AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId),
+          ])
+      );
+
+      return { auth, runAgentDataRes, action };
+    },
+    {
+      intervalMs: TOOL_SETUP_HEARTBEAT_INTERVAL_MS,
+      heartbeatFn: () => {
+        heartbeat();
+        logger.info(
+          {
+            actionId,
+            conversationId: runAgentArgs.conversationId,
+            agentMessageId: runAgentArgs.agentMessageId,
+            step,
+            workspaceId: authType.workspaceId,
           },
-        }),
-        AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId),
-      ])
+          "MCP tool setup heartbeat"
+        );
+      },
+    }
   );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
@@ -200,8 +234,10 @@ export async function runToolActivity(
 
   const {
     agentConfiguration,
+    modelInfo: model,
     conversation: originalConversation,
     agentMessage: originalAgentMessage,
+    userMessage,
   } = runAgentDataRes.value;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -234,11 +270,13 @@ export async function runToolActivity(
       return executeToolStreaming(auth, {
         action,
         agentConfiguration,
+        model,
         agentMessage,
         conversation,
         deferredEvents,
         runIds,
         step,
+        userMessage,
       });
     },
     { asType: "tool" }
@@ -250,19 +288,23 @@ async function executeToolStreaming(
   {
     action,
     agentConfiguration,
+    model: modelInfo,
     agentMessage,
     conversation,
     deferredEvents,
     runIds,
     step,
+    userMessage,
   }: {
     action: AgentMCPActionResource;
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    model: AgentLoopExecutionData["modelInfo"];
     agentMessage: AgentLoopExecutionData["agentMessage"];
     conversation: AgentLoopExecutionData["conversation"];
     deferredEvents: ToolExecutionResult["deferredEvents"];
     runIds?: string[];
     step: number;
+    userMessage: AgentLoopExecutionData["userMessage"];
   }
 ): Promise<ToolExecutionResult> {
   const abortSignal = AbortSignal.any([
@@ -280,17 +322,24 @@ async function executeToolStreaming(
     ? updateResourceAndPublishEvent
     : () => {};
 
-  const eventStream = runToolWithStreaming(
-    auth,
-    {
+  const toolContext: ToolContext = {
+    runContext: {
+      contextType: "agent_loop",
       action,
       agentConfiguration,
+      modelInfo,
       agentMessage,
       conversation,
+      stepContext: action.stepContext,
+      toolConfiguration: action.toolConfiguration,
+      userMessage,
     },
-    {
-      signal: abortSignal,
-    }
+  };
+
+  const eventStream = runToolWithStreaming(
+    auth,
+    { toolContext },
+    { signal: abortSignal }
   );
 
   for await (const event of eventStream) {
@@ -428,6 +477,13 @@ async function executeToolStreaming(
       case "tool_file_auth_required":
       case "tool_approve_execution":
       case "tool_ask_user_question":
+        // The agent loop activity always runs tools with an agent loop context, so sandbox
+        // function scoped events cannot surface here.
+        assert(
+          "conversationId" in event,
+          "Unexpected sandbox function tool event in the agent loop."
+        );
+
         updateActiveObservation(
           {
             output: { status: event.type },
@@ -452,6 +508,13 @@ async function executeToolStreaming(
         await ConversationResource.markAsActionRequired(auth, {
           conversation,
         });
+
+        if (!conversation.actionRequired) {
+          notifyManualActionRequired(auth, {
+            conversationId: conversation.sId,
+            actionId: action.sId,
+          });
+        }
 
         return { deferredEvents };
 
@@ -478,15 +541,28 @@ async function executeToolStreaming(
             created: event.created,
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            action: event.action,
+            // The generic tool runner event only carries the processed output; the agent loop
+            // action payload is rebuilt from the action resource, which reflects the final status
+            // (updated in place during execution).
+            action: {
+              ...action.toJSON(),
+              output: event.output,
+              generatedFiles: event.generatedFiles,
+            },
           },
           agentMessage,
           conversation,
           step,
         });
         break;
-      case "tool_params":
+
       case "tool_notification":
+        // Tools executed from the agent loop activity always run with an agent loop context, so
+        // sandbox function notification events cannot surface here.
+        assert(
+          isAgentLoopToolEvent(event),
+          "Unexpected sandbox function tool notification in the agent loop."
+        );
         await handleNonDeferredEvents(auth, {
           event,
           agentMessage,

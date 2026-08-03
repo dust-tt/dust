@@ -1,11 +1,13 @@
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
+import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -38,7 +40,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import uniq from "lodash/uniq";
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -97,180 +99,254 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
   }
 
-  await withTransaction(async (t) => {
-    // Soft delete all data source views.
-    await concurrentExecutor(
-      dataSourceViews,
-      async (view) => {
-        // Soft delete view, they will be hard deleted when the data source scrubbing job runs.
-        const res = await view.delete(auth, {
-          transaction: t,
-          hardDelete: false,
-        });
-        if (res.isErr()) {
-          throw res.error;
-        }
-      },
-      { concurrency: 4 }
-    );
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const logContext = { spaceId: space.sId, workspaceId };
 
-    // Soft delete data sources they will be hard deleted in the scrubbing job.
-    await concurrentExecutor(
-      dataSources,
-      async (ds) => {
-        const res = await ds.delete(auth, {
-          hardDelete: false,
-          transaction: t,
-        });
-        if (res.isErr()) {
-          throw res.error;
-        }
-      },
-      { concurrency: 4 }
-    );
+  logger.info(
+    logContext,
+    "softDeleteSpace: starting agent requestedSpaceIds cleanup"
+  );
 
-    // Soft delete the apps, which will be hard deleted in the scrubbing job.
-    await concurrentExecutor(
-      apps,
-      async (app) => {
-        const res = await app.delete(auth, {
-          hardDelete: false,
-          transaction: t,
-        });
-        if (res.isErr()) {
-          throw res.error;
-        }
-      },
-      { concurrency: 4 }
-    );
-
-    // Get MCP server views and data source views from the space being deleted.
-    const mcpServerViews = await MCPServerViewResource.listBySpace(auth, space);
-    const mcpServerViewIds = mcpServerViews.map((v) => v.id);
-    const dataSourceViewIds = dataSourceViews.map((v) => v.id);
-
-    // Find all skills that reference MCP server views or data source views from this space.
-    const [skillsWithMCPViews, skillsWithDataSourceViews] = await Promise.all([
-      SkillResource.listByMCPServerViewIds(auth, mcpServerViewIds),
-      SkillResource.listByDataSourceViewIds(auth, dataSourceViewIds),
-    ]);
-
-    // Merge and deduplicate skills.
-    const skillMap = new Map<number, SkillResource>();
-    for (const skill of [...skillsWithMCPViews, ...skillsWithDataSourceViews]) {
-      skillMap.set(skill.id, skill);
-    }
-    const skillsToUpdate = Array.from(skillMap.values());
-
-    // Create sets for quick lookup.
-    const mcpServerViewIdSet = new Set(mcpServerViewIds);
-    const dataSourceViewIdSet = new Set(dataSourceViewIds);
-
-    // Update each skill to remove MCP server views and attached knowledge from the deleted space.
-    // Note: updateSkill manages its own transaction, so we call it sequentially.
-    for (const skill of skillsToUpdate) {
-      // Filter out MCP server views from the deleted space.
-      const filteredMCPServerViews = skill.mcpServerViews.filter(
-        (v) => !mcpServerViewIdSet.has(v.id)
+  try {
+    await withTransaction(async (t) => {
+      // Soft delete all data source views.
+      await concurrentExecutor(
+        dataSourceViews,
+        async (view) => {
+          // Soft delete view, they will be hard deleted when the data source scrubbing job runs.
+          const res = await view.delete(auth, {
+            transaction: t,
+            hardDelete: false,
+          });
+          if (res.isErr()) {
+            throw res.error;
+          }
+        },
+        { concurrency: 4 }
       );
 
-      // Get attached knowledge and filter out those from the deleted space.
-      const attachedKnowledge = await skill.getAttachedKnowledge(auth);
-      const filteredAttachedKnowledge = attachedKnowledge.filter(
-        (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
+      // Soft delete data sources they will be hard deleted in the scrubbing job.
+      await concurrentExecutor(
+        dataSources,
+        async (ds) => {
+          const res = await ds.delete(auth, {
+            hardDelete: false,
+            transaction: t,
+          });
+          if (res.isErr()) {
+            throw res.error;
+          }
+        },
+        { concurrency: 4 }
       );
 
-      const previousComputedRequestedSpaceIds =
-        await SkillResource.computeRequestedSpaceIds(auth, {
-          mcpServerViews: skill.mcpServerViews,
-          attachedKnowledge,
-        });
-      const previousComputedRequestedSpaceIdSet = new Set(
-        previousComputedRequestedSpaceIds
-      );
-      const additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
-        (spaceId) =>
-          spaceId !== space.id &&
-          !previousComputedRequestedSpaceIdSet.has(spaceId)
+      // Soft delete the apps, which will be hard deleted in the scrubbing job.
+      await concurrentExecutor(
+        apps,
+        async (app) => {
+          const res = await app.delete(auth, {
+            hardDelete: false,
+            transaction: t,
+          });
+          if (res.isErr()) {
+            throw res.error;
+          }
+        },
+        { concurrency: 4 }
       );
 
-      // Compute the new requestedSpaceIds from the filtered tools and knowledge.
-      const computedRequestedSpaceIds =
-        await SkillResource.computeRequestedSpaceIds(auth, {
-          mcpServerViews: filteredMCPServerViews,
-          attachedKnowledge: filteredAttachedKnowledge,
-        });
-      const requestedSpaceIds = uniq([
-        ...computedRequestedSpaceIds,
-        ...additionalRequestedSpaceIds,
-      ]);
-
-      // Log an error if the deleted space is still in requestedSpaceIds.
-      if (requestedSpaceIds.includes(space.id)) {
-        logger.error(
-          {
-            skillId: skill.sId,
-            spaceId: space.sId,
-            workspaceId: auth.getNonNullableWorkspace().sId,
-          },
-          "Deleted space still present in skill requestedSpaceIds after filtering"
+      const webhookSourceViews = await WebhookSourcesViewResource.listBySpace(
+        auth,
+        space
+      );
+      for (const webhookSourceView of webhookSourceViews) {
+        // Delete triggers referencing this webhook source view first.
+        const triggers = await TriggerResource.listByWebhookSourceViewId(
+          auth,
+          webhookSourceView.id
         );
+        await concurrentExecutor(
+          triggers,
+          async (trigger) => {
+            const res = await trigger.delete(auth, { transaction: t });
+            if (res.isErr()) {
+              throw res.error;
+            }
+          },
+          { concurrency: 4 }
+        );
+
+        const res = await webhookSourceView.delete(auth, {
+          hardDelete: false,
+          transaction: t,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
       }
 
-      await skill.updateSkill(auth, {
-        name: skill.name,
-        agentFacingDescription: skill.agentFacingDescription,
-        userFacingDescription: skill.userFacingDescription,
-        instructions: skill.instructions,
-        icon: skill.icon,
-        mcpServerViews: filteredMCPServerViews,
-        attachedKnowledge: filteredAttachedKnowledge,
-        requestedSpaceIds,
-      });
-    }
+      // Get MCP server views and data source views from the space being deleted.
+      const mcpServerViews = await MCPServerViewResource.listBySpace(
+        auth,
+        space
+      );
+      const mcpServerViewIds = mcpServerViews.map((v) => v.id);
+      const dataSourceViewIds = dataSourceViews.map((v) => v.id);
 
-    // Update agents that have this space in their requestedSpaceIds.
-    const agentsWithSpace = await AgentConfigurationModel.findAll({
-      attributes: ["id", "requestedSpaceIds"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        status: "active",
-        requestedSpaceIds: {
-          [Op.contains]: [space.id],
-        },
-      },
-    });
+      // Find all skills that reference this space, either through an MCP server
+      // view / data source view located in it, or directly via requestedSpaceIds
+      // (a skill can request a space without holding a live view in it).
+      const [skillsWithMCPViews, skillsWithDataSourceViews, skillsWithSpace] =
+        await Promise.all([
+          SkillResource.listByMCPServerViewIds(auth, mcpServerViewIds),
+          SkillResource.listByDataSourceViewIds(auth, dataSourceViewIds),
+          SkillResource.listByRequestedSpaceId(auth, space.id),
+        ]);
 
-    await concurrentExecutor(
-      agentsWithSpace,
-      async (agent) => {
-        const newSpaceIds = agent.requestedSpaceIds.filter(
-          (id) => id !== space.id
+      // Merge and deduplicate skills.
+      const skillMap = new Map<number, SkillResource>();
+      for (const skill of [
+        ...skillsWithMCPViews,
+        ...skillsWithDataSourceViews,
+        ...skillsWithSpace,
+      ]) {
+        skillMap.set(skill.id, skill);
+      }
+      const skillsToUpdate = Array.from(skillMap.values());
+
+      // Create sets for quick lookup.
+      const mcpServerViewIdSet = new Set(mcpServerViewIds);
+      const dataSourceViewIdSet = new Set(dataSourceViewIds);
+
+      // Update each skill to remove MCP server views and attached knowledge from the deleted space.
+      // Note: updateSkill manages its own transaction, so we call it sequentially.
+      for (const skill of skillsToUpdate) {
+        // Filter out MCP server views from the deleted space.
+        const filteredMCPServerViews = skill.mcpServerViews.filter(
+          (v) => !mcpServerViewIdSet.has(v.id)
         );
-        const res = await updateAgentRequirements(
-          auth,
-          {
-            agentModelId: agent.id,
-            newSpaceIds,
-          },
-          { transaction: t }
+
+        // Get attached knowledge and filter out those from the deleted space.
+        const attachedKnowledge = await skill.getAttachedKnowledge(auth);
+        const filteredAttachedKnowledge = attachedKnowledge.filter(
+          (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
         );
 
-        if (res.isErr()) {
-          throw res.error;
+        const previousComputedRequestedSpaceIds =
+          await SkillResource.computeRequestedSpaceIds(auth, {
+            mcpServerViews: skill.mcpServerViews,
+            attachedKnowledge,
+          });
+        const previousComputedRequestedSpaceIdSet = new Set(
+          previousComputedRequestedSpaceIds
+        );
+        const additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
+          (spaceId) =>
+            spaceId !== space.id &&
+            !previousComputedRequestedSpaceIdSet.has(spaceId)
+        );
+
+        // Compute the new requestedSpaceIds from the filtered tools and knowledge.
+        const computedRequestedSpaceIds =
+          await SkillResource.computeRequestedSpaceIds(auth, {
+            mcpServerViews: filteredMCPServerViews,
+            attachedKnowledge: filteredAttachedKnowledge,
+          });
+        const requestedSpaceIds = uniq([
+          ...computedRequestedSpaceIds,
+          ...additionalRequestedSpaceIds,
+        ]);
+
+        // Log an error if the deleted space is still in requestedSpaceIds.
+        if (requestedSpaceIds.includes(space.id)) {
+          logger.error(
+            {
+              skillId: skill.sId,
+              spaceId: space.sId,
+              workspaceId: auth.getNonNullableWorkspace().sId,
+            },
+            "Deleted space still present in skill requestedSpaceIds after filtering"
+          );
         }
-      },
-      { concurrency: 4 }
+
+        await skill.updateSkill(auth, {
+          name: skill.name,
+          agentFacingDescription: skill.agentFacingDescription,
+          userFacingDescription: skill.userFacingDescription,
+          instructions: skill.instructions,
+          icon: skill.icon,
+          mcpServerViews: filteredMCPServerViews,
+          attachedKnowledge: filteredAttachedKnowledge,
+          requestedSpaceIds,
+        });
+      }
+
+      // Strip the space from every agent still referencing it, atomically with
+      // the space soft-delete. We query fresh here (inside the outer transaction,
+      // after updateSkill's inner transactions have committed) rather than a
+      // snapshot taken before the skill loop: cleaning a skill recomputes the
+      // requestedSpaceIds of every agent using it, so the set of agents still
+      // referencing this space can change during the loop. This catches both
+      // direct references and skill-driven references left over after the loop.
+      const agentsToClean = await AgentConfigurationModel.findAll({
+        attributes: ["id", "requestedSpaceIds"],
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "active",
+          requestedSpaceIds: { [Op.contains]: [space.id] },
+        },
+        transaction: t,
+      });
+
+      logger.info(
+        { ...logContext, agentCount: agentsToClean.length },
+        "softDeleteSpace: cleaning up agent requestedSpaceIds"
+      );
+
+      await concurrentExecutor(
+        agentsToClean,
+        async (agent) => {
+          const newSpaceIds = agent.requestedSpaceIds.filter(
+            (id) => id !== space.id
+          );
+          const res = await updateAgentRequirements(
+            auth,
+            { agentModelId: agent.id, newSpaceIds },
+            { transaction: t }
+          );
+
+          if (res.isErr()) {
+            throw res.error;
+          }
+        },
+        { concurrency: 4 }
+      );
+
+      // Finally, soft delete the space.
+      const res = await space.delete(auth, {
+        hardDelete: false,
+        transaction: t,
+      });
+      if (res.isErr()) {
+        throw res.error;
+      }
+    });
+  } catch (err) {
+    logger.error(
+      { ...logContext, error: err },
+      "softDeleteSpace: agent requestedSpaceIds cleanup failed — scrub workflow will NOT be launched"
     );
+    throw err;
+  }
 
-    // Finally, soft delete the space.
-    const res = await space.delete(auth, { hardDelete: false, transaction: t });
-    if (res.isErr()) {
-      throw res.error;
-    }
+  logger.info(
+    logContext,
+    "softDeleteSpace: agent requestedSpaceIds cleanup completed — launching scrub workflow"
+  );
 
-    await launchScrubSpaceWorkflow(auth, space);
-  });
+  await launchScrubSpaceWorkflow(auth, space);
+
+  logger.info(logContext, "softDeleteSpace: scrub workflow launched");
 
   if (space.isProject()) {
     void stopProjectTodoWorkflow({
@@ -345,19 +421,37 @@ export async function hardDeleteSpace(
     }
   }
 
+  // Delete the pod's sandbox egress allowlist file BEFORE touching the DB:
+  // if GCS refuses, we abort with everything intact, and the Temporal
+  // activity driving the scrub retries the whole deletion.
+  // (Owner-keyed, so it is not deleted with individual sandboxes.)
+  if (space.isProject()) {
+    const deleteOwnerPolicyRes = await deleteOwnerPolicy(auth, space.sId);
+    if (deleteOwnerPolicyRes.isErr()) {
+      return deleteOwnerPolicyRes;
+    }
+  }
+
   await withTransaction(async (t) => {
     // Delete all spaces groups.
-    for (const group of space.groups) {
-      // Skip deleting global groups for regular spaces.
-      if (space.isRegular() && group.isGlobal()) {
-        continue;
-      }
-
+    const groupReferences = space.groups.filter(
+      (group) => !space.isRegular() || !group.isGlobal()
+    );
+    const groups = await space.fetchGroupResources(auth, {
+      groupReferences,
+      transaction: t,
+    });
+    for (const group of groups) {
       const res = await group.delete(auth, { transaction: t });
       if (res.isErr()) {
         throw res.error;
       }
     }
+
+    await ConversationSelectedSpaceResource.deleteAllBySpace(auth, {
+      spaceModelId: space.id,
+      transaction: t,
+    });
 
     const res = await space.delete(auth, { hardDelete: true, transaction: t });
     if (res.isErr()) {
@@ -455,14 +549,27 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const membersGroup = await GroupResource.makeNew(
-      {
-        name: `${spaceKind === "project" ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${name}`,
-        workspaceId: owner.id,
-        kind: "regular",
-      },
-      { transaction: t }
-    );
+    let membersGroup: GroupResource;
+    try {
+      membersGroup = await GroupResource.makeNew(
+        {
+          name: `${spaceKind === "project" ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${name}`,
+          workspaceId: owner.id,
+          kind: "regular_auto",
+        },
+        { transaction: t }
+      );
+    } catch (err) {
+      if (err instanceof UniqueConstraintError) {
+        return new Err(
+          new DustError(
+            "space_already_exists",
+            "This pod name is already used."
+          )
+        );
+      }
+      throw err;
+    }
 
     let globalGroup: GroupResource | null = null;
     if (!isRestricted) {
@@ -509,6 +616,7 @@ export async function createSpaceAndGroup(
         {
           kind: space.isProject() ? "project_viewer" : "member",
           groupId: globalGroup.id,
+          groupKind: globalGroup.kind,
           vaultId: space.id,
           workspaceId: owner.id,
         },

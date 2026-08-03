@@ -9,6 +9,7 @@ import {
 import { writeSandboxEnvManifestFile } from "@app/lib/api/sandbox/env_manifest";
 import { SANDBOX_AGENT_PROXIED_UID } from "@app/lib/api/sandbox/image/types";
 import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
+import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import {
   type RootCommand,
   renderRootCommand,
@@ -105,13 +106,28 @@ async function runSuccessfulRootCommand(
   return new Ok(undefined);
 }
 
-export function mintEgressJwt(providerId: string, workspaceId: string): string {
+// ownerId is the sandbox owner's stable sId (conversation sId for
+// conversation sandboxes, space sId for pod sandboxes); it selects the owner
+// policy file `w/{wId}/sandboxes/{ownerId}.json`. sbId stays for identity and
+// log tracing. Older proxy builds ignore the ownerId claim. Object params on
+// purpose: the values are look-alike sIds and transposed positional args
+// would compile fine and fail silently.
+export function mintEgressJwt({
+  providerId,
+  workspaceId,
+  ownerId,
+}: {
+  providerId: string;
+  workspaceId: string;
+  ownerId: string;
+}): string {
   return jwt.sign(
     {
       iss: "dust-front",
       aud: "dust-egress-proxy",
       sbId: providerId,
       wId: workspaceId,
+      ownerId,
     },
     config.getEgressProxyJwtSecret(),
     {
@@ -123,20 +139,24 @@ export function mintEgressJwt(providerId: string, workspaceId: string): string {
 
 const INVALIDATION_JWT_TTL_SECONDS = 60;
 
+// The proxy derives the cache keys to evict from the claims: workspaceId
+// alone evicts the workspace policy (both layouts during the migration
+// window); workspaceId + ownerId evicts the owner policy. workspaceId is
+// required so the proxy-rejected `ownerId`-only shape is unrepresentable.
 export function mintEgressInvalidationJwt({
   workspaceId,
-  sandboxId,
+  ownerId,
 }: {
-  workspaceId?: string;
-  sandboxId?: string;
+  workspaceId: string;
+  ownerId?: string;
 }): string {
   return jwt.sign(
     {
       iss: "dust-front",
       aud: "dust-egress-proxy",
       action: "invalidate-policy",
-      ...(workspaceId ? { wId: workspaceId } : {}),
-      ...(sandboxId ? { sbId: sandboxId } : {}),
+      wId: workspaceId,
+      ...(ownerId ? { ownerId } : {}),
     },
     config.getEgressProxyJwtSecret(),
     {
@@ -228,7 +248,7 @@ function parseEgressHealthcheckOutput(
   };
 }
 
-export async function checkEgressForwarderHealth(
+async function checkEgressForwarderHealth(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<EgressHealthState, Error>> {
@@ -312,12 +332,19 @@ export async function checkEgressForwarderHealth(
 // the network policy chosen in getSandboxImage().
 export async function prepareSandboxEgressBeforeMount(
   auth: Authenticator,
-  sandbox: SandboxResource
+  sandbox: SandboxResource,
+  {
+    runtimeOwner,
+    egressPolicyOwnerId,
+  }: { runtimeOwner: SandboxRuntimeOwner; egressPolicyOwnerId: string }
 ): Promise<Result<void, Error>> {
   if (config.getSandboxDevUnrestrictedEgress()) {
     return teardownInSandboxEgressRedirect(auth, sandbox);
   }
-  return setupEgressForwarder(auth, sandbox);
+  return setupEgressForwarder(auth, sandbox, {
+    runtimeOwner,
+    egressPolicyOwnerId,
+  });
 }
 
 // Egress check that runs after GCS mounts on every exec: in prod, verifies
@@ -327,7 +354,15 @@ export async function prepareSandboxEgressBeforeMount(
 export async function ensureSandboxEgressOnExec(
   auth: Authenticator,
   sandbox: SandboxResource,
-  { wokeFromSleep }: { wokeFromSleep: boolean }
+  {
+    runtimeOwner,
+    egressPolicyOwnerId,
+    wokeFromSleep,
+  }: {
+    runtimeOwner: SandboxRuntimeOwner;
+    egressPolicyOwnerId: string;
+    wokeFromSleep: boolean;
+  }
 ): Promise<Result<void, Error>> {
   if (config.getSandboxDevUnrestrictedEgress()) {
     if (wokeFromSleep) {
@@ -345,7 +380,11 @@ export async function ensureSandboxEgressOnExec(
       },
       "Sandbox woke from sleep, re-running full egress setup"
     );
-    return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+    return setupEgressForwarder(auth, sandbox, {
+      restartExisting: true,
+      runtimeOwner,
+      egressPolicyOwnerId,
+    });
   }
 
   const healthResult = await checkEgressForwarderHealth(auth, sandbox);
@@ -364,7 +403,11 @@ export async function ensureSandboxEgressOnExec(
       { ...baseLogContext, event: "egress.health_fail" },
       "Sandbox egress forwarder port not listening, restarting"
     );
-    return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+    return setupEgressForwarder(auth, sandbox, {
+      restartExisting: true,
+      runtimeOwner,
+      egressPolicyOwnerId,
+    });
   }
 
   if (!resolverOk || !nftablesOk) {
@@ -403,7 +446,8 @@ export async function ensureSandboxEgressOnExec(
 // (see egress-nftables.sh in the image registry) so agent-proxied traffic
 // flows direct out of the (now permissive) E2B network, instead of being
 // redirected to the local forwarder port that has no listener in this mode.
-// Idempotent: safe to call on every fresh sandbox.
+// Keep the dedicated GCS broker drop in place: that credential boundary must
+// survive dev-unrestricted mode. Idempotent: safe to call on every fresh sandbox.
 export async function teardownInSandboxEgressRedirect(
   auth: Authenticator,
   sandbox: SandboxResource
@@ -419,8 +463,9 @@ export async function teardownInSandboxEgressRedirect(
   const command = rootCommand.unsafeShell(
     "/usr/bin/systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service >/dev/null 2>&1 || true; " +
       "/usr/sbin/nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
-      "/usr/sbin/nft delete table ip6 dust-egress >/dev/null 2>&1 || true",
-    "dev-only teardown needs best-effort shell fallbacks"
+      "/usr/sbin/nft delete table ip6 dust-egress >/dev/null 2>&1 || true; " +
+      "/usr/local/bin/dust-gcs-token-firewall.sh",
+    "dev-only teardown needs best-effort shell fallbacks and must retain the GCS broker UID drop"
   );
 
   return runSuccessfulRootCommand(auth, sandbox, command);
@@ -472,7 +517,20 @@ async function writeEgressTokenFile(
 export async function setupEgressForwarder(
   auth: Authenticator,
   sandbox: SandboxResource,
-  { restartExisting = false }: { restartExisting?: boolean } = {}
+  {
+    restartExisting = false,
+    runtimeOwner,
+    egressPolicyOwnerId,
+  }: {
+    restartExisting?: boolean;
+    runtimeOwner: SandboxRuntimeOwner;
+    // The egress POLICY owner, distinct from runtimeOwner: conversations
+    // inside a Pod share the Pod's policy file, so their policy owner is the
+    // Pod space's sId while runtimeOwner (env vars, log context, file system
+    // selection) stays the conversation. Derived by the lifecycle ready
+    // helpers.
+    egressPolicyOwnerId: string;
+  }
 ): Promise<Result<void, Error>> {
   const logContext = {
     event: "egress.setup",
@@ -491,10 +549,11 @@ export async function setupEgressForwarder(
     return new Err(normalizeError(error));
   }
 
-  const token = mintEgressJwt(
-    sandbox.providerId,
-    auth.getNonNullableWorkspace().sId
-  );
+  const token = mintEgressJwt({
+    providerId: sandbox.providerId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    ownerId: egressPolicyOwnerId,
+  });
 
   // Token, secrets, and manifest are written in order, each gated on the
   // previous succeeding, mirroring the original sequential flow exactly: any
@@ -526,7 +585,7 @@ export async function setupEgressForwarder(
 
   const manifestWriteResult = await traceSandboxStartupPhase(
     "egress.write_manifest",
-    () => writeSandboxEnvManifestFile(auth, sandbox)
+    () => writeSandboxEnvManifestFile(auth, sandbox, runtimeOwner)
   );
   if (manifestWriteResult.isErr()) {
     return manifestWriteResult;

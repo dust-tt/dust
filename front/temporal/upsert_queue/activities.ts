@@ -1,7 +1,9 @@
 import config from "@app/lib/api/config";
+import { decodeBuffer } from "@app/lib/api/files/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -10,18 +12,24 @@ import mainLogger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { Storage } from "@google-cloud/storage";
+import { ApplicationFailure } from "@temporalio/common";
 import { fromError } from "zod-validation-error";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
-function cleanUtf8Content(content: string): string {
-  // Early exit if no \uD sequences found.
-  if (!/[\uD800-\uDFFF]/.test(content)) {
-    return content;
+export function cleanUtf8Content(content: string): string {
+  // Strip null bytes (invalid in PostgreSQL text columns and JSON strings per RFC4627)
+  const withoutNullBytes = content.replace(/\0/g, "");
+
+  // This runs on JSON-serialized text, where surrogates appear as escaped `\uXXXX`
+  // sequences (not as actual surrogate code units). Early exit only when there is no
+  // escaped surrogate (\uD800-\uDFFF) to clean.
+  if (!/\\uD[89A-F][0-9A-F]{2}/i.test(withoutNullBytes)) {
+    return withoutNullBytes;
   }
   // Replace invalid high surrogates not followed by a low surrogate with a valid JSON string
   // Replace invalid low surrogates not preceded by a high surrogate with a valid JSON string
-  return content
+  return withoutNullBytes
     .replace(/\\uD[89AB][0-9A-F]{2}(?!\\uD[CDEF][0-9A-F]{2})/gi, "\\u003F")
     .replace(/(?<!\\uD[89AB][0-9A-F]{2})\\uD[CDEF][0-9A-F]{2}/gi, "\\u003F");
 }
@@ -30,6 +38,16 @@ export async function upsertDocumentActivity(
   upsertQueueId: string,
   enqueueTimestamp: number
 ) {
+  // Retryable failure with a fixed delay: Temporal parks the workflow and re-checks every 5
+  // minutes until the switch is disabled. Enqueues keep succeeding, in-flight upserts finish.
+  if (await KillSwitchResource.isKillSwitchEnabled("pause_upsert_queue")) {
+    throw ApplicationFailure.create({
+      message: "Upsert queue is paused (pause_upsert_queue kill switch).",
+      type: "upsert_queue_paused",
+      nextRetryDelay: "5 minutes",
+    });
+  }
+
   if (!DUST_UPSERT_QUEUE_BUCKET) {
     throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
   }
@@ -39,9 +57,11 @@ export async function upsertDocumentActivity(
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
-  const content = await bucket.file(`${upsertQueueId}.json`).download();
-
-  const upsertDocument = JSON.parse(cleanUtf8Content(content.toString()));
+  // GCS bucket.file().download() returns a `DownloadResponse = [Buffer]` — it's defined as a tuple with exactly one element.
+  // It's a quirk of the GCS SDK's callback-style API converted to a promise
+  // There's never more than one Buffer => destructuring is fine
+  const [fileBuffer] = await bucket.file(`${upsertQueueId}.json`).download();
+  const upsertDocument = JSON.parse(cleanUtf8Content(decodeBuffer(fileBuffer)));
 
   const documentItemValidation =
     EnqueueUpsertDocument.safeParse(upsertDocument);

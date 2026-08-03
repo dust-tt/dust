@@ -33,10 +33,9 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  AttachmentIcon,
+  Attachment01,
   Button,
-  ChevronRightIcon,
-  CloudArrowUpIcon,
+  ChevronRight,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -52,8 +51,9 @@ import {
   Icon,
   Input,
   LoadingBlock,
-  MagnifyingGlassIcon,
+  SearchMd,
   Spinner,
+  UploadCloud02,
 } from "@dust-tt/sparkle";
 import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -563,7 +563,7 @@ export const InputBarAttachmentsPicker = ({
         <DropdownMenuTrigger asChild>
           <Button
             variant={buttonVariant}
-            icon={AttachmentIcon}
+            icon={Attachment01}
             size={buttonSize}
             disabled={disabled || isLoading || isAnyToolFileUploading}
             isLoading={isLoading || isAnyToolFileUploading}
@@ -596,13 +596,15 @@ export const InputBarAttachmentsPicker = ({
             setIsOpen(true);
           }}
         >
-          <AttachmentIcon className="w-5 h-5" />
+          <Attachment01 className="w-5 h-5" />
           Attach knowledge
-          <ChevronRightIcon className="w-5 h-5" />
+          <ChevronRight className="w-5 h-5" />
         </DropdownMenuSubTrigger>
       )}
       <ContentWrapper
-        className="h-80 w-80 xs:h-96 xs:w-96"
+        // Radix ScrollArea wraps content in a content-height `display:table` div. Force it to fill
+        // the viewport so the empty-state's `h-full` centering resolves against the full height.
+        className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
         collisionPadding={15}
         onEscapeKeyDown={() => setIsOpen(false)}
         {...(type === "subdropdown"
@@ -618,7 +620,7 @@ export const InputBarAttachmentsPicker = ({
             <Input
               type="file"
               ref={fileInputRef}
-              style={{ display: "none" }}
+              containerClassName="hidden"
               onChange={async (e) => {
                 setIsOpen(false);
                 await fileUploaderService.handleFileChange(e);
@@ -649,7 +651,7 @@ export const InputBarAttachmentsPicker = ({
               }}
               button={
                 <Button
-                  icon={CloudArrowUpIcon}
+                  icon={UploadCloud02}
                   label="Upload File"
                   onClick={() => fileInputRef.current?.click()}
                   className="ml-4"
@@ -671,10 +673,10 @@ export const InputBarAttachmentsPicker = ({
 
               {availableSources.length === 0 && showLoader && (
                 <LoadingBlock
-                  // LoadingBlock defaults to dark:bg-muted-background-night, same as the menu
+                  // LoadingBlock defaults to, same as the menu
                   // surface, so skeletons read as invisible; match menu row hover contrast.
-                  // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-                  className="h-7 w-20 bg-muted-background dark:!bg-muted-night p-2 mt-2"
+
+                  className="h-7 w-20 bg-muted-background p-2 mt-2"
                 />
               )}
             </div>
@@ -686,10 +688,10 @@ export const InputBarAttachmentsPicker = ({
                   (_, i) => (
                     <LoadingBlock
                       key={i}
-                      // LoadingBlock defaults to dark:bg-muted-background-night, same as the menu
+                      // LoadingBlock defaults to, same as the menu
                       // surface, so skeletons read as invisible; match menu row hover contrast.
-                      // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-                      className="h-11 w-full bg-muted-background dark:border-border-night dark:!bg-muted-night"
+
+                      className="h-11 w-full bg-muted-background"
                     />
                   )
                 )}
@@ -785,7 +787,7 @@ export const InputBarAttachmentsPicker = ({
               </>
             )}
             {availableSources.length === 0 && !showLoader && (
-              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
                 No results found
               </div>
             )}
@@ -800,7 +802,7 @@ export const InputBarAttachmentsPicker = ({
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
-              <Icon visual={MagnifyingGlassIcon} size="sm" />
+              <Icon visual={SearchMd} size="sm" />
               Search knowledge
             </div>
           </div>

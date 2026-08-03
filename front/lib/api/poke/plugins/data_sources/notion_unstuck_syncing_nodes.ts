@@ -20,6 +20,7 @@ export const notion = createPlugin({
           "If provided, sets parentsLastUpdatedAt to this date instead of null. Leave empty to reset to null (reprocess all nodes).",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, dataSource) => {
     if (!dataSource) {

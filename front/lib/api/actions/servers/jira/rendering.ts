@@ -270,7 +270,7 @@ export function renderIssue(issue: JiraIssue, comments: JiraComment[]): string {
  * Converts Atlassian Document Format (ADF) to Markdown.
  * ADF is a JSON-based document format used by Jira and Confluence.
  */
-export function renderADFToMarkdown(
+function renderADFToMarkdown(
   adf: { content?: ADFContentNode[] } | null | undefined
 ): string {
   if (!adf || !adf.content) {

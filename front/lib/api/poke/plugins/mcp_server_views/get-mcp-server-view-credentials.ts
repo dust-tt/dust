@@ -1,10 +1,8 @@
-import config from "@app/lib/api/config";
-import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
+import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_token";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const getMcpServerViewAccessTokenPlugin = createPlugin({
@@ -26,6 +24,7 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
       },
     },
     redactResult: true,
+    requiredRoles: ["engineering"],
   },
   isApplicableTo: (auth, resource) => {
     // Only applicable if the MCP server view exists
@@ -94,9 +93,7 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
         );
       }
 
-      const tokenRes = await getOAuthConnectionAccessToken({
-        config: config.getOAuthAPIConfig(),
-        logger,
+      const tokenRes = await getMCPConnectionAccessToken(auth, {
         connectionId: connection.connectionId,
       });
 
@@ -121,14 +118,16 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
 
         const remoteServer = await RemoteMCPServerResource.findByPk(
           auth,
-          mcpServerView.remoteMCPServerId
+          mcpServerView.remoteMCPServerId,
+          { includeHeavyAttributes: ["sharedSecret"] }
         );
 
         if (!remoteServer) {
           return new Err(new Error("Remote MCP server not found."));
         }
 
-        if (!remoteServer.sharedSecret) {
+        const sharedSecret = remoteServer.getSharedSecret();
+        if (!sharedSecret) {
           return new Err(
             new Error(
               "No credentials found: this remote MCP server has no OAuth connection or API key configured."
@@ -138,7 +137,7 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
 
         return new Ok({
           display: "text",
-          value: remoteServer.sharedSecret,
+          value: sharedSecret,
         });
       }
 

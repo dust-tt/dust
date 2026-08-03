@@ -1,18 +1,23 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
-  create_schedule: {
-    description: "Create a schedule that runs this agent at specified times.",
+export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = [
+  {
+    name: "create_schedule",
+    description:
+      "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. Pass podId to attach the schedule to a Pod so its runs land there. Limit: 20 schedule creations per user per day.",
     schema: {
       name: z
         .string()
         .max(255)
         .describe(
           "A short, descriptive name for the schedule (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'. Schedule name MUST be unique."
+        ),
+      podId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional Pod ID (sId) to attach this schedule to, so its runs land in that Pod. Omit for a schedule not tied to a Pod."
         ),
       schedule: z
         .string()
@@ -37,17 +42,24 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       running: "Creating schedule",
       done: "Create schedule",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
-  list_schedules: {
-    description: "List all schedules created for this agent.",
+  {
+    name: "list_schedules",
+    description:
+      "List all schedules for this agent and the current user. Each entry shows the Pod it is attached to, if any.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing schedules",
       done: "List schedules",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  disable_schedule: {
+  {
+    name: "disable_schedule",
     description: "Disable a schedule.",
     schema: {
       scheduleId: z
@@ -59,14 +71,12 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       running: "Disabling schedule",
       done: "Disable schedule",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-});
-
-type SchedulesManagementToolKey =
-  keyof typeof SCHEDULES_MANAGEMENT_TOOLS_METADATA;
+] as const;
 
 export const SCHEDULES_MANAGEMENT_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "schedules_management" as const,
     version: "1.0.0",
@@ -74,28 +84,6 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     authorization: null,
     icon: "ActionTimeIcon" as const,
     documentationUrl: null,
-    instructions:
-      "Schedules are user-specific: each user can only view and manage their own schedules. " +
-      "When a schedule triggers, it runs this agent with the specified prompt. " +
-      "Limit: 20 schedule creations per user per day.",
   },
-  tools: (
-    Object.keys(
-      SCHEDULES_MANAGEMENT_TOOLS_METADATA
-    ) as SchedulesManagementToolKey[]
-  ).map((key) => ({
-    name: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].name,
-    description: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].description,
-    inputSchema: zodToJsonSchema(
-      z.object(SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].schema)
-    ) as JSONSchema,
-    displayLabels: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    (
-      Object.keys(
-        SCHEDULES_MANAGEMENT_TOOLS_METADATA
-      ) as SchedulesManagementToolKey[]
-    ).map((key) => [key, SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].stake])
-  ),
+  tools: SCHEDULES_MANAGEMENT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

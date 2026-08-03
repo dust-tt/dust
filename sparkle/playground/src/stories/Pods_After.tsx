@@ -1,17 +1,17 @@
 import {
-  ArchiveIcon,
-  AttachmentIcon,
+  Archive,
+  Attachment01,
   Avatar,
-  BellIcon,
-  BoltOffIcon,
+  Bell01,
+  ZapOff,
   Breadcrumbs,
   Button,
   Card,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
-  Cog6ToothIcon,
-  ContactsUserIcon,
+  MessageCircle01,
+  MessageChatSquare,
+  CheckCircle,
+  Settings01,
+  UserSquare,
   Dialog,
   DialogContent,
   DropdownMenu,
@@ -26,33 +26,32 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeIcon,
-  HeartIcon,
-  InboxIcon,
-  LightbulbIcon,
-  LinkIcon,
-  LogoutIcon,
-  MoreIcon,
+  Eye,
+  Heart,
+  Inbox01,
+  Lightbulb04,
+  Link01,
+  LogOut01,
+  DotsHorizontal,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
-  PencilSquareIcon,
-  PlanetIcon,
-  PlusIcon,
-  PuzzleIcon,
+  Edit04,
+  Planet,
+  Plus,
+  PuzzlePiece01,
   ScrollArea,
   ScrollBar,
   SearchInput,
   SlackLogo,
-  SpaceClosedIcon,
-  SpaceOpenIcon,
-  StarIcon,
-  StarStrokeIcon,
-  TrashIcon,
-  UserGroupIcon,
-  UserIcon,
-  XMarkIcon,
+  SpaceClosed,
+  SpaceOpen,
+  Star01,
+  Trash01,
+  Users01,
+  User01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -566,16 +565,16 @@ export default function Pods_After() {
         contextMenuItems: [
           {
             label: "Start a conversation with document",
-            icon: ChatBubbleBottomCenterTextIcon,
+            icon: MessageCircle01,
           },
           {
             label: "Show in files",
-            icon: EyeIcon,
+            icon: Eye,
             onClick: () => handleShowFileInFiles(option.value),
           },
           {
             label: "Remove from topbar",
-            icon: XMarkIcon,
+            icon: XClose,
             variant: "warning",
             onClick: () => handlePodRemoveTab(option.value),
           },
@@ -706,7 +705,7 @@ export default function Pods_After() {
       <>
         <DropdownMenuItem
           label={isStarred ? "Unstar" : "Star"}
-          icon={isStarred ? StarStrokeIcon : StarIcon}
+          icon={isStarred ? Star01 : Star01}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -716,17 +715,14 @@ export default function Pods_After() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           label="Rename"
-          icon={PencilSquareIcon}
+          icon={Edit04}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
           }}
         />
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger
-            icon={ContactsUserIcon}
-            label="Participant list"
-          />
+          <DropdownMenuSubTrigger icon={UserSquare} label="Participant list" />
           <DropdownMenuPortal>
             <DropdownMenuSubContent>
               {participants.length > 0 ? (
@@ -763,7 +759,7 @@ export default function Pods_After() {
                   />
                 ))
               ) : (
-                <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                   No participants
                 </div>
               )}
@@ -772,7 +768,7 @@ export default function Pods_After() {
         </DropdownMenuSub>
         <DropdownMenuItem
           label="Delete"
-          icon={TrashIcon}
+          icon={Trash01}
           variant="warning"
           onClick={(e) => {
             e.preventDefault();
@@ -804,12 +800,12 @@ export default function Pods_After() {
         <Button
           size="sm"
           variant="ghost-secondary"
-          icon={AttachmentIcon}
+          icon={Attachment01}
           isSelect
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost-secondary" icon={MoreIcon} />
+            <Button size="sm" variant="ghost-secondary" icon={DotsHorizontal} />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             {renderConversationMenuItems(conversation, isStarred)}
@@ -831,7 +827,7 @@ export default function Pods_After() {
       <NavigationListItem
         key={space.id}
         label={space.name}
-        icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
+        icon={isRestricted ? SpaceOpen : SpaceClosed}
         selected={p2View.kind === "space" && p2View.spaceId === space.id}
         count={count}
         hasActivity={hasActivity}
@@ -843,7 +839,7 @@ export default function Pods_After() {
             <DropdownMenuContent>
               <DropdownMenuItem
                 label={isStarred ? "Unstar" : "Star"}
-                icon={isStarred ? StarStrokeIcon : StarIcon}
+                icon={isStarred ? Star01 : Star01}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -854,14 +850,14 @@ export default function Pods_After() {
               <DropdownMenuLabel label="My settings" />
               <DropdownMenuItem
                 label="Leave"
-                icon={XMarkIcon}
+                icon={XClose}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                 }}
               />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger label="Notifications" icon={BellIcon} />
+                <DropdownMenuSubTrigger label="Notifications" icon={Bell01} />
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup
                     value={spaceNotificationPreferences.get(space.id) ?? "all"}
@@ -890,21 +886,18 @@ export default function Pods_After() {
               <DropdownMenuLabel label="Pod" />
               <DropdownMenuItem
                 label="Rename"
-                icon={PencilSquareIcon}
+                icon={Edit04}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                 }}
               />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger
-                  label="Member list"
-                  icon={ContactsUserIcon}
-                />
+                <DropdownMenuSubTrigger label="Member list" icon={UserSquare} />
                 <DropdownMenuSubContent>
                   <DropdownMenuItem
                     label="Manage members"
-                    icon={UserGroupIcon}
+                    icon={Users01}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -933,7 +926,7 @@ export default function Pods_After() {
               </DropdownMenuSub>
               <DropdownMenuItem
                 label="Archive"
-                icon={ArchiveIcon}
+                icon={Archive}
                 variant="warning"
                 onClick={(e) => {
                   e.preventDefault();
@@ -944,7 +937,7 @@ export default function Pods_After() {
               <DropdownMenuLabel label="Share" />
               <DropdownMenuItem
                 label="Copy link"
-                icon={LinkIcon}
+                icon={Link01}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -964,10 +957,8 @@ export default function Pods_After() {
 
   if (!user) {
     return (
-      <div className="s-flex s-h-screen s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
-        <p className="s-text-foreground dark:s-text-foreground-night">
-          Loading…
-        </p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-foreground">Loading…</p>
       </div>
     );
   }
@@ -1021,7 +1012,7 @@ export default function Pods_After() {
       );
     if (p2View.kind === "templates")
       return (
-        <div className="s-h-full s-overflow-auto">
+        <div className="h-full overflow-auto">
           <TemplateSelection
             onTemplateClick={(t) => setSelectedTemplateForBuilder(t)}
           />
@@ -1100,15 +1091,11 @@ export default function Pods_After() {
       );
     // welcome
     return (
-      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
-        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
-          <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-            {greeting}
-          </div>
+      <div className="flex h-full w-full items-center justify-center bg-background">
+        <div className="flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
+          <div className="heading-2xl text-foreground">{greeting}</div>
           <InputBar placeholder="Ask a question" />
-          <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-            Chat with…
-          </div>
+          <div className="heading-lg text-foreground">Chat with…</div>
         </div>
       </div>
     );
@@ -1137,11 +1124,11 @@ export default function Pods_After() {
       );
     if (p3View.kind === "citation")
       return (
-        <div className="s-flex s-h-full s-flex-col s-gap-3 s-p-4">
-          <p className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+        <div className="flex h-full flex-col gap-3 p-4">
+          <p className="text-sm font-medium text-foreground">
             {p3View.citation.title}
           </p>
-          <div className="s-flex-1 s-rounded-lg s-border s-border-separator s-bg-muted-background s-p-4 s-text-sm s-text-muted-foreground dark:s-border-separator-night dark:s-bg-muted-background-night dark:s-text-muted-foreground-night">
+          <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
             Document preview placeholder
           </div>
         </div>
@@ -1152,11 +1139,9 @@ export default function Pods_After() {
   // ── P4 content ────────────────────────────────────────────────────────────
   const p4Label = p4Citation?.title ?? "Attachment";
   const p4Content = p4Citation ? (
-    <div className="s-flex s-h-full s-flex-col s-gap-3 s-p-4">
-      <p className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
-        {p4Citation.title}
-      </p>
-      <div className="s-flex-1 s-rounded-lg s-border s-border-separator s-bg-muted-background s-p-4 s-text-sm s-text-muted-foreground dark:s-border-separator-night dark:s-bg-muted-background-night dark:s-text-muted-foreground-night">
+    <div className="flex h-full flex-col gap-3 p-4">
+      <p className="text-sm font-medium text-foreground">{p4Citation.title}</p>
+      <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
         Document preview placeholder
       </div>
     </div>
@@ -1191,7 +1176,7 @@ export default function Pods_After() {
         isRounded: true as const,
       }));
     return (
-      <div className="s-flex s-items-center s-gap-2">
+      <div className="flex items-center gap-2">
         {memberAvatars.length > 0 && (
           <Avatar.Stack
             avatars={memberAvatars}
@@ -1230,9 +1215,9 @@ export default function Pods_After() {
             {
               value: "conversations",
               label: "Conversations",
-              icon: ChatBubbleLeftRightIcon,
+              icon: MessageChatSquare,
             },
-            { value: "tasks", label: "Tasks", icon: CheckCircleIcon },
+            { value: "tasks", label: "Tasks", icon: CheckCircle },
           ]}
         />
       );
@@ -1298,34 +1283,34 @@ export default function Pods_After() {
       value={activeTab}
       onValueChange={setActiveTab}
       options={[
-        { value: "chat", label: "Chat", icon: ChatBubbleLeftRightIcon },
-        { value: "spaces", label: "Spaces", icon: PlanetIcon },
-        { value: "admin", icon: Cog6ToothIcon },
+        { value: "chat", label: "Chat", icon: MessageChatSquare },
+        { value: "spaces", label: "Spaces", icon: Planet },
+        { value: "admin", icon: Settings01 },
       ]}
     />
   );
 
   // ── Sidebar (Nav) content ─────────────────────────────────────────────────
   const navContent = (
-    <div className="s-flex s-min-h-0 s-flex-1 s-flex-col s-bg-muted-background dark:s-bg-muted-background-night">
+    <div className="flex min-h-0 flex-1 flex-col bg-muted-background">
       {/* ── Chat tab ── */}
       {activeTab === "chat" && (
-        <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-          <ScrollArea className="s-flex-1">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ScrollArea className="flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
-            <div className="s-flex s-gap-2 s-p-2">
+            <div className="flex gap-2 p-2">
               <SearchInput
                 name="search"
                 value={searchText}
                 onChange={setSearchText}
                 placeholder="Search"
-                className="s-flex-1"
+                className="flex-1"
               />
               <Button
                 variant="primary"
                 tooltip="New Conversation"
                 size="sm"
-                icon={ChatBubbleBottomCenterTextIcon}
+                icon={MessageCircle01}
                 label="New"
                 onClick={() => {
                   setP2View({ kind: "welcome" });
@@ -1342,7 +1327,7 @@ export default function Pods_After() {
                   <Button
                     variant="ghost-secondary"
                     size="sm"
-                    icon={MoreIcon}
+                    icon={DotsHorizontal}
                     aria-label="More options"
                     onClick={(e) => {
                       e.preventDefault();
@@ -1354,12 +1339,12 @@ export default function Pods_After() {
                   <DropdownMenuLabel label="Agents" />
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger
-                      icon={PlusIcon}
+                      icon={Plus}
                       label="Build an agent"
                     />
                     <DropdownMenuSubContent>
                       <DropdownMenuItem
-                        icon={PencilSquareIcon}
+                        icon={Edit04}
                         label="From scratch"
                         onClick={(e) => {
                           e.preventDefault();
@@ -1367,7 +1352,7 @@ export default function Pods_After() {
                         }}
                       />
                       <DropdownMenuItem
-                        icon={LightbulbIcon}
+                        icon={Lightbulb04}
                         label="Browse templates"
                         onClick={(e) => {
                           e.preventDefault();
@@ -1381,7 +1366,7 @@ export default function Pods_After() {
                   </DropdownMenuSub>
                   <DropdownMenuItem
                     label="Manage agents"
-                    icon={ContactsUserIcon}
+                    icon={UserSquare}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1391,7 +1376,7 @@ export default function Pods_After() {
                   <DropdownMenuLabel label="Skills" />
                   <DropdownMenuItem
                     label="New skill"
-                    icon={PlusIcon}
+                    icon={Plus}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1399,7 +1384,7 @@ export default function Pods_After() {
                   />
                   <DropdownMenuItem
                     label="Manage skills"
-                    icon={PuzzleIcon}
+                    icon={PuzzlePiece01}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1409,7 +1394,7 @@ export default function Pods_After() {
                   <DropdownMenuLabel label="Conversations" />
                   <DropdownMenuItem
                     label="Clear conversation history"
-                    icon={TrashIcon}
+                    icon={Trash01}
                     variant="warning"
                     onClick={(e) => {
                       e.preventDefault();
@@ -1420,12 +1405,12 @@ export default function Pods_After() {
               </DropdownMenu>
             </div>
 
-            <NavigationList className="s-px-2">
+            <NavigationList className="px-2">
               {!searchText.trim() && (
                 <>
                   <NavigationListItem
                     label="Inbox"
-                    icon={InboxIcon}
+                    icon={Inbox01}
                     selected={p2View.kind === "inbox"}
                     count={unreadCount > 0 ? unreadCount : undefined}
                     onClick={() => {
@@ -1437,7 +1422,7 @@ export default function Pods_After() {
                   />
                   <NavigationListItem
                     label="My Pod"
-                    icon={UserIcon}
+                    icon={User01}
                     selected={p2View.kind === "myPod"}
                     onClick={() => {
                       setP2View({ kind: "myPod" });
@@ -1459,7 +1444,7 @@ export default function Pods_After() {
                     <NavigationListItem
                       key={c.id}
                       label={c.title}
-                      icon={ChatBubbleBottomCenterTextIcon}
+                      icon={MessageCircle01}
                       selected={isConversationSidebarSelected(c.id)}
                       moreMenu={getConversationMoreMenu(c)}
                       onClick={() =>
@@ -1478,7 +1463,7 @@ export default function Pods_After() {
                     <>
                       <Button
                         size="xmini"
-                        icon={PlusIcon}
+                        icon={Plus}
                         variant="ghost-secondary"
                         onClick={(e) => {
                           e.preventDefault();
@@ -1490,7 +1475,7 @@ export default function Pods_After() {
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="xmini"
-                            icon={MoreIcon}
+                            icon={DotsHorizontal}
                             variant="ghost-secondary"
                             onClick={(e) => {
                               e.preventDefault();
@@ -1500,7 +1485,7 @@ export default function Pods_After() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           <DropdownMenuItem
-                            icon={PlusIcon}
+                            icon={Plus}
                             label="Create"
                             onClick={(e) => {
                               e.preventDefault();
@@ -1524,7 +1509,7 @@ export default function Pods_After() {
                     <>
                       <Button
                         size="xmini"
-                        icon={ChatBubbleLeftRightIcon}
+                        icon={MessageChatSquare}
                         variant="ghost-secondary"
                         tooltip="New Conversation"
                         onClick={(e) => {
@@ -1536,7 +1521,7 @@ export default function Pods_After() {
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="xmini"
-                            icon={MoreIcon}
+                            icon={DotsHorizontal}
                             variant="ghost-secondary"
                             onClick={(e) => {
                               e.preventDefault();
@@ -1547,7 +1532,7 @@ export default function Pods_After() {
                         <DropdownMenuContent>
                           <DropdownMenuItem
                             label="Hide triggered"
-                            icon={BoltOffIcon}
+                            icon={ZapOff}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1556,7 +1541,7 @@ export default function Pods_After() {
                           <DropdownMenuItem
                             label="Clear history"
                             variant="warning"
-                            icon={TrashIcon}
+                            icon={Trash01}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1584,42 +1569,40 @@ export default function Pods_After() {
       )}
 
       {activeTab === "spaces" && (
-        <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">
             Spaces — TBD
           </div>
         </div>
       )}
       {activeTab === "admin" && (
-        <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">
             Admin — TBD
           </div>
         </div>
       )}
 
       {/* Bottom bar */}
-      <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-pl-1 s-pr-2 dark:s-border-border-night">
+      <div className="flex h-14 items-center justify-between gap-2 border-t border-border pl-1 pr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card
               size="xs"
               onClick={(e) => e.preventDefault()}
-              className="s-p-1"
-              containerClassName="s-flex-1 s-min-w-0"
+              className="p-1"
+              containerClassName="flex-1 min-w-0"
             >
-              <div className="s-flex s-min-w-0 s-items-center s-gap-2 s-pr-1">
+              <div className="flex min-w-0 items-center gap-2 pr-1">
                 <Avatar
                   name={user.fullName}
                   visual={user.portrait}
                   size="sm"
                   isRounded
                 />
-                <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-sm s-text-foreground dark:s-text-foreground-night">
-                  <span className="s-heading-sm s-truncate">
-                    {user.fullName}
-                  </span>
-                  <span className="-s-mt-0.5 s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="flex min-w-0 grow flex-col text-sm text-foreground">
+                  <span className="heading-sm truncate">{user.fullName}</span>
+                  <span className="-mt-0.5 truncate text-xs text-muted-foreground">
                     ACME
                   </span>
                 </div>
@@ -1629,7 +1612,7 @@ export default function Pods_After() {
           <DropdownMenuContent>
             <DropdownMenuItem
               label="Profile"
-              icon={UserIcon}
+              icon={User01}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1640,19 +1623,19 @@ export default function Pods_After() {
             />
             <DropdownMenuItem
               label="Administration"
-              icon={Cog6ToothIcon}
+              icon={Settings01}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
               }}
             />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
+              <DropdownMenuSubTrigger icon={Heart} label="Help & Support" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem
                     label="Quickstart Guide"
-                    icon={LightbulbIcon}
+                    icon={Lightbulb04}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1672,7 +1655,7 @@ export default function Pods_After() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               label="Signout"
-              icon={LogoutIcon}
+              icon={LogOut01}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1689,10 +1672,7 @@ export default function Pods_After() {
       <PanelLayout>
         <PanelLayoutNav topBarLeft={navTopBar}>
           {(onNavClose) => (
-            <div
-              className="s-flex s-min-h-0 s-flex-1 s-flex-col"
-              onClick={onNavClose}
-            >
+            <div className="flex min-h-0 flex-1 flex-col" onClick={onNavClose}>
               {navContent}
             </div>
           )}
@@ -1748,7 +1728,7 @@ export default function Pods_After() {
       >
         <DialogContent
           size="full"
-          className="s-flex s-h-full s-max-h-full s-overflow-hidden s-rounded-none s-p-0"
+          className="flex h-full max-h-full overflow-hidden rounded-none p-0"
         >
           {selectedTemplateForBuilder && (
             <AgentBuilderView

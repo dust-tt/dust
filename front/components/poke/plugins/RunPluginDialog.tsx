@@ -13,17 +13,54 @@ import {
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   Button,
+  Clipboard,
+  ClipboardCheck,
   cn,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  IconButton,
   Markdown,
   Spinner,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
+
+function pluginResponseToCopyText(result: PluginResponse): string {
+  switch (result.display) {
+    case "json":
+      return JSON.stringify(result.value, null, 2);
+    case "markdown":
+    case "text":
+      return result.value;
+    case "textWithLink":
+      return `${result.value}\n${result.linkText}: ${result.link}`;
+  }
+}
+
+function PluginResultHeader({
+  isCopied,
+  onCopy,
+}: {
+  isCopied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="mb-2 flex items-center justify-between">
+      <div className="font-medium">Result:</div>
+      <IconButton
+        tooltip={isCopied ? "Copied!" : "Copy result"}
+        icon={isCopied ? ClipboardCheck : Clipboard}
+        size="xs"
+        variant="outline"
+        onClick={onCopy}
+      />
+    </div>
+  );
+}
 
 type ExecutePluginDialogProps = {
   onClose: () => void;
@@ -60,6 +97,14 @@ export function RunPluginDialog({
     pluginResourceTarget,
   });
 
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  const handleCopyResult = useCallback(() => {
+    if (result) {
+      void copyToClipboard(pluginResponseToCopyText(result));
+    }
+  }, [copyToClipboard, result]);
+
   const handleClose = () => {
     setError(null);
     setResult(null);
@@ -86,16 +131,16 @@ export function RunPluginDialog({
       <DialogContent
         className={cn(
           "w-auto",
-          "bg-muted-background dark:bg-muted-background-night",
+          "bg-muted-background",
           "sm:min-w-[600px] sm:max-w-[1000px]",
           "overflow-visible"
         )}
       >
-        <DialogHeader className="bg-structure-100 dark:bg-structure-100-night rounded-t-2xl pb-4">
+        <DialogHeader className="bg-structure-100 rounded-t-2xl pb-4">
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-2 px-5 py-4 text-foreground dark:text-foreground-night">
+        <div className="flex flex-col gap-2 px-5 py-4 text-foreground">
           {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
             <Spinner />
           ) : !manifest ? (
@@ -140,7 +185,10 @@ export function RunPluginDialog({
               )}
               {result && result.display === "json" && (
                 <div className="mb-4 mt-4">
-                  <div className="mb-2 font-medium">Result:</div>
+                  <PluginResultHeader
+                    isCopied={isCopied}
+                    onCopy={handleCopyResult}
+                  />
                   <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
                     <pre className="copy-sm whitespace-pre-wrap break-words font-mono text-gray-200">
                       {JSON.stringify(result.value, null, 2)}
@@ -150,11 +198,14 @@ export function RunPluginDialog({
               )}
               {result && result.display === "markdown" && (
                 <div className="mb-4 mt-4">
-                  <div className="mb-2 font-medium">Result:</div>
+                  <PluginResultHeader
+                    isCopied={isCopied}
+                    onCopy={handleCopyResult}
+                  />
                   <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
                     <Markdown
                       content={result.value}
-                      textColor="text-slate-500 dark:text-foreground-night"
+                      textColor="text-slate-500"
                     />
                   </div>
                 </div>
@@ -164,6 +215,7 @@ export function RunPluginDialog({
                 manifest={manifest}
                 asyncArgs={asyncArgs}
                 onSubmit={onSubmit}
+                pluginResourceTarget={pluginResourceTarget}
               />
               {manifest.warning && (
                 <PokeAlert variant="destructive">

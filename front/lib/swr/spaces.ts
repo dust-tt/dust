@@ -3,6 +3,7 @@ import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
+import type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/members";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
@@ -10,54 +11,60 @@ import {
   emptyArray,
   getErrorFromResponse,
   useFetcher,
-  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
+  GetDataSourceViewResponseBody,
+  GetSpaceDataSourceViewsResponseBody,
+} from "@app/types/api/data_source_view";
+import type { PostSpaceDataSourceResponseBody } from "@app/types/api/data_sources";
+import type { SpacesLookupResponseBody } from "@app/types/api/projects/list";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type {
   DataSourceContentNode,
   PostWorkspaceSearchResponseBody,
-} from "@app/pages/api/w/[wId]/search";
-import type {
-  GetSpacesResponseBody,
-  PostSpaceRequestBodyType,
-  PostSpacesResponseBody,
-} from "@app/pages/api/w/[wId]/spaces";
+} from "@app/types/api/search";
 import type {
   GetSpaceResponseBody,
+  GetSpacesResponseBody,
   PatchSpaceResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
-import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
-import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
-import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
-import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+  PostSpaceRequestBodyType,
+  PostSpacesResponseBody,
+} from "@app/types/api/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import { isString } from "@app/types/shared/utils/general";
 import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
-import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
+import { useMemo } from "react";
+import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 export function useSpaces({
   workspaceId,
   kinds,
   disabled,
+  swrOptions,
 }: {
   workspaceId: string;
   kinds: SpaceKind[] | "all";
   disabled?: boolean;
+  swrOptions?: SWRConfiguration;
 }) {
   const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
+  const queryParams =
+    kinds === "all"
+      ? ""
+      : `?${kinds
+          .toSorted()
+          .map((kind) => `kind=${encodeURIComponent(kind)}`)
+          .join("&")}`;
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces`,
+  const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces${queryParams}`,
     spacesFetcher,
-    { disabled }
+    { ...swrOptions, disabled }
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -68,13 +75,13 @@ export function useSpaces({
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.spaces, isString(kinds) ? kinds : kinds.toSorted().join(",")]);
+  }, [data?.spaces, kinds === "all" ? kinds : kinds.toSorted().join(",")]);
 
   return {
     spaces,
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
-    mutate,
+    mutate: mutateRegardlessOfQueryParams,
   };
 }
 
@@ -168,8 +175,19 @@ export function useSpaceInfo({
       }
     );
 
+  // A partial cache entry can lack `members`; normalize it so consumers don't
+  // crash on `members.filter`/`.length`.
+  const spaceInfo = useMemo(() => {
+    if (!data) {
+      return null;
+    }
+    return data.space.members
+      ? data.space
+      : { ...data.space, members: emptyArray<SpaceUserType>() };
+  }, [data]);
+
   return {
-    spaceInfo: data ? data.space : null,
+    spaceInfo,
     canWriteInSpace: data?.space.canWrite ?? false,
     canReadInSpace: data?.space.isMember ?? false,
     mutateSpaceInfo: mutate,
@@ -851,89 +869,5 @@ export function useSpacesSearch({
     nextPageCursor: data?.nextPageCursor || null,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     resultsCount: data?.resultsCount || null,
-  };
-}
-
-export function useSpacesSearchWithInfiniteScroll({
-  disabled = false,
-  includeDataSources = false,
-  nodeIds,
-  owner,
-  search,
-  spaceIds,
-  viewType,
-  pageSize = 25,
-  allowAdminSearch = false,
-  parentId,
-}: SpacesSearchParams & { pageSize?: number }): {
-  isSearchLoading: boolean;
-  isSearchError: boolean;
-  isSearchValidating: boolean;
-  searchResultNodes: DataSourceContentNode[];
-  nextPage: () => Promise<void>;
-  hasMore: boolean;
-} {
-  const { fetcherWithBody } = useFetcher();
-  const body = {
-    query: search,
-    viewType,
-    nodeIds,
-    spaceIds,
-    includeDataSources,
-    limit: pageSize,
-    allowAdminSearch,
-    parentId,
-  };
-
-  // Only perform a query if we have a valid search
-  const url =
-    (search && search.length >= 1) || nodeIds
-      ? `/api/w/${owner.sId}/search`
-      : null;
-
-  const { data, error, setSize, size, isValidating, isLoading } =
-    useSWRInfiniteWithDefaults(
-      (_, previousPageData) => {
-        if (!url || disabled) {
-          return null;
-        }
-
-        const params = new URLSearchParams();
-
-        params.append("limit", pageSize.toString());
-
-        if (previousPageData?.nextPageCursor) {
-          params.append("cursor", previousPageData.nextPageCursor);
-        }
-
-        return JSON.stringify([url + "?" + params.toString(), body]);
-      },
-      async (fetchKey: string) => {
-        if (!fetchKey) {
-          return null;
-        }
-
-        const [urlWithParams, bodyWithCursor] = JSON.parse(fetchKey);
-        return fetcherWithBody([urlWithParams, bodyWithCursor, "POST"]);
-      },
-      {
-        revalidateOnFocus: false,
-        revalidateOnReconnect: false,
-        revalidateFirstPage: false,
-      }
-    );
-
-  return {
-    searchResultNodes: useMemo(
-      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
-      [data]
-    ),
-    isSearchLoading: isLoading,
-    isSearchError: error,
-    isSearchValidating: isValidating,
-    hasMore: data?.[size - 1] ? data[size - 1]?.nextPageCursor !== null : false, // check the last page of the array to see if there is a next page or not
-    nextPage: useCallback(async () => {
-      await setSize((size) => size + 1);
-    }, [setSize]),
   };
 }

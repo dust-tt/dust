@@ -1,5 +1,4 @@
-import apiConfig from "@app/lib/api/config";
-import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
+import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
@@ -9,7 +8,7 @@ import type { OAuthConnectionType, OAuthProvider } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type MCPServerAdminAuthenticationReason = "setup" | "reconnect";
+type MCPServerAdminAuthenticationReason = "setup" | "reconnect";
 
 // Dedicated function to get the connection details for an MCP server.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.
@@ -67,10 +66,9 @@ export async function getConnectionForMCPServer(
     );
   }
 
-  const tokenResult = await getOAuthConnectionAccessToken({
-    config: apiConfig.getOAuthAPIConfig(),
-    logger,
+  const tokenResult = await getMCPConnectionAccessToken(auth, {
     connectionId: connection.value.connectionId,
+    localLogger,
   });
 
   if (tokenResult.isErr()) {

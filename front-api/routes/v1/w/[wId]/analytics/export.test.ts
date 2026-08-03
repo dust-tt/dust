@@ -1,7 +1,7 @@
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { ENSURE_IS_BUILDER_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
+import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/observability/messages_metrics", async () => ({
@@ -37,12 +37,18 @@ vi.mock(
   })
 );
 
-vi.mock("@app/lib/api/assistant/observability/context_origin", async () => ({
-  fetchContextOriginDailyBreakdown: vi.fn(
-    async () =>
-      new Ok([{ date: "2024-06-01", origin: "web", messageCount: 10 }])
-  ),
-}));
+vi.mock(
+  "@app/lib/api/assistant/observability/context_origin",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/assistant/observability/context_origin")
+    >()),
+    fetchContextOriginDailyBreakdown: vi.fn(
+      async () =>
+        new Ok([{ date: "2024-06-01", origin: "web", messageCount: 10 }])
+    ),
+  })
+);
 
 vi.mock("@app/lib/api/analytics/agents_export", async () => ({
   AGENT_EXPORT_HEADERS: ["agentId", "name", "messages"],
@@ -50,12 +56,37 @@ vi.mock("@app/lib/api/analytics/agents_export", async () => ({
     async () =>
       new Ok([{ agentId: "agent-123", name: "TestAgent", messages: 5 }])
   ),
+  toAgentExportCsvRow: (row: unknown) => row,
 }));
 
 vi.mock("@app/lib/api/analytics/users_export", async () => ({
   USER_EXPORT_HEADERS: ["userName", "messageCount"],
   fetchUserExportRows: vi.fn(
     async () => new Ok([{ userName: "Alice", messageCount: 7 }])
+  ),
+}));
+
+vi.mock("@app/lib/api/analytics/skills_export", async () => ({
+  SKILL_EXPORT_HEADERS: [
+    "skillId",
+    "name",
+    "description",
+    "editedByEmail",
+    "createdAt",
+    "lastEdit",
+  ],
+  fetchSkillExportRows: vi.fn(
+    async () =>
+      new Ok([
+        {
+          skillId: "skill-123",
+          name: "Research",
+          description: "Looks things up",
+          editedByEmail: "alice@example.com",
+          createdAt: "2024-05-01",
+          lastEdit: "2024-06-01",
+        },
+      ])
   ),
 }));
 
@@ -80,6 +111,8 @@ vi.mock("@app/lib/api/analytics/messages_export", async () => ({
     "userId",
     "userEmail",
     "source",
+    "toolsUsed",
+    "skillsUsed",
   ],
   fetchMessageExportRows: vi.fn(
     async () =>
@@ -94,6 +127,8 @@ vi.mock("@app/lib/api/analytics/messages_export", async () => ({
           userId: "user-1",
           userEmail: "alice@example.com",
           source: "web",
+          toolsUsed: "Slack__post_message,Slack__search_messages",
+          skillsUsed: "research",
         },
       ])
   ),
@@ -190,12 +225,16 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(response.status).toBe(200);
   });
 
-  // TODO(api-key-scopes): once builder keys are migrated to admin scope and the
-  // temporary fallback in export.ts is removed, change this to expect 403.
-  it("returns 200 for builder API key (temporary backward-compat)", async () => {
+  it("returns 403 for builder API key", async () => {
     const { response } = await setupTest({ role: "builder" });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
+      },
+    });
   });
 
   it("returns 403 for read-only API key (insufficient scope)", async () => {
@@ -205,7 +244,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message: ENSURE_IS_BUILDER_ERROR_MESSAGE,
+        message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
       },
     });
   });
@@ -307,6 +346,18 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(csv).toContain("userName,messageCount");
   });
 
+  it("returns CSV for skills table", async () => {
+    const { response } = await setupTest({ table: "skills" });
+
+    expect(response.status).toBe(200);
+    const csv = await response.text();
+    expect(csv).toContain(
+      "skillId,name,description,editedByEmail,createdAt,lastEdit"
+    );
+    expect(csv).toContain("Research");
+    expect(csv).toContain("alice@example.com");
+  });
+
   it("returns CSV for skill_usage table", async () => {
     const { response } = await setupTest({ table: "skill_usage" });
 
@@ -329,10 +380,11 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(response.status).toBe(200);
     const csv = await response.text();
     expect(csv).toContain(
-      "messageId,createdAt,assistantId,assistantName,assistantSettings,conversationId,userId,userEmail,source"
+      "messageId,createdAt,assistantId,assistantName,assistantSettings,conversationId,userId,userEmail,source,toolsUsed,skillsUsed"
     );
     expect(csv).toContain("msg-1");
     expect(csv).toContain("alice@example.com");
+    expect(csv).toContain('"Slack__post_message,Slack__search_messages"');
   });
 
   it("returns CSV for feedback table", async () => {
@@ -433,6 +485,24 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     });
   });
 
+  it("returns typed JSON for skills", async () => {
+    const { response } = await setupTest({
+      table: "skills",
+      format: "json",
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data[0]).toEqual({
+      skillId: "skill-123",
+      name: "Research",
+      description: "Looks things up",
+      editedByEmail: "alice@example.com",
+      createdAt: "2024-05-01",
+      lastEdit: "2024-06-01",
+    });
+  });
+
   it("returns typed JSON for users", async () => {
     const { response } = await setupTest({
       table: "users",
@@ -465,6 +535,8 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
       userId: "user-1",
       userEmail: "alice@example.com",
       source: "web",
+      toolsUsed: "Slack__post_message,Slack__search_messages",
+      skillsUsed: "research",
     });
   });
 

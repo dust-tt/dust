@@ -11,7 +11,12 @@ import {
   createMetronomeCredit,
 } from "@app/lib/metronome/client";
 import {
+  AWU_AMOUNT_CUSTOM_FIELD_KEY,
+  AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY,
   AWU_PRIORITY_PURCHASED_COMMIT,
+  AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
   getProductFreeCreditId,
@@ -154,6 +159,7 @@ export const grantAwuCreditsPlugin = createPlugin({
           "I confirm that I want to grant these AWU credits. Free credits give money to the customer; prepaid commits assume the customer is invoiced separately.",
       },
     },
+    requiredRoles: ["billing"],
   },
   isApplicableTo: (auth) => {
     const plan = auth.plan();
@@ -222,6 +228,9 @@ export const grantAwuCreditsPlugin = createPlugin({
         idempotencyKey,
         priority: AWU_PRIORITY_PURCHASED_COMMIT,
         applicableProductTags: ["usage"],
+        customFields: {
+          [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+        },
       });
 
       if (result.isErr()) {
@@ -287,14 +296,11 @@ export const grantAwuCreditsPlugin = createPlugin({
       });
     }
 
-    const commitNameBase = validatedArgs.setPrice
+    const commitName = validatedArgs.setPrice
       ? `Commits added by Dust representative: ${amountCredits.toLocaleString()} credits (manual price)`
       : discountPercent > 0
         ? `Commits added by Dust representative: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
         : `Commits added by Dust representative: ${amountCredits.toLocaleString()} credits`;
-    const commitName = validatedArgs.purchaseOrderId
-      ? `${commitNameBase} [PO: ${validatedArgs.purchaseOrderId}]`
-      : commitNameBase;
 
     const result = await createMetronomeCommit({
       metronomeCustomerId,
@@ -312,6 +318,21 @@ export const grantAwuCreditsPlugin = createPlugin({
         unitPrice: invoiceUnitPrice,
         quantity: 1,
         timestamp: startDate,
+      },
+      customFields: {
+        [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+        [AWU_AMOUNT_CUSTOM_FIELD_KEY]: `${amountCredits}`,
+        ...(validatedArgs.purchaseOrderId
+          ? {
+              [AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY]:
+                validatedArgs.purchaseOrderId,
+            }
+          : {}),
+        ...(discountPercent > 0
+          ? {
+              [AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY]: `${discountPercent}`,
+            }
+          : {}),
       },
     });
 

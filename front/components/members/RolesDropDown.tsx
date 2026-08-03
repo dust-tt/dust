@@ -1,9 +1,15 @@
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import {
+  displayRole,
+  displayRoleCapitalized,
+  normalizeDisplayRole,
+  ROLES_DATA,
+} from "@app/components/members/Roles";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ActiveRoleType } from "@app/types/user";
-import { ACTIVE_ROLES } from "@app/types/user";
+import { ASSIGNABLE_ROLES, isAdmin } from "@app/types/user";
 import {
   Button,
-  ChevronDownIcon,
+  ChevronDown,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
@@ -22,14 +28,34 @@ export function RoleDropDown({
   selectedRole,
   disabled = false,
 }: RoleDropDownProps) {
-  if (disabled) {
+  const workspace = useWorkspace();
+  const canManageAdminRole = isAdmin(workspace);
+
+  // `builder` is deprecated: display it as a regular member.
+  const displayedRole = normalizeDisplayRole(selectedRole);
+
+  const availableRoles = ASSIGNABLE_ROLES.filter((role) => {
+    // `admin` can only be assigned by those allowed to manage the admin role
+    // (matches the server-side escalation guard).
+    if (role === "admin" && !canManageAdminRole) {
+      return false;
+    }
+    return true;
+  });
+
+  // Lock the selector entirely when the target is an admin and the caller
+  // cannot manage the admin role (they may neither demote nor revoke admins).
+  const isLocked =
+    disabled || (selectedRole === "admin" && !canManageAdminRole);
+
+  if (isLocked) {
     return (
       <Chip
-        color={ROLES_DATA[selectedRole]["color"]}
+        color={ROLES_DATA[displayedRole]["color"]}
         size="sm"
         className="capitalize"
       >
-        {displayRole(selectedRole)}
+        {displayRole(displayedRole)}
       </Chip>
     );
   }
@@ -37,26 +63,19 @@ export function RoleDropDown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className="group flex cursor-pointer items-center gap-2">
-          <Chip
-            color={ROLES_DATA[selectedRole]["color"]}
-            size="sm"
-            className="capitalize"
-          >
-            {displayRole(selectedRole)}
-          </Chip>
-          <Button icon={ChevronDownIcon} size="sm" variant="ghost" />
-        </div>
+        <Button
+          iconRight={ChevronDown}
+          size="sm"
+          label={displayRoleCapitalized(displayedRole)}
+          variant="ghost"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {ACTIVE_ROLES.map((role) => (
+        {availableRoles.map((role) => (
           <DropdownMenuItem
             key={role}
             onClick={() => onChange(role)}
-            label={
-              displayRole(role).charAt(0).toUpperCase() +
-              displayRole(role).slice(1)
-            }
+            label={displayRoleCapitalized(role)}
           />
         ))}
       </DropdownMenuContent>

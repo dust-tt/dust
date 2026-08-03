@@ -18,7 +18,7 @@ import {
   Button,
   Hoverable,
   PriceTable,
-  RocketIcon,
+  Rocket02,
   Tabs,
   TabsContent,
   TabsList,
@@ -164,7 +164,7 @@ function getSeatBasedPlanItems(
         <>
           Unlimited messages (
           <Hoverable
-            className="cursor-pointer text-gray-400 underline hover:text-gray-500"
+            className="cursor-pointer text-muted-foreground underline hover:text-muted-foreground"
             onClick={openFairUseModal}
           >
             Fair use limits apply*
@@ -181,7 +181,7 @@ function getSeatBasedPlanItems(
         <>
           Free credits for programmatic usage (API, GSheet, Zapier,...) (
           <Hoverable
-            className="cursor-pointer text-gray-400 underline hover:text-gray-500"
+            className="cursor-pointer text-muted-foreground underline hover:text-muted-foreground"
             href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e#2b728599d941808b8f8dfa8dbe7e466f"
             target="_blank"
           >
@@ -268,7 +268,7 @@ function SeatBasedPriceTable({
               label={
                 display === "landing" ? "Start now, 14 days free" : "Start now"
               }
-              icon={RocketIcon}
+              icon={Rocket02}
               disabled={isProcessing}
               onClick={withTracking(
                 TRACKING_AREAS.PRICING,

@@ -156,7 +156,7 @@ async function listAvailableTools(
     });
 
   const attachments = await listAttachments(auth, { conversation });
-  const { servers: jitServers } = await getJITServers(auth, {
+  const jitServers = await getJITServers(auth, {
     agentConfiguration,
     conversation,
     attachments,
@@ -168,17 +168,16 @@ async function listAvailableTools(
       userMessage.context.clientSideMCPServerIds
     );
 
-  const { enabledSkills, systemSkills } = await SkillResource.listForAgentLoop(
-    auth,
-    runAgentData
-  );
+  const { effectiveSpaceIds, enabledSkills, systemSkills } =
+    await SkillResource.listForAgentLoop(auth, runAgentData);
 
-  const skillServers = await getSkillServers(auth, {
-    agentConfiguration,
-    skills: [...systemSkills, ...enabledSkills],
+  const { skillServers, systemSkillServers } = await getSkillServers(auth, {
+    effectiveSpaceIds,
+    enabledSkills,
+    systemSkills,
   });
 
-  const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(
+  const mcpActions = await tryListMCPTools(
     auth,
     {
       agentConfiguration,
@@ -189,6 +188,7 @@ async function listAvailableTools(
     {
       jitServers,
       skillServers,
+      systemSkillServers,
     }
   );
 
@@ -406,6 +406,7 @@ async function handleToolRunFirstStep(
 } | null> {
   const {
     agentConfiguration,
+    modelInfo,
     conversation: originalConversation,
     userMessage,
     agentMessage: originalAgentMessage,
@@ -512,7 +513,7 @@ async function handleToolRunFirstStep(
   );
 
   const stepContexts = computeStepContexts({
-    agentConfiguration,
+    model: modelInfo.endpoint.modelConfig,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
   });

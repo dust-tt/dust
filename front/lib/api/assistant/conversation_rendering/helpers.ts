@@ -16,6 +16,7 @@ import {
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
+import { MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS } from "@app/lib/file_storage/signed_url_cache";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
@@ -45,8 +46,77 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const RENDER_ACTIONS_CONCURRENCY = 5;
+
+/**
+ * Drops the internal "type": "resource" wrapper and the top-level mimeType discriminator from a
+ * resource-shaped tool output item before it's serialized for the model. Every resource schema's
+ * mimeType is a fixed literal used only to distinguish shapes in our own code (see
+ * output_schemas.ts); it's never a real content type, and never what the model reads. Other item
+ * types (text, image) are returned unchanged.
+ */
+function compactResourceItem(item: CallToolResult["content"][number]) {
+  if (item.type !== "resource") {
+    return item;
+  }
+  const { mimeType: _mimeType, ...resource } = item.resource;
+  return resource;
+}
+
+// The fixed notice the model sees for an action that did not run (denied or blocked), or null when
+// the action executed and its output should be rendered instead.
+function toolResultStatusNotice(
+  status: AgentMCPActionWithOutputType["status"]
+): string | null {
+  switch (status) {
+    case "denied":
+      return "The user rejected or skipped this specific action execution. Using this action is hence forbidden for this message.";
+
+    case "blocked_authentication_required":
+      return "The user must manually authenticate to use this action before it can be executed.";
+
+    case "blocked_validation_required":
+    case "blocked_child_action_input_required":
+      return "The user must manually validate this action before it can be executed.";
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * The model-visible text of a tool result: the status notice for actions that did not run, otherwise
+ * the executed output serialized as text. This is the single source of truth for how a tool result
+ * reads to the model, shared by conversation rendering and consumption attribution so the two never
+ * drift.
+ *
+ * Image content is not represented here. Vision-capable rendering emits images as a structured
+ * payload alongside the text (see renderActionForMultiActionsModel). Every other caller uses the
+ * text view this returns, in which a non-text result falls back to its JSON serialization.
+ */
+export function renderToolResultForModelAsText(
+  action: AgentMCPActionWithOutputType
+): string {
+  const notice = toolResultStatusNotice(action.status);
+  if (notice !== null) {
+    return notice;
+  }
+
+  const outputItems = removeNulls(
+    action.output?.map(rewriteContentForModel) ?? []
+  );
+  if (outputItems.length === 0) {
+    return "Successfully executed action, no output.";
+  }
+
+  if (outputItems.every((item) => isTextContent(item))) {
+    return outputItems.map((item) => item.text).join("\n");
+  }
+
+  return JSON.stringify(outputItems.map(compactResourceItem));
+}
 
 async function getDustFileSystemDownloadUrl(
   auth: Authenticator,
@@ -57,7 +127,9 @@ async function getDustFileSystemDownloadUrl(
     return fsResult;
   }
 
-  return fsResult.value.getDownloadUrl(filePath);
+  return fsResult.value.getDownloadUrl(filePath, {
+    expiresInMs: MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
+  });
 }
 
 /**
@@ -76,10 +148,8 @@ function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
   {
     enabledSkillById,
-    useFramesV2,
   }: {
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
-    useFramesV2: boolean;
   }
 ): UserMessageTypeModel[] {
   const enabledSkillMessages: UserMessageTypeModel[] = [];
@@ -98,7 +168,6 @@ function renderEnabledSkillMessagesForAction(
     enabledSkillMessages.push(
       renderEnabledSkillUserMessageFromInstructions({
         skill,
-        useFramesV2,
       })
     );
   }
@@ -115,36 +184,13 @@ async function renderActionForMultiActionsModel(
   model: ModelConfigurationType,
   { conversationId }: { conversationId: string }
 ): Promise<FunctionMessageTypeModel> {
-  if (action.status === "denied") {
+  const notice = toolResultStatusNotice(action.status);
+  if (notice !== null) {
     return {
       role: "function" as const,
       name: action.functionCallName,
       function_call_id: action.functionCallId,
-      content:
-        "The user rejected or skipped this specific action execution. Using this action is hence forbidden for this message.",
-    };
-  }
-
-  if (action.status === "blocked_authentication_required") {
-    return {
-      role: "function" as const,
-      name: action.functionCallName,
-      function_call_id: action.functionCallId,
-      content:
-        "The user must manually authenticate to use this action before it can be executed.",
-    };
-  }
-
-  if (
-    action.status === "blocked_validation_required" ||
-    action.status === "blocked_child_action_input_required"
-  ) {
-    return {
-      role: "function" as const,
-      name: action.functionCallName,
-      function_call_id: action.functionCallId,
-      content:
-        "The user must manually validate this action before it can be executed.",
+      content: notice,
     };
   }
 
@@ -152,12 +198,10 @@ async function renderActionForMultiActionsModel(
     action.output?.map(rewriteContentForModel) ?? []
   );
 
-  let output: string | Content[];
-  if (outputItems.length === 0) {
-    output = "Successfully executed action, no output.";
-  } else if (outputItems.every((item) => isTextContent(item))) {
-    output = outputItems.map((item) => item.text).join("\n");
-  } else if (
+  // Vision-capable models receive images as a structured payload with the text interleaved. This is
+  // the one case that needs async signed URLs, so it stays here rather than in the shared text view.
+  // Every other case delegates to renderToolResultForModelAsText below.
+  if (
     model.supportsVision &&
     outputItems.some((item) => isModelVisionImage(item))
   ) {
@@ -194,16 +238,19 @@ async function renderActionForMultiActionsModel(
         }
       }
     }
-    output = contentArray;
-  } else {
-    output = JSON.stringify(outputItems);
+    return {
+      role: "function" as const,
+      name: action.functionCallName,
+      function_call_id: action.functionCallId,
+      content: contentArray,
+    };
   }
 
   return {
     role: "function" as const,
     name: action.functionCallName,
     function_call_id: action.functionCallId,
-    content: output,
+    content: renderToolResultForModelAsText(action),
   };
 }
 
@@ -219,7 +266,6 @@ export async function getSteps(
     conversationId,
     onMissingAction,
     enabledSkillById,
-    useFramesV2 = false,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
@@ -227,7 +273,6 @@ export async function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
-    useFramesV2?: boolean;
   }
 ): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
@@ -255,7 +300,6 @@ export async function getSteps(
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
-        useFramesV2,
       }),
     }),
     { concurrency: RENDER_ACTIONS_CONCURRENCY }

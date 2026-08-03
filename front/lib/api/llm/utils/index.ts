@@ -29,7 +29,12 @@ export function extractEncryptedContentFromMetadata(metadata: string): string {
   return encryptedContent;
 }
 
-export function extractIdFromMetadata(metadata: string): string {
+// Responses APIs replay a reasoning item by its short `id` and, when returned,
+// its long `encrypted_content`.
+export function parseReasoningMetadata(metadata: string): {
+  id: string;
+  encryptedContent: string;
+} {
   const parsed = safeParseJSON(metadata);
   if (parsed.isErr()) {
     throw new Error(
@@ -40,7 +45,13 @@ export function extractIdFromMetadata(metadata: string): string {
     parsed.value && "id" in parsed.value && isString(parsed.value.id)
       ? parsed.value.id
       : "";
-  return id;
+  const encryptedContent =
+    parsed.value &&
+    "encrypted_content" in parsed.value &&
+    isString(parsed.value.encrypted_content)
+      ? parsed.value.encrypted_content
+      : "";
+  return { id, encryptedContent };
 }
 
 export function parseResponseFormatSchema(

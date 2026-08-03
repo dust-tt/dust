@@ -14,6 +14,7 @@ export type PostTrackPageviewResponseBody = {
 // Mounted at /api/t/pv.
 const app = unauthedApp();
 
+/** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PostTrackPageviewResponseBody> => {
   const connInfo = getConnInfo(ctx);
   const headers: Record<string, string> = {};

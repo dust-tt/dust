@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -36,7 +37,7 @@ import { Op } from "sequelize";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
-export type FetchDataSourceOrigin =
+type FetchDataSourceOrigin =
   | "registry_lookup"
   | "v1_data_sources_search"
   | "v1_data_sources_check_upsert_queue"
@@ -51,7 +52,7 @@ export type FetchDataSourceOrigin =
   | "v1_data_sources_tables_table_rows_row"
   | "v1_data_sources_tokenize";
 
-export type FetchDataSourceOptions = {
+type FetchDataSourceOptions = {
   includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;
@@ -139,16 +140,23 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   ) {
     const { includeDeleted } = fetchDataSourceOptions ?? {};
 
+    // Scope to the authenticated workspace unless the caller performs an intentionally
+    // cross-workspace lookup (e.g. unsafeFetchByDustAPIProjectId).
+    const where: WhereOptions<DataSourceModel> =
+      options?.dangerouslyBypassWorkspaceIsolationSecurity
+        ? (options?.where ?? {})
+        : {
+            ...options?.where,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          };
+
     return this.baseFetchWithAuthorization(
       auth,
       {
         ...this.getOptions(fetchDataSourceOptions),
         ...options,
         includeDeleted,
-        // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
-        // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-        dangerouslyBypassWorkspaceIsolationSecurity: true,
+        where,
       },
       transaction
     );
@@ -266,7 +274,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   static async fetchByConversation(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType,
+    conversation: ConversationWithoutContentType | ConversationResource,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource | null> {
     const [dataSource] = await this.baseFetch(auth, options, {
@@ -324,10 +332,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       where: {
         id: ids,
       },
-      // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
-      // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
   }
 

@@ -103,15 +103,7 @@ export function injectColorStyles(overrides: ColorOverrides): void {
         );
         rules.push(
           // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
-          `.dark .${className}-night { ${cssProperty}: ${color} !important; }`
-        );
-        rules.push(
-          // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
-          `.s-${className} { ${cssProperty}: ${color} !important; }`
-        );
-        rules.push(
-          // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
-          `.dark .s-${className}-night { ${cssProperty}: ${color} !important; }`
+          `.s\\:${className} { ${cssProperty}: ${color} !important; }`
         );
       }
     }
@@ -279,19 +271,19 @@ export function injectFontFamilyStyles(overrides: FontFamilyOverrides): void {
     );
     rules.push(
       // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
-      `body :not(.s-font-mono):not(code):not(pre):not(kbd):not(samp):not([class*="heading-mono"]):not([class*="icon"]):not([class*="Icon"]) { font-family: inherit !important; }`
+      `body :not(.s\\:font-mono):not(code):not(pre):not(kbd):not(samp):not([class*="heading-mono"]):not([class*="icon"]):not([class*="Icon"]) { font-family: inherit !important; }`
     );
     if (!overrides.mono) {
       rules.push(
         // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
-        `.s-font-mono, code, pre, kbd, samp, [class*="heading-mono"] { font-family: "Geist Mono", monospace !important; }`
+        `.s\\:font-mono, code, pre, kbd, samp, [class*="heading-mono"] { font-family: "Geist Mono", monospace !important; }`
       );
     }
   }
   if (overrides.mono) {
     rules.push(
       // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
-      `.s-font-mono, code, pre, kbd, samp, [class*="heading-mono"] { font-family: "${overrides.mono}", monospace !important; }`
+      `.s\\:font-mono, code, pre, kbd, samp, [class*="heading-mono"] { font-family: "${overrides.mono}", monospace !important; }`
     );
   }
 

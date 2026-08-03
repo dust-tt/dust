@@ -1,16 +1,16 @@
 import { setLastActiveEnv } from "../lib/activity";
-import { type Environment, getEnvironment } from "../lib/environment";
+import { type Environment, getEnvironment, getEnvironmentWorktreeDir } from "../lib/environment";
 import { logger } from "../lib/logger";
 import {
+  getConfiguredMultiplexer,
+  getSessionName,
   type LayoutConfig,
   MAIN_SESSION_NAME,
   type MainLayoutConfig,
-  getConfiguredMultiplexer,
-  getSessionName,
 } from "../lib/multiplexer";
-import { getEnvFilePath, getWorktreeDir } from "../lib/paths";
+import { getEnvFilePath } from "../lib/paths";
 import { selectEnvironmentWithFzf } from "../lib/prompt";
-import { CommandError, Err, Ok, type Result, envNotFoundError } from "../lib/result";
+import { CommandError, Err, envNotFoundError, Ok, type Result } from "../lib/result";
 
 interface OpenOptions {
   warmCommand?: string | undefined;
@@ -35,7 +35,7 @@ export async function openCommand(
   const env = envResult.value;
 
   const multiplexer = await getConfiguredMultiplexer();
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const envShPath = getEnvFilePath(env.name);
   const sessionName = getSessionName(env.name);
 

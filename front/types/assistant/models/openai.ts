@@ -18,6 +18,11 @@ export const GPT_5_1_MODEL_ID = "gpt-5.1" as const;
 export const GPT_5_2_MODEL_ID = "gpt-5.2" as const;
 export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
 export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
+export const GPT_5_6_SOL_MODEL_ID = "gpt-5.6-sol" as const;
+export const GPT_5_6_TERRA_MODEL_ID = "gpt-5.6-terra" as const;
+export const GPT_5_6_LUNA_MODEL_ID = "gpt-5.6-luna" as const;
+export const GPT_5_4_MINI_MODEL_ID = "gpt-5.4-mini" as const;
+export const GPT_5_4_NANO_MODEL_ID = "gpt-5.4-nano" as const;
 export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
 export const GPT_5_NANO_MODEL_ID = "gpt-5-nano" as const;
 export const O1_MODEL_ID = "o1" as const;
@@ -229,7 +234,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": true,
   },
 };
-export const OPENAI_FORMATTING_META_PROMPT = `# Response Formats
+export const OPENAI_FORMATTING_META_PROMPT = `
 SYSTEM STYLE: Rich Markdown by default
 - Always respond using rich Markdown unless the user explicitly requests another format.
 - Default to clear narrative prose in connected, multi-sentence paragraphs when the answer is more than a couple of sentences.
@@ -384,6 +389,7 @@ export const GPT_5_4_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
   supportsBatchProcessing: true,
+  supportsToolSearch: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
@@ -402,9 +408,190 @@ export const GPT_5_5_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "OpenAI's GPT 5.5 model for complex reasoning, coding, and agentic tasks (1M context).",
+  shortDescription: "OpenAI's previous flagship model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// https://openai.com/index/previewing-gpt-5-6-sol/
+// gpt-5.6-sol adds xhigh/max reasoning levels upstream; we map onto the codebase's
+// none/light/medium/high abstraction exactly like gpt-5.5.
+export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_6_SOL_MODEL_ID,
+  displayName: "GPT 5.6 Sol",
+  contextSize: 272_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's GPT 5.6 Sol model for complex reasoning, coding, and agentic tasks (272k context).",
   shortDescription: "OpenAI's latest flagship model.",
   isLegacy: false,
   isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// https://openai.com/index/previewing-gpt-5-6-sol/
+// gpt-5.6-terra is the balanced, lower-cost sibling of gpt-5.6-sol; same
+// reasoning abstraction mapping as gpt-5.6-sol.
+export const GPT_5_6_TERRA_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_6_TERRA_MODEL_ID,
+  displayName: "GPT 5.6 Terra",
+  contextSize: 272_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's GPT 5.6 Terra model, a balanced option for everyday reasoning, coding, and agentic tasks (272k context).",
+  shortDescription: "OpenAI's latest balanced model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// https://openai.com/index/previewing-gpt-5-6-sol/
+// gpt-5.6-luna is the fastest, most cost-efficient member of the gpt-5.6
+// family; same reasoning abstraction mapping as gpt-5.6-sol.
+export const GPT_5_6_LUNA_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_6_LUNA_MODEL_ID,
+  displayName: "GPT 5.6 Luna",
+  contextSize: 272_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: false,
+  description:
+    "OpenAI's GPT 5.6 Luna model, its fastest and most cost-efficient option for well-defined tasks (272k context).",
+  shortDescription: "OpenAI's fastest, most cost-efficient model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// https://developers.openai.com/api/docs/models/gpt-5.4-mini
+export const GPT_5_4_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_4_MINI_MODEL_ID,
+  displayName: "GPT-5.4 Mini",
+  contextSize: 400_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: false,
+  description:
+    "OpenAI's faster, cost-efficient version of GPT-5.4 for well-defined tasks (400k context).",
+  shortDescription: "OpenAI's mini model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// https://developers.openai.com/api/docs/models/gpt-5.4-nano
+export const GPT_5_4_NANO_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_4_NANO_MODEL_ID,
+  displayName: "GPT-5.4 Nano",
+  contextSize: 400_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: false,
+  description:
+    "OpenAI's fastest, most cost-efficient version of GPT-5.4 (400k context).",
+  shortDescription: "OpenAI's fastest model.",
+  isLegacy: false,
+  isLatest: false,
   generationTokensCount: 128_000,
   supportsVision: true,
   supportedReasoningEfforts: {
@@ -432,12 +619,12 @@ export const GPT_5_MINI_MODEL_CONFIG: ModelConfigurationType = {
   contextSize: 400_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64, // 32_768
-  largeModel: true,
+  largeModel: false,
   description:
     "OpenAI's faster, and cost-efficient version of GPT-5 for well-defined tasks.",
   shortDescription: "OpenAI's latest mini model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 128_000,
   supportsVision: true,
   supportedReasoningEfforts: {
@@ -465,11 +652,11 @@ export const GPT_5_NANO_MODEL_CONFIG: ModelConfigurationType = {
   contextSize: 400_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64, // 32_768
-  largeModel: true,
+  largeModel: false,
   description: "OpenAI's fastest, and most cost-efficient version of GPT-5",
   shortDescription: "OpenAI's fastest model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 128_000,
   supportsVision: true,
   supportedReasoningEfforts: {

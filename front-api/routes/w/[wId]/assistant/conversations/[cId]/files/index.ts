@@ -1,8 +1,6 @@
+import type { GetConversationFilesResponseBody } from "@app/lib/api/assistant/conversation/files";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import {
-  type FileSystemEntry,
-  SCOPED_PREFIX_CONVERSATION,
-} from "@app/lib/api/file_system/types";
+import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -18,13 +16,10 @@ const ParamsSchema = z.object({
   cId: z.string(),
 });
 
-export type GetConversationFilesResponseBody = {
-  files: FileSystemEntry[];
-};
-
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -60,10 +55,21 @@ app.get(
     // Scope the listing to the conversation mount only. For pod conversations the
     // DustFileSystem also has a pod mount and we do not want to expose pod files here.
     const dustFs = fsResult.value;
+    const listResult = await dustFs.list(`${SCOPED_PREFIX_CONVERSATION}${cId}`);
+    if (listResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to list conversation files.",
+        },
+      });
+    }
+
     const files = await enrichListWithFileResourceIds(
       auth,
       dustFs,
-      await dustFs.list(`${SCOPED_PREFIX_CONVERSATION}${cId}`)
+      listResult.value
     );
 
     return ctx.json({ files });

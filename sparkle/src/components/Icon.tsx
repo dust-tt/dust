@@ -9,12 +9,12 @@ export interface IconProps {
 }
 
 const IconSizes = {
-  xs: "s-h-4 s-w-4",
-  sm: "s-h-5 s-w-5",
-  md: "s-h-6 s-w-6",
-  lg: "s-h-8 s-w-8",
-  xl: "s-h-12 s-w-12",
-  "2xl": "s-h-20 s-w-20",
+  xs: "h-4 w-4",
+  sm: "h-5 w-5",
+  md: "h-6 w-6",
+  lg: "h-8 w-8",
+  xl: "h-12 w-12",
+  "2xl": "h-20 w-20",
 };
 
 export function Icon({
@@ -23,17 +23,17 @@ export function Icon({
   className = "",
 }: IconProps) {
   return IconComponent ? (
-    <IconComponent className={cn(className, "s-shrink-0", IconSizes[size])} />
+    <IconComponent className={cn(className, "shrink-0", IconSizes[size])} />
   ) : null;
 }
 
-const sizeVariants = cva("s-relative", {
+const sizeVariants = cva("relative", {
   variants: {
     size: {
-      sm: "s-h-5 s-w-5",
-      md: "s-h-6 s-w-6",
-      lg: "s-h-8 s-w-8 s-p-0.5",
-      xl: "s-h-10 s-w-10",
+      sm: "h-5 w-5",
+      md: "h-6 w-6",
+      lg: "h-8 w-8 p-0.5",
+      xl: "h-10 w-10",
     },
   },
   defaultVariants: {
@@ -41,13 +41,13 @@ const sizeVariants = cva("s-relative", {
   },
 });
 
-const iconSizeVariants = cva("s-absolute", {
+const iconSizeVariants = cva("absolute", {
   variants: {
     size: {
-      sm: "s-bottom-0 s-right-0",
-      md: "s-bottom-0 s-right-0",
-      lg: "s-bottom-0 s-right-0",
-      xl: "s-bottom-0 s-right-0",
+      sm: "bottom-0 right-0",
+      md: "bottom-0 right-0",
+      lg: "bottom-0 right-0",
+      xl: "bottom-0 right-0",
     },
   },
   defaultVariants: {
@@ -71,7 +71,7 @@ export const DoubleIcon = ({
   return (
     <div className={cn(sizeVariants({ size }), className)}>
       <Icon
-        className="s-text-foreground dark:s-text-foreground-night"
+        className="text-foreground"
         size={
           size === "sm"
             ? "xs"
@@ -94,7 +94,7 @@ export const DoubleIcon = ({
                 : "md"
         }
         visual={secondaryIcon}
-        className={cn("s-absolute", iconSizeVariants({ size }))}
+        className={cn("absolute", iconSizeVariants({ size }))}
       />
     </div>
   );

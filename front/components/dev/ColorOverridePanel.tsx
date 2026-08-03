@@ -48,7 +48,7 @@ function ColorTokenRow({
           width: 18,
           height: 18,
           borderRadius: 4,
-          border: isOverridden ? "2px solid #7fdbca" : "1px solid #444",
+          border: isOverridden ? "2px solid #00897B" : "1px solid #444",
           background: displayColor,
           cursor: "pointer",
           flexShrink: 0,
@@ -129,7 +129,7 @@ function ColorTokenRow({
         style={{
           fontSize: 11,
           fontFamily: "monospace",
-          color: isOverridden ? "#7fdbca" : "#666",
+          color: isOverridden ? "#00897B" : "#666",
           width: 68,
           textAlign: "right" as const,
           flexShrink: 0,
@@ -255,8 +255,8 @@ export function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
                   <span
                     style={{
                       fontSize: 9,
-                      background: "#7fdbca33",
-                      color: "#7fdbca",
+                      background: "#00897B33",
+                      color: "#00897B",
                       borderRadius: 8,
                       padding: "1px 6px",
                       marginLeft: "auto",
@@ -299,7 +299,7 @@ export function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
           style={{
             background: "none",
             border: "1px solid #555",
-            color: copied ? "#7fdbca" : "#9ca3af",
+            color: copied ? "#00897B" : "#9ca3af",
             cursor: "pointer",
             fontSize: 10,
             padding: "2px 8px",

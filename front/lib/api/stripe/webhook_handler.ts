@@ -13,6 +13,7 @@ import {
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
+import { grantFreeCreditsForSubscription } from "@app/lib/credits/free";
 import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
@@ -34,7 +35,7 @@ import {
 } from "@app/lib/plans/billing_currency";
 import {
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -44,7 +45,9 @@ import {
   isAwuPurchaseInvoice,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  isFirstPeriodInvoice,
+  isMetronomePushedInvoice,
+  isSubscriptionActivationInvoice,
+  refundYearlyMigrationProration,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -56,6 +59,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { launchCleanMetronomeInvoiceWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -183,7 +187,7 @@ interface SubscriptionInvoiceCtx {
 function isAuthOnEnterprisePlan(auth: Authenticator): boolean {
   const subscription = auth.subscription();
   return (
-    subscription !== null && isEntreprisePlanPrefix(subscription.plan.code)
+    subscription !== null && isEnterprisePlanPrefix(subscription.plan.code)
   );
 }
 
@@ -261,7 +265,7 @@ async function resolveMetronomeSubscriptionInvoiceCtx(
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
-  if (!subscription) {
+  if (subscription.isLegacyFreeNoPlan()) {
     return null;
   }
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -291,7 +295,7 @@ async function resolveCreditPurchaseInvoiceCtx(
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
-  if (!subscription) {
+  if (subscription.isLegacyFreeNoPlan()) {
     return null;
   }
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -390,47 +394,6 @@ async function voidProCreditPurchaseInvoiceOnFailure({
 }
 
 // ---------------------------------------------------------------------------
-// Metronome-pushed invoice force-charge (invoice.finalized)
-//
-// Metronome pushes its subscription invoices to Stripe via
-// `direct_to_billing_provider` with `charge_automatically`, but Stripe
-// occasionally finalizes them with the PaymentIntent in "incomplete" state
-// (no PM on the PI), so the auto-charge never fires. We force a charge here
-// using the customer's default PM. Stripe dunning still handles real
-// declines / SCA fallthrough.
-// ---------------------------------------------------------------------------
-
-async function forceChargeMetronomeFinalizedInvoice(
-  invoice: Stripe.Invoice,
-  stripe: Stripe
-): Promise<void> {
-  if (
-    invoice.status !== "open" ||
-    invoice.amount_due <= 0 ||
-    invoice.collection_method !== "charge_automatically" ||
-    !invoice.id
-  ) {
-    return;
-  }
-  try {
-    await stripe.invoices.pay(invoice.id);
-    logger.info(
-      { invoiceId: invoice.id, customer: invoice.customer },
-      "[Stripe Webhook] Charged Metronome subscription invoice on finalize"
-    );
-  } catch (err) {
-    logger.warn(
-      {
-        error: normalizeError(err),
-        invoiceId: invoice.id,
-        customer: invoice.customer,
-      },
-      "[Stripe Webhook] Failed to charge Metronome subscription invoice on finalize; Stripe dunning will retry"
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Enterprise SEPA enablement
 // Metronome-pushed invoices carry no `payment_settings.payment_method_types`,
 // so Stripe falls back to the account-level invoice default (card only here).
@@ -519,7 +482,7 @@ async function notifyAdminsOfPaymentFailure({
     );
   }
   if (
-    isEntreprisePlanPrefix(subscriptionType.plan.code) ||
+    isEnterprisePlanPrefix(subscriptionType.plan.code) ||
     isDustCompanyPlan(subscriptionType.plan.code)
   ) {
     logger.info(
@@ -732,7 +695,7 @@ async function handleStripeCheckoutCompleted({
 }
 
 /**
- * Process a verified Stripe webhook event. The caller (Next or Hono handler)
+ * Process a verified Stripe webhook event. The caller (the Hono webhook route)
  * is responsible for reading the raw body and verifying the signature; once
  * the event is constructed, this function does everything else.
  *
@@ -835,6 +798,49 @@ export async function processStripeWebhookEvent({
       break;
     }
 
+    case "invoice.created": {
+      const invoice = event.data.object as Stripe.Invoice;
+
+      // Only Metronome-pushed draft invoices are eligible for line cleaning.
+      if (!isMetronomePushedInvoice(invoice) || invoice.status !== "draft") {
+        break;
+      }
+
+      const metronomeCustomerId = invoice.metadata?.metronome_customer_id;
+      const workspace = metronomeCustomerId
+        ? await WorkspaceResource.fetchByMetronomeCustomerId(
+            metronomeCustomerId
+          )
+        : null;
+      if (!workspace) {
+        logger.warn(
+          { invoiceId: invoice.id, metronomeCustomerId },
+          "[Stripe Webhook] invoice.created: workspace not found for Metronome invoice, skipping clean"
+        );
+        break;
+      }
+
+      // Defer cleaning so Metronome finishes writing all line items before we
+      // touch the draft; the workflow re-fetches and self-gates (draft +
+      // not-yet-cleaned) and finalizes explicitly.
+      const launchResult = await launchCleanMetronomeInvoiceWorkflow({
+        invoiceId: invoice.id,
+        workspaceId: workspace.sId,
+      });
+      if (launchResult.isErr()) {
+        logger.error(
+          {
+            invoiceId: invoice.id,
+            workspaceId: workspace.sId,
+            error: launchResult.error,
+            stripeError: true,
+          },
+          "[Stripe Webhook] Failed to launch invoice clean workflow"
+        );
+      }
+      break;
+    }
+
     case "invoice.finalized": {
       logger.info(
         { event },
@@ -842,23 +848,6 @@ export async function processStripeWebhookEvent({
       );
 
       const invoice = event.data.object as Stripe.Invoice;
-      const isMetronomeInvoice = typeof invoice.subscription !== "string";
-      const isCreditPurchase = isCreditPurchaseInvoice(invoice);
-      const isFirstPeriod = isFirstPeriodInvoice(invoice);
-      const isAwuPurchase = isAwuPurchaseInvoice(invoice);
-
-      // Only Metronome subscription invoices need the force-charge.
-      // Stripe-subscription invoices have their own auto-charge flow;
-      // credit-purchase, first-period, and AWU purchase invoices have
-      // their own flow too.
-      if (
-        isMetronomeInvoice &&
-        !isCreditPurchase &&
-        !isFirstPeriod &&
-        !isAwuPurchase
-      ) {
-        await forceChargeMetronomeFinalizedInvoice(invoice, stripe);
-      }
 
       // Enterprise EUR invoices paid by send-invoice should offer SEPA Direct
       // Debit on the hosted invoice page. Self-gated (enterprise + EUR +
@@ -880,9 +869,15 @@ export async function processStripeWebhookEvent({
         break;
       }
 
-      // First-invoice failures during metronomone checkout are handled
-      // directly in return to failure of pay API — nothing to do.
-      if (isFirstPeriodInvoice(invoice)) {
+      // Subscription activation invoices are directly handled using
+      // Metronome "payment_gate.payment_status" webhook
+      if (isSubscriptionActivationInvoice(invoice)) {
+        break;
+      }
+
+      // Credit (AWU) purchase invoices are directly handled using
+      // Metronome "payment_gate.payment_status" webhook
+      if (isAwuPurchaseInvoice(invoice)) {
         break;
       }
 
@@ -1092,6 +1087,37 @@ export async function processStripeWebhookEvent({
         );
       }
 
+      const createdSubscription = await SubscriptionResource.fetchByStripeId(
+        stripeSubscriptionCreated.id
+      );
+      if (createdSubscription) {
+        const workspace = await WorkspaceResource.fetchByModelId(
+          createdSubscription.workspaceId
+        );
+        assert(
+          workspace !== null,
+          "Workspace not found for subscription in customer.subscription.created."
+        );
+        const auth = await Authenticator.internalAdminForWorkspace(
+          workspace.sId
+        );
+
+        const freeCreditsResult = await grantFreeCreditsForSubscription({
+          auth,
+          stripeSubscription: stripeSubscriptionCreated,
+        });
+        if (freeCreditsResult.isErr()) {
+          logger.error(
+            {
+              error: freeCreditsResult.error,
+              subscriptionId: stripeSubscriptionCreated.id,
+              workspaceId: workspace.sId,
+            },
+            "[Stripe Webhook] Error granting free credits on subscription created"
+          );
+        }
+      }
+
       break;
     }
 
@@ -1144,6 +1170,21 @@ export async function processStripeWebhookEvent({
         const auth = await Authenticator.internalAdminForWorkspace(
           workspace.sId
         );
+
+        const freeCreditsResult = await grantFreeCreditsForSubscription({
+          auth,
+          stripeSubscription,
+        });
+        if (freeCreditsResult.isErr()) {
+          logger.error(
+            {
+              error: freeCreditsResult.error,
+              subscriptionId: stripeSubscription.id,
+              workspaceId: workspace.sId,
+            },
+            "[Stripe Webhook] Error granting free credits"
+          );
+        }
 
         if (subscriptionCycleChanged) {
           const paygEnabled = await isPAYGEnabled(auth);
@@ -1431,6 +1472,23 @@ export async function processStripeWebhookEvent({
         return new Ok(undefined);
       }
 
+      // If this yearly subscription was cut over early by the legacy → Business
+      // migration, refund the unused prepaid days. Best-effort — a refund
+      // failure must not fail the webhook (it can be reconciled manually).
+      const migrationRefund = await refundYearlyMigrationProration({
+        stripeSubscription,
+      });
+      if (migrationRefund.isErr()) {
+        logger.error(
+          {
+            event,
+            stripeSubscriptionId: stripeSubscription.id,
+            err: migrationRefund.error.message,
+          },
+          "[Stripe Webhook] Yearly migration prorated refund failed"
+        );
+      }
+
       const matchingSubscription = await SubscriptionResource.fetchByStripeId(
         stripeSubscription.id
       );
@@ -1473,7 +1531,31 @@ export async function processStripeWebhookEvent({
           );
           await matchingSubscription.markAsEnded("ended");
           break;
-        case "active":
+        case "active": {
+          // Race-safety: a poke switch_contract cutover may already have
+          // provisioned a pending Metronome subscription for this workspace.
+          // Stripe's subscription.deleted can be delivered/processed before
+          // Metronome's contract.start webhook that activates it. If a
+          // pending subscription exists, this deletion is an expected part
+          // of the cutover, not organic churn — leave this subscription
+          // alone (contract.start's activatePending() will end it) and do
+          // not scrub.
+          const pendingSubscription =
+            await SubscriptionResource.fetchPendingByWorkspaceModelId(
+              matchingSubscription.workspaceId
+            );
+          if (pendingSubscription) {
+            logger.info(
+              {
+                event,
+                workspaceId: stripeSubscription.metadata?.workspaceId,
+                pendingSubscriptionId: pendingSubscription.sId,
+              },
+              "[Stripe Webhook] customer.subscription.deleted raced ahead of a pending Metronome cutover. Leaving subscription active; contract.start will finalize the swap."
+            );
+            break;
+          }
+
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = active. Ending the subscription and deleting some workspace data"
@@ -1484,6 +1566,27 @@ export async function processStripeWebhookEvent({
             matchingSubscription.workspaceId
           );
           assert(workspace, "Workspace not found for trialing subscription.");
+
+          if (
+            matchingSubscription.metronomeContractId &&
+            workspace.metronomeCustomerId
+          ) {
+            const metronomeRes = await scheduleMetronomeContractEnd({
+              metronomeCustomerId: workspace.metronomeCustomerId,
+              contractId: matchingSubscription.metronomeContractId,
+            });
+            if (metronomeRes.isErr()) {
+              logger.error(
+                {
+                  stripeError: true,
+                  workspaceId: workspace.sId,
+                  metronomeContractId: matchingSubscription.metronomeContractId,
+                  error: metronomeRes.error,
+                },
+                "[Stripe Webhook] Failed to end active Metronome contract on subscription deletion."
+              );
+            }
+          }
 
           const scheduleScrubRes = await launchScheduleWorkspaceScrubWorkflow({
             workspaceId: workspace.sId,
@@ -1507,6 +1610,7 @@ export async function processStripeWebhookEvent({
             });
           }
           break;
+        }
         default:
           assertNever(matchingSubscription.status);
       }

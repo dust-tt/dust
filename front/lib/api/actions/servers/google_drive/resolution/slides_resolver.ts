@@ -35,7 +35,7 @@ const ShapeIdentifierSchema = z
   ])
   .describe("How to identify the target shape on the slide.");
 
-export const PresentationOperationSchema = z.discriminatedUnion("type", [
+const PresentationOperationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("replaceAllText"),
     find: z.string().describe("Text to find."),
@@ -127,7 +127,7 @@ export const PresentationOperationSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type PresentationOperation = z.infer<typeof PresentationOperationSchema>;
+type PresentationOperation = z.infer<typeof PresentationOperationSchema>;
 type ShapeIdentifier = z.infer<typeof ShapeIdentifierSchema>;
 
 export const PresentationOperationsArraySchema = z.array(

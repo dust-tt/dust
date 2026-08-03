@@ -31,7 +31,7 @@ Before making ANY change to API code, follow this process:
 
 API code includes:
 
-- Route handlers in `front/pages/api/**`
+- Route handlers in `front-api/routes/**`
 - Request/response type definitions used by these routes
 - Validation schemas (Zod, etc.) used in API handlers
 - Middleware that affects API behavior
@@ -137,7 +137,7 @@ type APIResponse = {
 
 This rule applies automatically whenever you are:
 
-- Modifying files in `front/pages/api/**` or `front/app/api/**`
+- Modifying files in `front-api/routes/**`
 - Changing type definitions that are exported and used in API responses
 - Updating validation schemas used by API endpoints
 - Refactoring code that affects API contracts

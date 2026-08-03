@@ -1,9 +1,12 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import {
+  resolveTriggerSpaceId,
+  TriggerResource,
+} from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { TriggerType } from "@app/types/assistant/triggers";
+import type { GetTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -16,13 +19,6 @@ import tId from "./[tId]";
 const ParamsSchema = z.object({
   aId: z.string(),
 });
-
-export type GetTriggersResponseBody = {
-  triggers: (TriggerType & {
-    isEditor: boolean;
-    editorName?: string;
-  })[];
-};
 
 const DeleteTriggersRequestBodySchema = z.object({
   triggerIds: z.array(z.string()),
@@ -49,6 +45,7 @@ function isWebhookTriggerData(trigger: {
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/triggers.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -229,6 +226,20 @@ app.patch(
         ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
         : null;
 
+      const spaceIdRes = await resolveTriggerSpaceId(
+        auth,
+        validatedTrigger.spaceId
+      );
+      if (spaceIdRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: spaceIdRes.error,
+          },
+        });
+      }
+
       const updatedTrigger = await TriggerResource.update(
         auth,
         triggerData.sId,
@@ -236,6 +247,7 @@ app.patch(
           ...validatedTrigger,
           status: validatedTrigger.status ?? "enabled",
           webhookSourceViewId,
+          spaceId: spaceIdRes.value,
         }
       );
 
@@ -314,6 +326,20 @@ app.post(
         ? validatedTrigger.executionPerDayLimitOverride
         : null;
 
+      const spaceIdRes = await resolveTriggerSpaceId(
+        auth,
+        validatedTrigger.spaceId
+      );
+      if (spaceIdRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: spaceIdRes.error,
+          },
+        });
+      }
+
       const newTrigger = await TriggerResource.makeNew(auth, {
         workspaceId: workspace.id,
         agentConfigurationId: aId,
@@ -328,6 +354,7 @@ app.post(
         executionPerDayLimitOverride: executionPerDay,
         executionMode: validatedTrigger.kind === "webhook" ? "fair_use" : null,
         origin: "user",
+        spaceId: spaceIdRes.value,
       });
 
       if (newTrigger.isErr()) {

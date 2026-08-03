@@ -26,10 +26,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
-export type PageId =
-  | "trigger-selection"
-  | "schedule-edition"
-  | "webhook-edition";
+type PageId = "trigger-selection" | "schedule-edition" | "webhook-edition";
 
 interface UseTriggerSheetStateParams {
   owner: LightWorkspaceType;
@@ -178,6 +175,7 @@ export function useTriggerSheetState({
             naturalLanguageDescription: triggerData.naturalLanguageDescription,
             configuration: triggerData.configuration,
             status: triggerData.status,
+            spaceId: triggerData.spaceId,
           };
 
           if (triggerData.sId) {
@@ -214,6 +212,7 @@ export function useTriggerSheetState({
             executionPerDayLimitOverride:
               triggerData.executionPerDayLimitOverride ?? 0,
             status: triggerData.status,
+            spaceId: triggerData.spaceId,
           };
 
           if (triggerData.sId) {

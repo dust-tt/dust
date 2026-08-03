@@ -2,9 +2,9 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
+  Edit04,
   Input,
   Page,
-  PencilSquareIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -79,12 +79,12 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex-1">
-        <Page.H variant="h4">Workspace Name</Page.H>
+        <Page.H variant="h5">Workspace Name</Page.H>
         <Page.P variant="secondary">{owner.name}</Page.P>
       </div>
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetTrigger asChild>
-          <Button variant="outline" label="Edit" icon={PencilSquareIcon} />
+          <Button variant="outline" label="Edit" icon={Edit04} />
         </SheetTrigger>
         <SheetContent>
           <SheetHeader>

@@ -1,24 +1,32 @@
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
 import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
+  usePodMetadata,
   useStartPodTaskConversation,
+  useUpdatePodTask,
   useWorkspacePodTask,
 } from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
-import type { GetWorkspacePodTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
+import type { GetWorkspacePodTaskResponseBody } from "@app/types/api/projects/tasks";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { PodTaskStatus, PodTaskType } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
+import {
+  type LightWorkspaceType,
+  resolveDefaultAgentId,
+} from "@app/types/user";
 import {
   AttachmentChip,
   Avatar,
-  CheckCircleIcon,
+  Checkbox,
+  CheckCircle,
+  cn,
   LinkWrapper,
   PopoverContent,
   PopoverRoot,
@@ -27,7 +35,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { visit } from "unist-util-visit";
 
 function formatTaskStatusLabel(status: PodTaskStatus): string {
@@ -92,6 +100,14 @@ function TaskMarkdownPopoverStartChrome({
   const doStart = useStartPodTaskConversation({ owner, podId: podId });
   const [isStarting, setIsStarting] = useState(false);
 
+  const { hasFeature } = useFeatureFlags();
+  const { podMetadata } = usePodMetadata({ workspaceId: owner.sId, podId });
+  const defaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
+  });
+
   const hasConversationLink =
     (task.status === "in_progress" || task.status === "done") &&
     !!task.conversationId;
@@ -114,6 +130,7 @@ function TaskMarkdownPopoverStartChrome({
       isFirstOnboardingTask={false}
       context="conversation"
       defaultGoToConversation={false}
+      defaultAgentId={defaultAgentId}
       triggerClassName="shrink-0"
       triggerSize={triggerSize}
       onStart={async (opts) => {
@@ -151,16 +168,22 @@ function TaskDirectivePopoverBodyLoaded({
   data,
   activeAgents,
   agentsLoading,
-  onTaskUpdated,
+  mutateWorkspacePodTask,
 }: {
   owner: LightWorkspaceType;
   taskId: string;
   data: GetWorkspacePodTaskResponseBody;
   activeAgents: LightAgentConfigurationType[];
   agentsLoading: boolean;
-  onTaskUpdated?: () => void;
+  mutateWorkspacePodTask: (
+    data?: GetWorkspacePodTaskResponseBody,
+    options?: { revalidate?: boolean }
+  ) => Promise<GetWorkspacePodTaskResponseBody | undefined>;
 }) {
   const { task, space: pod } = data;
+  const doUpdate = useUpdatePodTask({ owner, podId: pod.sId });
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
   const projectHref = getPodRoute(owner.sId, pod.sId);
   const assignee = task.user;
   const dotStatus: ConversationDotStatus =
@@ -170,6 +193,49 @@ function TaskDirectivePopoverBodyLoaded({
     dotStatus,
     hasConversation
   );
+  const isDone = task.status === "done";
+  const canEdit = pod.isMember && !pod.archivedAt;
+
+  const handleToggleDone = useCallback(async () => {
+    if (!canEdit || isUpdatingStatus) {
+      return;
+    }
+
+    const nextStatus: PodTaskStatus = isDone ? "todo" : "done";
+    const optimisticData: GetWorkspacePodTaskResponseBody = {
+      task: {
+        ...task,
+        status: nextStatus,
+        doneAt: nextStatus === "done" ? new Date() : null,
+      },
+      space: pod,
+    };
+
+    void mutateWorkspacePodTask(optimisticData, { revalidate: false });
+    setIsUpdatingStatus(true);
+    try {
+      const result = await doUpdate(taskId, { status: nextStatus });
+      if (result.isErr()) {
+        void mutateWorkspacePodTask();
+      } else {
+        void mutateWorkspacePodTask(
+          { task: result.value, space: pod },
+          { revalidate: false }
+        );
+      }
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  }, [
+    canEdit,
+    doUpdate,
+    isDone,
+    isUpdatingStatus,
+    mutateWorkspacePodTask,
+    pod,
+    task,
+    taskId,
+  ]);
 
   const showStartInPopover =
     (task.status !== "in_progress" && task.status !== "done") ||
@@ -177,23 +243,34 @@ function TaskDirectivePopoverBodyLoaded({
 
   return (
     <div className="flex flex-col p-3">
-      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground dark:text-foreground-night">
-        {task.text}
-      </p>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 shrink-0">
+          <Checkbox
+            checked={isDone}
+            disabled={!canEdit || isUpdatingStatus}
+            isMutedAfterCheck
+            onCheckedChange={() => void handleToggleDone()}
+          />
+        </div>
+        <p
+          className={cn(
+            "min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed",
+            isDone ? "text-faint line-through" : "text-foreground"
+          )}
+        >
+          {task.text}
+        </p>
+      </div>
 
-      <Separator className="-mx-3 my-3 shrink-0 bg-border/60 dark:bg-border-night/60" />
+      <Separator className="-mx-3 my-3 shrink-0 bg-border/60" />
 
       <dl className="grid grid-cols-[minmax(0,7.5rem)_1fr] gap-x-3 gap-y-2 pb-2 text-xs [grid-auto-rows:minmax(2rem,max-content)]">
-        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
-          ID
-        </dt>
-        <dd className="flex min-h-8 min-w-0 items-center justify-end font-mono text-[11px] font-medium tabular-nums text-foreground dark:text-foreground-night">
+        <dt className="flex items-center text-muted-foreground">ID</dt>
+        <dd className="flex min-h-8 min-w-0 items-center justify-end font-mono text-[11px] font-medium tabular-nums text-foreground">
           <span className="break-all select-text">{task.sId}</span>
         </dd>
 
-        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
-          Assignee
-        </dt>
+        <dt className="flex items-center text-muted-foreground">Assignee</dt>
         <dd className="flex min-h-8 min-w-0 items-center justify-end">
           {assignee ? (
             <Tooltip
@@ -208,33 +285,27 @@ function TaskDirectivePopoverBodyLoaded({
                     visual={
                       assignee.image ?? "/static/humanavatar/anonymous.png"
                     }
-                    className="ring-1 ring-border/40 dark:ring-border-night/40"
+                    className="ring-1 ring-border/40"
                   />
                 </span>
               }
             />
           ) : (
-            <span className="text-muted-foreground dark:text-muted-foreground-night">
-              Unassigned
-            </span>
+            <span className="text-muted-foreground">Unassigned</span>
           )}
         </dd>
 
-        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
-          Created
-        </dt>
-        <dd className="flex min-h-8 min-w-0 items-center justify-end text-right font-medium text-foreground dark:text-foreground-night">
+        <dt className="flex items-center text-muted-foreground">Created</dt>
+        <dd className="flex min-h-8 min-w-0 items-center justify-end text-right font-medium text-foreground">
           {formatRelativeAgo(task.createdAt)}
         </dd>
 
-        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
-          Status
-        </dt>
-        <dd className="flex min-h-8 min-w-0 flex-wrap items-center justify-end gap-2 font-medium text-foreground dark:text-foreground-night">
+        <dt className="flex items-center text-muted-foreground">Status</dt>
+        <dd className="flex min-h-8 min-w-0 flex-wrap items-center justify-end gap-2 font-medium text-foreground">
           <span className="text-right leading-tight">
             {formatTaskStatusLabel(task.status)}
             {task.status === "done" && task.doneAt ? (
-              <span className="mt-1 block text-[11px] font-normal leading-tight text-muted-foreground dark:text-muted-foreground-night">
+              <span className="mt-1 block text-[11px] font-normal leading-tight text-muted-foreground">
                 Completed {formatRelativeAgo(task.doneAt)}
               </span>
             ) : null}
@@ -247,7 +318,7 @@ function TaskDirectivePopoverBodyLoaded({
               task={task}
               activeAgents={activeAgents}
               agentsLoading={agentsLoading}
-              onStarted={onTaskUpdated}
+              onStarted={() => void mutateWorkspacePodTask()}
               triggerSize="icon-xs"
             />
           ) : null}
@@ -255,7 +326,7 @@ function TaskDirectivePopoverBodyLoaded({
 
         {hasConversation && task.conversationId && activityCaption ? (
           <>
-            <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
+            <dt className="flex items-center text-muted-foreground">
               Conversation
             </dt>
             <dd className="flex min-h-8 min-w-0 items-center justify-end gap-2 text-right">
@@ -266,7 +337,7 @@ function TaskDirectivePopoverBodyLoaded({
               <LinkWrapper
                 href={getConversationRoute(owner.sId, task.conversationId)}
                 shallow={false}
-                className="min-w-0 max-w-[11rem] truncate text-right text-xs font-medium text-highlight-700 underline-offset-2 hover:underline dark:text-highlight-400-night"
+                className="min-w-0 max-w-[11rem] truncate text-right text-xs font-medium text-highlight-700 underline-offset-2 hover:underline"
               >
                 {activityCaption}
               </LinkWrapper>
@@ -275,18 +346,18 @@ function TaskDirectivePopoverBodyLoaded({
         ) : null}
       </dl>
 
-      <div className="-mx-3 -mb-3 mt-1 border-t border-border/60 bg-muted/25 px-3 py-2.5 dark:border-border-night/60 dark:bg-muted-night/15">
+      <div className="-mx-3 -mb-3 mt-1 border-t border-border/60 bg-muted/25 px-3 py-2.5">
         <LinkWrapper
           href={projectHref}
           shallow={false}
-          className="block w-full min-w-0 rounded-md outline-none ring-offset-background hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1 dark:ring-offset-background-night dark:hover:bg-muted-night/25 dark:focus-visible:ring-highlight-300-night"
+          className="block w-full min-w-0 rounded-md outline-hidden ring-offset-background hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
         >
-          <div className="break-words text-sm font-semibold leading-snug text-highlight-700 underline-offset-2 hover:underline dark:text-highlight-400-night">
+          <div className="break-words text-sm font-semibold leading-snug text-highlight-700 underline-offset-2 hover:underline">
             {pod.name}
           </div>
         </LinkWrapper>
         {pod.description ? (
-          <p className="mt-1 w-full min-w-0 break-words text-xs leading-tight text-muted-foreground dark:text-muted-foreground-night">
+          <p className="mt-1 w-full min-w-0 break-words text-xs leading-tight text-muted-foreground">
             {pod.description}
           </p>
         ) : null}
@@ -338,7 +409,7 @@ function TaskDirectivePopoverContent({
 
   if (isWorkspacePodTaskError || !task || !pod) {
     return (
-      <div className="p-3 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="p-3 text-center text-sm text-muted-foreground">
         Could not load this task.
       </div>
     );
@@ -351,7 +422,7 @@ function TaskDirectivePopoverContent({
       data={{ task, space: pod }}
       activeAgents={activeAgents}
       agentsLoading={agentsLoading}
-      onTaskUpdated={() => void mutateWorkspacePodTask()}
+      mutateWorkspacePodTask={mutateWorkspacePodTask}
     />
   );
 }
@@ -377,13 +448,13 @@ function TaskDirectiveChipInner({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="group flex w-full min-w-0 max-w-full cursor-pointer rounded-md border-0 bg-transparent p-0 text-left outline-none ring-offset-background transition focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1 dark:focus-visible:ring-highlight-300-night dark:ring-offset-background-night"
+            className="group flex w-full min-w-0 max-w-full cursor-pointer rounded-md border-0 bg-transparent p-0 text-left outline-hidden ring-offset-background transition focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
             aria-label={`Task: ${displayLabel}. Open details.`}
           >
             <AttachmentChip
               label={displayLabel}
-              icon={{ visual: CheckCircleIcon }}
-              color="green"
+              icon={{ visual: CheckCircle }}
+              color="success"
               className="min-w-0 max-w-full transition-opacity group-hover:opacity-90"
             />
           </button>
@@ -393,9 +464,15 @@ function TaskDirectiveChipInner({
           align="start"
           sideOffset={6}
           collisionPadding={16}
-          className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 p-0 shadow-xl ring-1 ring-black/[0.04] dark:border-border-night/70 dark:ring-white/[0.06]"
-          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 p-0 shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
+          onOpenAutoFocus={(e: any) => e.preventDefault()}
         >
+          {/*
+            Visibility-gated mount: the popover content (and all its SWR hooks —
+            useWorkspacePodTask, useUnifiedAgentConfigurations, usePodMetadata,
+            useStartPodTaskConversation) only exists in the tree while `open` is true,
+            so no `disabled` flag is needed on those hooks — they never run while closed.
+          */}
           {open ? (
             <TaskDirectivePopoverContent owner={owner} taskSId={sId} />
           ) : null}

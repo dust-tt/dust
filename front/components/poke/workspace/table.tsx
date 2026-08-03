@@ -46,7 +46,7 @@ export function WorkspaceInfoTable({
   const getStatusChipColor = (status: WorkOSConnectionSyncStatus["status"]) => {
     switch (status) {
       case "configured":
-        return "green";
+        return "success";
       case "configuring":
         return "warning";
       case "not_configured":
@@ -59,15 +59,15 @@ export function WorkspaceInfoTable({
   const getConnectionStateChipColor = (state: string) => {
     switch (state) {
       case "active":
-        return "green";
+        return "success";
       case "inactive":
       case "deleting":
       case "invalid_credentials":
-        return "rose";
+        return "warning";
       case "validating":
         return "warning";
       case "draft":
-        return "blue";
+        return "highlight";
       default:
         return "info";
     }

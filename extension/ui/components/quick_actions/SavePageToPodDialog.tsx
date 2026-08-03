@@ -119,22 +119,22 @@ export function SavePageToPodDialog({
               disabled={isBusy}
             />
 
-            <div className="max-h-80 overflow-y-auto rounded-lg border-x border-border dark:border-border-night">
+            <div className="max-h-80 overflow-y-auto rounded-lg border-x border-border">
               <ListGroup>
                 {isPodsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Spinner size="sm" />
                   </div>
                 ) : isPodsError ? (
-                  <div className="px-3 py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="px-3 py-4 text-sm text-muted-foreground">
                     Failed to load Pods.
                   </div>
                 ) : !canManuallyManagePodFiles ? (
-                  <div className="px-3 py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="px-3 py-4 text-sm text-muted-foreground">
                     Adding files to Pods is disabled by your workspace admin.
                   </div>
                 ) : filteredPods.length === 0 ? (
-                  <div className="px-3 py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="px-3 py-4 text-sm text-muted-foreground">
                     No Pods found.
                   </div>
                 ) : (

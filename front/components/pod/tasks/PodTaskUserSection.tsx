@@ -6,7 +6,7 @@ import {
   type PodTaskAssigneeType,
   type PodTaskType,
 } from "@app/types/project_task";
-import { Avatar, Button, Card, Icon, SparklesIcon } from "@dust-tt/sparkle";
+import { Avatar, Button, Card, Icon, Stars02 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface PodTaskUserSectionProps {
@@ -72,7 +72,7 @@ export function PodTaskUserSection({
             <Avatar size="xs" isRounded />
           )}
           <div className="flex flex-1 flex-col">
-            <h4 className="heading-base text-muted-foreground dark:text-foreground-night">
+            <h4 className="heading-base text-muted-foreground">
               {displayName}
               {user !== null && isYou ? " (you)" : ""}
             </h4>
@@ -82,8 +82,8 @@ export function PodTaskUserSection({
       {suggestedTasks.length > 0 && (
         <Card variant="primary" size="md">
           <div className="flex w-full flex-col gap-4">
-            <div className="heading-sm flex items-center gap-2 text-muted-foreground dark:text-muted-foreground-night">
-              <Icon visual={SparklesIcon} size="sm" />
+            <div className="heading-sm flex items-center gap-2 text-muted-foreground">
+              <Icon visual={Stars02} size="sm" />
               Suggestions
             </div>
             <div className="flex w-full flex-col">

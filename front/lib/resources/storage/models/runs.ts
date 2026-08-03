@@ -1,8 +1,9 @@
+import type { UsageType } from "@app/lib/metronome/types";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare createdAt: CreationOptional<Date>;
@@ -11,6 +12,11 @@ export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare dustRunId: string;
   declare runType: string;
   declare useWorkspaceCredentials: boolean | null;
+  // Identifies the agent-loop execution this run belongs to (sha256 of the
+  // execution's sorted dustRunIds). Set at finalize so per-execution credit
+  // costs can be ceiled per group, matching the Metronome billing partition.
+  // Null for non-agent-loop runs and legacy rows.
+  declare runKey: string | null;
 
   declare appId: ForeignKey<AppModel["id"]> | null;
 
@@ -41,6 +47,10 @@ RunModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: true,
     },
+    runKey: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "run",
@@ -69,11 +79,20 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
 
   declare promptTokens: number;
   declare completionTokens: number;
+  // Subset of completionTokens when reported by the provider.
+  declare reasoningTokens: number | null;
   declare cachedTokens: number | null;
   declare cacheCreationTokens: number | null;
 
   declare costMicroUsd: number;
   declare isBatch: boolean;
+  // Billing usage type (free / user / programmatic). Internal/utility LLM
+  // operations are tagged free at creation (they are never billed); agent
+  // conversation runs are tagged by the usage queue from the triggering
+  // message's origin via getUsageType. Nullable: agent conversation rows are
+  // briefly null between creation and the usage queue, and legacy/app runs are
+  // never tagged.
+  declare usageType: UsageType | null;
 }
 
 RunUsageModel.init(
@@ -94,6 +113,11 @@ RunUsageModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    reasoningTokens: {
+      type: DataTypes.INTEGER,
+      defaultValue: null,
+      allowNull: true,
+    },
     cachedTokens: {
       type: DataTypes.INTEGER,
       defaultValue: null,
@@ -113,6 +137,11 @@ RunUsageModel.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,
+    },
+    usageType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

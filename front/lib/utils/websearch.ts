@@ -6,6 +6,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import FirecrawlApp from "@mendable/firecrawl-js";
+import Exa from "exa-js";
 import isNil from "lodash/isNil";
 import omitBy from "lodash/omitBy";
 
@@ -14,13 +15,13 @@ const credentials = dustManagedServiceCredentials();
 const SERPAPI_BASE_URL = "https://serpapi.com";
 const SERPER_BASE_URL = "https://google.serper.dev";
 
-export type BaseWebSearchParams = {
+type BaseWebSearchParams = {
   query: string;
   num?: number;
   page?: number;
 };
 
-export type SerpapiParams = {
+type SerpapiParams = {
   provider: "serpapi";
   engine?: "google";
   location?: string;
@@ -28,13 +29,18 @@ export type SerpapiParams = {
   api_key?: string;
 };
 
-export type SerperParams = {
+type SerperParams = {
   provider: "serper";
   api_key: string;
 };
 
-export type FirecrawlParams = {
+type FirecrawlParams = {
   provider: "firecrawl";
+  api_key?: string;
+};
+
+type ExaParams = {
+  provider: "exa";
   api_key?: string;
 };
 
@@ -46,7 +52,7 @@ const serpapiDefaultOptions = {
 } satisfies Omit<BaseWebSearchParams & SerpapiParams, "query">;
 
 export type SearchParams = BaseWebSearchParams &
-  (SerpapiParams | SerperParams | FirecrawlParams);
+  (SerpapiParams | SerperParams | FirecrawlParams | ExaParams);
 
 export type SearchResultItem = {
   title: string;
@@ -219,8 +225,44 @@ const firecrawlSearch = async ({
   return new Ok(results);
 };
 
+const exaSearch = async ({
+  query,
+  num,
+  api_key,
+}: BaseWebSearchParams & ExaParams): Promise<Result<SearchResponse, Error>> => {
+  const exaApiKey = api_key ?? credentials.EXA_API_KEY;
+
+  if (!exaApiKey) {
+    return new Err(
+      new Error("utils/websearch: a DUST_MANAGED_EXA_API_KEY is required")
+    );
+  }
+  const exa = new Exa(exaApiKey);
+
+  let res;
+  try {
+    res = await exa.search(query, {
+      numResults: num ?? 10,
+      contents: {
+        highlights: true,
+      },
+    });
+  } catch (error) {
+    logger.error({ error }, "Unexpected error on Exa search");
+    return new Err(normalizeError(error));
+  }
+
+  const results: SearchResultItem[] = res.results.map((result) => ({
+    title: result.title ?? result.url ?? "Untitled result",
+    link: result.url,
+    snippet: result.highlights?.[0] ?? "",
+  }));
+
+  return new Ok(results);
+};
+
 /**
- * Make a web search using SerpAPI, Serper or Firecrawl
+ * Make a web search using SerpAPI, Serper, Firecrawl or Exa
  * @param {SearchParams} params
  */
 export const webSearch = async (
@@ -239,6 +281,9 @@ export const webSearch = async (
     }
     case "firecrawl": {
       return firecrawlSearch(params);
+    }
+    case "exa": {
+      return exaSearch(params);
     }
     default:
       assertNever(provider);

@@ -8,9 +8,24 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "List/ConversationListItem",
+  title: "Lists/ConversationListItem",
   component: ConversationListItem,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A list row summarising a conversation, showing its **conversation** title and description, a **time** stamp, and a leading **avatar** (one-on-one) or **creator** portrait (group). An optional **replySection** surfaces reply, unread, and mention counts with participant avatars, and **onClick** opens the thread.
+
+**When to use**
+- To render an inbox or activity feed of conversations, threads, or channels.
+
+**Guidelines**
+- Pass either **avatar** for direct conversations or **creator** for group conversations, not both.
+- Use the **ReplySection** component for the **replySection** slot to display reply / unread / mention counts consistently.
+- Group rows inside **ListGroup** so dividers and spacing stay consistent across the list.`,
+      },
+    },
+  },
 } satisfies Meta<typeof ConversationListItem>;
 
 export default meta;

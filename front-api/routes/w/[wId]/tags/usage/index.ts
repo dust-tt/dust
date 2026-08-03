@@ -1,16 +1,13 @@
+import type { GetTagsUsageResponseBody } from "@app/lib/resources/tags_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import type { TagTypeWithUsage } from "@app/types/tag";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
-export type GetTagsUsageResponseBody = {
-  tags: TagTypeWithUsage[];
-};
-
 // Mounted at /api/w/:wId/tags/usage.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

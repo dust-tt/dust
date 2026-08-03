@@ -1,5 +1,10 @@
+import {
+  CardBrandIcon,
+  formatBrandName,
+} from "@app/components/checkout/PaymentMethodRow";
 import { useAwuPurchase } from "@app/hooks/useAwuPurchase";
 import config from "@app/lib/api/config";
+import { formatCredits } from "@app/lib/client/credits";
 import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
 import {
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
@@ -9,13 +14,21 @@ import {
   awuCreditsToCurrency,
   currencyToAwuCredits,
 } from "@app/lib/metronome/amounts";
-import { useAwuPurchaseStatus } from "@app/lib/swr/credits";
-import { CURRENCY_SYMBOLS } from "@app/types/currency";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  ActionCreditCoinsIcon,
+  useAwuPurchaseStatus,
+  useRedeemPoolTopupCoupon,
+} from "@app/lib/swr/credits";
+import { useValidateCoupon } from "@app/lib/swr/workspaces";
+import type { CouponType } from "@app/types/coupon";
+import { CURRENCY_SYMBOLS } from "@app/types/currency";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
+import {
   Button,
-  CheckCircleIcon,
+  Checkbox,
+  CheckCircle,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -23,6 +36,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Hoverable,
   Icon,
   Input,
   Spinner,
@@ -30,19 +44,34 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  XCircleIcon,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type PurchaseState = "idle" | "processing" | "success" | "error";
-type TopUpTab = "one-time" | "automatic";
 
-const QUICK_SELECT_AMOUNTS = [10, 50, 100] as const;
+// Coupon redemption is synchronous (no payment): idle → checked (after the
+// "Check" button validates) → success/error (after "Apply").
+type CouponState = "idle" | "checked" | "redeeming" | "success" | "error";
+
+const QUICK_SELECT_AMOUNTS = [50, 100, 200] as const;
 
 const supportEmail = config.getSupportEmailAddress().email;
 
-function formatCredits(credits: number): string {
-  return Math.round(credits).toLocaleString("en-US");
+function formatPaymentMethodLabel(
+  pm:
+    | { type: "card"; brand: string; last4: string }
+    | { type: "sepa_debit"; last4: string }
+): string {
+  switch (pm.type) {
+    case "card":
+      return `${formatBrandName(pm.brand)} ${pm.last4}`;
+    case "sepa_debit":
+      return `IBAN •••• ${pm.last4}`;
+    default:
+      assertNeverAndIgnore(pm);
+      return "";
+  }
 }
 
 function formatCost(amount: number): string {
@@ -60,16 +89,7 @@ interface CreditValueProps {
 }
 
 function CreditValue({ credits }: CreditValueProps) {
-  return (
-    <span className="flex items-center gap-1">
-      <Icon
-        visual={ActionCreditCoinsIcon}
-        size="xs"
-        className="text-muted-foreground dark:text-muted-foreground-night"
-      />
-      {formatCredits(credits)}
-    </span>
-  );
+  return <span>{formatCredits(credits)}</span>;
 }
 
 interface SummaryRowProps {
@@ -80,14 +100,277 @@ interface SummaryRowProps {
 
 function SummaryRow({ label, value, dimmed = false }: SummaryRowProps) {
   const cls = dimmed
-    ? "text-sm text-muted-foreground dark:text-muted-foreground-night"
-    : "text-sm text-foreground dark:text-foreground-night";
+    ? "text-sm text-muted-foreground"
+    : "text-sm text-foreground";
   return (
     <div className="flex items-center justify-between">
       <span className={cls}>{label}</span>
       <span className={cls}>{value}</span>
     </div>
   );
+}
+
+interface UseCouponTabProps {
+  workspaceId: string;
+  currentTotalPoolCredits?: number;
+  // Closes the whole dialog.
+  onClose: () => void;
+  // Notifies the parent (e.g. to refresh the pool) once credits are granted.
+  onSuccess?: () => void;
+}
+
+// The "Use coupon" tab: a standalone, synchronous flow — enter a code, Check it
+// to preview the bonus, then Apply to grant the free credits. Owns its own
+// state, independent of the "Buy credits" payment flow.
+function UseCouponTab({
+  workspaceId,
+  currentTotalPoolCredits,
+  onClose,
+  onSuccess,
+}: UseCouponTabProps) {
+  const [couponInput, setCouponInput] = useState<string>("");
+  const [checkedCoupon, setCheckedCoupon] = useState<CouponType | null>(null);
+  const [couponState, setCouponState] = useState<CouponState>("idle");
+  const [couponError, setCouponError] = useState<string>("");
+  const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
+  const { validateCoupon } = useValidateCoupon({ workspaceId });
+  const { redeemPoolTopupCoupon } = useRedeemPoolTopupCoupon({ workspaceId });
+
+  // For a "credits" coupon, `amount` is the number of bonus AWU credits granted.
+  const bonusCredits = checkedCoupon?.amount ?? 0;
+
+  // "Check" button: validate the code as a "credits" coupon and surface the
+  // bonus it would grant before the user commits.
+  const handleCheckCoupon = useCallback(async () => {
+    const code = couponInput.trim();
+    if (!code) {
+      return;
+    }
+    setCouponError("");
+    setIsCheckingCoupon(true);
+    try {
+      const result = await validateCoupon(code, "credits");
+      if (!result.ok) {
+        setCheckedCoupon(null);
+        setCouponState("idle");
+        setCouponError(result.message);
+        return;
+      }
+      setCheckedCoupon(result.coupon);
+      setCouponState("checked");
+    } finally {
+      setIsCheckingCoupon(false);
+    }
+  }, [couponInput, validateCoupon]);
+
+  // "Apply" button: actually redeem the checked coupon and grant the credits.
+  const handleRedeemCoupon = useCallback(async () => {
+    if (!checkedCoupon) {
+      return;
+    }
+    setCouponState("redeeming");
+    const result = await redeemPoolTopupCoupon(checkedCoupon.code);
+    switch (result.status) {
+      case "success":
+        setCouponState("success");
+        onSuccess?.();
+        break;
+      case "error":
+        setCouponError(result.message);
+        setCouponState("error");
+        break;
+      default:
+        assertNeverAndIgnore(result);
+    }
+  }, [checkedCoupon, redeemPoolTopupCoupon, onSuccess]);
+
+  const resetCouponInput = useCallback(() => {
+    setCheckedCoupon(null);
+    setCouponState("idle");
+    setCouponInput("");
+    setCouponError("");
+  }, []);
+
+  switch (couponState) {
+    case "redeeming":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Spinner size="lg" />
+              <p className="text-sm text-muted-foreground">
+                Applying coupon...
+              </p>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            rightButtonProps={{
+              label: "Applying...",
+              variant: "primary",
+              disabled: true,
+            }}
+          />
+        </>
+      );
+    case "success":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Icon
+                visual={CheckCircle}
+                size="lg"
+                className="text-success-500"
+              />
+              <div className="text-center">
+                <p className="text-lg font-medium text-foreground">
+                  Coupon applied!
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  <span className="font-semibold">
+                    {formatCredits(bonusCredits)} credits
+                  </span>{" "}
+                  have been added to your pool.
+                </p>
+              </div>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            rightButtonProps={{
+              label: "Close",
+              variant: "primary",
+              onClick: onClose,
+            }}
+          />
+        </>
+      );
+    case "error":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Icon visual={XCircle} size="lg" className="text-warning-500" />
+              <div className="text-center">
+                <p className="text-lg font-medium text-foreground">
+                  Couldn't apply coupon
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {couponError}
+                </p>
+              </div>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: onClose,
+            }}
+            rightButtonProps={{
+              label: "Try again",
+              variant: "primary",
+              onClick: resetCouponInput,
+            }}
+          />
+        </>
+      );
+    case "idle":
+    case "checked":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                Have a coupon code? Enter it below to add free credits to your
+                Workspace Credits Pool.
+              </p>
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="couponCode"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Coupon code
+                </label>
+                <div className="flex items-start gap-2">
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      id="couponCode"
+                      placeholder="Enter code"
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value);
+                        setCouponError("");
+                        setCheckedCoupon(null);
+                        setCouponState("idle");
+                      }}
+                      isError={!!couponError}
+                      className="w-48"
+                    />
+                    {couponError && (
+                      <span className="text-xs text-warning-500">
+                        {couponError}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    label="Check"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCheckCoupon}
+                    disabled={!couponInput.trim() || isCheckingCoupon}
+                    isLoading={isCheckingCoupon}
+                  />
+                </div>
+              </div>
+
+              {couponState === "checked" && checkedCoupon && (
+                <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
+                  <SummaryRow
+                    label="Coupon"
+                    value={checkedCoupon.code}
+                    dimmed
+                  />
+                  {currentTotalPoolCredits !== undefined && (
+                    <SummaryRow
+                      label="Current Credits Pool"
+                      value={<CreditValue credits={currentTotalPoolCredits} />}
+                      dimmed
+                    />
+                  )}
+                  <SummaryRow
+                    label="Bonus Credits"
+                    value={<CreditValue credits={bonusCredits} />}
+                    dimmed
+                  />
+                  <div className="py-1" />
+                  {currentTotalPoolCredits !== undefined && (
+                    <SummaryRow
+                      label="New Credits Pool"
+                      value={
+                        <CreditValue
+                          credits={currentTotalPoolCredits + bonusCredits}
+                        />
+                      }
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          </DialogContainer>
+          <DialogFooter>
+            <Button label="Cancel" variant="outline" onClick={onClose} />
+            <Button
+              label="Apply coupon"
+              variant="primary"
+              onClick={handleRedeemCoupon}
+              disabled={couponState !== "checked"}
+            />
+          </DialogFooter>
+        </>
+      );
+    default:
+      return assertNever(couponState);
+  }
 }
 
 interface BuyAwuCreditsDialogProps {
@@ -98,7 +381,7 @@ interface BuyAwuCreditsDialogProps {
   awuPurchaseInfo: AwuPurchaseInfo | null;
   isAwuPurchaseInfoLoading: boolean;
   isAwuPurchaseInfoError: boolean;
-  currentBalanceCredits?: number;
+  currentTotalPoolCredits?: number;
 }
 
 export function BuyAwuCreditsDialog({
@@ -109,10 +392,11 @@ export function BuyAwuCreditsDialog({
   awuPurchaseInfo,
   isAwuPurchaseInfoLoading,
   isAwuPurchaseInfoError,
-  currentBalanceCredits,
+  currentTotalPoolCredits,
 }: BuyAwuCreditsDialogProps) {
   const [amountInput, setAmountInput] = useState<string>("");
-  const [selectedTab, setSelectedTab] = useState<TopUpTab>("one-time");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedNonRefundable, setAcceptedNonRefundable] = useState(false);
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   // Ignore polled attempts older than the one we just started, so a cached
@@ -158,7 +442,8 @@ export function BuyAwuCreditsDialog({
 
   const resetModalStateAndClose = useCallback(() => {
     setAmountInput("");
-    setSelectedTab("one-time");
+    setAcceptedTerms(false);
+    setAcceptedNonRefundable(false);
     setPurchaseState("idle");
     setErrorMessage("");
     setPurchaseStartedAtMs(null);
@@ -210,16 +495,20 @@ export function BuyAwuCreditsDialog({
   const amountExceedsMax = parsedAmount > effectiveMaxAmount;
   // The user types what they want to spend; the discount means they get
   // more credits at the same spend (credits_per_full_price / (1 - d/100)).
-  const addedCredits =
-    currencyToAwuCredits(parsedAmount, currency) / (1 - discountPercent / 100);
+  const addedCredits = Math.ceil(
+    currencyToAwuCredits(parsedAmount, currency) / (1 - discountPercent / 100)
+  );
 
-  const canPurchase = isValidAmount && !amountExceedsMax;
+  const canPurchase =
+    isValidAmount &&
+    !amountExceedsMax &&
+    acceptedTerms &&
+    acceptedNonRefundable;
 
   const handlePurchase = async () => {
     setPurchaseStartedAtMs(Date.now());
     setPurchaseState("processing");
-    const amountCredits = Math.round(addedCredits);
-    const result = await purchaseAwuCredits(amountCredits);
+    const result = await purchaseAwuCredits(addedCredits);
     switch (result.status) {
       case "success":
         // The Metronome commit is created but payment is still being
@@ -243,10 +532,10 @@ export function BuyAwuCreditsDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Spinner size="lg" />
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Processing payment...
             </p>
-            <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-xs text-muted-foreground">
               This may take a few seconds.
             </p>
           </div>
@@ -255,19 +544,15 @@ export function BuyAwuCreditsDialog({
       case "success":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon
-              visual={CheckCircleIcon}
-              size="lg"
-              className="text-success-500"
-            />
+            <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
-              <p className="text-lg font-medium text-foreground dark:text-foreground-night">
+              <p className="text-lg font-medium text-foreground">
                 Credits purchased successfully!
               </p>
-              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Your credits are now available.
               </p>
-              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <p className="mt-1 text-sm text-muted-foreground">
                 <span className="font-semibold">
                   Invoice has been sent by email.
                 </span>
@@ -279,15 +564,15 @@ export function BuyAwuCreditsDialog({
       case "error":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircleIcon} size="lg" className="text-warning-500" />
+            <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
-              <p className="text-lg font-medium text-foreground dark:text-foreground-night">
+              <p className="text-lg font-medium text-foreground">
                 Something went wrong
               </p>
-              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {errorMessage}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Please contact support if the issue persists.
               </p>
             </div>
@@ -297,126 +582,167 @@ export function BuyAwuCreditsDialog({
       default: {
         return (
           <div className="flex flex-col gap-4">
-            <Tabs
-              value={selectedTab}
-              onValueChange={(v) => setSelectedTab(v as TopUpTab)}
-            >
-              <TabsList>
-                <TabsTrigger value="one-time" label="One-time top-up" />
-                <TabsTrigger value="automatic" label="Automatic top-up" />
-              </TabsList>
-
-              <TabsContent value="one-time">
-                <div className="flex flex-col gap-4 pt-4">
-                  <div className="flex flex-col gap-2">
-                    <label
-                      htmlFor="amount"
-                      className="text-sm font-medium text-foreground dark:text-foreground-night"
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="amount"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Amount
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      {currencySymbol}
+                    </span>
+                    <Input
+                      id="amount"
+                      type="number"
+                      placeholder="0"
+                      value={amountInput}
+                      onChange={(e) => {
+                        setAmountInput(e.target.value);
+                      }}
+                      min="0"
+                      step="1"
+                      isError={amountExceedsMax && !!maxAmountFormatted}
+                      className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                  </div>
+                  {isValidAmount && (
+                    <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                      {formatCredits(addedCredits)} credits
+                    </span>
+                  )}
+                  <div className="ml-auto flex gap-2">
+                    {QUICK_SELECT_AMOUNTS.map((amount) => (
+                      <Button
+                        key={amount}
+                        label={`${currencySymbol}${amount}`}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAmountWithClamp(amount)}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {amountExceedsMax && maxAmountFormatted && (
+                  <p className="text-xs text-warning-500">
+                    Amount exceeds the {maxAmountFormatted} limit. Please{" "}
+                    <a
+                      href={`mailto:${supportEmail}?subject=Higher%20credit%20limit%20request`}
+                      className="underline"
                     >
-                      Top up
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                          {currencySymbol}
-                        </span>
-                        <Input
-                          id="amount"
-                          type="number"
-                          placeholder="0"
-                          value={amountInput}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value);
-                            if (!isNaN(val)) {
-                              setAmountWithClamp(val);
-                            } else {
-                              setAmountInput(e.target.value);
-                            }
-                          }}
-                          min="0"
-                          max={effectiveMaxAmount}
-                          step="1"
-                          className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      contact support
+                    </a>
+                    .
+                  </p>
+                )}
+              </div>
+
+              {isValidAmount && !amountExceedsMax && (
+                <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
+                  <p className="font-semibold text-foreground">Summary</p>
+                  {currentTotalPoolCredits !== undefined && (
+                    <SummaryRow
+                      label="Current Credits Pool"
+                      value={<CreditValue credits={currentTotalPoolCredits} />}
+                      dimmed
+                    />
+                  )}
+                  <SummaryRow
+                    label="Added Credits"
+                    value={<CreditValue credits={addedCredits} />}
+                    dimmed
+                  />
+                  <div className="py-1" />
+                  {currentTotalPoolCredits !== undefined && (
+                    <SummaryRow
+                      label="New Credits Pool"
+                      value={
+                        <CreditValue
+                          credits={currentTotalPoolCredits + addedCredits}
                         />
-                      </div>
-                      {isValidAmount && (
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          {formatCredits(addedCredits)} credits
-                          <Icon visual={ActionCreditCoinsIcon} size="xs" />
-                        </span>
-                      )}
-                      <div className="ml-auto flex gap-2">
-                        {QUICK_SELECT_AMOUNTS.map((amount) => (
-                          <Button
-                            key={amount}
-                            label={`${currencySymbol}${amount}`}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setAmountWithClamp(amount)}
+                      }
+                    />
+                  )}
+                  <SummaryRow
+                    label="Cost (excl. tax)"
+                    value={`${currencySymbol}${formatCost(parsedAmount)}`}
+                  />
+                </div>
+              )}
+
+              {awuPurchaseInfo?.canPurchase &&
+                awuPurchaseInfo.paymentMethod && (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm font-medium text-foreground">
+                      Payment method
+                    </p>
+                    <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {awuPurchaseInfo.paymentMethod.type === "card" ? (
+                          <CardBrandIcon
+                            brand={awuPurchaseInfo.paymentMethod.brand}
+                            width={38}
+                            height={24}
                           />
-                        ))}
+                        ) : null}
+                        <span className="text-sm font-medium">
+                          {formatPaymentMethodLabel(
+                            awuPurchaseInfo.paymentMethod
+                          )}
+                        </span>
                       </div>
+                      <Button
+                        label="Change"
+                        variant="ghost"
+                        size="sm"
+                        href={`/w/${workspaceId}/subscription/manage`}
+                      />
                     </div>
                   </div>
+                )}
 
-                  {isValidAmount && (
-                    <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4 dark:bg-muted-background-night">
-                      <p className="font-semibold text-foreground dark:text-foreground-night">
-                        Summary
-                      </p>
-                      {currentBalanceCredits !== undefined && (
-                        <SummaryRow
-                          label="Current balance"
-                          value={
-                            <CreditValue credits={currentBalanceCredits} />
-                          }
-                          dimmed
-                        />
-                      )}
-                      <SummaryRow
-                        label="Added balance"
-                        value={<CreditValue credits={addedCredits} />}
-                        dimmed
-                      />
-                      <div className="py-1" />
-                      {currentBalanceCredits !== undefined && (
-                        <SummaryRow
-                          label="New balance"
-                          value={
-                            <CreditValue
-                              credits={currentBalanceCredits + addedCredits}
-                            />
-                          }
-                        />
-                      )}
-                      <SummaryRow
-                        label="Cost"
-                        value={`${currencySymbol}${formatCost(parsedAmount)}`}
-                      />
-                    </div>
-                  )}
+              <div className="flex flex-col gap-3 border-t border-border pt-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <Checkbox
+                    checked={acceptedTerms}
+                    onCheckedChange={() => setAcceptedTerms(!acceptedTerms)}
+                  />
+                  <span className="text-sm text-foreground">
+                    I agree to the{" "}
+                    <Hoverable
+                      href="https://dust.tt/terms"
+                      variant="highlight"
+                      target="_blank"
+                    >
+                      Terms & Conditions
+                    </Hoverable>{" "}
+                    and{" "}
+                    <Hoverable
+                      href="https://dust.tt/privacy"
+                      variant="highlight"
+                      target="_blank"
+                    >
+                      Privacy Policy
+                    </Hoverable>
+                  </span>
+                </label>
 
-                  {maxAmountFormatted && (
-                    <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      Purchase up to {maxAmountFormatted} worth of credits.{" "}
-                      <a
-                        href={`mailto:${supportEmail}?subject=Higher%20credit%20limit%20request`}
-                        className="text-action-500 hover:underline"
-                      >
-                        Contact support
-                      </a>{" "}
-                      if you need more.
-                    </p>
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="automatic">
-                <p className="py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Automatic top-up is not yet available.
-                </p>
-              </TabsContent>
-            </Tabs>
+                <label className="flex cursor-pointer items-start gap-3">
+                  <Checkbox
+                    checked={acceptedNonRefundable}
+                    onCheckedChange={() =>
+                      setAcceptedNonRefundable(!acceptedNonRefundable)
+                    }
+                  />
+                  <span className="text-sm text-foreground">
+                    I understand credits are non-refundable after purchase
+                  </span>
+                </label>
+              </div>
+            </div>
           </div>
         );
       }
@@ -479,7 +805,7 @@ export function BuyAwuCreditsDialog({
               label={`Add ${formatCredits(addedCredits)} credits`}
               variant="primary"
               onClick={handlePurchase}
-              disabled={!canPurchase || selectedTab !== "one-time"}
+              disabled={!canPurchase}
             />
           </DialogFooter>
         );
@@ -491,7 +817,7 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
+            <DialogTitle>Top-up</DialogTitle>
           </DialogHeader>
           <DialogContainer>
             <div className="flex justify-center py-8">
@@ -514,19 +840,15 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
+            <DialogTitle>Top-up</DialogTitle>
             <DialogDescription>
               We couldn't load your purchase information.
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col items-center justify-center gap-4 py-8">
-              <Icon
-                visual={XCircleIcon}
-                size="lg"
-                className="text-warning-500"
-              />
-              <p className="text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <Icon visual={XCircle} size="lg" className="text-warning-500" />
+              <p className="text-center text-sm text-muted-foreground">
                 Something went wrong while loading your top-up options. Please
                 try again in a moment, or{" "}
                 <a
@@ -562,13 +884,13 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
+            <DialogTitle>Top-up</DialogTitle>
             <DialogDescription>
               Credit purchases are not available for your current plan.
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Please{" "}
               <a
                 href={`mailto:${supportEmail}?subject=Credit%20purchase`}
@@ -602,13 +924,13 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
+            <DialogTitle>Top-up</DialogTitle>
             <DialogDescription>
               No billing configuration found for this workspace.
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Please{" "}
               <a
                 href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20billing%20setup`}
@@ -631,95 +953,88 @@ export function BuyAwuCreditsDialog({
     );
   }
 
-  // Cannot purchase: pending payment.
-  if (
+  // Buy-credits states that only block buying (not coupon redemption). These
+  // render inside the "Buy credits" tab so the "Use coupon" tab stays usable.
+  const buyPendingBlock =
     !isPurchaseInFlight &&
-    awuPurchaseInfo &&
+    !!awuPurchaseInfo &&
     !awuPurchaseInfo.canPurchase &&
-    awuPurchaseInfo.reason === "pending_purchase"
-  ) {
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
-            <DialogDescription>
-              You have pending credit purchases awaiting payment.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogContainer>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Please complete your pending payment before making a new purchase
-              or{" "}
-              <a
-                href={`mailto:${supportEmail}?subject=Cancel%20pending%20credit%20purchase`}
-                className="text-action-500 hover:underline"
-              >
-                contact support
-              </a>{" "}
-              to cancel your pending payments.
-            </p>
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Close",
-              variant: "outline",
-              onClick: onClose,
-            }}
-            rightButtonProps={{
-              label: "Manage invoices",
-              variant: "primary",
-              onClick: () => {
-                window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
-              },
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Limit exhausted for this billing cycle.
-  if (
+    awuPurchaseInfo.reason === "pending_purchase";
+  const buyExhaustedBlock =
     !isPurchaseInFlight &&
-    awuPurchaseInfo?.canPurchase &&
-    awuPurchaseInfo.remainingCycleCredits < MIN_AWU_PURCHASE_CREDITS
-  ) {
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
-            <DialogDescription>
-              You've reached your credit limit for this billing cycle.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogContainer>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Your credit purchase limit resets at the start of your next
-              billing cycle. If you need additional credits before then, please{" "}
-              <a
-                href={`mailto:${supportEmail}?subject=Credit%20purchase%20limit%20reached`}
-                className="text-action-500 hover:underline"
-              >
-                contact support
-              </a>
-              .
-            </p>
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Close",
-              variant: "outline",
-              onClick: onClose,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-    );
-  }
+    !!awuPurchaseInfo?.canPurchase &&
+    awuPurchaseInfo.remainingCycleCredits < MIN_AWU_PURCHASE_CREDITS;
 
-  // Can purchase.
+  const renderBuyTabBody = () => {
+    if (purchaseState === "idle" && buyPendingBlock) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          You have pending credit purchases awaiting payment. Please complete
+          your pending payment before making a new purchase or{" "}
+          <a
+            href={`mailto:${supportEmail}?subject=Cancel%20pending%20credit%20purchase`}
+            className="text-action-500 hover:underline"
+          >
+            contact support
+          </a>{" "}
+          to cancel your pending payments.
+        </p>
+      );
+    }
+    if (purchaseState === "idle" && buyExhaustedBlock) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          You've reached your credit limit for this billing cycle. It resets at
+          the start of your next billing cycle. If you need additional credits
+          before then, please{" "}
+          <a
+            href={`mailto:${supportEmail}?subject=Credit%20purchase%20limit%20reached`}
+            className="text-action-500 hover:underline"
+          >
+            contact support
+          </a>
+          .
+        </p>
+      );
+    }
+    return renderContent();
+  };
+
+  const renderBuyTabFooter = () => {
+    if (purchaseState === "idle" && buyPendingBlock) {
+      return (
+        <DialogFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: resetModalStateAndClose,
+          }}
+          rightButtonProps={{
+            label: "Manage invoices",
+            variant: "primary",
+            onClick: () => {
+              window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+            },
+          }}
+        />
+      );
+    }
+    if (purchaseState === "idle" && buyExhaustedBlock) {
+      return (
+        <DialogFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: resetModalStateAndClose,
+          }}
+        />
+      );
+    }
+    return renderFooter();
+  };
+
+  // Buy or use a coupon. While a buy is in flight (processing/success/error) the
+  // tabs are hidden so the user can't switch away mid-payment.
   return (
     <Dialog
       open={isOpen}
@@ -727,13 +1042,33 @@ export function BuyAwuCreditsDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
-          <DialogDescription>
-            Add credits to your Workspace Credits Pool.
-          </DialogDescription>
+          <DialogTitle>Top-up</DialogTitle>
         </DialogHeader>
-        <DialogContainer>{renderContent()}</DialogContainer>
-        {renderFooter()}
+        {isPurchaseInFlight ? (
+          <>
+            <DialogContainer>{renderContent()}</DialogContainer>
+            {renderFooter()}
+          </>
+        ) : (
+          <Tabs defaultValue="buy">
+            <TabsList>
+              <TabsTrigger value="buy" label="Buy credits" />
+              <TabsTrigger value="coupon" label="Use coupon" />
+            </TabsList>
+            <TabsContent value="buy">
+              <DialogContainer>{renderBuyTabBody()}</DialogContainer>
+              {renderBuyTabFooter()}
+            </TabsContent>
+            <TabsContent value="coupon">
+              <UseCouponTab
+                workspaceId={workspaceId}
+                currentTotalPoolCredits={currentTotalPoolCredits}
+                onClose={resetModalStateAndClose}
+                onSuccess={onPurchaseSuccess}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );

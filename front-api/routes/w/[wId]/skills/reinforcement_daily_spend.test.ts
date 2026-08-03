@@ -47,18 +47,21 @@ describe("GET /api/w/:wId/skills/reinforcement_daily_spend", () => {
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 1_000_000,
+        priceAwuCredits: 118,
       },
       {
         createdAt: day1,
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 500_000,
+        priceAwuCredits: 59,
       },
       {
         createdAt: day2,
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 3_000_000,
+        priceAwuCredits: 353,
       },
       // Excluded: before the current period.
       {
@@ -66,6 +69,7 @@ describe("GET /api/w/:wId/skills/reinforcement_daily_spend", () => {
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 999_000_000,
+        priceAwuCredits: 117_530,
       },
     ]);
 
@@ -73,8 +77,12 @@ describe("GET /api/w/:wId/skills/reinforcement_daily_spend", () => {
 
     expect(response.status).toBe(200);
 
-    const { dailySpendMicroUsd, periodStartDate, periodEndDate } =
-      await response.json();
+    const {
+      dailySpendMicroUsd,
+      dailySpendAwuCredits,
+      periodStartDate,
+      periodEndDate,
+    } = await response.json();
 
     // Period boundaries are returned as ISO strings.
     expect(periodStartDate).toBeTruthy();
@@ -83,12 +91,17 @@ describe("GET /api/w/:wId/skills/reinforcement_daily_spend", () => {
     const day1Str = day1.toISOString().slice(0, 10);
     const day2Str = day2.toISOString().slice(0, 10);
 
+    // Micro-USD spend includes the markup.
     expect(dailySpendMicroUsd[day1Str]).toBe(1_500_000 * MARKUP_MULTIPLIER);
     expect(dailySpendMicroUsd[day2Str]).toBe(3_000_000 * MARKUP_MULTIPLIER);
+    // AWU credits already include the margin: no markup applied.
+    expect(dailySpendAwuCredits[day1Str]).toBe(177);
+    expect(dailySpendAwuCredits[day2Str]).toBe(353);
 
     // Before-period row should not appear.
     const beforeStr = beforePeriod.toISOString().slice(0, 10);
     expect(dailySpendMicroUsd[beforeStr]).toBeUndefined();
+    expect(dailySpendAwuCredits[beforeStr]).toBeUndefined();
   });
 
   it("returns 403 for non-admin users", async () => {

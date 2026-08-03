@@ -30,6 +30,7 @@ export const restrictedSpaceAgentsPlugin = createPlugin({
         description: "Confirm you want to proceed with this action",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     return (

@@ -6,13 +6,13 @@ import {
   agentYAMLConfigSchema,
   agentYAMLGenerationSettingsSchema,
 } from "@app/lib/agent_yaml_converter/schemas";
+import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
-import { getAgentConfigurationYAMLContext } from "@app/lib/api/assistant/configuration/yaml_export";
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -166,6 +166,17 @@ async function importAgentConfiguration(
   yamlConfig: AgentYAMLConfig,
   agentConfigurationId?: string
 ): Promise<ImportResult> {
+  const canCreate = await auth.hasWorkspacePermission("create", "agent");
+  if (!canCreate) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "assistant_saving_error",
+        message: "Creating agents is restricted.",
+      },
+    });
+  }
+
   const saveEnabledResult = await ensureAgentConfigurationSavingEnabled();
   if (saveEnabledResult.isErr()) {
     return saveEnabledResult;
@@ -290,7 +301,7 @@ export async function patchAgentConfigurationFromJSON(
     return saveEnabledResult;
   }
 
-  const contextResult = await getAgentConfigurationYAMLContext(auth, agentId, {
+  const contextResult = await getAgentConfigurationContext(auth, agentId, {
     requireEditorGroup: true,
   });
   if (contextResult.isErr()) {

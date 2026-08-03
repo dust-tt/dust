@@ -15,6 +15,7 @@ export const restoreConversationPlugin = createPlugin({
         description: "Comma separated list of conversation sIds to restore",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const conversationIds = args.conversationIds.trim();

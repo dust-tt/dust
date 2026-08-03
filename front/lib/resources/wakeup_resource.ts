@@ -1,3 +1,4 @@
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -13,11 +14,13 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
+import logger from "@app/logger/logger";
 import {
   cancelWakeUpTemporalWorkflow,
   launchOrScheduleWakeUpTemporalWorkflow,
 } from "@app/temporal/triggers/wakeup_client";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
   ACTIVE_WAKE_UP_STATUSES,
@@ -199,8 +202,8 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
           cronTimezone: string;
           reason: string;
         },
-    conversation: ConversationResource,
-    agentConfiguration: AgentConfigurationType,
+    conversation: ConversationWithoutContentType,
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
     const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
@@ -238,6 +241,8 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     if (temporalResult.isErr()) {
       return temporalResult;
     }
+
+    await wakeUp.notifyConversationOfWakeUpChange(auth);
 
     void emitAuditLogEvent({
       auth,
@@ -325,6 +330,23 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     return this.baseFetch(auth, {
       where: {
         status: ACTIVE_WAKE_UP_STATUSES,
+      },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+  }
+
+  static async listByAgentConfigurationId(
+    auth: Authenticator,
+    agentConfigurationId: string,
+    { status }: { status?: WakeUpStatus | WakeUpStatus[] } = {}
+  ): Promise<WakeUpResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        agentConfigurationId,
+        ...(status !== undefined ? { status } : {}),
       },
       order: [
         ["createdAt", "ASC"],
@@ -481,8 +503,29 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       );
     }
 
+    return this.forceCancel(auth, { transaction });
+  }
+
+  /**
+   * System-initiated counterpart of cancel(): guarantees the wake-up leaves no
+   * live Temporal footprint, WITHOUT the owner/admin permission check that
+   * cancel() runs. Used when the agent a wake-up targets is going away (archive
+   * / hard-delete), so ownership no longer matters.
+   *
+   * - If still scheduled: cancels it (deletes the cron schedule / cancels the
+   *   pending one-shot workflow) and marks the row cancelled.
+   * - If already terminal: reconciles a cron schedule that may have been left
+   *   orphaned by a prior failed cleanup (no-op for one-shots / non-cron).
+   */
+  async forceCancel(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<void, Error>> {
     if (this.status !== "scheduled") {
-      return new Ok(undefined);
+      // Already terminal: no row change is needed, but a cron schedule may still
+      // be orphaned from a prior failed cleanup: we reconcile it. No-op for
+      // one-shots and non-cron wake-ups.
+      return this.cleanupTemporalScheduleIfCronTerminal(auth);
     }
 
     const temporalResult = await this.cancelTemporalWorkflow(auth);
@@ -510,7 +553,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       transaction
     );
 
-    await this.triggerConversationESIndexing(auth);
+    await this.notifyConversationOfWakeUpChange(auth);
 
     void emitAuditLogEvent({
       auth,
@@ -544,7 +587,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       transaction
     );
 
-    await this.triggerConversationESIndexing(auth);
+    await this.notifyConversationOfWakeUpChange(auth);
 
     void emitAuditLogEvent({
       auth,
@@ -579,26 +622,32 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     if (this.status !== "scheduled") {
       return null;
     }
-    switch (this.scheduleType) {
-      case "one_shot":
-        return this.fireAt ?? null;
-      case "cron": {
-        if (!this.cronExpression || !this.cronTimezone) {
-          return null;
-        }
-        try {
-          return CronExpressionParser.parse(this.cronExpression, {
-            tz: this.cronTimezone,
-          })
-            .next()
-            .toDate();
-        } catch {
-          return null;
-        }
+
+    const scheduleConfig: WakeUpScheduleConfig | null = (() => {
+      switch (this.scheduleType) {
+        case "one_shot":
+          return this.fireAt
+            ? { type: "one_shot", fireAt: this.fireAt.getTime() }
+            : null;
+        case "cron":
+          return this.cronExpression && this.cronTimezone
+            ? {
+                type: "cron",
+                cron: this.cronExpression,
+                timezone: this.cronTimezone,
+              }
+            : null;
+        default:
+          return assertNever(this.scheduleType);
       }
-      default:
-        return assertNever(this.scheduleType);
+    })();
+
+    if (!scheduleConfig) {
+      return null;
     }
+
+    const nextFireAt = getNextWakeUpFireAtFromScheduleConfig(scheduleConfig);
+    return nextFireAt === null ? null : new Date(nextFireAt);
   }
 
   async markFired(
@@ -625,7 +674,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       transaction
     );
 
-    await this.triggerConversationESIndexing(auth);
+    await this.notifyConversationOfWakeUpChange(auth);
 
     void emitAuditLogEvent({
       auth,
@@ -647,10 +696,17 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
   }
 
-  async cleanupTemporalIfCronExpired(
+  async cleanupTemporalScheduleIfCronTerminal(
     auth: Authenticator
   ): Promise<Result<void, Error>> {
-    if (this.scheduleType !== "cron" || this.status !== "expired") {
+    // Once the wake-up reaches a terminal state (expired or cancelled) the
+    // schedule must be deleted, otherwise Temporal keeps spawning daily
+    // workflows that no-op forever. cancelTemporalWorkflow deletes the schedule
+    // for cron and is idempotent (ScheduleNotFound is treated as success).
+    if (
+      this.scheduleType !== "cron" ||
+      (this.status !== "expired" && this.status !== "cancelled")
+    ) {
       return new Ok(undefined);
     }
 
@@ -670,6 +726,27 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
 
     return new Ok(undefined);
+  }
+
+  // Batch-deletes wake-up rows by their model ids in a single query. Callers are
+  // responsible for having torn down each wake-up's Temporal footprint first, as
+  // this only removes the DB rows.
+  static async deleteByModelIds(
+    auth: Authenticator,
+    ids: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    await this.model.destroy({
+      where: {
+        id: ids,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
   }
 
   toJSON(): WakeUpType {
@@ -717,15 +794,42 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     };
   }
 
-  private async triggerConversationESIndexing(
+  // Re-index the conversation and push a `wake_up_updated` event so viewers update their wake-up
+  // state (notably the banner) live. This is a best-effort UX signal, not part of the wake-up
+  // mutation: a Redis/indexing hiccup must never make a committed status change (or a successful
+  // makeNew whose row + workflow already exist) look like a failure. The client refetches on this
+  // event, so a missed one only means the banner updates on the next refresh.
+  private async notifyConversationOfWakeUpChange(
     auth: Authenticator
   ): Promise<void> {
     const conversation =
       (
         await ConversationResource.fetchByModelIds(auth, [this.conversationId])
       )[0] ?? null;
-    if (conversation) {
-      await ConversationResource.triggerEsIndexing(auth, conversation.sId);
+    if (!conversation) {
+      return;
+    }
+
+    try {
+      await publishConversationEvent(
+        {
+          type: "wake_up_updated",
+          created: Date.now(),
+          conversationId: conversation.sId,
+          wakeUpId: this.sId,
+          userId: this.user.sId,
+        },
+        { conversationId: conversation.sId }
+      );
+    } catch (err) {
+      logger.error(
+        {
+          wakeUpId: this.sId,
+          conversationId: conversation.sId,
+          err: normalizeError(err),
+        },
+        "Failed to notify conversation of wake-up change."
+      );
     }
   }
 

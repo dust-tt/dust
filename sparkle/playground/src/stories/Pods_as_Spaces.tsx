@@ -1,15 +1,15 @@
 import {
-  AtomIcon,
+  Atom01,
   Avatar,
-  BoltOffIcon,
-  BookOpenIcon,
+  ZapOff,
+  BookOpen01,
   Button,
   Card,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
-  CodeSlashIcon,
-  ContactsRobotIcon,
-  ContactsUserIcon,
+  MessageChatSquare,
+  Settings01,
+  Code01,
+  ContactsRobot,
+  UserSquare,
   Dialog,
   DialogContent,
   DropdownMenu,
@@ -23,33 +23,33 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  HeartIcon,
-  InboxIcon,
-  LightbulbIcon,
-  ListSelectIcon,
-  LogoutIcon,
-  MagnifyingGlassIcon,
-  MoreIcon,
+  Heart,
+  Inbox01,
+  Lightbulb04,
+  ListSelect,
+  LogOut01,
+  SearchMd,
+  DotsHorizontal,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
-  PencilSquareIcon,
-  PlusIcon,
+  Edit04,
+  Plus,
   ScrollArea,
   ScrollBar,
   SearchInput,
   SidebarLayout,
   type SidebarLayoutRef,
-  SidebarLeftCloseIcon,
-  SidebarLeftOpenIcon,
+  LayoutLeft,
+  LayoutRight,
   SlackLogo,
-  SpaceClosedIcon,
-  SpaceOpenIcon,
-  StarStrokeIcon,
-  TrashIcon,
-  UserIcon,
+  SpaceClosed,
+  SpaceOpen,
+  Star01,
+  Trash01,
+  User01,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -541,7 +541,7 @@ function DustMain() {
         <DropdownMenuContent>
           <DropdownMenuItem
             label="Rename"
-            icon={PencilSquareIcon}
+            icon={Edit04}
             onClick={(e: MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
@@ -549,7 +549,7 @@ function DustMain() {
           />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
+              icon={UserSquare}
               label="Participant list"
             />
             <DropdownMenuPortal>
@@ -592,7 +592,7 @@ function DustMain() {
                     />
                   ))
                 ) : (
-                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                  <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                     No participants
                   </div>
                 )}
@@ -601,7 +601,7 @@ function DustMain() {
           </DropdownMenuSub>
           <DropdownMenuItem
             label="Delete"
-            icon={TrashIcon}
+            icon={Trash01}
             variant="warning"
             onClick={(e: MouseEvent) => {
               e.preventDefault();
@@ -615,9 +615,9 @@ function DustMain() {
 
   if (!user) {
     return (
-      <div className="s-flex s-min-h-screen s-items-center s-justify-center s-bg-background">
-        <div className="s-text-center">
-          <p className="s-text-foreground">Loading...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -625,29 +625,29 @@ function DustMain() {
 
   // Sidebar content
   const sidebarContent = (
-    <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
+    <div className="flex h-full flex-col border-r border-border bg-muted-background">
       {/* Top Bar */}
-      <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-pl-1 s-pr-2 dark:s-border-border-night">
+      <div className="flex h-14 items-center justify-between gap-2 border-b border-border pl-1 pr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card
               size="xs"
               onClick={(e: MouseEvent) => e.preventDefault()}
-              className="s-p-1"
-              containerClassName="s-flex-1 s-min-w-0"
+              className="p-1"
+              containerClassName="flex-1 min-w-0"
             >
-              <div className="s-flex s-min-w-0 s-items-center s-gap-2 s-pr-1">
+              <div className="flex min-w-0 items-center gap-2 pr-1">
                 <Avatar
                   name={user.fullName}
                   visual={user.portrait}
                   size="sm"
                   isRounded={true}
                 />
-                <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-sm s-text-foreground dark:s-text-foreground-night">
-                  <span className="s-heading-sm s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
+                <div className="flex min-w-0 grow flex-col text-sm text-foreground">
+                  <span className="heading-sm min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
                     {user.fullName}
                   </span>
-                  <span className="-s-mt-0.5 s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <span className="-mt-0.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted-foreground">
                     ACME
                   </span>
                 </div>
@@ -657,7 +657,7 @@ function DustMain() {
           <DropdownMenuContent>
             <DropdownMenuItem
               label="Profile"
-              icon={UserIcon}
+              icon={User01}
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -670,20 +670,20 @@ function DustMain() {
             />
             <DropdownMenuItem
               label="Administration"
-              icon={Cog6ToothIcon}
+              icon={Settings01}
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
               }}
             />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
+              <DropdownMenuSubTrigger icon={Heart} label="Help & Support" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   <DropdownMenuLabel label="Learn about Dust" />
                   <DropdownMenuItem
                     label="Quickstart Guide"
-                    icon={LightbulbIcon}
+                    icon={Lightbulb04}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -691,7 +691,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="Guides & Documentation"
-                    icon={BookOpenIcon}
+                    icon={BookOpen01}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -709,7 +709,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="Ask @help"
                     description="Ask anything about Dust"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquare}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -717,7 +717,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="How to invite new users?"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquare}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -725,7 +725,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="How to use agents in Slack workflow?"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquare}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -733,7 +733,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="How to manage billing?"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquare}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -745,7 +745,7 @@ function DustMain() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               label="Signout"
-              icon={LogoutIcon}
+              icon={LogOut01}
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -756,26 +756,26 @@ function DustMain() {
         <Button
           variant="ghost-secondary"
           size="icon"
-          icon={isSidebarCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
+          icon={isSidebarCollapsed ? LayoutRight : LayoutLeft}
           onClick={() => sidebarLayoutRef.current?.toggle()}
         />
       </div>
-      <ScrollArea className="s-flex-1">
+      <ScrollArea className="flex-1">
         <ScrollBar orientation="vertical" size="minimal" />
         {/* Search Bar */}
-        <div className="s-flex s-gap-1 s-p-2 s-px-2 s-items-center">
+        <div className="flex gap-1 p-2 px-2 items-center">
           <SearchInput
             name="conversation-search"
             value={searchText}
             onChange={setSearchText}
             placeholder="Search"
-            className="s-flex-1"
+            className="flex-1"
           />
           <Button
             variant="primary"
             tooltip="New Conversation"
             size="sm"
-            icon={ChatBubbleLeftRightIcon}
+            icon={MessageChatSquare}
             label="New"
             onClick={handleNewConversation}
           />
@@ -787,7 +787,7 @@ function DustMain() {
               <Button
                 variant="ghost"
                 size="sm"
-                icon={MoreIcon}
+                icon={DotsHorizontal}
                 aria-label="More options"
                 onClick={(e: MouseEvent) => {
                   e.preventDefault();
@@ -798,13 +798,10 @@ function DustMain() {
             <DropdownMenuContent>
               <DropdownMenuLabel label="Agents" />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger
-                  icon={PlusIcon}
-                  label="Build an agent"
-                />
+                <DropdownMenuSubTrigger icon={Plus} label="Build an agent" />
                 <DropdownMenuSubContent>
                   <DropdownMenuItem
-                    icon={PencilSquareIcon}
+                    icon={Edit04}
                     label="From scratch"
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
@@ -812,7 +809,7 @@ function DustMain() {
                     }}
                   />
                   <DropdownMenuItem
-                    icon={LightbulbIcon}
+                    icon={Lightbulb04}
                     label="Browse templates"
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
@@ -829,7 +826,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="Open YAML"
-                    icon={CodeSlashIcon}
+                    icon={Code01}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -839,7 +836,7 @@ function DustMain() {
               </DropdownMenuSub>
               <DropdownMenuItem
                 label="Edit agent"
-                icon={PencilSquareIcon}
+                icon={Edit04}
                 onClick={(e: MouseEvent) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -847,7 +844,7 @@ function DustMain() {
               />
               <DropdownMenuItem
                 label="Manage agents"
-                icon={ContactsUserIcon}
+                icon={UserSquare}
                 onClick={(e: MouseEvent) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -857,12 +854,12 @@ function DustMain() {
           </DropdownMenu>
         </div>
         {/* Collapsible Sections */}
-        <NavigationList className="s-px-2">
+        <NavigationList className="px-2">
           {!searchText.trim() ? (
             <>
               <NavigationListItem
                 label="Inbox"
-                icon={InboxIcon}
+                icon={Inbox01}
                 selected={selectedView === "inbox"}
                 count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
@@ -876,7 +873,7 @@ function DustMain() {
               />
               <NavigationListItem
                 label="New Conversation"
-                icon={ChatBubbleLeftRightIcon}
+                icon={MessageChatSquare}
                 selected={selectedConversationId === "new-conversation"}
                 onClick={() => {
                   setShowProfileView(false);
@@ -893,16 +890,16 @@ function DustMain() {
             </>
           ) : (
             <>
-              <div className="s-flex s-w-full s-justify-end s-gap-1.5">
+              <div className="flex w-full justify-end gap-1.5">
                 <Button
                   size="xs"
-                  icon={MagnifyingGlassIcon}
+                  icon={SearchMd}
                   variant="highlight"
                   label="Documents"
                 />
                 <Button
                   size="xs"
-                  icon={AtomIcon}
+                  icon={Atom01}
                   label="Deep Dive"
                   variant="highlight"
                 />
@@ -918,7 +915,7 @@ function DustMain() {
                 <>
                   <Button
                     size="xmini"
-                    icon={PlusIcon}
+                    icon={Plus}
                     variant="ghost"
                     aria-label="Agents options"
                     onClick={(e: MouseEvent) => {
@@ -930,7 +927,7 @@ function DustMain() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         size="xmini"
-                        icon={MoreIcon}
+                        icon={DotsHorizontal}
                         variant="ghost"
                         aria-label="Spaces options"
                         onClick={(e: MouseEvent) => {
@@ -942,14 +939,14 @@ function DustMain() {
                     <DropdownMenuContent>
                       <DropdownMenuItem
                         label="Browse"
-                        icon={PencilSquareIcon}
+                        icon={Edit04}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
                       />
                       <DropdownMenuItem
-                        icon={PlusIcon}
+                        icon={Plus}
                         label="Create"
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
@@ -973,7 +970,7 @@ function DustMain() {
                   <NavigationListItem
                     key={space.id}
                     label={space.name}
-                    icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
+                    icon={isRestricted ? SpaceOpen : SpaceClosed}
                     selected={space.id === selectedSpaceId}
                     count={count}
                     moreMenu={
@@ -984,7 +981,7 @@ function DustMain() {
                         <DropdownMenuContent>
                           <DropdownMenuItem
                             label="Edit"
-                            icon={PencilSquareIcon}
+                            icon={Edit04}
                             onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -992,7 +989,7 @@ function DustMain() {
                           />
                           <DropdownMenuItem
                             label="Explore"
-                            icon={MagnifyingGlassIcon}
+                            icon={SearchMd}
                             onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1026,7 +1023,7 @@ function DustMain() {
                 <>
                   <Button
                     size="xmini"
-                    icon={PlusIcon}
+                    icon={Plus}
                     variant="ghost"
                     tooltip="Create an Agent"
                     aria-label="Agents options"
@@ -1039,7 +1036,7 @@ function DustMain() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         size="xmini"
-                        icon={MoreIcon}
+                        icon={DotsHorizontal}
                         variant="ghost"
                         aria-label="Agents options"
                         onClick={(e: MouseEvent) => {
@@ -1052,14 +1049,14 @@ function DustMain() {
                       <DropdownMenuLabel>Agents</DropdownMenuLabel>
                       <DropdownMenuItem
                         label="Create agent"
-                        icon={PlusIcon}
+                        icon={Plus}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
                       />
                       <DropdownMenuItem
-                        icon={ContactsRobotIcon}
+                        icon={ContactsRobot}
                         label="Manage"
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
@@ -1067,10 +1064,7 @@ function DustMain() {
                         }}
                       />
                       <DropdownMenuSub>
-                        <DropdownMenuSubTrigger
-                          icon={PencilSquareIcon}
-                          label="Edit"
-                        />
+                        <DropdownMenuSubTrigger icon={Edit04} label="Edit" />
                         <DropdownMenuPortal>
                           <DropdownMenuSubContent>
                             <DropdownMenuSearchbar
@@ -1100,7 +1094,7 @@ function DustMain() {
                                   />
                                 ))
                             ) : (
-                              <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                              <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                                 No agents found
                               </div>
                             )}
@@ -1110,7 +1104,7 @@ function DustMain() {
                       <DropdownMenuLabel>People</DropdownMenuLabel>
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger
-                          icon={ContactsUserIcon}
+                          icon={UserSquare}
                           label="Browse"
                         />
                         <DropdownMenuPortal>
@@ -1144,7 +1138,7 @@ function DustMain() {
                                   />
                                 ))
                             ) : (
-                              <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                              <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                                 No people found
                               </div>
                             )}
@@ -1184,7 +1178,7 @@ function DustMain() {
                           <DropdownMenuContent>
                             <DropdownMenuItem
                               label="Edit"
-                              icon={PencilSquareIcon}
+                              icon={Edit04}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1192,7 +1186,7 @@ function DustMain() {
                             />
                             <DropdownMenuItem
                               label="Remove from favorites"
-                              icon={StarStrokeIcon}
+                              icon={Star01}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1200,7 +1194,7 @@ function DustMain() {
                             />
                             <DropdownMenuItem
                               label="Delete"
-                              icon={TrashIcon}
+                              icon={Trash01}
                               variant="warning"
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
@@ -1247,7 +1241,7 @@ function DustMain() {
                           <DropdownMenuContent>
                             <DropdownMenuItem
                               label="View profile"
-                              icon={UserIcon}
+                              icon={User01}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1255,7 +1249,7 @@ function DustMain() {
                             />
                             <DropdownMenuItem
                               label="Remove from favorites"
-                              icon={TrashIcon}
+                              icon={Trash01}
                               variant="warning"
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
@@ -1290,7 +1284,7 @@ function DustMain() {
                 <>
                   <Button
                     size="xmini"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquare}
                     variant="ghost"
                     aria-label="New Conversation"
                     tooltip="New Conversation"
@@ -1303,7 +1297,7 @@ function DustMain() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         size="xmini"
-                        icon={MoreIcon}
+                        icon={DotsHorizontal}
                         variant="ghost"
                         aria-label="Conversations options"
                         onClick={(e: MouseEvent) => {
@@ -1316,7 +1310,7 @@ function DustMain() {
                       <DropdownMenuLabel label="Conversations" />
                       <DropdownMenuItem
                         label="Hide triggered"
-                        icon={BoltOffIcon}
+                        icon={ZapOff}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1324,7 +1318,7 @@ function DustMain() {
                       />
                       <DropdownMenuItem
                         label="Edit history"
-                        icon={ListSelectIcon}
+                        icon={ListSelect}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1333,7 +1327,7 @@ function DustMain() {
                       <DropdownMenuItem
                         label="Clear history"
                         variant="warning"
-                        icon={TrashIcon}
+                        icon={Trash01}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1510,7 +1504,7 @@ function DustMain() {
       />
     ) : // Priority 3: Show template selection when Browse templates is clicked
     selectedView === "templates" ? (
-      <div className="s-h-full s-overflow-auto">
+      <div className="h-full overflow-auto">
         <TemplateSelection
           onTemplateClick={(t) => setSelectedTemplateForBuilder(t)}
         />
@@ -1555,31 +1549,27 @@ function DustMain() {
       />
     ) : (
       // Priority 6: Show welcome/new conversation view
-      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
-          <div className="s-heading-2xl s-text-foreground">
-            Welcome, Edouard!{" "}
-          </div>
+      <div className="flex h-full w-full items-center justify-center bg-background">
+        <div className="flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
+          <div className="heading-2xl text-foreground">Welcome, Edouard! </div>
           <InputBar />
-          <div className="s-flex s-w-full s-flex-col s-gap-2">
-            <div className="s-heading-lg s-text-foreground">
-              Universal search
-            </div>
+          <div className="flex w-full flex-col gap-2">
+            <div className="heading-lg text-foreground">Universal search</div>
             <SearchInput
               name="document-search"
               value={documentSearchText}
               onChange={setDocumentSearchText}
               placeholder="Find company documents, Agents, People…"
-              className="s-w-full"
+              className="w-full"
             />
           </div>
-          <div className="s-heading-lg s-text-foreground">Chat with…</div>
+          <div className="heading-lg text-foreground">Chat with…</div>
         </div>
       </div>
     );
 
   return (
-    <div className="s-flex s-h-screen s-w-full s-bg-background">
+    <div className="flex h-screen w-full bg-background">
       <SidebarLayout
         ref={sidebarLayoutRef}
         sidebar={sidebarContent}
@@ -1600,7 +1590,7 @@ function DustMain() {
       >
         <DialogContent
           size="full"
-          className="s-flex s-h-full s-max-h-full s-rounded-none s-p-0 s-overflow-hidden"
+          className="flex h-full max-h-full rounded-none p-0 overflow-hidden"
         >
           {selectedTemplateForBuilder && (
             <AgentBuilderView

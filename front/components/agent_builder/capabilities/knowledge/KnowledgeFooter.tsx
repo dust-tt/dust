@@ -21,7 +21,7 @@ import {
   ContextItem,
   Icon,
   LoadingBlock,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -87,7 +87,7 @@ function KnowledgeFooterItem({
         <Button
           size="icon"
           variant="ghost"
-          icon={XMarkIcon}
+          icon={XClose}
           onClick={() => removeNodeWithPath(item)}
         />
       }
@@ -116,7 +116,7 @@ export function KnowledgeFooter() {
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="rounded-xl bg-muted dark:bg-muted-night mt-2">
+        <div className="rounded-xl bg-muted mt-2">
           <ContextItem.List className="max-h-40 overflow-y-auto">
             {field.value.in.length > 0 ? (
               field.value.in.map((item) => (

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { cac } from "cac";
+import { adoptCommand } from "./commands/adopt";
 import { cacheCommand } from "./commands/cache";
 import { cdCommand } from "./commands/cd";
 import { coolCommand } from "./commands/cool";
@@ -24,6 +25,7 @@ import { statusCommand } from "./commands/status";
 import { stopCommand } from "./commands/stop";
 import { syncCommand } from "./commands/sync";
 import { temporalCommand } from "./commands/temporal";
+import { unregisterCommand } from "./commands/unregister";
 import { upCommand } from "./commands/up";
 import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
@@ -137,6 +139,36 @@ cli
   );
 
 cli
+  .command("adopt [name]", "Register an existing git worktree as an environment")
+  .option("-n, --name <name>", "Environment name")
+  .option("-p, --path <path>", "Existing worktree path (defaults to current directory)")
+  .option("-b, --branch-name <branch>", "Branch name to display (defaults to current branch)")
+  .option("--base-branch <branch>", "Base branch to record (default: main)")
+  .option("-W, --wait", "Wait for cold services to finish their initial builds")
+  .action(
+    async (
+      name: string | undefined,
+      options: {
+        name?: string;
+        path?: string;
+        branchName?: string;
+        baseBranch?: string;
+        wait?: boolean;
+      }
+    ) => {
+      await prepareAndRun(
+        adoptCommand({
+          name: name ?? options.name,
+          path: options.path,
+          branchName: options.branchName,
+          baseBranch: options.baseBranch,
+          wait: options.wait,
+        })
+      );
+    }
+  );
+
+cli
   .command("open [name]", "Open environment's terminal session")
   .alias("o")
   .option("-C, --compact", "Use compact layout (no tab bar)")
@@ -232,6 +264,13 @@ cli
         keepBranch: Boolean(options.keepBranch),
       })
     );
+  });
+
+cli
+  .command("unregister [name]", "Remove Hive resources but keep the worktree and branch")
+  .option("-f, --force", "Force cleanup of blocked service ports")
+  .action(async (name: string | undefined, options: { force?: boolean }) => {
+    await prepareAndRun(unregisterCommand(name, { force: Boolean(options.force) }));
   });
 
 cli

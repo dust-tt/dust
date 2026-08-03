@@ -8,6 +8,37 @@
 # ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
 
 procs:
+  _check-start-script:
+    shell: |
+      if [ -z "$DUST_USE_START_MPROCS" ]; then
+        echo ""
+        echo "ERROR: Run tools/start-mprocs.sh instead of invoking mprocs directly."
+        echo "       It sets up nvm, clears stale build artifacts, and installs dependencies."
+        echo ""
+        exit 1
+      fi
+      echo "OK"
+    autostart: true
+
+  docker-infra:
+    cwd: "<CONFIG_DIR>/.."
+    shell: |
+      docker compose up -d db redis qdrant_primary qdrant_secondary elasticsearch
+      docker compose logs -f db redis qdrant_primary qdrant_secondary elasticsearch
+    autostart: false
+
+  temporal-infra:
+    cwd: "<CONFIG_DIR>/../temporal"
+    shell: |
+      docker compose up -d
+      until nc -z localhost 7233 2>/dev/null; do sleep 2; done
+      docker compose exec -T temporal-admin-tools temporal operator search-attribute create \
+        --name connectorId --type Int \
+        --name conversationId --type Text \
+        --name workspaceId --type Text 2>/dev/null || true
+      docker compose logs -f
+    autostart: false
+
   core:
     cwd: "<CONFIG_DIR>/../core"
     shell: "bacon core-api"
@@ -28,67 +59,42 @@ procs:
   sparkle:
     cwd: "<CONFIG_DIR>/../sparkle"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
       npm run watch
 
   sdks-js:
     cwd: "<CONFIG_DIR>/../sdks/js"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
       ./admin/dev.sh
 
-  front:
-    cwd: "<CONFIG_DIR>/../front"
+  migrations:
+    cwd: "<CONFIG_DIR>/.."
+    env:
+      READY_FILE: "sdks/js/dist/client.esm.js.map"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
-      READY_FILE="../sdks/js/dist/client.esm.js.map"
       echo "Waiting for sdks-js to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting front."
-      ./admin/dev.sh
-    autostart: false
+      echo "sdks-js ready. Starting migrations."
+      npm -w front run migration:apply
+      npm -w connectors run migration:apply
 
-  front-hono:
+  front-api-hono:
     cwd: "<CONFIG_DIR>/../front-api"
+    env:
+      NODE_ENV: "development"
+      # Guard: throw if anything tries to load `next` at runtime.
+      NODE_OPTIONS: "--require=./forbid-next.cjs"
+      READY_FILE: "../sdks/js/dist/client.esm.js.map"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
-      READY_FILE="../sdks/js/dist/client.esm.js.map"
       echo "Waiting for sdks-js to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting front-api (Hono only, no Next)."
-      # exec replaces this shell with tsx so mprocs's signals reach node
-      # directly (npm doesn't reliably forward signals to its child).
-      export NODE_ENV=development
-      # Guard: throw if anything tries to load `next` at runtime.
-      export NODE_OPTIONS="--require=./forbid-next.cjs"
       npm run dev
 
   front-workers:
     cwd: "<CONFIG_DIR>/../front"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
       echo "Waiting for front to be ready..."
       until curl -sf http://localhost:3000/api/healthz; do sleep 1; done
       echo "front ready. Starting front-workers."
@@ -96,13 +102,9 @@ procs:
 
   connectors:
     cwd: "<CONFIG_DIR>/../connectors"
+    env:
+      READY_FILE: "../sdks/js/dist/client.esm.js.map"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
-      READY_FILE="../sdks/js/dist/client.esm.js.map"
       echo "Waiting for sdks-js to compile..."
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting connectors."
@@ -110,13 +112,9 @@ procs:
 
   front-spa:
     cwd: "<CONFIG_DIR>/../front-spa"
+    env:
+      READY_FILE: "../sparkle/dist/cjs/index.js"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
-      READY_FILE="../sparkle/dist/cjs/index.js"
       echo "Waiting for sparkle to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
@@ -124,60 +122,54 @@ procs:
 
   front-poke:
     cwd: "<CONFIG_DIR>/../front-spa"
+    env:
+      READY_FILE: "../sparkle/dist/cjs/index.js"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
-      READY_FILE="../sparkle/dist/cjs/index.js"
       echo "Waiting for sparkle to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       npm run dev:poke
 
+  marketing-site:
+    cwd: "<CONFIG_DIR>/../marketing"
+    env:
+      READY_FILE: "../sparkle/dist/cjs/index.js"
+    shell: |
+      echo "Waiting for sparkle to compile..."
+      echo "Expecting file: $READY_FILE"
+      while [ ! -f "$READY_FILE" ]; do sleep 1; done
+      echo "sparkle ready. Starting marketing site on port 3009."
+      npm run dev -- -p 3009
+    autostart: false
+
   sparkle-storybook:
     cwd: "<CONFIG_DIR>/../sparkle"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
       npm run storybook
     autostart: false
 
   sparkle-playground:
     cwd: "<CONFIG_DIR>/../sparkle/playground"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
       npm install && npm run dev
     autostart: false
 
   viz:
     cwd: "<CONFIG_DIR>/../viz"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
       npm run dev
     autostart: false
 
-  extension:
+  extension-chrome:
     cwd: "<CONFIG_DIR>/../extension"
     shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
       npm run dev:chrome
+    autostart: false
+
+  extension-firefox:
+    cwd: "<CONFIG_DIR>/../extension"
+    shell: |
+      npm run dev:firefox
     autostart: false
 
   ngrok:
@@ -188,6 +180,25 @@ procs:
   firebase-webhook-router:
     cwd: "<CONFIG_DIR>/../firebase-functions/webhook-router"
     shell: "docker-compose up --build"
+    autostart: false
+
+  # apache-tika: Document text extraction. TIKA_URL=http://localhost:9998.
+  apache-tika:
+    cwd: "<CONFIG_DIR>/.."
+    shell: "docker compose up apache-tika"
+    autostart: false
+
+  # kibana: Elasticsearch UI. kibana_settings runs first as a docker-compose dep.
+  kibana:
+    cwd: "<CONFIG_DIR>/.."
+    shell: "docker compose up kibana_settings kibana"
+    autostart: false
+
+  # Gotenberg: Office/PDF document preview conversion (LibreOffice route).
+  # front-api reads its URL from DOCUMENT_RENDERER_URL (set to http://localhost:3100).
+  gotenberg:
+    cwd: "<CONFIG_DIR>/.."
+    shell: "docker compose --profile gotenberg up gotenberg"
     autostart: false
 
   novu:

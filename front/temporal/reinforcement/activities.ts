@@ -1,18 +1,29 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
+import { getStreamLLM } from "@app/lib/api/llm";
 import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
 import {
   downloadBatchResultFromLlm,
   sendBatchCallToLlm,
   storeLlmResult,
 } from "@app/lib/api/llm/batch_llm";
+import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameters,
+  LLMStreamParameters,
+} from "@app/lib/api/llm/types/options";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
+import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
+import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
+import { getRemainingProgrammaticUsageFromMetronome } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
@@ -38,8 +49,12 @@ import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
   getMaxConversationsForBudget,
+  getMaxConversationsForBudgetAwuCredits,
 } from "@app/lib/reinforcement/constants";
-import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consumption";
+import {
+  getReinforcementBillingUnit,
+  getReinforcementGlobalConsumptionStatus,
+} from "@app/lib/reinforcement/enforcement";
 import {
   buildReinforcedSkillsSpecifications,
   classifySkillToolCalls,
@@ -65,6 +80,7 @@ import {
 } from "@app/lib/reinforcement/workspace_check";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SelfImprovingSkillsUsageCreateBlob } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
@@ -80,7 +96,7 @@ import {
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { isCreditPricedPlan } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ApplicationFailure } from "@temporalio/common";
 import { Op } from "sequelize";
 
@@ -89,9 +105,11 @@ import { Op } from "sequelize";
 export { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 
 /**
- * Report usage for a single reinforcement LLM step to Metronome, ES analytics,
- * and programmatic usage. Gated behind the self_improving_skills_report_usage
- * feature flag. Fire-and-forget: failures are logged but do not break the
+ * Report usage for a single self-improvement LLM step to billing and ES
+ * analytics: as Metronome usage events for workspaces billed by Metronome on
+ * a credit-priced plan, as programmatic usage otherwise. Workspaces with the
+ * `self_improvement_beta_tester` feature flag report nothing and run for
+ * free. Fire-and-forget: failures are logged but do not break the
  * reinforcement workflow.
  */
 async function reportSelfImprovingSkillsStepUsage({
@@ -109,11 +127,7 @@ async function reportSelfImprovingSkillsStepUsage({
   userMessageId: string;
   dustRunIds?: string[];
 }): Promise<void> {
-  const hasFlag = await hasFeatureFlag(
-    auth,
-    "self_improving_skills_report_usage"
-  );
-  if (!hasFlag) {
+  if (await hasFeatureFlag(auth, "self_improvement_beta_tester")) {
     return;
   }
 
@@ -132,11 +146,23 @@ async function reportSelfImprovingSkillsStepUsage({
   };
 
   try {
-    await Promise.all([
-      launchAgentMessageAnalytics(auth, agentLoopArgs),
-      launchTrackProgrammaticUsage(auth, agentLoopArgs),
-      launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    ]);
+    const unit = getReinforcementBillingUnit(auth);
+    switch (unit) {
+      case "awu_credits":
+        await Promise.all([
+          launchAgentMessageAnalytics(auth, agentLoopArgs),
+          launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+        ]);
+        break;
+      case "micro_usd":
+        await Promise.all([
+          launchAgentMessageAnalytics(auth, agentLoopArgs),
+          launchTrackProgrammaticUsage(auth, agentLoopArgs),
+        ]);
+        break;
+      default:
+        assertNever(unit);
+    }
   } catch (err) {
     logger.warn(
       {
@@ -167,7 +193,6 @@ async function runReinforcedSkillsStep({
   source,
   conversation,
   eligibleSkillIds,
-  useInlineTools,
 }: {
   auth: Authenticator;
   reinforcementConversationId: string;
@@ -177,19 +202,70 @@ async function runReinforcedSkillsStep({
   source: "synthetic" | "reinforcement";
   conversation?: ConversationResource;
   eligibleSkillIds: string[];
-  useInlineTools: boolean;
 }): Promise<{
   isTerminal: boolean;
   suggestionsCreated: number;
   approvedSourceSuggestionIds: string[];
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
-  const llm = await getReinforcedSkillsLLM(auth, operationType, {
-    forBatch: false,
+  const owner = auth.workspace();
+  if (!owner) {
+    logger.error({ contextId }, "ReinforcedSkills: no Workspace found");
+    return {
+      isTerminal: true,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
+  }
+
+  const model = getLargeWhitelistedModel(auth);
+
+  if (!model) {
+    logger.error(
+      { contextId, workspaceId: owner.sId },
+      "ReinforcedSkills: no model configuration available for step activity"
+    );
+    return {
+      isTerminal: true,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
+  }
+
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
   });
+
+  const endpoint = await getStreamEndpointFromLegacyModelId(
+    auth,
+    model.modelId
+  );
+  if (!endpoint) {
+    logger.error(
+      { contextId, workspaceId: owner.sId, modelId: model.modelId },
+      "ReinforcedSkills: no stream endpoint available for step activity"
+    );
+    return {
+      isTerminal: true,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
+  }
+
+  const llmParameters: LLMParameters<DustStreamEndpointConstructor> = {
+    credentials,
+    modelInfo: { endpoint },
+    context: {
+      operationType,
+      workspaceId: owner.sId,
+      userId: auth.user()?.sId,
+    },
+  };
+
+  const llm = await getStreamLLM(auth, llmParameters);
   if (!llm) {
     logger.error(
-      { contextId, workspaceId: auth.getNonNullableWorkspace().sId },
+      { contextId, workspaceId: owner.sId },
       "ReinforcedSkills: no LLM available for step activity"
     );
     return {
@@ -199,6 +275,7 @@ async function runReinforcedSkillsStep({
     };
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationRes = await getConversation(
     auth,
     reinforcementConversationId
@@ -207,9 +284,7 @@ async function runReinforcedSkillsStep({
     throw conversationRes.error;
   }
 
-  const specifications = buildReinforcedSkillsSpecifications(operationType, {
-    useInlineTools,
-  });
+  const specifications = buildReinforcedSkillsSpecifications(operationType);
   const modelConfig = llm.getModelConfig();
   const toolsJson = JSON.stringify(
     specifications.map((s) => ({
@@ -293,7 +368,6 @@ async function runReinforcedSkillsStep({
       contextId,
       conversation,
       eligibleSkillIds,
-      useInlineTools,
     });
 
     // Store results for all terminal tool calls so the conversation is complete.
@@ -355,20 +429,22 @@ function getReinforcedSkillIdsFromMetadata(
   ];
 }
 
-function splitPriceMicroUsdAcrossSkills(
-  priceMicroUsd: number,
+// Splits an integer amount (micro-USD or AWU credits) evenly across skills,
+// distributing the remainder one unit at a time so the parts sum to the total.
+function splitAmountAcrossSkills(
+  totalAmount: number,
   skillCount: number
 ): number[] {
   if (skillCount <= 0) {
     return [];
   }
 
-  const basePriceMicroUsd = Math.floor(priceMicroUsd / skillCount);
-  const remainderMicroUsd = priceMicroUsd % skillCount;
+  const baseAmount = Math.floor(totalAmount / skillCount);
+  const remainder = totalAmount % skillCount;
 
   return Array.from(
     { length: skillCount },
-    (_, index) => basePriceMicroUsd + (index < remainderMicroUsd ? 1 : 0)
+    (_, index) => baseAmount + (index < remainder ? 1 : 0)
   );
 }
 
@@ -387,6 +463,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
   conversationsProcessed: number;
   usagesCreated: number;
   totalPriceMicroUsd: number;
+  totalPriceAwuCredits: number;
 }> {
   const uniqueConversationIds = [...new Set(conversationIds)];
   if (uniqueConversationIds.length === 0) {
@@ -394,6 +471,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
       conversationsProcessed: 0,
       usagesCreated: 0,
       totalPriceMicroUsd: 0,
+      totalPriceAwuCredits: 0,
     };
   }
 
@@ -421,6 +499,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
       conversationsProcessed: 0,
       usagesCreated: 0,
       totalPriceMicroUsd: 0,
+      totalPriceAwuCredits: 0,
     };
   }
 
@@ -466,7 +545,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
     ),
   ];
 
-  const runCostMicroUsdByDustRunId = new Map<string, number>();
+  const runUsagesByDustRunId = new Map<string, RunUsageType[]>();
   if (allDustRunIds.length > 0) {
     const runs = await RunResource.listByDustRunIds(auth, {
       dustRunIds: allDustRunIds,
@@ -480,10 +559,9 @@ export async function recordSelfImprovingSkillsUsageActivity({
         continue;
       }
 
-      runCostMicroUsdByDustRunId.set(
-        dustRunId,
-        (runCostMicroUsdByDustRunId.get(dustRunId) ?? 0) + usage.costMicroUsd
-      );
+      const usagesForRun = runUsagesByDustRunId.get(dustRunId) ?? [];
+      usagesForRun.push(usage);
+      runUsagesByDustRunId.set(dustRunId, usagesForRun);
     }
   }
 
@@ -499,13 +577,16 @@ export async function recordSelfImprovingSkillsUsageActivity({
 
   const usages: SelfImprovingSkillsUsageCreateBlob[] = [];
   let totalPriceMicroUsd = 0;
+  let totalPriceAwuCredits = 0;
 
   for (const { conversation, skillIds } of conversationsWithSkills) {
     const dustRunIds =
       runIdsByConversationModelId.get(conversation.id) ?? new Set<string>();
-    const conversationPriceMicroUsd = [...dustRunIds].reduce(
-      (sum, dustRunId) =>
-        sum + (runCostMicroUsdByDustRunId.get(dustRunId) ?? 0),
+    const conversationRunUsages = [...dustRunIds].flatMap(
+      (dustRunId) => runUsagesByDustRunId.get(dustRunId) ?? []
+    );
+    const conversationPriceMicroUsd = conversationRunUsages.reduce(
+      (sum, usage) => sum + usage.costMicroUsd,
       0
     );
 
@@ -513,11 +594,24 @@ export async function recordSelfImprovingSkillsUsageActivity({
       continue;
     }
 
+    // AWU credits as billed to Metronome (margin baked in). The canonical
+    // conversion rounds up per (provider, model) group, applied here at
+    // conversation granularity.
+    const conversationPriceAwuCredits = intelligenceAwuFromRunUsages(
+      conversationRunUsages,
+      "reinforcement"
+    );
+
     totalPriceMicroUsd += conversationPriceMicroUsd;
+    totalPriceAwuCredits += conversationPriceAwuCredits;
     // A single conversation being analysed can have several skill enabled it it
     // In that case we split the cost of analysis evenly per skill.
-    const prices = splitPriceMicroUsdAcrossSkills(
+    const prices = splitAmountAcrossSkills(
       conversationPriceMicroUsd,
+      skillIds.length
+    );
+    const credits = splitAmountAcrossSkills(
+      conversationPriceAwuCredits,
       skillIds.length
     );
 
@@ -528,6 +622,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
         skillId: skillModelIdById.get(skillIds[i]) ?? null,
         conversationId: conversation.id,
         priceMicroUsd: prices[i],
+        priceAwuCredits: credits[i],
       });
     }
   }
@@ -544,6 +639,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
       conversationCount: conversationModelIds.length,
       usageCount: createdUsages.length,
       totalPriceMicroUsd,
+      totalPriceAwuCredits,
     },
     "ReinforcedSkills: recorded self-improving skills usage"
   );
@@ -552,6 +648,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
     conversationsProcessed: conversationModelIds.length,
     usagesCreated: createdUsages.length,
     totalPriceMicroUsd,
+    totalPriceAwuCredits,
   };
 }
 
@@ -569,8 +666,7 @@ export async function getReinforcementSettingsActivity({
   | {
       reinforcementEnabled: true;
       batchModeAllowed: boolean;
-      globalConsumptionMicroUsd: number;
-      globalCapMicroUsd: number;
+      globalCapReached: boolean;
       programmaticUsageLimitReached: boolean;
       maxConversationsForBudget: number;
     }
@@ -583,47 +679,85 @@ export async function getReinforcementSettingsActivity({
 
   const workspace = auth.getNonNullableWorkspace();
   const { cycleStart: periodStart } = await getCurrentPeriod(auth);
-  const globalConsumptionMicroUsd =
-    await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
-      auth,
-      periodStart
-    );
-  const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
-
-  // Credit-priced plans check pool + programmatic cap via Metronome state;
-  // legacy plans check programmatic credits via CreditResource.
-  const plan = auth.subscription()?.plan;
-  let programmaticUsageLimitReached: boolean;
-  if (plan && isCreditPricedPlan(plan) && workspace.metronomeCustomerId) {
-    programmaticUsageLimitReached =
-      (await isApiBlocked(workspace.sId)) ||
-      (await isProgrammaticApiBlocked(workspace.sId));
-  } else {
-    // Legacy check for not metronome workspaces
-    programmaticUsageLimitReached = (
-      await checkProgrammaticUsageLimits(auth)
-    ).isErr();
-  }
-
-  // Compute remaining programmatic budget: total remaining credits capped by
-  // the daily usage allowance.
-  // TODO(fabien): use credit pool remaining credit here too.
-  const remainingCreditsMicroUsd =
-    await CreditResource.getRemainingMicroUsd(auth);
-  const remainingDailyCapMicroUsd = await getRemainingDailyCapMicroUsd(auth);
-  const remainingProgrammaticCreditsMicroUsd = Math.min(
-    remainingCreditsMicroUsd,
-    remainingDailyCapMicroUsd
+  const globalConsumption = await getReinforcementGlobalConsumptionStatus(
+    auth,
+    { periodStart, unit: getReinforcementBillingUnit(auth) }
   );
+
+  let programmaticUsageLimitReached: boolean;
+  let maxConversationsForBudget: number;
+  switch (globalConsumption.unit) {
+    case "micro_usd": {
+      // Legacy programmatic usage check via CreditResource.
+      programmaticUsageLimitReached = (
+        await checkProgrammaticUsageLimits(auth)
+      ).isErr();
+
+      // Remaining programmatic budget: total remaining credits capped by the
+      // daily usage allowance.
+      const remainingCreditsMicroUsd =
+        await CreditResource.getRemainingMicroUsd(auth);
+      const remainingDailyCapMicroUsd =
+        await getRemainingDailyCapMicroUsd(auth);
+      maxConversationsForBudget = getMaxConversationsForBudget({
+        globalConsumptionMicroUsd: globalConsumption.consumedMicroUsd,
+        globalCapMicroUsd: globalConsumption.capMicroUsd,
+        remainingProgrammaticCreditsMicroUsd: Math.min(
+          remainingCreditsMicroUsd,
+          remainingDailyCapMicroUsd
+        ),
+      });
+      break;
+    }
+    case "awu_credits": {
+      // Pool + programmatic cap via Metronome state (alert/webhook driven).
+      programmaticUsageLimitReached =
+        (await isApiBlocked(workspace.sId)) ||
+        (await isProgrammaticApiBlocked(workspace.sId));
+
+      // Both clamps fail-open on errors: the reinforcement cap stays the only
+      // constraint.
+      let remainingPoolCreditsAwuCredits = Infinity;
+      let remainingProgrammaticCreditsAwuCredits = Infinity;
+      if (workspace.metronomeCustomerId) {
+        // Reinforcement spend draws from the workspace AWU credit pool: clamp
+        // by the live Metronome balance.
+        const balanceRes = await getWorkspacePoolAwuBalance(
+          workspace.metronomeCustomerId
+        );
+        if (balanceRes.isOk()) {
+          remainingPoolCreditsAwuCredits = balanceRes.value;
+        } else {
+          logger.warn(
+            { workspaceId, error: balanceRes.error },
+            "ReinforcedSkills: failed to fetch AWU pool balance — not constraining the budget"
+          );
+        }
+
+        // Remaining programmatic headroom (cap minus period spend, live from
+        // Metronome; fail-open). Actual cap depletion is enforced by the
+        // alert-driven gate above either way.
+        remainingProgrammaticCreditsAwuCredits =
+          await getRemainingProgrammaticUsageFromMetronome(auth);
+      }
+      maxConversationsForBudget = getMaxConversationsForBudgetAwuCredits({
+        globalConsumptionAwuCredits: globalConsumption.consumedAwuCredits,
+        globalCapAwuCredits: globalConsumption.capAwuCredits,
+        remainingProgrammaticCreditsAwuCredits,
+        remainingPoolCreditsAwuCredits,
+      });
+      break;
+    }
+    default:
+      return assertNever(globalConsumption);
+  }
 
   logger.info(
     {
       workspaceId,
-      globalConsumptionMicroUsd,
-      globalCapMicroUsd,
-      capReached: globalConsumptionMicroUsd >= globalCapMicroUsd,
+      globalConsumption,
       programmaticUsageLimitReached,
-      remainingProgrammaticCreditsMicroUsd,
+      maxConversationsForBudget,
     },
     "ReinforcedSkills: workspace consumption check"
   );
@@ -631,14 +765,9 @@ export async function getReinforcementSettingsActivity({
   return {
     reinforcementEnabled: true,
     batchModeAllowed: await isReinforcementBatchModeAllowed(auth),
-    globalConsumptionMicroUsd,
-    globalCapMicroUsd,
+    globalCapReached: globalConsumption.capReached,
     programmaticUsageLimitReached,
-    maxConversationsForBudget: getMaxConversationsForBudget({
-      globalConsumptionMicroUsd,
-      globalCapMicroUsd,
-      remainingProgrammaticCreditsMicroUsd,
-    }),
+    maxConversationsForBudget,
   };
 }
 
@@ -698,7 +827,6 @@ export async function analyzeConversationStepActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   // On first step, build the analysis prompt and create a reinforcement conversation.
   if (!reinforcementConversationId) {
@@ -737,8 +865,7 @@ export async function analyzeConversationStepActivity({
 
     const prompt = buildSkillAnalysisPrompt(
       conversationRes.value.text,
-      skillTypes,
-      { useInlineTools }
+      skillTypes
     );
     reinforcementConversationId = await createReinforcedSkillsConversation(
       auth,
@@ -747,7 +874,6 @@ export async function analyzeConversationStepActivity({
         operationType: "reinforcement_analyze_conversation",
         contextId: conversationId,
         skillIds: skillIds,
-        useInlineTools,
       }
     );
   }
@@ -760,12 +886,11 @@ export async function analyzeConversationStepActivity({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_analyze_conversation",
-    systemPrompt: buildSkillAnalysisSystemPrompt({ useInlineTools }),
+    systemPrompt: buildSkillAnalysisSystemPrompt(),
     contextId: conversationId,
     source: "synthetic",
     conversation,
     eligibleSkillIds: skillIds,
-    useInlineTools,
   });
   return { ...result, reinforcementConversationId };
 }
@@ -835,13 +960,10 @@ export async function aggregateSuggestionsForSkillStepActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   // On first step, load aggregation context and create a reinforcement conversation.
   if (!reinforcementConversationId) {
-    const ctx = await loadSkillAggregationContext(auth, skillId, {
-      useInlineTools,
-    });
+    const ctx = await loadSkillAggregationContext(auth, skillId);
     if (!ctx) {
       return {
         isTerminal: true,
@@ -857,7 +979,6 @@ export async function aggregateSuggestionsForSkillStepActivity({
         operationType: "reinforcement_aggregate_suggestions",
         contextId: skillId,
         skillIds: [skillId],
-        useInlineTools,
       }
     );
   }
@@ -866,11 +987,10 @@ export async function aggregateSuggestionsForSkillStepActivity({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_aggregate_suggestions",
-    systemPrompt: buildSkillAggregationSystemPrompt({ useInlineTools }),
+    systemPrompt: buildSkillAggregationSystemPrompt(),
     contextId: skillId,
     source: "reinforcement",
     eligibleSkillIds: [skillId],
-    useInlineTools,
   });
   return { ...result, reinforcementConversationId };
 }
@@ -915,9 +1035,7 @@ export async function finalizeSkillAggregationActivity({
   }
   await skill.recordReinforcementAnalysisCompletion();
 
-  const hasReinforcementUi = await hasFeatureFlag(auth, "reinforcement_ui");
-
-  if (suggestionsCreated > 0 && !disableNotifications && hasReinforcementUi) {
+  if (suggestionsCreated > 0 && !disableNotifications) {
     const skillType = skill.toJSON(auth);
     const editors = (await skill.listEditors(auth)) ?? [];
     const editorTypes = editors.map((e) => e.toJSON());
@@ -956,8 +1074,7 @@ export async function checkBatchStatusActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation",
-    { forBatch: true }
+    "reinforcement_analyze_conversation"
   );
   if (!llm) {
     throw ApplicationFailure.nonRetryable(
@@ -966,6 +1083,62 @@ export async function checkBatchStatusActivity({
   }
 
   return llm.getBatchStatus(batchId);
+}
+
+/**
+ * Delete a batch's data on the provider once its results have been consumed.
+ * Idempotent: a batch that no longer exists is treated as already deleted, so
+ * the activity can be safely retried.
+ */
+export async function deleteBatchActivity({
+  workspaceId,
+  batchId,
+}: {
+  workspaceId: string;
+  batchId: string;
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const llm = await getReinforcedSkillsLLM(
+    auth,
+    "reinforcement_analyze_conversation"
+  );
+  if (!llm) {
+    throw ApplicationFailure.nonRetryable(
+      "ReinforcedSkills: no LLM available for batch deletion"
+    );
+  }
+
+  const result = await llm.deleteBatch(batchId);
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  switch (result.value) {
+    case "deleted":
+      return;
+    case "do_not_exist":
+      logger.info(
+        { workspaceId, batchId },
+        "ReinforcedSkills: batch to delete not found, it may already be deleted"
+      );
+      return;
+    case "unsupported": {
+      const metadata = llm.getMetadata();
+      logger.warn(
+        {
+          workspaceId,
+          providerId: metadata.clientId,
+          modelId: metadata.modelId,
+          batchId,
+        },
+        "ReinforcedSkills: batch deletion not supported by provider"
+      );
+      return;
+    }
+    default:
+      assertNever(result.value);
+  }
 }
 
 export interface ConversationContinuationInfo {
@@ -992,12 +1165,10 @@ export async function startSkillConversationAnalysisBatchActivity({
   reinforcementConversationMap: Record<string, string>;
 } | null> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation",
-    { forBatch: true }
+    "reinforcement_analyze_conversation"
   );
   if (!llm) {
     logger.warn(
@@ -1016,15 +1187,13 @@ export async function startSkillConversationAnalysisBatchActivity({
   if (firstTimeConversations.length > 0) {
     batchMap = await buildSkillConversationAnalysisBatchMap(
       auth,
-      firstTimeConversations,
-      { useInlineTools }
+      firstTimeConversations
     );
   }
 
-  const systemPrompt = buildSkillAnalysisSystemPrompt({ useInlineTools });
+  const systemPrompt = buildSkillAnalysisSystemPrompt();
   const specifications = buildReinforcedSkillsSpecifications(
-    "reinforcement_analyze_conversation",
-    { useInlineTools }
+    "reinforcement_analyze_conversation"
   );
 
   const batchConversations: LlmConversationOptions[] = [];
@@ -1128,12 +1297,10 @@ export async function processSkillConversationAnalysisBatchResultActivity({
   conversationSkillMap: Record<string, string[]>;
 }): Promise<ConversationContinuationInfo[]> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation",
-    { forBatch: true }
+    "reinforcement_analyze_conversation"
   );
   if (!llm) {
     return [];
@@ -1220,7 +1387,6 @@ export async function processSkillConversationAnalysisBatchResultActivity({
         contextId: analysedConvId,
         conversation: conversationById.get(analysedConvId),
         eligibleSkillIds: conversationSkillMap[analysedConvId] ?? [],
-        useInlineTools,
       });
       totalCreated += result.suggestionsCreated;
 
@@ -1294,12 +1460,10 @@ export async function startSkillAggregationBatchActivity({
   reinforcementConversationIds: string[];
 } | null> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_aggregate_suggestions",
-    { forBatch: true }
+    "reinforcement_aggregate_suggestions"
   );
   if (!llm) {
     logger.warn(
@@ -1309,10 +1473,9 @@ export async function startSkillAggregationBatchActivity({
     return null;
   }
 
-  const systemPrompt = buildSkillAggregationSystemPrompt({ useInlineTools });
+  const systemPrompt = buildSkillAggregationSystemPrompt();
   const specifications = buildReinforcedSkillsSpecifications(
-    "reinforcement_aggregate_suggestions",
-    { useInlineTools }
+    "reinforcement_aggregate_suggestions"
   );
 
   let batchConversations: LlmConversationOptions[];
@@ -1407,12 +1570,10 @@ export async function processSkillAggregationBatchResultActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_aggregate_suggestions",
-    { forBatch: true }
+    "reinforcement_aggregate_suggestions"
   );
   if (!llm) {
     return {
@@ -1480,7 +1641,6 @@ export async function processSkillAggregationBatchResultActivity({
       operationType: "reinforcement_aggregate_suggestions",
       contextId: skillId,
       eligibleSkillIds: [skillId],
-      useInlineTools,
     });
 
     // Store results for all terminal tool calls.

@@ -40,11 +40,55 @@ struct ClusterInfoResult {
     local_shards: Vec<LocalShardInfo>,
 }
 
+// Minimal structures for the /telemetry JSON response.
+#[derive(Deserialize, Debug)]
+struct MemoryTelemetry {
+    resident_bytes: u64,
+}
+
+#[derive(Deserialize, Debug)]
+struct TelemetryResult {
+    // Absent when the node build has no jemalloc stats.
+    memory: Option<MemoryTelemetry>,
+}
+
 // Generic wrapper for all Qdrant HTTP API responses
 #[derive(Deserialize)]
 struct QdrantResponse<T> {
     status: String,
     result: T,
+}
+
+// GETs a Qdrant JSON endpoint, failing with the URL, HTTP status and (truncated) body. A bare
+// `.json()` on a peer returning a non-JSON error page (e.g. an ingress 404/502) only yields an
+// anonymous "error decoding response body" with no clue about which peer failed.
+async fn get_json<T: serde::de::DeserializeOwned>(
+    client: &reqwest::Client,
+    url: &str,
+    api_key: &str,
+) -> Result<T> {
+    let mut req = client.get(url);
+    if !api_key.is_empty() {
+        req = req.header("api-key", api_key);
+    }
+    let res = req
+        .send()
+        .await
+        .map_err(|e| anyhow!("GET {} failed: {}", url, e))?;
+    let status = res.status();
+    let body = res.text().await.unwrap_or_default();
+    let body_snippet: String = body.chars().take(500).collect();
+    if !status.is_success() {
+        return Err(anyhow!("GET {} failed ({}): {}", url, status, body_snippet));
+    }
+    serde_json::from_str(&body).map_err(|e| {
+        anyhow!(
+            "GET {}: failed to parse response: {} ({})",
+            url,
+            e,
+            body_snippet
+        )
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -112,9 +156,10 @@ async fn main() -> Result<()> {
 
     // Step 1: Gather cluster data.
     let (peers, shards) = gather_cluster_data(&peer_uris, &api_key).await?;
+    let memory_by_peer = gather_peer_memory(&peer_uris, &api_key).await?;
 
     // Step 2: Analyze current distribution.
-    let (_, _, ideal_points_per_peer) = analyze_cluster_distribution(&peers);
+    let (_, _, ideal_points_per_peer) = analyze_cluster_distribution(&peers, &memory_by_peer);
 
     // Step 3: Calculate suggested moves.
     let (suggested_moves, updated_peers) =
@@ -171,13 +216,8 @@ fn create_node_url(base_url: &str, node_number: &str) -> Result<String, Error> {
 async fn get_cluster_uris(seed_uri: &str, api_key: &str) -> Result<HashMap<u64, String>> {
     let http_client = reqwest::Client::new();
 
-    let mut req = http_client.get(format!("{}/cluster", seed_uri));
-    if !api_key.is_empty() {
-        req = req.header("api-key", api_key);
-    }
-
     let cluster_resp: QdrantResponse<ClusterStatus> =
-        req.send().await?.error_for_status()?.json().await?;
+        get_json(&http_client, &format!("{}/cluster", seed_uri), api_key).await?;
 
     if cluster_resp.status != "ok" {
         return Err(anyhow!(
@@ -247,28 +287,19 @@ async fn gather_cluster_data(
             format!("{}/", peer_uri)
         };
 
-        // Get list of collections for this peer.
+        // Get list of collections for this peer. Errors are fatal (with the failing URL in the
+        // message): a peer skipped here would look empty and attract move suggestions.
         let collections_url = format!("{}collections", base_uri);
-        let collections_response = client
-            .get(&collections_url)
-            .header("api-key", api_key)
-            .send()
-            .await?
-            .json::<QdrantResponse<CollectionsResult>>()
-            .await?;
+        let collections_response: QdrantResponse<CollectionsResult> =
+            get_json(&client, &collections_url, api_key).await?;
 
         let collections = collections_response.result.collections;
 
         // Collect peer loads and shard data.
         for collection in collections {
             let cluster_info_url = format!("{}collections/{}/cluster", base_uri, collection.name);
-            let cluster_info = client
-                .get(&cluster_info_url)
-                .header("api-key", api_key)
-                .send()
-                .await?
-                .json::<QdrantResponse<ClusterInfoResult>>()
-                .await?;
+            let cluster_info: QdrantResponse<ClusterInfoResult> =
+                get_json(&client, &cluster_info_url, api_key).await?;
 
             let peer_id_from_response = cluster_info.result.peer_id;
 
@@ -308,7 +339,43 @@ async fn gather_cluster_data(
     Ok((peers, all_shards))
 }
 
-fn analyze_cluster_distribution(peers: &[PeerLoad]) -> (u64, usize, f64) {
+// Fetch each peer's jemalloc resident memory from /telemetry. This is the qdrant process's
+// heap-resident memory, not the node's full working set (excludes OS page cache for mmapped
+// segments), so it reads lower than the Qdrant Cloud console RAM graphs.
+async fn gather_peer_memory(
+    peer_uris: &HashMap<u64, String>,
+    api_key: &str,
+) -> Result<HashMap<u64, Option<u64>>> {
+    let client = reqwest::Client::new();
+
+    let mut memory_by_peer = HashMap::new();
+    for (peer_id, peer_uri) in peer_uris {
+        let telemetry_url = format!(
+            "{}/telemetry?details_level=1",
+            peer_uri.trim_end_matches('/')
+        );
+        // Memory is display-only (rendered as n/a when absent): an unreachable peer must not
+        // kill the whole run.
+        let telemetry: Result<QdrantResponse<TelemetryResult>> =
+            get_json(&client, &telemetry_url, api_key).await;
+        let resident_bytes = match telemetry {
+            Ok(telemetry) => telemetry.result.memory.map(|m| m.resident_bytes),
+            Err(e) => {
+                println!("WARNING: no telemetry for peer {}: {}", peer_id, e);
+                None
+            }
+        };
+
+        memory_by_peer.insert(*peer_id, resident_bytes);
+    }
+
+    Ok(memory_by_peer)
+}
+
+fn analyze_cluster_distribution(
+    peers: &[PeerLoad],
+    memory_by_peer: &HashMap<u64, Option<u64>>,
+) -> (u64, usize, f64) {
     let total_points: u64 = peers.iter().map(|n| n.point_count).sum();
     let peer_count = peers.len();
     let ideal_points_per_peer = total_points as f64 / peer_count as f64;
@@ -317,9 +384,13 @@ fn analyze_cluster_distribution(peers: &[PeerLoad]) -> (u64, usize, f64) {
     for peer in peers {
         let diff = (peer.point_count as f64) - ideal_points_per_peer;
         let diff_pct = diff / ideal_points_per_peer * 100.0;
+        let ram_resident_gb = match memory_by_peer.get(&peer.peer_id).copied().flatten() {
+            Some(resident_bytes) => format!("{:.1}", resident_bytes as f64 / 1e9),
+            None => "n/a".to_string(),
+        };
         println!(
-            "Peer {}: {} shards, {} points, diff_from_ideal={:+.1}%",
-            peer.peer_id, peer.shard_count, peer.point_count, diff_pct
+            "Peer {}: {} shards, {} points, diff_from_ideal={:+.1}%, ram_resident_gb={}",
+            peer.peer_id, peer.shard_count, peer.point_count, diff_pct, ram_resident_gb
         );
     }
 

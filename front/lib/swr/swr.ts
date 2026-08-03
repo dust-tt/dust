@@ -1,7 +1,6 @@
 export { FetcherProvider, useFetcher } from "@app/lib/swr/FetcherContext";
 
 import { isAPIErrorResponse } from "@app/types/error";
-import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type {
   Fetcher,
@@ -178,21 +177,6 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
       : result.mutate) as typeof result.mutate,
   };
 }
-
-export const appendPaginationParams = (
-  params: URLSearchParams,
-  pagination?: PaginationState
-) => {
-  if (pagination && pagination.pageIndex) {
-    params.set(
-      "offset",
-      (pagination.pageSize * pagination.pageIndex).toString()
-    );
-  }
-  if (pagination && pagination.pageSize) {
-    params.set("limit", pagination.pageSize.toString());
-  }
-};
 
 export async function getErrorFromResponse(response: Response) {
   const errorData = await response.json();

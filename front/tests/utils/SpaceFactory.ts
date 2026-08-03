@@ -59,7 +59,7 @@ export class SpaceFactory {
     const group = await GroupResource.makeNew({
       name: `${SPACE_GROUP_PREFIX} ${name}`,
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "regular_auto",
     });
 
     return SpaceResource.makeNew(
@@ -88,7 +88,7 @@ export class SpaceFactory {
     const group = await GroupResource.makeNew({
       name: `${PROJECT_GROUP_PREFIX} ${name}`,
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "regular_auto",
     });
 
     // Create an editor group with the creator as a member if creatorId is provided

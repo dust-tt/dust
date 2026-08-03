@@ -28,7 +28,7 @@ export async function seedSpace(
     const group = await GroupResource.makeNew({
       name: `Group for ${RESTRICTED_SPACE_NAME}`,
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "regular_auto",
     });
 
     // Create the restricted space

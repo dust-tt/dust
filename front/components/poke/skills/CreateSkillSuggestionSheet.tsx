@@ -1,6 +1,10 @@
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import {
+  SKILL_INSTRUCTIONS_LABEL,
+  SKILL_INVOCATION_LABEL,
+} from "@app/lib/skills/labels";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { useCreatePokeSkillSuggestion } from "@app/poke/swr/skills";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -17,7 +21,7 @@ import {
   IconPicker,
   Input,
   Label,
-  PlusIcon,
+  Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -187,7 +191,7 @@ export function CreateSkillSuggestionSheet({
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="agentFacingDescription">
-                What will this skill be used for?
+                {SKILL_INVOCATION_LABEL}
               </Label>
               <TextArea
                 id="agentFacingDescription"
@@ -199,9 +203,7 @@ export function CreateSkillSuggestionSheet({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="instructions">
-                What guidelines should it provide?
-              </Label>
+              <Label htmlFor="instructions">{SKILL_INSTRUCTIONS_LABEL}</Label>
               <TextArea
                 id="instructions"
                 value={instructions}
@@ -217,7 +219,7 @@ export function CreateSkillSuggestionSheet({
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      icon={PlusIcon}
+                      icon={Plus}
                       variant="outline"
                       label="Add"
                       isSelect

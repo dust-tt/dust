@@ -18,6 +18,7 @@ export const toggleBusinessPlanWhitelist = createPlugin({
         async: true,
       },
     },
+    requiredRoles: ["billing"],
   },
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();

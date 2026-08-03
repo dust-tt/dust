@@ -19,6 +19,7 @@ export type PokeDeleteInvitationResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/invitations.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
   validate("json", DeleteInvitationBodySchema),

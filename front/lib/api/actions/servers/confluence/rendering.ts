@@ -231,14 +231,17 @@ function extractBodyMarkdown(page: RenderablePage): {
     return { markdown: null };
   }
 
+  // Prefer rendered HTML (view format) over raw storage XML since TurndownService
+  // expects HTML. Storage format contains Confluence-specific XML (CDATA, ac:* elements)
+  // that TurndownService cannot parse correctly.
+  const viewHtml = body.view?.value?.trim();
+  if (viewHtml) {
+    return { markdown: convertHtmlToMarkdown(viewHtml) };
+  }
+
   const storageHtml = body.storage?.value?.trim();
   if (storageHtml) {
     return { markdown: convertHtmlToMarkdown(storageHtml) };
-  }
-
-  const storageRepresentation = body.storage?.representation;
-  if (storageRepresentation === "storage") {
-    return { markdown: convertHtmlToMarkdown(body.storage?.value ?? "") };
   }
 
   return { markdown: null };

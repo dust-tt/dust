@@ -3,14 +3,19 @@ import type {
   ToolDefinition,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
+  type ToolContext,
+  type ToolRunContext,
+} from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
+import { truncate } from "@app/types/shared/utils/string_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
@@ -18,10 +23,13 @@ import type {
   ServerNotification,
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
+
+const MAX_LOGGED_ERROR_MESSAGE_LENGTH = 200;
 
 export function registerTool(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType | undefined,
+  toolContext: ToolContext | undefined,
   server: McpServer,
   tool: ToolDefinition,
   { monitoringName }: { monitoringName: string }
@@ -35,6 +43,7 @@ export function registerTool(
         dust: {
           stake: tool.stake,
           displayLabels: tool.displayLabels,
+          eager: tool.eager,
         },
       },
     },
@@ -42,13 +51,18 @@ export function registerTool(
       auth,
       {
         toolNameForMonitoring: monitoringName,
-        agentLoopContext,
+        runContext: toolContext?.runContext,
         enableAlerting: tool.enableAlerting,
       },
-      (params, extra) =>
-        withToolResultProcessing(
-          tool.handler(params, { ...extra, agentLoopContext, auth })
-        )
+      (params, extra) => {
+        // Handlers registered during the listing phase are never invoked: tools only execute on
+        // a connection established with a run context.
+        const runContext = toolContext?.runContext;
+        assert(runContext, "Tool handlers require a tool run context.");
+        return withToolResultProcessing(
+          tool.handler(params, { ...extra, runContext, auth })
+        );
+      }
     )
   );
 }
@@ -102,11 +116,12 @@ function withToolLogging<T>(
   auth: Authenticator,
   {
     toolNameForMonitoring,
-    agentLoopContext,
+    runContext,
     enableAlerting = false,
   }: {
     toolNameForMonitoring: string;
-    agentLoopContext: AgentLoopContextType | undefined;
+    // Undefined at listing-phase registration; always set when the callback actually runs.
+    runContext: ToolRunContext | undefined;
     enableAlerting?: boolean;
   },
   toolCallback: (
@@ -134,22 +149,32 @@ function withToolLogging<T>(
       toolName: toolNameForMonitoring,
     };
 
-    // Adding agent loop context if available.
-    if (agentLoopContext?.runContext) {
-      const {
-        agentConfiguration,
-        toolConfiguration,
-        conversation,
-        agentMessage,
-      } = agentLoopContext.runContext;
-      loggerArgs = {
-        ...loggerArgs,
-        actionConfigurationId: toolConfiguration.sId,
-        agentConfigurationId: agentConfiguration.sId,
-        agentConfigurationVersion: agentConfiguration.version,
-        agentMessageId: agentMessage.sId,
-        conversationId: conversation.sId,
-      };
+    // Adding run context identifiers if available.
+    if (runContext) {
+      if (isAgentLoopRunContext(runContext)) {
+        const {
+          agentConfiguration,
+          toolConfiguration,
+          conversation,
+          agentMessage,
+        } = runContext;
+        loggerArgs = {
+          ...loggerArgs,
+          actionConfigurationId: toolConfiguration.sId,
+          agentConfigurationId: agentConfiguration.sId,
+          agentConfigurationVersion: agentConfiguration.version,
+          agentMessageId: agentMessage.sId,
+          conversationId: conversation.sId,
+        };
+      } else if (isSandboxFunctionRunContext(runContext)) {
+        const { invocation, toolConfiguration } = runContext;
+        loggerArgs = {
+          ...loggerArgs,
+          actionConfigurationId: toolConfiguration.sId,
+          sandboxFunctionId: invocation.sandboxFunction.sId,
+          invocationId: invocation.sId,
+        };
+      }
     }
 
     logger.info(loggerArgs, "Tool execution start");
@@ -177,7 +202,16 @@ function withToolLogging<T>(
       const logContext = {
         ...loggerArgs,
         duration: elapsed,
-        error: result.error,
+        error: {
+          message: truncate(
+            result.error.message,
+            MAX_LOGGED_ERROR_MESSAGE_LENGTH
+          ),
+          code: result.error.code,
+          cause: result.error.cause
+            ? errorToString(result.error.cause)
+            : undefined,
+        },
       };
       if (result.error.tracked) {
         logger.error(logContext, "Tool execution error");

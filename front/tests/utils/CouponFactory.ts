@@ -1,9 +1,11 @@
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { CouponModel } from "@app/lib/resources/storage/models/coupons";
+import type { CouponDiscountType } from "@app/types/coupon";
 import { faker } from "@faker-js/faker";
 
 interface CouponOverrides {
   code?: string;
+  discountType?: CouponDiscountType;
   amount?: number;
   maxRedemptions?: number | null;
   redemptionCount?: number;
@@ -20,7 +22,7 @@ export class CouponFactory {
     const row = await CouponModel.create({
       code: overrides.code ?? faker.string.alphanumeric(8).toUpperCase(),
       description: overrides.description ?? null,
-      discountType: "seat",
+      discountType: overrides.discountType ?? "seat",
       amount: overrides.amount ?? 10.0,
       durationMonths: overrides.durationMonths ?? null,
       maxRedemptions: overrides.maxRedemptions ?? null,

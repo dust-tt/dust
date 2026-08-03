@@ -4,9 +4,24 @@ import React from "react";
 import { ListGroup, ListItem, ListItemSection } from "../index_with_tw_base";
 
 const meta = {
-  title: "List/ListItem",
+  title: "Lists/ListItem",
   component: ListItem,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A low-level, generic list row that wraps arbitrary children with consistent padding, an optional bottom **separator**, and a hover background when **onClick** is provided. Control vertical alignment with **itemsAlignment** (\`start\` / \`center\`), the divider with **hasSeparator** / **hasSeparatorIfLast**, and hover scoping with **groupName**.
+
+**When to use**
+- As the base building block for custom list rows, or to render simple clickable rows without bespoke styling.
+
+**Guidelines**
+- Wrap rows in **ListGroup** and use **ListItemSection** for group headers (e.g. \`Today\`, \`Yesterday\`).
+- Set \`hasSeparator={false}\` on the last row, or use **hasSeparatorIfLast**, to avoid a trailing divider.
+- For richer purpose-built rows prefer **ContextItem**, **ConversationListItem**, or **UniversalSearchItem**, which are built on top of this primitive.`,
+      },
+    },
+  },
   argTypes: {
     hasSeparator: {
       control: "boolean",
@@ -38,49 +53,49 @@ type Story = StoryObj<typeof meta>;
 export const WithOnClick: Story = {
   args: { children: null },
   render: () => (
-    <div className="s-flex s-flex-col">
+    <div className="flex flex-col">
       <ListItem onClick={() => console.log("Item 1 clicked")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 1 - hover to see background change
         </div>
       </ListItem>
       <ListItem onClick={() => console.log("Item 2 clicked")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 2 - another clickable item
         </div>
       </ListItem>
       <ListItem onClick={() => console.log("Item 3 clicked")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 3 - hover to see background change
         </div>
       </ListItem>
       <ListItem onClick={() => console.log("Item 4 clicked")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 4 - another clickable item
         </div>
       </ListItem>
       <ListItem onClick={() => console.log("Item 5 clicked")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 5 - hover to see background change
         </div>
       </ListItem>
       <ListItem onClick={() => console.log("Item 6 clicked")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 6 - another clickable item
         </div>
       </ListItem>
       <ListItem onClick={() => console.log("Item 7 clicked")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 7 - hover to see background change
         </div>
       </ListItem>
       <ListItem onClick={() => console.log("Item 8 clicked")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 8 - another clickable item
         </div>
       </ListItem>
       <ListItem onClick={() => console.log("Item 9 clicked")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 9 - hover to see background change
         </div>
       </ListItem>
@@ -88,7 +103,7 @@ export const WithOnClick: Story = {
         onClick={() => console.log("Item 10 clicked")}
         hasSeparator={false}
       >
-        <div className="s-text-foreground dark:s-text-foreground-night">
+        <div className="text-foreground">
           Clickable item 10 - last item without separator
         </div>
       </ListItem>
@@ -102,51 +117,33 @@ export const WithGroupAndSection: Story = {
     <ListGroup>
       <ListItemSection>Today</ListItemSection>
       <ListItem onClick={() => console.log("Today item 1")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Today - Item 1
-        </div>
+        <div className="text-foreground">Today - Item 1</div>
       </ListItem>
       <ListItem onClick={() => console.log("Today item 2")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Today - Item 2
-        </div>
+        <div className="text-foreground">Today - Item 2</div>
       </ListItem>
       <ListItem onClick={() => console.log("Today item 3")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Today - Item 3
-        </div>
+        <div className="text-foreground">Today - Item 3</div>
       </ListItem>
       <ListItemSection>Yesterday</ListItemSection>
       <ListItem onClick={() => console.log("Yesterday item 1")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Yesterday - Item 1
-        </div>
+        <div className="text-foreground">Yesterday - Item 1</div>
       </ListItem>
       <ListItem onClick={() => console.log("Yesterday item 2")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Yesterday - Item 2
-        </div>
+        <div className="text-foreground">Yesterday - Item 2</div>
       </ListItem>
       <ListItemSection>Last Week</ListItemSection>
       <ListItem onClick={() => console.log("Last week item 1")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Last Week - Item 1
-        </div>
+        <div className="text-foreground">Last Week - Item 1</div>
       </ListItem>
       <ListItem onClick={() => console.log("Last week item 2")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Last Week - Item 2
-        </div>
+        <div className="text-foreground">Last Week - Item 2</div>
       </ListItem>
       <ListItem onClick={() => console.log("Last week item 3")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Last Week - Item 3
-        </div>
+        <div className="text-foreground">Last Week - Item 3</div>
       </ListItem>
       <ListItem onClick={() => console.log("Last week item 4")}>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Last Week - Item 4
-        </div>
+        <div className="text-foreground">Last Week - Item 4</div>
       </ListItem>
     </ListGroup>
   ),

@@ -6,6 +6,7 @@ import {
   type RootCommand,
   renderRootCommand,
 } from "@app/lib/api/sandbox/root_command";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import jwt from "jsonwebtoken";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -129,6 +130,10 @@ describe("sandbox egress helpers", () => {
   const auth = {
     getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
   } as never;
+  const runtimeOwner = {
+    kind: "conversation" as const,
+    conversationId: "conversation-id",
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -145,15 +150,26 @@ describe("sandbox egress helpers", () => {
   });
 
   function setup(sandbox: unknown) {
-    return setupEgressForwarder(auth, sandbox as never);
+    return setupEgressForwarder(auth, sandbox as SandboxResource, {
+      runtimeOwner,
+      egressPolicyOwnerId: "conversation-id",
+    });
   }
 
   function ensure(sandbox: unknown, opts: { wokeFromSleep: boolean }) {
-    return ensureSandboxEgressOnExec(auth, sandbox as never, opts);
+    return ensureSandboxEgressOnExec(auth, sandbox as SandboxResource, {
+      ...opts,
+      runtimeOwner,
+      egressPolicyOwnerId: "conversation-id",
+    });
   }
 
-  it("mints a proxy JWT bound to the provider sandbox id", () => {
-    const token = mintEgressJwt("provider-sandbox-id", "workspace-id");
+  it("mints a proxy JWT bound to the provider sandbox id and owner", () => {
+    const token = mintEgressJwt({
+      providerId: "provider-sandbox-id",
+      workspaceId: "workspace-id",
+      ownerId: "owner-id",
+    });
     const payload = jwt.verify(token, "egress-secret", {
       algorithms: ["HS256"],
       audience: "dust-egress-proxy",
@@ -162,6 +178,7 @@ describe("sandbox egress helpers", () => {
 
     expect(payload.sbId).toBe("provider-sandbox-id");
     expect(payload.wId).toBe("workspace-id");
+    expect(payload.ownerId).toBe("owner-id");
     expect(payload.exp).toBeGreaterThan(payload.iat ?? 0);
   });
 
@@ -213,7 +230,11 @@ describe("sandbox egress helpers", () => {
     );
     expect(tokenCall).toContain("/etc/dust/egress-token");
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
-    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      runtimeOwner
+    );
     const spawnCall = getRootCommandCall(sandbox.execRoot, 1);
     expect(spawnCall).toContain("--proxy-addr 203.0.113.10:4443");
     expect(spawnCall).toContain("--proxy-tls-name eu.sandbox-egress.dust.tt");
@@ -500,7 +521,11 @@ describe("sandbox egress helpers", () => {
 
     expect(result).toEqual(new Ok(undefined));
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
-    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      runtimeOwner
+    );
     expect(getRootCommandCall(sandbox.execRoot, 1)).toContain("dsbx forward");
     expect(getRootCommandCall(sandbox.execRoot, 2)).toContain(
       "/opt/bin/dsbx forward"
@@ -835,6 +860,8 @@ describe("sandbox egress helpers", () => {
       );
       expect(command).toContain("/usr/sbin/nft delete table ip dust-egress");
       expect(command).toContain("/usr/sbin/nft delete table ip6 dust-egress");
+      expect(command).toContain("/usr/local/bin/dust-gcs-token-firewall.sh");
+      expect(command).not.toContain("tcp dport 9876 drop");
       expect(sandbox.execRoot).toHaveBeenCalledWith(auth, expect.any(Object));
     });
 

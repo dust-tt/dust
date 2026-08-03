@@ -5,6 +5,7 @@ import SwiftUI
 struct ConversationDetailView: View {
     let conversation: Conversation
     let currentUserEmail: String
+    let currentUserSId: String?
 
     private let workspaceId: String
     private let tokenProvider: TokenProvider
@@ -14,16 +15,19 @@ struct ConversationDetailView: View {
     @State private var showFilesSheet = false
     @State private var selectedFragment: ContentFragment?
     @State private var selectedGeneratedFile: GeneratedFile?
+    @Environment(\.scenePhase) private var scenePhase
 
     init(
         conversation: Conversation,
         workspaceId: String,
         tokenProvider: TokenProvider,
         user: User,
-        currentUserEmail: String
+        currentUserEmail: String,
+        currentUserSId: String?
     ) {
         self.conversation = conversation
         self.currentUserEmail = currentUserEmail
+        self.currentUserSId = currentUserSId
         self.workspaceId = workspaceId
         self.tokenProvider = tokenProvider
         _viewModel = StateObject(
@@ -45,6 +49,10 @@ struct ConversationDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             messageList
+                .environment(
+                    \.attachmentImageContext,
+                    AttachmentImageContext(workspaceId: workspaceId, tokenProvider: tokenProvider)
+                )
             InputBarView(
                 viewModel: inputBarViewModel,
                 conversationId: conversation.sId,
@@ -58,7 +66,7 @@ struct ConversationDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text(conversation.title ?? "New conversation")
+                Text(viewModel.conversationTitle ?? "New conversation")
                     .sparkleCopySm()
                     .foregroundStyle(Color.dustForeground)
                     .lineLimit(1)
@@ -72,6 +80,18 @@ struct ConversationDetailView: View {
                 }
             }
         }
+        .alert(
+            "Action failed",
+            isPresented: Binding(
+                get: { viewModel.actionError != nil },
+                set: { if !$0 { viewModel.actionError = nil } }
+            ),
+            presenting: viewModel.actionError
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { error in
+            Text(error)
+        }
         .task {
             await viewModel.loadMessages()
         }
@@ -79,6 +99,16 @@ struct ConversationDetailView: View {
             async let agents: () = inputBarViewModel.loadAgents()
             async let caps: () = inputBarViewModel.loadCapabilities()
             _ = await (agents, caps)
+        }
+        .onChange(of: viewModel.currentAgentId) { _, agentId in
+            if let agentId {
+                inputBarViewModel.selectConversationAgent(id: agentId)
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await viewModel.resyncOnForeground() }
+            }
         }
         .onDisappear {
             inputBarViewModel.cancelUploads()
@@ -104,14 +134,16 @@ struct ConversationDetailView: View {
             }
         }
         .sheet(item: $selectedGeneratedFile) { file in
-            AttachmentViewerView(
-                title: file.title,
-                contentType: file.contentType,
-                fileId: file.fileId,
-                workspaceId: workspaceId,
-                tokenProvider: tokenProvider,
-                sourceUrl: nil
-            )
+            if let fileId = file.fileId {
+                AttachmentViewerView(
+                    title: file.title,
+                    contentType: file.contentType,
+                    fileId: fileId,
+                    workspaceId: workspaceId,
+                    tokenProvider: tokenProvider,
+                    sourceUrl: nil
+                )
+            }
         }
     }
 
@@ -129,6 +161,20 @@ struct ConversationDetailView: View {
     }
 
     // MARK: - Message List
+
+    private static let bottomAnchorId = "conversation-bottom-anchor"
+
+    /// Scrolls to the bottom marker on the next runloop tick. Deferring lets the
+    /// just-appended row lay out and any in-flight keyboard inset settle first;
+    /// otherwise an animated scroll started mid-keyboard-transition lands against
+    /// the pre-resize viewport and overshoots, pushing messages off the top.
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        DispatchQueue.main.async {
+            withAnimation {
+                proxy.scrollTo(Self.bottomAnchorId, anchor: .bottom)
+            }
+        }
+    }
 
     private var messageList: some View {
         Group {
@@ -174,8 +220,9 @@ struct ConversationDetailView: View {
                                 let isStreaming = message.id == viewModel.streamingMessageId
                                 let hideAgentHeader = isSteeredAgentMessage(at: index)
                                 MessageBubbleView(
-                                    message: message,
+                                    message: viewModel.renderMessage(message),
                                     currentUserEmail: currentUserEmail,
+                                    currentUserSId: currentUserSId,
                                     streamingPhase: isStreaming ? viewModel.streamingPhase : .idle,
                                     activeActions: isStreaming ? viewModel.activeActions : [],
                                     completedSteps: isStreaming ? viewModel.completedSteps : [],
@@ -188,6 +235,7 @@ struct ConversationDetailView: View {
                                         selectedFragment = fragment
                                     },
                                     onGeneratedFileTap: { file in
+                                        guard file.fileId != nil else { return }
                                         selectedGeneratedFile = file
                                     },
                                     onCitationTap: { citation in
@@ -197,6 +245,9 @@ struct ConversationDetailView: View {
                                     },
                                     onValidateAction: { approval in
                                         Task { await viewModel.validateAction(approved: approval) }
+                                    },
+                                    onAnswerQuestion: { answer in
+                                        Task { await viewModel.answerQuestion(answer) }
                                     },
                                     onRetry: { messageId in
                                         Task { await viewModel.retryMessage(messageId: messageId) }
@@ -211,17 +262,20 @@ struct ConversationDetailView: View {
                                 )
                                 .id(message.id)
                             }
+
+                            // Zero-height bottom marker. Scrolling targets this rather
+                            // than the last message so the destination is always the true
+                            // content end, even while the keyboard is animating.
+                            Color.clear
+                                .frame(height: 1)
+                                .id(Self.bottomAnchorId)
                         }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                     }
                     .defaultScrollAnchor(.bottom)
                     .onChange(of: viewModel.messages.last?.id) {
-                        if let last = viewModel.messages.last {
-                            withAnimation {
-                                proxy.scrollTo(last.id, anchor: .bottom)
-                            }
-                        }
+                        scrollToBottom(proxy)
                     }
                 }
             }

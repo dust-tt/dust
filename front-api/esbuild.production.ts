@@ -9,7 +9,7 @@ import {
 function getProductionBuildOptions(target: BuildTarget): esbuild.BuildOptions {
   return {
     ...getBaseBuildOptions(target),
-    sourcemap: false,
+    sourcemap: true,
     minifyWhitespace: true,
     minifySyntax: true,
     legalComments: "none",

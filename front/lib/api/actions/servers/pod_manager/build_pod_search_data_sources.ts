@@ -1,7 +1,6 @@
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type { ContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   isContentFragmentDataSourceNode,
   isContentNodeAttachmentType,
@@ -16,9 +15,10 @@ import {
 } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { ContentNodeAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-export type PodSemanticSearchScope = "files" | "conversations" | "all";
+type PodSemanticSearchScope = "files" | "conversations" | "all";
 
 function mergeContentNodeDataSourceConfigurations(
   workspaceId: string,
@@ -92,7 +92,7 @@ function podDataSourceFilter(
 
 /**
  * Data sources for semantic search over a Pod, scoped to files (Pod files, metadata,
- * searchable context nodes), conversations (transcripts in the dust_project connector), or
+ * searchable content nodes), conversations (transcripts in the dust_project connector), or
  * both. The Pod data source view mixes files and conversations; scope selects via parents
  * filters on that view.
  */

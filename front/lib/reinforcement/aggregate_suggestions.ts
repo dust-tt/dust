@@ -4,14 +4,14 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -29,21 +29,15 @@ const AGGREGATION_ASSEMBLY_ORDER = [
 
 type AggregationSectionKey = (typeof AGGREGATION_ASSEMBLY_ORDER)[number];
 
-function getReinforcedSkillAggregationSections({
-  useInlineTools,
-}: {
-  useInlineTools: boolean;
-}): Record<AggregationSectionKey, string> {
-  return {
-    primary: `You improve a skill's configuration by consolidating many draft suggestions. Each draft was produced from a single conversation that used the skill.
+const REINFORCED_SKILL_AGGREGATION_SECTIONS: Record<
+  AggregationSectionKey,
+  string
+> = {
+  primary: `You improve a skill's configuration by consolidating many draft suggestions. Each draft was produced from a single conversation that used the skill.
 Your job is to produce a subset of the highest quality suggestions for the skill builder to review.
 
 You have access to the following tools:
-- edit_skill: ${
-      useInlineTools
-        ? "For suggesting instruction edits, inline tool reference changes, and/or agent-facing description changes for one skill."
-        : "For suggesting instruction edits, tool add/remove, and/or agent-facing description changes for one skill."
-    }
+- edit_skill: For suggesting instruction edits, inline tool reference changes, and/or agent-facing description changes for one skill.
 - reject_suggestion: For discarding source suggestions that are invalid, not actionable, or too similar to already declined suggestions. Do NOT reject minor but valid suggestions, simply ignore them.
 
 Your goal is to keep the most impactful suggestions. NEVER create more than 5 suggestions.
@@ -55,15 +49,11 @@ IMPORTANT: Both edit_skill and reject_suggestion are terminal calls — you will
 It is ok to simply call no tool if all suggestions are minor.
 `,
 
-    aggregation_rules: `
+  aggregation_rules: `
 Start by grouping suggestions by skill, then within each skill group by topic:
 - For instruction edits, group by coherent theme within the skill (e.g. tone, tool usage, formatting). Suggestions that address different topics MUST be kept as separate suggestions — do NOT merge unrelated topics into one suggestion.
-- ${
-      useInlineTools
-        ? "For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits, so NEVER output separate tool edits."
-        : "For tool changes, group by the target tool within each skill. NEVER create more than one suggestion per tool."
-    }
-- For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. When multiple drafts target the description, merge them into a single coherent replacement.
+- For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits.
+- For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. When multiple drafts target the description, merge them into a single coherent replacement. Max description size is ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters.
 NEVER create more than one suggestion per (skill, topic) pair.
 
 Rank the groups based on impact to the skill. Use these heuristics in priority order to determine highest impact:
@@ -81,17 +71,12 @@ Classify the groups in these 3 categories:
 
 You SHOULD ignore suggestions that only have minor impact and are only supported by a single conversation (don't reject them, do NOT call reject_suggestion, just take no action for these suggestions).
 
-There may be situations where suggestions are co-dependent. For example, there may be an instruction suggestion that requires ${
-      useInlineTools ? "adding an inline <tool> tag" : "a tool suggestion"
-    } to be effective. In this case, NEVER create one suggestion without the other.`,
+There may be situations where suggestions are co-dependent. For example, there may be an instruction suggestion that requires adding an inline <tool> tag to be effective. In this case, NEVER create one suggestion without the other.`,
 
-    suggestion_tool_calls: `
+  suggestion_tool_calls: `
 You are provided all of the attributes associated with a conversation suggestion. You MUST use these EXACT attributes to create the final suggestion.
-The ${
-      useInlineTools
-        ? 'exceptions are:\n- The "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.\n- Legacy "toolEdits"; convert these into instruction edits that add or remove the corresponding inline <tool> tag. Do NOT include "toolEdits" in the final edit_skill call.'
-        : 'only exceptions are the "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.'
-    }
+The exceptions are:
+- The "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.
 
 For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it. The end user does NOT care about the technical considerations behind your thought process.
 
@@ -99,17 +84,11 @@ For "title": You MUST provide a short, action-oriented, user-facing title that s
 
 For "sourceSuggestionIds": You MUST include the sIds of ALL the source suggestions that were consolidated into this final suggestion. Each suggestion has an sId attribute. Every final suggestion MUST reference at least one source suggestion.
 `,
-  };
-}
+};
 
-export function buildSkillAggregationSystemPrompt({
-  useInlineTools = false,
-}: {
-  useInlineTools?: boolean;
-} = {}): string {
-  const sections = getReinforcedSkillAggregationSections({ useInlineTools });
+export function buildSkillAggregationSystemPrompt(): string {
   return AGGREGATION_ASSEMBLY_ORDER.map((key) => {
-    const body = sections[key].trim();
+    const body = REINFORCED_SKILL_AGGREGATION_SECTIONS[key].trim();
     return `<${key}>\n${body}\n</${key}>`;
   }).join("\n\n");
 }
@@ -124,13 +103,6 @@ function formatSuggestion(s: SkillSuggestionType): string {
           xml += `<instructionEdit targetBlockId="${escapeXml(e.targetBlockId)}" type="${escapeXml(e.type)}"><content>${escapeXml(e.content)}</content></instructionEdit>`;
         }
         xml += "</instructionEdits>";
-      }
-      if (s.suggestion.toolEdits?.length) {
-        xml += "<toolEdits>";
-        for (const t of s.suggestion.toolEdits) {
-          xml += `<toolEdit action="${escapeXml(t.action)}" toolId="${escapeXml(t.toolId)}"/>`;
-        }
-        xml += "</toolEdits>";
       }
       if (s.suggestion.agentFacingDescriptionEdit) {
         xml += `<agentFacingDescriptionEdit><content>${escapeXml(s.suggestion.agentFacingDescriptionEdit.content)}</content></agentFacingDescriptionEdit>`;
@@ -153,12 +125,11 @@ export function buildSkillAggregationPrompt(
   existingSuggestions: {
     pending: SkillSuggestionType[];
     rejected: SkillSuggestionType[];
-  },
-  { useInlineTools = false }: { useInlineTools?: boolean } = {}
+  }
 ): { systemPrompt: string; userMessage: string } {
-  const systemPrompt = buildSkillAggregationSystemPrompt({ useInlineTools });
+  const systemPrompt = buildSkillAggregationSystemPrompt();
 
-  let userMessage = `${formatSkillContext(skill, { useInlineTools })}
+  let userMessage = `${formatSkillContext(skill)}
 
 ## Synthetic suggestions from conversation analyses
 
@@ -187,13 +158,11 @@ interface SkillAggregationContext {
   skill: SkillResource;
   syntheticSuggestions: SkillSuggestionResource[];
   prompt: { systemPrompt: string; userMessage: string };
-  useInlineTools: boolean;
 }
 
 export async function loadSkillAggregationContext(
   auth: Authenticator,
-  skillId: string,
-  { useInlineTools }: { useInlineTools?: boolean } = {}
+  skillId: string
 ): Promise<SkillAggregationContext | null> {
   const syntheticSuggestions =
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skillId, {
@@ -238,8 +207,6 @@ export async function loadSkillAggregationContext(
   );
 
   const skillType = skill.toJSON(auth);
-  const resolvedUseInlineTools =
-    useInlineTools ?? (await getFeatureFlags(auth)).includes("nested_skills");
 
   const prompt = buildSkillAggregationPrompt(
     skillType,
@@ -247,15 +214,13 @@ export async function loadSkillAggregationContext(
     {
       pending: pendingSuggestions.map((s) => s.toJSON()),
       rejected: recentRejectedSuggestions.map((s) => s.toJSON()),
-    },
-    { useInlineTools: resolvedUseInlineTools }
+    }
   );
 
   return {
     skill,
     syntheticSuggestions,
     prompt,
-    useInlineTools: resolvedUseInlineTools,
   };
 }
 
@@ -277,8 +242,7 @@ export async function buildSkillAggregationBatchMap(
       "aggregation",
       buildReinforcedSkillsLLMParams(
         ctx.prompt,
-        "reinforcement_aggregate_suggestions",
-        { useInlineTools: ctx.useInlineTools }
+        "reinforcement_aggregate_suggestions"
       ),
     ],
   ]);
@@ -346,7 +310,7 @@ export async function createSkillSuggestionsConversation(
   );
 
   const conversationTitle = `Reinforced suggestions for ${skillType.name} skill`;
-  const conversation = await createConversation(auth, {
+  const conversationResource = await createConversation(auth, {
     title: conversationTitle,
     visibility: "unlisted",
     spaceId: null,
@@ -361,11 +325,11 @@ export async function createSkillSuggestionsConversation(
   await SkillSuggestionResource.bulkSetNotificationConversation(
     auth,
     pendingSuggestions,
-    conversation.id
+    conversationResource.id
   );
 
   const contentFragmentRes = await toFileContentFragment(auth, {
-    conversation,
+    conversation: conversationResource,
     contentFragment: {
       title: `${pendingSuggestions.length} pending suggestions for ${skillType.name} skill`,
       content: formattedSuggestions,
@@ -391,7 +355,7 @@ export async function createSkillSuggestionsConversation(
 
   const contentFragmentPostRes = await postNewContentFragment(
     auth,
-    conversation,
+    conversationResource.toJSON(),
     contentFragmentRes.value,
     {
       username: author.username,
@@ -420,7 +384,7 @@ export async function createSkillSuggestionsConversation(
   );
 
   const messageRes = await postUserMessage(auth, {
-    conversation,
+    conversationResource,
     content,
     mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
     context: {
@@ -449,7 +413,7 @@ export async function createSkillSuggestionsConversation(
     editors,
     (editor) =>
       ConversationResource.upsertParticipation(auth, {
-        conversation,
+        conversation: conversationResource,
         action: "posted",
         user: editor,
         lastReadAt: null,
@@ -504,18 +468,20 @@ export async function postSkillSuggestionStatusUpdate(
   };
 
   for (const [conversationId, items] of byConversation) {
-    const conversationRes = await getConversation(auth, conversationId);
-    if (conversationRes.isErr()) {
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
       logger.warn(
         {
           conversationId,
-          error: conversationRes.error.message,
+          error: "Conversation not found",
         },
         "ReinforcedSkills: failed to fetch notification conversation for status update"
       );
       continue;
     }
-    const conversation = conversationRes.value;
 
     const titles = items.map((s) => s.title ?? s.sId);
     const content =
@@ -524,7 +490,7 @@ export async function postSkillSuggestionStatusUpdate(
         : `${actorName} ${verb}:\n${titles.map((t) => `${marker} ${t}`).join("\n")}`;
 
     const postRes = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content,
       mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
       context: messageContext,
@@ -547,9 +513,28 @@ export async function postSkillSuggestionStatusUpdate(
     // as unread for the acting editor. Push `lastReadAt` a minute into the
     // future so the ack holds through the imminent agent completion — the
     // NOOP reply lands within milliseconds.
-    await ConversationResource.markAsReadForAuthUser(auth, {
-      conversation,
-      lastReadAt: new Date(Date.now() + 60_000),
-    });
+    const lastReadAt = new Date(Date.now() + 60_000);
+
+    // When the last pending suggestion of this notification conversation has
+    // been handled, mark the conversation as read for every participant: the
+    // other editors have nothing left to act on and should not be notified
+    // about an already-handled suggestion list.
+    const hasPending =
+      await SkillSuggestionResource.hasPendingForNotificationConversation(
+        auth,
+        conversationResource.id
+      );
+
+    if (hasPending) {
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation: conversationResource,
+        lastReadAt,
+      });
+    } else {
+      await ConversationResource.markAsReadForAllParticipants(auth, {
+        conversation: conversationResource,
+        lastReadAt,
+      });
+    }
   }
 }

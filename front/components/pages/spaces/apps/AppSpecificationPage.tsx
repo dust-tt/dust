@@ -1,8 +1,8 @@
+import Custom404 from "@app/components/pages/Custom404";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { dumpSpecification } from "@app/lib/specification";
 import { useApp } from "@app/lib/swr/apps";
-import Custom404 from "@app/pages/404";
 import type { SpecificationType } from "@app/types/app";
 import { Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -51,7 +51,7 @@ export function AppSpecificationPage() {
   return (
     <div className="mt-8 flex flex-col gap-4">
       <h3>Current specifications:</h3>
-      <div className="whitespace-pre font-mono text-sm text-gray-700">
+      <div className="whitespace-pre font-mono text-sm text-foreground">
         {specification}
       </div>
     </div>

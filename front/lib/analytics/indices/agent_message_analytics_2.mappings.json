@@ -9,10 +9,36 @@
     "conversation_id": {
       "type": "keyword"
     },
+    "space_id": {
+      "type": "keyword"
+    },
     "agent_id": {
       "type": "keyword"
     },
     "agent_version": {
+      "type": "keyword"
+    },
+    "agent_tag_ids": {
+      "type": "keyword"
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "provider_id": {
+          "type": "keyword"
+        },
+        "model_id": {
+          "type": "keyword"
+        },
+        "reasoning_effort": {
+          "type": "keyword"
+        },
+        "resolution_method": {
+          "type": "keyword"
+        }
+      }
+    },
+    "ancestor_message_ids": {
       "type": "keyword"
     },
     "user_id": {
@@ -21,11 +47,20 @@
     "context_origin": {
       "type": "keyword"
     },
+    "auth_method": {
+      "type": "keyword"
+    },
+    "api_key_name": {
+      "type": "keyword"
+    },
     "timestamp": {
       "type": "date"
     },
     "status": {
       "type": "keyword"
+    },
+    "is_free_seat": {
+      "type": "boolean"
     },
     "latency_ms": {
       "type": "integer"
@@ -57,6 +92,23 @@
         }
       }
     },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "full_awu": {
+          "type": "integer"
+        },
+        "llm_awu": {
+          "type": "integer"
+        },
+        "tool_awu": {
+          "type": "integer"
+        },
+        "billable_awu": {
+          "type": "integer"
+        }
+      }
+    },
     "tools_used": {
       "type": "nested",
       "properties": {
@@ -77,6 +129,9 @@
         },
         "status": {
           "type": "keyword"
+        },
+        "cost_awu": {
+          "type": "integer"
         }
       }
     },

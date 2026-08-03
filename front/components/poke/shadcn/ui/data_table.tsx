@@ -8,11 +8,14 @@ import {
   PokeTableHeader,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import { Input } from "@dust-tt/sparkle";
+import { Checkbox, Input } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
   ColumnFiltersState,
+  PaginationState,
+  RowSelectionState,
   SortingState,
+  Updater,
 } from "@tanstack/react-table";
 import {
   flexRender,
@@ -43,6 +46,37 @@ interface DataTableProps<TData, TValue> {
   isLoading?: boolean;
   facets?: Facet[];
   pageSize?: number;
+  // Server-side (manual) mode. When `serverSideRowCount` is provided,
+  // pagination and sorting are controlled by the caller and applied
+  // server-side (the `data` prop is the current page only). Otherwise the
+  // table paginates/sorts/filters the full `data` set client-side as before.
+  serverSideRowCount?: number;
+  pagination?: PaginationState;
+  onPaginationChange?: (pagination: PaginationState) => void;
+  sorting?: SortingState;
+  onSortingChange?: (sorting: SortingState) => void;
+  // When provided, the filter box drives server-side search (controlled by the
+  // caller) instead of the built-in client-side global filter.
+  search?: string;
+  onSearchChange?: (search: string) => void;
+  onRowClick?: (row: TData) => void;
+  // When true, a leading checkbox column is added and rows become selectable.
+  // The header checkbox selects/deselects all rows matching the current
+  // filters (across pages), not just the current page.
+  enableRowSelection?: boolean;
+  // Stable row identity, so a selection survives filtering/pagination. Defaults
+  // to the row index when omitted.
+  getRowId?: (row: TData) => string;
+  // Rendered above the table whenever at least one row is selected. Receives
+  // the rows matching the current filters that are selected, plus a callback to
+  // clear the selection.
+  renderBulkActions?: (args: {
+    selectedRows: TData[];
+    resetSelection: () => void;
+  }) => React.ReactNode;
+  // Optional per-row CSS classes, computed from the row data (e.g. to mute
+  // revoked members).
+  getRowClassName?: (row: TData) => string | undefined;
 }
 
 export function PokeDataTable<TData, TValue>({
@@ -52,32 +86,102 @@ export function PokeDataTable<TData, TValue>({
   facets,
   isLoading,
   pageSize = 10,
+  serverSideRowCount,
+  pagination,
+  onPaginationChange,
+  sorting,
+  onSortingChange,
+  search,
+  onSearchChange,
+  onRowClick,
+  enableRowSelection,
+  getRowId,
+  renderBulkActions,
+  getRowClassName,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const isServerSide = serverSideRowCount !== undefined;
+  const isServerSearch = onSearchChange !== undefined;
+
+  const [internalSorting, setInternalSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  const resolvedSorting = isServerSide ? (sorting ?? []) : internalSorting;
+
+  const selectionColumn: ColumnDef<TData, TValue> = {
+    id: "select",
+    enableSorting: false,
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllRowsSelected()
+            ? true
+            : table.getIsSomeRowsSelected()
+              ? "partial"
+              : false
+        }
+        onCheckedChange={(checked) =>
+          table.toggleAllRowsSelected(checked === true)
+        }
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(checked) => row.toggleSelected(checked === true)}
+      />
+    ),
+  };
+
+  const resolvedColumns = enableRowSelection
+    ? [selectionColumn, ...columns]
+    : columns;
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
-    columns,
+    columns: resolvedColumns,
+    getRowId,
+    enableRowSelection,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
-    onSortingChange: setSorting,
     globalFilterFn: "includesString", // built-in filter function
+    manualPagination: isServerSide,
+    manualSorting: isServerSide,
+    ...(isServerSide
+      ? { rowCount: serverSideRowCount }
+      : { getSortedRowModel: getSortedRowModel() }),
+    onSortingChange: isServerSide
+      ? (updater: Updater<SortingState>) => {
+          const next =
+            typeof updater === "function" ? updater(resolvedSorting) : updater;
+          onSortingChange?.(next);
+        }
+      : setInternalSorting,
+    ...(isServerSide
+      ? {
+          onPaginationChange: (updater: Updater<PaginationState>) => {
+            const current = pagination ?? { pageIndex: 0, pageSize };
+            const next =
+              typeof updater === "function" ? updater(current) : updater;
+            onPaginationChange?.(next);
+          },
+        }
+      : {}),
     state: {
       columnFilters,
-      sorting,
+      sorting: resolvedSorting,
+      rowSelection,
+      ...(isServerSide && pagination ? { pagination } : {}),
     },
     initialState: {
       globalFilter: "",
-      pagination: {
-        pageSize,
-      },
+      ...(isServerSide ? {} : { pagination: { pageSize } }),
     },
   });
 
@@ -88,25 +192,35 @@ export function PokeDataTable<TData, TValue>({
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center gap-4">
-        <Input
-          name="filter"
-          placeholder="Filter ..."
-          value={
-            defaultFilterColumn
-              ? (table
-                  .getColumn(defaultFilterColumn)
-                  ?.getFilterValue() as string)
-              : table.getState().globalFilter
-          }
-          onChange={(e) =>
-            defaultFilterColumn
-              ? table
-                  .getColumn(defaultFilterColumn)
-                  ?.setFilterValue(e.target.value)
-              : table.setGlobalFilter(e.target.value)
-          }
-          className="max-w-sm"
-        />
+        {isServerSearch ? (
+          <Input
+            name="search"
+            placeholder="Search ..."
+            value={search ?? ""}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            className="max-w-sm"
+          />
+        ) : (
+          <Input
+            name="filter"
+            placeholder="Filter ..."
+            value={
+              defaultFilterColumn
+                ? (table
+                    .getColumn(defaultFilterColumn)
+                    ?.getFilterValue() as string)
+                : table.getState().globalFilter
+            }
+            onChange={(e) =>
+              defaultFilterColumn
+                ? table
+                    .getColumn(defaultFilterColumn)
+                    ?.setFilterValue(e.target.value)
+                : table.setGlobalFilter(e.target.value)
+            }
+            className="max-w-sm"
+          />
+        )}
         {facets &&
           facets.map((facet) => (
             <PokeDataTableFacetedFilter
@@ -117,6 +231,26 @@ export function PokeDataTable<TData, TValue>({
             />
           ))}
       </div>
+      {renderBulkActions &&
+        (() => {
+          const selectedRows = table
+            .getFilteredSelectedRowModel()
+            .rows.map((row) => row.original);
+          if (selectedRows.length === 0) {
+            return null;
+          }
+          return (
+            <div className="flex items-center gap-3 rounded-md border bg-muted-background p-2">
+              <span className="text-sm font-medium">
+                {selectedRows.length} selected
+              </span>
+              {renderBulkActions({
+                selectedRows,
+                resetSelection: () => table.resetRowSelection(),
+              })}
+            </div>
+          );
+        })()}
       <div className="rounded-md border">
         <PokeTable>
           <PokeTableHeader>
@@ -143,6 +277,17 @@ export function PokeDataTable<TData, TValue>({
                 <PokeTableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className={
+                    [
+                      onRowClick ? "cursor-pointer" : "",
+                      getRowClassName?.(row.original) ?? "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  onClick={
+                    onRowClick ? () => onRowClick(row.original) : undefined
+                  }
                 >
                   {row.getVisibleCells().map((cell) => (
                     <PokeTableCell key={cell.id}>
@@ -157,7 +302,7 @@ export function PokeDataTable<TData, TValue>({
             ) : (
               <PokeTableRow>
                 <PokeTableCell
-                  colSpan={columns.length}
+                  colSpan={table.getVisibleFlatColumns().length}
                   className="h-24 text-center"
                 >
                   No results.

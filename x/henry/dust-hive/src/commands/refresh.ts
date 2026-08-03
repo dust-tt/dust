@@ -2,8 +2,8 @@
 
 import { lstat, rm, unlink } from "node:fs/promises";
 import { withEnvironment } from "../lib/commands";
+import { getEnvironmentWorktreeDir } from "../lib/environment";
 import { logger } from "../lib/logger";
-import { getWorktreeDir } from "../lib/paths";
 import { Ok } from "../lib/result";
 import { installAllDependencies } from "../lib/setup";
 
@@ -11,6 +11,8 @@ import { installAllDependencies } from "../lib/setup";
 const WORKSPACE_DIRS = [
   "sdks/js",
   "front",
+  "front-api",
+  "marketing",
   "connectors",
   "sparkle",
   "front-spa",
@@ -34,7 +36,7 @@ async function removePath(path: string): Promise<boolean> {
 }
 
 export const refreshCommand = withEnvironment("refresh", async (env) => {
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const repoRoot = env.metadata.repoRoot;
 
   logger.info(`Refreshing node_modules for '${env.name}'...`);

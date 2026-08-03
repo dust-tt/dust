@@ -11,6 +11,7 @@ export const contactAdminsPlugin = createPlugin({
     resourceTypes: ["workspaces"],
     readonly: true,
     args: {},
+    requiredRoles: ["support"],
   },
   execute: async (auth, resource) => {
     const workspace =

@@ -29,6 +29,16 @@ export const validateUrl = (
   return { valid: true, standardized: url.href };
 };
 
+/** Strips credentials, query params, and fragments for safe display in errors. */
+export function sanitizeUrlForDisplay(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return "[invalid URL]";
+  }
+}
+
 /**
  * Validates and sanitizes a path to ensure it's a relative path.
  * This prevents open redirect vulnerabilities by rejecting absolute URLs.

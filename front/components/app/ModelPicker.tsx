@@ -88,19 +88,19 @@ export default function ModelPicker({
             size="xs"
           />
         ) : (
-          <div className="inline-flex items-center rounded-md border border-white px-3 py-1 text-sm font-normal text-gray-300">
+          <div className="inline-flex items-center rounded-md border border-white px-3 py-1 text-sm font-normal text-muted-foreground">
             No Provider available
           </div>
         )
       ) : readOnly ? (
         <div className="flex items-center gap-2">
-          <div className="text-sm font-bold text-gray-700">
+          <div className="text-sm font-bold text-foreground">
             {model.provider_id}
           </div>
           {model.model_id && (
             <>
-              <span className="text-gray-400">/</span>
-              <div className="text-sm font-bold text-gray-700">
+              <span className="text-muted-foreground">/</span>
+              <div className="text-sm font-bold text-foreground">
                 {model.model_id}
               </div>
             </>

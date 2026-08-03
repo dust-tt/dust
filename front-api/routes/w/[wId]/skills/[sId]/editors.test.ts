@@ -79,7 +79,33 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     );
   });
 
-  it("rejects adding regular user as editor", async () => {
+  it("admin who is not a skill editor can become an editor", async () => {
+    const { workspace, user } = await setup();
+
+    const builderUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, builderUser, {
+      role: "builder",
+    });
+    const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      builderUser.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(builderAuth);
+
+    const response = await patch(workspace, skill.sId, {
+      addEditorIds: [user.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.editors).toHaveLength(2);
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(
+      builderUser.sId
+    );
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(user.sId);
+  });
+
+  it("allows adding a regular user as editor", async () => {
     const { workspace, auth } = await setup();
 
     const skill = await SkillFactory.create(auth);
@@ -91,12 +117,12 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
       addEditorIds: [regularUser.sId],
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.error.type).toBe("workspace_auth_error");
+    expect(data.editors).toHaveLength(2); // admin + regular user
   });
 
-  it("rejects mixed batch (builder + user)", async () => {
+  it("allows a mixed batch (builder + user)", async () => {
     const { workspace, auth } = await setup();
 
     const skill = await SkillFactory.create(auth);
@@ -113,9 +139,15 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
       addEditorIds: [builderUser.sId, regularUser.sId],
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.error.type).toBe("workspace_auth_error");
+    expect(data.editors).toHaveLength(3); // admin + builder + regular user
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(
+      builderUser.sId
+    );
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(
+      regularUser.sId
+    );
   });
 
   it("allows removing any editor regardless of role", async () => {

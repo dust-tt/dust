@@ -4,17 +4,23 @@ import {
   isAllowedOrigin,
 } from "@app/config/cors";
 import logger from "@app/logger/logger";
+import { DUST_FILE_ID_HEADER } from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { MiddlewareHandler } from "hono";
 
 const ALLOW_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
-const EXPOSE_HEADERS = "X-Reload-Required, WWW-Authenticate";
+const EXPOSE_HEADERS = [
+  "X-Reload-Required",
+  "WWW-Authenticate",
+  "mcp-session-id",
+  "mcp-protocol-version",
+  DUST_FILE_ID_HEADER,
+].join(", ");
 
 /**
- * Mirrors the CORS handling in `front/middleware.ts` (the Next.js Edge
- * middleware) for any request served natively by Hono. Without this, requests
- * routed to Hono before Next sees them lose the cross-origin headers that
- * Next middleware would otherwise add to every `/api/*` response.
+ * Adds the cross-origin headers expected by browser clients to every
+ * Hono-served response. Applied globally so `/api/*` and `/sse/*` requests
+ * succeed for the SDK, extensions, and the SPA.
  */
 export const cors: MiddlewareHandler = async (ctx, next) => {
   const origin = ctx.req.header("origin");

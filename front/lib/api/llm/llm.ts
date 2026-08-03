@@ -9,6 +9,7 @@ import type {
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
 import type {
+  BatchDeletionOutcome,
   BatchResult,
   BatchResultWithRunIds,
   BatchStatus,
@@ -21,25 +22,38 @@ import type {
   LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
+import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
+
 import type {
   ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { type LangfuseGeneration, startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
 
-export abstract class LLM<TPayload = unknown> {
+export abstract class LLM<
+  TEndpoint extends
+    | DustStreamEndpointConstructor
+    | DustBatchEndpointConstructor =
+    | DustStreamEndpointConstructor
+    | DustBatchEndpointConstructor,
+  TPayload = unknown,
+> {
   protected modelId: ModelIdType;
   protected modelConfig: ModelConfigurationType;
   protected temperature: number | null;
@@ -47,6 +61,8 @@ export abstract class LLM<TPayload = unknown> {
   protected responseFormat: string | null;
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
+  // Temporary during the router migration; "new" is set by BaseTransition.
+  protected readonly router: "legacy" | "new" = "legacy";
 
   // Tracing fields.
   protected readonly authenticator: Authenticator;
@@ -62,28 +78,23 @@ export abstract class LLM<TPayload = unknown> {
       bypassFeatureFlag = false,
       context,
       getTraceOutput,
-      modelId,
-      reasoningEffort = "none",
-      responseFormat = null,
-      temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
-    }: LLMParameters
+      modelInfo,
+    }: LLMParameters<TEndpoint>
   ) {
-    this.modelId = modelId;
-    const modelConfig = getSupportedModelConfig({
-      modelId: this.modelId,
-      providerId,
-    });
-    if (!modelConfig) {
-      throw new Error(`Model config not found for ${modelId}/${providerId}`);
-    }
+    const modelConfig = modelInfo.endpoint.modelConfig;
+    this.modelId = modelConfig.modelId;
     this.modelConfig = modelConfig;
-    this.temperature = temperature;
-    this.reasoningEffort = reasoningEffort;
-    this.responseFormat = responseFormat;
+    this.temperature =
+      modelInfo.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES["balanced"];
+    // TODO(new-llm-router): We should not set reasoning effort to none
+    // Not in scope of the current refactor
+    this.reasoningEffort = modelInfo.reasoningEffort ?? "none";
+    this.responseFormat = modelInfo.responseFormat ?? null;
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.metadata = {
       clientId: providerId,
       inferenceProvider: providerId,
+      inferenceRegion: "global",
       modelId: this.modelId,
     };
 
@@ -129,7 +140,8 @@ export abstract class LLM<TPayload = unknown> {
       yield* this.completeStream(streamParameters, metadata);
       return;
     }
-    const { conversation, prompt, specifications } = streamParameters;
+    const { conversation, prompt, specifications, previousMessageId } =
+      streamParameters;
 
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(
@@ -160,6 +172,9 @@ export abstract class LLM<TPayload = unknown> {
       name: startCase(this.context.operationType),
       metadata: {
         dustTraceId: this.traceId,
+        // Prompt-cache diagnostics: the previous response id we threaded into this
+        // request (the current one is added below from the `interaction_id` event).
+        ...(previousMessageId && { previousMessageId }),
         // All contextual data as key-value pairs for better filtering in Langfuse UI.
         ...(this.authenticator.user()?.sId && {
           actualUserId: this.authenticator.user()!.sId,
@@ -201,6 +216,7 @@ export abstract class LLM<TPayload = unknown> {
       `model_id:${this.modelId}`,
       `client_id:${this.metadata.clientId}`,
       `inference_provider:${this.metadata.inferenceProvider}`,
+      ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
       `operation_type:${this.context.operationType}`,
     ];
 
@@ -220,11 +236,25 @@ export abstract class LLM<TPayload = unknown> {
         currentEvent = event;
         buffer.addEvent(currentEvent);
 
+        // Providers report usage exactly once per response, at end of stream. Emitting here in
+        // the base class covers both the new router and the legacy clients.
+        if (currentEvent.type === "token_usage") {
+          emitTokenUsageMetrics(currentEvent.content, [
+            ...metricTags,
+            "surface:stream",
+          ]);
+        }
+
         if (currentEvent.type === "interaction_id") {
-          buffer.setModelInteractionId(currentEvent.content.modelInteractionId);
+          const { modelInteractionId, cacheMissReason } = currentEvent.content;
+          buffer.setModelInteractionId(modelInteractionId);
           this.generation.updateTrace({
             metadata: {
-              modelInteractionId: currentEvent.content.modelInteractionId,
+              modelInteractionId,
+              ...(cacheMissReason && {
+                cacheMissReasonType: cacheMissReason.type,
+                cacheMissedInputTokens: cacheMissReason.cacheMissedInputTokens,
+              }),
             },
           });
         }
@@ -245,9 +275,11 @@ export abstract class LLM<TPayload = unknown> {
           logger.error(
             {
               llmEventType: "error",
+              router: this.router,
               errorContent: currentEvent.content,
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
+              region: this.metadata.region,
               context: this.context,
               traceId: this.traceId,
             },
@@ -262,8 +294,10 @@ export abstract class LLM<TPayload = unknown> {
           logger.info(
             {
               llmEventType: "success",
+              router: this.router,
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
+              region: this.metadata.region,
               context: this.context,
               traceId: this.traceId,
             },
@@ -298,7 +332,7 @@ export abstract class LLM<TPayload = unknown> {
             usageDetails: {
               // Report the uncached input tokens if provider supports it.
               input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
-              output: tokenUsage.outputTokens,
+              output: tokenUsage.totalOutputTokens,
               total: tokenUsage.totalTokens,
               cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
               cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
@@ -327,13 +361,32 @@ export abstract class LLM<TPayload = unknown> {
           workspaceId: this.authenticator.getNonNullableWorkspace().id,
         });
 
+        // Classify usage at creation for internal/utility LLM operations
+        // (everything except the agent conversation itself): they are never
+        // billed and never processed by the usage queue, so they are free.
+        // agent_conversation runs are left untagged here and classified
+        // (free/user/programmatic) by the usage queue, which knows the
+        // triggering message origin.
+        const usageType =
+          this.context.operationType === "agent_conversation"
+            ? undefined
+            : USAGE_TYPE_FREE;
+
         // Run usage is only populated if the run is successful.
         if (buffer.runTokenUsage) {
           await run.recordTokenUsage(
             this.authenticator,
             buffer.runTokenUsage,
-            this.modelId
+            this.modelId,
+            { inferenceRegion: this.metadata.inferenceRegion, usageType }
           );
+        }
+
+        const simulatedRunUsages = this.getSimulatedRunUsages();
+        if (simulatedRunUsages) {
+          await run.recordRunUsage(this.authenticator, simulatedRunUsages, {
+            usageType,
+          });
         }
 
         yield currentEvent;
@@ -385,7 +438,7 @@ export abstract class LLM<TPayload = unknown> {
   ): Promise<string> {
     const batchId = await this.internalSendBatchProcessing(conversations);
     if (this.context) {
-      this.traceBatchInputs(conversations);
+      await this.traceBatchInputs(conversations);
     }
     return batchId;
   }
@@ -404,13 +457,13 @@ export abstract class LLM<TPayload = unknown> {
   /**
    * Traces batch inputs by creating one Langfuse generation per conversation entry.
    */
-  private traceBatchInputs(
+  private async traceBatchInputs(
     conversations: Map<string, LLMStreamParameters>
-  ): void {
+  ): Promise<void> {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
 
     for (const [customId, params] of conversations) {
-      const payload = this.buildStreamRequestPayload(params);
+      const payload = await this.buildStreamRequestPayload(params);
 
       const generation = startObservation(
         `llm-batch-input-${customId}`,
@@ -450,11 +503,13 @@ export abstract class LLM<TPayload = unknown> {
   }
 
   /**
-   * Delete a batch. Returns true if the batch was successfully deleted.
-   * By default returns false (deletion not supported).
+   * Delete a batch's data on the provider.
+   * By default the provider does not support deletion.
    */
-  async deleteBatch(_batchId: string): Promise<boolean> {
-    return false;
+  async deleteBatch(
+    _batchId: string
+  ): Promise<Result<BatchDeletionOutcome, Error>> {
+    return new Ok("unsupported");
   }
 
   /**
@@ -517,7 +572,7 @@ export abstract class LLM<TPayload = unknown> {
             this.authenticator,
             event.content,
             this.modelId,
-            { isBatch: true }
+            { isBatch: true, inferenceRegion: this.metadata.inferenceRegion }
           );
         }
       }
@@ -576,12 +631,20 @@ export abstract class LLM<TPayload = unknown> {
         `model_id:${this.modelId}`,
         `client_id:${this.metadata.clientId}`,
         `inference_provider:${this.metadata.inferenceProvider}`,
+        ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
         `operation_type:${this.context!.operationType}`,
       ];
 
       let hasError = false;
       for (const event of events) {
         buffer.addEvent(event);
+
+        if (event.type === "token_usage") {
+          emitTokenUsageMetrics(event.content, [
+            ...metricTags,
+            "surface:batch",
+          ]);
+        }
 
         if (event.type === "error") {
           hasError = true;
@@ -614,7 +677,7 @@ export abstract class LLM<TPayload = unknown> {
         generation.update({
           usageDetails: {
             input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
-            output: tokenUsage.outputTokens,
+            output: tokenUsage.totalOutputTokens,
             total: tokenUsage.totalTokens,
             cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
             cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
@@ -647,7 +710,7 @@ export abstract class LLM<TPayload = unknown> {
   protected abstract buildStreamRequestPayload(
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
-  ): TPayload;
+  ): TPayload | Promise<TPayload>;
 
   /**
    * Send the request to the LLM provider and yield events.
@@ -658,13 +721,24 @@ export abstract class LLM<TPayload = unknown> {
   protected abstract sendRequest(payload: TPayload): AsyncGenerator<LLMEvent>;
 
   /**
+   * Override to inject run usages that bypass token-based pricing (e.g. noop simulation).
+   * Called after the stream completes; returned entries are recorded via recordRunUsage.
+   */
+  protected getSimulatedRunUsages(): RunUsageType[] | null {
+    return null;
+  }
+
+  /**
    * Orchestrates the request lifecycle: build -> capture for tracing -> send.
    */
   protected async *internalStream(
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
-    const payload = this.buildStreamRequestPayload(streamParameters, metadata);
+    const payload = await this.buildStreamRequestPayload(
+      streamParameters,
+      metadata
+    );
 
     // Update the generation span with the actual payload.
     this.generation?.update({ input: payload });

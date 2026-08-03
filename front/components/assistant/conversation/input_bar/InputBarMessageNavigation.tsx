@@ -1,15 +1,16 @@
 import {
   INPUT_BAR_COMPACT_PILL_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
+  INPUT_BAR_SURFACE_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
-import { classNames } from "@app/lib/utils";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  BoltIcon,
+  ArrowDown,
+  ArrowUp,
   Button,
+  cn,
   IconButton,
-  StopIcon,
+  Stop,
+  Zap,
 } from "@dust-tt/sparkle";
 
 interface InputBarMessageNavigationProps {
@@ -41,12 +42,12 @@ export function InputBarMessageNavigation({
 }: InputBarMessageNavigationProps) {
   const stopButtonVariant = variant === "compact" ? "ghost-secondary" : "ghost";
   const isStopActionPending = pendingAction !== null;
-  const stopIcon = hasPendingMessages ? BoltIcon : StopIcon;
+  const stopIcon = hasPendingMessages ? Zap : Stop;
   const showNavigationArrows =
     showMessageNavigation && !(variant === "compact" && showStopButton);
 
   const renderNavigationArrowButton = (
-    icon: typeof ArrowUpIcon,
+    icon: typeof ArrowUp,
     onClick: () => void,
     disabled: boolean,
     ariaLabel: string
@@ -56,7 +57,7 @@ export function InputBarMessageNavigation({
         <Button
           variant="ghost-secondary"
           icon={icon}
-          size="xs"
+          size="mini"
           onClick={onClick}
           disabled={disabled}
           aria-label={ariaLabel}
@@ -83,7 +84,7 @@ export function InputBarMessageNavigation({
         label={stopButtonLabel}
         onClick={onStopClick}
         disabled
-        size="xs"
+        size={variant === "compact" ? "mini" : "xs"}
       />
     ) : (
       <Button
@@ -93,7 +94,7 @@ export function InputBarMessageNavigation({
         aria-label={variant === "compact" ? stopButtonLabel : undefined}
         onClick={onStopClick}
         disabled={pendingAction !== null}
-        size="xs"
+        size={variant === "compact" ? "mini" : "xs"}
       />
     );
 
@@ -103,20 +104,20 @@ export function InputBarMessageNavigation({
         <>
           {stopButton}
           {showNavigationArrows && variant !== "compact" && (
-            <div className="h-4 w-px bg-border dark:bg-border-night" />
+            <div className="h-4 w-px bg-border" />
           )}
         </>
       )}
       {showNavigationArrows && (
         <>
           {renderNavigationArrowButton(
-            ArrowUpIcon,
+            ArrowUp,
             onScrollUp,
             !canScrollUp,
             "Previous user message"
           )}
           {renderNavigationArrowButton(
-            ArrowDownIcon,
+            ArrowDown,
             onScrollDown,
             !canScrollDown,
             "Next user message"
@@ -136,8 +137,9 @@ export function InputBarMessageNavigation({
 
   return (
     <div
-      className={classNames(
-        "flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
+      className={cn(
+        "flex items-center gap-1 rounded-xl p-1",
+        INPUT_BAR_SURFACE_CLASSES
       )}
       style={{
         position: "absolute",

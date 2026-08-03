@@ -6,6 +6,7 @@ import SwiftUI
 struct MessageBubbleView: View {
     let message: ConversationMessage
     let currentUserEmail: String
+    var currentUserSId: String?
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
     var completedSteps: [ActivityStep] = []
@@ -16,6 +17,7 @@ struct MessageBubbleView: View {
     var onGeneratedFileTap: ((GeneratedFile) -> Void)?
     var onCitationTap: ((CitationReference) -> Void)?
     var onValidateAction: ((ActionApproval) -> Void)?
+    var onAnswerQuestion: ((UserQuestionAnswer) -> Void)?
     var onRetry: ((String) -> Void)?
     var onOpenInBrowser: (() -> Void)?
 
@@ -30,6 +32,7 @@ struct MessageBubbleView: View {
         case let .agent(msg):
             AgentMessageBubble(
                 message: msg,
+                currentUserSId: currentUserSId,
                 streamingPhase: streamingPhase,
                 activeActions: activeActions,
                 completedSteps: completedSteps,
@@ -39,6 +42,7 @@ struct MessageBubbleView: View {
                 onGeneratedFileTap: onGeneratedFileTap,
                 onCitationTap: onCitationTap,
                 onValidateAction: onValidateAction,
+                onAnswerQuestion: onAnswerQuestion,
                 onRetry: onRetry,
                 onOpenInBrowser: onOpenInBrowser
             )
@@ -105,6 +109,7 @@ struct OtherUserMessageBubble: View {
 
 struct AgentMessageBubble: View {
     let message: AgentMessage
+    var currentUserSId: String?
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
     var completedSteps: [ActivityStep] = []
@@ -114,8 +119,31 @@ struct AgentMessageBubble: View {
     var onGeneratedFileTap: ((GeneratedFile) -> Void)?
     var onCitationTap: ((CitationReference) -> Void)?
     var onValidateAction: ((ActionApproval) -> Void)?
+    var onAnswerQuestion: ((UserQuestionAnswer) -> Void)?
     var onRetry: ((String) -> Void)?
     var onOpenInBrowser: (() -> Void)?
+
+    // While streaming, directive parsing is throttled to avoid re-scanning the whole
+    // message on every token (~30/sec → ~7/sec). Once finished, the content is stable
+    // and we read a synchronously-memoized value so it's always in sync with the message.
+    @State private var streamingRender: RenderedAgentMessage = .empty
+    @State private var throttleTask: DispatchWorkItem?
+    @State private var cache = RenderCache()
+
+    private static let throttleIntervalSeconds: TimeInterval = 0.15
+
+    private var rawContent: String {
+        message.content ?? ""
+    }
+
+    private var rendered: RenderedAgentMessage {
+        message.isStreaming ? streamingRender : cache.rendered(for: rawContent)
+    }
+
+    /// Falls back to the message's own error when there was no live `agent_error` event.
+    private var effectiveError: ErrorInfo? {
+        lastError ?? message.error.map { ErrorInfo(from: $0, messageId: message.sId) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -139,8 +167,10 @@ struct AgentMessageBubble: View {
                 )
             }
 
-            if let content = message.content, !content.isEmpty {
-                StreamingMarkdownView(rawContent: content, isStreaming: message.isStreaming)
+            if !rendered.displayMarkdown.isEmpty {
+                Markdown(rendered.displayMarkdown)
+                    .markdownTheme(.dust)
+                    .lineSpacing(4)
                     .textSelection(!message.isStreaming)
             }
 
@@ -152,12 +182,9 @@ struct AgentMessageBubble: View {
 
             if !message.isStreaming,
                let citations = message.citations, !citations.isEmpty,
-               let content = message.content
+               !rendered.citeMapping.isEmpty
             {
-                let mapping = processCiteDirectives(content).mapping
-                if !mapping.isEmpty {
-                    CitationsSection(mapping: mapping, citations: citations, onTap: onCitationTap)
-                }
+                CitationsSection(mapping: rendered.citeMapping, citations: citations, onTap: onCitationTap)
             }
 
             if message.isStreaming {
@@ -166,6 +193,10 @@ struct AgentMessageBubble: View {
                     ToolApprovalInlineView(
                         approval: approval,
                         isLoading: isValidatingAction,
+                        canRespond: canRespondToBlockedAction(
+                            triggeringUserId: approval.triggeringUserId,
+                            currentUserSId: currentUserSId
+                        ),
                         onValidate: onValidateAction
                     )
                 case let .personalAuthRequired(provider, _):
@@ -178,17 +209,55 @@ struct AgentMessageBubble: View {
                         label: "File access required for \(fileName)",
                         onOpenInBrowser: onOpenInBrowser
                     )
+                case let .userQuestionRequired(info):
+                    UserQuestionInlineView(
+                        question: info.question,
+                        isLoading: isValidatingAction,
+                        canRespond: canRespondToBlockedAction(
+                            triggeringUserId: info.triggeringUserId,
+                            currentUserSId: currentUserSId
+                        ),
+                        onAnswer: onAnswerQuestion
+                    )
                 case .idle, .thinking, .generating:
                     EmptyView()
                 }
             }
 
-            if message.status == .failed, let error = lastError {
+            if message.status == .failed, let error = effectiveError {
                 ErrorCardView(error: error, onRetry: { onRetry?(message.sId) })
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 16)
+        .onAppear {
+            if message.isStreaming { streamingRender = RenderedAgentMessage(content: rawContent) }
+        }
+        .onChange(of: rawContent) { _, newValue in
+            if message.isStreaming { scheduleUpdate(newValue) }
+        }
+    }
+
+    private func scheduleUpdate(_ content: String) {
+        throttleTask?.cancel()
+        let work = DispatchWorkItem { streamingRender = RenderedAgentMessage(content: content) }
+        throttleTask = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.throttleIntervalSeconds, execute: work)
+    }
+}
+
+/// Memoizes the directive parse for a finished message so repeated SwiftUI body
+/// evaluations (scrolling, sibling streaming) don't re-scan the whole content.
+final private class RenderCache {
+    private var content: String?
+    private var value: RenderedAgentMessage = .empty
+
+    func rendered(for content: String) -> RenderedAgentMessage {
+        if self.content != content {
+            self.content = content
+            value = RenderedAgentMessage(content: content)
+        }
+        return value
     }
 }
 
@@ -231,12 +300,22 @@ struct ContentFragmentList: View {
     var body: some View {
         FlowLayout(spacing: 4) {
             ForEach(fragments) { fragment in
-                FileChip(
-                    title: fragment.title,
-                    contentType: fragment.contentType,
-                    isTappable: fragment.fileId != nil && onTap != nil,
-                    onTap: { onTap?(fragment) }
-                )
+                if Attachment.isImage(fragment.contentType), let fileId = fragment.fileId {
+                    AttachmentImagePreview(
+                        fileId: fileId,
+                        title: fragment.title,
+                        contentType: fragment.contentType,
+                        isTappable: onTap != nil,
+                        onTap: { onTap?(fragment) }
+                    )
+                } else {
+                    FileChip(
+                        title: fragment.title,
+                        contentType: fragment.contentType,
+                        isTappable: fragment.fileId != nil && onTap != nil,
+                        onTap: { onTap?(fragment) }
+                    )
+                }
             }
         }
     }
@@ -251,12 +330,22 @@ struct GeneratedFilesList: View {
     var body: some View {
         FlowLayout(spacing: 4, alignment: .leading) {
             ForEach(files) { file in
-                FileChip(
-                    title: file.title,
-                    contentType: file.contentType,
-                    isTappable: onTap != nil,
-                    onTap: { onTap?(file) }
-                )
+                if Attachment.isImage(file.contentType), let fileId = file.fileId {
+                    AttachmentImagePreview(
+                        fileId: fileId,
+                        title: file.title,
+                        contentType: file.contentType,
+                        isTappable: onTap != nil,
+                        onTap: { onTap?(file) }
+                    )
+                } else {
+                    FileChip(
+                        title: file.title,
+                        contentType: file.contentType,
+                        isTappable: file.fileId != nil && onTap != nil,
+                        onTap: { onTap?(file) }
+                    )
+                }
             }
         }
     }
@@ -692,6 +781,7 @@ struct ThinkingStepView: View {
 struct ToolApprovalInlineView: View {
     let approval: ToolApprovalInfo
     var isLoading: Bool = false
+    var canRespond: Bool = true
     var onValidate: ((ActionApproval) -> Void)?
 
     @State private var showDetails = false
@@ -746,11 +836,15 @@ struct ToolApprovalInlineView: View {
             Divider()
                 .foregroundStyle(Color.dustBorder)
 
-            ToolApprovalActionButtons(
-                canAlwaysAllow: approval.canAlwaysAllow,
-                isLoading: isLoading,
-                onValidate: onValidate
-            )
+            if canRespond {
+                ToolApprovalActionButtons(
+                    canAlwaysAllow: approval.canAlwaysAllow,
+                    isLoading: isLoading,
+                    onValidate: onValidate
+                )
+            } else {
+                BlockedWaitingView(label: "Waiting for a teammate to approve this.")
+            }
         }
         .padding(12)
         .liquidGlassRoundedRect()
@@ -824,6 +918,23 @@ struct ToolApprovalActionButtons: View {
     }
 }
 
+/// Shown in place of action buttons when the current user isn't the one whose turn
+/// triggered the blocked action, so they can see what's pending without acting on it.
+struct BlockedWaitingView: View {
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .scaleEffect(0.7)
+            Text(label)
+                .sparkleCopyXs()
+                .foregroundStyle(Color.dustFaint)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 // MARK: - Auth / File Access Required
 
 struct AuthRequiredView: View {
@@ -867,6 +978,138 @@ struct AuthRequiredView: View {
         }
         .padding(12)
         .liquidGlassRoundedRect()
+    }
+}
+
+// MARK: - User Question
+
+struct UserQuestionInlineView: View {
+    let question: UserQuestion
+    var isLoading: Bool = false
+    var canRespond: Bool = true
+    var onAnswer: ((UserQuestionAnswer) -> Void)?
+
+    @State private var selectedOptions: Set<Int> = []
+    @State private var customResponse = ""
+
+    private var trimmedResponse: String {
+        customResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canSend: Bool {
+        !selectedOptions.isEmpty || !trimmedResponse.isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(question.question)
+                .sparkleLabelSm()
+                .foregroundStyle(Color.dustForeground)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if canRespond {
+                VStack(spacing: 6) {
+                    ForEach(Array(question.options.enumerated()), id: \.offset) { index, option in
+                        optionRow(index: index, option: option)
+                    }
+                }
+
+                TextField("Type something else", text: $customResponse, axis: .vertical)
+                    .sparkleCopyXs()
+                    .lineLimit(1 ... 4)
+                    .padding(10)
+                    .background(Color.dustMutedBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                Divider()
+                    .foregroundStyle(Color.dustBorder)
+
+                VStack(spacing: 8) {
+                    Button { onAnswer?(buildAnswer()) } label: {
+                        Text("Send")
+                            .sparkleLabelXs()
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.highlight)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(!canSend)
+                    .opacity(canSend ? 1.0 : 0.5)
+
+                    Button { onAnswer?(UserQuestionAnswer(selectedOptions: [], customResponse: nil)) } label: {
+                        Text("Skip")
+                            .sparkleLabelXs()
+                            .foregroundStyle(Color.dustForeground)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                }
+                .disabled(isLoading)
+                .opacity(isLoading ? 0.5 : 1.0)
+            } else {
+                BlockedWaitingView(label: "Waiting for a teammate to respond.")
+            }
+        }
+        .padding(12)
+        .liquidGlassRoundedRect()
+    }
+
+    private func optionRow(index: Int, option: UserQuestionOption) -> some View {
+        let isSelected = selectedOptions.contains(index)
+        return Button {
+            toggle(index)
+        } label: {
+            HStack(alignment: .top, spacing: 8) {
+                (isSelected ? SparkleIcon.checkCircle : SparkleIcon.circle).image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(isSelected ? Color.highlight : Color.dustFaint)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(option.label)
+                        .sparkleLabelXs()
+                        .foregroundStyle(Color.dustForeground)
+                    if let description = option.description, !description.isEmpty {
+                        Text(description)
+                            .sparkleCopyXs()
+                            .foregroundStyle(Color.dustFaint)
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.dustMutedBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? Color.highlight : Color.clear, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func toggle(_ index: Int) {
+        if question.multiSelect {
+            if selectedOptions.contains(index) {
+                selectedOptions.remove(index)
+            } else {
+                selectedOptions.insert(index)
+            }
+        } else {
+            selectedOptions = [index]
+        }
+    }
+
+    private func buildAnswer() -> UserQuestionAnswer {
+        UserQuestionAnswer(
+            selectedOptions: selectedOptions.sorted(),
+            customResponse: trimmedResponse.isEmpty ? nil : trimmedResponse
+        )
     }
 }
 

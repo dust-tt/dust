@@ -2,9 +2,11 @@ import {
   importSkillsFromFiles,
   isImportConflictStrategy,
 } from "@app/lib/api/skills/detection/files/import_skills";
+import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
@@ -19,15 +21,13 @@ export type GetPublicSkillsResponseBody = {
   skills: SkillType[];
 };
 
-export type ImportSkillsResponseBody = {
-  imported: SkillType[];
-  updated: SkillType[];
-  skipped: { name: string; message: string }[];
-};
-
 const GetSkillsQuerySchema = z.object({
   status: z.enum(["active", "archived", "suggested"]).optional(),
 });
+
+const SkillAvailabilitiesSchema = z
+  .array(z.enum(SKILL_AVAILABILITIES))
+  .optional();
 
 // Mounted at /api/v1/w/:wId/skills.
 //
@@ -60,6 +60,23 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *         schema:
  *           type: string
  *           enum: [active, archived, suggested]
+ *       - in: query
+ *         name: availability
+ *         required: false
+ *         description: Filter skills by availability. Repeatable to match several values. Unpublished (editors) skills are only returned when bypassEditorVisibility is set.
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum: [editors, workspace_users, users_and_agents]
+ *         style: form
+ *         explode: true
+ *       - in: query
+ *         name: bypassEditorVisibility
+ *         required: false
+ *         description: When true, also return unpublished (editors) skills. Requires an admin API key.
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
  *         description: Skills available in the workspace.
@@ -78,8 +95,6 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Workspace not found.
- *       405:
- *         description: Method not supported.
  *   post:
  *     summary: Import skills from uploaded files
  *     description: Imports skills from uploaded files or ZIP archives into the workspace.
@@ -118,6 +133,12 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *                 type: string
  *                 enum: [error, skip, override]
  *                 description: Conflict handling strategy. Defaults to error.
+ *               editors:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: email
+ *                 description: Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors.
  *     responses:
  *       200:
  *         description: Skills import result.
@@ -149,8 +170,6 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Workspace not found.
- *       405:
- *         description: Method not supported.
  */
 app.get(
   "/",
@@ -159,10 +178,51 @@ app.get(
     const auth = ctx.get("auth");
     const { status } = ctx.req.valid("query");
 
-    const skills = await SkillResource.listByWorkspace(auth, {
+    // Repeatable: ?availability=workspace_users&availability=users_and_agents.
+    const availabilityValidation = SkillAvailabilitiesSchema.safeParse(
+      ctx.req.queries("availability")
+    );
+    if (!availabilityValidation.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            'Invalid availability. Expected "editors", "workspace_users", or "users_and_agents".',
+        },
+      });
+    }
+    const availability =
+      availabilityValidation.data && availabilityValidation.data.length > 0
+        ? availabilityValidation.data
+        : undefined;
+
+    const bypassEditorVisibility =
+      ctx.req.query("bypassEditorVisibility") === "true";
+
+    // Only admin keys may bypass editor visibility to list unpublished skills (e.g. for
+    // exporting all workspace skills).
+    if (bypassEditorVisibility && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can bypass editor visibility.",
+        },
+      });
+    }
+
+    const allSkills = await SkillResource.listByWorkspace(auth, {
       status,
       onlyCustom: true,
+      availability,
     });
+
+    // API keys have no editor-group membership to scope them by, so they can't see
+    // editor restricted skills unless editor visibility is explicitly bypassed.
+    const skills = bypassEditorVisibility
+      ? allSkills
+      : allSkills.filter((skill) => skill.availability !== "editors");
 
     return ctx.json({
       skills: skills.map((skill) => skill.toJSON(auth)),
@@ -213,7 +273,7 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     });
   }
 
-  const { names } = fields;
+  const { editors, names } = fields;
 
   const onConflict = fields.onConflict?.[0] ?? "error";
   if (!isImportConflictStrategy(onConflict)) {
@@ -228,6 +288,7 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
 
   const result = await importSkillsFromFiles(auth, {
     uploadedFiles,
+    editors,
     names,
     source: "api",
     onConflict,

@@ -1,11 +1,9 @@
-import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
+import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
+import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
-const ProfilePage = withSuspense(
-  () => import("@dust-tt/front/components/pages/workspace/ProfilePage"),
-  "ProfilePage"
-);
 const AnalyticsPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/AnalyticsPage"),
   "AnalyticsPage"
@@ -50,6 +48,13 @@ const MembersPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
   "MembersPage"
 );
+const WorkspaceIdentityProvisioningPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/WorkspaceIdentityProvisioningPage.js"
+    ),
+  "WorkspaceIdentityProvisioningPage"
+);
 const ManageSubscriptionPage = withSuspense(
   () =>
     import(
@@ -64,10 +69,10 @@ const SubscriptionPage = withSuspense(
     ),
   "SubscriptionPage"
 );
-const WorkspaceSettingsPage = withSuspense(
+const WorkspaceBrandingPage = withSuspense(
   () =>
-    import("@dust-tt/front/components/pages/workspace/WorkspaceSettingsPage"),
-  "WorkspaceSettingsPage"
+    import("@dust-tt/front/components/pages/workspace/WorkspaceBrandingPage"),
+  "WorkspaceBrandingPage"
 );
 const ModelProvidersPage = withSuspense(
   () =>
@@ -84,19 +89,33 @@ const BillingPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/billing/BillingPage"),
   "BillingPage"
 );
+const GovernancePage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/governance/GovernancePage"
+    ),
+  "GovernancePage"
+);
 
 export const adminRoutes: RouteObject[] = [
-  { path: "me", element: <ProfilePage /> },
   {
-    element: <AdminRouterLayout />,
+    // Accessible to admins and managers.
+    element: <RequireRoleLayout requiredRole="manager" />,
     children: [
       { path: "members", element: <MembersPage /> },
-      { path: "model-providers", element: <ModelProvidersPage /> },
-      { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
       { path: "usage", element: <UsagePage /> },
-      { path: "subscription", element: <SubscriptionPage /> },
-      { path: "billing", element: <BillingPage /> },
+      { path: "governance", element: <GovernancePage /> },
+      // Legacy Workspace Settings page, merged into Settings & Governance.
+      { path: "workspace", element: <Navigate to="../governance" replace /> },
+    ],
+  },
+  {
+    // Admin-only areas.
+    element: <RequireRoleLayout requiredRole="admin" />,
+    children: [
+      { path: "model-providers", element: <ModelProvidersPage /> },
+      { path: "branding", element: <WorkspaceBrandingPage /> },
       { path: "developers/api-keys", element: <APIKeysPage /> },
       {
         path: "developers/credits-usage",
@@ -117,6 +136,23 @@ export const adminRoutes: RouteObject[] = [
       {
         path: "developers/self-improving-skills",
         element: <SelfImprovingSkillsPage />,
+      },
+    ],
+  },
+  {
+    // Billing areas: accessible to admins and to members holding the billing admin permission.
+    element: <RequirePermissionLayout verb="admin" resourceType="billing" />,
+    children: [
+      { path: "subscription", element: <SubscriptionPage /> },
+      { path: "billing", element: <BillingPage /> },
+    ],
+  },
+  {
+    element: <RequirePermissionLayout verb="admin" resourceType="security" />,
+    children: [
+      {
+        path: "identity-and-provisioning",
+        element: <WorkspaceIdentityProvisioningPage />,
       },
     ],
   },

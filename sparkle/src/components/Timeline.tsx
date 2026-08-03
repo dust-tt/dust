@@ -3,24 +3,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 const markerVariants = cva(
-  "s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center s-rounded-full s-border-2",
+  "flex h-3.5 w-3.5 items-center justify-center rounded-full border-2",
   {
     variants: {
       variant: {
-        complete: cn(
-          "s-border-highlight-500 dark:s-border-highlight-500-night",
-          "s-bg-highlight-500 dark:s-bg-highlight-500-night",
-          "s-shadow-sm"
-        ),
-        current: cn(
-          "s-border-highlight-500 dark:s-border-highlight-500-night",
-          "s-bg-background dark:s-bg-background-night",
-          "s-shadow-sm"
-        ),
-        upcoming: cn(
-          "s-border-border dark:s-border-border-night",
-          "s-bg-background dark:s-bg-background-night"
-        ),
+        complete: cn("border-highlight-500", "bg-highlight-500", "shadow-sm"),
+        current: cn("border-highlight-500", "bg-background", "shadow-sm"),
+        upcoming: cn("border-border", "bg-background"),
       },
     },
     defaultVariants: {
@@ -29,12 +18,12 @@ const markerVariants = cva(
   }
 );
 
-const lineVariants = cva("s-w-[2px] s-flex-1", {
+const lineVariants = cva("w-[2px] flex-1", {
   variants: {
     variant: {
-      complete: "s-bg-highlight-500 dark:s-bg-highlight-500-night",
-      current: "s-bg-highlight-500 dark:s-bg-highlight-500-night",
-      upcoming: "s-bg-border dark:s-bg-border-night",
+      complete: "bg-highlight-500",
+      current: "bg-highlight-500",
+      upcoming: "bg-border",
     },
   },
   defaultVariants: {
@@ -58,13 +47,7 @@ function Timeline({
   const items = React.Children.toArray(children);
 
   return (
-    <div
-      className={cn(
-        "s-flex s-flex-col s-text-foreground dark:s-text-foreground-night",
-        className
-      )}
-      {...props}
-    >
+    <div className={cn("flex flex-col text-foreground", className)} {...props}>
       {items.map((child, index) => {
         if (!React.isValidElement<TimelineItemProps>(child)) {
           return child;
@@ -109,37 +92,31 @@ const TimelineItem = React.forwardRef<HTMLDivElement, TimelineItemProps>(
       <div
         ref={ref}
         className={cn(
-          "s-grid s-grid-cols-[auto,1fr] s-gap-x-4 sm:s-gap-x-6",
+          "grid grid-cols-[auto_1fr] gap-x-4 sm:gap-x-6",
           className
         )}
         {...props}
       >
         <div
-          className="s-flex s-flex-col s-items-center s-gap-2 s-px-1 s-pb-2"
+          className="flex flex-col items-center gap-2 px-1 pb-2"
           aria-hidden="true"
         >
-          <div className={cn("s-flex-shrink-0", markerVariants({ variant }))} />
+          <div className={cn("flex-shrink-0", markerVariants({ variant }))} />
           {showBottomLine && (
-            <div className={cn("s-flex-1", lineVariants({ variant }))} />
+            <div className={cn("flex-1", lineVariants({ variant }))} />
           )}
         </div>
-        <div className="s-flex s-flex-col s-gap-1 s-pb-4">
-          {title && (
-            <div className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
-              {title}
-            </div>
-          )}
+        <div className="flex flex-col gap-1 pb-4">
+          {title && <div className="heading-sm text-foreground">{title}</div>}
           {meta && (
-            <div className="s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <div className="text-xs font-medium text-muted-foreground">
               {meta}
             </div>
           )}
           {description && (
-            <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {description}
-            </div>
+            <div className="text-sm text-muted-foreground">{description}</div>
           )}
-          {children && <div className="s-mt-2">{children}</div>}
+          {children && <div className="mt-2">{children}</div>}
         </div>
       </div>
     );

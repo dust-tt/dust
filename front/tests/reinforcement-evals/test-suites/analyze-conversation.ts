@@ -63,8 +63,66 @@ const LINKEDIN_MCP_DESCRIPTION: MockMcpDescription = {
   ],
 };
 
+const JIRA_MCP_DESCRIPTION: MockMcpDescription = {
+  sId: "mcp_jira",
+  description: "Search and manage JIRA issues and projects",
+  tools: [
+    {
+      name: "jira-create-issue",
+      description: "Create a new JIRA ticket",
+      inputs: [
+        {
+          name: "project",
+          type: "string",
+          description: "The JIRA project key the ticket belongs to",
+        },
+        {
+          name: "summary",
+          type: "string",
+          description: "Short summary of the ticket",
+        },
+        {
+          name: "description",
+          type: "string",
+          description: "Detailed description of the ticket",
+        },
+        {
+          name: "issueType",
+          type: "string",
+          description:
+            'The issue type (e.g. "Task", "Bug"). Defaults to "Task"',
+          required: false,
+        },
+      ],
+    },
+    {
+      name: "jira-search-issues",
+      description: "Search for issues using a JQL query",
+      inputs: [
+        {
+          name: "jql",
+          type: "string",
+          description: "The JQL query used to filter issues",
+        },
+      ],
+    },
+    {
+      name: "jira-get-sprint-status",
+      description:
+        "Retrieve the current sprint's progress, including ticket counts by status",
+      inputs: [
+        {
+          name: "board",
+          type: "string",
+          description: 'The board to read the sprint from (e.g. "Engineering")',
+        },
+      ],
+    },
+  ],
+};
+
 const WORKSPACE_CONTEXT: WorkspaceContext = {
-  mcpDescriptions: [LINKEDIN_MCP_DESCRIPTION],
+  mcpDescriptions: [LINKEDIN_MCP_DESCRIPTION, JIRA_MCP_DESCRIPTION],
   tools: [
     mockTool("Slack", "Read and send Slack messages"),
     mockTool("Notion", "Search Notion workspace"),
@@ -168,7 +226,6 @@ Score 3 if the suggestion provides clear, actionable instructions that would pre
     {
       scenarioId: "missing-tool",
       type: "analysis",
-      useInlineTools: true,
       skillConfigs: [
         {
           name: "Research Assistant",
@@ -208,12 +265,11 @@ Score 3 if the suggestion provides clear, actionable instructions that would pre
       judgeCriteria: `The analyst MUST call edit_skill with instructionEdits to suggest adding the Web Search tool
 as an inline <tool id="mcp_web_search" name="Web Search" /> reference in skill "skill_research". The suggestion should:
 - Discover available tools before authoring the inline <tool> reference
-- Add Web Search through an instruction edit; it MUST NOT include toolEdits
+- Add Web Search through an instruction edit
 - Include an analysis explaining that the skill's purpose requires web search for current information
 - Reference that the agent couldn't fulfill the user's core request without this capability
 
 Score 0 if no edit_skill with instructionEdits call is made.
-Score 0 if the suggestion uses toolEdits instead of an inline <tool> tag.
 Score 0-1 if edit_skill is called but with the wrong tool ID or wrong skill ID.
 Score 2 if the correct inline tool reference is suggested but the analysis is weak.
 Score 3 if the correct inline tool reference is suggested with a clear, well-reasoned analysis.`,
@@ -221,7 +277,6 @@ Score 3 if the correct inline tool reference is suggested with a clear, well-rea
     {
       scenarioId: "unused-tool",
       type: "analysis",
-      useInlineTools: true,
       skillConfigs: [
         {
           name: "Code Review Helper",
@@ -274,12 +329,11 @@ Score 3 if the correct inline tool reference is suggested with a clear, well-rea
       ],
       judgeCriteria: `The analyst MUST call edit_skill with instructionEdits to remove the inline Calendar tool
 reference (<tool id="mcp_calendar" name="Calendar" />) from skill "skill_code_review". The suggestion should:
-- Remove Calendar through an instruction edit; it MUST NOT include toolEdits
+- Remove Calendar through an instruction edit
 - Include an analysis explaining that Calendar is irrelevant to code review and caused confusion
 - Reference the failed tool call and user complaint
 
 Score 0 if no edit_skill with instructionEdits call is made.
-Score 0 if the suggestion uses toolEdits instead of removing the inline <tool> tag.
 Score 0-1 if edit_skill is called but it removes the wrong inline tool reference.
 Score 2 if the correct inline tool removal is suggested but the analysis is weak.
 Score 3 if the correct removal is suggested with a clear analysis referencing the confusion it caused.`,
@@ -287,7 +341,6 @@ Score 3 if the correct removal is suggested with a clear analysis referencing th
     {
       scenarioId: "instruction-and-tool-gap",
       type: "analysis",
-      useInlineTools: true,
       skillConfigs: [
         {
           name: "Bug Reporter",
@@ -325,12 +378,10 @@ Score 3 if the correct removal is suggested with a clear analysis referencing th
       ],
       judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for skill "skill_bug_reporter".
 The instruction edit must add the JIRA capability as an inline <tool id="mcp_jira" name="JIRA" /> reference and update the surrounding instructions to use JIRA for filing bugs.
-The suggestion MUST NOT include toolEdits.
 
 The inline tool reference and instruction change are co-dependent and should be expressed together in the instruction edit.
 
 Score 0 if no edit_skill with instructionEdits call is made.
-Score 0 if the suggestion uses toolEdits instead of an inline <tool> tag.
 Score 1 if the inline JIRA tag is added but the instructions don't explain how to use it, or the analysis is weak.
 Score 2 if the JIRA tag and instructions are both present but the instruction/tool connection isn't explicit.
 Score 3 if the instruction edit clearly adds JIRA as an inline tool reference, tells the skill to file bugs through it, and explains the mismatch.`,
@@ -433,7 +484,6 @@ Score 3 if the suggestion addresses both brand voice and remedy guidance with a 
     {
       scenarioId: "wrong-tool-order-linkedin-enrich",
       type: "analysis",
-      useInlineTools: true,
       skillConfigs: [
         {
           name: "Enrich user info with LinkedIn",
@@ -681,6 +731,116 @@ Score 1 if edit_skill is called only for skill_github_reporter but the suggestio
 Score 3 if edit_skill is called only for skill_github_reporter, the suggestion adds DevCode to the project list, and no other skills are modified.`,
     },
     {
+      scenarioId: "nested-skill-targeted-attribution",
+      type: "analysis",
+      skillConfigs: [
+        {
+          name: "Report Orchestrator",
+          sId: "skill_report_orchestrator",
+          description:
+            "Orchestrates building and publishing financial reports by gathering data and delegating formatting before posting the result",
+          instructions: [
+            "You are the Report Orchestrator skill for Acme Corp's finance team. Use this skill to build and publish financial reports.",
+            "",
+            "## Workflow",
+            "",
+            "Follow these steps in order:",
+            "1. Use `notion-get-page` to retrieve the raw financial figures from the source page the user references.",
+            "2. Hand the raw figures to the Data Formatter skill, which owns all table and number formatting rules. Always delegate formatting to it rather than formatting numbers yourself.",
+            "3. Use `slack-post-message` to publish the formatted report to the channel the user specifies.",
+            "",
+            "## Delegation",
+            "",
+            "Formatting of the report contents (tables, columns, and how figures are rendered) is the responsibility of the Data Formatter skill referenced below. Pass it the raw figures and use its output verbatim.",
+            "",
+            '<skill id="skill_data_formatter" name="Data Formatter" />',
+          ].join("\n"),
+          tools: [
+            { name: "Notion", sId: "mcp_notion" },
+            { name: "Slack", sId: "mcp_slack" },
+          ],
+        },
+        {
+          name: "Data Formatter",
+          sId: "skill_data_formatter",
+          description:
+            "Formats raw financial figures into clean Markdown tables for inclusion in reports",
+          instructions: `You are the Data Formatter skill for Acme Corp. Use this skill to turn raw financial figures into a clean Markdown table that other skills can publish.
+
+## Formatting rules
+
+- Render the figures as a Markdown table with one row per line item.
+- Use the columns: "Line Item", "Amount", and "Change vs. Prior Period".
+- Right-align the "Amount" and "Change vs. Prior Period" columns.
+- Use thousands separators for large numbers (e.g., 1,200,000).
+- Express "Change vs. Prior Period" as a signed percentage (e.g., +12%, -4%).
+- Sort rows from largest to smallest amount.`,
+        },
+      ],
+      conversation: [
+        {
+          role: "user",
+          content:
+            "Build the Q2 revenue report from the figures on our finance Notion page and post it to the #finance channel.",
+        },
+        {
+          role: "agent",
+          content:
+            "I'll pull the Q2 figures from Notion, format them into the report table, and post it to #finance.",
+          actions: [
+            {
+              functionCallName: "notion-get-page",
+              status: "succeeded",
+              params: { pageId: "page_q2_finance" },
+              output:
+                '{"figures": [{"lineItem": "Subscriptions", "amount": 1200000, "changePct": 12}, {"lineItem": "Professional Services", "amount": 850000, "changePct": -4}, {"lineItem": "Support Contracts", "amount": 320000, "changePct": 7}]}',
+            },
+            {
+              functionCallName: "slack-post-message",
+              status: "succeeded",
+              params: {
+                channel: "#finance",
+                text: "*Q2 Revenue Report*\n\n| Line Item | Amount | Change vs. Prior Period |\n|---|--:|--:|\n| Subscriptions | 1,200,000 | +12% |\n| Professional Services | 850,000 | -4% |\n| Support Contracts | 320,000 | +7% |",
+              },
+              output: '{"ts": "1712750400.000100", "channel": "#finance"}',
+            },
+          ],
+        },
+        {
+          role: "agent",
+          content:
+            "I've posted the Q2 revenue report to #finance. It lists Subscriptions (1,200,000, +12%), Professional Services (850,000, -4%), and Support Contracts (320,000, +7%).",
+        },
+        {
+          role: "user",
+          content:
+            "The amounts in that table are just bare numbers — there's no currency on them at all. I can't tell whether these are dollars or euros, and finance can't post an ambiguous report like that.",
+          feedback: {
+            direction: "down",
+            comment:
+              "The amounts in the report table have no currency — they're ambiguous numbers, so nobody can tell if they're dollars or euros.",
+          },
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [editSkillWithInstructions("skill_data_formatter")],
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for the child skill "skill_data_formatter" ONLY.
+The failure originates in the Data Formatter skill's formatting rules: they describe the table columns and number formatting but never require a currency to be shown on the "Amount" column, which produced the ambiguous bare numbers the user complained about. The Report Orchestrator delegated correctly and its own instructions are complete and correct.
+The suggestion should:
+- Add a formatting rule to the Data Formatter requiring monetary amounts to be rendered with an explicit currency (a symbol or ISO currency code, e.g. $1,200,000 or 1,200,000 USD)
+- Reference that the current rules omit currency, causing the ambiguous numbers in the posted report
+- Preserve the existing formatting rules (columns, thousands separators, signed percentages, sort order)
+
+CRITICAL constraints:
+- The analyst MUST target the child skill "skill_data_formatter" with instructionEdits
+- There MUST NOT be any edit_skill call targeting the parent "skill_report_orchestrator"
+- The fix must address the specific child-owned defect (missing currency on amounts); the parent's instructions are correct and its delegation to the Data Formatter worked as intended
+
+Score 0 if no edit_skill with instructionEdits call is made for skill_data_formatter, or if edit_skill targets the parent skill_report_orchestrator.
+Score 1 if edit_skill targets only skill_data_formatter but the edit doesn't specifically address requiring a currency on the amounts.
+Score 3 if edit_skill targets skill_data_formatter only, adds a rule requiring an explicit currency on monetary amounts, and leaves the parent skill_report_orchestrator untouched.`,
+    },
+    {
       scenarioId: "misleading-agent-facing-description",
       type: "analysis",
       skillConfigs: [
@@ -734,7 +894,7 @@ The analyst MUST call edit_skill with an agentFacingDescriptionEdit for skill "s
 - Stay focused on routing signals (when to use vs. not), not behavior (which lives in the instructions)
 
 Score 0 if no edit_skill call with agentFacingDescriptionEdit is made for skill_payment_resolver.
-Score 0 if the suggestion is bundled with instructionEdits or toolEdits — per the analysis prompt, description edits should be a standalone edit_skill call when the routing problem is the only issue (the instructions and tools here are correct).
+Score 0 if the suggestion is bundled with instructionEdits — per the analysis prompt, description edits should be a standalone edit_skill call when the routing problem is the only issue (the instructions and tools here are correct).
 Score 1 if a description edit is made but it does not narrow the scope (still vague) OR does not steer away from billing/address-style requests.
 Score 2 if the new description narrows the skill but the language is weak or does not call out what to skip.
 Score 3 if the new description clearly limits the skill to payment failures + chargebacks AND explicitly tells the agent not to use it for unrelated billing/account-management changes.`,

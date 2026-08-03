@@ -14,7 +14,7 @@ export type DefaultRemoteMCPServerConfig = {
   authMethod: "bearer" | "oauth-dynamic" | "oauth-static" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   scope?: string;
-  toolStakes?: Record<string, "high" | "low" | "never_ask">;
+  toolStakes?: Record<string, "high" | "low" | "medium" | "never_ask">;
   toolDisplayLabels?: Record<string, ToolDisplayLabels>;
   featureFlag?: WhitelistableFeature;
 };
@@ -1928,11 +1928,307 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
-];
+  {
+    id: 10024,
+    name: "Gamma",
+    description:
+      "Create and manage Gamma presentations directly from your conversations.",
+    url: "https://mcp.gamma.app/mcp",
+    icon: "GammaLogo",
+    documentationUrl: "https://developers.gamma.app",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_gammas: "never_ask",
+      read_gamma: "never_ask",
+      get_themes: "never_ask",
+      get_folders: "never_ask",
+      get_generation_status: "never_ask",
+      generate: "low",
+      generate_from_template: "low",
+    },
+    toolDisplayLabels: {
+      get_gammas: {
+        running: "Browsing Gammas",
+        done: "Browsed Gammas",
+      },
+      read_gamma: {
+        running: "Reading Gamma",
+        done: "Read Gamma",
+      },
+      get_themes: {
+        running: "Loading Gamma themes",
+        done: "Loaded Gamma themes",
+      },
+      get_folders: {
+        running: "Loading Gamma folders",
+        done: "Loaded Gamma folders",
+      },
+      get_generation_status: {
+        running: "Checking generation status",
+        done: "Checked generation status",
+      },
+      generate: {
+        running: "Generating Gamma presentation",
+        done: "Generated Gamma presentation",
+      },
+      generate_from_template: {
+        running: "Generating Gamma from template",
+        done: "Generated Gamma from template",
+      },
+    },
+  },
+  {
+    id: 10025,
+    name: "Napta",
+    description:
+      "Napta tools for resource management and staffing — search employees, skills, and allocations, then create, update, and confirm assignments on projects.",
+    url: "https://mcp.napta.io/mcp",
+    icon: "NaptaLogo",
+    documentationUrl: "https://docs.dust.tt/docs/remote-mcp-server",
+    connectionInstructions:
+      "Napta uses OAuth. You will be prompted to sign in with your Napta account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      greet: "never_ask",
+      get_business_units: "never_ask",
+      get_positions: "never_ask",
+      get_locations: "never_ask",
+      get_tags: "never_ask",
+      search_employees: "never_ask",
+      search_skills: "never_ask",
+      search_assignment: "never_ask",
+      search_requests: "never_ask",
+      find_employees_matching_requirements: "never_ask",
+      create_request: "low",
+      simulate_prebooking: "low",
+      simulate_assignment: "low",
 
-export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {
-  return DEFAULT_REMOTE_MCP_SERVERS.some((server) => server.url === url);
-};
+      create_assignment: "medium",
+      update_assignment_workload: "medium",
+      confirm_assignment: "high",
+    },
+    toolDisplayLabels: {
+      greet: {
+        running: "Connecting to Napta",
+        done: "Connected to Napta",
+      },
+      get_business_units: {
+        running: "Loading business units from Napta",
+        done: "Loaded business units from Napta",
+      },
+      get_positions: {
+        running: "Loading positions from Napta",
+        done: "Loaded positions from Napta",
+      },
+      get_locations: {
+        running: "Loading locations from Napta",
+        done: "Loaded locations from Napta",
+      },
+      get_tags: {
+        running: "Loading tags from Napta",
+        done: "Loaded tags from Napta",
+      },
+      search_employees: {
+        running: "Searching employees on Napta",
+        done: "Searched employees on Napta",
+      },
+      search_skills: {
+        running: "Searching skills on Napta",
+        done: "Searched skills on Napta",
+      },
+      search_assignment: {
+        running: "Searching assignments on Napta",
+        done: "Searched assignments on Napta",
+      },
+      search_requests: {
+        running: "Searching requests on Napta",
+        done: "Searched requests on Napta",
+      },
+      find_employees_matching_requirements: {
+        running: "Ranking contributors on Napta",
+        done: "Ranked contributors on Napta",
+      },
+      create_request: {
+        running: "Creating request on Napta",
+        done: "Created request on Napta",
+      },
+      simulate_prebooking: {
+        running: "Simulating prebooking on Napta",
+        done: "Simulated prebooking on Napta",
+      },
+      simulate_assignment: {
+        running: "Simulating assignment on Napta",
+        done: "Simulated assignment on Napta",
+      },
+      create_assignment: {
+        running: "Creating assignment on Napta",
+        done: "Created assignment on Napta",
+      },
+      update_assignment_workload: {
+        running: "Updating workload on Napta",
+        done: "Updated workload on Napta",
+      },
+      confirm_assignment: {
+        running: "Confirming assignment on Napta",
+        done: "Confirmed assignment on Napta",
+      },
+    },
+  },
+  {
+    id: 10026,
+    name: "Lemlist",
+    description:
+      "Lemlist tools for sales engagement, creating outreach campaigns, and finding leads.",
+    url: "https://app.lemlist.com/mcp",
+    icon: "LemlistLogo",
+    authMethod: "oauth-dynamic",
+    supportedOAuthUseCases: ["personal_actions"],
+    toolStakes: {
+      // Read operations
+      get_settings: "never_ask",
+      get_statistics: "never_ask",
+      get_team_info: "never_ask",
+      get_team_overview: "never_ask",
+      get_users: "never_ask",
+      get_user_channels: "never_ask",
+      get_campaigns: "never_ask",
+      get_campaigns_reports: "never_ask",
+      get_campaigns_stats: "never_ask",
+      get_campaign_details: "never_ask",
+      get_campaign_sequences: "never_ask",
+      get_contact_lists: "never_ask",
+      get_inbox_conversations: "never_ask",
+      get_inbox_conversation: "never_ask",
+      get_lemleads_filters: "never_ask",
+      get_unsubscribes: "never_ask",
+      get_webhooks: "never_ask",
+      list_watch_lists: "never_ask",
+      preview_sequence_update: "never_ask",
+      validate_campaign_readiness: "never_ask",
+      bulk_get_enrichment_results: "never_ask",
+      check_domain_health: "never_ask",
+      test_email_account: "never_ask",
+      search_campaign_leads: "never_ask",
+      search_contacts: "never_ask",
+      search_companies: "never_ask",
+      lemleads_search: "never_ask",
+      load_skill: "never_ask",
+      search_help_center: "never_ask",
+      recall_memory: "never_ask",
+      // Write operations
+      add_leads_to_campaign: "low",
+      add_contacts_to_list: "low",
+      add_sequence_step: "low",
+      add_unsubscribe: "low",
+      bulk_enrich_data: "low",
+      call_api: "low",
+      connect_email_account: "low",
+      create_campaign_with_sequence: "low",
+      create_campaign_from_proposal: "low",
+      create_contact_list: "low",
+      create_or_update_company: "low",
+      create_or_update_contact: "low",
+      create_webhook: "low",
+      delete_company: "low",
+      delete_memory: "low",
+      delete_sequence_step: "low",
+      delete_unsubscribe: "low",
+      delete_watch_list: "low",
+      delete_webhook: "low",
+      disconnect_email_account: "low",
+      enrich_lead: "low",
+      push_leads_to_contacts: "low",
+      report_unsupported_case: "low",
+      save_business_context: "low",
+      save_memory: "low",
+      send_message: "low",
+      set_campaign_senders: "low",
+      set_campaign_state: "low",
+      update_lead: "low",
+      update_lead_variables: "low",
+      update_sequence_step: "low",
+      update_settings: "low",
+    },
+  },
+  {
+    id: 10028,
+    name: "Youtrust",
+    description:
+      "Youtrust tools for e-signature — search signature requests and templates, create draft requests from templates, and send them to signers.",
+    url: "https://api.yousign.app/mcp",
+    icon: "YoutrustLogo",
+    documentationUrl:
+      "https://help.yousign.app/en/articles/673715-connect-youtrust-to-your-ai-agent",
+    connectionInstructions:
+      "Youtrust uses OAuth 2.1 with dynamic client registration. You will be prompted to sign in with your Youtrust account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      "search-signature-requests": "never_ask",
+      "get-signature-request-activity-feed": "never_ask",
+      "search-templates": "never_ask",
+      "create-signature-request-from-template": "low",
+      "send-signature-request": "high",
+    },
+    toolDisplayLabels: {
+      "search-signature-requests": {
+        running: "Searching signature requests on Youtrust",
+        done: "Searched signature requests on Youtrust",
+      },
+      "get-signature-request-activity-feed": {
+        running: "Fetching activity feed on Youtrust",
+        done: "Fetched activity feed on Youtrust",
+      },
+      "search-templates": {
+        running: "Searching templates on Youtrust",
+        done: "Searched templates on Youtrust",
+      },
+      "create-signature-request-from-template": {
+        running: "Creating signature request draft on Youtrust",
+        done: "Created signature request draft on Youtrust",
+      },
+      "send-signature-request": {
+        running: "Sending signature request on Youtrust",
+        done: "Sent signature request on Youtrust",
+      },
+    },
+  },
+  {
+    id: 10027,
+    name: "Adomik",
+    description:
+      "Adomik tools for ad revenue analytics — explore programmatic advertising performance, reporting, and monetization data across your ad partners.",
+    url: "https://mcp.adomik.com/mcp",
+    icon: "AdomikLogo",
+    documentationUrl: "https://docs.dust.tt/docs/remote-mcp-server",
+    connectionInstructions:
+      "Adomik uses OAuth. You will be prompted to sign in with your Adomik account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      jp_market_analyst: "never_ask",
+      confluence_search: "never_ask",
+      confluence_get_page: "never_ask",
+      confluence_get_page_children: "never_ask",
+    },
+    toolDisplayLabels: {
+      jp_market_analyst: {
+        running: "Analyzing market data on Adomik",
+        done: "Analyzed market data on Adomik",
+      },
+      confluence_search: {
+        running: "Searching knowledge base on Adomik",
+        done: "Searched knowledge base on Adomik",
+      },
+      confluence_get_page: {
+        running: "Fetching page from Adomik",
+        done: "Fetched page from Adomik",
+      },
+      confluence_get_page_children: {
+        running: "Fetching sub-pages from Adomik",
+        done: "Fetched sub-pages from Adomik",
+      },
+    },
+  },
+];
 
 export const getDefaultRemoteMCPServerByURL = (
   url: string | undefined

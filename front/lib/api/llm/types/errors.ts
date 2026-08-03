@@ -237,12 +237,14 @@ const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
   anthropic: "Anthropic",
   openai: "OpenAI",
   mistral: "Mistral",
-  togetherai: "TogetherAI",
   deepseek: "Deepseek",
   fireworks: "Fireworks",
   xai: "xAI",
   google_ai_studio: "Google AI Studio",
   noop: "Noop",
+  auto: "Auto",
+  auto_fast: "Fast",
+  auto_complex: "Complex",
 };
 
 /**

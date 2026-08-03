@@ -1,9 +1,9 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { AvailableSkill } from "@app/lib/api/assistant/observability/skill_usage";
+import type { GetWorkspaceSkillsResponse } from "@app/lib/api/assistant/observability/skill_usage";
 import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -12,14 +12,11 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
 
-export type GetWorkspaceSkillsResponse = {
-  skills: AvailableSkill[];
-};
-
 // Mounted at /api/w/:wId/analytics/skills.
 const app = workspaceApp();
 
-app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
+/** @ignoreswagger */
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   const { days } = ctx.req.valid("query");

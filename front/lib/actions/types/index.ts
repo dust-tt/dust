@@ -3,13 +3,20 @@ import type {
   LightMCPToolConfigurationType,
   MCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { AgentMCPActionType } from "@app/types/actions";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
+import type { FileModel } from "@app/lib/resources/storage/models/files";
+import type { AgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageType,
   ConversationType,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 const FileAuthorizationInfoSchema = z.object({
@@ -57,7 +64,10 @@ export const UserQuestionSchema = z.object({
     .describe("The question text. Should be clear and specific."),
   options: z
     .array(UserQuestionOptionSchema)
-    .describe("The available choices (2 to 4 options)."),
+    .describe(
+      "The available choices (typically 2 to 4 options, too many options to " +
+        "choose from can be overwhelming for the user)."
+    ),
   multiSelect: z
     .boolean()
     .describe(
@@ -80,9 +90,7 @@ const UserQuestionResumeStateSchema = z.object({
   answer: UserQuestionAnswerSchema.optional(),
 });
 
-export type UserQuestionResumeState = z.infer<
-  typeof UserQuestionResumeStateSchema
->;
+type UserQuestionResumeState = z.infer<typeof UserQuestionResumeStateSchema>;
 
 export function isUserQuestionResumeState(
   value: unknown
@@ -94,7 +102,7 @@ const SandboxResumeStateSchema = z.object({
   execId: z.string(),
 });
 
-export type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;
+type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;
 
 export function isSandboxResumeState(
   value: unknown
@@ -114,7 +122,6 @@ export type StepContext = {
 
 type ActionGeneratedFileBase = {
   title: string;
-  contentType: AllSupportedFileContentType;
   snippet: string | null;
   hidden?: boolean;
   createdAt?: number;
@@ -125,14 +132,16 @@ type ActionGeneratedFileBase = {
   skipDataSourceIndexing?: boolean;
 };
 
-// File backed by a Dust FileResource.
+// File backed by a Dust FileResource: always a supported content type.
 export type ActionGeneratedDBFileType = ActionGeneratedFileBase & {
+  contentType: AllSupportedFileContentType;
   fileId: string;
   filePath?: never;
 };
 
-// File path only, no FileResource in DB.
+// File path only, no FileResource in DB. Not restricted to supported content types.
 export type ActionGeneratedFilePathType = ActionGeneratedFileBase & {
+  contentType: string;
   fileId: null;
   filePath: string;
 };
@@ -141,29 +150,65 @@ export type ActionGeneratedFileType =
   | ActionGeneratedDBFileType
   | ActionGeneratedFilePathType;
 
-export type AgentLoopRunContextType = {
-  agentConfiguration: AgentConfigurationType;
+// A persisted tool output item in the generic shape returned by both AgentMCPActionResource and
+// SandboxFunctionMCPActionResource createOutputItems: the stored content plus the file linkage
+// required to render the model-facing view (hideFileFromActionOutput).
+export type ToolOutputItemType = {
+  content: CallToolResult["content"][number];
+  fileId: ModelId | null;
+  file: FileModel | null;
+  workspaceId: ModelId;
+};
+
+export type AgentLoopRunContext = {
+  contextType: "agent_loop";
+  action: AgentMCPActionResource;
+  agentConfiguration: AgentConfigurationWithoutModelType;
+  modelInfo: StreamModelInfo;
   agentMessage: AgentMessageType;
-  currentAction: AgentMCPActionType;
   conversation: ConversationType;
   stepContext: StepContext;
   toolConfiguration: LightMCPToolConfigurationType;
+  userMessage: UserMessageType;
 };
 
-export type AgentLoopListToolsContextType = {
-  agentConfiguration: AgentConfigurationType;
+export type SandboxFunctionRunContext = {
+  contextType: "sandbox_function";
+  action: SandboxFunctionMCPActionResource;
+  invocation: SandboxFunctionInvocationResource;
+  toolConfiguration: LightMCPToolConfigurationType;
+};
+
+export type AgentLoopListToolsContext = {
+  agentConfiguration: AgentConfigurationWithoutModelType;
   agentActionConfiguration: MCPServerConfigurationType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
 };
 
-export type AgentLoopContextType =
+// Context available to tool handlers at execution time: tools only ever run on a connection
+// established with a run context, never on a listing-phase connection.
+export type ToolRunContext = AgentLoopRunContext | SandboxFunctionRunContext;
+
+export function isSandboxFunctionRunContext(
+  value: ToolRunContext | undefined
+): value is SandboxFunctionRunContext {
+  return value?.contextType === "sandbox_function";
+}
+
+export function isAgentLoopRunContext(
+  value: ToolRunContext | undefined
+): value is AgentLoopRunContext {
+  return value?.contextType === "agent_loop";
+}
+
+export type ToolContext =
   | {
-      runContext: AgentLoopRunContextType;
+      runContext: ToolRunContext;
       listToolsContext?: never;
     }
   | {
       runContext?: never;
-      listToolsContext: AgentLoopListToolsContextType;
+      listToolsContext: AgentLoopListToolsContext;
     };

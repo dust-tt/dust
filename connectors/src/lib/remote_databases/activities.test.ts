@@ -1,5 +1,6 @@
 import {
   deleteDataSourceFolder,
+  deleteDataSourceTable,
   upsertDataSourceFolder,
   upsertDataSourceRemoteTable,
 } from "@connectors/lib/data_sources";
@@ -23,6 +24,7 @@ vi.mock(import("@connectors/lib/data_sources"), async (importOriginal) => {
     upsertDataSourceFolder: vi.fn(),
     upsertDataSourceRemoteTable: vi.fn(),
     deleteDataSourceFolder: vi.fn(),
+    deleteDataSourceTable: vi.fn(),
   };
 });
 
@@ -369,6 +371,91 @@ describe("sync remote databases", async () => {
     expect(deleteDataSourceFolder).not.toHaveBeenCalled();
     expect(upsertDataSourceFolder).not.toHaveBeenCalled();
     expect(upsertDataSourceRemoteTable).not.toHaveBeenCalled();
+  });
+
+  it("should preserve selected permissions when garbage collecting without a tree", async () => {
+    const dataSourceConfig: DataSourceConfig = {
+      workspaceId: "test-workspace-id",
+      workspaceAPIKey: "test-workspace-api-key",
+      dataSourceId: "test-data-source-id",
+    };
+
+    const connector = await ConnectorResource.makeNew(
+      "bigquery",
+      {
+        connectionId: "test-connection-id",
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+      },
+      {
+        useMetadataForDBML: false,
+      }
+    );
+
+    const lastUpsertedAt = new Date();
+    await RemoteDatabaseModel.create({
+      internalId: "selected-db",
+      name: "selected-db",
+      permission: "selected",
+      lastUpsertedAt,
+      connectorId: connector.id,
+    });
+    await RemoteSchemaModel.create({
+      internalId: "selected-db.selected-schema",
+      name: "selected-schema",
+      databaseName: "selected-db",
+      permission: "selected",
+      lastUpsertedAt,
+      connectorId: connector.id,
+    });
+    await RemoteTableModel.create({
+      internalId: "selected-db.selected-schema.selected-table",
+      name: "selected-table",
+      databaseName: "selected-db",
+      schemaName: "selected-schema",
+      permission: "selected",
+      lastUpsertedAt,
+      connectorId: connector.id,
+    });
+
+    await sync({
+      remoteDBTree: undefined,
+      connector,
+      mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+      preserveSelectedPermissions: true,
+      tags: [],
+    });
+
+    expect(deleteDataSourceFolder).toHaveBeenCalledWith({
+      dataSourceConfig,
+      folderId: "selected-db",
+    });
+    expect(deleteDataSourceFolder).toHaveBeenCalledWith({
+      dataSourceConfig,
+      folderId: "selected-db.selected-schema",
+    });
+    expect(deleteDataSourceTable).toHaveBeenCalledWith({
+      dataSourceConfig,
+      tableId: "selected-db.selected-schema.selected-table",
+    });
+
+    const remoteDb = await RemoteDatabaseModel.findOne({
+      where: { internalId: "selected-db" },
+    });
+    const remoteSchema = await RemoteSchemaModel.findOne({
+      where: { internalId: "selected-db.selected-schema" },
+    });
+    const remoteTable = await RemoteTableModel.findOne({
+      where: { internalId: "selected-db.selected-schema.selected-table" },
+    });
+
+    expect(remoteDb?.permission).toBe("selected");
+    expect(remoteDb?.lastUpsertedAt).toBeNull();
+    expect(remoteSchema?.permission).toBe("selected");
+    expect(remoteSchema?.lastUpsertedAt).toBeNull();
+    expect(remoteTable?.permission).toBe("selected");
+    expect(remoteTable?.lastUpsertedAt).toBeNull();
   });
 
   it("should correctly handle dots in database, schema, and table names", async () => {

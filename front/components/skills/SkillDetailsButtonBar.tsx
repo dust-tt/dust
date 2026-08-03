@@ -1,18 +1,16 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import { useAppRouter } from "@app/lib/platform";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClipboardIcon,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  MoreIcon,
-  PencilSquareIcon,
-  TrashIcon,
+  Edit04,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -20,17 +18,18 @@ interface SkillDetailsButtonBarProps {
   skill: SkillWithoutInstructionsAndToolsWithRelationsType;
   owner: WorkspaceType;
   onClose: () => void;
+  replaceOnEdit?: boolean;
 }
 
 export function SkillDetailsButtonBar({
   skill,
   owner,
   onClose,
+  replaceOnEdit,
 }: SkillDetailsButtonBarProps) {
-  const router = useAppRouter();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
-  if (!skill.canWrite && !skill.isExtendable) {
+  if (!skill.canAdministrate) {
     return null;
   }
 
@@ -46,47 +45,33 @@ export function SkillDetailsButtonBar({
         }}
       />
       <div className="flex flex-row items-center gap-2 px-1.5">
-        {skill.canWrite && (
-          <Button
-            size="sm"
-            tooltip="Edit skill"
-            href={getSkillBuilderRoute(owner.sId, skill.sId)}
-            variant="outline"
-            icon={PencilSquareIcon}
-          />
-        )}
+        <Button
+          size="sm"
+          tooltip="Edit skill"
+          href={getSkillBuilderRoute(owner.sId, skill.sId)}
+          replace={replaceOnEdit}
+          variant="outline"
+          icon={Edit04}
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button icon={MoreIcon} size="sm" variant="ghost" />
+            <Button
+              icon={DotsHorizontal}
+              size="sm"
+              variant="ghost"
+              tooltip="Skill options"
+            />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            {skill.isExtendable && (
-              <DropdownMenuItem
-                label="Customize (New)"
-                icon={ClipboardIcon}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  await router.push(
-                    getSkillBuilderRoute(
-                      owner.sId,
-                      "new",
-                      `extends=${skill.sId}`
-                    )
-                  );
-                }}
-              />
-            )}
-            {skill.canWrite && (
-              <DropdownMenuItem
-                label="Archive"
-                icon={TrashIcon}
-                variant="warning"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowArchiveDialog(true);
-                }}
-              />
-            )}
+            <DropdownMenuItem
+              label="Archive"
+              icon={Trash01}
+              variant="warning"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowArchiveDialog(true);
+              }}
+            />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

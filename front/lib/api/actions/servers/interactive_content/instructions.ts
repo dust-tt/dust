@@ -1,15 +1,15 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
-  VIZ_CHART_EXAMPLES,
-  VIZ_FILE_HANDLING_GUIDELINES,
-  VIZ_FRAME_IMPORT_EXAMPLE,
-  VIZ_LIBRARY_USAGE,
   VIZ_MIME_TYPE,
-  VIZ_MISCELLANEOUS_GUIDELINES,
-  VIZ_REACT_COMPONENT_GUIDELINES,
   VIZ_SLIDESHOW_MIME_TYPE,
-  VIZ_STYLING_GUIDELINES,
-  VIZ_USE_FILE_EXAMPLES,
 } from "@app/lib/api/actions/servers/common/viz/instructions";
+import {
+  FILES_CAT_ACTION_NAME,
+  FILES_EDIT_ACTION_NAME,
+  FILES_LIST_ACTION_NAME,
+  FILES_RESOLVE_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import {
   INTERACTIVE_CONTENT_AUTHORING_PROSE_V2,
   INTERACTIVE_CONTENT_CHART_EXAMPLES_V2,
@@ -19,17 +19,128 @@ import {
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  FRAME_RECREATE_WASTE_RATIONALE,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 
-export const INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING = `\
+const FILES_EDIT_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_EDIT_ACTION_NAME
+);
+const FILES_CAT_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_CAT_ACTION_NAME
+);
+const FILES_LIST_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_LIST_ACTION_NAME
+);
+const FILES_RESOLVE_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_RESOLVE_ACTION_NAME
+);
+
+const UPDATING_SECTION_LEGACY = `\
+### Updating Existing Files:
+- To modify existing Interactive Content files, always use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content
+- Then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
+- The edit tool requires exact text matching, include surrounding context for unique identification
+- Never attempt to edit without first retrieving the current file content
+
+Example:
+
+**Step 1: Retrieve the current file content first**
+\`\`\`
+${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123"
+})
+// This returns the current file content. Examine it carefully to identify the exact text to replace.
+\`\`\`
+
+**Step 2: Make targeted edits using the retrieved content**
+\`\`\`
+${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123",
+  old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  expected_replacements: 1,
+})
+\`\`\`
+
+The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
+`;
+
+const PUBLISH_PARAGRAPH = `\
+Publishing rebuilds the Frame from its source so viewers and shares see the new version. It updates the existing Frame in place, keeping its identity and share URL. Until you publish, edits to the source do not change the rendered Frame. Multi-file Frames work the same way: edit any source file under that directory, keep every source file under it, then publish. A TypeScript or JSX syntax error blocks publishing and is reported back so you can fix it.`;
+
+// Shared decision gate between the creating and updating flows. Kept generic so it holds for
+// every variant, including legacy conversations whose edit flow goes through the file-id tool.
+const CREATE_VS_UPDATE_SECTION = `\
+### Creating vs. Updating
+
+Create a Frame only when the content does not exist yet. When the user asks for changes to a Frame that already exists in the conversation (fixing a bug, updating data, changing colors, text, charts, or layout, adding a section), update that Frame in place following "Updating Existing Files" below. Never create a new Frame, and never resend the full source, to change an existing one: ${FRAME_RECREATE_WASTE_RATIONALE}, while targeted edits are cheap.
+`;
+
+// Computer-first variant, used when the Computer is available. The Frame's source is mounted in
+// the Computer, so the model edits the file in place and republishes.
+const UPDATING_SECTION_COMPUTER_FIRST = `\
+### Updating Existing Files (edit the source, then publish):
+
+After a Frame is created, its source file is already mounted in the Computer at \`/files/conversation-<conversationId>/<FrameName>.tsx\`. To update the Frame:
+1. Edit that file in place with your file tools, changing only the parts that need to change. Do not rewrite the whole file for partial changes. When the Computer is not available, edit it with \`${FILES_EDIT_TOOL}\` using the scoped path \`conversation-<conversationId>/<FrameName>.tsx\`.
+2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` using \`path: conversation-<conversationId>\` (the directory holding the file, not a subdirectory).
+
+If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it and retry the targeted edit. Never respond to a failed match by resending the whole file.
+
+${PUBLISH_PARAGRAPH}
+`;
+
+// Files-tools variant, used when the conversation has the file system but no Computer. The
+// model edits the Frame's source through the files server, then republishes.
+const UPDATING_SECTION_FILES_FIRST = `\
+### Updating Existing Files (edit the source, then publish):
+
+After a Frame is created, its source file is available to your file tools at \`conversation-<conversationId>/<FrameName>.tsx\`. To update the Frame:
+1. Read the source with \`${FILES_CAT_TOOL}\` if you need the current content. If you are unsure of the exact path, list the directory with \`${FILES_LIST_TOOL}\` or resolve the Frame's file id with \`${FILES_RESOLVE_TOOL}\`.
+2. Make targeted edits with \`${FILES_EDIT_TOOL}\`, replacing only the text that changes. Do not rewrite the whole file for partial changes.
+3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` using \`path: conversation-<conversationId>\` (the directory holding the file, not a subdirectory).
+
+If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it with \`${FILES_CAT_TOOL}\` and retry the targeted edit. Never respond to a failed match by resending the whole file.
+
+Example, updating one value of an existing Frame:
+\`\`\`
+${FILES_EDIT_TOOL}({
+  path: "conversation-<conversationId>/Dashboard.tsx",
+  old_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\"];",
+  new_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\", \\"APAC\\"];",
+})
+${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123",
+  path: "conversation-<conversationId>",
+})
+\`\`\`
+
+${PUBLISH_PARAGRAPH}
+`;
+
+interface InstructionsVariant {
+  updatingSection: string;
+  validationFixExample: string;
+}
+
+const interactiveContentProseBeforeAuthoring = ({
+  updatingSection,
+  validationFixExample,
+}: InstructionsVariant) => `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT
 
 You have access to an Interactive Content system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
 This toolset is called Frame in the product, users may refer to it as such.
 
+${CREATE_VS_UPDATE_SECTION}
 ### Creating Files
 
 Use the \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files:
@@ -62,7 +173,7 @@ How it works:
 - Reference existing content by its ID (found in <knowledge id="..."> tags from company data searches)
 - Pass that ID to the source parameter
 - Content is fetched server-side without consuming context tokens
-- You can then customize it using \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`
+- You can then customize it with targeted edits
 Example:
 \`\`\`
 // After finding code with <knowledge id="template_node_id">
@@ -76,38 +187,11 @@ ${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
 \`\`\`
 When using template mode, you don't need to read the template content first.
 Just pass the knowledge ID to the tool and the content will be fetched server-side.
-Common pattern: Create from template, then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to customize.
+Common pattern: Create from template, then customize it with targeted edits.
 This approach works well when adapting existing templates (preserves structure/style, no token cost for base content).
 Typical use cases: Suitable template exists, adapting existing code, saving tokens on large files.
 
-### Updating Existing Files:
-- To modify existing Interactive Content files, always use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content
-- Then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
-- The edit tool requires exact text matching - include surrounding context for unique identification
-- Never attempt to edit without first retrieving the current file content
-
-Example:
-
-**Step 1: Retrieve the current file content first**
-\`\`\`
-${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_id: "fil_abc123"
-})
-// This returns the current file content. Examine it carefully to identify the exact text to replace.
-\`\`\`
-
-**Step 2: Make targeted edits using the retrieved content**
-\`\`\`
-${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_id: "fil_abc123",
-  old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
-  new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
-  expected_replacements: 1,
-})
-\`\`\`
-
-The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
-
+${updatingSection}
 
 ### Validation
 
@@ -115,11 +199,11 @@ Validation is performed automatically when you create or edit files.
 
 **Tailwind validation (non-blocking):** Files are saved even with Tailwind warnings. When you
 receive warnings in the tool response, they include the exact \`old_string\` and
-\`expected_replacements\` count. Fix these warnings using \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`
-with the provided values. If you receive multiple warnings, fix all of them in a single response
-using multiple edit tool calls. Common warning: "Forbidden Tailwind arbitrary value 'h-[600px]'"
-means you should replace with predefined classes like h-96 or use inline styles. Do not regenerate
-the entire file; use targeted edits only.
+\`expected_replacements\` count. Fix these warnings with targeted edits using the provided values.
+If you receive multiple warnings, fix all of them in a single response using multiple edit tool
+calls. Common warning: "Forbidden Tailwind arbitrary value 'h-[600px]'" means you should replace
+with predefined classes like h-96 or use inline styles. Do not regenerate the entire file; use
+targeted edits only.
 
 When fixing validation warnings, use the exact values provided. Do not add context, modify them,
 interpret them, or retrieve the file first.
@@ -134,12 +218,7 @@ Example warning response:
 
 Correct fix:
 \`\`\`
-${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_id: "fil_abc123",
-  old_string: "className=\\"text-[14px]\\"",  // EXACTLY as provided in warning
-  new_string: "className=\\"text-sm\\"",
-  expected_replacements: 5  // EXACTLY as provided in warning
-})
+${validationFixExample}
 \`\`\`
 
 **TypeScript validation (blocking):** Files are rejected if TypeScript/JSX syntax is invalid.
@@ -156,106 +235,7 @@ Fix syntax errors before the file can be created/edited.
 - Renaming only changes the file name; the content remains unchanged
 `;
 
-export const INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT = `\
-${VIZ_REACT_COMPONENT_GUIDELINES}
-
-${VIZ_STYLING_GUIDELINES}
-
-${VIZ_FILE_HANDLING_GUIDELINES}
-
-${VIZ_LIBRARY_USAGE}
-
-${VIZ_MISCELLANEOUS_GUIDELINES}
-`;
-
-export const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING = `\
-- When to Create Files:
-  - Create files for data visualizations such as graphs, charts, and plots
-  - Create files for complex visualizations that require user interaction
-  - Create files for slideshow presentations (use the Slideshow component)
-  - Do not create files for simple text-based content that can be rendered in Markdown
-  - Do not create files for content that does not require user interaction
-
-### Slideshows
-
-When the user asks for a presentation, slideshow, deck, or multi-slide content, create an interactive
-content file using the \`Slideshow\` and \`Slide\` components.
-
-**MIME type:** Always set \`mime_type\` to \`${VIZ_SLIDESHOW_MIME_TYPE}\` when creating a slideshow.
-
-**Import:** \`import { Slideshow, Slide } from "@dust/slideshow/v2";\`
-
-**Components:**
-- \`<Slideshow>\` wraps all slides. It handles navigation (prev/next arrows, dot indicators, keyboard
-  arrow keys) and PDF export automatically. Accepts an optional \`className\` prop.
-- \`<Slide>\` represents one slide. Each slide takes the full viewport height, centers its children,
-  and accepts a \`className\` prop (commonly used for background colors like \`bg-slate-50\`).
-  Inside a \`<Slide>\`, use any React and Tailwind — standard HTML elements, Recharts charts,
-  grid layouts, etc.
-
-**Content guidelines:**
-- One main idea per slide. Avoid overcrowding.
-- Use a consistent background color across slides for cohesion (e.g. all \`bg-white\` or all \`bg-slate-50\`).
-  Use 1-2 accent colors for emphasis elements.
-- Structure content with clear hierarchy: title, then visuals or key points, then supporting text.
-- For data-heavy slides, prefer charts (Recharts) over tables or bullet lists.
-
-**Do not:**
-- Do not build navigation controls (buttons, arrows, dots, keyboard handlers). They are built in.
-- Do not import from \`@dust/slideshow/v1\`. Always use \`@dust/slideshow/v2\`.
-- Do not set explicit heights on \`<Slide>\` — it fills the viewport automatically.
-- Do not use gradients unless the user explicitly requests them.
-
-\`\`\`tsx
-import { Slideshow, Slide } from "@dust/slideshow/v2";
-
-export default function Deck() {
-  return (
-    <Slideshow>
-      <Slide className="bg-slate-50">
-        <h1 className="text-6xl font-bold text-slate-900 mb-4">Q4 Revenue Analysis</h1>
-        <p className="text-xl text-slate-500">Annual review & key insights</p>
-      </Slide>
-      <Slide className="bg-white">
-        <h2 className="text-4xl font-semibold mb-8">Key Metrics</h2>
-        <div className="grid grid-cols-3 gap-8">
-          <div className="text-center">
-            <p className="text-5xl font-bold text-blue-600">+25%</p>
-            <p className="text-lg text-slate-500 mt-2">YoY Growth</p>
-          </div>
-          <div className="text-center">
-            <p className="text-5xl font-bold text-green-600">92%</p>
-            <p className="text-lg text-slate-500 mt-2">Retention</p>
-          </div>
-          <div className="text-center">
-            <p className="text-5xl font-bold text-purple-600">1.2k</p>
-            <p className="text-lg text-slate-500 mt-2">New Customers</p>
-          </div>
-        </div>
-      </Slide>
-      <Slide className="bg-slate-50">
-        <h2 className="text-4xl font-semibold mb-6">Next Steps</h2>
-        <ul className="space-y-4 text-xl text-slate-700">
-          <li>Expand into EU markets</li>
-          <li>Launch premium tier</li>
-          <li>Revamp onboarding flow</li>
-        </ul>
-      </Slide>
-    </Slideshow>
-  );
-}
-\`\`\`
-
-${VIZ_USE_FILE_EXAMPLES}
-
-${VIZ_FRAME_IMPORT_EXAMPLE}
-
-Examples:
-
-${VIZ_CHART_EXAMPLES}
-`;
-
-export const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING_V2 = `\
+const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING = `\
 - When to Create Files:
   - Create files for data visualizations such as graphs, charts, and plots
   - Create files for complex visualizations that require user interaction
@@ -342,24 +322,43 @@ Examples:
 ${INTERACTIVE_CONTENT_CHART_EXAMPLES_V2}
 `;
 
-function buildInteractiveContentInstructions({
-  afterAuthoringProse,
-  authoringProse,
-}: {
-  afterAuthoringProse: string;
-  authoringProse: string;
-}): string {
-  return `${INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING}\n${authoringProse}\n${afterAuthoringProse}`;
-}
+const VALIDATION_FIX_EXAMPLE_LEGACY = `\
+${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123",
+  old_string: "className=\\"text-[14px]\\"",  // EXACTLY as provided in warning
+  new_string: "className=\\"text-sm\\"",
+  expected_replacements: 5  // EXACTLY as provided in warning
+})`;
 
-export const INTERACTIVE_CONTENT_INSTRUCTIONS =
-  buildInteractiveContentInstructions({
-    afterAuthoringProse: INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING,
-    authoringProse: INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT,
-  });
+const VALIDATION_FIX_EXAMPLE_SOURCE_EDIT = `\
+${FILES_EDIT_TOOL}({
+  path: "conversation-<conversationId>/Dashboard.tsx",
+  old_string: "className=\\"text-[14px]\\"",  // EXACTLY as provided in warning
+  new_string: "className=\\"text-sm\\"",
+  expected_replacements: 5  // EXACTLY as provided in warning
+})
+// Then publish the Frame so the fixes reach the rendered version.`;
 
-export const INTERACTIVE_CONTENT_INSTRUCTIONS_V2 =
-  buildInteractiveContentInstructions({
-    afterAuthoringProse: INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING_V2,
-    authoringProse: INTERACTIVE_CONTENT_AUTHORING_PROSE_V2,
+const buildInstructions = (variant: InstructionsVariant) =>
+  `${interactiveContentProseBeforeAuthoring(variant)}\n${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
+
+// Legacy conversations (no conversation file system): the Frame's source is not reachable by
+// path, so the model updates Frames through the retrieve and file-id edit tools.
+export const INTERACTIVE_CONTENT_INSTRUCTIONS = buildInstructions({
+  updatingSection: UPDATING_SECTION_LEGACY,
+  validationFixExample: VALIDATION_FIX_EXAMPLE_LEGACY,
+});
+
+// Conversation file system available, no Computer: the model edits the source through the
+// files server and republishes.
+export const INTERACTIVE_CONTENT_INSTRUCTIONS_FILES_FIRST = buildInstructions({
+  updatingSection: UPDATING_SECTION_FILES_FIRST,
+  validationFixExample: VALIDATION_FIX_EXAMPLE_SOURCE_EDIT,
+});
+
+// Computer available: the model edits the mounted source in the Computer and republishes.
+export const INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST =
+  buildInstructions({
+    updatingSection: UPDATING_SECTION_COMPUTER_FIRST,
+    validationFixExample: VALIDATION_FIX_EXAMPLE_SOURCE_EDIT,
   });

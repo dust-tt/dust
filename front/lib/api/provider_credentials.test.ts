@@ -47,7 +47,6 @@ describe("getLlmCredentials", () => {
       OPENAI_USE_EU_ENDPOINT: "false",
       TEXTSYNTH_API_KEY: "",
       GOOGLE_AI_STUDIO_API_KEY: "",
-      TOGETHERAI_API_KEY: "",
       DEEPSEEK_API_KEY: "",
       FIREWORKS_API_KEY: "",
       XAI_API_KEY: "",

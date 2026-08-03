@@ -5,6 +5,10 @@ import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import { useUser } from "@app/lib/swr/user";
+import type {
+  ScopedWorkspaceUserIdentity,
+  WorkspaceUserIdentity,
+} from "@app/types/assistant/visualization";
 import { Spinner } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
@@ -14,34 +18,82 @@ interface PublicFrameRendererProps {
   fileId: string;
   fileName?: string;
   hideHeader?: boolean;
+  logoUrl?: string | null;
+  showSignUpCta?: boolean;
   shareToken: string;
   workspaceId: string;
   vizUrl: string;
+}
+
+interface PublicFrameViewer extends WorkspaceUserIdentity {
+  workspaces: { sId: string }[];
+}
+
+export function getPublicFrameUserIdentity(
+  user: PublicFrameViewer | null,
+  isAuthenticatedMember: boolean,
+  workspaceId: string
+): ScopedWorkspaceUserIdentity | undefined {
+  if (
+    !isAuthenticatedMember ||
+    !user ||
+    !user.workspaces.some((workspace) => workspace.sId === workspaceId)
+  ) {
+    return undefined;
+  }
+
+  return {
+    workspaceId,
+    user: {
+      sId: user.sId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      image: user.image,
+    },
+  };
 }
 
 export function PublicFrameRenderer({
   fileId,
   fileName,
   hideHeader = false,
+  logoUrl,
+  showSignUpCta = false,
   shareToken,
   workspaceId,
   vizUrl,
 }: PublicFrameRendererProps) {
-  const { conversationUrl, projectUrl, isFrameLoading, error, accessToken } =
-    usePublicFrame({
-      shareToken,
-    });
+  const {
+    conversationUrl,
+    projectUrl,
+    isFrameLoading,
+    error,
+    accessToken,
+    isAuthenticatedMember,
+  } = usePublicFrame({
+    shareToken,
+  });
 
   const [cookies] = useCookies([DUST_HAS_SESSION]);
   const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
 
-  const { user } = useUser({
+  const { user, isUserLoading } = useUser({
     revalidateOnFocus: false,
     revalidateIfStale: false,
     disabled: !hasSession,
+    redirectOnUnauthenticated: false,
   });
+  const publicUserIdentity = getPublicFrameUserIdentity(
+    user,
+    isAuthenticatedMember,
+    workspaceId
+  );
 
-  if (isFrameLoading) {
+  if (
+    isFrameLoading ||
+    (isAuthenticatedMember && hasSession && isUserLoading)
+  ) {
     return (
       <CenteredState>
         <Spinner size="sm" />
@@ -66,6 +118,8 @@ export function PublicFrameRenderer({
           user={user}
           conversationUrl={conversationUrl}
           projectUrl={projectUrl}
+          logoUrl={logoUrl}
+          showSignUpCta={showSignUpCta}
         />
       )}
 
@@ -83,8 +137,9 @@ export function PublicFrameRenderer({
               identifier: `viz-${fileId}`,
             }}
             key={`viz-${fileId}`}
+            canInvokeFunctions={publicUserIdentity !== undefined}
+            scopedUserIdentity={publicUserIdentity}
             isInDrawer
-            isPublic
           />
         </div>
       </div>

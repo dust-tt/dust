@@ -1,13 +1,15 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   type GetConversationResponseType,
   PatchConversationRequestSchema,
+  type PatchConversationResponseSchema,
 } from "@dust-tt/client";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -21,9 +23,9 @@ import mentions from "./mentions";
 import messages from "./messages";
 import tools from "./tools";
 
-export type PatchConversationResponseBody = {
-  success: boolean;
-};
+type PatchConversationResponseBody = z.infer<
+  typeof PatchConversationResponseSchema
+>;
 
 const ParamsSchema = z.object({
   cId: z.string(),
@@ -83,8 +85,8 @@ const app = publicApiApp();
  *       500:
  *         description: Internal Server Error.
  *   patch:
- *     summary: Update conversation read status
- *     description: Mark a conversation as read or unread in the workspace identified by {wId}.
+ *     summary: Update a conversation
+ *     description: Update a conversation's title or mark it as read or unread in the workspace identified by {wId}.
  *     tags:
  *       - Conversations
  *     security:
@@ -107,13 +109,22 @@ const app = publicApiApp();
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               read:
- *                 type: boolean
+ *             oneOf:
+ *               - type: object
+ *                 required:
+ *                   - read
+ *                 properties:
+ *                   read:
+ *                     type: boolean
+ *               - type: object
+ *                 required:
+ *                   - title
+ *                 properties:
+ *                   title:
+ *                     type: string
  *     responses:
  *       200:
- *         description: Conversation marked as read successfully.
+ *         description: Conversation updated successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -150,6 +161,7 @@ app.get(
           }
         : undefined;
 
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(
       auth,
       cId,
@@ -193,21 +205,46 @@ app.patch(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const conversationRes = await getConversation(auth, cId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      cId
+    );
+    if (!conversationResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
     }
 
-    const { read } = ctx.req.valid("json");
-    if (read) {
-      await ConversationResource.markAsReadForAuthUser(auth, {
-        conversation: conversationRes.value,
-      });
-    } else {
-      await ConversationResource.markAsUnreadForAuthUser(auth, {
-        conversation: conversationRes.value,
-      });
+    const data = ctx.req.valid("json");
+    if ("read" in data) {
+      if (data.read) {
+        await ConversationResource.markAsReadForAuthUser(auth, {
+          conversation: conversationResource,
+        });
+      } else {
+        await ConversationResource.markAsUnreadForAuthUser(auth, {
+          conversation: conversationResource,
+        });
+      }
+      return ctx.json({ success: true });
     }
+
+    const titleUpdateRes = await updateConversationTitle(auth, {
+      conversationId: conversationResource.sId,
+      title: data.title,
+    });
+    if (titleUpdateRes.isErr()) {
+      return apiErrorForConversation(ctx, titleUpdateRes.error);
+    }
+
+    await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation: conversationResource,
+    });
+
     return ctx.json({ success: true });
   }
 );

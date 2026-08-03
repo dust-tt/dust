@@ -6,8 +6,7 @@ import {
   getWhitelistedProviders,
 } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
-import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -17,16 +16,18 @@ import {
 } from "@app/types/assistant/agent_run";
 import type {
   ConversationType,
-  UserMessageType,
+  ConversationWithoutContentType,
+  LightConversationType,
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { GEMINI_3_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { getLightConversation } from "./fetch";
 
 export async function updateConversationTitle(
   auth: Authenticator,
@@ -80,29 +81,43 @@ export async function ensureConversationTitleFromAgentLoop(
     throw runAgentDataRes.error;
   }
 
-  const { conversation, userMessage } = runAgentDataRes.value;
+  const { conversation, auth } = runAgentDataRes.value;
 
-  const auth = await Authenticator.fromJSON(authType);
-
-  return ensureConversationTitle(auth, { conversation, userMessage });
+  return ensureConversationTitle(auth, { conversation });
 }
 
 export async function ensureConversationTitle(
   auth: Authenticator,
   {
     conversation,
-    userMessage,
-  }: { conversation: ConversationType; userMessage: UserMessageType }
+  }: { conversation: ConversationResource | ConversationWithoutContentType }
 ): Promise<string | null> {
   // If the conversation has a title, return early.
   if (conversation.title) {
     return conversation.title;
   }
 
-  const titleRes = await generateConversationTitle(auth, {
-    ...conversation,
-    content: [...conversation.content, [userMessage]],
-  });
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  const conversationLightRes = await getLightConversation(
+    auth,
+    conversation.sId
+  );
+  if (conversationLightRes.isErr()) {
+    logger.error(
+      {
+        conversationId: conversation.sId,
+        error: conversationLightRes.error,
+      },
+      "[ensureConversationTitle] Failed to get light conversation"
+    );
+
+    return null;
+  }
+
+  const titleRes = await generateConversationTitle(
+    auth,
+    conversationLightRes.value
+  );
 
   if (titleRes.isErr()) {
     logger.error(
@@ -110,7 +125,7 @@ export async function ensureConversationTitle(
         conversationId: conversation.sId,
         error: titleRes.error,
       },
-      "Conversation title generation error"
+      "[ensureConversationTitle] Conversation title generation error"
     );
     return null;
   }
@@ -126,7 +141,7 @@ export async function ensureConversationTitle(
         conversationId: conversation.sId,
         error: updateRes.error,
       },
-      "Failed to update conversation title"
+      "[ensureConversationTitle] Failed to update conversation title"
     );
     return null;
   }
@@ -155,7 +170,7 @@ const specifications: AgentActionSpecification[] = [
 
 async function generateConversationTitle(
   auth: Authenticator,
-  conversation: ConversationType
+  conversation: ConversationType | LightConversationType
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -250,7 +265,7 @@ function getFastModelConfig(
     return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
   if (providers.has("google_ai_studio")) {
-    return GEMINI_2_5_FLASH_MODEL_CONFIG;
+    return GEMINI_3_5_FLASH_MODEL_CONFIG;
   }
 
   return getSmallWhitelistedModel(auth);

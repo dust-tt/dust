@@ -1,5 +1,6 @@
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -42,7 +43,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
   it("returns 200 with an empty list when no files exist", async () => {
     const { workspace, project } = await setupProject();
 
-    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
       getAllFilesByPrefix: vi
         .fn()
         .mockResolvedValue({ files: [], pageFetchCount: 1 }),
@@ -60,7 +61,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
   it("returns 200 and lists files with canonical scoped paths", async () => {
     const { workspace, project } = await setupProject();
 
-    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
       getAllFilesByPrefix: vi.fn().mockResolvedValue({
         files: [
           makeGCSFile(workspace.sId, project.sId, "report.pdf", {
@@ -97,7 +98,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
   it("returns 200 and includes directory entries from GCS folder placeholders", async () => {
     const { workspace, project } = await setupProject();
 
-    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
       getAllFilesByPrefix: vi.fn().mockResolvedValue({
         files: [
           // GCS folder placeholder (trailing slash)
@@ -127,18 +128,11 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
 describe("POST /api/w/:wId/spaces/:spaceId/files (create folder)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fileStorageMock.setFileExists(() => false);
   });
 
   it("returns 201 after creating a folder", async () => {
     const { workspace, project } = await setupProject();
-
-    // Mock the GCS save call used by createGCSMountDirectory.
-    vi.mocked(getPrivateUploadBucket).mockReturnValue({
-      file: vi.fn().mockReturnValue({
-        save: vi.fn().mockResolvedValue(undefined),
-        exists: vi.fn().mockResolvedValue([false]),
-      }),
-    } as any);
 
     const res = await honoApp.request(
       `/api/w/${workspace.sId}/spaces/${project.sId}/files`,

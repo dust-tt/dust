@@ -1,7 +1,7 @@
 // @ts-nocheck - Legacy migration kept for reference, uses removed getWorkspacePublicAPILimits
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,

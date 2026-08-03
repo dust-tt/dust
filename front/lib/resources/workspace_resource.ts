@@ -17,6 +17,8 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { UserResource } from "@app/lib/resources/user_resource";
+import type { GitHubConnectionStatus } from "@app/lib/skill_detection";
 import {
   cacheWithRedis,
   invalidateCacheAfterCommit,
@@ -38,7 +40,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isStringArray } from "@app/types/shared/utils/general";
+import { isString, isStringArray } from "@app/types/shared/utils/general";
 import type {
   WorkspaceSegmentationType,
   WorkspaceSharingPolicy,
@@ -84,6 +86,11 @@ type CachedWorkspaceData = {
   updatedAt: number;
 };
 
+type WorkspaceModelIdBatchRow = {
+  workspaceModelId: ModelId;
+  workspaceId: string;
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -99,10 +106,10 @@ export type WorkspaceConversationKillSwitchOperation =
 export const WORKSPACE_KILL_SWITCH_OPERATIONS = ["block", "unblock"] as const;
 export type WorkspaceKillSwitchOperation =
   (typeof WORKSPACE_KILL_SWITCH_OPERATIONS)[number];
-export type UpdateWorkspaceKillSwitchResult = {
+type UpdateWorkspaceKillSwitchResult = {
   wasUpdated: boolean;
 };
-export type UpdateWorkspaceConversationKillSwitchResult = {
+type UpdateWorkspaceConversationKillSwitchResult = {
   wasUpdated: boolean;
 };
 
@@ -449,6 +456,30 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspaces.map((w) => w.id);
   }
 
+  static async unsafeListWorkspaceIdBatchAfterModelId({
+    lastWorkspaceModelId,
+    limit,
+  }: {
+    lastWorkspaceModelId: ModelId;
+    limit: number;
+  }): Promise<WorkspaceModelIdBatchRow[]> {
+    const workspaces = await this.model.findAll({
+      attributes: ["id", "sId"],
+      where: {
+        id: {
+          [Op.gt]: lastWorkspaceModelId,
+        },
+      },
+      order: [["id", "ASC"]],
+      limit,
+    });
+
+    return workspaces.map((workspace) => ({
+      workspaceModelId: workspace.id,
+      workspaceId: workspace.sId,
+    }));
+  }
+
   static async listModelIdsWithConversationsRetention(): Promise<ModelId[]> {
     const workspaces = await this.model.findAll({
       attributes: ["id"],
@@ -725,6 +756,54 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     metadata: Record<string, string | number | boolean | object> | null
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
+  }
+
+  async removeMetadataKeys(keys: string[]): Promise<Result<void, Error>> {
+    const keysToRemove = new Set(keys);
+    const newMetadata: Record<string, string | number | boolean | object> = {};
+    for (const [key, value] of Object.entries(this.metadata ?? {})) {
+      if (!keysToRemove.has(key) && value !== undefined) {
+        newMetadata[key] = value;
+      }
+    }
+    return WorkspaceResource.updateMetadata(this.id, newMetadata);
+  }
+
+  getSkillImportGitHubConnection(): {
+    connectionId: string;
+    connectedBy: string;
+  } | null {
+    const connection = this.metadata?.skillImportGithubConnection;
+    if (
+      typeof connection === "object" &&
+      connection !== null &&
+      "connectionId" in connection &&
+      isString(connection.connectionId) &&
+      "connectedBy" in connection &&
+      isString(connection.connectedBy)
+    ) {
+      return {
+        connectionId: connection.connectionId,
+        connectedBy: connection.connectedBy,
+      };
+    }
+    return null;
+  }
+
+  async getSkillImportGitHubConnectedByUser(): Promise<GitHubConnectionStatus | null> {
+    const connection = this.getSkillImportGitHubConnection();
+    if (!connection) {
+      return null;
+    }
+
+    const user = await UserResource.fetchById(connection.connectedBy);
+    if (!user) {
+      return { connectedBy: null };
+    }
+
+    return {
+      connectedBy: { fullName: user.fullName(), imageUrl: user.imageUrl },
+    };
   }
 
   static async updateMetronomeCustomerId(

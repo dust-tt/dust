@@ -1,4 +1,4 @@
-import Custom404 from "@dust-tt/front/pages/404";
+import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
@@ -12,7 +12,10 @@ import {
   builderFullPageRoutes,
   builderRedirectRoutes,
 } from "@spa/app/routes/builderRoutes";
-import { conversationRoutes } from "@spa/app/routes/conversationRoutes";
+import {
+  conversationRedirectRoutes,
+  conversationRoutes,
+} from "@spa/app/routes/conversationRoutes";
 import { labsRoutes } from "@spa/app/routes/labsRoutes";
 import {
   loginAuthenticatedRoutes,
@@ -73,6 +76,7 @@ export const routes: RouteObject[] = [
           ...adminFullPageRoutes,
           ...builderFullPageRoutes,
           ...builderRedirectRoutes,
+          ...conversationRedirectRoutes,
           ...onboardingRoutes,
         ],
       },

@@ -25,6 +25,7 @@ const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 // Mounted at /api/enrichment/company.
 const app = createHono();
 
+/** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
   const body = await ctx.req.json().catch(() => ({}));
   const { email } = body ?? {};

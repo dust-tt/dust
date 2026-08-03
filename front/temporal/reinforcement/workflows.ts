@@ -73,6 +73,16 @@ const { checkBatchStatusActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
 
+// Batch deletion must always run once the results are consumed, so it gets a
+// generous retry budget. The activity is idempotent (an already-deleted batch
+// is treated as success).
+const { deleteBatchActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+  retry: {
+    maximumAttempts: 10,
+  },
+});
+
 const {
   startSkillConversationAnalysisBatchActivity,
   startSkillAggregationBatchActivity,
@@ -252,14 +262,25 @@ async function aggregateSkillWithMultiStepBatch({
       ...batchResult.reinforcementConversationIds
     );
 
-    await waitForBatch({ workspaceId, batchId: batchResult.batchId });
+    let result: Awaited<
+      ReturnType<typeof processSkillAggregationBatchResultActivity>
+    >;
+    try {
+      await waitForBatch({ workspaceId, batchId: batchResult.batchId });
 
-    const result = await processSkillAggregationBatchResultActivity({
-      workspaceId,
-      skillId,
-      batchId: batchResult.batchId,
-      reinforcementConversationIds: batchResult.reinforcementConversationIds,
-    });
+      result = await processSkillAggregationBatchResultActivity({
+        workspaceId,
+        skillId,
+        batchId: batchResult.batchId,
+        reinforcementConversationIds: batchResult.reinforcementConversationIds,
+      });
+    } finally {
+      // Always delete the batch data once consumed, even if processing failed.
+      await deleteBatchActivity({
+        workspaceId,
+        batchId: batchResult.batchId,
+      });
+    }
 
     totalSuggestionsCreated += result.suggestionsCreated;
     allApprovedSourceSuggestionIds.push(...result.approvedSourceSuggestionIds);
@@ -323,7 +344,7 @@ export async function reinforcementWorkspaceWorkflow({
   if (!settings.reinforcementEnabled) {
     return;
   }
-  if (settings.globalConsumptionMicroUsd >= settings.globalCapMicroUsd) {
+  if (settings.globalCapReached) {
     // Cap reached: activity already logged the details. Stop immediately.
     return;
   }
@@ -375,20 +396,29 @@ export async function reinforcementWorkspaceWorkflow({
         break;
       }
 
-      await waitForBatch({ workspaceId, batchId: batchResult.batchId });
-
       reinforcementConversationMap = batchResult.reinforcementConversationMap;
       usageConversationIds.push(...Object.values(reinforcementConversationMap));
 
-      const continuations =
-        await processSkillConversationAnalysisBatchResultActivity({
+      let continuations: activities.ConversationContinuationInfo[];
+      try {
+        await waitForBatch({ workspaceId, batchId: batchResult.batchId });
+
+        continuations =
+          await processSkillConversationAnalysisBatchResultActivity({
+            workspaceId,
+            batchId: batchResult.batchId,
+            reinforcementConversationMap,
+            conversationSkillMap: Object.fromEntries(
+              pendingConversations.map((c) => [c.conversationId, c.skillIds])
+            ),
+          });
+      } finally {
+        // Always delete the batch data once consumed, even if processing failed.
+        await deleteBatchActivity({
           workspaceId,
           batchId: batchResult.batchId,
-          reinforcementConversationMap,
-          conversationSkillMap: Object.fromEntries(
-            pendingConversations.map((c) => [c.conversationId, c.skillIds])
-          ),
         });
+      }
 
       if (continuations.length === 0) {
         break;

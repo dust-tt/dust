@@ -1,20 +1,9 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import {
-  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-  CLAUDE_SONNET_4_6_MODEL_ID,
-} from "@app/types/assistant/models/anthropic";
-import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
-import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/types/assistant/models/mistral";
-import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
-import type {
-  ModelConfigurationType,
-  ModelIdType,
-} from "@app/types/assistant/models/types";
-import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
 import type { UserType } from "@app/types/user";
 import uniqueId from "lodash/uniqueId";
 
@@ -61,45 +50,13 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
-const PREFERRED_LARGE_MODEL_IDS: ModelIdType[] = [
-  CLAUDE_SONNET_4_6_MODEL_ID,
-  GPT_5_5_MODEL_ID,
-  GEMINI_3_1_PRO_MODEL_ID,
-  MISTRAL_MEDIUM_3_5_MODEL_ID,
-  GROK_4_MODEL_ID,
-];
-
-/**
- * Returns the best available model from the user's allowed models, matching
- * against a preferred order. Falls back to any large model, then any model,
- * then a hardcoded default.
- */
-export function getDefaultModel(
-  availableModels: ModelConfigurationType[]
-): ModelConfigurationType {
-  for (const modelId of PREFERRED_LARGE_MODEL_IDS) {
-    const model = availableModels.find((m) => m.modelId === modelId);
-    if (model) {
-      return model;
-    }
-  }
-
-  const fallbackModel =
-    availableModels.find((m) => m.largeModel) ??
-    availableModels.find((m) => !m.largeModel);
-
-  return fallbackModel ?? CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-}
-
 export function getDefaultAgentFormData({
   user,
+  defaultModel,
 }: {
   user: UserType;
+  defaultModel: EnabledModelConfigurationType;
 }): AgentBuilderFormData {
-  // Static fallback — overridden by the useEffect in AgentBuilder once available
-  // models are loaded.
-  const defaultModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-
   return {
     agentSettings: {
       name: "",
@@ -137,10 +94,12 @@ export function getDefaultAgentFormData({
  */
 export function transformTemplateToFormData(
   template: FetchAgentTemplateResponse,
-  user: UserType
+  user: UserType,
+  defaultModel: EnabledModelConfigurationType
 ): AgentBuilderFormData {
   const defaultFormData = getDefaultAgentFormData({
     user,
+    defaultModel,
   });
 
   return {
@@ -158,10 +117,10 @@ export function transformTemplateToFormData(
       modelSettings: {
         providerId:
           template.presetProviderId ??
-          defaultFormData.generationSettings.modelSettings.providerId,
+          defaultFormData.generationSettings.modelSettings?.providerId,
         modelId:
           template.presetModelId ??
-          defaultFormData.generationSettings.modelSettings.modelId,
+          defaultFormData.generationSettings.modelSettings?.modelId,
       },
       temperature: template.presetTemperature
         ? AGENT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature]

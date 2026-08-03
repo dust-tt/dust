@@ -1,13 +1,36 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SANDBOX_TOOL_NAME = "sandbox" as const;
 
-export const SANDBOX_TOOLS_METADATA = createToolsRecord({
-  bash: {
+// Default and maximum timeout the model can request for a single bash command.
+// The value is enforced in-container by the `timeout` wrapper (see
+// `wrapCommandWithCapture`), which kills the command and returns the captured
+// output when it overruns.
+export const SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS = 60000;
+const SANDBOX_MAX_COMMAND_TIMEOUT_MS = 120000;
+
+// Extra time we add on top of a command's in-container timeout to set the
+// timeout we give the sandbox provider. The in-container `timeout`
+// wrapper stops the command and returns whatever output it has; this extra
+// time lets that finish and reach us before the provider gives up. A few
+// seconds is plenty (it only covers stopping the command and sending its
+// output back). It must stay small enough that the provider timeout
+// (max command timeout + this) stays under SANDBOX_MCP_REQUEST_TIMEOUT_MS.
+export const SANDBOX_EXEC_TIMEOUT_BUFFER_MS = 10000;
+
+// Outer MCP request deadline for the sandbox server. It must be strictly
+// greater than the max in-container command timeout so the graceful
+// in-container timeout (which returns partial output) always fires before the
+// MCP layer hard-aborts the call. The buffer covers process teardown, output
+// flushing, and the host round-trip.
+const SANDBOX_MCP_TIMEOUT_BUFFER_MS = 30000;
+export const SANDBOX_MCP_REQUEST_TIMEOUT_MS =
+  SANDBOX_MAX_COMMAND_TIMEOUT_MS + SANDBOX_MCP_TIMEOUT_BUFFER_MS;
+
+export const SANDBOX_TOOLS_METADATA = [
+  {
+    name: "bash",
     description:
       "Execute a shell command in an isolated sandbox environment. " +
       "The sandbox is a Linux container with common tools pre-installed. " +
@@ -31,19 +54,24 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .describe("Working directory for command execution. Defaults to /tmp."),
       timeoutMs: z
         .number()
-        .max(120000)
+        .max(SANDBOX_MAX_COMMAND_TIMEOUT_MS)
         .optional()
         .describe(
-          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000."
+          `Timeout in milliseconds for command execution. Defaults to ${SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS}, max ${SANDBOX_MAX_COMMAND_TIMEOUT_MS}.`
         ),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Executing command",
       done: "Execute command in the Computer",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
+    enableAlerting: true,
   },
-  describe_toolset: {
+  {
+    name: "describe_toolset",
     description:
       "Describe the sandbox environment and list available CLI binaries and language libraries.",
     schema: {
@@ -57,8 +85,11 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       running: "Describing Computer toolset",
       done: "Describe Computer toolset",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  add_egress_domain: {
+  {
+    name: "add_egress_domain",
     description:
       "Request user approval to add a single domain to the current " +
       "sandbox's network allowlist. Each call adds one exact domain " +
@@ -70,8 +101,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       "directly. Outbound HTTPS connections that fall outside the " +
       "allowlist surface as denied entries in `<network_proxy_logs>` in " +
       "the bash tool output. Allowlist entries added through this tool " +
-      "live for the lifetime of the current sandbox and are discarded " +
-      "when the sandbox is reaped.",
+      "persist for the lifetime of the conversation (across sandbox " +
+      "restarts). In a Pod, approvals are Pod-wide: the domain is allowed " +
+      "for every conversation in the Pod and the Pod's shared sandbox, so " +
+      "make that scope clear when asking the user.",
     schema: {
       domain: z
         .string()
@@ -94,8 +127,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       done: "Allow domain in the Computer",
       icon: "ActionGlobeAltIcon",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-});
+] as const;
 
 export const SANDBOX_SERVER = {
   serverInfo: {
@@ -106,17 +141,6 @@ export const SANDBOX_SERVER = {
     authorization: null,
     icon: "CommandLineIcon",
     documentationUrl: null,
-    instructions: null,
   },
-  // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
-  // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.
-  tools: Object.values(SANDBOX_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(SANDBOX_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: SANDBOX_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

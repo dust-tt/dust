@@ -55,7 +55,7 @@ const TAG_LABEL_TO_CODE = Object.fromEntries(
   ])
 );
 
-export function resolveTag(label: string): TemplateTagCodeType {
+function resolveTag(label: string): TemplateTagCodeType {
   const code = TAG_LABEL_TO_CODE[label.trim()];
   if (!code) {
     throw new Error(
@@ -90,7 +90,7 @@ interface TemplateRow {
   backgroundColor: string;
 }
 
-export function parseCsvRows(csvPath: string, logger?: Logger): TemplateRow[] {
+function parseCsvRows(csvPath: string, logger?: Logger): TemplateRow[] {
   const content = readFileSync(csvPath, "utf-8");
   const raw = parse(content, {
     columns: true,

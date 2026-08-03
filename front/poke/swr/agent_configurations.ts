@@ -1,6 +1,6 @@
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetAgentConfigurationsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { PokeGetAgentConfigurationsResponseBody } from "@app/types/api/poke/agent_configurations";
 import type { Fetcher } from "swr";
 
 type PokeAgentConfigurationsProps = PokeConditionalFetchProps & {

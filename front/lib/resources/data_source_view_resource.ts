@@ -63,7 +63,7 @@ const getDataSourceCategory = (
   return "managed";
 };
 
-export type FetchDataSourceViewOptions = {
+type FetchDataSourceViewOptions = {
   includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;
@@ -241,14 +241,16 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   ) {
     const { includeDeleted } = fetchDataSourceViewOptions ?? {};
 
+    const where: WhereOptions<DataSourceViewModel> = {
+      ...options?.where,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+
     const dataSourceViews = await this.baseFetchWithAuthorization(auth, {
       ...this.getOptions(fetchDataSourceViewOptions),
       ...options,
       includeDeleted,
-      // WORKSPACE_ISOLATION_BYPASS: Data source views can be public, preventing to enforce a
-      // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where,
     });
 
     const dataSourceIds = removeNulls(
@@ -335,14 +337,25 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     spaceIds: string[],
     { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
   ) {
-    const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
+    // Resolve global space to a vaultId so we can filter with vaultId IN (...)
+    // (index-friendly) instead of joining vaults with (id IN OR kind = 'global').
+    const spaceModelIds = [
+      ...removeNulls(spaceIds.map(getResourceIdFromSId)),
+      ...(includeGlobalSpace
+        ? [(await SpaceResource.fetchWorkspaceGlobalSpace(auth)).id]
+        : []),
+    ];
 
-    if (includeGlobalSpace) {
-      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-      requestedSpaces.push(globalSpace);
+    if (spaceModelIds.length === 0) {
+      return [];
     }
 
-    return this.listBySpaces(auth, requestedSpaces);
+    return this.baseFetch(auth, undefined, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: [...new Set(spaceModelIds)],
+      },
+    });
   }
 
   static async listAssistantDefaultSelected(auth: Authenticator) {

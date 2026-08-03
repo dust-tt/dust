@@ -1,4 +1,8 @@
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
+import {
+  createCheckoutUrl,
+  PostSubscriptionRequestBody,
+} from "@app/lib/api/subscription/checkout_url";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   cancelSubscriptionAtPeriodEnd,
@@ -6,14 +10,20 @@ import {
 } from "@app/lib/plans/stripe";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
-import type { CheckoutUrlResult, SubscriptionType } from "@app/types/plan";
+import type {
+  GetSubscriptionsResponseBody,
+  PostSubscriptionResponseBody,
+} from "@app/types/api/subscription";
+import { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import {
+  ensureHasWorkspacePermission,
+  ensureIsManager,
+} from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
 
 import awuPurchase from "./awu-purchase";
 import awuPurchaseStatus from "./awu-purchase-status";
@@ -23,32 +33,20 @@ import pricing from "./pricing";
 import status from "./status";
 import trialInfo from "./trial-info";
 
-export type GetSubscriptionsResponseBody = {
-  subscriptions: SubscriptionType[];
-};
-
-export type PostSubscriptionResponseBody = CheckoutUrlResult;
-
 export type PatchSubscriptionResponseBody = {
   success: boolean;
 };
 
-const PostSubscriptionRequestBody = z.object({
-  billingPeriod: z.enum(["monthly", "yearly"]),
-  couponCode: z.string().optional(),
-});
-
-const PatchSubscriptionRequestBody = z.object({
-  action: z.enum(["cancel_free_trial", "pay_now", "upgrade_to_business"]),
-});
-
 // Mounted under /api/w/:wId/subscriptions. The bare `/` handles GET, POST,
-// and PATCH on the workspace's subscription itself; admin-only.
+// and PATCH on the workspace's subscription itself. POST/PATCH are admin-only;
+// GET is also available to users with the `workspace:see_analytics` permission
+// (the analytics page reads it to derive the activity-report date range).
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetSubscriptionsResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -70,29 +68,38 @@ app.get(
 
 app.post(
   "/",
-  ensureIsAdmin(),
   validate("json", PostSubscriptionRequestBody),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<PostSubscriptionResponseBody> => {
     const auth = ctx.get("auth");
+
     const body = ctx.req.valid("json");
 
     try {
-      const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
-      const owner = auth.getNonNullableWorkspace();
-      const user = auth.getNonNullableUser().toJSON();
-      const subscription = auth.getNonNullableSubscriptionResource();
+      const { billingPeriod, couponCode, seatType, targetUserId } = body;
 
-      const checkoutUrlResult = await subscription.getCheckoutUrlForUpgrade(
-        owner,
-        user,
-        body.billingPeriod,
-        {
-          useMetronomeBilling,
-          couponCode: body.couponCode,
-        }
-      );
+      const result = await createCheckoutUrl(auth, {
+        billingPeriod,
+        couponCode,
+        seatType,
+        targetUserId,
+      });
+      if (result.isErr()) {
+        const message =
+          result.error.type === "already_on_pro_plan"
+            ? "Workspace is already subscribed to a Pro or Business plan."
+            : "seatType and targetUserId are required for CP checkout.";
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message },
+        });
+      }
 
-      return ctx.json(checkoutUrlResult);
+      return ctx.json(result.value);
     } catch (error) {
       logger.error({ error }, "Error while subscribing workspace to plan");
       return apiError(ctx, {
@@ -108,8 +115,12 @@ app.post(
 
 app.patch(
   "/",
-  ensureIsAdmin(),
   validate("json", PatchSubscriptionRequestBody),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<PatchSubscriptionResponseBody> => {
     const auth = ctx.get("auth");
 

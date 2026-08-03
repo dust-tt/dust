@@ -1,11 +1,14 @@
-import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
-import type { GetMembersSeatsResponseBody } from "@app/lib/api/credits/members_seats";
+import type { GetMemberUsageResponseBody } from "@app/lib/api/credits/members_usage";
+import type { GetCreditPurchaseInfoResponseBody } from "@app/lib/api/credits/purchase";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
+import type { GetAwuPurchaseInfoResponseBody } from "@app/lib/credits/awu_purchase";
+import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
-import type { GetAwuPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/awu-purchase";
-import type { GetAwuPurchaseStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/awu-purchase-status";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type { GetMembersSeatsResponseBody } from "@app/types/api/credits/members_seats";
+import type { GetMyTopConversationsResponseBody } from "@app/types/api/credits/my_top_conversations";
+import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,
@@ -56,35 +59,27 @@ function resetPostPurchaseRefreshCount(workspaceId: string): void {
 
 export function useCredits({
   workspaceId,
-  metronomeCustomerId,
   disabled,
 }: {
   workspaceId: string;
-  metronomeCustomerId?: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const creditsFetcher: Fetcher<GetCreditsResponseBody> = fetcher;
 
-  const endpoint = metronomeCustomerId
-    ? `/api/w/${workspaceId}/credits/metronome-balances`
-    : `/api/w/${workspaceId}/credits`;
-
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
-    endpoint,
+    `/api/w/${workspaceId}/credits`,
     creditsFetcher,
     {
       disabled,
-      refreshInterval: metronomeCustomerId
-        ? undefined
-        : () => {
-            const count = getPostPurchaseRefreshCount(workspaceId);
-            if (count < 5) {
-              incrementPostPurchaseRefreshCount(workspaceId);
-              return 5000;
-            }
-            return 0;
-          },
+      refreshInterval: () => {
+        const count = getPostPurchaseRefreshCount(workspaceId);
+        if (count < 5) {
+          incrementPostPurchaseRefreshCount(workspaceId);
+          return 5000;
+        }
+        return 0;
+      },
     }
   );
 
@@ -100,7 +95,7 @@ export function useCredits({
   };
 }
 
-export type PurchaseResult =
+type PurchaseResult =
   | { status: "success" }
   | { status: "redirect"; paymentUrl: string }
   | { status: "error"; message: string };
@@ -255,7 +250,6 @@ export function useAwuPoolSummary({
   return {
     totalRemainingCredits: data?.totalRemainingCredits ?? 0,
     totalActiveCredits: data?.totalActiveCredits ?? 0,
-    resetDate: data?.resetDate ?? "",
     overageCredits: data?.overageCredits ?? null,
     overageAmountCents: data?.overageAmountCents ?? null,
     overageCurrency: data?.overageCurrency ?? null,
@@ -263,6 +257,30 @@ export function useAwuPoolSummary({
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+export function useAwuTopUpsHistory({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const topUpsFetcher: Fetcher<GetAwuTopUpsHistoryResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/top-ups`,
+    topUpsFetcher,
+    { disabled }
+  );
+
+  return {
+    topUps: data?.topUps ?? emptyArray(),
+    isTopUpsHistoryLoading: !error && !data && !disabled,
+    isTopUpsHistoryError: error,
+    mutateTopUpsHistory: mutate,
   };
 }
 
@@ -325,6 +343,106 @@ export function useAwuPurchaseInfo({
     isAwuPurchaseInfoValidating: isValidating,
     isAwuPurchaseInfoError: error,
     mutateAwuPurchaseInfo: mutate,
+  };
+}
+
+type RedeemPoolTopupCouponOutcome =
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+// Redeems a "credits" coupon (the "Use coupon" Top-Up tab). Grants free AWU
+// credits synchronously — no payment involved. Refreshes the pool summary on
+// success.
+export function useRedeemPoolTopupCoupon({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const { mutateAwuPoolSummary } = useAwuPoolSummary({
+    workspaceId,
+    disabled: true,
+  });
+
+  const redeemPoolTopupCoupon = useCallback(
+    async (code: string): Promise<RedeemPoolTopupCouponOutcome> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/coupon/redeem`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          const message =
+            errorData?.error?.message ?? "Failed to redeem coupon.";
+          return { status: "error", message };
+        }
+
+        resetAwuPostPurchaseRefreshCount(workspaceId);
+        void mutateAwuPoolSummary();
+
+        return { status: "success" };
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to redeem coupon.";
+        return { status: "error", message };
+      }
+    },
+    [workspaceId, mutateAwuPoolSummary]
+  );
+
+  return { redeemPoolTopupCoupon };
+}
+
+export function useMyUsage({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const myUsageFetcher: Fetcher<GetMemberUsageResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/my-usage`,
+    myUsageFetcher,
+    { disabled }
+  );
+
+  return {
+    myUsage: data?.member ?? null,
+    nextCreditResetAt: data?.member?.nextCreditResetAt ?? null,
+    isMyUsageLoading: !error && !data && !disabled,
+    isMyUsageError: error,
+  };
+}
+
+export function useMyTopConversations({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const myTopConversationsFetcher: Fetcher<GetMyTopConversationsResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/my-top-conversations`,
+    myTopConversationsFetcher,
+    { disabled }
+  );
+
+  return {
+    topConversations: data?.conversations ?? emptyArray(),
+    isTopConversationsLoading: !error && !data && !disabled,
+    isTopConversationsError: error,
   };
 }
 

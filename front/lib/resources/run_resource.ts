@@ -1,7 +1,11 @@
-import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import {
+  computeTokensCostForUsageInMicroUsd,
+  type InferenceRegionType,
+} from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import type { UsageType } from "@app/lib/metronome/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import {
@@ -34,7 +38,28 @@ import { Op, Sequelize } from "sequelize";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
-export type FetchRunOptions<T extends boolean> = {
+export interface RunUsageType {
+  completionTokens: number;
+  // Provider-reported reasoning subset of completionTokens.
+  reasoningTokens: number | null;
+  modelId: ModelIdType;
+  promptTokens: number;
+  providerId: ModelProviderIdType;
+  cachedTokens: number | null;
+  // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
+  cacheCreationTokens?: number | null;
+  costMicroUsd: number;
+  isBatch: boolean;
+}
+
+interface RunUsageWithRunKeyType extends RunUsageType {
+  runKey: string | null;
+  runUsageModelId: ModelId;
+  runModelId: ModelId;
+  usageType: UsageType | null;
+}
+
+type FetchRunOptions<T extends boolean> = {
   includeApp?: T;
   since?: Date;
   order?: [string, "ASC" | "DESC"][];
@@ -169,6 +194,47 @@ export class RunResource extends BaseResource<RunModel> {
     return runs.map((r) => new this(this.model, r.get()));
   }
 
+  // Tag an agent-loop execution's runs with their runKey so credit cost can be
+  // ceiled per execution group (matching the Metronome billing partition).
+  // Idempotent: a finalize retry recomputes the same key for the same runIds.
+  static async setRunKeyForDustRunIds(
+    auth: Authenticator,
+    { dustRunIds, runKey }: { dustRunIds: string[]; runKey: string }
+  ): Promise<void> {
+    if (dustRunIds.length === 0) {
+      return;
+    }
+    await this.model.update(
+      { runKey },
+      {
+        where: {
+          dustRunId: { [Op.in]: dustRunIds },
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  // Stamp the billing usage type onto the usage rows of the given runs.
+  static async setUsageTypeForRuns(
+    auth: Authenticator,
+    { runs, usageType }: { runs: RunResource[]; usageType: UsageType }
+  ): Promise<void> {
+    const runModelIds = runs.map((run) => run.id);
+    if (runModelIds.length === 0) {
+      return;
+    }
+    await RunUsageModel.update(
+      { usageType },
+      {
+        where: {
+          runId: { [Op.in]: runModelIds },
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
   static async listRunUsagesForRuns(
     auth: Authenticator,
     {
@@ -176,11 +242,18 @@ export class RunResource extends BaseResource<RunModel> {
     }: {
       runs: RunResource[];
     }
-  ): Promise<(RunUsageType & { runModelId: ModelId })[]> {
+  ): Promise<RunUsageWithRunKeyType[]> {
     const runModelIds = runs.map((run) => run.id);
     if (runModelIds.length === 0) {
       return [];
     }
+
+    // runKey identifies the agent-loop execution a run belongs to, so callers
+    // can group usages by execution (e.g. to ceil credit cost per the billed
+    // Metronome partition).
+    const runKeyByModelId = new Map<ModelId, string | null>(
+      runs.map((run) => [run.id, run.runKey])
+    );
 
     const usages = await RunUsageModel.findAll({
       where: {
@@ -190,8 +263,11 @@ export class RunResource extends BaseResource<RunModel> {
     });
 
     return usages.map((usage) => ({
+      runUsageModelId: usage.id,
       runModelId: usage.runId,
+      runKey: runKeyByModelId.get(usage.runId) ?? null,
       completionTokens: usage.completionTokens,
+      reasoningTokens: usage.reasoningTokens,
       modelId: usage.modelId as ModelIdType,
       promptTokens: usage.promptTokens,
       providerId: usage.providerId as ModelProviderIdType,
@@ -199,6 +275,7 @@ export class RunResource extends BaseResource<RunModel> {
       cacheCreationTokens: usage.cacheCreationTokens,
       costMicroUsd: usage.costMicroUsd,
       isBatch: usage.isBatch,
+      usageType: usage.usageType,
     }));
   }
 
@@ -264,6 +341,7 @@ export class RunResource extends BaseResource<RunModel> {
     assert(typeof workspace.id === "number");
     await RunUsageModel.destroy({
       where: {
+        workspaceId: workspace.id,
         runId: {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
@@ -310,7 +388,15 @@ export class RunResource extends BaseResource<RunModel> {
    * Run usage.
    */
 
-  async recordRunUsage(auth: Authenticator, usages: RunUsageType[]) {
+  // `usageType` tags the created rows with their billing usage type. Pass it for
+  // operations whose type is known at creation (e.g. internal/utility LLM calls
+  // are free); leave it undefined for agent-conversation runs, which the usage
+  // queue classifies from the triggering message origin.
+  async recordRunUsage(
+    auth: Authenticator,
+    usages: RunUsageType[],
+    { usageType }: { usageType?: UsageType } = {}
+  ) {
     await RunUsageModel.bulkCreate(
       usages.map(
         ({
@@ -318,6 +404,7 @@ export class RunResource extends BaseResource<RunModel> {
           modelId,
           promptTokens,
           completionTokens,
+          reasoningTokens,
           cachedTokens,
           cacheCreationTokens,
           costMicroUsd,
@@ -329,10 +416,12 @@ export class RunResource extends BaseResource<RunModel> {
           modelId,
           promptTokens,
           completionTokens,
+          reasoningTokens,
           cachedTokens,
           cacheCreationTokens: cacheCreationTokens ?? null,
           costMicroUsd,
           isBatch,
+          usageType: usageType ?? null,
         })
       )
     );
@@ -373,6 +462,13 @@ export class RunResource extends BaseResource<RunModel> {
           tags
         );
       }
+      if (usage.reasoningTokens) {
+        getStatsDClient().increment(
+          "run_usage.reasoning_tokens",
+          usage.reasoningTokens,
+          tags
+        );
+      }
     }
   }
 
@@ -380,7 +476,15 @@ export class RunResource extends BaseResource<RunModel> {
     auth: Authenticator,
     usage: TokenUsage,
     modelId: ModelIdType,
-    { isBatch = false }: { isBatch?: boolean } = {}
+    {
+      isBatch = false,
+      inferenceRegion = "global",
+      usageType,
+    }: {
+      isBatch?: boolean;
+      inferenceRegion?: InferenceRegionType;
+      usageType?: UsageType;
+    } = {}
   ) {
     const modelConfig = getModelConfigByModelId(modelId);
 
@@ -389,27 +493,36 @@ export class RunResource extends BaseResource<RunModel> {
       return;
     }
 
+    // totalOutputTokens is the canonical inclusive billed output total. Any
+    // reasoningTokens value is already a subset and must not be added here.
     const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
       modelId: modelConfig.modelId,
       promptTokens: usage.inputTokens,
-      completionTokens: usage.outputTokens,
+      completionTokens: usage.totalOutputTokens,
       cachedTokens: usage.cachedTokens ?? null,
       cacheCreationTokens: usage.cacheCreationTokens ?? null,
+      longCacheCreationTokens: usage.longCacheCreationTokens ?? null,
       isBatch,
+      inferenceRegion,
     });
 
-    return this.recordRunUsage(auth, [
-      {
-        cacheCreationTokens: usage.cacheCreationTokens,
-        cachedTokens: usage.cachedTokens ?? null,
-        completionTokens: usage.outputTokens,
-        modelId: modelConfig.modelId,
-        promptTokens: usage.inputTokens,
-        providerId: modelConfig.providerId,
-        costMicroUsd: usageCostMicroUsd,
-        isBatch,
-      },
-    ]);
+    return this.recordRunUsage(
+      auth,
+      [
+        {
+          cacheCreationTokens: usage.cacheCreationTokens,
+          cachedTokens: usage.cachedTokens ?? null,
+          completionTokens: usage.totalOutputTokens,
+          reasoningTokens: usage.reasoningTokens ?? null,
+          modelId: modelConfig.modelId,
+          promptTokens: usage.inputTokens,
+          providerId: modelConfig.providerId,
+          costMicroUsd: usageCostMicroUsd,
+          isBatch,
+        },
+      ],
+      { usageType }
+    );
   }
 
   async listRunUsages(auth: Authenticator): Promise<RunUsageType[]> {
@@ -428,16 +541,4 @@ function addCreatedAtClause(where: WhereOptions<RunModel>) {
     ...where,
     createdAt: { [Op.gt]: getRunExecutionsDeletionCutoffDate() },
   };
-}
-
-export interface RunUsageType {
-  completionTokens: number;
-  modelId: ModelIdType;
-  promptTokens: number;
-  providerId: ModelProviderIdType;
-  cachedTokens: number | null;
-  // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
-  cacheCreationTokens?: number | null;
-  costMicroUsd: number;
-  isBatch: boolean;
 }

@@ -5,7 +5,6 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -13,6 +12,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -21,10 +21,11 @@ import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -44,12 +45,27 @@ async function createConversationForAgentConfiguration({
   trigger: TriggerType;
   lastRunAt: Date | null;
   webhookRequest: WebhookRequestResource | null;
-}): Promise<Result<ConversationType, APIErrorWithContentfulStatusCode>> {
+}): Promise<
+  Result<ConversationWithoutContentType, APIErrorWithContentfulStatusCode>
+> {
+  let spaceModelId: ModelId | null = null;
+  if (trigger.spaceId) {
+    const pod = await SpaceResource.fetchById(auth, trigger.spaceId);
+    if (pod && pod.isProject() && (pod.isOpen() || pod.isMember(auth))) {
+      spaceModelId = pod.id;
+    } else {
+      logger.warn(
+        { triggerId: trigger.sId, spaceId: trigger.spaceId },
+        "Trigger's pod is no longer accessible; falling back to default (my conversations)."
+      );
+    }
+  }
+
   const newConversation = await createConversation(auth, {
     title: null,
     visibility: "unlisted",
     triggerId: trigger.id,
-    spaceId: null,
+    spaceId: spaceModelId,
   });
 
   const baseContext = {
@@ -124,14 +140,14 @@ async function createConversationForAgentConfiguration({
 
     await postNewContentFragment(
       auth,
-      newConversation,
+      newConversation.toJSON(),
       contentFragmentRes.value,
       null
     );
   }
 
   const messageRes = await postUserMessage(auth, {
-    conversation: newConversation,
+    conversationResource: newConversation,
     content:
       serializeMention(agentConfiguration) +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
@@ -154,7 +170,42 @@ async function createConversationForAgentConfiguration({
     return messageRes;
   }
 
-  return new Ok(newConversation);
+  return new Ok(newConversation.toJSON());
+}
+
+export async function getTriggerActivity({
+  userId,
+  workspaceId,
+  triggerId,
+}: {
+  userId: string;
+  workspaceId: string;
+  triggerId: string;
+}) {
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    userId,
+    workspaceId
+  );
+  if (!auth.workspace() || !auth.user()) {
+    throw new TriggerNonRetryableError(
+      "Invalid authentication. Missing workspaceId or userId."
+    );
+  }
+
+  if (!auth.isUser()) {
+    throw new TriggerNonRetryableError(
+      "Invalid authentication. Missing user permissions."
+    );
+  }
+
+  const triggerResource = await TriggerResource.fetchById(auth, triggerId);
+  if (!triggerResource) {
+    throw new TriggerNonRetryableError(
+      `Trigger with ID ${triggerId} not found.`
+    );
+  }
+
+  return triggerResource.toJSON();
 }
 
 export async function runTriggeredAgentsActivity({
@@ -196,7 +247,7 @@ export async function runTriggeredAgentsActivity({
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: trigger.agentConfigurationId,
-    variant: "full",
+    variant: "extra_light",
   });
 
   if (!agentConfiguration) {
@@ -297,9 +348,20 @@ export async function runTriggeredAgentsActivity({
       errorType === "model_disabled" ||
       errorType === "invalid_request_error" ||
       errorType === "agent_inaccessible" ||
-      errorType === "webhook_storage_error";
+      errorType === "webhook_storage_error" ||
+      errorType === "no_seat";
 
     if (isNonRetryable) {
+      logger.info(
+        {
+          triggerId: trigger.sId,
+          agentConfigurationId: trigger.agentConfigurationId,
+          workspaceId: auth.workspace()?.sId,
+          errorType,
+        },
+        "Trigger run completed without creating a conversation."
+      );
+
       // If the agent is inaccessible, disable the trigger.
       if (errorType === "agent_inaccessible") {
         logger.info(
@@ -349,6 +411,30 @@ function buildWakeUpMessageContent(wakeUp: WakeUpType): string {
   return content;
 }
 
+export async function getWakeUpActivity({
+  workspaceId,
+  wakeUpId,
+}: {
+  workspaceId: string;
+  wakeUpId: string;
+}) {
+  const wakeUpAndAuthRes = await WakeUpResource.fetchWakeUpAndAuthenticatorById(
+    {
+      workspaceId,
+      wakeUpId,
+    }
+  );
+  if (wakeUpAndAuthRes.isErr()) {
+    logger.error(
+      { wakeUpId, workspaceId, error: normalizeError(wakeUpAndAuthRes.error) },
+      "Skipping wake-up: workspace or wake-up not found."
+    );
+    return;
+  }
+
+  return wakeUpAndAuthRes.value.wakeUp.toJSON();
+}
+
 export async function runWakeUpActivity({
   workspaceId,
   wakeUpId,
@@ -388,29 +474,35 @@ export async function runWakeUpActivity({
       { status: wakeUp.status, wakeUpId, workspaceId },
       "Cancelling wake-up: conversation not found."
     );
-    await wakeUp.markCancelled(auth);
+    await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
     return;
   }
 
-  const conversationRes = await getConversation(auth, c.sId);
-  if (conversationRes.isErr()) {
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    c.sId
+  );
+  if (!conversationResource) {
     logger.info(
       {
         status: wakeUp.status,
         wakeUpId,
         workspaceId,
-        error: normalizeError(conversationRes.error),
+        error: "Conversation not found",
       },
       "Cancelling wake-up: conversation not accessible."
     );
-    await wakeUp.markCancelled(auth);
+    await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
     return;
   }
 
-  const conversation = conversationRes.value;
+  const clientSideMCPServerIds =
+    await conversationResource.getClientSideMCPServerIdsFromLatestNonWakeUpUserMessage(
+      auth
+    );
 
   const postMessageResult = await postUserMessage(auth, {
-    conversation,
+    conversationResource: conversationResource,
     content: buildWakeUpMessageContent(wakeUp.toJSON()),
     mentions: [{ configurationId: wakeUp.agentConfigurationId }],
     context: {
@@ -420,6 +512,7 @@ export async function runWakeUpActivity({
       email: null,
       profilePictureUrl: null,
       origin: "wakeup",
+      clientSideMCPServerIds,
     },
     skipToolsValidation: false,
   });
@@ -442,7 +535,7 @@ export async function runWakeUpActivity({
         },
         "Cancelling wake-up: agent cannot be invoked."
       );
-      await wakeUp.markCancelled(auth);
+      await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
       return;
     }
 
@@ -451,7 +544,7 @@ export async function runWakeUpActivity({
 
   await wakeUp.markFired(auth);
 
-  const cleanupRes = await wakeUp.cleanupTemporalIfCronExpired(auth);
+  const cleanupRes = await wakeUp.cleanupTemporalScheduleIfCronTerminal(auth);
   if (cleanupRes.isErr()) {
     logger.error(
       {
@@ -460,6 +553,29 @@ export async function runWakeUpActivity({
         error: normalizeError(cleanupRes.error),
       },
       "Failed cleaning up wake-up temporal state after fire."
+    );
+  }
+}
+
+// Marks a wake-up cancelled and, for cron wake-ups, deletes the backing
+// Temporal schedule so it stops firing. We do not use WakeUpResource.cancel
+// here: for one-shot wake-ups that would cancel the very workflow this activity
+// runs in. Deleting the cron schedule is safe from within a scheduled run.
+async function cancelWakeUpAndCleanupSchedule(
+  auth: Authenticator,
+  wakeUp: WakeUpResource
+): Promise<void> {
+  await wakeUp.markCancelled(auth);
+
+  const cleanupRes = await wakeUp.cleanupTemporalScheduleIfCronTerminal(auth);
+  if (cleanupRes.isErr()) {
+    logger.error(
+      {
+        wakeUpId: wakeUp.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: normalizeError(cleanupRes.error),
+      },
+      "Failed deleting wake-up schedule after cancelling."
     );
   }
 }
@@ -487,4 +603,16 @@ export async function expireWakeUpActivity({
   const { auth, wakeUp } = wakeUpAndAuthRes.value;
 
   await wakeUp.markExpired(auth);
+
+  const cleanupRes = await wakeUp.cleanupTemporalScheduleIfCronTerminal(auth);
+  if (cleanupRes.isErr()) {
+    logger.error(
+      {
+        wakeUpId,
+        workspaceId,
+        error: normalizeError(cleanupRes.error),
+      },
+      "Failed deleting wake-up schedule after expiring."
+    );
+  }
 }

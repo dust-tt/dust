@@ -1,8 +1,10 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
+import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { addSelectedConversationSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -10,35 +12,24 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
+import { InternalPostMessagesRequestBodySchema } from "@app/types/api/assistant";
+import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
 import type {
-  AgentMessageType,
   LegacyLightMessageType,
   LightMessageType,
-  UserMessageType,
 } from "@app/types/assistant/conversation";
-import { isUserMessageType } from "@app/types/assistant/conversation";
-import type { ContentFragmentType } from "@app/types/content_fragment";
-import { isContentFragmentType } from "@app/types/content_fragment";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
+import { apiErrorForSelectedSpaces } from "../selected_spaces_errors";
 import message from "./[mId]";
 
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-export type PostMessagesResponseBody = {
-  message: UserMessageType;
-  contentFragments: ContentFragmentType[];
-  agentMessages: AgentMessageType[];
-};
 
 // TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
 interface LegacyFetchConversationMessagesResponse {
@@ -55,6 +46,146 @@ export interface FetchConversationMessagesResponse {
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages.
 const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages:
+ *   get:
+ *     summary: List messages in a conversation
+ *     description: Retrieve a paginated list of messages for a specific conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     oneOf:
+ *                       - $ref: '#/components/schemas/PrivateUserMessage'
+ *                       - $ref: '#/components/schemas/PrivateLightAgentMessage'
+ *                       - $ref: '#/components/schemas/PrivateContentFragment'
+ *                 hasMore:
+ *                   type: boolean
+ *                 lastValue:
+ *                   type: integer
+ *                   nullable: true
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Post a message to a conversation
+ *     description: Post a new user message to an existing conversation, triggering agent responses.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *               - context
+ *               - mentions
+ *             properties:
+ *               content:
+ *                 type: string
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/PrivateMention'
+ *               context:
+ *                 type: object
+ *                 properties:
+ *                   timezone:
+ *                     type: string
+ *                   profilePictureUrl:
+ *                     type: string
+ *                     nullable: true
+ *                   origin:
+ *                     type: string
+ *                     nullable: true
+ *                   clientSideMCPServerIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   selectedMCPServerViewIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   selectedSpaceIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *               skipToolsValidation:
+ *                 type: boolean
+ *               modelSelection:
+ *                 type: object
+ *                 description: Optional per-message model override from the input-bar model picker (an explicit model pick).
+ *                 required: [providerId, modelId]
+ *                 properties:
+ *                   providerId:
+ *                     type: string
+ *                   modelId:
+ *                     type: string
+ *                   reasoningEffort:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Successfully posted message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   $ref: '#/components/schemas/PrivateUserMessage'
+ *                 contentFragments:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateContentFragment'
+ *                 agentMessages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateAgentMessage'
+ *       401:
+ *         description: Unauthorized
+ */
 
 app.get(
   "/",
@@ -135,7 +266,7 @@ app.post(
     const user = auth.getNonNullableUser();
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const { content, context, mentions, skipToolsValidation } =
+    const { content, context, mentions, skipToolsValidation, modelSelection } =
       ctx.req.valid("json");
 
     if (context.clientSideMCPServerIds) {
@@ -157,11 +288,21 @@ app.post(
       }
     }
 
-    const conversationRes = await getConversation(auth, conversationId);
-
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
     }
+
+    const conversation = conversationResource.toJSON();
 
     if (content.length === 0 && mentions.length === 0) {
       return apiError(ctx, {
@@ -174,12 +315,26 @@ app.post(
       });
     }
 
-    const conversation = conversationRes.value;
+    if (context.selectedSpaceIds?.length) {
+      const selectedSpacesResult = await addSelectedConversationSpaces(auth, {
+        conversation,
+        spaceIds: context.selectedSpaceIds,
+        origin: "input_bar",
+        auditContext: getAuditLogContext(auth),
+        // Widening the scope of an existing conversation is irreversible and can lock the other
+        // participants out, so only its creator may do it.
+        enforceCreatorOnly: true,
+      });
+      if (selectedSpacesResult.isErr()) {
+        return apiErrorForSelectedSpaces(ctx, selectedSpacesResult.error);
+      }
+    }
 
     if (context.selectedMCPServerViewIds?.length) {
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
-        context.selectedMCPServerViewIds
+        context.selectedMCPServerViewIds,
+        { isRestrictedToSkills: false }
       );
 
       const upsertRes = await ConversationResource.upsertMCPServerViews(auth, {
@@ -205,7 +360,7 @@ app.post(
       const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
 
       const r = await SkillResource.upsertConversationSkills(auth, {
-        conversationId: conversation.id,
+        conversation,
         skills,
         enabled: true,
       });
@@ -221,30 +376,6 @@ app.post(
       }
     }
 
-    // Find all the contentFragments that are above the user message.
-    // Messages may have multiple versions, so we need to return only the max
-    // version of each message.
-    const allMessages = removeNulls(
-      [...conversation.content].map((messages) => {
-        if (messages.length === 0) {
-          return null;
-        }
-        return messages.toSorted((a, b) => b.version - a.version)[0];
-      })
-    );
-
-    // Iterate over all messages sorted by rank descending and collect content
-    // fragments until we find a user message.
-    const contentFragments: ContentFragmentType[] = [];
-    for (const message of allMessages.toSorted((a, b) => b.rank - a.rank)) {
-      if (isUserMessageType(message)) {
-        break;
-      }
-      if (isContentFragmentType(message)) {
-        contentFragments.push(message);
-      }
-    }
-
     // Sidekick conversations always use "agent_sidekick" origin regardless of
     // what the client sends (follow-up messages default to "web" because
     // useClientType() doesn't know about sidekick context).
@@ -253,7 +384,7 @@ app.post(
       : (context.origin ?? "web");
 
     const messageRes = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content,
       mentions,
       context: {
@@ -264,13 +395,20 @@ app.post(
         profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
         origin,
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
+        selectedSpaceIds: context.selectedSpaceIds ?? [],
       },
       skipToolsValidation: skipToolsValidation ?? false,
+      modelSelection,
     });
 
     if (messageRes.isErr()) {
       return apiError(ctx, messageRes.error);
     }
+
+    const contentFragments = await fetchPrecedingContentFragments(auth, {
+      conversationResource,
+      targetRank: messageRes.value.userMessage.rank,
+    });
 
     return ctx.json({
       message: messageRes.value.userMessage,

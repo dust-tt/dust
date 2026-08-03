@@ -18,7 +18,6 @@ use std::time::Duration;
 
 use super::deepseek::DeepseekProvider;
 use super::fireworks::FireworksProvider;
-use super::togetherai::TogetherAIProvider;
 use super::xai::XaiProvider;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, ValueEnum, Deserialize)]
@@ -32,7 +31,6 @@ pub enum ProviderID {
     Mistral,
     #[serde(rename = "google_ai_studio")]
     GoogleAiStudio,
-    TogetherAI,
     Deepseek,
     Fireworks,
     Xai,
@@ -47,7 +45,6 @@ impl fmt::Display for ProviderID {
             ProviderID::Anthropic => write!(f, "anthropic"),
             ProviderID::Mistral => write!(f, "mistral"),
             ProviderID::GoogleAiStudio => write!(f, "google_ai_studio"),
-            ProviderID::TogetherAI => write!(f, "togetherai"),
             ProviderID::Deepseek => write!(f, "deepseek"),
             ProviderID::Fireworks => write!(f, "fireworks"),
             ProviderID::Xai => write!(f, "xai"),
@@ -65,14 +62,13 @@ impl FromStr for ProviderID {
             "anthropic" => Ok(ProviderID::Anthropic),
             "mistral" => Ok(ProviderID::Mistral),
             "google_ai_studio" => Ok(ProviderID::GoogleAiStudio),
-            "togetherai" => Ok(ProviderID::TogetherAI),
             "deepseek" => Ok(ProviderID::Deepseek),
             "fireworks" => Ok(ProviderID::Fireworks),
             "xai" => Ok(ProviderID::Xai),
             "noop" => Ok(ProviderID::Noop),
             _ => Err(ParseError::with_message(
                 "Unknown provider ID \
-                 (possible values: openai, azure_openai, anthropic, mistral, google_ai_studio, togetherai, deepseek, fireworks, xai, noop)",
+                 (possible values: openai, azure_openai, anthropic, mistral, google_ai_studio, deepseek, fireworks, xai, noop)",
             ))?,
         }
     }
@@ -172,7 +168,6 @@ pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
         ProviderID::GoogleAiStudio => Box::new(GoogleAiStudioProvider::new()),
         ProviderID::Mistral => Box::new(MistralProvider::new()),
         ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
-        ProviderID::TogetherAI => Box::new(TogetherAIProvider::new()),
         ProviderID::Deepseek => Box::new(DeepseekProvider::new()),
         ProviderID::Fireworks => Box::new(FireworksProvider::new()),
         ProviderID::Xai => Box::new(XaiProvider::new()),

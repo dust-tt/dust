@@ -40,6 +40,7 @@ export const RESOURCES_PREFIX = {
   credit: "crd",
   coupon: "cpn",
   coupon_redemption: "cpr",
+  membership_upgrade_request: "mur",
 
   // Resource relative to triggers.
   trigger: "trg",
@@ -72,6 +73,11 @@ export const RESOURCES_PREFIX = {
   // Project metadata.
   project_metadata: "pmd",
 
+  // Sandbox functions.
+  sandbox_function: "sfn",
+  sandbox_function_invocation: "sfi",
+  sandbox_function_mcp_action: "sfa",
+
   // Academy quiz attempts.
   academy_quiz_attempt: "aqz",
   academy_chapter_visit: "acv",
@@ -90,8 +96,7 @@ export const RESOURCES_PREFIX = {
   // Takeaways.
   takeaways: "tka",
 
-  // Conversation branches.
-  conversation_branch: "cbr",
+  // Conversation forks.
   conversation_fork: "cfk",
 
   // Provider credentials (BYOK).
@@ -99,6 +104,15 @@ export const RESOURCES_PREFIX = {
 
   // User project notification preferences.
   user_project_notification_preference: "upnp",
+
+  // Activation recommendations.
+  activation_recommendation: "arc",
+
+  // Activation nudges.
+  activation_nudge: "anu",
+
+  // Activation pods.
+  activation_pod: "apo",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

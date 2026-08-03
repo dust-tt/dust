@@ -7,11 +7,17 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import { serializeSkillTag } from "@app/lib/skills/format";
-import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
+import type {
+  SkillAvailability,
+  SkillStatus,
+} from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
 type CreateSkillOverrides = Partial<{
+  availability: SkillAvailability;
   name: string;
   agentFacingDescription: string;
   userFacingDescription: string;
@@ -23,24 +29,51 @@ type CreateSkillOverrides = Partial<{
   addCurrentUserAsEditor: boolean;
   attachedKnowledge: SkillAttachedKnowledge[];
   mcpServerViews: MCPServerViewResource[];
-  enableSkillReferences: boolean;
-  referencedSkillIds: string[];
 }>;
 
 export class SkillFactory {
-  static withExtendedSkill(
-    skill: SkillResource,
-    extendedSkill: SkillResource | null = null
-  ): SkillResource & { extendedSkill: SkillResource | null } {
-    return Object.assign(Object.create(skill), { extendedSkill });
-  }
-
   static async create(
     auth: Authenticator,
     overrides: CreateSkillOverrides = {}
   ): Promise<SkillResource> {
     const user = auth.user();
     assert(user, "User is required");
+
+    const availability = overrides.availability ?? DEFAULT_SKILL_AVAILABILITY;
+
+    if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+      await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
+        grantType: "create",
+        resourceType: "skill",
+      });
+      await auth.refresh();
+    }
+
+    // Any availability beyond "editors" requires the publish capability; grant it so the factory
+    // can set up any availability.
+    if (
+      availability !== "editors" &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
+        grantType: "publish",
+        resourceType: "skill",
+      });
+      await auth.refresh();
+    }
+
+    // Auto-discoverable skills additionally require the make_discoverable capability when
+    // admin governance is enabled; grant it so the factory can set up any availability.
+    if (
+      availability === "users_and_agents" &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
+        grantType: "make_discoverable",
+        resourceType: "skill",
+      });
+      await auth.refresh();
+    }
 
     const name = overrides.name ?? "Test Skill";
     const agentFacingDescription =
@@ -54,7 +87,7 @@ export class SkillFactory {
     const attachedKnowledge = overrides.attachedKnowledge ?? [];
     const mcpServerViews = overrides.mcpServerViews ?? [];
 
-    return SkillResource.makeNew(
+    const skill = await SkillResource.makeNew(
       auth,
       {
         editedBy,
@@ -66,16 +99,18 @@ export class SkillFactory {
         requestedSpaceIds,
         status,
         icon: SKILL_ICON.name,
-        isDefault: false,
+        availability,
       },
       {
         mcpServerViews,
         addCurrentUserAsEditor: overrides.addCurrentUserAsEditor,
         attachedKnowledge,
-        enableSkillReferences: overrides.enableSkillReferences,
-        referencedSkillIds: overrides.referencedSkillIds ?? [],
       }
     );
+
+    await auth.refresh();
+
+    return skill;
   }
 
   static serializeSkillReferenceTag(
@@ -107,8 +142,6 @@ export class SkillFactory {
     const parentSkill = await this.create(auth, {
       ...parentOverrides,
       instructions: parentOverrides.instructions ?? `Use ${skillReferenceTag}.`,
-      enableSkillReferences: true,
-      referencedSkillIds: [childSkill.sId],
     });
 
     return { parentSkill, childSkill, skillReferenceTag };
@@ -144,8 +177,6 @@ export class SkillFactory {
       mcpServerViews: parentSkill.mcpServerViews,
       attachedKnowledge: await parentSkill.getAttachedKnowledge(auth),
       requestedSpaceIds: parentSkill.requestedSpaceIds,
-      enableSkillReferences: true,
-      referencedSkillIds: childSkills.map((childSkill) => childSkill.sId),
     });
 
     const updatedParentSkill = await SkillResource.fetchById(

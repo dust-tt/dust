@@ -12,7 +12,7 @@ interface RegionalModelsOnlyToggleConfig {
   icon: React.ReactNode;
 }
 
-export const REGIONAL_MODELS_ONLY_TOGGLE_CONFIG: Record<
+const REGIONAL_MODELS_ONLY_TOGGLE_CONFIG: Record<
   RegionType,
   RegionalModelsOnlyToggleConfig | null
 > = {
@@ -56,7 +56,6 @@ export function RegionalModelsOnlyToggle({
       hasSeparator={false}
       action={
         <SliderToggle
-          size="xs"
           selected={workspace.regionalModelsOnly}
           disabled={isUpdatingWorkspaceRegionalModelsOnly}
           onClick={() => {
@@ -68,7 +67,7 @@ export function RegionalModelsOnlyToggle({
       }
     >
       <ContextItem.Description>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-sm text-muted-foreground">
           {config.description}
         </span>
       </ContextItem.Description>

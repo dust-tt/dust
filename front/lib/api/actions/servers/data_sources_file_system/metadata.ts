@@ -1,6 +1,4 @@
-import { DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   DataSourceFilesystemCatInputSchema,
   DataSourceFilesystemFindInputSchema,
@@ -13,9 +11,6 @@ import {
   FIND_TAGS_BASE_DESCRIPTION,
   findTagsSchema,
 } from "@app/lib/api/actions/tools/find_tags/metadata";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_SEARCH_TOOL_NAME = "semantic_search";
@@ -24,110 +19,150 @@ export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
 
-export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
-  [FILESYSTEM_CAT_TOOL_NAME]: {
+export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = [
+  {
+    name: FILESYSTEM_CAT_TOOL_NAME,
     description:
-      "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
+      "Read the full text content of a connected data source document or page by its nodeId (like 'cat' in Unix). " +
+      `Use to open, view, or read a specific data source file after locating it via '${FILESYSTEM_FIND_TOOL_NAME}', '${FILESYSTEM_LIST_TOOL_NAME}', or '${FILESYSTEM_SEARCH_TOOL_NAME}'. ` +
+      "The nodeId is the unique identifier exposed in the output of all navigation and search tools in this server. " +
+      "The output reports the document's total size. For large documents, use 'grep' to extract only the relevant " +
+      "content rather than paging through the whole document by incrementing 'offset', which exhausts the context window.",
     schema: DataSourceFilesystemCatInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Reading file from data source",
       done: "Read file from data source",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
-  [FILESYSTEM_LIST_TOOL_NAME]: {
+  {
+    name: FILESYSTEM_LIST_TOOL_NAME,
     description:
-      "List the direct contents of a node, like 'ls' in Unix. Should only be used on nodes with children " +
-      "(hasChildren: true). A good fit is to explore the filesystem structure step " +
-      "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
-      "the next step's nodeId. If a node output by this tool or the find tool has children " +
-      "(hasChildren: true), it means that this tool can be used again on it.",
+      "Browse or explore the direct contents of a folder, section, or container node (like 'ls' in Unix). " +
+      "Use to navigate the data source structure, see what documents or sub-folders are available, " +
+      "or enumerate items inside a known location. Only works on nodes with children (hasChildren: true). " +
+      "Call repeatedly with the 'nodeId' from each result to traverse nested folders step by step.",
     schema: DataSourceFilesystemListInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Listing data source contents",
       done: "List data source contents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
-  [FILESYSTEM_SEARCH_TOOL_NAME]: {
+  {
+    name: FILESYSTEM_SEARCH_TOOL_NAME,
     description:
-      "Perform a semantic search within the folders and files designated by `nodeIds`. All children of the designated nodes will be searched.",
+      "Search semantically for information, documents, or content by topic, concept, or meaning within a connected data source. " +
+      "Use to find relevant passages, answer questions, look up knowledge, or retrieve content from " +
+      "connected data sources. Searches all children of the designated nodeIds. " +
+      `Prefer this over '${FILESYSTEM_FIND_TOOL_NAME}' when you know what you're looking for conceptually but not the exact document title.`,
     schema: SearchWithNodesInputSchema.shape,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Searching data sources",
       done: "Search data sources",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
-  [FILESYSTEM_FIND_TOOL_NAME]: {
+  {
+    name: FILESYSTEM_FIND_TOOL_NAME,
     description:
-      "Find content based on their title starting from a specific node. Can be used to find specific nodes by searching for their titles. " +
-      "The query title can be omitted to list all nodes starting from a specific node. This is like using 'find' in Unix.",
+      "Locate a document, page, or folder by searching its title (like 'find' in Unix). " +
+      "Use to find a specific file or wiki page by name when you know (part of) its title — partial matches are supported. " +
+      "Omit the query to enumerate all nodes under a given root. " +
+      `Prefer '${FILESYSTEM_SEARCH_TOOL_NAME}' when looking for content by topic rather than by exact title.`,
     schema: DataSourceFilesystemFindInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Finding in data sources",
       done: "Find in data sources",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
-  [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: {
+  {
+    name: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
     description:
-      "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
-      "This is useful for understanding where a specific node is located within the data source structure. " +
-      "The path is returned as a list of nodes, with the first node being the data source root and the last node being the target node.",
+      "Show the full breadcrumb path from a node back to the root of the data source (like 'pwd' in Unix). " +
+      "Use to understand where a document lives in the folder hierarchy, navigate to parent sections, " +
+      "or display the location of a search result. " +
+      "Returns an ordered list of ancestor nodes from root to the target node.",
     schema: DataSourceFilesystemLocateTreeInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
       running: "Locating content in hierarchy",
       done: "Locate content in hierarchy",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
-});
+] as const;
+
+const [
+  dataSourceFilesystemCatTool,
+  dataSourceFilesystemListTool,
+  dataSourceFilesystemSearchTool,
+  dataSourceFilesystemFindTool,
+  dataSourceFilesystemLocateInTreeTool,
+] = DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA;
 
 // Tool metadata with tags support for search and find tools
-export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
-  createToolsRecord({
-    [FILESYSTEM_CAT_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
-    [FILESYSTEM_LIST_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME],
-    [FILESYSTEM_SEARCH_TOOL_NAME]: {
-      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
-      schema: {
-        ...SearchWithNodesInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
+export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA = [
+  {
+    ...dataSourceFilesystemCatTool,
+    name: FILESYSTEM_CAT_TOOL_NAME,
+  },
+  {
+    ...dataSourceFilesystemListTool,
+    name: FILESYSTEM_LIST_TOOL_NAME,
+  },
+  {
+    ...dataSourceFilesystemSearchTool,
+    name: FILESYSTEM_SEARCH_TOOL_NAME,
+    schema: {
+      ...SearchWithNodesInputSchema.shape,
+      ...TagsInputSchema.shape,
     },
-    [FILESYSTEM_FIND_TOOL_NAME]: {
-      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME],
-      schema: {
-        ...DataSourceFilesystemFindInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
+  },
+  {
+    ...dataSourceFilesystemFindTool,
+    name: FILESYSTEM_FIND_TOOL_NAME,
+    schema: {
+      ...DataSourceFilesystemFindInputSchema.shape,
+      ...TagsInputSchema.shape,
     },
-    [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
-        FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
-      ],
-    [FIND_TAGS_TOOL_NAME]: {
-      description: FIND_TAGS_BASE_DESCRIPTION,
-      schema: findTagsSchema,
-      stake: "never_ask",
-      displayLabels: {
-        running: "Finding tags",
-        done: "Find tags",
-      },
-      enableAlerting: true,
+  },
+  {
+    ...dataSourceFilesystemLocateInTreeTool,
+    name: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  },
+  {
+    name: FIND_TAGS_TOOL_NAME,
+    description: FIND_TAGS_BASE_DESCRIPTION,
+    schema: findTagsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Finding tags",
+      done: "Find tags",
     },
-  });
+    toolCostCategory: "advanced",
+    freeUsage: false,
+    enableAlerting: true,
+  },
+] as const;
 
 export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "data_sources_file_system",
     version: "1.0.0",
@@ -135,18 +170,6 @@ export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon",
     documentationUrl: null,
-    instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   },
-  tools: Object.values(DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA).map((t) => [
-      t.name,
-      t.stake,
-    ])
-  ),
+  tools: DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -13,6 +13,7 @@ export type { GetWorkspaceProgrammaticCostResponse };
 // Mounted at /api/w/:wId/analytics/programmatic-cost.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

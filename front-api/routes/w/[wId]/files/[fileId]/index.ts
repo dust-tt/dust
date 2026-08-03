@@ -13,6 +13,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { isConversationFileUseCase } from "@app/types/files";
+import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -25,6 +26,7 @@ const ParamsSchema = z.object({
   fileId: z.string(),
 });
 
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import editText from "./edit-text";
 import exportApp from "./export";
 import metadata from "./metadata";
@@ -70,6 +72,132 @@ function getSecureFileAction(
 // Mounted at /api/w/:wId/files/:fileId.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
+/**
+ * @swagger
+ * /api/w/{wId}/files/{fileId}:
+ *   get:
+ *     summary: Get or download a file
+ *     description: View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).
+ *     tags:
+ *       - Private Files
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         description: ID of the file
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: version
+ *         required: false
+ *         description: File version to retrieve
+ *         schema:
+ *           type: string
+ *           enum: [original, processed, public]
+ *       - in: query
+ *         name: action
+ *         required: false
+ *         description: Action to perform
+ *         schema:
+ *           type: string
+ *           enum: [view, download]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: File content or redirect to download URL
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       302:
+ *         description: Redirect to signed download URL
+ *       404:
+ *         description: File not found
+ *   post:
+ *     summary: Upload file content
+ *     description: Process and store the uploaded file content.
+ *     tags:
+ *       - Private Files
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         description: ID of the file
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: File processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 file:
+ *                   $ref: '#/components/schemas/PrivateFileWithUploadUrl'
+ *       400:
+ *         description: Invalid file content (e.g. a CSV with an unsupported encoding)
+ *       403:
+ *         description: Permission denied
+ *       404:
+ *         description: File not found
+ *   delete:
+ *     summary: Delete a file
+ *     description: Delete a file from the workspace. Files referenced by a skill or its version history cannot be deleted.
+ *     tags:
+ *       - Private Files
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         description: ID of the file
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       204:
+ *         description: File deleted
+ *       400:
+ *         description: File is referenced by a skill or its version history
+ *       403:
+ *         description: Permission denied
+ *       404:
+ *         description: File not found
+ */
+
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { fileId } = ctx.req.valid("param");
@@ -87,25 +215,27 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     return accessCheck;
   }
 
+  if (
+    file.useCase === "skill_attachment" &&
+    !(await canReadSkillFile(auth, file))
+  ) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
+
   const action = getSecureFileAction(ctx.req.query("action"), file);
   if (action === "view") {
     const versionParam = ctx.req.query("version");
+    // Default to the frame's renderable version (a published frame serves its built bundle);
+    // non-frame files and unpublished frames resolve to "original". An explicit ?version wins.
     const version = isValidViewVersion(versionParam)
       ? versionParam
-      : "original";
+      : file.getRenderableVersion();
 
     const readStream = file.getReadStream({ auth, version });
-    const webStream = new ReadableStream({
-      start(controller) {
-        readStream.on("data", (chunk) => controller.enqueue(chunk));
-        readStream.on("end", () => controller.close());
-        readStream.on("error", (err) => controller.error(err));
-      },
-      cancel() {
-        readStream.destroy();
-      },
-    });
-    return new Response(webStream, {
+    return new Response(readableToReadableStream(readStream), {
       status: 200,
       headers: { "Content-Type": file.contentType },
     });
@@ -133,20 +263,6 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     return accessCheck;
   }
 
-  // Plan-mode files are agent-owned: the user interacts with them only through
-  // the agent (via messages and approval decisions), never by direct mutation.
-  // The agent can retire a plan via the `close_plan` tool.
-  if (file.useCaseMetadata?.isPlanFile) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "plan.md is managed by the agent and cannot be deleted directly. Ask the agent to close the plan.",
-      },
-    });
-  }
-
   const space = await getSpaceForFile(auth, file);
   const isFileAuthor = file.userId === auth.user()?.id;
   const isUploadUseCase =
@@ -155,7 +271,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
-    !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+    !((isFileAuthor && canWriteInSpace) || auth.isManager())
   ) {
     return apiError(ctx, {
       status_code: 403,
@@ -164,13 +280,34 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
         message: "You cannot edit files in that space.",
       },
     });
-  } else if (!auth.isBuilder() && file.useCase !== "conversation") {
+  } else if (file.useCase === "skill_attachment") {
+    if (!(await canWriteSkillFile(auth, file))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only skill editors can modify files attached to a skill.",
+        },
+      });
+    }
+    const { isReferenced } = await SkillResource.fetchFileSkills(auth, file);
+    if (isReferenced) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Files referenced by a skill or its version history cannot be deleted.",
+        },
+      });
+    }
+  } else if (!auth.isManager() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   }
@@ -206,18 +343,6 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     return accessCheck;
   }
 
-  // Plan-mode files are agent-owned; users cannot upload over them.
-  if (file.useCaseMetadata?.isPlanFile) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "plan.md is managed by the agent and cannot be overwritten directly.",
-      },
-    });
-  }
-
   const space = await getSpaceForFile(auth, file);
   const isFileAuthor = file.userId === auth.user()?.id;
   const isUploadUseCase =
@@ -226,7 +351,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
-    !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+    !((isFileAuthor && canWriteInSpace) || auth.isManager())
   ) {
     return apiError(ctx, {
       status_code: 403,
@@ -235,9 +360,19 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
         message: "You cannot edit files in that space.",
       },
     });
+  } else if (file.useCase === "skill_attachment") {
+    if (!(await canWriteSkillFile(auth, file))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only skill editors can modify files attached to a skill.",
+        },
+      });
+    }
   } else if (
     !space &&
-    !auth.isBuilder() &&
+    !auth.isManager() &&
     file.useCase !== "conversation" &&
     file.useCase !== "avatar"
   ) {
@@ -246,7 +381,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   }
@@ -303,6 +438,26 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
       );
 
       if (rUpsert.isErr()) {
+        // Invalid CSV content is a user error (e.g. unsupported encoding); surface the
+        // actionable message instead of a generic 500.
+        if (rUpsert.error.code === "invalid_csv_content") {
+          logger.warn({
+            fileModelId: file.id,
+            workspaceId: auth.workspace()?.sId,
+            contentType: file.contentType,
+            useCase: file.useCase,
+            useCaseMetadata: file.useCaseMetadata,
+            message: "Invalid CSV content on file upsert.",
+            error: rUpsert.error,
+          });
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: rUpsert.error.message,
+            },
+          });
+        }
         logger.error({
           fileModelId: file.id,
           workspaceId: auth.workspace()?.sId,
@@ -362,6 +517,46 @@ app.route("/rename", rename);
 app.route("/save-in-project", saveInProject);
 app.route("/share", shareApp);
 app.route("/signed-url", signedUrl);
+
+async function canWriteSkillFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<boolean> {
+  const { isReferenced, skills } = await SkillResource.fetchFileSkills(
+    auth,
+    file
+  );
+  if (isReferenced) {
+    return skills.some((skill) => skill.canWrite(auth));
+  }
+
+  const skillId = file.useCaseMetadata?.skillId;
+  if (skillId) {
+    const skill = await SkillResource.fetchById(auth, skillId);
+    return skill !== null && skill.canWrite(auth);
+  }
+
+  const isFileAuthor = file.userId === auth.user()?.id;
+  return isFileAuthor && (await auth.hasWorkspacePermission("create", "skill"));
+}
+
+async function canReadSkillFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<boolean> {
+  const { isReferenced, skills } = await SkillResource.fetchFileSkills(
+    auth,
+    file
+  );
+  if (isReferenced) {
+    return skills.length > 0;
+  }
+
+  const skillId = file.useCaseMetadata?.skillId;
+  return skillId
+    ? (await SkillResource.fetchById(auth, skillId)) !== null
+    : false;
+}
 
 async function getSpaceForFile(
   auth: Authenticator,

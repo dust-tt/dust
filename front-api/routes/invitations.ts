@@ -3,16 +3,13 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import logger from "@app/logger/logger";
+import type { GetPendingInvitationsLookupResponseBody } from "@app/types/api/invitation";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
 import { sessionAuth } from "../middlewares/session_auth";
-
-export type GetPendingInvitationsLookupResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
 
 export const invitationsApp = sessionApp();
 

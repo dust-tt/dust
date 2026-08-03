@@ -1,10 +1,9 @@
-// Tailwind base globals
+// Tailwind base globals (preflight/theme/tokens/scrollbar; emits no utilities).
 import "../../ui/css/global.css";
-// Use sparkle styles, override local globals
-import "@dust-tt/sparkle/dist/sparkle.css";
-// Local tailwind components override sparkle styles
+// Single unified Tailwind build: scans extension + front + sparkle/src in one
+// pass. Replaces the old precompiled `@dust-tt/sparkle/dist/sparkle.css` concat.
 import "../../ui/css/components.css";
-// Local custom styles
+// Local custom styles (plain CSS; emits no utilities).
 import "../../ui/css/custom.css";
 import { initDatadogLogs } from "@app/logger/datadogLogger";
 import { datadogLogs } from "@datadog/browser-logs";

@@ -4,7 +4,12 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  type AgentLoopRunContext,
+  isAgentLoopRunContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
+import { getImageGenerationLLM } from "@app/lib/api/actions/servers/image_generation/getImageGenerationLLM";
 import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
@@ -13,28 +18,37 @@ import {
   trackTokenUsage,
   uploadAndFormatImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
-import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
-import { getImageGenerationLLM } from "@app/lib/api/llm/getImageGenerationLLM";
 import type {
   ImageGenerationInput,
   ReferenceImageFile,
-} from "@app/lib/api/llm/imageGeneration";
+} from "@app/lib/api/actions/servers/image_generation/imageGeneration";
+import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { startObservation } from "@langfuse/tracing";
+import assert from "assert";
 
 export function createImageGenerationTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContext
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof IMAGE_GENERATION_TOOLS_METADATA> = {
     generate_image: async (
       { prompt, outputName, aspectRatio, referenceImages, quality },
       { sendNotification, _meta }
     ) => {
+      let referenceImagesRunContext: AgentLoopRunContext | undefined;
+      if (referenceImages?.length) {
+        assert(
+          isAgentLoopRunContext(toolContext?.runContext),
+          "AgentLoopRunContext expected"
+        );
+        referenceImagesRunContext = toolContext.runContext;
+      }
+
       const workspace = auth.getNonNullableWorkspace();
 
       await sendImageProgressNotification(
@@ -72,10 +86,10 @@ export function createImageGenerationTools(
 
       let referenceFiles: ReferenceImageFile[] = [];
 
-      if (referenceImages && referenceImages.length > 0) {
+      if (referenceImages && referenceImagesRunContext) {
         const processResult = await processImageFileIds(auth, {
           imageFileIds: referenceImages,
-          agentLoopContext,
+          runContext: referenceImagesRunContext,
           supportedContentTypes: imageGenerationModel.supportedContentTypes,
           providerId,
         });
@@ -174,7 +188,7 @@ export function createImageGenerationTools(
 
       return uploadAndFormatImageResponse(
         auth,
-        agentLoopContext,
+        toolContext,
         images,
         outputName
       );

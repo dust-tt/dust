@@ -1,15 +1,9 @@
 import config from "@app/lib/api/config";
-import {
-  getManagedDataSourcePermissions,
-  ManagedPermissionsQuerySchema,
-} from "@app/lib/api/data_sources/managed_permissions";
+import { getManagedDataSourcePermissions } from "@app/lib/api/data_sources/managed_permissions";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodeWithParent,
-} from "@app/types/connectors/connectors_api";
+import type { GetDataSourcePermissionsResponseBody } from "@app/types/api/data_sources/managed_permissions";
+import { ManagedPermissionsQuerySchema } from "@app/types/api/data_sources/managed_permissions";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -18,12 +12,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
-
-export type GetDataSourcePermissionsResponseBody<
-  T extends ConnectorPermission = ConnectorPermission,
-> = {
-  resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
-};
 
 const SetConnectorPermissionsRequestBodySchema = z.object({
   resources: z.array(
@@ -41,6 +29,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/permissions.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -81,21 +70,21 @@ app.get(
 
     const query = ctx.req.valid("query");
 
-    // Auth gating: read = anyone, write = builder, undefined (all) = admin.
+    // Auth gating: read = anyone, write = agent publishers, undefined (all) = admin.
     switch (query.filterPermission) {
       case "read":
         // `read` is used for data source selection when creating personal assistants.
         break;
       case "write":
-        // `write` is used for selection of default slack channel in the workspace agent builder.
-        // biome-ignore lint/plugin/noDirectRoleCheck: conditional role check based on filterPermission query param
-        if (!auth.isBuilder()) {
+        // `write` is used for selection of default slack channel in the workspace agent builder,
+        // so it is gated on the agent publishing permission.
+        if (!(await auth.hasWorkspacePermission("publish", "agent"))) {
           return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "data_source_auth_error",
               message:
-                "Only builders of the current workspace can view 'write' permissions of a data source.",
+                "You do not have permission to view 'write' permissions of a data source.",
             },
           });
         }

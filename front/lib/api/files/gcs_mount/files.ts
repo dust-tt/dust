@@ -3,27 +3,23 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import config from "@app/lib/api/config";
 import { GCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
 import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
-  getProjectFilesBasePath,
-  TOOL_OUTPUTS_FOLDER_NAME,
-  toProjectMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import {
+  getCachedPrivateUploadSignedUrl,
+  MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
+} from "@app/lib/file_storage/signed_url_cache";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
-import {
-  isSupportedImageContentType,
-  stripMimeParameters,
-} from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -32,29 +28,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 const GCS_MOUNT_COPY_CONCURRENCY = 4;
 const GCS_MOUNT_COPY_MAX_FILES = 5000;
-
-type GCSMountEntryBase = {
-  fileName: string;
-  /** Scoped path, e.g. `pod/report.pdf` or `conversation/.tool_outputs/chart.png`. */
-  path: string;
-  sizeBytes: number;
-  lastModifiedMs: number;
-};
-
-export type GCSMountDirectoryEntry = GCSMountEntryBase & {
-  isDirectory: true;
-};
-
-export type GCSMountFileEntry = GCSMountEntryBase & {
-  isDirectory: false;
-  contentType: string;
-  fileId: string | null;
-  thumbnailUrl: string | null;
-  /** Present when the listing endpoint adds read-signed URLs (e.g. system pod_files API). */
-  signedDownloadUrl?: string | null;
-};
-
-export type GCSMountEntry = GCSMountDirectoryEntry | GCSMountFileEntry;
 
 export type GCSMountPoint =
   | { useCase: "conversation"; conversationId: string }
@@ -123,222 +96,6 @@ export function getScopedPathFromGCSPath({
   return `${useCase}/${gcsPath.slice(prefix.length)}`;
 }
 
-function makeDirectoryEntry(
-  {
-    fileName,
-    relativeFilePath,
-    sizeBytes,
-    lastModifiedMs,
-  }: {
-    fileName: string;
-    relativeFilePath: string;
-    sizeBytes: number;
-    lastModifiedMs: number;
-  },
-  scope: GCSMountPoint
-): GCSMountDirectoryEntry {
-  return {
-    isDirectory: true,
-    fileName,
-    path: `${scope.useCase}/${relativeFilePath}`,
-    sizeBytes,
-    lastModifiedMs,
-  };
-}
-
-function makeFileEntry(
-  {
-    fileName,
-    relativeFilePath,
-    sizeBytes,
-    contentType: rawContentType,
-    lastModifiedMs,
-    fileId,
-  }: {
-    fileName: string;
-    relativeFilePath: string;
-    sizeBytes: number;
-    contentType: string;
-    lastModifiedMs: number;
-    fileId: string | null;
-  },
-  scope: GCSMountPoint,
-  workspaceId: string
-): GCSMountFileEntry {
-  // GCS metadata commonly carries MIME parameters (e.g. `text/csv; charset=utf-8`).
-  // Strip them at the module boundary so every downstream consumer sees a clean type
-  // that matches our content-type lookup tables exactly.
-  const contentType = stripMimeParameters(rawContentType);
-  return {
-    isDirectory: false,
-    fileName,
-    path: `${scope.useCase}/${relativeFilePath}`,
-    sizeBytes,
-    contentType,
-    lastModifiedMs,
-    fileId,
-    thumbnailUrl: makeThumbnailUrl({
-      contentType,
-      relativeFilePath,
-      scope,
-      workspaceId,
-    }),
-  };
-}
-
-function makeThumbnailUrl({
-  contentType,
-  relativeFilePath,
-  scope,
-  workspaceId,
-}: {
-  contentType: string;
-  relativeFilePath: string;
-  scope: GCSMountPoint;
-  workspaceId: string;
-}): string | null {
-  if (!isSupportedImageContentType(contentType)) {
-    return null;
-  }
-
-  switch (scope.useCase) {
-    case "conversation":
-      return `${config.getApiBaseUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`;
-
-    case "pod":
-      // TODO(2026-05-10: FILE SYSTEM) Expose a Pod files thumbnail endpoint.
-      return null;
-
-    default:
-      assertNever(scope);
-  }
-}
-
-/**
- * List files from a GCS mount point (mounted bucket as source of truth).
- *
- * `.processed.<ext>` siblings are filtered out by default — they are
- * auto-generated artifacts (resized images, transcripts, extracted text) and
- * the UI file panel should not surface them. The MCP `files__list` tool opts
- * in via `includeProcessed: true` so the agent can read them directly.
- */
-export async function listGCSMountFiles(
-  auth: Authenticator,
-  scope: GCSMountPoint,
-  { includeProcessed = false }: { includeProcessed?: boolean } = {}
-): Promise<GCSMountEntry[]> {
-  const owner = auth.getNonNullableWorkspace();
-  const prefix = resolvePrefix(owner, scope);
-
-  const bucket = getPrivateUploadBucket();
-  const { files: gcsFiles, pageFetchCount } = await bucket.getAllFilesByPrefix({
-    prefix,
-    pageSize: 200,
-  });
-
-  if (pageFetchCount > 1) {
-    logger.warn(
-      {
-        workspaceId: owner.sId,
-        prefix,
-        scope,
-        pageFetchCount,
-        objectCount: gcsFiles.length,
-      },
-      "GCS mount file listing required multiple list requests; prefix has many objects."
-    );
-  }
-
-  // GCS folder placeholders are zero-byte objects whose path ends with "/".
-  const folderPlaceholders = gcsFiles.filter((f) => f.name.endsWith("/"));
-  const regularFiles = gcsFiles.filter((f) => {
-    if (f.name.endsWith("/")) {
-      return false;
-    }
-
-    if (includeProcessed) {
-      return true;
-    }
-
-    const name = f.name.split("/").pop() ?? "";
-    return !name.includes(".processed.");
-  });
-
-  // GCS files are listed under `pods/` but some FileResource rows still store the
-  // `projects/` form. Query both shapes so old rows still resolve.
-  const mountPaths = regularFiles.map((f) => f.name);
-  const legacyMountPaths = mountPaths.map((p) =>
-    p.replace("/pods/", "/projects/")
-  );
-  const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    ...mountPaths,
-    ...legacyMountPaths,
-  ]);
-  const fileResourceByMountPath = new Map<string, FileResource>();
-  for (const r of fileResources) {
-    if (r.mountFilePath) {
-      fileResourceByMountPath.set(
-        r.mountFilePath.replace("/projects/", "/pods/"),
-        r
-      );
-    }
-  }
-
-  const folderEntries: GCSMountDirectoryEntry[] = folderPlaceholders.flatMap(
-    (f) => {
-      const trimmed = f.name.replace(/\/$/, "");
-      const name = trimmed.split("/").pop() ?? "";
-      // Skip hidden folders (name starting with "."), except the tool outputs folder which is
-      // surfaced to users despite its dot prefix.
-      if (
-        !name ||
-        (name.startsWith(".") && name !== TOOL_OUTPUTS_FOLDER_NAME)
-      ) {
-        return [];
-      }
-
-      return [
-        makeDirectoryEntry(
-          {
-            fileName: name,
-            relativeFilePath: trimmed.slice(prefix.length),
-            sizeBytes: 0,
-            lastModifiedMs: isString(f.metadata.updated)
-              ? new Date(f.metadata.updated).getTime()
-              : 0,
-          },
-          scope
-        ),
-      ];
-    }
-  );
-
-  const fileEntries: GCSMountFileEntry[] = regularFiles.map((gcsFile) => {
-    const metadata = gcsFile.metadata;
-    const contentType = isString(metadata.contentType)
-      ? metadata.contentType
-      : "application/octet-stream";
-    const fileResource = fileResourceByMountPath.get(gcsFile.name) ?? null;
-
-    return makeFileEntry(
-      {
-        fileName: gcsFile.name.split("/").pop() ?? gcsFile.name,
-        relativeFilePath: gcsFile.name.slice(prefix.length),
-        sizeBytes: Number(metadata.size ?? 0),
-        contentType,
-        lastModifiedMs: isString(metadata.updated)
-          ? new Date(metadata.updated).getTime()
-          : 0,
-        fileId: fileResource?.sId ?? null,
-      },
-      scope,
-      owner.sId
-    );
-  });
-
-  return [...folderEntries, ...fileEntries];
-}
-
 /**
  * Rename (move) a file within a GCS mount point — pure GCS primitive.
  * Does not touch FileResource records; callers are responsible for any DB sync.
@@ -365,19 +122,6 @@ export async function renameGCSMountFile(
   try {
     await bucket.copyFile(oldGcsPath, newGcsPath);
     await bucket.delete(oldGcsPath);
-
-    // Mirror the rename on the projects/ side for pod files. We copy from the new canonical
-    // pods/ path (instead of an old projects/ path that may not exist).
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const oldProjectsPath = `${projectsPrefix}${relativeFilePath}`;
-      const newProjectsPath = `${projectsPrefix}${dir}${newFileName}`;
-      await bucket.copyFile(newGcsPath, newProjectsPath);
-      await bucket.delete(oldProjectsPath, { ignoreNotFound: true });
-    }
 
     return new Ok({ newGcsPath });
   } catch (err) {
@@ -433,22 +177,6 @@ export async function renameGCSMountDirectory(
     }
     await bucket.deleteByPrefix(oldDirPrefix);
 
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const oldProjectsDirPrefix = `${projectsPrefix}${normalized}/`;
-      for (const obj of objects) {
-        const newPodsPath = obj.name.replace(oldDirPrefix, newDirPrefix);
-        const newProjectsPath = toProjectMountFilePath(newPodsPath);
-        if (newProjectsPath) {
-          await bucket.copyFile(newPodsPath, newProjectsPath);
-        }
-      }
-      await bucket.deleteByPrefix(oldProjectsDirPrefix);
-    }
-
     return new Ok({ newRelativeDirPath });
   } catch (err) {
     return new Err(normalizeError(err));
@@ -472,124 +200,13 @@ export async function getConversationFileMountSignedUrl(
     );
   }
   try {
-    const url = await getPrivateUploadBucket().getSignedUrl(gcsPath);
+    const url = await getCachedPrivateUploadSignedUrl(gcsPath, {
+      expirationDelayMs: MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
+    });
     return new Ok(url);
   } catch (err) {
     return new Err(normalizeError(err));
   }
-}
-
-/**
- * Write a file into a GCS mount point.
- * Returns the entry as it would appear in listGCSMountFiles.
- */
-export async function createGCSMountFile(
-  auth: Authenticator,
-  scope: GCSMountPoint,
-  {
-    relativeFilePath,
-    content,
-    contentType,
-  }: {
-    relativeFilePath: string;
-    content: Buffer;
-    contentType: string;
-  }
-): Promise<Result<GCSMountFileEntry, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  const prefix = resolvePrefix(owner, scope);
-
-  const gcsPath = `${prefix}${relativeFilePath}`;
-  const bucket = getPrivateUploadBucket();
-  try {
-    await bucket.file(gcsPath).save(content, { contentType });
-
-    // Mirror the write on the projects/ side for pod files.
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const projectsGcsPath = `${projectsPrefix}${relativeFilePath}`;
-      await bucket.file(projectsGcsPath).save(content, { contentType });
-    }
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-
-  const fileName = relativeFilePath.split("/").pop() ?? relativeFilePath;
-  return new Ok(
-    makeFileEntry(
-      {
-        fileName,
-        relativeFilePath,
-        sizeBytes: content.length,
-        contentType,
-        lastModifiedMs: Date.now(),
-        fileId: null,
-      },
-      scope,
-      owner.sId
-    )
-  );
-}
-
-/**
- * Create an empty folder in a GCS mount point via a zero-byte object whose name ends with "/".
- * Returns the entry as it would appear in listGCSMountFiles.
- */
-export async function createGCSMountDirectory(
-  auth: Authenticator,
-  scope: GCSMountPoint,
-  { relativeDirPath }: { relativeDirPath: string }
-): Promise<Result<GCSMountDirectoryEntry, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  const prefix = resolvePrefix(owner, scope);
-
-  const normalized = relativeDirPath.replace(/^\/+|\/+$/g, "");
-  if (!normalized) {
-    return new Err(new Error("relativeDirPath is required."));
-  }
-
-  const gcsPath = `${prefix}${normalized}/`;
-  const bucket = getPrivateUploadBucket();
-  try {
-    const [exists] = await bucket.file(gcsPath).exists();
-    if (exists) {
-      return new Err(new GCSMountDirectoryAlreadyExistsError());
-    }
-
-    await bucket.file(gcsPath).save(Buffer.alloc(0), {
-      contentType: "application/x-directory",
-    });
-
-    // Mirror the directory placeholder on the projects/ side for pod files.
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const projectsGcsPath = `${projectsPrefix}${normalized}/`;
-      await bucket.file(projectsGcsPath).save(Buffer.alloc(0), {
-        contentType: "application/x-directory",
-      });
-    }
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-
-  const fileName = normalized.split("/").pop() ?? normalized;
-  return new Ok(
-    makeDirectoryEntry(
-      {
-        fileName,
-        relativeFilePath: normalized,
-        sizeBytes: 0,
-        lastModifiedMs: Date.now(),
-      },
-      scope
-    )
-  );
 }
 
 /**
@@ -621,29 +238,11 @@ export async function deleteGCSMountFile(
       if (isDirectoryDelete) {
         await bucket.deleteByPrefix(dirGcsPrefix);
 
-        if (scope.useCase === "pod") {
-          const projectPrefix = getProjectFilesBasePath({
-            workspaceId: owner.sId,
-            projectId: scope.podId,
-          });
-          await bucket.deleteByPrefix(`${projectPrefix}${normalized}/`);
-        }
-
         return new Ok(undefined);
       }
     }
 
     await bucket.delete(gcsPath, { ignoreNotFound: true });
-
-    // Mirror delete on the projects/ side for pod files.
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const projectsGcsPath = `${projectsPrefix}${normalized}`;
-      await bucket.delete(projectsGcsPath, { ignoreNotFound: true });
-    }
 
     return new Ok(undefined);
   } catch (err) {
@@ -672,16 +271,6 @@ export async function copyMountFile(
 
   try {
     await bucket.copyFile(sourceGcsPath, destGcsPath);
-
-    // Mirror the destination write on the projects/ side for pod files (double-write counterpart).
-    if (dest.scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: dest.scope.podId,
-      });
-      const destProjectsPath = `${projectsPrefix}${dest.relativeFilePath}`;
-      await bucket.copyFile(sourceGcsPath, destProjectsPath);
-    }
 
     return new Ok(undefined);
   } catch (err) {
@@ -924,44 +513,12 @@ export async function moveFile(
 ): Promise<Result<void, Error>> {
   const destGcsPath = `${resolvePrefix(auth.getNonNullableWorkspace(), destScope)}${destRelativeFilePath}`;
 
-  // Normalize legacy `projects/` source paths to their `pods/` counterpart. The GSC migration guarantees the `pods/` copy exists for all files, so this ensures the move works regardless of whether the source path has been backfilled.
-  const normalizedSourceGcsPath = sourceGcsPath.replace("/projects/", "/pods/");
-
   const moveRes = await moveGCSMountFile({
-    sourceGcsPath: normalizedSourceGcsPath,
+    sourceGcsPath,
     destGcsPath,
   });
   if (moveRes.isErr()) {
     return moveRes;
-  }
-
-  // Dual-write to the projects/ side. Copy from the new canonical so this works even when
-  // the source had no pre-existing projects/ mirror.
-  const bucket = getPrivateUploadBucket();
-  if (destScope.useCase === "pod") {
-    const projectsPrefix = getProjectFilesBasePath({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      projectId: destScope.podId,
-    });
-    const destProjectsPath = `${projectsPrefix}${destRelativeFilePath}`;
-    try {
-      await bucket.copyFile(destGcsPath, destProjectsPath);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
-  }
-
-  // Clean up the projects/ mirror of the source if the source was a pod mount path.
-  const sourceProjectsPath = toProjectMountFilePath(normalizedSourceGcsPath);
-  if (sourceProjectsPath) {
-    try {
-      await bucket.delete(sourceProjectsPath, { ignoreNotFound: true });
-    } catch (err) {
-      logger.error(
-        { sourceProjectsPath, err: normalizeError(err) },
-        "moveFile: source projects/ mirror delete failed after successful move"
-      );
-    }
   }
 
   if (file) {

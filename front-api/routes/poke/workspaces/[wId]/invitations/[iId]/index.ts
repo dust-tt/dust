@@ -14,6 +14,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/invitations/:iId.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

@@ -21,6 +21,7 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import { DataSourceQuotaExceededError } from "@connectors/lib/error";
+import { htmlToMarkdown } from "@connectors/lib/html_to_markdown";
 import {
   IntercomConversationModel,
   IntercomTeamModel,
@@ -28,11 +29,7 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
-import TurndownService from "turndown";
-
-const turndownService = new TurndownService();
-
+import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
 export async function deleteTeamAndConversations({
   connectorId,
   dataSourceConfig,
@@ -221,7 +218,9 @@ export async function syncConversation({
 
   // Building the markdown content for the conversation
   let markdown = "";
-  let convoTitle = conversation.title;
+  let convoTitle = conversation.title
+    ? stripNullBytes(conversation.title)
+    : null;
 
   if (!convoTitle) {
     const formattedDate = createdAtDate.toLocaleDateString("en-US", {
@@ -233,11 +232,13 @@ export async function syncConversation({
   }
   const customAttributes = conversation.custom_attributes;
   const tags = conversation.tags?.tags ?? [];
-  const tagsAsString = tags.map((tag: IntercomTagType) => tag.name).join(", ");
+  const tagsAsString = tags
+    .map((tag: IntercomTagType) => stripNullBytes(tag.name))
+    .join(", ");
   const source = conversation.source?.type ?? null;
   const firstMessageAuthor = conversation.source?.author ?? null;
   const firstMessageContent = conversation.source?.body
-    ? turndownService.turndown(conversation.source.body)
+    ? htmlToMarkdown(stripNullBytes(conversation.source.body))
     : null;
 
   markdown += `# ${convoTitle}\n\n`;
@@ -254,7 +255,7 @@ export async function syncConversation({
     (part: ConversationPartType) => {
       const messageAuthor = part.author;
       const messageContent = part.body
-        ? turndownService.turndown(part.body)
+        ? htmlToMarkdown(stripNullBytes(part.body))
         : null;
       const type = part.part_type === "note" ? "Internal note" : "Message";
 
@@ -275,7 +276,7 @@ export async function syncConversation({
 
   const renderedPage = await renderDocumentTitleAndContent({
     dataSourceConfig,
-    title: conversation.title,
+    title: convoTitle,
     content: renderedMarkdown,
     createdAt: createdAtDate,
     updatedAt: updatedAtDate,
@@ -300,13 +301,13 @@ export async function syncConversation({
       typeof value === "number" ||
       typeof value === "boolean"
     ) {
-      systemTags.push(`attribute:${name}:${value}`);
+      systemTags.push(stripNullBytes(`attribute:${name}:${value}`));
     }
   });
 
   const customTags: string[] = [];
   tags.forEach((tag) => {
-    customTags.push(`tag:${tag.name}`);
+    customTags.push(stripNullBytes(`tag:${tag.name}`));
   });
 
   const datasourceTags = [

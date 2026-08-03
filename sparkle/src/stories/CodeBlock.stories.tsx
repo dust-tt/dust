@@ -4,8 +4,23 @@ import React from "react";
 import { CodeBlock } from "../index_with_tw_base";
 
 const meta: Meta<typeof CodeBlock> = {
-  title: "Conversation/CodeBlock",
+  title: "Product/Conversation/CodeBlock",
   component: CodeBlock,
+  parameters: {
+    docs: {
+      description: {
+        component: `Renders syntax-highlighted code from an agent message, either as an \`inline\` snippet or a full block. The language is derived from a \`className\` (e.g. \`language-typescript\`), and block code supports \`wrapLongLines\`, \`showLineNumber\`, and a \`surface\` \`variant\`.
+
+**When to use**
+- To display code returned by an agent — both inline tokens within prose and multi-line blocks.
+
+**Guidelines**
+- Set \`inline\` for short in-sentence snippets; leave it off for multi-line blocks.
+- Pass the language via \`className\` (\`language-<lang>\`) so highlighting matches the content.
+- Enable \`wrapLongLines\` for narrow containers; otherwise long lines scroll horizontally. This component backs the code rendering in **Markdown**.`,
+      },
+    },
+  },
   argTypes: {
     children: {
       description: "The code content to display",
@@ -41,7 +56,7 @@ const meta: Meta<typeof CodeBlock> = {
   },
   decorators: [
     (Story) => (
-      <div className="s-bg-background s-p-4 dark:s-bg-background-night">
+      <div className="bg-background p-4">
         <Story />
       </div>
     ),
@@ -143,8 +158,8 @@ export default Counter;`,
 export const CSSBlock: Story = {
   args: {
     children: `.code-block {
-  background-color: var(--s-muted);
-  border: 1px solid var(--s-border);
+  background-color: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 1rem;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
@@ -168,8 +183,8 @@ export const CSSBlock: Story = {
 
 @media (prefers-color-scheme: dark) {
   .code-block {
-    background-color: var(--s-muted-night);
-    border-color: var(--s-border-night);
+    background-color: var(--color-gray-950);
+    border-color: var(--color-gray-800);
   }
 }`,
     className: "language-css",

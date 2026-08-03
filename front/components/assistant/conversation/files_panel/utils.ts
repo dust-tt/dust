@@ -1,5 +1,5 @@
 import type { FilePanelCategory } from "@app/components/file_explorer/types";
-import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
+import { getCategoryFromContentType } from "@app/components/file_explorer/utils";
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
@@ -15,7 +15,7 @@ import type {
   ConversationAttachmentRow,
 } from "./types";
 
-export function getFilePanelCategory(
+function getFilePanelCategory(
   item: ConversationAttachmentItem
 ): FilePanelCategory {
   if (isContentNodeAttachmentType(item)) {
@@ -28,27 +28,7 @@ export function getFilePanelCategory(
       : "frame";
   }
 
-  const previewConfig = getFilePreviewConfig(item.contentType);
-
-  switch (previewConfig.category) {
-    case "pdf":
-      return "pdf";
-    case "image":
-      return "image";
-    case "audio":
-      return "audio";
-    case "delimited":
-      return "table";
-    case "code":
-    case "viewer":
-    case "markdown":
-    case "text":
-      return "document";
-    case "frame":
-      return "frame";
-    default:
-      return "other";
-  }
+  return getCategoryFromContentType(item.contentType);
 }
 
 export function conversationAttachmentToRow(

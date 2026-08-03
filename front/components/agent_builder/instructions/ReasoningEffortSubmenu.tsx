@@ -1,11 +1,15 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import {
   getAvailableReasoningEfforts,
-  type ModelConfigurationType,
   type ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import {
+  ChevronDown,
+  ChevronRight,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
@@ -13,10 +17,11 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  Icon,
 } from "@dust-tt/sparkle";
 import isEqual from "lodash/isEqual";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 const REASONING_EFFORT_DESCRIPTIONS: Record<ReasoningEffort, string> = {
@@ -27,7 +32,7 @@ const REASONING_EFFORT_DESCRIPTIONS: Record<ReasoningEffort, string> = {
 };
 
 interface ReasoningEffortSubmenuProps {
-  models: ModelConfigurationType[];
+  models: EnabledModelConfigurationType[];
 }
 
 export function ReasoningEffortSubmenu({
@@ -47,14 +52,17 @@ export function ReasoningEffortSubmenu({
     name: "generationSettings.reasoningEffort",
   });
 
+  const isMobile = useIsMobile();
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const modelConfig = useMemo(
     () =>
       models.find(
         (m) =>
-          m.modelId === modelSettings.modelId &&
-          m.providerId === modelSettings.providerId
+          m.modelId === modelSettings?.modelId &&
+          m.providerId === modelSettings?.providerId
       ),
-    [models, modelSettings.modelId, modelSettings.providerId]
+    [models, modelSettings?.modelId, modelSettings?.providerId]
   );
 
   useEffect(() => {
@@ -64,13 +72,13 @@ export function ReasoningEffortSubmenu({
         modelConfig.supportedReasoningEfforts
       );
 
-      if (!availableEfforts.includes(currentEffort)) {
+      if (!currentEffort || !availableEfforts.includes(currentEffort)) {
         field.onChange(modelConfig.defaultReasoningEffort);
       }
     }
   }, [modelConfig, field]);
 
-  if (!modelConfig) {
+  if (!modelConfig || !modelConfig.isSelectable) {
     return null;
   }
 
@@ -86,23 +94,45 @@ export function ReasoningEffortSubmenu({
     return <></>;
   }
 
+  const effortItems = (
+    <>
+      <DropdownMenuLabel label="Select reasoning effort" />
+      <DropdownMenuRadioGroup value={field.value ?? undefined}>
+        {availableEfforts.map((effort) => (
+          <DropdownMenuRadioItem
+            key={effort}
+            value={effort}
+            label={asDisplayName(effort)}
+            description={REASONING_EFFORT_DESCRIPTIONS[effort]}
+            onClick={() => field.onChange(effort)}
+          />
+        ))}
+      </DropdownMenuRadioGroup>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <DropdownMenuItem
+          label="Custom reasoning effort"
+          endComponent={
+            <Icon visual={isExpanded ? ChevronDown : ChevronRight} size="xs" />
+          }
+          onClick={() => setIsExpanded((v) => !v)}
+          onSelect={(e) => e.preventDefault()}
+        />
+        {isExpanded && effortItems}
+      </>
+    );
+  }
+
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger label="Reasoning effort" />
+      <DropdownMenuSubTrigger label="Custom reasoning effort" />
       <DropdownMenuPortal>
         <DropdownMenuSubContent className="w-80">
-          <DropdownMenuLabel label="Select reasoning effort" />
-          <DropdownMenuRadioGroup value={field.value}>
-            {availableEfforts.map((effort) => (
-              <DropdownMenuRadioItem
-                key={effort}
-                value={effort}
-                label={asDisplayName(effort)}
-                description={REASONING_EFFORT_DESCRIPTIONS[effort]}
-                onClick={() => field.onChange(effort)}
-              />
-            ))}
-          </DropdownMenuRadioGroup>
+          {effortItems}
         </DropdownMenuSubContent>
       </DropdownMenuPortal>
     </DropdownMenuSub>

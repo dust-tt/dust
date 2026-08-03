@@ -4,16 +4,12 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import type { KeyType } from "@app/types/key";
+import type { PostKeysResponseBody } from "@app/types/api/keys";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PostKeysResponseBody = {
-  key: KeyType;
-};
 
 const KeyIdParamSchema = z.object({
   id: z.string(),
@@ -22,12 +18,14 @@ const KeyIdParamSchema = z.object({
 // Mounted at /api/w/:wId/keys/:id/disable.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsAdmin(),
   validate("param", KeyIdParamSchema),
   async (ctx): HandlerResult<PostKeysResponseBody> => {
     const auth = ctx.get("auth");
+    const user = auth.getNonNullableUser();
     const owner = auth.getNonNullableWorkspace();
 
     const { id } = ctx.req.valid("param");
@@ -64,7 +62,7 @@ app.post(
 
     return ctx.json({
       key: {
-        ...key.toJSON(),
+        ...key.toJSON(user.id),
         status: "disabled",
       },
     });

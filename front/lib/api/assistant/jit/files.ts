@@ -3,14 +3,14 @@ import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_interna
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
  * Get the files MCP server for conversation file system access.
  */
 export function getFilesServer(
-  agentConfiguration: LightAgentConfigurationType,
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
   conversation: ConversationWithoutContentType,
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): ServerSideMCPServerConfigurationType | null {

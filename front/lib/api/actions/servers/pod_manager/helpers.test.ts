@@ -1,10 +1,11 @@
+import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import { getProjectConversationFolderInternalId } from "@app/lib/api/projects/context";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildProjectRetrieveDataSources } from "./helpers";
+import { buildProjectRetrieveDataSources, getPod } from "./helpers";
 
 const { mockFetchProjectDataSourceView, mockListProjectContextAttachments } =
   vi.hoisted(() => ({
@@ -232,5 +233,46 @@ describe("buildProjectRetrieveDataSources", () => {
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
       },
     ]);
+  });
+});
+
+describe("getPod with a caller-supplied dustPod", () => {
+  it("returns not-found for a pod the caller cannot read", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    // A private project the caller is not a member of (admin role does not grant read).
+    const otherPod = await SpaceFactory.project(workspace);
+
+    const result = await getPod(auth, {
+      dustPod: {
+        uri: makePodConfigurationURI(workspace.sId, otherPod.sId),
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
+      },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("Pod not found");
+    }
+  });
+
+  it("resolves a pod the caller can read", async () => {
+    const { auth, workspace, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const result = await getPod(auth, {
+      dustPod: {
+        uri: makePodConfigurationURI(workspace.sId, globalSpace.sId),
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.pod.sId).toBe(globalSpace.sId);
+    }
   });
 });

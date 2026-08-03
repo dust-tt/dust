@@ -86,7 +86,6 @@ pub mod providers {
     pub mod noop;
     pub mod openai_compatible_helpers;
     pub mod openai_responses_api_helpers;
-    pub mod togetherai;
     pub mod xai;
 }
 pub mod http {
@@ -164,6 +163,7 @@ pub mod oauth {
         pub mod notion;
         pub mod productboard;
         pub mod salesforce;
+        pub mod servicenow;
         pub mod slack;
         pub mod slack_tools;
         pub mod snowflake;

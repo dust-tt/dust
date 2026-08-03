@@ -1,3 +1,4 @@
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import logger from "@app/logger/logger";
@@ -19,7 +20,6 @@ import type {
   UpdateOptions,
   WhereOptions,
 } from "sequelize";
-import { DataTypes, Op } from "sequelize";
 import type { ModelHooks } from "sequelize/lib/hooks";
 
 // Log only 1 time out of 100 on average.
@@ -252,6 +252,9 @@ export type ModelStaticWorkspaceAware<M extends WorkspaceAwareModel> =
 export type ModelStaticSoftDeletable<
   M extends SoftDeletableWorkspaceAwareModel,
 > = ModelStatic<M> & {
+  destroy(
+    options: WithHardDelete<DestroyOptions<Attributes<M>>>
+  ): Promise<number>;
   findAll(
     options: WithIncludeDeleted<
       WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
@@ -307,6 +310,7 @@ export class SoftDeletableWorkspaceAwareModel<
   // Delete.
 
   private static async softDelete<M extends Model>(
+    this: ModelStatic<M>,
     options: DestroyOptions<Attributes<M>>
   ): Promise<number> {
     const updateOptions: UpdateOptions<Attributes<M>> = {
@@ -325,13 +329,14 @@ export class SoftDeletableWorkspaceAwareModel<
   }
 
   public static override async destroy<M extends Model>(
+    this: ModelStatic<M>,
     options: WithHardDelete<DestroyOptions<Attributes<M>>>
   ): Promise<number> {
     if (options.hardDelete) {
       return super.destroy(options);
     }
 
-    return this.softDelete(options);
+    return SoftDeletableWorkspaceAwareModel.softDelete.call(this, options);
   }
 
   // Fetch.

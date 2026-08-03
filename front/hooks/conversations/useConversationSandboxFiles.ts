@@ -1,8 +1,6 @@
+import type { GetConversationFilesResponseBody } from "@app/lib/api/assistant/conversation/files";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type {
-  FileSystemEntry,
-  GetConversationFilesResponseBody,
-} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
+import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

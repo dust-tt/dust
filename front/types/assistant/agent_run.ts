@@ -5,12 +5,18 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
+import { legacyModelIdToModel } from "@app/lib/api/llm";
+import { selectPreferredStreamEndpointForWorkspace } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
+import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type {
   AgentConfigurationType,
+  AgentConfigurationWithoutModelType,
+  AgentModelConfigurationType,
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import type {
@@ -23,6 +29,8 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import { NOOP_MODEL_ID } from "@app/types/assistant/models/noop";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
 import { isGlobalAgentId } from "./assistant";
@@ -32,7 +40,7 @@ import { ConversationError } from "./conversation";
  * Error types for getAgentLoopData that indicate deleted or unavailable resources.
  * These are safe to ignore in callers since retrying won't make the data available.
  */
-export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
+const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "conversation_deleted",
   "agent_message_deleted",
   "user_message_deleted",
@@ -41,10 +49,10 @@ export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
 // Cache for 200 seconds, which maps to P95 execution time of the agent loop.
 const AGENT_CONFIGURATION_CACHE_TTL_MS = 200 * 1000;
 
-export type AgentLoopDataSoftDeleteErrorType =
+type AgentLoopDataSoftDeleteErrorType =
   (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
 
-export class AgentLoopDataError extends Error {
+class AgentLoopDataError extends Error {
   readonly type: AgentLoopDataSoftDeleteErrorType;
 
   constructor(type: AgentLoopDataSoftDeleteErrorType) {
@@ -71,16 +79,17 @@ export type ConversationCaching =
 async function getConversationForAgentLoop(
   auth: Authenticator,
   conversationId: string,
-  conversationBranchId: string | null,
+  _conversationBranchId: string | null,
   // These params are only used for cache key uniqueness.
   _workspaceId: string,
   _unicitySuffix: string
 ): Promise<ConversationType> {
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const res = await getConversation(
     auth,
     conversationId,
     false,
-    conversationBranchId,
+    null,
     PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
   );
   if (res.isErr()) {
@@ -92,8 +101,13 @@ async function getConversationForAgentLoop(
 function getCachedGetConversation(ttlMs: number) {
   return cacheWithRedis(
     getConversationForAgentLoop,
-    (_auth, conversationId, conversationBranchId, workspaceId, unicitySuffix) =>
-      `${workspaceId}:${conversationId}:${conversationBranchId}:${unicitySuffix}`,
+    (
+      _auth,
+      conversationId,
+      _conversationBranchId,
+      workspaceId,
+      unicitySuffix
+    ) => `${workspaceId}:${conversationId}:${unicitySuffix}`,
     {
       ttlMs,
       useDistributedLock: true,
@@ -129,8 +143,20 @@ export type AgentMessageRef = {
   conversationId: string;
 };
 
+export type ModelInfo<E> = {
+  endpoint: E;
+  temperature: number;
+  reasoningEffort?: ReasoningEffort;
+  responseFormat?: string;
+  metaData?: Record<string, unknown>;
+};
+
+export type StreamModelInfo = ModelInfo<DustStreamEndpointConstructor>;
+
 export type AgentLoopExecutionData = {
-  agentConfiguration: AgentConfigurationType;
+  // No models on the agent configuration as it might be different at run time (eg: auto mode, override by inputbar picker)
+  agentConfiguration: AgentConfigurationWithoutModelType;
+  modelInfo: StreamModelInfo;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
   userMessage: UserMessageType;
@@ -149,7 +175,7 @@ export async function getAgentLoopData(
     AgentLoopDataError | Error
   >
 > {
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   return getAgentLoopDataWithAuth(auth, agentLoopArgs);
 }
@@ -172,7 +198,6 @@ export async function getAgentLoopDataWithAuth(
     agentMessageVersion,
     caching,
     conversationId,
-    conversationBranchId,
     userMessageId,
     userMessageVersion,
   } = agentLoopArgs;
@@ -184,7 +209,7 @@ export async function getAgentLoopDataWithAuth(
       conversation = await cachedGetConversation(
         auth,
         conversationId,
-        conversationBranchId,
+        null,
         auth.getNonNullableWorkspace().sId,
         caching.unicitySuffix
       );
@@ -209,11 +234,12 @@ export async function getAgentLoopDataWithAuth(
       throw error;
     }
   } else {
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(
       auth,
       conversationId,
       false,
-      conversationBranchId,
+      null,
       PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
     );
 
@@ -315,11 +341,65 @@ export async function getAgentLoopDataWithAuth(
   });
 
   if (!agentConfiguration) {
-    return new Err(new Error("Agent configuration not found"));
+    return new Err(new Error(`Agent configuration not found ${agentId}`));
   }
 
+  const { model: agentModelConfig, ...agentConfigurationWithoutModel } =
+    agentConfiguration;
+
+  // The resolved model is stored in the agent message.
+  // Legacy message will not have a resolved model.
+  const { resolvedModel } = agentMessage;
+  // Global agents may pin the noop model at run time (static replies from the dust and
+  // sidekick agents, see `getStaticReplyForUserMessage`). The model stored on the agent
+  // message was resolved at creation time without that context, so it must not override
+  // the noop pin.
+  const isNoopPinnedModel = agentModelConfig.modelId === NOOP_MODEL_ID;
+  const resolvedModelConfig: AgentModelConfigurationType = {
+    // Apply configuration that are not stored in the resolved model (temperature, responseFormat, etc.)
+    ...agentModelConfig,
+    // Apply the resolved model.
+    ...(isNoopPinnedModel ? null : resolvedModel),
+  };
+
+  // Select the endpoint by its router-native `model` id (bare `Model`), 1-to-1
+  // with legacy model selection.
+  const model = legacyModelIdToModel(resolvedModelConfig.modelId);
+
+  // The noop pin is internal (static replies): it must resolve for every workspace, so it
+  // bypasses the workspace endpoint gating (feature flag, region) that applies to
+  // user-selected models.
+  const endpoint = isNoopPinnedModel
+    ? DustNoopNoopGlobalNoopStream
+    : model
+      ? await selectPreferredStreamEndpointForWorkspace(auth, {
+          model: { eq: model },
+        })
+      : null;
+
+  if (!endpoint) {
+    return new Err(
+      new Error(
+        `The selected model was not found ${resolvedModelConfig.modelId}.`
+      )
+    );
+  }
+
+  const { temperature, reasoningEffort, responseFormat, metaData } =
+    resolvedModelConfig;
+
   return new Ok({
-    agentConfiguration,
+    agentConfiguration: agentConfigurationWithoutModel,
+    modelInfo: {
+      endpoint,
+      temperature,
+      reasoningEffort,
+      metaData,
+      // Cleanup unsupported settings
+      responseFormat: endpoint.modelConfig.supportsResponseFormat
+        ? responseFormat
+        : undefined,
+    },
     agentMessage,
     auth,
     conversation,

@@ -27,6 +27,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
   validate("param", ParamsSchema),

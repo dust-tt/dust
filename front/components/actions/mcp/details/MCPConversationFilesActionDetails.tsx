@@ -6,7 +6,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  DocumentIcon,
+  File02,
 } from "@dust-tt/sparkle";
 
 const MAX_PREVIEW_LINES = 10;
@@ -27,7 +27,7 @@ export function MCPConversationCatFileDetails({
             ? "Reading conversation file"
             : "Read conversation file"
         }
-        visual={DocumentIcon}
+        visual={File02}
       />
     );
   }
@@ -48,15 +48,13 @@ export function MCPConversationCatFileDetails({
           ? "Reading conversation file"
           : "Read conversation file"
       }
-      visual={DocumentIcon}
+      visual={File02}
     >
       {displayContext !== "conversation" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           {displayContext === "sidebar-single-action" ? (
             <div>
-              <span className="font-medium text-foreground dark:text-foreground-night">
-                Preview
-              </span>
+              <span className="font-medium text-foreground">Preview</span>
               <div className="py-2">
                 <CodeBlock className="language-text max-h-32 overflow-y-auto">
                   {truncatedContent}
@@ -66,7 +64,7 @@ export function MCPConversationCatFileDetails({
           ) : (
             <Collapsible defaultOpen={false}>
               <CollapsibleTrigger>
-                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                <span className="text-sm font-semibold text-foreground">
                   Preview
                 </span>
               </CollapsibleTrigger>

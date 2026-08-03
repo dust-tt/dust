@@ -1,9 +1,9 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { GroupKind } from "@app/types/groups";
 import { isGlobalGroupKind, isSystemGroupKind } from "@app/types/groups";
 import type { CreationOptional, Transaction } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare createdAt: CreationOptional<Date>;
@@ -14,6 +14,10 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
 
   // Group ID on workOS, unique across all directories.
   declare workOSGroupId: string | null;
+
+  // Per-group usage spend limit (excluding seat allowance), applied per member.
+  // null means the group carries no cap (falls back to the workspace default).
+  declare poolCapAwuCredits: CreationOptional<number | null>;
 }
 
 GroupModel.init(
@@ -38,6 +42,10 @@ GroupModel.init(
     },
     workOSGroupId: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    poolCapAwuCredits: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
   },

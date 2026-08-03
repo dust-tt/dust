@@ -1,4 +1,4 @@
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+import type { FetchAssistantTemplatesResponse } from "@app/lib/resources/template_resource";
 import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
 import type {
   TemplateTagCodeType,
@@ -18,7 +18,7 @@ import type { CellContext } from "@tanstack/react-table";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 
-export interface TemplatesDisplayType {
+interface TemplatesDisplayType {
   id: string;
   name: string;
   hasSidekickInstructions: boolean;
@@ -41,7 +41,7 @@ function prepareTemplatesForDisplay(
   }));
 }
 
-export function makeColumnsForTemplates() {
+function makeColumnsForTemplates() {
   return [
     {
       accessorKey: "id",
@@ -147,7 +147,7 @@ export function TemplatesDataTable() {
       />
       <div className="mt-2 flex w-full flex-col items-center gap-2">
         {isAssistantTemplatesLoading ? (
-          <Spinner variant="color" />
+          <Spinner />
         ) : (
           <DataTable
             data={data}

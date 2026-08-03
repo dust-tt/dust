@@ -1,5 +1,7 @@
 import { expect } from "vitest";
 
+export const SSE_DONE_SENTINEL = "done";
+
 // eslint-disable-next-line require-yield
 export async function* emptyAsyncIterator<T>(): AsyncGenerator<T, void> {
   return;
@@ -25,18 +27,20 @@ export function throwingAsyncIterator<T>(events: T[], error: Error) {
   };
 }
 
-// Extracts the `data:` payloads from an SSE response body.
+// Extracts JSON `data:` payloads from an SSE response body, excluding the
+// reconnect sentinel written by routes that opt into writeDoneSentinel.
 export function parseSseDataPayloads(body: string): string[] {
   return body
     .split("\n\n")
     .map((chunk) => chunk.trim())
     .filter((chunk) => chunk.startsWith("data:"))
-    .map((chunk) => chunk.slice("data:".length).trim());
+    .map((chunk) => chunk.slice("data:".length).trim())
+    .filter((payload) => payload !== SSE_DONE_SENTINEL);
 }
 
 export async function expectEmptySseStream(
   response: Response,
-  { expectDoneSentinel = false }: { expectDoneSentinel?: boolean } = {}
+  { expectDoneSentinel = true }: { expectDoneSentinel?: boolean } = {}
 ) {
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toBe("text/event-stream");

@@ -4,25 +4,34 @@ import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSou
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import { getPublishingRestrictionForOwner } from "@app/lib/api/assistant/publishing_restrictions";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { isBuilder } from "@app/types/user";
+import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EyeIcon,
-  EyeSlashIcon,
+  Eye,
+  EyeOff,
   SlackLogo,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 import { useController } from "react-hook-form";
 
-export function AccessSection() {
+interface AccessSectionProps {
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
+}
+
+export function AccessSection({
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
+}: AccessSectionProps) {
   const { field: scope } = useController<
     AgentBuilderFormData,
     "agentSettings.scope"
@@ -47,19 +56,16 @@ export function AccessSection() {
 
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { owner } = useAgentBuilderContext();
-  const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
 
-  const {
-    disabled: publishingToggleDisabled,
-    tooltip: publishingToggleTooltip,
-  } = getPublishingRestrictionForOwner(featureFlags, owner);
+  const canPublishAgent = hasPermission("publish", "agent");
 
   const getDisplayValue = () => {
     return scope.value === "visible" ? "Published" : "Unpublished";
   };
 
   const getDisplayIcon = () => {
-    return scope.value === "visible" ? EyeIcon : EyeSlashIcon;
+    return scope.value === "visible" ? Eye : EyeOff;
   };
 
   const slackDataSource = slackProvider
@@ -68,25 +74,37 @@ export function AccessSection() {
       )?.dataSource
     : null;
 
+  const buttonLabel =
+    editors.length <= 1 ? "Add editors" : `${editors.length} editors`;
+
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          icon={UserGroupIcon}
-          label="Editors"
-          onClick={() => setIsEditorsOpen(true)}
-          type="button"
-        />
-        <ManageUsersPanel
-          isOpen={isEditorsOpen}
-          setIsOpen={setIsEditorsOpen}
-          owner={owner}
-          mode="editors-only"
-          editors={editors || []}
-          onEditorsChange={onChangeEditors}
-        />
+        {isEditorGateVisible ? (
+          <BecomeEditorButton
+            isLoading={isAddingSelfAsEditor}
+            onClick={onAddSelfAsEditor}
+          />
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Users01}
+              label={buttonLabel}
+              onClick={() => setIsEditorsOpen(true)}
+              type="button"
+            />
+            <ManageUsersPanel
+              isOpen={isEditorsOpen}
+              setIsOpen={setIsEditorsOpen}
+              owner={owner}
+              mode="editors-only"
+              editors={editors || []}
+              onEditorsChange={onChangeEditors}
+            />
+          </>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -96,29 +114,33 @@ export function AccessSection() {
               label={getDisplayValue()}
               isSelect
               type="button"
-              disabled={publishingToggleDisabled}
-              tooltip={publishingToggleTooltip}
+              disabled={!canPublishAgent}
+              tooltip={
+                !canPublishAgent
+                  ? "You don’t have permission to publish agents."
+                  : undefined
+              }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem
               label="Published"
               description="Visible & usable by all members of the workspace."
-              icon={EyeIcon}
+              icon={Eye}
               onClick={() => scope.onChange("visible")}
-              disabled={publishingToggleDisabled}
+              disabled={!canPublishAgent}
             />
             <DropdownMenuItem
               label="Unpublished"
               description="Visible & usable by editors only."
-              icon={EyeSlashIcon}
+              icon={EyeOff}
               onClick={() => scope.onChange("hidden")}
-              disabled={publishingToggleDisabled}
+              disabled={!canPublishAgent}
             />
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {scope.value === "visible" && slackDataSource && isBuilder(owner) && (
+        {scope.value === "visible" && slackDataSource && canPublishAgent && (
           <>
             <Button
               variant="outline"

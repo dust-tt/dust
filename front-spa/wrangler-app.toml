@@ -7,11 +7,5 @@ directory = "./dist/app"
 not_found_handling = "none"
 binding = "ASSETS"
 
-# Custom domain bleeding-edge.dust.tt (bound via Cloudflare dashboard).
-[env.bleeding-edge]
-name = "app-bleeding-edge-dust-tt"
-
-[env.bleeding-edge.assets]
-directory = "./dist/app"
-not_found_handling = "none"
-binding = "ASSETS"
+[vars]
+DUST_API_URL = "https://dust.tt"

@@ -1,3 +1,4 @@
+import type { AuditLogsPortalResponse } from "@app/lib/api/audit/workos_audit";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -9,7 +10,7 @@ import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos/organization";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -18,20 +19,21 @@ const PostAuditLogsRequestBodySchema = z.object({
   portal: z.enum(["view_logs", "configure_export"]),
 });
 
-export type AuditLogsPortalResponse = {
-  portalUrl: string;
-};
-
 // Mounted at /api/w/:wId/audit-logs.
 const app = workspaceApp();
 
 // Generates a WorkOS portal URL on click and emits an audit event.
 // WorkOS portal links are org-scoped (not user-scoped), so this is the
 // only place we can attribute portal access to a specific admin.
+/** @ignoreswagger */
 app.post(
   "/",
-  ensureIsAdmin(),
   validate("json", PostAuditLogsRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "admin",
+    "security",
+    "You do not have permission to manage identity and provisioning settings."
+  ),
   async (ctx): HandlerResult<AuditLogsPortalResponse> => {
     const auth = ctx.get("auth");
 

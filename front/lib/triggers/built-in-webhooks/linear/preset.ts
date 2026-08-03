@@ -1,3 +1,4 @@
+import { makeLinearWebhookEnvelopeSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/envelope";
 import { issueSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/issue";
 import { projectSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/project";
 import type {
@@ -9,7 +10,10 @@ const LINEAR_ISSUE_EVENT: WebhookEvent = {
   name: "issue",
   value: "Issue",
   description: "Lambda event for Linear webhooks",
-  schema: issueSchema,
+  schema: makeLinearWebhookEnvelopeSchema({
+    entityType: "Issue",
+    dataSchema: issueSchema,
+  }),
   sample: null,
 };
 
@@ -17,7 +21,10 @@ const LINEAR_PROJECT_EVENT: WebhookEvent = {
   name: "project",
   value: "Project",
   description: "Lambda event for Linear webhooks",
-  schema: projectSchema,
+  schema: makeLinearWebhookEnvelopeSchema({
+    entityType: "Project",
+    dataSchema: projectSchema,
+  }),
   sample: null,
 };
 

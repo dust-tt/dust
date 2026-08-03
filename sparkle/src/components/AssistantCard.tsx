@@ -3,7 +3,7 @@ import type { IconOnlyButtonProps } from "@sparkle/components/Button";
 import type { CardVariantType } from "@sparkle/components/Card";
 import { Card, CardActionButton } from "@sparkle/components/Card";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
-import { MoreIcon } from "@sparkle/icons/app/";
+import { DotsHorizontal } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -25,7 +25,9 @@ export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
   AssistantCardMore
 >(({ ...props }, ref) => {
-  return <CardActionButton size="icon" ref={ref} icon={MoreIcon} {...props} />;
+  return (
+    <CardActionButton size="icon" ref={ref} icon={DotsHorizontal} {...props} />
+  );
 });
 AssistantCardMore.displayName = "AssistantCardMore";
 
@@ -57,30 +59,28 @@ export const AssistantCard = React.forwardRef<
     return (
       <Card
         ref={ref}
-        size="md"
-        className={cn("s-flex s-flex-col s-gap-3", className)}
+        size="sm"
+        className={cn("flex flex-col gap-3", className)}
         onClick={onClick}
         onContextMenu={onContextMenu}
         action={action}
         variant={variant}
       >
-        <div className="s-flex s-gap-3">
+        <div className="flex gap-3">
           <Avatar visual={pictureUrl} size={iconSize} />
-          <div
-            className={cn("-s-mt-0.5 s-flex s-flex-col", action && "s-pr-8")}
-          >
+          <div className={cn("-mt-0.5 flex flex-col", action && "pr-8")}>
             <h3>
               <TruncatedText
                 lineClamp={1}
-                className="s-heading-base s-overflow-hidden s-text-ellipsis s-break-all notranslate"
+                className="text-sm font-medium overflow-hidden text-ellipsis break-all notranslate"
               >
                 {title}
               </TruncatedText>
             </h3>
             <p
               className={cn(
-                "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-text-xs",
-                "s-text-muted-foreground dark:s-text-muted-foreground-night"
+                "line-clamp-1 overflow-hidden text-ellipsis text-xs",
+                "text-muted-foreground"
               )}
             >
               {subtitle}
@@ -91,8 +91,8 @@ export const AssistantCard = React.forwardRef<
           <TruncatedText
             lineClamp={descriptionLineClamp}
             className={cn(
-              "s-overflow-hidden s-text-ellipsis s-pb-1 s-text-sm",
-              "s-text-muted-foreground dark:s-text-muted-foreground-night"
+              "overflow-hidden text-ellipsis pb-1 text-sm",
+              "text-muted-foreground"
             )}
           >
             {description}
@@ -118,19 +118,14 @@ export const LargeAssistantCard = React.forwardRef<
       onClick={onClick}
       variant="tertiary"
     >
-      <div className="s-flex s-gap-3">
+      <div className="flex gap-3">
         <Avatar visual={pictureUrl} size="lg" />
-        <div
-          className={cn(
-            "s-flex s-flex-col s-gap-2 s-text-base",
-            "s-text-foreground dark:s-text-foreground-night"
-          )}
-        >
-          <h3 className="s-heading-base">{title}</h3>
+        <div className={cn("flex flex-col gap-2 text-base", "text-foreground")}>
+          <h3 className="heading-base">{title}</h3>
           <p
             className={cn(
-              "s-line-clamp-5 s-overflow-hidden s-text-ellipsis",
-              "s-text-muted-foreground dark:s-text-muted-foreground-night"
+              "line-clamp-5 overflow-hidden text-ellipsis",
+              "text-muted-foreground"
             )}
           >
             {description}
@@ -164,23 +159,16 @@ export const CompactAssistantCard = React.forwardRef<
         ref={ref}
         size="md"
         className={cn(
-          "s-cursor-pointer s-flex s-flex-col s-items-start s-gap-1",
+          "cursor-pointer flex flex-col items-start gap-1",
           className
         )}
         onClick={onClick}
         variant={variant}
       >
         <Avatar visual={pictureUrl} size="sm" />
-        <div className="s-min-w-0">
-          <h3 className="s-heading-base s-line-clamp-1 s-text-foreground dark:s-text-foreground-night">
-            {title}
-          </h3>
-          <p
-            className={cn(
-              "s-line-clamp-3 s-text-sm",
-              "s-text-muted-foreground dark:s-text-muted-foreground-night"
-            )}
-          >
+        <div className="min-w-0">
+          <h3 className="heading-base line-clamp-1 text-foreground">{title}</h3>
+          <p className={cn("line-clamp-3 text-sm", "text-muted-foreground")}>
             {description}
           </p>
         </div>

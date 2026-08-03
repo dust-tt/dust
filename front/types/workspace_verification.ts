@@ -2,21 +2,9 @@
 export const VERIFICATION_STATUSES = ["pending", "verified"] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
-// API request/response types.
-export type StartVerificationRequest = {
-  phoneNumber: string;
-  captchaToken: string;
-};
-
-export type StartVerificationResponse = {
-  success: true;
-  message: string;
-};
-
-export type VerifyCodeRequest = {
-  phoneNumber: string;
-  code: string;
-};
+export type StartVerificationResponse =
+  | { status: "code_sent"; message: string }
+  | { status: "already_verified" };
 
 export type VerifyCodeResponse = {
   success: true;
@@ -72,6 +60,9 @@ export type PhoneLookupResult = {
 export type PhoneLookupErrorCode =
   | "invalid_phone_number"
   | "lookup_failed"
+  // Persona accepted the report but did not finish risk analysis within our
+  // poll window. Transient (Persona latency), not an error on our side.
+  | "lookup_timeout"
   | "not_mobile"
   | "prepaid_not_accepted"
   | "high_risk_blocked"

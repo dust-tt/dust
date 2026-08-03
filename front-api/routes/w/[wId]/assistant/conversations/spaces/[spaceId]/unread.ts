@@ -1,5 +1,6 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { GetSpaceUnreadConversationsResponseBody } from "@app/types/api/assistant/conversation/spaces";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -10,13 +11,10 @@ const ParamsSchema = z.object({
   spaceId: z.string(),
 });
 
-export type GetSpaceUnreadConversationsResponseBody = {
-  unreadConversationIds: string[];
-};
-
 // Mounted at /api/w/:wId/assistant/conversations/spaces/:spaceId/unread.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

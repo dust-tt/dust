@@ -7,6 +7,7 @@ import type {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  ClockRewind,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
@@ -14,7 +15,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  HistoryIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
@@ -106,7 +106,7 @@ export function SkillVersionHistory({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          icon={HistoryIcon}
+          icon={ClockRewind}
           size="sm"
           label={triggerLabel}
           isSelect
@@ -146,7 +146,7 @@ export function SkillVersionHistory({
                 <div className="flex w-full items-center justify-between">
                   <div className="flex flex-col">
                     <span>{formatVersionLabel(config)}</span>
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="text-xs text-muted-foreground">
                       by {getEditedByName(config)}
                     </span>
                   </div>

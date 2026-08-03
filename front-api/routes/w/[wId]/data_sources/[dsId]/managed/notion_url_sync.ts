@@ -4,8 +4,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceResource as DataSourceResourceClass } from "@app/lib/resources/data_source_resource";
-import type { GetPostNotionSyncResponseBody } from "@app/types/api/internal/spaces";
-import { PostNotionSyncPayloadSchema } from "@app/types/api/internal/spaces";
+import type { GetPostNotionSyncResponseBody } from "@app/types/api/spaces";
+import { PostNotionSyncPayloadSchema } from "@app/types/api/spaces";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -83,6 +83,7 @@ function errorJson(
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_sync.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { dsId } = ctx.req.valid("param");

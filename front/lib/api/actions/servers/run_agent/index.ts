@@ -19,9 +19,10 @@ import {
   type HandledToolAbortClassification,
   makeToolInterruptionError,
 } from "@app/lib/actions/tool_interruptions";
-import type {
-  ActionGeneratedFileType,
-  AgentLoopContextType,
+import {
+  type ActionGeneratedFileType,
+  isAgentLoopRunContext,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -30,6 +31,7 @@ import {
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import {
+  getRunAgentToolDescription,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
   RUN_AGENT_PLACEHOLDER_TOOL_NAME,
   RUN_AGENT_TOOL_SCHEMA,
@@ -54,11 +56,7 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type {
-  AgentErrorCategory,
-  GenericErrorContent,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -77,27 +75,6 @@ import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import maxBy from "lodash/maxBy";
 import type z from "zod";
-
-const UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES = [
-  "retryable_model_error",
-  "context_window_exceeded",
-  "empty_content",
-  "provider_internal_error",
-  "stream_error",
-] satisfies AgentErrorCategory[];
-const UNTRACKED_CHILD_AGENT_ERROR_CODES = ["max_step_reached"] as const;
-
-function shouldTrackChildAgentError(error: GenericErrorContent): boolean {
-  const category = error.metadata?.category;
-  if (
-    typeof category === "string" &&
-    UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES.some((c) => c === category)
-  ) {
-    return false;
-  }
-
-  return !UNTRACKED_CHILD_AGENT_ERROR_CODES.some((code) => code === error.code);
-}
 
 function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
   switch (agent.status) {
@@ -171,7 +148,7 @@ const runAgent = async (
   },
   {
     auth,
-    agentLoopContext,
+    toolContext,
     sendNotification,
     _meta,
     signal,
@@ -179,7 +156,7 @@ const runAgent = async (
     childAgentBlob,
   }: {
     auth: Authenticator;
-    agentLoopContext?: AgentLoopContextType;
+    toolContext?: ToolContext;
     sendNotification?: (
       notification: MCPProgressNotificationType
     ) => Promise<void>;
@@ -190,8 +167,8 @@ const runAgent = async (
   }
 ): Promise<ToolHandlerResult> => {
   assert(
-    agentLoopContext?.runContext,
-    "agentLoopContext is required to run the run_agent tool"
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
   );
 
   const abortSignal = signal ?? null;
@@ -221,7 +198,7 @@ const runAgent = async (
   }
 
   const { agentConfiguration: mainAgent, conversation: mainConversation } =
-    agentLoopContext.runContext;
+    toolContext.runContext;
 
   const parsedChildAgentIdRes = parseAgentConfigurationUri(uri);
   if (parsedChildAgentIdRes.isErr()) {
@@ -260,8 +237,7 @@ const runAgent = async (
     logger
   );
 
-  const instructions =
-    agentLoopContext.runContext.agentConfiguration.instructions;
+  const instructions = toolContext.runContext.agentConfiguration.instructions;
 
   // Store the query resource early so the UI can show it immediately while the child
   // conversation is being created. A second store fires below once conversationId and
@@ -299,7 +275,7 @@ const runAgent = async (
   const convRes = await getOrCreateConversation(
     api,
     auth,
-    agentLoopContext.runContext,
+    toolContext.runContext,
     {
       childAgentBlob,
       childAgentId: parsedChildAgentId,
@@ -312,7 +288,7 @@ const runAgent = async (
       fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
       filePaths: filePaths ?? null,
       conversationId: isHandoff ? mainConversation.sId : null,
-      originMessage: agentLoopContext.runContext.agentMessage,
+      originMessage: toolContext.runContext.agentMessage,
     }
   );
 
@@ -504,7 +480,9 @@ const runAgent = async (
       conversationId,
       config.getAppUrl()
     );
-    const { citationsOffset } = agentLoopContext.runContext.stepContext;
+    const { citationsOffset } = isAgentLoopRunContext(toolContext.runContext)
+      ? toolContext.runContext.stepContext
+      : { citationsOffset: 0 };
 
     const refs = getRefs().slice(
       citationsOffset,
@@ -640,14 +618,12 @@ const runAgent = async (
         }
       } else if (event.type === "agent_error") {
         const errorMessage = `Agent error: ${event.error.message}`;
-        // Certain types of agent errors should not be tracked as run_agent tool execution
-        // errors (they will be exposed to the model and will be tracked as errors from the
-        // agentic loop in the sub agent conversation).
-        const tracked = shouldTrackChildAgentError(event.error);
+        // Errors from sub-agents are typically captured by the monitoring stack through the
+        // actual sub-agent run, so avoid tracking them again as run_agent MCP errors.
         return await finalizeAndReturn(
           new Err(
             new MCPError(errorMessage, {
-              tracked,
+              tracked: false,
             })
           )
         );
@@ -668,7 +644,8 @@ const runAgent = async (
       } else if (
         event.type === "tool_approve_execution" ||
         event.type === "tool_personal_auth_required" ||
-        event.type === "tool_file_auth_required"
+        event.type === "tool_file_auth_required" ||
+        event.type === "tool_ask_user_question"
       ) {
         // Collect blocking events until the child marks one as the last blocking event for this
         // step, then stop the parent run_agent call and return a blocked response upstream.
@@ -752,17 +729,15 @@ const runAgent = async (
   );
 };
 
-function isRunAgentHandoffMode(
-  agentLoopContext?: AgentLoopContextType
-): boolean {
-  if (!agentLoopContext) {
+function isRunAgentHandoffMode(toolContext?: ToolContext): boolean {
+  if (!toolContext) {
     return false;
   }
 
   // Check if we're in the listToolsContext (when presenting tools to the model).
-  if (agentLoopContext.listToolsContext) {
+  if (toolContext.listToolsContext) {
     const agentActionConfig =
-      agentLoopContext.listToolsContext.agentActionConfiguration;
+      toolContext.listToolsContext.agentActionConfiguration;
     if (
       isServerSideMCPServerConfiguration(agentActionConfig) &&
       agentActionConfig.additionalConfiguration?.executionMode
@@ -774,8 +749,8 @@ function isRunAgentHandoffMode(
   }
 
   // Check if we're in the runContext (when executing the tool).
-  if (agentLoopContext.runContext) {
-    const toolConfig = agentLoopContext.runContext.toolConfiguration;
+  if (toolContext.runContext) {
+    const toolConfig = toolContext.runContext.toolConfiguration;
     if (
       isLightServerSideMCPToolConfiguration(toolConfig) &&
       toolConfig.additionalConfiguration?.executionMode
@@ -843,31 +818,31 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
 
 async function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContext
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("run_agent");
 
   let childAgentId: string | null = null;
 
   if (
-    agentLoopContext?.listToolsContext &&
+    toolContext?.listToolsContext &&
     isServerSideMCPServerConfiguration(
-      agentLoopContext.listToolsContext.agentActionConfiguration
+      toolContext.listToolsContext.agentActionConfiguration
     ) &&
-    agentLoopContext.listToolsContext.agentActionConfiguration.childAgentId
+    toolContext.listToolsContext.agentActionConfiguration.childAgentId
   ) {
     childAgentId =
-      agentLoopContext.listToolsContext.agentActionConfiguration.childAgentId;
+      toolContext.listToolsContext.agentActionConfiguration.childAgentId;
   }
 
   if (
-    agentLoopContext?.runContext &&
+    toolContext?.runContext &&
     isLightServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.toolConfiguration
+      toolContext.runContext.toolConfiguration
     ) &&
-    agentLoopContext.runContext.toolConfiguration.childAgentId
+    toolContext.runContext.toolConfiguration.childAgentId
   ) {
-    childAgentId = agentLoopContext.runContext.toolConfiguration.childAgentId;
+    childAgentId = toolContext.runContext.toolConfiguration.childAgentId;
   }
 
   let childAgentBlob: ChildAgentBlob | null = null;
@@ -883,7 +858,7 @@ async function createServer(
   if (!childAgentBlob) {
     registerTool(
       auth,
-      agentLoopContext,
+      toolContext,
       server,
       {
         name: "run_agent_tool_not_available",
@@ -896,6 +871,8 @@ async function createServer(
           done: "No child agent configured",
         },
         schema: RUN_AGENT_CONFIGURABLE_PROPERTIES,
+        toolCostCategory: "basic" as const,
+        freeUsage: false,
         handler: async () => new Err(new MCPError("No child agent configured")),
       },
       {
@@ -906,7 +883,7 @@ async function createServer(
     return server;
   }
 
-  const isHandoffConfiguration = isRunAgentHandoffMode(agentLoopContext);
+  const isHandoffConfiguration = isRunAgentHandoffMode(toolContext);
 
   const toolName = `run_${childAgentBlob.name}`;
   const mentionChild = serializeMention({
@@ -914,8 +891,17 @@ async function createServer(
     sId: childAgentId!, // We are sure childAgentId is *not* undefined here, as we check for childAgentBlob above
   });
   const toolDescription = isHandoffConfiguration
-    ? `Handoff completely to ${childAgentBlob.name} (${childAgentBlob.description}). Inform the user that you are handing off to ${mentionChild} before calling the tool since this agent will respond in the conversation.`
-    : `Run ${childAgentBlob.name} in the background and pass results back to the main agent. You will have access to the results of the agent in the conversation.`;
+    ? getRunAgentToolDescription({
+        executionMode: "handoff",
+        childAgentName: childAgentBlob.name,
+        childAgentDescription: childAgentBlob.description,
+        childAgentMention: mentionChild,
+      })
+    : getRunAgentToolDescription({
+        executionMode: "run-agent",
+        childAgentName: childAgentBlob.name,
+        childAgentDescription: childAgentBlob.description,
+      });
 
   const schema = {
     ...RUN_AGENT_TOOL_SCHEMA,
@@ -941,13 +927,13 @@ async function createServer(
       runAgent(params, {
         ...extra,
         auth,
-        agentLoopContext,
+        toolContext,
         toolName,
         childAgentBlob,
       }),
   } as unknown as ToolDefinition;
 
-  registerTool(auth, agentLoopContext, server, toolDefinition, {
+  registerTool(auth, toolContext, server, toolDefinition, {
     monitoringName: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
   });
 

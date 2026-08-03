@@ -32,6 +32,7 @@ export const runReinforcementPlugin = createPlugin({
         default: true,
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, resource, args) => {
     if (!resource) {

@@ -1,21 +1,20 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
-  ActionBrainIcon,
-  ActionGlobeIcon,
-  ActionImageIcon,
-  ActionMagnifyingGlassIcon,
-  ActionScanIcon,
-  ActionTableIcon,
   AnchoredPopover,
   Avatar,
+  Brain,
   Button,
   ConfettiBackground,
   cn,
+  Globe01,
+  Image01,
+  Scan,
+  SearchMd,
+  Table,
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
@@ -42,27 +41,27 @@ const CONNECTIONS_IN_TOUR_GUIDE: ConnectorProvider[] = [
 const ACTIONS_IN_TOUR_GUIDE = [
   {
     label: "Search data",
-    icon: ActionMagnifyingGlassIcon,
+    icon: SearchMd,
   },
   {
     label: "Table query",
-    icon: ActionTableIcon,
+    icon: Table,
   },
   {
     label: "Extract data",
-    icon: ActionScanIcon,
+    icon: Scan,
   },
   {
     label: "Image generation",
-    icon: ActionImageIcon,
+    icon: Image01,
   },
   {
     label: "Web search and browsing",
-    icon: ActionGlobeIcon,
+    icon: Globe01,
   },
   {
     label: "Reasoning",
-    icon: ActionBrainIcon,
+    icon: Brain,
   },
 ] as const;
 
@@ -70,22 +69,22 @@ const FAKE_AGENTS = [
   {
     name: "Translator",
     emoji: "💬",
-    backgroundColor: "bg-green-200 dark:bg-green-200-night",
+    backgroundColor: "bg-success-200",
   },
   {
     name: "TrailblazerGuard",
     emoji: "👮",
-    backgroundColor: "bg-blue-100 dark:bg-blue-100-night",
+    backgroundColor: "bg-highlight-100",
   },
   {
     name: "Transport",
     emoji: "🚌",
-    backgroundColor: "bg-blue-200 dark:bg-blue-200-night",
+    backgroundColor: "bg-highlight-200",
   },
   {
     name: "TrendTracker",
     emoji: "😻",
-    backgroundColor: "bg-rose-50 dark:bg-rose-200",
+    backgroundColor: "bg-warning-50",
   },
 ] as const;
 
@@ -93,42 +92,42 @@ const EXAMPLE_AGENTS = [
   {
     name: "FeedbackHelper",
     emoji: "❤️",
-    backgroundColor: "bg-rose-100 dark:bg-rose-100-night",
+    backgroundColor: "bg-warning-100",
   },
   {
     name: "RiskAnalyzer",
     emoji: "💀",
-    backgroundColor: "bg-lime-800 dark:bg-lime-800-night",
+    backgroundColor: "bg-success-800",
   },
   {
     name: "EngagementPro",
     emoji: "😂",
-    backgroundColor: "bg-golden-200 dark:bg-golden-200-night",
+    backgroundColor: "bg-info-200",
   },
   {
     name: "RunbookMaster",
     emoji: "🧑‍🚀",
-    backgroundColor: "bg-violet-800 dark:bg-violet-800-night",
+    backgroundColor: "bg-highlight-800",
   },
   {
     name: "BrandSpecialist",
     emoji: "👕",
-    backgroundColor: "bg-blue-200 dark:bg-blue-200-night",
+    backgroundColor: "bg-highlight-200",
   },
   {
     name: "CrisisManager",
     emoji: "🚒",
-    backgroundColor: "bg-red-200 dark:bg-red-200-night",
+    backgroundColor: "bg-warning-200",
   },
   {
     name: "PerformanceCoach",
     emoji: "🏆",
-    backgroundColor: "bg-yellow-200 dark:bg-yellow-200-night",
+    backgroundColor: "bg-info-200",
   },
   {
     name: "StrategyPlanner",
     emoji: "🎯",
-    backgroundColor: "bg-pink-100 dark:bg-pink-100-night",
+    backgroundColor: "bg-warning-100",
   },
 ] as const;
 
@@ -159,11 +158,9 @@ export function WelcomeTourGuide({
   const centeredRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
-  const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
 
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner);
+  const canCreateAgent = hasPermission("create", "agent");
 
   const connections = useMemo(() => {
     return Object.values(CONNECTOR_CONFIGURATIONS)
@@ -186,7 +183,7 @@ export function WelcomeTourGuide({
             ref={centeredRef}
             className={cn(
               "flex aspect-video w-full items-center justify-center rounded-t-2xl p-6 text-center",
-              "bg-brand-support-blue dark:bg-brand-support-blue-night"
+              "bg-brand-support-blue"
             )}
           >
             <ConfettiBackground variant="confetti" referentSize={centeredRef} />
@@ -201,9 +198,8 @@ export function WelcomeTourGuide({
             </span>{" "}
             workspace.
           </div>
-          <div className="copy-base px-3 text-muted-foreground dark:text-muted-foreground-night">
-            Discover the basics of Dust in{" "}
-            {!isRestrictedFromAgentCreation ? "3" : "2"} steps.
+          <div className="copy-base px-3 text-muted-foreground">
+            Discover the basics of Dust in {canCreateAgent ? "3" : "2"} steps.
           </div>
         </>
       ),
@@ -216,7 +212,7 @@ export function WelcomeTourGuide({
           <div
             className={cn(
               "relative flex aspect-video overflow-hidden rounded-t-2xl p-4 text-center",
-              "bg-brand-support-green dark:bg-brand-support-green-night"
+              "bg-brand-support-green"
             )}
           >
             <div className="flex gap-1">
@@ -256,7 +252,7 @@ export function WelcomeTourGuide({
           <div
             className={cn(
               "flex aspect-video flex-col items-center justify-center gap-4 rounded-t-2xl p-6 text-center",
-              "bg-brand-support-rose dark:bg-brand-support-rose-night"
+              "bg-brand-support-rose"
             )}
           >
             <div className="grid grid-cols-6 gap-2">
@@ -268,7 +264,7 @@ export function WelcomeTourGuide({
                     <Avatar
                       size="md"
                       icon={c.logo}
-                      backgroundColor="bg-white dark:bg-primary-800-night"
+                      backgroundColor="bg-background"
                     />
                   }
                 />
@@ -281,8 +277,8 @@ export function WelcomeTourGuide({
                     <Avatar
                       size="md"
                       icon={action.icon}
-                      backgroundColor="bg-gray-700"
-                      iconColor="text-gray-50"
+                      backgroundColor="bg-primary-700"
+                      iconColor="text-primary-50"
                     />
                   }
                 />
@@ -296,11 +292,9 @@ export function WelcomeTourGuide({
                 <span className="text-brand-red-rose">knowledge and tools</span>
                 .
               </div>
-              <div className="copy-base px-3 text-muted-foreground dark:text-muted-foreground-night">
+              <div className="copy-base px-3 text-muted-foreground">
                 Set up your connections and your tools in&nbsp;the{" "}
-                <span className="font-semibold text-foreground dark:text-foreground-night">
-                  spaces
-                </span>{" "}
+                <span className="font-semibold text-foreground">spaces</span>{" "}
                 tab.
               </div>
             </>
@@ -316,7 +310,7 @@ export function WelcomeTourGuide({
         </>
       ),
     },
-    ...(!isRestrictedFromAgentCreation
+    ...(canCreateAgent
       ? [
           {
             anchorRef: createAgentButtonRef,
@@ -370,8 +364,7 @@ export function WelcomeTourGuide({
       align={align}
       className={cn(
         "w-[20rem] shadow-xl",
-        "border-highlight-400 ring-2 ring-highlight-400/30",
-        "dark:border-border-night dark:bg-background-night"
+        "border-highlight-400 ring-2 ring-highlight-400/30"
       )}
       fullWidth
     >

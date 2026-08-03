@@ -5,26 +5,17 @@ import {
   cancelWorkspaceContractAtPeriodEnd,
   reactivateWorkspaceContract,
 } from "@app/lib/metronome/contract_lifecycle";
-import { parseMauTiers } from "@app/lib/metronome/mau_sync";
+import {
+  getProductSeatTypes,
+  getSeatSubscriptionsFromContract,
+} from "@app/lib/metronome/seat_types";
 import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import type { MetronomeContractSummary } from "@app/types/api/credits/metronome_contract";
+import { isSeatBased } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
-export type MetronomeContractSummary = {
-  planFamily: "pro" | "enterprise";
-  /**
-   * MAU tier boundaries parsed from the MAU_TIERS contract custom field.
-   * `null` for simple MAU (no tiering) or non-enterprise.
-   * Each tier has `start` (inclusive, 1-indexed) and `end` (exclusive, null = unlimited).
-   */
-  mauTiers: Array<{ start: number; end: number | null }> | null;
-  /** ms epoch — set when the contract is scheduled to end (cancellation or fixed term). */
-  contractEndingAtMs: number | null;
-  /** True if the contract has at least one seat-billed subscription */
-  hasSeatSubscription: boolean;
-};
 
 /**
  * Fetch the workspace's Metronome contract summary.
@@ -58,31 +49,39 @@ export async function getMetronomeContractSummary(
 
   const contract = contractResult.value;
 
-  const planFamily: "pro" | "enterprise" = isEntreprisePlanPrefix(
+  const planFamily: "pro" | "enterprise" = isEnterprisePlanPrefix(
     subscription.plan.code
   )
     ? "enterprise"
     : "pro";
 
-  const mauTiersField = contract.custom_fields?.MAU_TIERS;
-  const parsed = parseMauTiers(mauTiersField);
-  const mauTiers = parsed
-    ? parsed.map((t) => ({ start: t.start, end: t.end ?? null }))
-    : null;
-
   const contractEndingAtMs = contract.ending_before
     ? new Date(contract.ending_before).getTime()
     : null;
 
+  // `hasContractSeatSubscription` short-circuits on MAU/seat-less contracts
+  // before touching the product map; only resolve seat types (and the cached
+  // product map) when the contract actually sells seats.
+  const hasSeatSubscription = await hasContractSeatSubscription(contract);
+  let hasPersonalCreditSeats = false;
+  if (hasSeatSubscription) {
+    const productSeatTypes = await getProductSeatTypes();
+    const soldSeatTypes = getSeatSubscriptionsFromContract(
+      contract,
+      productSeatTypes
+    );
+    hasPersonalCreditSeats = [...soldSeatTypes.keys()].some(isSeatBased);
+  }
+
   return new Ok({
     planFamily,
-    mauTiers,
     contractEndingAtMs,
-    hasSeatSubscription: await hasContractSeatSubscription(contract),
+    hasSeatSubscription,
+    hasPersonalCreditSeats,
   });
 }
 
-export type ContractLifecycleAction = "cancel" | "reactivate";
+type ContractLifecycleAction = "cancel" | "reactivate";
 
 export async function applyContractLifecycleAction(
   auth: Authenticator,

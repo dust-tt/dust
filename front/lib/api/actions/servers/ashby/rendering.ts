@@ -16,11 +16,43 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 export const JOB_FIELD_PATH = "_systemfield.job";
 
+function renderCandidateSocialLinks(candidate: AshbyCandidate): string | null {
+  const socialLinkLines = candidate.socialLinks
+    ?.map((link) => {
+      const linkType = link.type.trim() || "Social Link";
+      const linkValue = link.value?.trim();
+      const linkUrl = link.url?.trim();
+      const linkTarget = linkUrl || linkValue;
+
+      if (!linkTarget) {
+        return null;
+      }
+
+      if (linkValue && linkUrl && linkValue !== linkUrl) {
+        return `- ${linkType}: ${linkValue} (${linkUrl})`;
+      }
+
+      return `- ${linkType}: ${linkTarget}`;
+    })
+    .filter((link): link is string => link !== null);
+
+  if (!socialLinkLines || socialLinkLines.length === 0) {
+    return null;
+  }
+
+  return ["Social Links:", ...socialLinkLines].join("\n");
+}
+
 function renderCandidate(candidate: AshbyCandidate): string {
   const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
 
   if (candidate.createdAt) {
     lines.push(`Created: ${new Date(candidate.createdAt).toISOString()}`);
+  }
+
+  const socialLinks = renderCandidateSocialLinks(candidate);
+  if (socialLinks) {
+    lines.push(socialLinks);
   }
 
   return lines.join("\n");
@@ -155,6 +187,10 @@ export function renderInterviewFeedbackRecap(
     "",
     `**Candidate:** ${candidate.name}`,
   ];
+  const socialLinks = renderCandidateSocialLinks(candidate);
+  if (socialLinks) {
+    header.push("", socialLinks);
+  }
 
   header.push(
     "",
@@ -192,11 +228,13 @@ export function renderCandidateNotes(
   notes: AshbyCandidateNote[]
 ): string {
   const delimiterLine = "=".repeat(80);
+  const socialLinks = renderCandidateSocialLinks(candidate);
 
   const header = [
     "# Candidate Notes",
     "",
     `**Candidate:** ${candidate.name}`,
+    ...(socialLinks ? ["", socialLinks] : []),
     "",
     `**Total Notes:** ${notes.length}`,
     "",

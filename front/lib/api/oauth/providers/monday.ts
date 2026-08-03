@@ -18,20 +18,9 @@ export class MondayOAuthProvider implements BaseOAuthStrategyProvider {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
   }) {
-    const scopes = [
-      "me:read",
-      "boards:read",
-      "boards:write",
-      "updates:read",
-      "updates:write",
-      "users:read",
-      "workspaces:read",
-    ];
-
     return (
       `https://auth.monday.com/oauth2/authorize` +
       `?client_id=${config.getOAuthMondayClientId()}` +
-      `&scope=${encodeURIComponent(scopes.join(" "))}` +
       `&state=${connection.connection_id}` +
       `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("monday"))}`
     );

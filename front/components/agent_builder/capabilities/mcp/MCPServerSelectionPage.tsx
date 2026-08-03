@@ -9,12 +9,12 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import {
   ActionCard,
   ActionIcons,
-  BookOpenIcon,
+  BookOpen01,
   Hoverable,
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
-export interface MCPServerCardProps {
+interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
   onClick: () => void;
@@ -32,7 +32,7 @@ export function MCPServerCard({
 
   const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
-    : (InternalActionIcons[view.server.icon] ?? BookOpenIcon);
+    : (InternalActionIcons[view.server.icon] ?? BookOpen01);
 
   // Create a ref to use as portal container for tooltips to prevent click blocking
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -67,7 +67,7 @@ export function MCPServerCard({
         isSelected={isSelected}
         canAdd={canAdd}
         onClick={onClick}
-        cardContainerClassName="h-36"
+        cardContainerClassName="h-30"
         mountPortal
         // eslint-disable-next-line react-hooks/refs, @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}

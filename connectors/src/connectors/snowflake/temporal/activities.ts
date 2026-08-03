@@ -4,14 +4,13 @@ import {
   isConnectionReadonly,
   useWarehouse,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  RemoteDatabaseConnectionNotReadonlyError,
+} from "@connectors/lib/error";
 import { sync } from "@connectors/lib/remote_databases/activities";
 import { getConnectorAndCredentials } from "@connectors/lib/remote_databases/utils";
-import {
-  syncFailed,
-  syncStarted,
-  syncSucceeded,
-} from "@connectors/lib/sync_status";
+import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, isSnowflakeCredentials } from "@connectors/types";
@@ -66,11 +65,14 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     await sync({
       mimeTypes: INTERNAL_MIME_TYPES.SNOWFLAKE,
       connector,
+      preserveSelectedPermissions: true,
       tags: [],
     });
 
-    // ... and we mark the connector as errored.
-    await syncFailed(connectorId, "remote_database_connection_not_readonly");
+    // ... and we pause the connector until an admin fixes the Snowflake grants.
+    throw new RemoteDatabaseConnectionNotReadonlyError(
+      readonlyConnectionCheck.error
+    );
   } else {
     localLogger.info("Fetching tree from Snowflake");
     const treeRes = await fetchTree(

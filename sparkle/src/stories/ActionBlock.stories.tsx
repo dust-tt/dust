@@ -7,18 +7,32 @@ import {
   Avatar,
   Button,
   DiffBlock,
-  EyeIcon,
+  Eye,
   GmailLogo,
   Markdown,
-  PencilSquareIcon,
+  Edit04,
   SlackLogo,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/ActionBlock",
+  title: "Product/Conversation/ActionBlock",
   component: ActionCardBlock,
   parameters: {
     layout: "fullscreen",
+    docs: {
+      description: {
+        component: `An inline, actionable card rendered inside an agent message to propose a change and let the user accept or reject it. Built on **ActionCardBlock**, it tracks a \`state\` (\`active\`, \`disabled\`, \`accepted\`, \`rejected\`) and swaps in \`acceptedTitle\` / \`rejectedTitle\` once resolved, with **cardVariant** (\`highlight\`, \`warning\`, \`secondary\`), a **size** (\`default\` / \`compact\`), and **actionsPosition** (\`header\` / \`footer\`) for the accept/reject buttons.
+
+**When to use**
+- To surface an agent suggestion that needs explicit approval (enable a tool, rename an agent, invite editors) directly in the conversation flow.
+- When a request needs an "always allow" affordance via \`hasCheck\` / \`checkLabel\`.
+
+**Guidelines**
+- Wire \`onClickAccept\` / \`onClickReject\` to advance \`state\`; label buttons with the action (\`applyLabel\` / \`rejectLabel\`) rather than generic "OK".
+- Put optional detail behind \`collapsibleContent\` with a \`collapsibleLabel\` instead of crowding the \`description\`; render rich detail with **Markdown**.
+- For a non-actionable, display-only tool card in the agent builder, use **ActionCard** instead.`,
+      },
+    },
   },
 } satisfies Meta<typeof ActionCardBlock>;
 
@@ -58,7 +72,7 @@ const cardExamples: Omit<
     rejectLabel: "Reject",
     cardVariant: "highlight",
     actionsPosition: "header",
-    visual: <Avatar size="sm" emoji="👋" backgroundColor="s-bg-blue-100" />,
+    visual: <Avatar size="sm" emoji="👋" backgroundColor="bg-blue-100" />,
     description:
       "The current name is too generic. A descriptive name helps users pick the right agent faster.",
     collapsibleContent: (
@@ -76,7 +90,7 @@ const cardExamples: Omit<
     applyLabel: "Remove",
     rejectLabel: "Reject",
     cardVariant: "warning" as const,
-    visual: <Avatar size="sm" icon={SlackLogo} backgroundColor="s-bg-white" />,
+    visual: <Avatar size="sm" icon={SlackLogo} backgroundColor="bg-white" />,
     actionsPosition: "header" as const,
     description:
       "Disable the Slack tool to prevent the agent from posting or reading channel messages by default.",
@@ -89,7 +103,7 @@ const cardExamples: Omit<
     rejectLabel: "Reject",
     cardVariant: "highlight",
     initialState: "disabled" as ActionCardState,
-    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="s-bg-white" />,
+    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="bg-white" />,
     description:
       "Enable the Gmail tool so the agent can read and send emails when users ask to draft replies.",
   },
@@ -122,16 +136,16 @@ const cardExamples: Omit<
     cardVariant: "highlight",
     hasCheck: true,
     checkLabel: "Always allow",
-    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="s-bg-white" />,
+    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="bg-white" />,
     description: "Details about the action",
   },
 ];
 
 const ExamplesView = () => (
-  <div className="s-flex s-w-full s-gap-6 s-p-6">
+  <div className="flex w-full gap-6 p-6">
     {(["default", "compact"] as ActionCardBlockSize[]).map((size) => (
-      <div key={size} className="s-flex s-flex-1 s-flex-col s-gap-3">
-        <h2 className="s-heading-base s-capitalize">{size}</h2>
+      <div key={size} className="flex flex-1 flex-col gap-3">
+        <h2 className="heading-base capitalize">{size}</h2>
         {cardExamples.map((card, i) => (
           <StatefulActionCard key={i} {...card} size={size} />
         ))}

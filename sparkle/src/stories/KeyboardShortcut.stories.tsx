@@ -12,8 +12,22 @@ import {
 } from "@sparkle/index_with_tw_base";
 
 const meta = {
-  title: "Primitives/KeyboardShortcut",
+  title: "Actions/KeyboardShortcut",
   component: KeyboardShortcut,
+  parameters: {
+    docs: {
+      description: {
+        component: `Renders a keyboard shortcut as styled key caps. Pass a \`shortcut\` string with parts joined by \`+\` (e.g. \`Cmd+K\`, \`Shift+Cmd+P\`, \`ArrowUp+ArrowDown\`); modifier and arrow names are normalized to platform symbols (⌘, ⌥, ⇧, →).
+
+**When to use**
+- To surface the keyboard accelerator for an action, e.g. next to a menu item or in a hint.
+
+**Guidelines**
+- Write parts separated by \`+\` and let the component handle symbol rendering — don't hardcode glyphs.
+- Inside a dropdown, prefer **DropdownMenuShortcut** (which wraps this) via an item's \`endComponent\`.`,
+      },
+    },
+  },
 } satisfies Meta<typeof KeyboardShortcut>;
 
 export default meta;
@@ -24,7 +38,7 @@ export const Basic: Story = {
     shortcut: "Cmd+K",
   },
   render: () => (
-    <div className="s-flex s-flex-col s-gap-2">
+    <div className="flex flex-col gap-2">
       <KeyboardShortcut shortcut="Shift+Cmd+P" />
       <KeyboardShortcut shortcut="Ctrl+Alt+Del" />
       <KeyboardShortcut shortcut="Cmd+K" />
@@ -42,7 +56,7 @@ export const InDropdown: Story = {
       <DropdownMenuTrigger asChild>
         <Button label="Open Menu" variant="outline" size="sm" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="s-w-56">
+      <DropdownMenuContent className="w-56">
         <DropdownMenuItem
           label="Quick Open"
           endComponent={<DropdownMenuShortcut shortcut="Cmd+K" />}

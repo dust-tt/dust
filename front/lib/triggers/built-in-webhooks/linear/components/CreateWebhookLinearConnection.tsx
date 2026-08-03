@@ -11,7 +11,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Label,
-  PlusIcon,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -123,7 +123,7 @@ export function CreateWebhookLinearConnection({
                       <Button
                         label="Add team"
                         variant="outline"
-                        icon={PlusIcon}
+                        icon={Plus}
                         size="sm"
                       />
                     </DropdownMenuTrigger>
@@ -163,7 +163,7 @@ export function CreateWebhookLinearConnection({
           </div>
 
           {selectedTeams.length === 0 && (
-            <p className="dark:text-warning-night mt-1 text-xs text-warning">
+            <p className="mt-1 text-xs text-warning">
               Please select at least one team to create the webhook
             </p>
           )}

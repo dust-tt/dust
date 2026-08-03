@@ -2,7 +2,7 @@ import {
   Avatar,
   Button,
   Checkbox,
-  CheckIcon,
+  Check,
   ListGroup,
   ListItem,
   SearchInput,
@@ -160,9 +160,9 @@ export function InviteUsersScreen({
             value={searchText}
             onChange={setSearchText}
             placeholder="Search users..."
-            className="s-mt-2"
+            className="mt-2"
           />
-          <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
+          <div className="flex min-h-0 flex-1 flex-col">
             <ListGroup>
               {filteredUsers.map((user) => {
                 const isSelected = selectedUserIds.has(user.id);
@@ -191,11 +191,11 @@ export function InviteUsersScreen({
                       size="sm"
                       isRounded={true}
                     />
-                    <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                      <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-sm font-medium text-foreground">
                         {user.fullName}
                       </span>
-                      <span className="s-truncate s-text-xs s-text-muted-foreground">
+                      <span className="truncate text-xs text-muted-foreground">
                         {user.email}
                       </span>
                     </div>
@@ -211,9 +211,7 @@ export function InviteUsersScreen({
                             ? "Editor"
                             : "Set as editor"
                         }
-                        icon={
-                          editorUserIds.has(user.id) ? CheckIcon : undefined
-                        }
+                        icon={editorUserIds.has(user.id) ? Check : undefined}
                         onClick={(event) => {
                           event.stopPropagation();
                           toggleEditor(user.id);

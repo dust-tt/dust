@@ -114,6 +114,8 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(data.metadata).toEqual({
       archivedAt: null,
       createdAt: expect.anything(),
+      defaultAgentId: null,
+      defaultSkillIds: [],
       description: "Test project description",
       lastTodoAnalysisAt: null,
       pinnedFramePath: null,
@@ -145,7 +147,12 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     const member2 = await UserFactory.basic();
     await MembershipFactory.associate(workspace, member2, { role: "user" });
 
-    const projectGroup = space.groups[0];
+    const [projectGroup] = await space.fetchGroupResources(adminAuth, {
+      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
+    });
+    if (!projectGroup) {
+      throw new Error("Expected the project member group to exist.");
+    }
     await projectGroup.dangerouslyAddMember(adminAuth, {
       user: member1.toJSON(),
     });

@@ -1,5 +1,6 @@
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
+import type { AgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
@@ -97,7 +98,7 @@ export type ConversationForkNotice = {
 
 export type AgentMessageStateEvent = (
   | AgentMessageEvents
-  | ToolNotificationEvent
+  | AgentLoopToolNotificationEvent
 ) & { step: number };
 
 export type AgentMessageStateWithControlEvent =
@@ -125,6 +126,9 @@ export type VirtuosoMessageListContext = {
     draftAgent?: LightAgentConfigurationType;
     isSubmitting: boolean;
     actionsToShow: InputBarContainerProps["actions"];
+    // Locks the conversation to its current agent: no `@` agent suggestions
+    // and no agent switch on paste (used by the sidekick).
+    disableAgentMentions?: boolean;
     resetConversation: () => void;
     clientSideMCPServerIds?: string[];
     skipToolsValidation?: boolean;
@@ -138,9 +142,9 @@ export type VirtuosoMessageListContext = {
   isProjectArchived?: boolean;
   projectId?: string;
   projectSpaceName?: string;
-  branchIdToApprove?: string;
-  setBranchIdToApprove?: (branchId: string | null) => void;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
+  isNoSeat?: boolean;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
 };
 
 export const areSameRankAndBranch = (
@@ -188,6 +192,15 @@ export const isUserMessage = (
 
 export const isHandoverUserMessage = (msg: VirtuosoMessage): boolean =>
   isUserMessage(msg) && msg.agenticMessageData?.type === "agent_handover";
+
+/**
+ * Optimistic rows created in ConversationViewer before the backend responds.
+ * Identified by the sId prefixes from createPlaceholderUserMessage /
+ * createPlaceholderAgentMessage.
+ */
+export const isPlaceholderMessage = (msg: VirtuosoMessage): boolean =>
+  msg.sId.startsWith("placeholder-user-message-") ||
+  msg.sId.startsWith("placeholder-agent-message-");
 
 export const isAgentMessageWithStreaming = (
   msg: VirtuosoMessage
@@ -249,7 +262,7 @@ export const isAtInitialStreamState = (
   );
 };
 
-export const isSidekickBootstrapMessage = (
+const isSidekickBootstrapMessage = (
   message: UserMessageTypeWithContentFragments
 ): boolean => {
   return message.context.origin === "agent_sidekick" && message.rank === 0;

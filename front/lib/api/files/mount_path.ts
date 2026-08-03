@@ -7,6 +7,8 @@
 //                     the same Pod.
 
 import {
+  LEGACY_PREFIX_CONVERSATION,
+  LEGACY_PREFIX_PROJECT,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/lib/api/file_system/types";
@@ -59,16 +61,6 @@ export function getConversationFilePath({
   return `${getConversationFilesBasePath({ workspaceId, conversationId })}${fileName}`;
 }
 
-export function getProjectFilesBasePath({
-  workspaceId,
-  projectId,
-}: {
-  workspaceId: string;
-  projectId: string;
-}): string {
-  return `${getBaseMountPathForWorkspace({ workspaceId })}projects/${projectId}/files/`;
-}
-
 export function getPodFilesBasePath({
   workspaceId,
   podId,
@@ -80,31 +72,83 @@ export function getPodFilesBasePath({
 }
 
 /**
- * Convert a project mount file path (`w/{wId}/projects/{pId}/files/...`) to its pods/ counterpart
- * (`w/{wId}/pods/{pId}/files/...`). Returns `null` if the input is not a project mount path.
+ * Dedicated prefix for published sandbox function bundles, separate from the R/W pod files prefix.
+ * `front` is the sole writer here, via the GCS API. The invocation path later mounts this prefix
+ * read-only into sandboxes as DUST_FUNCTIONS_DIR, so a function can be executed but never
+ * overwritten by a sandbox.
  */
-export function toPodMountFilePath(
-  projectMountFilePath: string
-): string | null {
-  const match = projectMountFilePath.match(/^(w\/[^/]+\/)projects\/(.+)$/);
-  if (!match) {
-    return null;
-  }
-  return `${match[1]}pods/${match[2]}`;
+export function getPodSandboxFunctionsBasePath({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string;
+}): string {
+  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/sandbox-functions/`;
 }
 
 /**
- * Convert a pod mount file path (`w/{wId}/pods/{pId}/files/...`) to its projects/ counterpart
- * (`w/{wId}/projects/{pId}/files/...`). Returns `null` if the input is not a pod mount path.
+ * Absolute in-sandbox path the pod's published bundles are mounted at. Pod-scoped like the
+ * `/files/pod-<id>` files mount, so one sandbox could carry several pods' functions without
+ * collision.
  */
-export function toProjectMountFilePath(
-  podMountFilePath: string
-): string | null {
-  const match = podMountFilePath.match(/^(w\/[^/]+\/)pods\/(.+)$/);
-  if (!match) {
-    return null;
-  }
-  return `${match[1]}projects/${match[2]}`;
+export function getPodSandboxFunctionsMountPoint(podId: string): string {
+  return `/sandbox-functions/pods/${podId}`;
+}
+
+/**
+ * Absolute in-sandbox path of the pod's live SQLite databases (`{name}.db` files opened by
+ * `@dust/pod`'s `db()`). Local disk, not a gcsfuse mount — Litestream replicates it to GCS.
+ * Front is the only layer that hardcodes this location (the paths-env.v1 contract): it is
+ * passed per exec to `dsbx function run` as `DUST_POD_DATABASES_DIR`, dsbx forwards it to
+ * the bun child, and `@dust/pod` reads the env var — neither carries a fallback copy.
+ *
+ * TODO(pod-state): Track 1's parallel stack defines the same contract value as
+ * `POD_STATE_DATABASES_DIR` in `front/lib/api/sandbox/db.ts` (litestream config /
+ * restore side). Dedup into a single constant once both stacks are merged.
+ */
+export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
+
+/**
+ * Per-database size quota in bytes (1 GiB). The other half of the paths-env.v1 contract: like
+ * the databases dir, front owns this value and passes it per exec as
+ * `DUST_POD_DATABASE_MAX_SIZE_BYTES`; both `@dust/pod`'s `db()` and the `dsbx db query` runner
+ * require it and carry no fallback (see `cli/dust-sandbox/pod/db.ts`). A single source here
+ * keeps the quota the workload writes against identical to the one `db_query` enforces.
+ */
+const POD_SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
+
+/**
+ * The env vars every pod-database exec (`dsbx function run` and every `dsbx db` subcommand)
+ * must carry so the bun child resolves the databases dir and the size quota. Returned as a
+ * fresh object so callers can spread it into their own env without sharing a reference.
+ */
+export function podDatabaseExecEnvVars(): {
+  DUST_POD_DATABASES_DIR: string;
+  DUST_POD_DATABASE_MAX_SIZE_BYTES: string;
+} {
+  return {
+    DUST_POD_DATABASES_DIR: POD_SANDBOX_DATABASES_DIR,
+    DUST_POD_DATABASE_MAX_SIZE_BYTES: String(
+      POD_SANDBOX_DATABASE_MAX_SIZE_BYTES
+    ),
+  };
+}
+
+/**
+ * Prefix for the pod's Litestream state replica (LTX chains for the pod's SQLite databases). The
+ * sandbox's litestream daemon is the only writer, through the dust-state-only gcsfuse mount at
+ * /pod-state/replica. Never mounted under /files, never a FileResource: cleanup is a wholesale
+ * prefix delete at pod deletion (see deletePodStatePrefix).
+ */
+export function getPodStateBasePath({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string;
+}): string {
+  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/state/`;
 }
 
 /**
@@ -187,10 +231,10 @@ export function parseProcessedFilename(
   return { isProcessed: true, sourceBaseName: fileName.slice(0, idx) };
 }
 
-export const scopedFilePathPrefixSchema = z.enum(["conversation", "pod"]);
-export type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
+const scopedFilePathPrefixSchema = z.enum(["conversation", "pod"]);
+type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
 
-export type ScopedFilePath = {
+type ScopedFilePath = {
   prefix: ScopedFilePathPrefix;
   rel: string;
 };
@@ -203,7 +247,7 @@ export type ScopedFilePath = {
  * - "legacy": bare keyword ("conversation" or "pod"); the resource ID must be
  *   resolved from the frame's metadata (useCaseMetadata).
  */
-export type ParsedVizScope =
+type ParsedVizScope =
   | { kind: "canonical-conversation"; id: string }
   | { kind: "canonical-pod"; id: string }
   | { kind: "legacy"; prefix: ScopedFilePathPrefix };
@@ -227,6 +271,33 @@ export function parseRawVizScope(rawScope: string): ParsedVizScope | null {
   return r.success ? { kind: "legacy", prefix: r.data } : null;
 }
 
+type ParsedCanonicalScopedPath = {
+  scope:
+    | { kind: "canonical-conversation"; id: string }
+    | { kind: "canonical-pod"; id: string };
+  relPath: string;
+};
+
+/**
+ * Parse a canonical agent-visible scoped path (`conversation-{id}/...`, `pod-{id}/...`)
+ * into its scope and path relative to that mount.
+ */
+export function parseCanonicalScopedPath(
+  scopedPath: string
+): ParsedCanonicalScopedPath | null {
+  const slashIdx = scopedPath.indexOf("/");
+  const rawScope = slashIdx === -1 ? scopedPath : scopedPath.slice(0, slashIdx);
+  const parsed = parseRawVizScope(rawScope);
+  if (!parsed || parsed.kind === "legacy") {
+    return null;
+  }
+
+  return {
+    scope: parsed,
+    relPath: slashIdx === -1 ? "" : scopedPath.slice(slashIdx + 1),
+  };
+}
+
 /**
  * Parse a scoped file path like "conversation/chart.png" or "pod/report.pdf".
  * Returns null if the path is missing a valid scope prefix.
@@ -243,6 +314,124 @@ export function parseScopedFilePath(filePath: string): ScopedFilePath | null {
     return null;
   }
   return { prefix: prefixResult.data, rel: filePath.slice(slashIdx + 1) };
+}
+
+/** Conversation/pod context used to resolve legacy scoped paths for a frame. */
+export type FrameScopedPathContext = {
+  conversationId: string | null;
+  spaceId: string | null;
+};
+
+function getScopedPathPrefix(scopedPath: string): string | null {
+  const slashIdx = scopedPath.indexOf("/");
+  if (slashIdx <= 0) {
+    return null;
+  }
+  return scopedPath.slice(0, slashIdx);
+}
+
+/**
+ * True for canonical agent-visible paths (`conversation-{id}/...`, `pod-{id}/...`).
+ * The id segment after the prefix must be non-empty.
+ */
+export function isCanonicalScopedPath(scopedPath: string): boolean {
+  const prefix = getScopedPathPrefix(scopedPath);
+  if (!prefix) {
+    return false;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_CONVERSATION)) {
+    return prefix.length > SCOPED_PREFIX_CONVERSATION.length;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_POD)) {
+    return prefix.length > SCOPED_PREFIX_POD.length;
+  }
+
+  return false;
+}
+
+/** True for legacy bare-prefix paths (`conversation/...`, `pod/...`, `project/...`). */
+export function isLegacyScopedPath(scopedPath: string): boolean {
+  const prefix = getScopedPathPrefix(scopedPath);
+  if (!prefix) {
+    return false;
+  }
+
+  return (
+    prefix === LEGACY_PREFIX_CONVERSATION ||
+    prefix === "pod" ||
+    prefix === LEGACY_PREFIX_PROJECT
+  );
+}
+
+/** True for any agent-visible scoped path (canonical or legacy). */
+export function isAgentScopedPath(scopedPath: string): boolean {
+  return isCanonicalScopedPath(scopedPath) || isLegacyScopedPath(scopedPath);
+}
+
+/**
+ * Resolve a legacy scoped path to its canonical form under the frame context.
+ * Canonical paths are returned unchanged.
+ */
+export function resolveCanonicalScopedPath(
+  scopedPath: string,
+  frameContext: FrameScopedPathContext
+): string | null {
+  if (isCanonicalScopedPath(scopedPath)) {
+    return scopedPath;
+  }
+
+  if (!isLegacyScopedPath(scopedPath)) {
+    return null;
+  }
+
+  const slashIdx = scopedPath.indexOf("/");
+  const prefix = scopedPath.slice(0, slashIdx);
+  const rel = path.posix.normalize(scopedPath.slice(slashIdx + 1));
+
+  if (rel.startsWith("..") || rel.startsWith("/")) {
+    return null;
+  }
+
+  switch (prefix) {
+    case LEGACY_PREFIX_CONVERSATION: {
+      if (!frameContext.conversationId) {
+        return null;
+      }
+      return `${SCOPED_PREFIX_CONVERSATION}${frameContext.conversationId}/${rel}`;
+    }
+    case "pod":
+    case LEGACY_PREFIX_PROJECT: {
+      if (!frameContext.spaceId) {
+        return null;
+      }
+      return `${SCOPED_PREFIX_POD}${frameContext.spaceId}/${rel}`;
+    }
+    default:
+      return null;
+  }
+}
+
+/** Match a requested legacy scoped path against a stored legacy alias. */
+export function legacyScopedPathsMatch(
+  storedLegacyPath: string | undefined,
+  requestedRef: string
+): boolean {
+  if (!storedLegacyPath) {
+    return false;
+  }
+
+  if (storedLegacyPath === requestedRef) {
+    return true;
+  }
+
+  // Older frame code may request `project/...` while the stored alias uses `pod/...`.
+  return (
+    requestedRef.startsWith(`${LEGACY_PREFIX_PROJECT}/`) &&
+    storedLegacyPath ===
+      `pod/${requestedRef.slice(`${LEGACY_PREFIX_PROJECT}/`.length)}`
+  );
 }
 
 export class ResolveScopedMountFilePathError extends Error {
@@ -468,6 +657,28 @@ export function disambiguateFileName(file: FileResource): string {
   const basename = fileName.substring(0, lastDot);
   const ext = fileName.substring(lastDot);
   return `${basename}_${sId}${ext}`;
+}
+
+/**
+ * Split a scoped path to a Frame's entry source file into its bundling root and the entry's path
+ * relative to that root, e.g. "conversation-abc/dashboards/Sales.tsx" splits into
+ * "conversation-abc/dashboards" and "Sales.tsx". Callers pass the entry's full current path
+ * rather than a directory (see `frameEntryRelPath` on `FileUseCaseMetadata` for why).
+ */
+export function splitFrameEntryScopedPath(
+  scopedPath: string
+): Result<{ root: string; entryRelPath: string }, Error> {
+  const trimmed = scopedPath.replace(/\/+$/, "");
+  const root = path.posix.dirname(trimmed);
+  if (root === "." || root === "/") {
+    return new Err(
+      new Error(
+        `Path must include the entry file's directory, e.g. 'conversation-<id>/<filename>': got '${scopedPath}'.`
+      )
+    );
+  }
+
+  return new Ok({ root, entryRelPath: path.posix.basename(trimmed) });
 }
 
 /**

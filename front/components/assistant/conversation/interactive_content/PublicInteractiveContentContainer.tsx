@@ -1,8 +1,8 @@
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { PublicFrameRenderer } from "@app/components/assistant/conversation/interactive_content/PublicFrameRenderer";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
+import Custom404 from "@app/components/pages/Custom404";
 import { usePublicFrame } from "@app/lib/swr/frames";
-import Custom404 from "@app/pages/404";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import { Spinner } from "@dust-tt/sparkle";
 
@@ -10,6 +10,8 @@ interface PublicInteractiveContentContainerProps {
   shareToken: string;
   workspaceId: string;
   vizUrl: string;
+  logoUrl?: string | null;
+  showSignUpCta?: boolean;
   hideHeader?: boolean;
 }
 
@@ -21,6 +23,8 @@ export function PublicInteractiveContentContainer({
   shareToken,
   workspaceId,
   vizUrl,
+  logoUrl,
+  showSignUpCta = false,
   hideHeader = false,
 }: PublicInteractiveContentContainerProps) {
   const { frameMetadata, isFrameLoading, error } = usePublicFrame({
@@ -51,6 +55,8 @@ export function PublicInteractiveContentContainer({
             shareToken={shareToken}
             workspaceId={workspaceId}
             vizUrl={vizUrl}
+            logoUrl={logoUrl}
+            showSignUpCta={showSignUpCta}
             hideHeader={hideHeader}
           />
         );
@@ -67,7 +73,7 @@ export function PublicInteractiveContentContainer({
 
   return (
     <div className="flex w-full flex-col">
-      <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+      <div className="flex-1 overflow-hidden bg-primary-50">
         {renderContent()}
       </div>
     </div>

@@ -1,8 +1,6 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
-import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
-import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
+import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import type {
   SqlQueryOutputType,
   ThinkingOutputType,
@@ -17,17 +15,15 @@ import {
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import config from "@app/lib/api/config";
 import { getDocumentIcon } from "@app/lib/content_nodes";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   CodeBlock,
   ContentBlockWrapper,
   ContentMessage,
   FaviconIcon,
-  InformationCircleIcon,
+  InfoCircle,
   Markdown,
   PaginatedCitationsGrid,
   Tooltip,
@@ -41,11 +37,11 @@ interface ThinkingBlockProps {
 export function ThinkingBlock({ resource }: ThinkingBlockProps) {
   return (
     resource.text && (
-      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <div className="text-sm font-normal text-muted-foreground">
         <ContentMessage
           title="Reasoning"
           variant="primary"
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           size="lg"
         >
           <Markdown
@@ -67,7 +63,7 @@ interface SqlQueryBlockProps {
 
 export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
   return (
-    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+    <div className="text-sm font-normal text-muted-foreground">
       <ContentBlockWrapper content={resource.text}>
         <CodeBlock
           className="language-sql max-h-60 overflow-y-auto"
@@ -81,31 +77,30 @@ export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
 }
 
 interface ToolGeneratedFileDetailsProps {
-  resource: ToolGeneratedFileType | ActionGeneratedFileType;
-  owner: LightWorkspaceType;
+  resource:
+    | ToolGeneratedFileType
+    | ActionGeneratedFileType
+    | Omit<ActionGeneratedFileType, "snippet">;
 }
 
 export function ToolGeneratedFileDetails({
   resource,
-  owner,
 }: ToolGeneratedFileDetailsProps) {
-  const citation: MCPReferenceCitation = {
-    fileId: resource.fileId ?? undefined,
-    title: resource.title,
-    contentType: resource.contentType,
-    href: resource.fileId
-      ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`
-      : undefined,
-    description:
-      "text" in resource ? resource.text : (resource.snippet ?? undefined),
-  };
+  const snippet =
+    "text" in resource
+      ? resource.text
+      : "snippet" in resource
+        ? (resource.snippet ?? undefined)
+        : undefined;
 
   return (
-    <AttachmentCitation
-      attachmentCitation={markdownCitationToAttachmentCitation(citation)}
-      owner={owner}
-      conversationId={null}
-      compact
+    <PreviewableCitation
+      size="sm"
+      fileId={resource.fileId ?? null}
+      filePath={"filePath" in resource ? resource.filePath : undefined}
+      contentType={resource.contentType}
+      title={resource.title}
+      description={snippet}
     />
   );
 }
@@ -204,18 +199,14 @@ export function SearchResultDetails({
       visual={visual}
     >
       {displayContext === "conversation" ? (
-        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-sm font-normal text-muted-foreground">
           {displayQuery}
         </div>
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-1">
-            <span className="font-medium text-foreground dark:text-foreground-night">
-              Query
-            </span>
-            <div className="text-muted-foreground dark:text-muted-foreground-night">
-              {displayQuery}
-            </div>
+            <span className="font-medium text-foreground">Query</span>
+            <div className="text-muted-foreground">{displayQuery}</div>
             {warning && (
               <Tooltip
                 label={warning.text}
@@ -225,15 +216,13 @@ export function SearchResultDetails({
           </div>
           {actionOutput && (
             <div className="flex flex-col gap-2">
-              <span className="font-medium text-foreground dark:text-foreground-night">
-                Results
-              </span>
+              <span className="font-medium text-foreground">Results</span>
               {singleFileContentText && (
                 <Markdown
                   content={singleFileContentText}
                   isStreaming={false}
                   forcedTextSize="text-sm"
-                  textColor="text-muted-foreground dark:text-muted-foreground-night"
+                  textColor="text-muted-foreground"
                 />
               )}
               <PaginatedCitationsGrid items={citations} />

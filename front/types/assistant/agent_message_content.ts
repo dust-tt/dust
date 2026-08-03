@@ -42,11 +42,29 @@ export type AgentErrorContentType = {
   };
 };
 
+// Opaque, provider-specific content that must round-trip verbatim to the
+// provider that produced it. The generic layer keeps `block` opaque: it
+// forwards the item only to the matching provider and every other consumer
+// skips it. Each provider client owns the typed schema for its own blocks.
+export type AgentProviderPassthroughContentType = {
+  type: "provider_passthrough";
+  value: {
+    // Anthropic feature only for now. Need split between host and lab to be
+    // completed for other lab support.
+    provider: Exclude<
+      ModelProviderIdType,
+      "xai" | "fireworks" | "auto" | "auto_fast" | "auto_complex"
+    >;
+    block: unknown;
+  };
+};
+
 export type AgentContentItemType =
   | AgentTextContentType
   | AgentReasoningContentType
   | AgentFunctionCallContentType
-  | AgentErrorContentType;
+  | AgentErrorContentType
+  | AgentProviderPassthroughContentType;
 
 export function isAgentTextContent(
   content: AgentContentItemType
@@ -64,12 +82,6 @@ export function isAgentFunctionCallContent(
   content: AgentContentItemType
 ): content is AgentFunctionCallContentType {
   return content.type === "function_call";
-}
-
-export function isAgentErrorContent(
-  content: AgentContentItemType
-): content is AgentErrorContentType {
-  return content.type === "error";
 }
 
 export type AgentStepContentType = {

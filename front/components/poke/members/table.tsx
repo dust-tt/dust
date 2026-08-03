@@ -1,20 +1,22 @@
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
+import { MembersBulkActions } from "@app/components/poke/members/MembersBulkActions";
+import type { BatchMemberUpdate } from "@app/components/poke/members/useBatchUpdateMembers";
+import { useBatchUpdateMembers } from "@app/components/poke/members/useBatchUpdateMembers";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { clientFetch } from "@app/lib/egress/client";
+import type { PokeWorkspaceMember } from "@app/lib/api/poke/memberships";
 import { useAppRouter } from "@app/lib/platform";
 import {
+  isMembershipSeatType,
   MEMBERSHIP_ORIGIN_TYPES,
   MEMBERSHIP_ROLE_TYPES,
+  MEMBERSHIP_SEAT_TYPES,
+  type MembershipSeatType,
 } from "@app/types/memberships";
-import type {
-  RoleType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types/user";
+import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 
 function prepareMembersForDisplay(
-  members: UserTypeWithWorkspaces[]
+  members: PokeWorkspaceMember[]
 ): MemberDisplayType[] {
   return members.map((m) => {
     return {
@@ -25,51 +27,68 @@ function prepareMembersForDisplay(
       role: m.workspaces[0].role,
       sId: m.sId,
       origin: m.origin,
+      seatType: isMembershipSeatType(m.seatType) ? m.seatType : undefined,
+      scheduledSeatType: m.scheduledSeatType,
+      scheduledSeatChangeAt: m.scheduledSeatChangeAt,
     };
   });
 }
 
 interface MembersDataTableProps {
+  // Seat types selectable in the seat dropdown. When undefined, all seat types
+  // are offered; typically restricted to the current contract's seats.
+  availableSeatTypes?: readonly MembershipSeatType[];
   groupName?: string;
-  members: UserTypeWithWorkspaces[];
+  members: PokeWorkspaceMember[];
   owner: WorkspaceType;
   readonly?: boolean;
 }
 
 export function MembersDataTable({
+  availableSeatTypes,
   groupName,
   members,
   owner,
   readonly,
 }: MembersDataTableProps) {
   const router = useAppRouter();
+  const { runBatchUpdate } = useBatchUpdateMembers({ owner });
+
+  // Per-row mutations run the same "batch-update-members" plugin as the bulk
+  // toolbar, just with a single email.
+  const applyToMember = async (
+    m: MemberDisplayType,
+    update: BatchMemberUpdate,
+    context: string
+  ) => {
+    const res = await runBatchUpdate(update, [m.email]);
+    if (res.isErr()) {
+      window.alert(`An error occurred while ${context}: ${res.error}`);
+      return;
+    }
+    const failure = res.value.find(
+      (r) => r.status === "failed" || r.status === "user_not_found"
+    );
+    if (failure) {
+      window.alert(
+        `An error occurred while ${context}: ${failure.error ?? failure.status}`
+      );
+      return;
+    }
+    router.reload();
+  };
 
   const onRevokeMember = async (m: MemberDisplayType) => {
     if (!window.confirm(`Are you sure you want to revoke ${m.email}?`)) {
       return;
     }
-
-    try {
-      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/revoke`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: m.sId,
-        }),
-      });
-      if (!r.ok) {
-        throw new Error("Failed to revoke user.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert("An error occurred while revoking the user.");
-    }
+    await applyToMember(m, { action: "revoke" }, "revoking the user");
   };
 
-  const onUpdateMemberRole = async (m: MemberDisplayType, role: RoleType) => {
+  const onUpdateMemberRole = async (
+    m: MemberDisplayType,
+    role: ActiveRoleType
+  ) => {
     if (
       !window.confirm(
         `Are you sure you want to update role of ${m.email} to ${role}?`
@@ -77,26 +96,29 @@ export function MembersDataTable({
     ) {
       return;
     }
+    await applyToMember(
+      m,
+      { action: "update_role", role },
+      "updating the user role"
+    );
+  };
 
-    try {
-      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/roles`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: m.sId,
-          role,
-        }),
-      });
-      if (!r.ok) {
-        throw new Error("Failed to update user role.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert(`An error occurred while updating the user role: ${e}`);
+  const onUpdateMemberSeatType = async (
+    m: MemberDisplayType,
+    seatType: MembershipSeatType
+  ) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to update seat type of ${m.email} to ${seatType}?`
+      )
+    ) {
+      return;
     }
+    await applyToMember(
+      m,
+      { action: "update_seat", seatType },
+      "updating the seat type"
+    );
   };
 
   return (
@@ -109,11 +131,30 @@ export function MembersDataTable({
         </div>
         <PokeDataTable
           columns={makeColumnsForMembers({
+            availableSeatTypes,
             onRevokeMember,
             onUpdateMemberRole,
+            onUpdateMemberSeatType,
             readonly,
           })}
           data={prepareMembersForDisplay(members)}
+          enableRowSelection={!readonly}
+          getRowId={(row) => row.sId}
+          getRowClassName={(row) =>
+            row.role === "none" ? "text-gray-400" : undefined
+          }
+          renderBulkActions={
+            readonly
+              ? undefined
+              : ({ selectedRows, resetSelection }) => (
+                  <MembersBulkActions
+                    availableSeatTypes={availableSeatTypes}
+                    members={selectedRows}
+                    onDone={resetSelection}
+                    owner={owner}
+                  />
+                )
+          }
           facets={[
             {
               columnId: "origin",
@@ -129,6 +170,14 @@ export function MembersDataTable({
               options: [...MEMBERSHIP_ROLE_TYPES, "none"].map((r) => ({
                 label: r,
                 value: r,
+              })),
+            },
+            {
+              columnId: "seatType",
+              title: "Seat type",
+              options: [...MEMBERSHIP_SEAT_TYPES].map((st) => ({
+                label: st,
+                value: st,
               })),
             },
           ]}

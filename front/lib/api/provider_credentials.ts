@@ -63,7 +63,6 @@ export async function getLlmCredentials(
     MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
     TEXTSYNTH_API_KEY: env("DUST_MANAGED_TEXTSYNTH_API_KEY"),
     GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
-    TOGETHERAI_API_KEY: env("DUST_MANAGED_TOGETHERAI_API_KEY"),
     DEEPSEEK_API_KEY: env("DUST_MANAGED_DEEPSEEK_API_KEY"),
     FIREWORKS_API_KEY: env("DUST_MANAGED_FIREWORKS_API_KEY"),
     XAI_API_KEY: env("DUST_MANAGED_XAI_API_KEY"),
@@ -75,6 +74,7 @@ export async function getLlmCredentials(
     OPENAI_USE_EU_ENDPOINT:
       config.getRegion() === "europe-west1" ? "true" : "false",
     OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
+    AGENT_PLATFORM_PROJECT_ID: config.getVertexAiProjectId(),
   };
 
   if (!plan.isByok) {

@@ -1,18 +1,22 @@
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import {
+  isFullUserType,
+  type SearchMemberWithWorkspaceType,
+} from "@app/components/members/MemberSelectionTable";
+import {
+  displayRole,
+  normalizeDisplayRole,
+  ROLES_DATA,
+} from "@app/components/members/Roles";
+import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import assert from "@app/lib/utils/assert";
-import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { MembershipOriginType } from "@app/types/memberships";
-import type {
-  RoleType,
-  UserType,
-  UserTypeWithWorkspace,
-} from "@app/types/user";
+import type { RoleType, UserType } from "@app/types/user";
 import {
   Chip,
   DataTable,
   IconButton,
   LoadingBlock,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
@@ -36,38 +40,59 @@ type RowData = {
 
 type Info = CellContext<RowData, string>;
 
+function RoleCell({ role }: { role: RoleType }) {
+  // `builder` is deprecated: display it as a regular member.
+  const displayedRole = normalizeDisplayRole(role);
+
+  return (
+    <DataTable.CellContent>
+      <Chip
+        label={capitalize(displayRole(displayedRole))}
+        color={
+          displayedRole !== "none"
+            ? ROLES_DATA[displayedRole]["color"]
+            : undefined
+        }
+      />
+    </DataTable.CellContent>
+  );
+}
+
 function getTableRows({
   allUsers,
   onClick,
   onRemoveMemberClick,
   currentUserId,
 }: {
-  allUsers: UserTypeWithWorkspace[];
-  onClick: (user: UserTypeWithWorkspace) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
+  allUsers: SearchMemberWithWorkspaceType[];
+  onClick: (user: SearchMemberWithWorkspaceType) => void;
+  onRemoveMemberClick?: (user: SearchMemberWithWorkspaceType) => void;
   currentUserId: string;
 }): RowData[] {
-  return allUsers.map((user) => ({
-    icon: user.image ?? "",
-    name: user.fullName,
-    userId: user.sId,
-    email: user.email ?? "",
-    role: user.workspace.role,
-    status: user.lastLoginAt === null ? "Unregistered" : "Active",
-    groups: user.workspace.groups ?? [],
-    isCurrentUser: user.sId === currentUserId,
-    onClick: () => onClick(user),
-    onRemoveMemberClick: () => onRemoveMemberClick?.(user),
-    origin: user.origin,
-  }));
+  return allUsers.map((user) => {
+    const fullUser = isFullUserType(user);
+    return {
+      icon: user.image ?? "",
+      name: user.fullName,
+      userId: user.sId,
+      email: user.email ?? "",
+      role: user.workspace.role ?? "none",
+      status: fullUser && user.lastLoginAt === null ? "Unregistered" : "Active",
+      groups: user.workspace.groups ?? [],
+      isCurrentUser: user.sId === currentUserId,
+      onClick: () => onClick(user),
+      onRemoveMemberClick: () => onRemoveMemberClick?.(user),
+      origin: fullUser ? user.origin : undefined,
+    };
+  });
 }
 
 type MembersData = {
-  members: UserTypeWithWorkspace[];
+  members: SearchMemberWithWorkspaceType[];
   totalMembersCount: number;
   isLoading: boolean;
   mutateRegardlessOfQueryParams:
-    | KeyedMutator<SearchMembersResponseBody>
+    | KeyedMutator<SearchMembersAdminResponseBody>
     | (() => void);
 };
 
@@ -97,18 +122,7 @@ const memberColumns = [
     id: "role" as const,
     header: "Role",
     accessorFn: (row: RowData) => row.role,
-    cell: (info: Info) => (
-      <DataTable.CellContent>
-        <Chip
-          label={capitalize(displayRole(info.row.original.role))}
-          color={
-            info.row.original.role !== "none"
-              ? ROLES_DATA[info.row.original.role]["color"]
-              : undefined
-          }
-        />
-      </DataTable.CellContent>
-    ),
+    cell: (info: Info) => <RoleCell role={info.row.original.role} />,
     meta: {
       className: "w-32",
     },
@@ -123,7 +137,7 @@ const memberColumns = [
           <></>
         ) : (
           <IconButton
-            icon={XMarkIcon}
+            icon={XClose}
             onClick={info.row.original.onRemoveMemberClick}
           />
         )}
@@ -161,8 +175,8 @@ const memberColumns = [
 interface MembersListProps {
   currentUser: UserType | null;
   membersData: MembersData;
-  onRowClick: (user: UserTypeWithWorkspace) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
+  onRowClick: (user: SearchMemberWithWorkspaceType) => void;
+  onRemoveMemberClick?: (user: SearchMemberWithWorkspaceType) => void;
   showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
   pagination?: PaginationState;
   setPagination?: (pagination: PaginationState) => void;

@@ -1,0 +1,12 @@
+# cross reads ~/.cargo/config.toml (it mounts the host CARGO_HOME) inside the
+# build container. A common host setting is `rustc-wrapper = "sccache"`, but
+# sccache isn't installed in the cross image, so the compile fails with
+# `sccache rustc` exit 127. Forwarding these env vars lets the caller override
+# the wrapper from outside the container (e.g. upsert_dsbx_to_sandbox.sh sets
+# them empty to disable the wrapper). An empty value takes precedence over the
+# mounted config's `[build] rustc-wrapper`.
+[build.env]
+passthrough = [
+    "RUSTC_WRAPPER",
+    "CARGO_BUILD_RUSTC_WRAPPER",
+]

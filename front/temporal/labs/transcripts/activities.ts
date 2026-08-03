@@ -4,13 +4,10 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
-import {
-  sendEmailWithTemplate,
-  sendModjoDisconnectionEmail,
-} from "@app/lib/api/email";
+import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -28,15 +25,7 @@ import {
   retrieveGoogleTranscriptContent,
   retrieveGoogleTranscripts,
 } from "@app/temporal/labs/transcripts/utils/google";
-import {
-  ModjoAuthenticationError,
-  retrieveModjoTranscriptContent,
-  retrieveModjoTranscripts,
-} from "@app/temporal/labs/transcripts/utils/modjo";
-import type {
-  AgentMessageType,
-  UserMessageContext,
-} from "@app/types/assistant/conversation";
+import type { UserMessageContext } from "@app/types/assistant/conversation";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 import { Err } from "@app/types/shared/result";
@@ -50,14 +39,10 @@ class TranscriptNonRetryableError extends Error {}
 
 export interface RetrieveTranscriptsResult {
   fileIds: string[];
-  nextCursor: number | null;
-  isFirstSync: boolean;
 }
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: string,
-  modjoCursor: number | null = null,
-  modjoIsFirstSync: boolean | null = null,
   workspaceId: string
 ): Promise<RetrieveTranscriptsResult> {
   const workspaceAuth =
@@ -75,7 +60,7 @@ export async function retrieveNewTranscriptsActivity(
       },
       "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
     );
-    return { fileIds: [], nextCursor: null, isFirstSync: false };
+    return { fileIds: [] };
   }
 
   const localLogger = mainLogger.child({
@@ -122,16 +107,11 @@ export async function retrieveNewTranscriptsActivity(
         localLogger
       );
       if (googleTranscriptsRes.isErr()) {
-        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
         throw new TranscriptNonRetryableError(
           `Error retrieving Google transcripts: ${googleTranscriptsRes.error.message}`
         );
       }
-      return {
-        fileIds: googleTranscriptsRes.value,
-        nextCursor: null,
-        isFirstSync: false,
-      };
+      return { fileIds: googleTranscriptsRes.value };
     }
 
     case "gong": {
@@ -140,43 +120,7 @@ export async function retrieveNewTranscriptsActivity(
         transcriptsConfiguration,
         localLogger
       );
-      return {
-        fileIds: gongTranscriptsIds,
-        nextCursor: null,
-        isFirstSync: false,
-      };
-    }
-
-    case "modjo": {
-      try {
-        const modjoResult = await retrieveModjoTranscripts(
-          auth,
-          transcriptsConfiguration,
-          localLogger,
-          modjoCursor,
-          modjoIsFirstSync
-        );
-        return {
-          fileIds: modjoResult.fileIds,
-          nextCursor: modjoResult.nextCursor,
-          isFirstSync: modjoResult.isFirstSync,
-        };
-      } catch (error) {
-        if (error instanceof ModjoAuthenticationError) {
-          localLogger.error(
-            { error: error.message },
-            "[retrieveNewTranscripts] Modjo authentication failed - disconnecting and notifying user"
-          );
-          await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-
-          if (user) {
-            await sendModjoDisconnectionEmail(user.email, workspace.name);
-          }
-
-          return { fileIds: [], nextCursor: null, isFirstSync: false };
-        }
-        throw error;
-      }
+      return { fileIds: gongTranscriptsIds };
     }
 
     default:
@@ -367,28 +311,6 @@ export async function processTranscriptActivity(
       userParticipated = gongResult.userParticipated;
       break;
 
-    case "modjo":
-      const modjoResult = await retrieveModjoTranscriptContent(
-        auth,
-        transcriptsConfiguration,
-        fileId,
-        localLogger
-      );
-      if (!modjoResult) {
-        localLogger.info(
-          {
-            fileId,
-          },
-          "[processTranscriptActivity] No Modjo result found. Stopping."
-        );
-        return;
-      }
-      transcriptTitle = modjoResult.transcriptTitle || "";
-      transcriptContent = modjoResult.transcriptContent || "";
-      userParticipated = modjoResult.userParticipated;
-      additionalTags = modjoResult.tags || [];
-      break;
-
     default:
       assertNever(transcriptsConfiguration.provider);
   }
@@ -458,9 +380,8 @@ export async function processTranscriptActivity(
     if (!dataSourceViewId) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] No datasource view id found. Stopping."
+        "[processTranscriptActivity] No datasource view id found. Skipping file."
       );
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       return;
     }
 
@@ -479,9 +400,8 @@ export async function processTranscriptActivity(
     if (!datasourceView) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] No datasource view found. Stopping."
+        "[processTranscriptActivity] No datasource view found. Skipping file."
       );
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       return;
     }
 
@@ -489,9 +409,8 @@ export async function processTranscriptActivity(
     if (!canWrite) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] User does not have permission to write to datasource view. Stopping."
+        "[processTranscriptActivity] User does not have permission to write to datasource view. Skipping file."
       );
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       return;
     }
 
@@ -500,9 +419,8 @@ export async function processTranscriptActivity(
     if (!dataSource) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] No datasource found. Stopping."
+        "[processTranscriptActivity] No datasource found. Skipping file."
       );
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       return;
     }
 
@@ -570,10 +488,9 @@ export async function processTranscriptActivity(
     const { agentConfigurationId } = transcriptsConfiguration;
 
     if (!agentConfigurationId) {
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       localLogger.error(
         {},
-        "[processTranscriptActivity] No agent configuration id found. Stopping."
+        "[processTranscriptActivity] No agent configuration id found. Skipping file."
       );
       return;
     }
@@ -584,10 +501,9 @@ export async function processTranscriptActivity(
     });
 
     if (!agent) {
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       localLogger.error(
         {},
-        "[processTranscriptActivity] Agent configuration not found. Stopping."
+        "[processTranscriptActivity] Agent configuration not found. Skipping file."
       );
       return;
     }
@@ -596,11 +512,13 @@ export async function processTranscriptActivity(
       return new Err(new Error("username must be a non-empty string"));
     }
 
-    const initialConversation = await createConversation(auth, {
+    const conversationResource = await createConversation(auth, {
       title: transcriptTitle,
       visibility: "unlisted",
       spaceId: null,
     });
+
+    const conversation = conversationResource.toJSON();
 
     const baseContext: UserMessageContext = {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
@@ -612,7 +530,7 @@ export async function processTranscriptActivity(
     };
 
     const cfRes = await toFileContentFragment(auth, {
-      conversation: initialConversation,
+      conversation,
       contentFragment: {
         title: transcriptTitle,
         content: transcriptContent,
@@ -624,7 +542,7 @@ export async function processTranscriptActivity(
     if (cfRes.isErr()) {
       localLogger.error(
         {
-          conversationId: initialConversation.sId,
+          conversationId: conversation.sId,
           error: cfRes.error,
         },
         "[processTranscriptActivity] Error creating file for content fragment. Stopping."
@@ -634,7 +552,7 @@ export async function processTranscriptActivity(
 
     const contentFragmentRes = await postNewContentFragment(
       auth,
-      initialConversation,
+      conversation,
       cfRes.value,
       baseContext
     );
@@ -643,7 +561,7 @@ export async function processTranscriptActivity(
       localLogger.error(
         {
           agentConfigurationId,
-          conversationId: initialConversation.sId,
+          conversationId: conversation.sId,
           error: contentFragmentRes.error,
         },
         "[processTranscriptActivity] Error creating content fragment. Stopping."
@@ -651,30 +569,8 @@ export async function processTranscriptActivity(
       return;
     }
 
-    // Initial conversation is stale, so we need to reload it.
-    const conversationRes = await getConversation(
-      auth,
-      initialConversation.sId
-    );
-
-    if (conversationRes.isErr()) {
-      localLogger.error(
-        {
-          agentConfigurationId,
-          conversationId: initialConversation.sId,
-          panic: true,
-          error: conversationRes.error,
-        },
-        "[processTranscriptActivity] Unreachable: Error getting conversation after creation."
-      );
-
-      return;
-    }
-
-    let conversation = conversationRes.value;
-
     const messageRes = await postUserMessageAndWaitForCompletion(auth, {
-      conversation,
+      conversationResource,
       content: `Transcript: ${transcriptTitle}`,
       mentions: [{ configurationId: agentConfigurationId }],
       context: baseContext,
@@ -696,22 +592,6 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const updatedRes = await getConversation(auth, conversation.sId);
-
-    if (updatedRes.isErr()) {
-      localLogger.error(
-        {
-          agentConfigurationId,
-          conversationId: conversation.sId,
-          error: updatedRes.error,
-        },
-        "[processTranscriptActivity] Error getting conversation after creation. Stopping."
-      );
-      return;
-    }
-
-    conversation = updatedRes.value;
-
     localLogger.info(
       {
         agentConfigurationId,
@@ -721,16 +601,30 @@ export async function processTranscriptActivity(
     );
 
     // Get first from array with type='agent_message' in conversation.content;
-    const agentMessage = <AgentMessageType[]>conversation.content.find(
-      (innerArray) => {
-        return innerArray.find((item) => item.type === "agent_message");
-      }
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+    const lightConversationRes = await getLightConversation(
+      auth,
+      conversation.sId
+    );
+    if (lightConversationRes.isErr()) {
+      localLogger.error(
+        {
+          agentConfigurationId,
+          conversationId: conversation.sId,
+          error: lightConversationRes.error,
+        },
+        "[processTranscriptActivity] Error getting light conversation. Stopping."
+      );
+      return;
+    }
+    const agentMessage = lightConversationRes.value.content.find(
+      (item) => item.type === "agent_message"
     );
 
     // Usage
     const markDownAnswer =
-      agentMessage && agentMessage[0].content
-        ? convertCitationsToLinks(agentMessage[0].content, conversation)
+      agentMessage && agentMessage.content
+        ? convertCitationsToLinks(agentMessage.content, conversation)
         : "";
 
     const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {

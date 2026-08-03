@@ -1,17 +1,16 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { SKILL_INSTRUCTIONS_LABEL } from "@app/lib/skills/labels";
 import {
-  ArrowGoBackIcon,
-  BookOpenIcon,
+  BookOpen01,
   Button,
   ContentMessage,
-  InformationCircleIcon,
-  ToolsIcon,
+  InfoCircle,
+  ReverseLeft,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useFormState } from "react-hook-form";
 
 const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 40_000;
 
@@ -20,14 +19,9 @@ const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 
 export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
+  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
-  const { hasFeature } = useFeatureFlags();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
-  const [openCapabilities, setOpenCapabilities] = useState<(() => void) | null>(
-    null
-  );
-
-  const enableSkillReferences = hasFeature("nested_skills");
 
   const currentInstructions = watch(INSTRUCTIONS_FIELD_NAME);
   const instructionsDiffer =
@@ -52,36 +46,34 @@ export function SkillBuilderInstructionsSection() {
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-col items-end justify-between gap-2 sm:flex-row">
-        <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          What guidelines should it provide?
-        </h3>
+      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row">
+        <div className="space-y-1">
+          <h3 className="heading-lg font-semibold text-foreground">
+            {SKILL_INSTRUCTIONS_LABEL}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Provide the guidelines the skill should follow when it runs. Type
+            "/" to attach knowledge, tools, or another skill.
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           {instructionsDiffer && (
             <Button
               variant="outline"
               size="sm"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeft}
               onClick={restoreInstructions}
               label="Restore instructions"
+              disabled={isReadOnly}
             />
           )}
           {!compareVersion && (
             <Button
-              variant={enableSkillReferences ? "outline" : "primary"}
+              variant="outline"
               label="Attach knowledge"
-              icon={BookOpenIcon}
+              icon={BookOpen01}
               onClick={addKnowledge ?? undefined}
-              disabled={!addKnowledge}
-            />
-          )}
-          {!compareVersion && enableSkillReferences && (
-            <Button
-              variant="primary"
-              label="Attach capabilities"
-              icon={ToolsIcon}
-              onClick={openCapabilities ?? undefined}
-              disabled={!openCapabilities}
+              disabled={isReadOnly || !addKnowledge}
             />
           )}
         </div>
@@ -90,7 +82,7 @@ export function SkillBuilderInstructionsSection() {
         LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD && (
         <ContentMessage
           variant="info"
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           size="lg"
           title="This skill is noticeably large"
         >
@@ -100,7 +92,6 @@ export function SkillBuilderInstructionsSection() {
       )}
       <SkillBuilderInstructionsEditor
         onAddKnowledge={(fn) => setAddKnowledge(() => fn)}
-        onOpenCapabilities={(fn) => setOpenCapabilities(() => fn)}
       />
     </section>
   );

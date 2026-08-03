@@ -1,11 +1,11 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { CONVERSATION_FILES_SERVER_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import assert from "assert";
 
@@ -33,16 +33,16 @@ export async function getConversationMCPServers(
     mcpServerViewIds
   );
 
-  return mcpServerViews.map((mcpServerViewResource) => {
-    const mcpServerView = mcpServerViewResource.toJSON();
+  return mcpServerViews.map((mcpServerView) => {
+    const serverDisplayMetadata = mcpServerView.getServerDisplayMetadata();
 
     return {
       id: -1,
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
-      name: mcpServerView.name ?? mcpServerView.server.name,
+      name: mcpServerView.name ?? serverDisplayMetadata.name,
       description:
-        mcpServerView.description ?? mcpServerView.server.description,
+        mcpServerView.description ?? serverDisplayMetadata.description,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -55,7 +55,7 @@ export async function getConversationMCPServers(
       dustAppConfiguration: null,
       internalMCPServerId:
         mcpServerView.serverType === "internal"
-          ? mcpServerView.server.sId
+          ? mcpServerView.mcpServerId
           : null,
     };
   });

@@ -1,5 +1,5 @@
 #!/opt/venv/bin/python3
-"""xlsx_inspect — paginated structural inspection of .xlsx workbooks.
+"""xlsx_inspect - paginated structural inspection of .xlsx workbooks.
 
 Backed by openpyxl (read-only mode, constant memory) for cells, styles,
 formulas, and defined names; drawings and merged-cell ranges are pulled
@@ -132,7 +132,7 @@ def parse_range(spec: str) -> CellRange:
     return CellRange(start_row, start_col, end_row, end_col)
 
 
-# Black font and absent colors are treated as "default" — Excel writes
+# Black font and absent colors are treated as "default" - Excel writes
 # FF000000 even for cells the user never styled. White font is meaningful
 # (text on a colored fill), so it stays visible.
 def is_default_font_color(argb: Optional[str]) -> bool:

@@ -2,14 +2,14 @@
  * MCP Server Metadata Snapshot Test
  *
  * This test ensures that MCP server metadata (tools, their descriptions, input schemas,
- * and tool stakes) remains stable across code changes. It helps detect unintended changes
- * when refactoring MCP servers from old-style (inline tool definitions) to new-style
- * (separate metadata files).
+ * tool stakes, and billing info) remains stable across code changes. It helps detect
+ * unintended changes when refactoring MCP servers from old-style (inline tool definitions)
+ * to new-style (separate metadata files).
  *
  * How it works:
  * 1. Instantiates each server with a mock authenticator
  * 2. Extracts the registered tools via the MCP protocol
- * 3. Fetches tool stakes from the server configuration
+ * 3. Fetches tool stakes and billing info from the server configuration
  * 4. Compares the extracted metadata against a saved snapshot file
  *
  * Usage:
@@ -24,16 +24,19 @@
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
-  getInternalMCPServerToolStakes,
+  getInternalMCPServerMetadata,
+  getInternalMCPServerToolArgumentsRequiringApproval,
+  INTERNAL_MCP_SERVERS,
+  type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
 import { extractMetadataFromTools } from "@app/lib/actions/mcp_metadata";
-import type { MCPToolType } from "@app/lib/api/mcp";
+import type { MCPToolType, ToolCostCategory } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { getToolBillingInfo } from "@app/lib/metronome/events";
 import { LEGACY_REGION_BIT } from "@app/lib/resources/string_ids";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it } from "vitest";
@@ -48,6 +51,11 @@ interface ToolMetadataSnapshot {
   name: string;
   description: string;
   inputSchema?: unknown;
+}
+
+interface ToolBillingSnapshot {
+  toolCostCategory: ToolCostCategory;
+  freeUsage: boolean;
 }
 
 /**
@@ -194,7 +202,12 @@ async function collectAllServersMetadata(): Promise<ServerMetadataSnapshot[]> {
   for (const serverName of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
     try {
       const tools = await getToolsFromServer(serverName);
-      const toolsStakes = getInternalMCPServerToolStakes(serverName);
+      const toolsStakes = Object.fromEntries(
+        INTERNAL_MCP_SERVERS[serverName].metadata.tools.map((t) => [
+          t.name,
+          t.stake,
+        ])
+      );
 
       servers.push({
         name: serverName,
@@ -252,11 +265,57 @@ describe("MCP Servers Metadata Snapshot", () => {
     }
   });
 
+  it("should have stable tool billing info across all servers", () => {
+    const allBilling: Record<string, Record<string, ToolBillingSnapshot>> = {};
+
+    for (const serverName of [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES].sort()) {
+      const { tools } = getInternalMCPServerMetadata(serverName);
+
+      const toolSnapshots: Record<string, ToolBillingSnapshot> = {};
+      for (const tool of [...tools].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      )) {
+        const billing = getToolBillingInfo(serverName, tool.name);
+        expect(
+          billing.toolCostCategory,
+          `${serverName}/${tool.name} must have toolCostCategory defined`
+        ).toBeDefined();
+        expect(
+          billing.freeUsage,
+          `${serverName}/${tool.name} must have freeUsage defined`
+        ).toBeDefined();
+        toolSnapshots[tool.name] = billing;
+      }
+
+      allBilling[serverName] = toolSnapshots;
+    }
+
+    try {
+      expect(allBilling).toMatchSnapshot();
+    } catch (error) {
+      const hint =
+        "\n\nTool billing info changed. Review the diff above and run:\n" +
+        "  NODE_ENV=test npm test -w front -- --update lib/actions/" +
+        "mcp_internal_actions/mcp_servers_metadata.test.ts\n" +
+        "to update the snapshot.";
+
+      if (error instanceof Error) {
+        error.message += hint;
+      }
+      throw error;
+    }
+  });
+
   it("should have stable tool stakes across all servers", () => {
     const allStakes: Record<string, Record<string, MCPToolStakeLevelType>> = {};
 
     for (const serverName of [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES].sort()) {
-      const stakes = getInternalMCPServerToolStakes(serverName);
+      const stakes = Object.fromEntries(
+        INTERNAL_MCP_SERVERS[serverName].metadata.tools.map((t) => [
+          t.name,
+          t.stake,
+        ])
+      );
       allStakes[serverName] = sortToolsStakes(stakes) ?? {};
     }
 
@@ -273,6 +332,31 @@ describe("MCP Servers Metadata Snapshot", () => {
         error.message += hint;
       }
       throw error;
+    }
+  });
+
+  it("requires input scoping for every medium-stake tool", () => {
+    for (const serverName of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
+      const stakes = Object.fromEntries(
+        INTERNAL_MCP_SERVERS[serverName].metadata.tools.map((t) => [
+          t.name,
+          t.stake,
+        ])
+      );
+
+      for (const [toolName, stake] of Object.entries(stakes)) {
+        if (stake === "medium") {
+          const argumentsRequiringApproval =
+            getInternalMCPServerToolArgumentsRequiringApproval(
+              serverName,
+              toolName
+            );
+          expect(
+            argumentsRequiringApproval?.length ?? 0,
+            `${serverName}.${toolName}`
+          ).toBeGreaterThan(0);
+        }
+      }
     }
   });
 });

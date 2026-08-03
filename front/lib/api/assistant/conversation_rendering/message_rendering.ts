@@ -13,8 +13,8 @@ import {
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageType,
   ConversationType,
@@ -36,7 +36,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 /**
  * Renders agent message steps into model messages
  */
-export function renderAgentSteps(
+function renderAgentSteps(
   steps: Step[],
   message: AgentMessageType,
   conversation: ConversationType,
@@ -147,16 +147,14 @@ export async function renderAllMessages(
     onMissingAction,
     agentConfiguration,
     enabledSkills,
-    useFramesV2 = false,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
     excludeActions?: boolean;
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
-    agentConfiguration?: AgentConfigurationType;
+    agentConfiguration?: AgentLoopExecutionData["agentConfiguration"];
     enabledSkills: EnabledSkill[];
-    useFramesV2?: boolean;
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
@@ -196,7 +194,6 @@ export async function renderAllMessages(
             conversationId: conversation.sId,
             onMissingAction,
             enabledSkillById,
-            useFramesV2,
           });
 
           const agentMessages = renderAgentSteps(

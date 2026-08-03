@@ -1,6 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
-import { isGoogleAuthenticationErrorMessage } from "@app/lib/api/llm/clients/google/utils/errors";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
 import { notifyProviderCredentialsHealthUpdated } from "@app/lib/notifications/workflows/provider-credential-updated";
@@ -32,9 +31,26 @@ import { GoogleGenAI } from "@google/genai";
 import assert from "assert";
 import OpenAI from "openai";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { z } from "zod";
 
 const API_KEY_REVEAL_WINDOW_MINUTES = 2;
 const PROVIDER_CREDENTIALS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+export type GetProviderCredentialsResponseBody = {
+  providerCredentials: ProviderCredentialType[];
+};
+
+export const ProviderCredentialBodySchema = z.object({
+  apiKey: z.string(),
+});
+
+export type ProviderCredentialBody = z.infer<
+  typeof ProviderCredentialBodySchema
+>;
+
+export type ProviderCredentialResponseBody = {
+  providerCredential: ProviderCredentialType;
+};
 
 type ProviderCredential = {
   id: ModelId;
@@ -599,6 +615,10 @@ async function isCredentialHealthy({
       assertNever(provider);
   }
 }
+
+const isGoogleAuthenticationErrorMessage = (message: string): boolean => {
+  return message.toLowerCase().includes("api key not valid");
+};
 
 // Returns true only if the credential fails with a 401 authentication error,
 // which confirms the key is invalid (not just a transient network/rate-limit issue).

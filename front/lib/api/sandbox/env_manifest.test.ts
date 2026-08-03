@@ -14,6 +14,12 @@ import {
 } from "./env_manifest";
 
 describe("sandbox environment manifest", () => {
+  const conversationOwner = {
+    kind: "conversation" as const,
+    conversationId: "conversation-id",
+  };
+  const podOwner = { kind: "pod" as const, spaceId: "space-id" };
+
   it("builds a deterministic manifest without any value field", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -63,7 +69,10 @@ describe("sandbox environment manifest", () => {
       throw apiSecretResult.error;
     }
 
-    const manifestResult = await buildSandboxEnvManifest(authenticator);
+    const manifestResult = await buildSandboxEnvManifest(
+      authenticator,
+      conversationOwner
+    );
 
     expect(manifestResult.isOk()).toBe(true);
     if (manifestResult.isErr()) {
@@ -109,6 +118,31 @@ describe("sandbox environment manifest", () => {
     expect(json).not.toContain("slack-secret");
   });
 
+  it("uses SPACE_ID instead of CONVERSATION_ID for pod sandbox manifests", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const manifestResult = await buildSandboxEnvManifest(
+      authenticator,
+      podOwner
+    );
+
+    expect(manifestResult.isOk()).toBe(true);
+    if (manifestResult.isErr()) {
+      throw manifestResult.error;
+    }
+
+    expect(manifestResult.value.system).toEqual([
+      {
+        name: "SPACE_ID",
+        description: "current pod space sId",
+      },
+      {
+        name: "WORKSPACE_ID",
+        description: "current workspace sId",
+      },
+    ]);
+  });
+
   it("rejects an HTTPS secret missing a placeholder nonce", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -140,7 +174,10 @@ describe("sandbox environment manifest", () => {
       "listForWorkspace"
     ).mockResolvedValueOnce([secretResult.value]);
 
-    const manifestResult = await buildSandboxEnvManifest(authenticator);
+    const manifestResult = await buildSandboxEnvManifest(
+      authenticator,
+      conversationOwner
+    );
 
     expect(manifestResult.isErr()).toBe(true);
     if (manifestResult.isErr()) {
@@ -174,7 +211,8 @@ describe("sandbox environment manifest", () => {
 
     const result = await writeSandboxEnvManifestFile(
       authenticator,
-      sandbox as never
+      sandbox as never,
+      conversationOwner
     );
 
     expect(result).toEqual(new Ok(undefined));

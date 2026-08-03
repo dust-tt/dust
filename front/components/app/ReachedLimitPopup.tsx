@@ -1,7 +1,11 @@
-import { FairUsageModal } from "@app/components/FairUsageModal";
+import {
+  FairUsageModal,
+  fairUseSeatLimitFromPlan,
+} from "@app/components/FairUsageModal";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
+import type { SubmitMessageError } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -16,7 +20,7 @@ import {
   Hoverable,
   Page,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export type WorkspaceLimit =
   | "cant_invite_no_seats_available"
@@ -25,7 +29,67 @@ export type WorkspaceLimit =
   | "message_limit"
   | "credits_exhausted"
   | "pool_credits_exhausted"
-  | "user_credits_exhausted";
+  | "user_credits_exhausted"
+  | "no_seat";
+
+// Maps a raw API error.type string (from retry/edit endpoints) to the blocking
+// popup code, or null when it's a non-limit error.
+export function getWorkspaceLimitFromApiErrorType(
+  type: string
+): WorkspaceLimit | null {
+  switch (type) {
+    case "plan_message_limit_exceeded":
+      return "message_limit";
+    case "credits_exhausted":
+      return "pool_credits_exhausted";
+    case "user_cap_reached":
+      return "user_credits_exhausted";
+    case "no_seat":
+      return "no_seat";
+    default:
+      return null;
+  }
+}
+
+// Maps a message-send failure to the blocking popup it should open, or null when
+// the failure is transient and should be surfaced as a notification instead.
+export function getWorkspaceLimitForSubmitError(
+  type: SubmitMessageError["type"]
+): WorkspaceLimit | null {
+  switch (type) {
+    case "plan_limit_reached_error":
+      return "message_limit";
+    case "credits_exhausted_error":
+      return "pool_credits_exhausted";
+    case "user_cap_reached_error":
+      return "user_credits_exhausted";
+    case "no_seat_error":
+      return "no_seat";
+    case "user_not_found":
+    case "attachment_upload_error":
+    case "message_send_error":
+    case "content_too_large":
+      return null;
+    default:
+      assertNeverAndIgnore(type);
+      return null;
+  }
+}
+
+function formatLimitTimeframe(timeframe: string): string {
+  switch (timeframe) {
+    case "day":
+      return "over the past 24 hours";
+    case "week":
+      return "over the past 7 days";
+    case "month":
+      return "over the past 30 days";
+    case "lifetime":
+      return "for your current plan";
+    default:
+      return `per ${timeframe}`;
+  }
+}
 
 function getLimitPromptForCode(
   router: AppRouter,
@@ -50,7 +114,7 @@ function getLimitPromptForCode(
                 You can invite up to {subscription.plan.limits.users.maxUsers}
                 &nbsp;members in during trial.
               </Page.P>
-              <p className="text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
+              <p className="text-sm font-bold text-muted-foreground">
                 You can end your trial and start paying now to invite more
                 members.
               </p>
@@ -109,6 +173,9 @@ function getLimitPromptForCode(
       };
 
     case "message_limit": {
+      const assistantLimits = subscription.plan.limits.assistant;
+      const isAwuCreditsFairUseLimit = assistantLimits.maxAwuCredits !== -1;
+
       if (isFreeTrialPhonePlan(subscription.plan.code)) {
         return {
           title: "Dust trial message limit reached",
@@ -142,7 +209,7 @@ function getLimitPromptForCode(
                 We limit usage of Dust during the trial. You've reached your
                 limit for today.
               </Page.P>
-              <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              <p className="text-sm font-normal text-muted-foreground">
                 Come back tomorrow for a fresh start or&nbsp;
                 <span className="font-bold">
                   end your trial and start paying now.
@@ -152,26 +219,53 @@ function getLimitPromptForCode(
           ),
         };
       } else {
-        return {
-          title: "Message quota exceeded",
-          validateLabel: "Ok",
-          children: (
-            <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              We've paused messaging for your workspace due to our fair usage
-              policy. Your workspace has reached its shared limit of{" "}
-              {subscription.plan.limits.assistant.maxMessages} messages per user
-              over the past 24 hours. This total limit is collectively shared by
-              all users in the workspace. Check our{" "}
-              <Hoverable
-                variant="highlight"
-                onClick={() => displayFairUseModal()}
-              >
-                Fair Use policy
-              </Hoverable>
-              &nbsp; to learn more.
-            </p>
-          ),
-        };
+        if (isAwuCreditsFairUseLimit) {
+          return {
+            title: "Credit quota exceeded",
+            validateLabel: "Ok",
+            children: (
+              <p className="text-sm font-normal text-muted-foreground">
+                We've paused messaging for your account due to our fair usage
+                policy. Your account has reached its limit of{" "}
+                {assistantLimits.maxAwuCredits} credits{" "}
+                {formatLimitTimeframe(assistantLimits.maxAwuCreditsTimeframe)}.
+                Check our{" "}
+                <Hoverable
+                  variant="highlight"
+                  onClick={() => displayFairUseModal()}
+                >
+                  Fair Use policy
+                </Hoverable>
+                &nbsp; to learn more.
+              </p>
+            ),
+          };
+        } else {
+          return {
+            title: "Message quota exceeded",
+            validateLabel: "Ok",
+            children: (
+              <p className="text-sm font-normal text-muted-foreground">
+                We've paused messaging for your workspace due to our fair usage
+                policy. Your workspace has reached its shared limit of{" "}
+                {subscription.plan.limits.assistant.maxMessages} messages per
+                user{" "}
+                {formatLimitTimeframe(
+                  subscription.plan.limits.assistant.maxMessagesTimeframe
+                )}
+                . This total limit is collectively shared by all users in the
+                workspace. Check our{" "}
+                <Hoverable
+                  variant="highlight"
+                  onClick={() => displayFairUseModal()}
+                >
+                  Fair Use policy
+                </Hoverable>
+                &nbsp; to learn more.
+              </p>
+            ),
+          };
+        }
       }
     }
 
@@ -200,20 +294,41 @@ function getLimitPromptForCode(
       };
     }
 
-    case "user_credits_exhausted": {
+    case "no_seat": {
       return {
-        title: "Usage cap reached",
-        validateLabel: isAdmin ? "Go to Usage" : "Ok",
+        title: "No seat assigned",
+        validateLabel: isAdmin ? "Go to usage page" : "Ok",
         onValidate: isAdmin
           ? () => {
-              void router.push(`/w/${owner.sId}/usage`);
+              void router.push(`/w/${owner.sId}/usage?openChangeMySeat`);
             }
           : undefined,
         children: (
           <>
             <Page.P>
               {isAdmin
-                ? "You have reached your personal usage cap. You can adjust user caps from the usage page."
+                ? "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+                : "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."}
+            </Page.P>
+          </>
+        ),
+      };
+    }
+
+    case "user_credits_exhausted": {
+      return {
+        title: "Usage cap reached",
+        validateLabel: isAdmin ? "Go to Usage" : "Ok",
+        onValidate: isAdmin
+          ? () => {
+              void router.push(`/w/${owner.sId}/usage?openChangeMySeat`);
+            }
+          : undefined,
+        children: (
+          <>
+            <Page.P>
+              {isAdmin
+                ? "You have reached your personal usage cap. On the usage page you can change your seat or adjust user caps."
                 : "You have reached your personal usage cap. Please contact your administrator to increase it."}
             </Page.P>
           </>
@@ -244,11 +359,19 @@ export function ReachedLimitPopup({
 }) {
   const [isFairUsageModalOpened, setIsFairUsageModalOpened] = useState(false);
 
+  // Keep the last code that was shown while open so the closing animation
+  // doesn't flash the fallback content when the parent nulls limitReachedCode.
+  const activeCodeRef = useRef(code);
+  if (isOpened) {
+    activeCodeRef.current = code;
+  }
+  const activeCode = activeCodeRef.current;
+
   const router = useAppRouter();
   const limitPrompt = getLimitPromptForCode(
     router,
     owner,
-    code,
+    activeCode,
     subscription,
     () => setIsFairUsageModalOpened(true),
     isAdmin
@@ -265,6 +388,7 @@ export function ReachedLimitPopup({
       <FairUsageModal
         isOpened={isFairUsageModalOpened}
         onClose={() => setIsFairUsageModalOpened(false)}
+        seatLimit={fairUseSeatLimitFromPlan(subscription.plan)}
       />
       <Dialog
         open={isOpened}
@@ -280,15 +404,21 @@ export function ReachedLimitPopup({
           </DialogHeader>
           <DialogContainer>{children}</DialogContainer>
           <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-            }}
+            // When there is no distinct action (onValidate), the validate button
+            // just closes the dialog, so a separate Cancel button would be
+            // redundant — render a single button in that case.
+            leftButtonProps={
+              onValidate
+                ? {
+                    label: "Cancel",
+                    variant: "outline",
+                  }
+                : undefined
+            }
             rightButtonProps={{
               label: validateLabel,
               variant: "highlight",
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              onClick: onValidate || (() => onClose()),
+              onClick: onValidate ?? (() => onClose()),
             }}
           />
         </DialogContent>

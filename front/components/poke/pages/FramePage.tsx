@@ -6,10 +6,10 @@ import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   CodeBlock,
-  ExternalLinkIcon,
+  LinkExternal01,
   Page,
   Spinner,
   useCopyToClipboard,
@@ -88,7 +88,7 @@ export function FramePage() {
         {/* Summary Chips */}
         <div className="flex flex-wrap gap-2">
           <Chip
-            color={file.status === "ready" ? "green" : "warning"}
+            color={file.status === "ready" ? "success" : "warning"}
             label={`Status: ${file.status}`}
             size="sm"
           />
@@ -102,7 +102,7 @@ export function FramePage() {
 
         {/* Metadata Card */}
         <div className="rounded-lg border">
-          <div className="rounded-t-lg border-b bg-muted px-4 py-2 dark:bg-muted-background-night">
+          <div className="rounded-t-lg border-b bg-muted px-4 py-2">
             <h3 className="font-medium">File Metadata</h3>
           </div>
           <div className="grid grid-cols-2 gap-4 p-4">
@@ -135,7 +135,7 @@ export function FramePage() {
                     label="View"
                     variant="ghost"
                     size="xs"
-                    icon={ExternalLinkIcon}
+                    icon={LinkExternal01}
                     href={`/poke/${owner.sId}/conversation/${file.useCaseMetadata.conversationId}`}
                   />
                 </div>
@@ -148,13 +148,13 @@ export function FramePage() {
         {file.useCaseMetadata &&
           Object.keys(file.useCaseMetadata).length > 0 && (
             <div className="rounded-lg border">
-              <div className="flex items-center justify-between rounded-t-lg border-b bg-muted px-4 py-2 dark:bg-muted-background-night">
+              <div className="flex items-center justify-between rounded-t-lg border-b bg-muted px-4 py-2">
                 <h3 className="font-medium">Use Case Metadata</h3>
                 <Button
                   label={isCopiedMetadata ? "Copied!" : "Copy"}
                   variant="ghost"
                   size="xs"
-                  icon={isCopiedMetadata ? ClipboardCheckIcon : ClipboardIcon}
+                  icon={isCopiedMetadata ? ClipboardCheck : Clipboard}
                   onClick={() =>
                     copyMetadata(JSON.stringify(file.useCaseMetadata, null, 2))
                   }
@@ -173,7 +173,7 @@ export function FramePage() {
 
         {/* Sharing Settings Card */}
         <div className="rounded-lg border">
-          <div className="rounded-t-lg border-b bg-muted px-4 py-2 dark:bg-muted-background-night">
+          <div className="rounded-t-lg border-b bg-muted px-4 py-2">
             <h3 className="font-medium">Sharing Settings</h3>
           </div>
           <div className="p-4">
@@ -206,9 +206,7 @@ export function FramePage() {
                         label={isCopiedShareUrl ? "Copied!" : "Copy"}
                         variant="ghost"
                         size="xs"
-                        icon={
-                          isCopiedShareUrl ? ClipboardCheckIcon : ClipboardIcon
-                        }
+                        icon={isCopiedShareUrl ? ClipboardCheck : Clipboard}
                         onClick={() => copyShareUrl(shareInfo.shareUrl)}
                       />
                     </div>
@@ -322,13 +320,13 @@ export function FramePage() {
         {/* Content Card */}
         {content && (
           <div className="rounded-lg border">
-            <div className="flex items-center justify-between rounded-t-lg border-b bg-muted px-4 py-2 dark:bg-muted-background-night">
+            <div className="flex items-center justify-between rounded-t-lg border-b bg-muted px-4 py-2">
               <h3 className="font-medium">File Content</h3>
               <Button
                 label={isCopiedContent ? "Copied!" : "Copy Content"}
                 variant="ghost"
                 size="xs"
-                icon={isCopiedContent ? ClipboardCheckIcon : ClipboardIcon}
+                icon={isCopiedContent ? ClipboardCheck : Clipboard}
                 onClick={() => copyContent(content)}
               />
             </div>

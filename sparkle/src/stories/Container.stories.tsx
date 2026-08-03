@@ -4,16 +4,30 @@ import React from "react";
 import { Container } from "../index_with_tw_base";
 
 const meta = {
-  title: "Layouts/Container",
+  title: "Layout/Container",
+  parameters: {
+    docs: {
+      description: {
+        component: `A centered page wrapper that provides responsive horizontal padding and a built-in vertical **ScrollArea**. Use **fixed** to clamp content to a centered max width, and **noPadding** to opt out of the default responsive padding. It also establishes a CSS container context so descendants can use \`@container\` queries.
+
+**When to use**
+- As the outermost wrapper for page or panel content that should scroll and stay centered.
+
+**Guidelines**
+- Use **fixed** for reading-width content (forms, articles) and full width for dashboards or tables.
+- Since it owns the scroll region, give it a bounded height (e.g. \`h-full\`) rather than nesting another **ScrollArea**.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;
 
 export const AppContainer = () => {
   return (
-    <div className="s-h-[700px] s-w-full">
-      <Container className="s-h-full s-border s-border-pink-300" fixed>
-        <div className="s-space-y-4 s-text-base s-leading-relaxed s-text-gray-800">
+    <div className="h-[700px] w-full">
+      <Container className="h-full border border-pink-300" fixed>
+        <div className="space-y-4 text-base leading-relaxed text-gray-800">
           <div>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum
             ultricies dictum sapien, sed imperdiet dui consequat et. Nullam
@@ -87,9 +101,9 @@ export const AppContainer = () => {
 
 export const FixedExample = () => {
   return (
-    <div className="s-h-[700px] s-w-full">
-      <Container className="s-h-full s-border s-border-pink-300" fixed>
-        <div className="s-space-y-4 s-text-base s-leading-relaxed s-text-gray-800">
+    <div className="h-[700px] w-full">
+      <Container className="h-full border border-pink-300" fixed>
+        <div className="space-y-4 text-base leading-relaxed text-gray-800">
           <div>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum
             ultricies dictum sapien, sed imperdiet dui consequat et. Nullam
@@ -163,9 +177,9 @@ export const FixedExample = () => {
 
 export const FluidExample = () => {
   return (
-    <div className="s-h-[700px] s-w-full">
-      <Container className="s-h-full s-border s-border-pink-300">
-        <div className="s-space-y-4 s-text-base s-leading-relaxed s-text-gray-800">
+    <div className="h-[700px] w-full">
+      <Container className="h-full border border-pink-300">
+        <div className="space-y-4 text-base leading-relaxed text-gray-800">
           <div>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum
             ultricies dictum sapien, sed imperdiet dui consequat et. Nullam

@@ -3,27 +3,31 @@ import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
+import { randomBytes } from "crypto";
 
 // TTL for MCP server registrations (10 minutes).
 // Refreshed on every access via EXPIRE in validateMCPServerAccess, and by the client heartbeat
 // (every 5 minutes) as a fallback.
 const MCP_SERVER_REGISTRATION_TTL_SECONDS = 10 * 60;
 
-const MAX_SERVER_INSTANCES = 256;
+// Number of attempts to allocate a serverId before giving up. Suffixes are 16 random hex
+// characters, so a collision is virtually impossible
+const MAX_REGISTRATION_ATTEMPTS = 3;
 
-export class MCPServerInstanceLimitError extends Error {
-  constructor(serverName: string) {
-    super(
-      `Maximum number of servers (${MAX_SERVER_INSTANCES}) with name "${serverName}" reached`
-    );
-    this.name = "MCPServerInstanceLimitError";
-  }
+export const MCP_REGISTER_RATE_LIMIT = {
+  maxPerTimeframe: 100,
+  timeframeSeconds: 60,
+} as const;
+export const MCP_REGISTER_RATE_LIMIT_ERROR =
+  "Too many MCP server registrations. Please try again later.";
+export function getMCPRegisterRateLimitKey(userId: number): string {
+  return `mcp:register:${userId}`;
 }
 
 /**
  * Generate a Redis key for MCP server registration.
  */
-export function getMCPServerRegistryKey({
+function getMCPServerRegistryKey({
   workspaceId,
   userId,
   serverId,
@@ -36,19 +40,21 @@ export function getMCPServerRegistryKey({
 }
 
 /**
- * Get the base serverId by removing any numeric suffix.
- * For example: "mcp-client-side:my-server.1" -> "mcp-client-side:my-server"
+ * Get the base serverId by removing the per-registration suffix.
+ * For example: "mcp-client-side:my-server.a1b2c3d4e5f60718" -> "mcp-client-side:my-server"
+ * (legacy numeric suffixes like "mcp-client-side:my-server.1" are stripped too).
  * This is safe because:
  * 1. The suffix is always prefixed with a dot
  * 2. The base serverId is generated using slugify which removes dots
  * 3. The serverId format is strictly controlled by our code
  */
 export function getBaseServerId(serverId: string): string {
-  // Only remove suffix if it matches our strict pattern (dot followed by numbers)
-  return serverId.replace(/\.\d+$/, "");
+  // Only remove suffix if it matches our strict pattern (dot followed by hex characters,
+  // which also covers legacy numeric suffixes).
+  return serverId.replace(/\.[0-9a-f]+$/, "");
 }
 
-export function getMCPServerIdFromServerName({
+function getMCPServerIdFromServerName({
   serverName,
 }: {
   serverName: string;
@@ -71,9 +77,11 @@ interface MCPServerRegistration {
 /**
  * Register a new MCP server.
  * Multiple servers can share the same serverName, but each must have a unique serverId.
- * If a serverName is already in use, a numeric suffix will be added to the serverId
- * to ensure uniqueness (e.g., "my-server", "my-server.1", "my-server.2").
- * The suffix is prefixed with a dot to ensure it can't be confused with the base serverId.
+ * The serverId is the slugified serverName followed by a dot and a random hex suffix
+ * (e.g., "mcp-client-side:my-server.a1b2c3d4e5f60718").
+ *
+ * The random suffix is what isolates concurrent registrations (e.g. multiple browser tabs
+ * of the same user) from each other.
  */
 export async function registerMCPServer(
   auth: Authenticator,
@@ -88,20 +96,15 @@ export async function registerMCPServer(
   const userId = auth.getNonNullableUser().id.toString();
   const now = Date.now();
 
-  // Find an available serverId by adding a suffix if needed.
-  let serverId = getMCPServerIdFromServerName({ serverName });
-  let suffix = 1;
-  let key = getMCPServerRegistryKey({
-    workspaceId,
-    userId,
-    serverId,
-  });
+  for (let attempt = 0; attempt < MAX_REGISTRATION_ATTEMPTS; attempt++) {
+    const suffix = randomBytes(8).toString("hex");
+    const serverId = `${getMCPServerIdFromServerName({ serverName })}.${suffix}`;
+    const key = getMCPServerRegistryKey({
+      workspaceId,
+      userId,
+      serverId,
+    });
 
-  // Keep trying with incremented suffixes until we find an available serverId.
-  let serverIdFound = false;
-  let attempts = 0;
-
-  while (!serverIdFound && attempts < MAX_SERVER_INSTANCES) {
     const metadata: MCPServerRegistration = {
       lastHeartbeat: now,
       registeredAt: now,
@@ -121,32 +124,20 @@ export async function registerMCPServer(
     );
 
     if (result !== null) {
-      serverIdFound = true;
-    } else {
-      // Key already exists, try the next suffix.
-      serverId = `${getMCPServerIdFromServerName({ serverName })}.${suffix}`;
-      key = getMCPServerRegistryKey({
-        workspaceId,
-        userId,
+      const expiresAt = new Date(
+        now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
+      ).toISOString();
+
+      return new Ok({
+        expiresAt,
         serverId,
       });
-      suffix++;
-      attempts++;
     }
   }
 
-  if (!serverIdFound) {
-    return new Err(new MCPServerInstanceLimitError(serverName));
-  }
-
-  const expiresAt = new Date(
-    now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
-  ).toISOString();
-
-  return new Ok({
-    expiresAt,
-    serverId,
-  });
+  return new Err(
+    new Error(`Failed to allocate a serverId for server "${serverName}"`)
+  );
 }
 
 /**
@@ -225,7 +216,7 @@ export async function updateMCPServerHeartbeat(
         EX: MCP_SERVER_REGISTRATION_TTL_SECONDS,
       });
 
-      return true;
+      return metadata;
     }
   );
 
@@ -263,6 +254,7 @@ export async function deregisterMCPServer(
     { origin: "mcp_client_side_request" },
     async (redis) => redis.del(key)
   );
+
   return deleted === 1;
 }
 

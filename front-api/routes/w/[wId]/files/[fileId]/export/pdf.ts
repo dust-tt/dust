@@ -16,6 +16,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/files/:fileId/export/pdf.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

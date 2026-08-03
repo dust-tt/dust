@@ -9,14 +9,12 @@ import { cva } from "class-variance-authority";
 import React, { memo } from "react";
 
 export const paragraphBlockVariants = cva(
-  [
-    "s-whitespace-pre-wrap s-break-words s-font-normal first:s-pt-0 last:s-pb-0",
-  ],
+  ["whitespace-pre-wrap break-words font-normal first:pt-0 last:pb-0"],
   {
     variants: {
       compactSpacing: {
-        true: ["s-py-0"],
-        false: ["s-py-1 @md:s-pt-2 @md:s-pb-[10px] @md:s-leading-relaxed"],
+        true: ["py-0"],
+        false: ["py-1 @md:pt-2 @md:pb-[10px] @md:leading-relaxed"],
       },
     },
   }

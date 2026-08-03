@@ -1,4 +1,5 @@
 import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
+import { RequestedSpacesList } from "@app/components/poke/assistants/RequestedSpacesList";
 import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
 import { DatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/DatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
@@ -18,8 +19,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
   IconButton,
+  LinkExternal01,
   LinkWrapper,
   Page,
   Spinner,
@@ -28,7 +29,7 @@ import {
   TabsList,
   TabsTrigger,
   TextArea,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 
@@ -77,6 +78,7 @@ export function AssistantDetailsPage() {
     spaces,
     skillsByVersion,
   } = agentDetails;
+  const spacesById = new Map(spaces.map((space) => [space.sId, space]));
 
   return (
     <div>
@@ -93,7 +95,7 @@ export function AssistantDetailsPage() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              icon={UserGroupIcon}
+              icon={Users01}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.currentTarget.focus();
               }}
@@ -129,7 +131,8 @@ export function AssistantDetailsPage() {
             <AgentOverviewTable
               agentConfiguration={agentConfigurations[0]}
               authors={authors}
-              spaces={spaces}
+              owner={owner}
+              spacesById={spacesById}
             />
             <div className="flex flex-grow flex-col">
               <PluginList
@@ -178,12 +181,12 @@ export function AssistantDetailsPage() {
                   >
                     <ContextItem.Description>
                       <div className="flex flex-col gap-2">
-                        <div className="ml-4 pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="ml-4 pt-2 text-sm text-muted-foreground">
                           <div>Created at: {`${a.versionCreatedAt}`}</div>
                           <div>Scope: {a.scope}</div>
                           <div>Description: {a.description}</div>
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Author:</div>
                           <div>ID: {a.versionAuthorId}</div>
                           {author && (
@@ -194,7 +197,7 @@ export function AssistantDetailsPage() {
                             </div>
                           )}
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Model:</div>
                           <div>
                             {SUPPORTED_MODEL_CONFIGS.find(
@@ -210,7 +213,7 @@ export function AssistantDetailsPage() {
                           />
                         </div>
 
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Actions:</div>
                           <div>maxStepPerRun: {a.maxStepsPerRun}</div>
                           {a.actions.map((action, index) => (
@@ -229,7 +232,15 @@ export function AssistantDetailsPage() {
                             </div>
                           ))}
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="ml-4 text-sm text-muted-foreground">
+                          <div className="font-bold">Requested spaces:</div>
+                          <RequestedSpacesList
+                            owner={owner}
+                            requestedSpaceIds={a.requestedSpaceIds}
+                            spacesById={spacesById}
+                          />
+                        </div>
+                        <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Skills:</div>
                           {versionSkills.length === 0 ? (
                             <div>No skills</div>
@@ -243,7 +254,7 @@ export function AssistantDetailsPage() {
                                     target="_blank"
                                   >
                                     <IconButton
-                                      icon={ExternalLinkIcon}
+                                      icon={LinkExternal01}
                                       size="xs"
                                       variant="outline"
                                     />
@@ -259,7 +270,7 @@ export function AssistantDetailsPage() {
                             ))
                           )}
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="ml-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <span className="font-bold">
                               Instructions markdown:
@@ -268,7 +279,7 @@ export function AssistantDetailsPage() {
                               href={`/poke/${owner.sId}/assistants/${a.sId}/instructions`}
                             >
                               <Button
-                                icon={ExternalLinkIcon}
+                                icon={LinkExternal01}
                                 label="View in editor"
                                 variant="outline"
                                 size="xs"
@@ -283,7 +294,7 @@ export function AssistantDetailsPage() {
                             }}
                           />
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="ml-4 text-sm text-muted-foreground">
                           <span className="font-bold">Instructions HTML:</span>
                           <TextArea
                             placeholder=""

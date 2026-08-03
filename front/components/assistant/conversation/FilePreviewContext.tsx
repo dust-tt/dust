@@ -1,0 +1,134 @@
+import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
+import type { FileEntry } from "@app/components/file_explorer/types";
+import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
+import {
+  fetchFileIdFromPath,
+  getFileDownloadUrl,
+  getFilePathDownloadUrl,
+  getFilePathViewUrl,
+  getFileViewUrl,
+} from "@app/lib/swr/files";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
+
+interface PreviewableFile {
+  fileId?: string | null;
+  filePath?: string;
+  title: string;
+  contentType: string;
+}
+
+type FilePreviewContextType = {
+  openFilePreview: (file: PreviewableFile) => void;
+  resolveFileIdFromPath: (filePath: string) => Promise<string | null>;
+};
+
+const FilePreviewContext = createContext<FilePreviewContextType>({
+  openFilePreview: () => {},
+  resolveFileIdFromPath: () => Promise.resolve(null),
+});
+
+interface FilePreviewProviderProps {
+  owner: LightWorkspaceType;
+  children: ReactNode;
+}
+
+export function FilePreviewProvider({
+  owner,
+  children,
+}: FilePreviewProviderProps) {
+  const [previewState, setPreviewState] = useState<{
+    entry: FileEntry;
+    fileUrl: string;
+    downloadUrl: string;
+  } | null>(null);
+
+  const openFilePreview = useCallback(
+    (file: PreviewableFile) => {
+      const fileUrl = file.filePath
+        ? getFilePathViewUrl(owner, file.filePath)
+        : file.fileId
+          ? getFileViewUrl(owner, file.fileId)
+          : null;
+
+      const downloadUrl = file.filePath
+        ? getFilePathDownloadUrl(owner, file.filePath)
+        : file.fileId
+          ? getFileDownloadUrl(owner, file.fileId)
+          : null;
+
+      if (!fileUrl || !downloadUrl) {
+        return;
+      }
+
+      if (!isFilePreviewableContentType(file.contentType)) {
+        window.open(downloadUrl, "_blank");
+        return;
+      }
+
+      setPreviewState({
+        entry: {
+          kind: "file",
+          isDirectory: false,
+          fileName: file.title,
+          path: file.filePath ?? file.title,
+          contentType: file.contentType,
+          fileId: file.fileId ?? null,
+          thumbnailUrl: null,
+          sizeBytes: 0,
+          // No mtime here: stands in to cache-bust the per-URL cached PDF
+          // conversion, so an edited file stops rendering its stale one.
+          lastModifiedMs: Date.now(),
+        },
+        fileUrl,
+        downloadUrl,
+      });
+    },
+    [owner]
+  );
+
+  const resolveFileIdFromPath = useCallback(
+    (filePath: string) => fetchFileIdFromPath({ owner, filePath }),
+    [owner]
+  );
+
+  const handleDownload = useCallback(async () => {
+    if (previewState?.downloadUrl) {
+      window.open(previewState.downloadUrl, "_blank");
+    }
+  }, [previewState?.downloadUrl]);
+
+  const contextValue = useMemo(
+    () => ({ openFilePreview, resolveFileIdFromPath }),
+    [openFilePreview, resolveFileIdFromPath]
+  );
+
+  return (
+    <FilePreviewContext.Provider value={contextValue}>
+      {children}
+      <FilePreviewDialog
+        entry={previewState?.entry ?? null}
+        fileUrl={previewState?.fileUrl ?? null}
+        isOpen={!!previewState}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewState(null);
+          }
+        }}
+        onDownload={handleDownload}
+        owner={owner}
+      />
+    </FilePreviewContext.Provider>
+  );
+}
+
+export function useFilePreviewContext() {
+  return useContext(FilePreviewContext);
+}

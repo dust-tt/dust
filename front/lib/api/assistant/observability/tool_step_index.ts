@@ -126,3 +126,7 @@ export async function fetchToolStepIndexDistribution(
 
   return new Ok(byStep);
 }
+
+export type GetToolStepIndexResponse = {
+  byStep: ToolStepIndexByStep[];
+};

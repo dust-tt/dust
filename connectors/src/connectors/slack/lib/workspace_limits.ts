@@ -1,4 +1,7 @@
-import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
+import {
+  isSlackPostingPermissionError,
+  SlackExternalUserError,
+} from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackConversationInfo,
@@ -13,7 +16,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { cacheWithRedis } from "@connectors/types";
 import type { Result, WorkspaceDomainType } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import { Err, normalizeError, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type {} from "@slack/web-api/dist/types/response/UsersInfoResponse";
 
@@ -22,7 +25,7 @@ async function getVerifiedDomainsForWorkspace(
 ): Promise<WorkspaceDomainType[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
-  const dustAPI = getDustAPI(ds, { useInternalAPI: false });
+  const dustAPI = getDustAPI(ds);
 
   const workspaceVerifiedDomainsRes =
     await dustAPI.getWorkspaceVerifiedDomains();
@@ -129,7 +132,7 @@ async function postMessageForUnauthorizedUser(
   slackClient: WebClient,
   slackUserInfo: SlackUserInfo,
   slackInfos: SlackInfos
-) {
+): Promise<Result<undefined, Error>> {
   const { slackChannelId, slackMessageTs } = slackInfos;
 
   const autoJoinEnabled = await isAutoJoinEnabledForDomain(
@@ -147,11 +150,16 @@ async function postMessageForUnauthorizedUser(
     method: "chat.postMessage",
     channelId: slackChannelId,
   });
-  return slackClient.chat.postMessage({
-    channel: slackChannelId,
-    blocks: slackMessageBlocks,
-    thread_ts: slackMessageTs,
-  });
+  try {
+    await slackClient.chat.postMessage({
+      channel: slackChannelId,
+      blocks: slackMessageBlocks,
+      thread_ts: slackMessageTs,
+    });
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }
 
 export async function isBotAllowed(
@@ -197,6 +205,11 @@ interface SlackInfos {
   slackMessageTs: string;
   slackTeamId: string;
 }
+
+type SlackUserAuthorization = {
+  authorized: boolean;
+  groupIds: string[];
+};
 
 // Verify the Slack user is not an external guest to the workspace.
 // An exception is made for users from domains on the whitelist,
@@ -309,12 +322,9 @@ export async function notifyIfSlackUserIsNotAllowed(
   slackUserInfo: SlackUserInfo,
   slackInfos: SlackInfos,
   whitelistedDomains?: readonly string[]
-): Promise<{
-  authorized: boolean;
-  groupIds: string[];
-}> {
+): Promise<Result<SlackUserAuthorization, Error>> {
   if (!slackUserInfo) {
-    return { authorized: false, groupIds: [] };
+    return new Ok({ authorized: false, groupIds: [] });
   }
 
   // Handle Slack users that we consider external to the Slack workspace,
@@ -362,18 +372,34 @@ export async function notifyIfSlackUserIsNotAllowed(
       "Unauthorized Slack user attempted to access webhook."
     );
 
-    await postMessageForUnauthorizedUser(
+    const postMessageRes = await postMessageForUnauthorizedUser(
       connector,
       slackClient,
       slackUserInfo,
       slackInfos
     );
+    if (postMessageRes.isErr()) {
+      if (isSlackPostingPermissionError(postMessageRes.error)) {
+        logger.info(
+          {
+            connectorId: connector.id,
+            failureStage: "unauthorized_user_notification",
+            slackChannelId: slackInfos.slackChannelId,
+            slackErrorCode: postMessageRes.error.data.error,
+            slackTeamId: slackInfos.slackTeamId,
+          },
+          "Slack prevented Dust from posting an unauthorized-user notification."
+        );
+      } else {
+        return postMessageRes;
+      }
+    }
   }
 
   // If the user is part of the Dust workspace, they are allowed without any explicit group id.
   if (isExternal && externalAuthorization) {
-    return externalAuthorization;
+    return new Ok(externalAuthorization);
   }
 
-  return { authorized: isAllowed, groupIds: [] };
+  return new Ok({ authorized: isAllowed, groupIds: [] });
 }

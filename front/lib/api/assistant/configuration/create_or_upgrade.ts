@@ -12,13 +12,17 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
-import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -43,7 +47,15 @@ export async function createOrUpgradeAgentConfiguration({
   agentConfigurationId?: string;
   authorId?: ModelId;
 }): Promise<Result<AgentConfigurationType, Error>> {
-  const { actions } = assistant;
+  const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
+    auth,
+    assistant.actions.map((action) => action.mcpServerViewId),
+    { isRestrictedToSkills: true }
+  );
+  const skillsOnlyViewIds = new Set(skillsOnlyViews.map((view) => view.sId));
+  const actions = assistant.actions.filter(
+    (action) => !skillsOnlyViewIds.has(action.mcpServerViewId)
+  );
 
   // Tools mode:
   // Enforce that every action has a name and a description and that every name is unique.
@@ -142,6 +154,27 @@ export async function createOrUpgradeAgentConfiguration({
     return new Err(
       new Error("An author must be provided when no user is authenticated.")
     );
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+  const modelConfig = getSupportedModelConfig(assistant.model);
+  if (!modelConfig) {
+    return new Err(
+      new Error(
+        `Unsupported model "${assistant.model.modelId}" for provider ` +
+          `"${assistant.model.providerId}".`
+      )
+    );
+  }
+
+  const accessError = await getModelTierAccessErrorForAgentConfiguration(auth, {
+    agentName: assistant.name,
+    model: modelConfig,
+    reasoningEffort: assistant.model.reasoningEffort,
+    featureFlags,
+  });
+  if (accessError) {
+    return new Err(new Error(accessError.message));
   }
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {

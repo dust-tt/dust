@@ -8,7 +8,7 @@ import {
   Card,
   ContentMessage,
   DataTable,
-  InformationCircleIcon,
+  InfoCircle,
   Spinner,
 } from "@dust-tt/sparkle";
 import { KeyIcon, PencilIcon } from "@heroicons/react/20/solid";
@@ -109,7 +109,7 @@ export function SecretSection({
       <ConfigurationSectionContainer title="Select a Secret">
         <ContentMessage
           title="Failed to load secrets"
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           variant="warning"
           size="sm"
         >
@@ -125,7 +125,7 @@ export function SecretSection({
       error={fieldState.error?.message}
     >
       <div className="flex h-full flex-col gap-3">
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-sm text-muted-foreground">
           {customDescription ?? (
             <>
               The agent will use the selected secret to authenticate with the
@@ -157,7 +157,7 @@ export function SecretSection({
             {availableSecrets.length === 0 ? (
               <div className="flex h-40 flex-col items-center justify-center gap-3 text-center">
                 <KeyIcon className="h-8 w-8 text-muted-foreground" />
-                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <div className="text-sm text-muted-foreground">
                   No secrets found. Create a secret in your workspace settings
                   first.
                 </div>

@@ -1,10 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetTagsUsageResponseBody } from "@app/lib/resources/tags_resource";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PatchAgentTagsRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/tags";
-import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
-import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/tags/suggest_from_agents";
-import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";
+import type { PatchAgentTagsRequestBody } from "@app/types/api/assistant/configuration/agent_tags";
+import type { GetSuggestionsResponseBody } from "@app/types/api/assistant/tag_manager";
+import type { GetTagsResponseBody } from "@app/types/api/tags";
 import type { TagKind, TagType } from "@app/types/tag";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";

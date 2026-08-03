@@ -11,10 +11,10 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
-  ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
-  Cog6ToothIcon,
-  FolderIcon,
+  CheckCircle,
+  Folder,
+  MessageChatSquare,
+  Settings01,
   Spinner,
   Tabs,
   TabsList,
@@ -54,7 +54,7 @@ export function PodPage() {
 
   if (isPodsInfoLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
+      <div className="flex h-full w-full items-center justify-center mt-8">
         <Spinner />
       </div>
     );
@@ -79,33 +79,33 @@ export function PodPage() {
       <Tabs
         value={currentTab}
         onValueChange={(value) => handleTabChange(value as PodTab)}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden pt-3"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden pt-2"
       >
-        <div className="flex shrink-0 items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6 dark:border-separator-night">
+        <div className="flex shrink-0 items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6">
           <TabsList border={false}>
             <TabsTrigger
               value="conversations"
               label={compactPodTabs ? undefined : "Conversations"}
               tooltip={compactPodTabs ? "Conversations" : undefined}
-              icon={ChatBubbleLeftRightIcon}
+              icon={MessageChatSquare}
             />
             <TabsTrigger
               value="tasks"
               label={compactPodTabs ? undefined : "Tasks"}
               tooltip={compactPodTabs ? "Tasks" : undefined}
-              icon={CheckCircleIcon}
+              icon={CheckCircle}
             />
             <TabsTrigger
               value="files"
               label={compactPodTabs ? undefined : "Files"}
               tooltip={compactPodTabs ? "Files" : undefined}
-              icon={FolderIcon}
+              icon={Folder}
             />
             <TabsTrigger
               value="settings"
               label={compactPodTabs ? undefined : "Settings"}
               tooltip={compactPodTabs ? "Settings" : undefined}
-              icon={Cog6ToothIcon}
+              icon={Settings01}
             />
           </TabsList>
 

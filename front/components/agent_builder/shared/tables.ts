@@ -1,10 +1,10 @@
-import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
+} from "@app/lib/api/data_source_view";
+import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { LightContentNode } from "@app/types/api/public/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";

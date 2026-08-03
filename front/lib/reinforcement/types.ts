@@ -2,23 +2,23 @@ import type { ToolCallEvent } from "@app/lib/api/llm/types/events";
 import { z } from "zod";
 
 export const DESCRIBE_MCP_TOOL_NAME = "describe_mcp" as const;
+export const DESCRIBE_SKILL_TOOL_NAME = "describe_skill" as const;
 
 export type ExploratoryToolName =
   | "get_available_tools"
   | "search_knowledge"
-  | typeof DESCRIBE_MCP_TOOL_NAME;
+  | typeof DESCRIBE_MCP_TOOL_NAME
+  | typeof DESCRIBE_SKILL_TOOL_NAME;
 
 export type TerminalToolName = "edit_skill" | "reject_suggestion";
 
-export const TERMINAL_TOOLS: TerminalToolName[] = [
-  "edit_skill",
-  "reject_suggestion",
-];
+const TERMINAL_TOOLS: TerminalToolName[] = ["edit_skill", "reject_suggestion"];
 
-export const EXPLORATORY_TOOLS: ExploratoryToolName[] = [
+const EXPLORATORY_TOOLS: ExploratoryToolName[] = [
   "get_available_tools",
   "search_knowledge",
   DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
 ];
 
 export const ALL_TOOLS = [...TERMINAL_TOOLS, ...EXPLORATORY_TOOLS];
@@ -50,36 +50,15 @@ const SkillInstructionEditArgSchema = z.object({
   type: z.literal("replace"),
 });
 
-const SkillToolEditArgSchema = z.object({
-  action: z
-    .enum(["add", "remove"])
-    .describe("Whether to add or remove the tool"),
-  toolId: z.string().describe("The identifier of the tool to add or remove"),
-});
-
-export function getEditSkillToolSchema({
-  useInlineTools,
-}: {
-  useInlineTools: boolean;
-}): z.ZodObject<z.ZodRawShape> {
+export function getEditSkillToolSchema(): z.ZodObject<z.ZodRawShape> {
   return z.object({
     skillId: z.string().describe("The sId of the skill to modify"),
     instructionEdits: z
       .array(SkillInstructionEditArgSchema)
       .optional()
       .describe(
-        useInlineTools
-          ? "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id. Tool changes must be represented by adding or removing inline <tool> tags in these instruction edits."
-          : "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id."
+        "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id. Tool changes must be represented by adding or removing inline <tool> tags in these instruction edits."
       ),
-    ...(useInlineTools
-      ? {}
-      : {
-          toolEdits: z
-            .array(SkillToolEditArgSchema)
-            .optional()
-            .describe("Tools to add or remove from the skill."),
-        }),
     agentFacingDescriptionEdit: z
       .object({
         content: z
@@ -91,9 +70,7 @@ export function getEditSkillToolSchema({
       })
       .optional()
       .describe(
-        useInlineTools
-          ? "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction edits."
-          : "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction or tool edits."
+        "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction edits."
       ),
     analysis: z
       .string()
@@ -121,7 +98,7 @@ export const TOOL_SCHEMAS: Record<
   TerminalToolName,
   z.ZodObject<z.ZodRawShape>
 > = {
-  edit_skill: getEditSkillToolSchema({ useInlineTools: true }),
+  edit_skill: getEditSkillToolSchema(),
   reject_suggestion: z.object({
     sourceSuggestionIds: z
       .array(z.string())

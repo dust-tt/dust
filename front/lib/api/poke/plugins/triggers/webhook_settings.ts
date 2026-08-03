@@ -26,6 +26,7 @@ export const webhookSettingsPlugin = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth, resource) => {
     if (!resource) {

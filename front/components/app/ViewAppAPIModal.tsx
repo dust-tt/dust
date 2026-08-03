@@ -9,8 +9,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClipboardIcon,
-  CubeIcon,
+  Clipboard,
+  Cube01,
   Hoverable,
   Page,
   Sheet,
@@ -94,7 +94,7 @@ export function ViewAppAPIModal({
     <Sheet>
       <SheetTrigger>
         <Button
-          icon={CubeIcon}
+          icon={Cube01}
           tooltip={
             disabled
               ? "You need to run this app at least once successfully to view the endpoint"
@@ -113,7 +113,7 @@ export function ViewAppAPIModal({
           <div className="w-full">
             <Page.Vertical sizing="grow">
               <Page.P>
-                <ul className="text-gray-500">
+                <ul className="text-muted-foreground">
                   <li>
                     spaceId: <span className="font-bold">
                       {app.space.sId}
@@ -138,12 +138,11 @@ export function ViewAppAPIModal({
                 value={`$ ${cURLRequest("run")}`}
                 language="shell"
                 padding={15}
-                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
+                className="mt-5 rounded-md bg-muted-background px-4 py-4 font-mono text-[13px]"
                 style={{
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  backgroundColor: "rgb(241 245 249)",
                   width: "100%",
                   marginTop: "0rem",
                 }}
@@ -156,7 +155,7 @@ export function ViewAppAPIModal({
                     variant="outline"
                     onClick={() => handleCopyClick("run")}
                     label={copyRunButtonText}
-                    icon={ClipboardIcon}
+                    icon={Clipboard}
                   />
                 </div>
               </div>

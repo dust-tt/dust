@@ -27,9 +27,7 @@ export function CombinedInsightsContent({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground dark:text-foreground-night">
-          Insights
-        </h2>
+        <h2 className="text-lg font-semibold text-foreground">Insights</h2>
         <ObservabilityModeSelector
           workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}

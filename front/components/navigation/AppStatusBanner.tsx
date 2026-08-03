@@ -3,10 +3,12 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   FREE_BYOK_TRANSITIONING_PLAN_CODE,
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
+import { useProgrammaticUsageLimit } from "@app/lib/swr/usage_settings";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
+import { useMetronomeContract } from "@app/lib/swr/workspaces";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { SubscriptionType } from "@app/types/plan";
@@ -19,26 +21,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 const statusBannerVariants = cva("space-y-2 border-y px-3 py-3 text-xs", {
   variants: {
     variant: {
-      info: cn(
-        "border-info-200 dark:border-info-200-night",
-        "bg-info-100 dark:bg-info-100-night",
-        "text-info-900 dark:text-info-900-night"
-      ),
-      warning: cn(
-        "border-warning-200 dark:border-warning-200-night",
-        "bg-warning-100 dark:bg-warning-100-night",
-        "text-warning-900 dark:text-warning-900-night"
-      ),
-      success: cn(
-        "border-success-200 dark:border-success-200-night",
-        "bg-success-100 dark:bg-success-100-night",
-        "text-success-900 dark:text-success-900-night"
-      ),
-      danger: cn(
-        "border-red-200 dark:border-red-200",
-        "bg-red-100 dark:bg-red-100",
-        "text-red-900 dark:text-red-900"
-      ),
+      info: cn("border-info-200", "bg-info-100", "text-info-900"),
+      warning: cn("border-warning-200", "bg-warning-100", "text-warning-900"),
+      success: cn("border-success-200", "bg-success-100", "text-success-900"),
+      danger: cn("border-red-200", "bg-red-100", "text-red-900"),
     },
   },
   defaultVariants: {
@@ -200,92 +186,127 @@ function SubscriptionPastDueBanner() {
   );
 }
 
-interface UsageStatusBannerProps {
+interface WorkspaceUsageStatusBannerProps {
   owner: LightWorkspaceType;
 }
 
-function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
-  const { awuStatus, poolCreditState, programmaticCreditStatus } =
-    useWorkspaceUsageStatus({ owner });
+function WorkspaceUsageStatusBanner({
+  owner,
+}: WorkspaceUsageStatusBannerProps) {
+  const {
+    poolCreditState,
+    programmaticCreditStatus,
+    programmaticWarningReached,
+    balanceThresholdReached,
+  } = useWorkspaceUsageStatus({ owner });
 
-  // Pool balance and programmatic cap banners are only shown to admins who
-  // manage workspace credits. The AWU cap banner is shown to any user subject
-  // to a per-user usage cap. All can be displayed at the same time.
+  // The low/critical pool states are internal throttling signals and are not
+  // surfaced. Admins are alerted when the pool is fully depleted (agents
+  // blocked) or when it has run into pay-as-you-go overage.
+  const isPoolDepleted = poolCreditState === "depleted";
+  const isPoolOverage = poolCreditState === "overage";
+
+  // When the contract sells seats that carry personal credits (pro/max/free),
+  // those users spend their own credits before the shared pool and keep working
+  // even when the pool is depleted/in overage (mirrors the personal-seat
+  // carve-out in `isUserBlocked`). The pool banner's "out of credits / agents
+  // blocked" message would be misleading there, so we suppress it. Only fetch
+  // the contract (a Metronome API call) when the banner would otherwise show.
+  const poolStateWouldBanner =
+    isAdmin(owner) && (isPoolDepleted || isPoolOverage);
+  const { contract, isMetronomeContractLoading } = useMetronomeContract({
+    workspaceId: owner.sId,
+    disabled: !poolStateWouldBanner,
+  });
   const showPoolBanner =
+    poolStateWouldBanner &&
+    !isMetronomeContractLoading &&
+    !contract?.hasPersonalCreditSeats;
+  // A cap of 0 or null is a deliberate hard block on programmatic API, not an
+  // exhausted budget, so its "cap reached" banner is suppressed. The cap is
+  // only fetched when the banner would otherwise show.
+  const programmaticStateWouldBanner =
     isAdmin(owner) &&
-    (poolCreditState === "active_low_balance" ||
-      poolCreditState === "active_critical_balance");
-  const showAwuBanner = awuStatus !== "normal";
+    (programmaticCreditStatus === "depleted" || programmaticWarningReached);
+  const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
+    useProgrammaticUsageLimit({
+      workspaceId: owner.sId,
+      disabled: !programmaticStateWouldBanner,
+    });
+  const monthlyCapCredits = programmaticUsageLimit?.monthlyCapCredits ?? 0;
   const showProgrammaticBanner =
-    isAdmin(owner) && programmaticCreditStatus !== "active";
+    programmaticStateWouldBanner &&
+    !isProgrammaticUsageLimitLoading &&
+    monthlyCapCredits !== 0;
+  // The admin-configured balance-threshold warning is only relevant before the
+  // pool is depleted/overage — those states have their own (stronger) banner.
+  const showBalanceThresholdBanner =
+    isAdmin(owner) &&
+    balanceThresholdReached &&
+    !isPoolDepleted &&
+    !isPoolOverage;
 
-  if (!showPoolBanner && !showAwuBanner && !showProgrammaticBanner) {
+  // Only a single usage banner is shown at a time, picked by priority. The
+  // pool banner takes precedence over the lower-severity balance-threshold
+  // warning, which is why "Your credit balance is running low" never shows
+  // alongside it.
+  const manageCreditsFooter = (
+    <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
+      Manage credits
+    </LinkWrapper>
+  );
+
+  const banner = ((): StatusBannerProps | null => {
+    if (showPoolBanner) {
+      return {
+        variant: isPoolDepleted ? "danger" : "warning",
+        title: isPoolDepleted
+          ? "Your workspace is out of credits"
+          : "Your workspace has used all its credits",
+        description: isPoolDepleted
+          ? "Your workspace has run out of credits. Agents are blocked until you top up."
+          : "Your workspace has used all of its included credits and is now billed pay-as-you-go. Top up to avoid overage charges.",
+        footer: manageCreditsFooter,
+      };
+    }
+
+    if (showProgrammaticBanner) {
+      return {
+        variant: programmaticCreditStatus === "depleted" ? "danger" : "warning",
+        title:
+          programmaticCreditStatus === "depleted"
+            ? "Programmatic API cap reached"
+            : "Programmatic API cap at 80%",
+        description:
+          programmaticCreditStatus === "depleted"
+            ? "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
+            : "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions.",
+        footer: (
+          <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
+            Manage usage
+          </LinkWrapper>
+        ),
+      };
+    }
+
+    if (showBalanceThresholdBanner) {
+      return {
+        variant: "warning",
+        title: "Your credit balance is running low",
+        description:
+          "Your workspace's remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits.",
+        footer: manageCreditsFooter,
+      };
+    }
+
+    return null;
+  })();
+
+  if (!banner) {
     return null;
   }
 
-  const isPoolCritical = poolCreditState === "active_critical_balance";
-
-  return (
-    <>
-      {showPoolBanner && (
-        <StatusBanner
-          variant={isPoolCritical ? "danger" : "warning"}
-          title={
-            isPoolCritical
-              ? "Your workspace is critically low on credits"
-              : "Your workspace is running low on credits"
-          }
-          description={
-            isPoolCritical
-              ? "Your workspace credits are almost depleted. Top up now to avoid interruptions to your agents."
-              : "Your workspace credits are running low. Consider topping up to avoid interruptions to your agents."
-          }
-          footer={
-            <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
-              Manage credits
-            </LinkWrapper>
-          }
-        />
-      )}
-      {showAwuBanner && (
-        <StatusBanner
-          variant={awuStatus === "blocked" ? "danger" : "warning"}
-          title={
-            awuStatus === "blocked"
-              ? "You've reached your usage limit"
-              : "You've used 80% of your usage limit"
-          }
-          description={
-            awuStatus === "blocked"
-              ? "You can no longer run agents. Contact your admin to increase your limit."
-              : "Contact your admin to increase your limit before you are blocked."
-          }
-        />
-      )}
-      {showProgrammaticBanner && (
-        <StatusBanner
-          variant={
-            programmaticCreditStatus === "depleted" ? "danger" : "warning"
-          }
-          title={
-            programmaticCreditStatus === "depleted"
-              ? "Programmatic API cap reached"
-              : "Programmatic API cap at 80%"
-          }
-          description={
-            programmaticCreditStatus === "depleted"
-              ? "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
-              : "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions."
-          }
-          footer={
-            <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
-              Manage usage
-            </LinkWrapper>
-          }
-        />
-      )}
-    </>
-  );
+  return <StatusBanner {...banner} />;
 }
 
 export function SidebarBanners() {
@@ -294,13 +315,13 @@ export function SidebarBanners() {
 
   return (
     <>
-      <UsageStatusBanner owner={owner} />
+      <WorkspaceUsageStatusBanner owner={owner} />
       <UnhealthyCredentialsBanner owner={owner} subscription={subscription} />
       {appStatus && <AppStatusBanner appStatus={appStatus} />}
       {subscription.paymentFailingSince &&
         isAdmin(owner) &&
         !isDustCompanyPlan(subscription.plan.code) &&
-        !isEntreprisePlanPrefix(subscription.plan.code) && (
+        !isEnterprisePlanPrefix(subscription.plan.code) && (
           <SubscriptionPastDueBanner />
         )}
     </>

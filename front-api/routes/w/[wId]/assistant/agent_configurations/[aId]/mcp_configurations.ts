@@ -1,6 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { AgentMcpConfigurationSummary } from "@app/lib/api/assistant/mcp_configurations";
 import { listAgentMcpConfigurationsForAgent } from "@app/lib/api/assistant/mcp_configurations";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -11,13 +11,10 @@ const ParamsSchema = z.object({
   aId: z.string(),
 });
 
-export type GetAgentMcpConfigurationsResponseBody = {
-  configurations: AgentMcpConfigurationSummary[];
-};
-
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/mcp_configurations.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

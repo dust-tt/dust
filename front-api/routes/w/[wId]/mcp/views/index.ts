@@ -1,4 +1,4 @@
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { GetMCPServerViewsListResponseBody } from "@app/lib/api/mcp";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
@@ -12,6 +12,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 import view from "./[viewId]";
+import jit from "./jit";
 
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
 type MCPViewsRequestAvailabilityType = z.infer<
@@ -23,11 +24,6 @@ const GetMCPViewsRequestSchema = z.object({
   availabilities: z.array(MCPViewsRequestAvailabilitySchema),
 });
 
-export type GetMCPServerViewsListResponseBody = {
-  success: boolean;
-  serverViews: MCPServerViewType[];
-};
-
 // We don't allow fetching "auto_hidden_builder".
 function isAllowedAvailability(
   availability: string
@@ -38,6 +34,7 @@ function isAllowedAvailability(
 // Mounted at /api/w/:wId/mcp/views.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   const auth = ctx.get("auth");
   const spaceIds = ctx.req.query("spaceIds");
@@ -68,10 +65,22 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   }
 
   const query = queryValidation.data;
+  const includeRestrictedToSkills =
+    ctx.req.query("includeRestrictedToSkills") === "true";
 
-  const views = await MCPServerViewResource.listBySpaceIds(
+  const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
     auth,
-    query.spaceIds
+    query.spaceIds,
+    {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+      isRestrictedToSkills: includeRestrictedToSkills ? undefined : false,
+    }
   );
 
   const flattenedServerViews = views
@@ -131,6 +140,7 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   });
 });
 
+app.route("/jit", jit);
 app.route("/:viewId", view);
 
 export default app;

@@ -26,16 +26,16 @@ export const agentYAMLTagSchema = z.object({
   kind: z.enum(["standard", "protected"]),
 });
 
-export const agentYAMLEditorSchema = z.string().email("Invalid email address");
+const agentYAMLEditorSchema = z.string().email("Invalid email address");
 
-export const agentYAMLTimeFrameSchema = z
+const agentYAMLTimeFrameSchema = z
   .object({
     duration: z.number().min(1, "Duration must be at least 1"),
     unit: z.enum(["hour", "day", "week", "month", "year"]),
   })
   .nullable();
 
-export const agentYAMLTagsFilterSchema = z.object({
+const agentYAMLTagsFilterSchema = z.object({
   in: z.array(z.string()),
   not: z.array(z.string()),
   mode: z.enum(["custom", "auto"]),
@@ -53,18 +53,18 @@ export const agentYAMLTableConfigurationSchema = z.object({
   table_id: z.string().min(1, "Table ID is required"),
 });
 
-export const agentYAMLDustAppConfigurationSchema = z.object({
+const agentYAMLDustAppConfigurationSchema = z.object({
   type: z.literal("dust_app_run_configuration"),
   app_workspace_id: z.string(),
   app_id: z.string(),
 });
 
-export const agentYAMLProjectConfigurationSchema = z.object({
+const agentYAMLProjectConfigurationSchema = z.object({
   workspace_id: z.string(),
   project_id: z.string(),
 });
 
-export const agentYAMLMCPActionSchema = z.object({
+const agentYAMLMCPActionSchema = z.object({
   name: z.string(),
   description: z.string(),
   type: z.literal("MCP"),

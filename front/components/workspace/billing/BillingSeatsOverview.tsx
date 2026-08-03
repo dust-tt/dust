@@ -1,73 +1,16 @@
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeAvatarColors,
+} from "@app/components/workspace/billing/seatTypeUtils";
 import type { SeatTypeInfo } from "@app/lib/api/credits/seat_plan";
 import { useMembersSeats, useSeatPlan } from "@app/lib/swr/credits";
 import {
   isMembershipSeatType,
   type MembershipSeatType,
+  SEAT_TYPE_ORDER,
 } from "@app/types/memberships";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  ActionCreditCoinsIcon,
-  Avatar,
-  Icon,
-  SeatFreeIcon,
-  SeatMaxIcon,
-  SeatProIcon,
-  Spinner,
-  UserIcon,
-} from "@dust-tt/sparkle";
-import type React from "react";
-
-const SEAT_TYPE_ORDER: Record<string, number> = {
-  free: 0,
-  pro: 1,
-  max: 2,
-};
-
-const SEAT_TYPE_ICONS: Record<string, React.ComponentType> = {
-  free: SeatFreeIcon,
-  pro: SeatProIcon,
-  max: SeatMaxIcon,
-};
-
-function seatTypeAvatarColors(seatType: MembershipSeatType) {
-  switch (seatType) {
-    case "free":
-      return {
-        backgroundColor: "bg-gray-100",
-        iconColor: "text-gray-600",
-      };
-    case "max":
-      return {
-        backgroundColor: "bg-golden-100",
-        iconColor: "text-golden-600",
-      };
-    default:
-      return {
-        backgroundColor: "bg-blue-100",
-        iconColor: "text-blue-600",
-      };
-  }
-}
-
-function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
-  switch (seatType) {
-    case "free":
-    case "workspace":
-    case "pro":
-    case "max":
-      return seatType;
-    case "workspace_yearly":
-      return "workspace";
-    case "pro_yearly":
-      return "pro";
-    case "max_yearly":
-      return "max";
-    default:
-      assertNeverAndIgnore(seatType);
-      return seatType;
-  }
-}
+import { Avatar, Chip, Cube01, Icon, Spinner, User01 } from "@dust-tt/sparkle";
 
 function formatAwuCreditsPeriod(period: SeatTypeInfo["awuCreditsPeriod"]) {
   switch (period) {
@@ -105,71 +48,23 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
     );
   }
 
-  const plansBySeatType = new Map<
-    MembershipSeatType,
-    Partial<Record<SeatTypeInfo["billingFrequency"], SeatTypeInfo>>
-  >();
-
-  Object.entries(seatPlans).forEach(([seatType, plan]) => {
-    if (!isMembershipSeatType(seatType) || !plan) {
-      return;
-    }
-
-    const groupSeatType = seatTypeGroup(seatType);
-    const plans = plansBySeatType.get(groupSeatType) ?? {};
-    plans[plan.billingFrequency] = plan;
-    plansBySeatType.set(groupSeatType, plans);
-  });
-
-  const membersCountBySeatType = new Map<MembershipSeatType, number>();
-
-  Object.entries(membersSeats).forEach(([seatType, count]) => {
-    if (!isMembershipSeatType(seatType)) {
-      return;
-    }
-
-    const groupSeatType = seatTypeGroup(seatType);
-    membersCountBySeatType.set(
-      groupSeatType,
-      (membersCountBySeatType.get(groupSeatType) ?? 0) + count
-    );
-  });
-
-  // Total seats billed in Metronome per seat type (assigned + unassigned),
-  // grouped the same way as the member counts. `undefined` for a group means
-  // Metronome had nothing to report for it (so we hide the unassigned line).
-  const metronomeBilledBySeatType = new Map<MembershipSeatType, number>();
-
-  Object.entries(metronomeSeats).forEach(([seatType, billed]) => {
-    if (!isMembershipSeatType(seatType) || billed === undefined) {
-      return;
-    }
-
-    const groupSeatType = seatTypeGroup(seatType);
-    metronomeBilledBySeatType.set(
-      groupSeatType,
-      (metronomeBilledBySeatType.get(groupSeatType) ?? 0) + billed
-    );
-  });
-
   const plansWithMembers: Array<{
     seatType: MembershipSeatType;
-    primaryPlan: SeatTypeInfo;
+    plan: SeatTypeInfo;
     membersCount: number;
     unassignedCount: number | null;
-  }> = Array.from(plansBySeatType.entries()).flatMap(([seatType, plans]) => {
-    const primaryPlan = plans.monthly ?? plans.annual;
-    if (!primaryPlan) {
+  }> = Object.entries(seatPlans).flatMap(([seatType, plan]) => {
+    if (!isMembershipSeatType(seatType) || !plan) {
       return [];
     }
 
-    const membersCount = membersCountBySeatType.get(seatType) ?? 0;
-    const billed = metronomeBilledBySeatType.get(seatType);
+    const membersCount = membersSeats[seatType] ?? 0;
+    const billed = metronomeSeats[seatType];
 
     return [
       {
         seatType,
-        primaryPlan,
+        plan,
         membersCount,
         // Unassigned = billed seats not backed by a real member. Null when
         // Metronome had no figure for this seat type.
@@ -191,46 +86,56 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
   );
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {orderedPlansWithMembers.map(
-        ({ seatType, primaryPlan, membersCount, unassignedCount }) => {
+        ({ seatType, plan, membersCount, unassignedCount }) => {
+          if (membersCount === 0 && !unassignedCount) {
+            return null;
+          }
           const avatarColors = seatTypeAvatarColors(seatType);
 
           return (
             <div
               key={seatType}
-              className="flex min-h-28 flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night"
+              className="flex min-h-28 flex-col gap-4 rounded-lg bg-muted-background p-4"
             >
-              <div className="flex items-center gap-2">
-                <Avatar
-                  icon={SEAT_TYPE_ICONS[seatType] ?? SeatProIcon}
-                  size="xs"
-                  backgroundColor={avatarColors.backgroundColor}
-                  iconColor={avatarColors.iconColor}
-                />
-                <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
-                  {primaryPlan.name.replace("Seat", "seat")}
+              <div className="flex justify-between">
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    icon={SEAT_TYPE_ICONS[seatType] ?? Cube01}
+                    size="xs"
+                    backgroundColor={avatarColors.backgroundColor}
+                    iconColor={avatarColors.iconColor}
+                  />
+                  <div className="truncate text-base font-semibold text-foreground">
+                    {plan.name.replace("Seat", "seat")}
+                  </div>
                 </div>
+                {unassignedCount !== null && unassignedCount > 0 && (
+                  <Chip
+                    label={`${unassignedCount.toLocaleString()} available`}
+                    size="mini"
+                    color="highlight"
+                  />
+                )}
               </div>
 
-              <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <div className="flex flex-col gap-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Icon visual={UserIcon} size="xs" />
+                  <Icon visual={User01} size="xs" />
                   <span>
                     {membersCount.toLocaleString()}{" "}
                     {membersCount === 1 ? "seat assigned" : "seats assigned"}
-                    {unassignedCount !== null && unassignedCount > 0
-                      ? ` - ${unassignedCount.toLocaleString()} available`
-                      : ""}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Icon visual={ActionCreditCoinsIcon} size="xs" />
-                  <span>
-                    {primaryPlan.awuCredits.toLocaleString()} credits{" "}
-                    {formatAwuCreditsPeriod(primaryPlan.awuCreditsPeriod)}
-                  </span>
-                </div>
+                {plan.awuCredits > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span>
+                      {plan.awuCredits.toLocaleString()} credits{" "}
+                      {formatAwuCreditsPeriod(plan.awuCreditsPeriod)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           );

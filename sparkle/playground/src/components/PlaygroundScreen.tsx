@@ -11,8 +11,8 @@ interface PlaygroundScreenProps {
  */
 export function PlaygroundScreen({ children }: PlaygroundScreenProps) {
   return (
-    <div className="s-flex s-h-screen s-w-full s-flex-col s-overflow-hidden s-bg-background">
-      <div className="s-min-h-0 s-flex-1 s-overflow-y-auto">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <Notification.Area>{children}</Notification.Area>
       </div>
     </div>

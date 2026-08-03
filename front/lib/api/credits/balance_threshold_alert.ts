@@ -5,42 +5,26 @@ import {
   getCachedWorkspaceBalanceThreshold,
   upsertMetronomeBalanceThresholdAlert,
 } from "@app/lib/metronome/alerts/balance_threshold";
+import {
+  clearWorkspaceBalanceThresholdReached,
+  setWorkspaceBalanceThresholdReached,
+} from "@app/lib/metronome/user_block";
 import { notifyAdminsBalanceThresholdReached } from "@app/lib/notifications/workflows/balance-threshold-reached";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Read the workspace's credit-balance-threshold notification setting.
+ * Persist the workspace's credit-balance-threshold notification setting.
  *
- * Metronome is the source of truth: the setting is the threshold of the
- * workspace's balance-threshold alert (cached in Redis). Returns `null` when no
- * threshold is configured, or when the workspace has no Metronome customer.
- */
-export async function getWorkspaceBalanceThreshold(
-  auth: Authenticator
-): Promise<number | null> {
-  const workspace = auth.getNonNullableWorkspace();
-  if (!workspace.metronomeCustomerId) {
-    return null;
-  }
-
-  const { threshold } = await getCachedWorkspaceBalanceThreshold({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    workspaceId: workspace.sId,
-  });
-  return threshold;
-}
-
-/**
- * Persist the workspace's credit-balance-threshold notification setting to its
- * Metronome customer.
- *
- * A strictly positive `balanceThresholdCredits` upserts the balance-threshold
- * alert; 0 or null clears it (the warning is "off"). No-op when the workspace
- * has no Metronome customer. The underlying Metronome calls are idempotent.
+ * The threshold is stored on `credit_usage_configurations` (the source of
+ * truth), then the Metronome balance-threshold alert is derived from it: a
+ * strictly positive value upserts the alert; 0 or null clears it (the warning
+ * is "off") and is stored as NULL. No-op when the workspace has no Metronome
+ * customer. The underlying Metronome calls are idempotent.
  */
 export async function syncMetronomeBalanceThresholdAlert({
   auth,
@@ -56,6 +40,34 @@ export async function syncMetronomeBalanceThresholdAlert({
 
   const shouldAlert =
     balanceThresholdCredits !== null && balanceThresholdCredits > 0;
+  // Normalize 0 to null — both mean "no threshold / warning off".
+  const normalizedThresholdAwuCredits = shouldAlert
+    ? balanceThresholdCredits
+    : null;
+
+  // Persist the admin's intent first: the credit-usage configuration column is
+  // the source of truth; the Metronome alert below is derived enforcement (a
+  // failed sync can be retried and re-derives from this value). The config row
+  // is created lazily, so upsert it.
+  const existingConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  if (existingConfig) {
+    const updateResult = await existingConfig.updateConfiguration(auth, {
+      balanceThresholdAwuCredits: normalizedThresholdAwuCredits,
+    });
+    if (updateResult.isErr()) {
+      return new Err(updateResult.error);
+    }
+  } else {
+    const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      balanceThresholdAwuCredits: normalizedThresholdAwuCredits,
+    });
+    if (createResult.isErr()) {
+      return new Err(createResult.error);
+    }
+  }
 
   const alertResult = shouldAlert
     ? await upsertMetronomeBalanceThresholdAlert({
@@ -74,6 +86,12 @@ export async function syncMetronomeBalanceThresholdAlert({
       )
     );
   }
+
+  // Clear the in-app warning banner optimistically. The threshold changed so the
+  // previous "reached" state no longer applies — if the new threshold is still
+  // breached Metronome will re-evaluate immediately and the webhook will re-set
+  // the flag.
+  void clearWorkspaceBalanceThresholdReached(workspace.sId);
 
   return new Ok(undefined);
 }
@@ -122,6 +140,10 @@ export async function maybeNotifyAdminsBalanceThresholdReached({
       return;
     }
 
+    // Surface the in-app warning banner (admins read this via /usage-status).
+    // Cleared on the matching `..._resolved` event when the balance recovers.
+    void setWorkspaceBalanceThresholdReached(workspaceId);
+
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     const workspace = auth.workspace();
     if (!workspace) {
@@ -155,13 +177,56 @@ export async function maybeNotifyAdminsBalanceThresholdReached({
       workspaceName: workspace.name,
       balanceThresholdCredits: thresholdCredits,
       remainingBalanceCredits,
-      isEnterprise: isEntreprisePlanPrefix(auth.getNonNullablePlan().code),
+      isEnterprise: isEnterprisePlanPrefix(auth.getNonNullablePlan().code),
       eventId,
     });
   } catch (err) {
     logger.error(
       { workspaceId, error: normalizeError(err).message },
       "[Balance Threshold] Failed to notify admins of balance threshold"
+    );
+  }
+}
+
+/**
+ * Clear the credit-balance-threshold warning banner when the balance recovers,
+ * but only when the firing Metronome alert (`alertId`) is the workspace's own
+ * balance-threshold alert — the same `low_remaining_*` event type also resolves
+ * for unrelated pool alerts, which must not clear this warning prematurely.
+ *
+ * Best-effort: any failure is logged and swallowed so it never disrupts the
+ * webhook's credit-state processing.
+ */
+export async function maybeClearAdminsBalanceThresholdReached({
+  metronomeCustomerId,
+  workspaceId,
+  alertId,
+}: {
+  metronomeCustomerId: string | null;
+  workspaceId: string;
+  alertId: string | null;
+}): Promise<void> {
+  try {
+    if (!metronomeCustomerId || !alertId) {
+      return;
+    }
+
+    const { alertId: configuredAlertId } =
+      await getCachedWorkspaceBalanceThreshold({
+        metronomeCustomerId,
+        workspaceId,
+      });
+
+    // Only clear for the workspace's own configured balance-threshold alert.
+    if (configuredAlertId === null || configuredAlertId !== alertId) {
+      return;
+    }
+
+    void clearWorkspaceBalanceThresholdReached(workspaceId);
+  } catch (err) {
+    logger.error(
+      { workspaceId, error: normalizeError(err).message },
+      "[Balance Threshold] Failed to clear balance threshold warning"
     );
   }
 }

@@ -13,7 +13,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
@@ -41,8 +41,10 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 
-export interface LlmConversationOptions
-  extends LLMParametersWithoutConversation {
+// Type alias (not an interface) because LLMParametersWithoutConversation
+// contains the mutually exclusive tool-choice union, which interfaces cannot
+// extend.
+export type LlmConversationOptions = LLMParametersWithoutConversation & {
   newMessages: ModelMessageTypeMultiActionsWithoutContentFragment[];
   existingConversationId?: string;
   enabledSkills?: EnabledSkill[];
@@ -52,7 +54,7 @@ export interface LlmConversationOptions
   metadata?: ConversationMetadata;
   userContextUsername?: string;
   userContextOrigin: UserMessageOrigin;
-}
+};
 
 /**
  * Create (or reuse) a conversation and store the new user messages.
@@ -123,6 +125,7 @@ export async function writeBatchUserMessages(
         {
           workspaceId: workspace.id,
           userId: null,
+          conversationId: conversationResource.id,
           content,
           userContextUsername,
           userContextTimezone: "UTC",
@@ -160,7 +163,7 @@ export async function writeBatchUserMessages(
  * - Creates a `MessageModel` at the next rank, parented to the last user message.
  * - Creates `AgentStepContentModel` entries for text, tool calls, reasoning, errors.
  */
-export interface StoreLlmResultInfo {
+interface StoreLlmResultInfo {
   agentMessageModelId: ModelId;
   agentMessageId: string;
   userMessageId: string;
@@ -218,6 +221,7 @@ export async function storeLlmResult(
           status,
           agentConfigurationId,
           agentConfigurationVersion: 0,
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
           errorCode: firstError ? firstError.content.type : null,
@@ -249,21 +253,25 @@ export async function storeLlmResult(
     });
 
   // Create step content entries from LLM events.
-  let index = 0;
-  for (const event of events) {
+  const stepContentBlobs = events.flatMap((event) => {
     const stepContent = eventToStoredStepContent(event);
-    if (stepContent) {
-      await AgentStepContentResource.createNewVersion({
+    if (!stepContent) {
+      return [];
+    }
+    return [
+      {
         agentMessageId: agentMessageModel.id,
         workspaceId: workspace.id,
         step: 0,
-        index,
         type: stepContent.type,
         value: stepContent,
-      });
-      index++;
-    }
-  }
+      },
+    ];
+  });
+
+  await AgentStepContentResource.createNewVersions(
+    stepContentBlobs.map((blob, index) => ({ ...blob, index }))
+  );
 
   return {
     agentMessageModelId: agentMessageModel.id,
@@ -299,7 +307,6 @@ export async function sendBatchCallToLlm(
   const batchMap = new Map<string, LLMStreamParameters>();
 
   const modelConfig = llm.getModelConfig();
-  const useFramesV2 = await hasFeatureFlag(auth, "frames_skill_v2");
 
   for (const input of conversations) {
     // Store new messages in DB.
@@ -310,6 +317,7 @@ export async function sendBatchCallToLlm(
     const conversationResource = writeBatchResult.value;
 
     // Reconstruct the full conversation from DB.
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(
       auth,
       conversationResource.sId
@@ -342,7 +350,6 @@ export async function sendBatchCallToLlm(
       tools,
       allowedTokenCount:
         modelConfig.contextSize - modelConfig.generationTokensCount,
-      useFramesV2,
     });
 
     if (modelConversationRes.isErr()) {
@@ -380,7 +387,7 @@ export async function sendBatchCallToLlm(
   return new Ok({ batchId, conversationIds });
 }
 
-export interface BatchDownloadResult {
+interface BatchDownloadResult {
   events: Map<string, LLMEvent[]>;
   storedResultInfo: Map<string, StoreLlmResultInfo>;
 }
@@ -388,6 +395,11 @@ export interface BatchDownloadResult {
 /**
  * Download batch results from the LLM and store them as agent messages in the
  * corresponding conversations.
+ *
+ * Note: the batch is NOT deleted here. Deleting it inside this function would make callers
+ * non-idempotent (a retry after a downstream failure would 404 on getBatchResult). Callers are
+ * responsible for guaranteeing deletion once the results are consumed (e.g. via a dedicated
+ * Temporal activity in a workflow-level finally block).
  */
 export async function downloadBatchResultFromLlm(
   auth: Authenticator,
@@ -425,20 +437,6 @@ export async function downloadBatchResultFromLlm(
       { runIds: [dustRunId] }
     );
     storedResultInfo.set(conversationId, info);
-  }
-
-  const deleted = await llm.deleteBatch(batchId);
-  if (!deleted) {
-    const metadata = llm.getMetadata();
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        providerId: metadata.clientId,
-        modelId: metadata.modelId,
-        batchId,
-      },
-      "Failed to delete batch after downloading results"
-    );
   }
 
   return { events, storedResultInfo };
@@ -489,7 +487,9 @@ function eventToStoredStepContent(
         type: "reasoning",
         value: {
           reasoning: event.content.text,
-          metadata: event.metadata.encrypted_content ?? "",
+          // Same JSON shape as the streaming path (get_output_from_llm.ts), so
+          // replay can extract `id` / `encrypted_content` from it.
+          metadata: JSON.stringify(event.metadata),
           tokens: 0,
           provider: event.metadata.clientId,
         },
@@ -501,6 +501,10 @@ function eventToStoredStepContent(
     case "token_usage":
     case "tool_call_started":
     case "tool_call_delta":
+    // Provider passthrough blocks are only persisted on the streaming path.
+    // Anthropic tool search runs streaming-only, so the batch path never needs
+    // to round-trip them; drop here as nothing is stored from batch results.
+    case "provider_passthrough":
       return null;
     default:
       assertNever(event);

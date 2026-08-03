@@ -33,11 +33,11 @@ export function FirstSyncTaskLookbackForm({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-foreground dark:text-foreground-night">
+      <p className="text-sm text-foreground">
         Choose how far back the first automatic scan should look for content to
         turn into suggested tasks.
       </p>
-      <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-xs text-muted-foreground">
         The first sync is not unlimited: connectors and search caps apply, so
         context is best-effort. Later runs cover everything new since the
         previous scan.
@@ -46,7 +46,7 @@ export function FirstSyncTaskLookbackForm({
         {OPTIONS.map((opt) => (
           <label
             key={opt.value}
-            className="border-border hover:bg-muted-background/50 dark:border-border-night dark:hover:bg-muted-background-night/50 flex cursor-pointer flex-col gap-0.5 rounded-lg border p-3"
+            className="border-border hover:bg-muted-background/50 flex cursor-pointer flex-col gap-0.5 rounded-lg border p-3"
           >
             <span className="flex items-center gap-2">
               <input
@@ -59,11 +59,11 @@ export function FirstSyncTaskLookbackForm({
                   onValueChange(opt.value);
                 }}
               />
-              <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+              <span className="text-sm font-medium text-foreground">
                 {opt.title}
               </span>
             </span>
-            <span className="pl-6 text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <span className="pl-6 text-xs text-muted-foreground">
               {opt.description}
             </span>
           </label>

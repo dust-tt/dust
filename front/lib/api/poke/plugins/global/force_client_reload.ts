@@ -26,6 +26,7 @@ export const forceClientReloadPlugin = createPlugin({
         multiple: true,
       },
     },
+    requiredRoles: ["engineering"],
   },
   populateAsyncArgs: async () => {
     const [flaggedCommits, deployedTags] = await Promise.all([

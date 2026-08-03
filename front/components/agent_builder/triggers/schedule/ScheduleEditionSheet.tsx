@@ -1,5 +1,6 @@
 import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
+import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -61,7 +62,6 @@ function ScheduleEditionStatusToggle({
       <div className="flex flex-row items-center gap-2">
         <span className="w-16">{isEnabled ? "Enabled" : "Disabled"}</span>
         <SliderToggle
-          size="xs"
           disabled={!isEditor}
           selected={isEnabled}
           onClick={() => setStatus(isEnabled ? "disabled" : "enabled")}
@@ -84,7 +84,7 @@ function ScheduleEditionMessageInput({
   return (
     <div className="space-y-1">
       <Label htmlFor="schedule-custom-prompt">Message (optional)</Label>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground">
         Message for the agent when the trigger runs.
       </p>
       <TextArea
@@ -92,6 +92,34 @@ function ScheduleEditionMessageInput({
         minRows={4}
         disabled={!isEditor}
         {...field}
+      />
+    </div>
+  );
+}
+
+interface ScheduleEditionPodSelectorProps {
+  isEditor: boolean;
+  owner: LightWorkspaceType;
+}
+
+function ScheduleEditionPodSelector({
+  isEditor,
+  owner,
+}: ScheduleEditionPodSelectorProps) {
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
+  const { field } = useController({ control, name: "schedule.spaceId" });
+
+  return (
+    <div className="space-y-1">
+      <Label>Where to create this conversation? (optional) </Label>
+      <p className="text-sm text-muted-foreground">
+        Run this trigger's conversation inside a Pod instead.
+      </p>
+      <TriggerPodSelector
+        owner={owner}
+        value={field.value}
+        onChange={field.onChange}
+        disabled={!isEditor}
       />
     </div>
   );
@@ -128,6 +156,8 @@ export function ScheduleEditionSheetContent({
         <ScheduleEditionScheduler isEditor={isEditor} owner={owner} />
         <Separator />
         <ScheduleEditionMessageInput isEditor={isEditor} />
+        <Separator />
+        <ScheduleEditionPodSelector isEditor={isEditor} owner={owner} />
       </div>
     </>
   );

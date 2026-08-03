@@ -1,4 +1,4 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -45,7 +45,7 @@ export interface TeamsChannelIdentity {
   channelId: string;
 }
 
-export interface TeamsMentionedIdentity {
+interface TeamsMentionedIdentity {
   application: unknown | null;
   device: unknown | null;
   conversation: unknown | null;
@@ -132,9 +132,9 @@ export interface TeamsUser {
 
 export async function getAllowedLabelsForMCPServer(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType | undefined
+  toolContext: ToolContext | undefined
 ): Promise<string[]> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
+  const toolConfig = toolContext?.runContext?.toolConfiguration;
   const internalMCPServerId =
     toolConfig && isLightServerSideMCPToolConfiguration(toolConfig)
       ? toolConfig.internalMCPServerId
@@ -360,7 +360,7 @@ export function validateZipFile(buffer: Buffer): {
 /**
  * Extracts text from a .docx file by unzipping it and parsing document.xml
  */
-export function extractTextFromDocx(buffer: Buffer): string {
+function extractTextFromDocx(buffer: Buffer): string {
   // Validate ZIP file to prevent zip bomb attacks
   const zipValidation = validateZipFile(buffer);
   if (!zipValidation.isValid) {

@@ -8,10 +8,23 @@ import {
 } from "../index_with_tw_base";
 
 const meta: Meta<typeof QuickReplyBlock> = {
-  title: "Conversation/QuickReplyBlock",
+  title: "Product/Conversation/QuickReplyBlock",
   component: QuickReplyBlock,
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `A tappable suggested-reply button that sends a predefined message back to the agent. Each **QuickReplyBlock** shows a \`label\`, calls an async \`onSend\` (showing a sending state until it resolves), and can be \`disabled\`. Wrap multiple replies in a **QuickReplyContainer**, which lays them out and can reset them via a React \`key\`.
+
+**When to use**
+- To offer the user one-tap follow-up prompts after an agent response (e.g. "Summarize this", "Tell me more").
+
+**Guidelines**
+- Keep \`label\`s short and action-oriented; long labels wrap onto multiple lines.
+- Always group replies inside a **QuickReplyContainer** rather than rendering loose buttons.
+- \`onSend\` is async — the block shows a pending state until the promise settles, so return the actual send promise.`,
+      },
+    },
   },
 };
 
@@ -28,14 +41,14 @@ export const Examples: Story = {
     };
 
     return (
-      <div className="s-flex s-w-[280px] s-flex-col s-gap-3">
+      <div className="flex w-[280px] flex-col gap-3">
         <Button
           variant="outline"
           size="xs"
           label="Re initiate"
           onClick={() => setResetKey((value) => value + 1)}
         />
-        <QuickReplyContainer key={resetKey} className="s-w-full">
+        <QuickReplyContainer key={resetKey} className="w-full">
           <QuickReplyBlock label="Summarize this" onSend={handleSend} />
           <QuickReplyBlock
             label="Ask a longer question that should wrap onto multiple lines"

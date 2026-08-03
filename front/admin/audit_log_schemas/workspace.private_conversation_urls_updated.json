@@ -1,0 +1,7 @@
+{
+  "action": "workspace.private_conversation_urls_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}

@@ -1,5 +1,3 @@
-import { getLLM } from "@app/lib/api/llm";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getTestCaseUserMessageForDisplay,
@@ -8,6 +6,7 @@ import {
   type TestCase,
   type ToolCall,
 } from "@app/tests/sidekick-evals/lib/types";
+import { getJudgeLLM } from "@app/tests/utils/eval_llm";
 
 const JUDGE_PROMPT = `You are evaluating the quality of an Agent Builder Sidekick's response.
 
@@ -104,18 +103,7 @@ export async function evaluateWithJudge(
   const scores: number[] = [];
   let lastReasoning = "";
 
-  const credentials = await getLlmCredentials(auth, {
-    skipEmbeddingApiKeyRequirement: true,
-  });
-  const llm = await getLLM(auth, {
-    credentials,
-    modelId: "gpt-5-mini",
-    temperature: 0.2,
-    bypassFeatureFlag: true,
-  });
-  if (!llm) {
-    throw new Error("Failed to initialize LLM for judge evaluation");
-  }
+  const llm = await getJudgeLLM(auth);
 
   for (let i = 0; i < numRuns; i++) {
     const events = llm.stream({

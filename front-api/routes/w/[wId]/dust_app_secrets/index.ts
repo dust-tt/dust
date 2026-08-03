@@ -5,26 +5,21 @@ import {
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type { DustAppSecretType } from "@app/types/dust_app_secret";
+import type {
+  GetDustAppSecretsResponseBody,
+  PostDustAppSecretsResponseBody,
+} from "@app/types/api/dust_app_secrets";
 import { encrypt } from "@app/types/shared/utils/encryption";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import {
+  ensureHasWorkspacePermission,
   ensureIsAdmin,
-  ensureIsBuilder,
 } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import nameRoute from "./[name]";
-
-export type GetDustAppSecretsResponseBody = {
-  secrets: DustAppSecretType[];
-};
-
-export type PostDustAppSecretsResponseBody = {
-  secret: DustAppSecretType;
-};
 
 const PostDustAppSecretBodySchema = z.object({
   name: z.string(),
@@ -34,11 +29,18 @@ const PostDustAppSecretBodySchema = z.object({
 // Mounted at /api/w/:wId/dust_app_secrets.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBuilder(),
+  // Dust app secrets are part of Dust app administration.
+  ensureHasWorkspacePermission(
+    "admin",
+    "dust_app",
+    "You do not have permission to manage Dust app secrets."
+  ),
   async (ctx): HandlerResult<GetDustAppSecretsResponseBody> => {
     const auth = ctx.get("auth");
+
     const owner = auth.getNonNullableWorkspace();
 
     const remaining = await rateLimiter({

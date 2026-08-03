@@ -79,7 +79,7 @@ export function MultiDomainAutoJoinModal({
 
     setIsSubmitting(true);
     try {
-      const res = await clientFetch(`/api/w/${owner.sId}`, {
+      const res = await clientFetch(`/api/w/${owner.sId}/domains`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

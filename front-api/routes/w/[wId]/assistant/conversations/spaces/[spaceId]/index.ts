@@ -1,26 +1,18 @@
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getPaginationParams } from "@app/lib/api/pagination";
+import { toPodConversationListItem } from "@app/lib/api/projects/conversations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { LightConversationType } from "@app/types/assistant/conversation";
-import { removeNulls } from "@app/types/shared/utils/general";
+import type { GetSpaceConversationsResponseBody } from "@app/types/api/assistant/conversation/spaces";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
+import unread from "./unread";
 
 const ParamsSchema = z.object({
   spaceId: z.string(),
 });
-
-export type GetSpaceConversationsResponseBody = {
-  conversations: LightConversationType[];
-  hasMore: boolean;
-  lastValue: string | null;
-  isEmpty: boolean;
-};
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
 
@@ -35,11 +27,10 @@ function parseFilter(value: string | undefined): SpaceConversationsFilter {
   }
 }
 
-import unread from "./unread";
-
 // Mounted at /api/w/:wId/assistant/conversations/spaces/:spaceId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -95,30 +86,29 @@ app.get(
       filter: conversationFilter,
     });
 
-    const { conversations: allConversations } =
-      await ConversationResource.listConversationsInSpacePaginated(auth, {
-        spaceId,
-        options: { excludeTest: true },
-        pagination: {
-          limit: 1,
-          orderDirection: pagination.orderDirection,
-        },
-        filter: "all",
-      });
-    const isEmpty = allConversations.length === 0;
+    let isEmpty = spaceConversations.length === 0;
 
-    // Fetch full conversation details for the paginated results.
-    // N+1 queries here, bad for scaling — TODO(@jd) find a better way.
-    const spaceConversationsFull = await concurrentExecutor(
-      spaceConversations,
-      async (conv) => getLightConversation(auth, conv.sId),
-      { concurrency: 10 }
-    );
+    // If the page is empty, check if there are any conversations in the space.
+    if (isEmpty) {
+      const { conversations: allConversations } =
+        await ConversationResource.listConversationsInSpacePaginated(auth, {
+          spaceId,
+          options: { excludeTest: true },
+          pagination: {
+            limit: 1,
+            orderDirection: pagination.orderDirection,
+          },
+          filter: "all",
+        });
+      isEmpty = allConversations.length === 0;
+    }
+
+    const conversations = await toPodConversationListItem(auth, {
+      conversations: spaceConversations,
+    });
 
     return ctx.json({
-      conversations: removeNulls(
-        spaceConversationsFull.map((res) => (res.isOk() ? res.value : null))
-      ),
+      conversations,
       hasMore,
       lastValue,
       isEmpty,

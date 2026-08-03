@@ -65,7 +65,7 @@ function getPokeSegments(url: string): string[] {
  * Infers a human-readable entity type from a poke URL by matching the known route shapes
  * defined in `front-spa/src/poke/routes.tsx`.
  */
-export function inferTypeFromUrl(url: string): PokeFavoriteType {
+function inferTypeFromUrl(url: string): PokeFavoriteType {
   const segments = getPokeSegments(url);
 
   // Workspace-scoped routes: `/:wId/<section>/...`.

@@ -24,6 +24,7 @@ import {
 } from "@app/components/poke/subscriptions/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
+import { WorkspaceMetadataTab } from "@app/components/poke/workspace/MetadataTab";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -34,7 +35,6 @@ import { usePokeRegion } from "@app/lib/swr/poke";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
-import { isCreditPricedPlan } from "@app/types/plan";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
 import {
@@ -135,6 +135,14 @@ export function WorkspacePage() {
     membersCount,
     metronomeCustomerId,
     pendingSubscription,
+    poolCreditState,
+    poolAlert,
+    programmaticAlerts,
+    usageCapAlert,
+    defaultAlerts,
+    programmaticCreditState,
+    programmaticWarningReached,
+    seatPlan,
     stripeSubscription,
     stripeCustomerId,
     subscriptions,
@@ -142,14 +150,19 @@ export function WorkspacePage() {
     workspaceVerifiedDomains,
     workspaceCreationDay,
     extensionConfig,
+    creditUsageConfig,
     programmaticUsageConfig,
     workosEnvironmentId,
     temporalFrontNamespace,
   } = workspaceInfo;
 
-  // The Usage tab (AWU usage chart + credit pool) only applies to credit-based
-  // (CP_) pricing workspaces.
-  const isCreditPriced = isCreditPricedPlan(activeSubscription.plan);
+  // The Usage tab (AWU usage chart + credit pool) is backed by Metronome usage
+  // data, so it applies to any workspace with a Metronome contract — both
+  // credit-priced and legacy shadow contracts. There's no need to gate it on a
+  // feature flag in poke: it's staff tooling, not customer-facing exposure.
+  const hasMetronomeUsage =
+    metronomeCustomerId !== null &&
+    activeSubscription.metronomeContractId !== null;
 
   return (
     <div className="ml-8 p-6">
@@ -241,6 +254,7 @@ export function WorkspacePage() {
                   programmaticUsageConfig={programmaticUsageConfig}
                   hasMetronomeBillingFeature={hasMetronomeFeature}
                   stripeCustomerId={stripeCustomerId}
+                  seatPlan={seatPlan}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">
@@ -264,13 +278,14 @@ export function WorkspacePage() {
             className="min-h-[1024px] w-full"
           >
             <TabsList>
+              <TabsTrigger value="metadata" label="Metadata" />
               <TabsTrigger value="agents" label="Agents" />
               <TabsTrigger value="apps" label="Apps" />
               <TabsTrigger value="datasources" label="Data Sources" />
               <TabsTrigger value="datasourceviews" label="Data Source Views" />
               <TabsTrigger value="featureflags" label="Feature Flags" />
               <TabsTrigger value="groups" label="Groups" />
-              <TabsTrigger value="mcpviews" label="MCP Server Views" />
+              <TabsTrigger value="mcpviews" label="MCP" />
               <TabsTrigger value="pods" label="Pods" />
               <TabsTrigger value="skills" label="Skills" />
               <TabsTrigger value="spaces" label="Spaces" />
@@ -278,10 +293,13 @@ export function WorkspacePage() {
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="API Usage" />
-              {isCreditPriced && <TabsTrigger value="usage" label="Usage" />}
+              {hasMetronomeUsage && <TabsTrigger value="usage" label="Usage" />}
               <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
 
+            <TabsContent value="metadata">
+              <WorkspaceMetadataTab owner={owner} />
+            </TabsContent>
             <TabsContent value="datasources">
               <DataSourceDataTable owner={owner} loadOnInit />
             </TabsContent>
@@ -289,7 +307,11 @@ export function WorkspacePage() {
               <DataSourceViewsDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="mcpviews">
-              <MCPServerViewsDataTable owner={owner} loadOnInit />
+              <MCPServerViewsDataTable
+                owner={owner}
+                loadOnInit
+                systemSpaceOnly
+              />
             </TabsContent>
             <TabsContent value="pods">
               <ProjectsDataTable owner={owner} loadOnInit />
@@ -335,12 +357,20 @@ export function WorkspacePage() {
                 loadOnInit
               />
             </TabsContent>
-            {isCreditPriced && (
+            {hasMetronomeUsage && (
               <TabsContent value="usage">
                 <PokeUsageTab
                   owner={owner}
                   subscription={activeSubscription}
                   stripeSubscription={stripeSubscription}
+                  poolCreditState={poolCreditState}
+                  programmaticCreditState={programmaticCreditState}
+                  programmaticWarningReached={programmaticWarningReached}
+                  creditUsageConfig={creditUsageConfig}
+                  poolAlert={poolAlert}
+                  programmaticAlerts={programmaticAlerts}
+                  usageCapAlert={usageCapAlert}
+                  defaultAlerts={defaultAlerts}
                 />
               </TabsContent>
             )}

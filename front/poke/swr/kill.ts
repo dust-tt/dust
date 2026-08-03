@@ -1,5 +1,5 @@
+import type { GetKillSwitchesResponseBody } from "@app/lib/api/poke/kill";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
-import type { GetKillSwitchesResponseBody } from "@app/pages/api/poke/kill";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 

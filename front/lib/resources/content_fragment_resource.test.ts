@@ -1,8 +1,15 @@
+import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
+import {
+  TRUNCATED_SUFFIX,
+  TRUNCATED_TEXT_SIZE,
+} from "@app/lib/api/files/snippet";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
 import type {
   ContentNodeContentFragmentType,
   FileContentFragmentType,
@@ -22,11 +29,13 @@ function makeFileFragment(
   {
     generatedTables = [],
     path = null,
+    processedPath = null,
     snippet = null,
     skipFileProcessing = false,
   }: {
     generatedTables?: string[];
     path?: string | null;
+    processedPath?: string | null;
     snippet?: string | null;
     skipFileProcessing?: boolean;
   } = {}
@@ -49,6 +58,7 @@ function makeFileFragment(
     expiredReason: null,
     contentFragmentType: "file",
     path,
+    processedPath,
     skipFileProcessing,
     fileId: "fil_abc123",
     snippet,
@@ -91,6 +101,14 @@ function makeContentNodeFragment(): ContentNodeContentFragmentType {
       spaceName: "test",
     },
   };
+}
+
+function getTextContent(result: ContentFragmentMessageTypeModel | null) {
+  const item = result?.content[0];
+  if (!item || !isTextContent(item)) {
+    throw new Error("Expected a text content item");
+  }
+  return item.text;
 }
 
 const visionModel = getSupportedModelConfigs().find((m) => m.supportsVision)!;
@@ -149,6 +167,73 @@ describe("renderLightContentFragmentForModel", () => {
       expect((result?.content[0] as { text: string }).text).toContain(
         "<pastedContent"
       );
+    });
+
+    it("inlines a below-threshold paste in full without truncation", async () => {
+      const pasteContent = "Some pasted content that fits inline.";
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted", {
+          snippet: pasteContent,
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: false }
+      );
+      const text = getTextContent(result);
+      expect(text).toContain(
+        `<pastedContent name="file">${pasteContent}</pastedContent>`
+      );
+      expect(text).not.toContain('truncated="true"');
+    });
+
+    it("renders a stored truncated paste snippet with truncated and path attributes", async () => {
+      const snippet = "a".repeat(TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted", {
+          snippet,
+          path: "conversation-conv123/pasted-text-1.txt",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: false }
+      );
+      const text = getTextContent(result);
+      expect(text).toContain('truncated="true"');
+      expect(text).toContain('path="conversation-conv123/pasted-text-1.txt"');
+    });
+
+    it("guides the model to read pasted files when the stored snippet is missing", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted", {
+          snippet: null,
+          path: "conversation-conv123/pasted-text-1.txt",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: false }
+      );
+      const text = getTextContent(result);
+      expect(text).toContain('truncated="true"');
+      expect(text).toContain('path="conversation-conv123/pasted-text-1.txt"');
+    });
+
+    it("re-truncates a legacy oversized stored snippet so the full paste is not inlined", async () => {
+      const fullPaste = "b".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted", {
+          snippet: fullPaste,
+          path: "conversation-conv123/pasted-text-1.txt",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: false }
+      );
+      const text = getTextContent(result);
+      expect(text).not.toContain(fullPaste);
+      expect(text.length).toBeLessThan(1024);
+      expect(text).toContain('truncated="true"');
+      expect(text).toContain('path="conversation-conv123/pasted-text-1.txt"');
+      expect(text).toContain(TRUNCATED_SUFFIX);
     });
 
     it("renders an image with excludeImages as <attachment> with description", async () => {
@@ -232,6 +317,26 @@ describe("renderLightContentFragmentForModel", () => {
       expect(result?.content[0]).toMatchObject({
         type: "text",
         text: `<file name="file" path="conversation-conv123/report_fil_abc123.pdf"/>`,
+      });
+    });
+
+    it("points an audio file at its transcript sibling", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("audio/webm", {
+          path: "conversation-conv123/voice-2026-07-24T11:20:00.714Z.webm",
+          processedPath:
+            "conversation-conv123/voice-2026-07-24T11:20:00.714Z.processed.txt",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: true }
+      );
+      expect(result?.content[0]).toMatchObject({
+        type: "text",
+        text:
+          `<file name="file" ` +
+          `path="conversation-conv123/voice-2026-07-24T11:20:00.714Z.webm" ` +
+          `processedPath="conversation-conv123/voice-2026-07-24T11:20:00.714Z.processed.txt"/>`,
       });
     });
 

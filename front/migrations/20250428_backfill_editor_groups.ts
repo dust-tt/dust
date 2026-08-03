@@ -70,6 +70,8 @@ async function backfillAgentEditorsGroup(
       const groupModel = await GroupModel.findByPk(editorGroup.id);
       assert(groupModel, "Group model not found");
       if (execute) {
+        // If reusing this group-kind update, also update the denormalized
+        // group_vaults.groupKind. See https://github.com/dust-tt/dust/pull/29239.
         await groupModel.update({
           kind: "agent_editors",
         });

@@ -1,13 +1,14 @@
 import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ConfirmContext } from "@app/components/Confirm";
+import Custom404 from "@app/components/pages/Custom404";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { cleanSpecificationFromCore } from "@app/lib/specification";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
-import Custom404 from "@app/pages/404";
-import { Button, CheckCircleIcon, ClockIcon, Spinner } from "@dust-tt/sparkle";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import { Button, CheckCircle, Clock, Spinner } from "@dust-tt/sparkle";
 import { useContext, useState } from "react";
 
 export function RunPage() {
@@ -15,7 +16,9 @@ export function RunPage() {
   const aId = useRequiredPathParam("aId");
   const runId = useRequiredPathParam("runId");
   const owner = useWorkspace();
-  const { isAdmin, isBuilder } = useAuth();
+  const { isAdmin } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const canAdministrateApps = hasPermission("admin", "dust_app");
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -40,7 +43,7 @@ export function RunPage() {
   }
 
   const restore = async () => {
-    if (!isBuilder || !app || !run || !spec) {
+    if (!canAdministrateApps || !app || !run || !spec) {
       return;
     }
 
@@ -103,40 +106,40 @@ export function RunPage() {
             <div className="flex items-center">
               <span>
                 Viewing run:{" "}
-                <span className="ml-1 hidden font-mono text-gray-600 sm:inline">
+                <span className="ml-1 hidden font-mono text-muted-foreground sm:inline">
                   {run.run_id}
                 </span>
-                <span className="ml-1 font-mono text-gray-600 sm:hidden">
+                <span className="ml-1 font-mono text-muted-foreground sm:hidden">
                   {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
                 </span>
               </span>
             </div>
             {run.app_hash ? (
-              <div className="flex items-center text-xs italic text-gray-400">
+              <div className="flex items-center text-xs italic text-muted-foreground">
                 <span>
                   Specification Hash:{" "}
-                  <span className="ml-1 hidden font-mono text-gray-400 sm:inline">
+                  <span className="ml-1 hidden font-mono text-muted-foreground sm:inline">
                     {run.app_hash}
                   </span>
-                  <span className="ml-1 font-mono text-gray-400 sm:hidden">
+                  <span className="ml-1 font-mono text-muted-foreground sm:hidden">
                     {run.app_hash.slice(0, 8)}...{run.app_hash.slice(-8)}
                   </span>
                 </span>
               </div>
             ) : null}
           </div>
-          <p className="flex items-center gap-x-2 text-xs text-gray-400">
+          <p className="flex items-center gap-x-2 text-xs text-muted-foreground">
             {savedRunId !== run.run_id ? (
               <Button
                 onClick={restore}
                 disabled={isLoading}
-                icon={ClockIcon}
+                icon={Clock}
                 label={isLoading ? "Restoring..." : "Restore"}
               />
             ) : (
               <Button
                 disabled={true}
-                icon={CheckCircleIcon}
+                icon={CheckCircle}
                 label="Latest version"
                 variant="outline"
               />
@@ -157,7 +160,7 @@ export function RunPage() {
           app={app}
           isAdmin={isAdmin}
           readOnly={true}
-          showOutputs={isBuilder}
+          showOutputs={canAdministrateApps}
           spec={spec}
           run={run}
           runRequested={false}

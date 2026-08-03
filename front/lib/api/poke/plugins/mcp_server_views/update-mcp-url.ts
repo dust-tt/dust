@@ -18,6 +18,7 @@ export const getMcpUrlPlugin = createPlugin({
         async: true,
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_auth, resource) => {
     return !!resource && resource.serverType === "remote";

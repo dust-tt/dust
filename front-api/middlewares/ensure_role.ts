@@ -1,3 +1,8 @@
+import type { APIErrorType } from "@app/types/error";
+import type {
+  ConcreteResourceType,
+  GrantVerb,
+} from "@app/types/group_permissions";
 import type {
   PublicApiCtx,
   WorkspaceAwareCtx,
@@ -13,6 +18,9 @@ import { createMiddleware } from "hono/factory";
 
 export const ENSURE_IS_ADMIN_ERROR_MESSAGE =
   "Only admin users can perform this action.";
+
+export const ENSURE_IS_MANAGER_ERROR_MESSAGE =
+  "Only managers can perform this action.";
 
 export const ENSURE_IS_BUILDER_ERROR_MESSAGE =
   "Only builder users can perform this action.";
@@ -34,6 +42,23 @@ export const ensureIsAdmin = () =>
     await next();
   });
 
+export const ensureIsManager = () =>
+  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+
+    if (!auth.isManager()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: ENSURE_IS_MANAGER_ERROR_MESSAGE,
+        },
+      });
+    }
+
+    await next();
+  });
+
 export const ensureIsBuilder = () =>
   createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
@@ -44,6 +69,36 @@ export const ensureIsBuilder = () =>
         api_error: {
           type: "workspace_auth_error",
           message: ENSURE_IS_BUILDER_ERROR_MESSAGE,
+        },
+      });
+    }
+
+    await next();
+  });
+
+/**
+ * Guards a route on a workspace-level governance capability (a type-wide grant),
+ * e.g. `ensureHasWorkspacePermission("admin", "billing", "...")`. Prefer this over
+ * the role middlewares (`ensureIsBuilder`, ...) for capability-based access.
+ *
+ * `errorType` defaults to `workspace_auth_error`; pass `app_auth_error` for the
+ * skills endpoints, which use that error type throughout.
+ */
+export const ensureHasWorkspacePermission = (
+  verb: GrantVerb,
+  resourceType: ConcreteResourceType,
+  message: string,
+  errorType: APIErrorType = "workspace_auth_error"
+) =>
+  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+
+    if (!(await auth.hasWorkspacePermission(verb, resourceType))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: errorType,
+          message,
         },
       });
     }

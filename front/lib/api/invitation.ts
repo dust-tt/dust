@@ -19,6 +19,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -49,7 +50,7 @@ export async function getInvitation(
   }
 ): Promise<MembershipInvitationType | null> {
   const owner = auth.workspace();
-  if (!owner || !auth.isAdmin()) {
+  if (!owner || !auth.isManager()) {
     return null;
   }
 
@@ -65,7 +66,7 @@ export async function getInvitation(
   return invitation.toJSON();
 }
 
-export async function sendWorkspaceInvitationEmail(
+async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
   invitation: MembershipInvitationType
@@ -112,15 +113,15 @@ export async function sendWorkspaceInvitationReminderEmail(
  * @returns MenbershipInvitation[] members of the workspace
  */
 
-export async function batchUnrevokeInvitations(
+async function batchUnrevokeInvitations(
   auth: Authenticator,
   invitationIds: string[],
   transaction?: Transaction
 ) {
   const owner = auth.workspace();
-  if (!owner || !auth.isAdmin()) {
+  if (!owner || !auth.isManager()) {
     throw new Error(
-      "Only users that are `admins` for the current workspace can see membership invitations or modify them."
+      "Only users that can manage members for the current workspace can see membership invitations or modify them."
     );
   }
 
@@ -143,6 +144,7 @@ export async function batchUnrevokeInvitations(
 interface MembershipInvitationBlob {
   email: string;
   role: ActiveRoleType;
+  seatType?: MembershipSeatType | null;
 }
 
 export interface HandleMembershipInvitationResult {
@@ -192,14 +194,22 @@ export async function handleMembershipInvitations(
       await getWorkspaceAdministrationVersionLock(owner, t);
 
       if (maxUsers !== -1) {
-        const membersCount =
-          await MembershipResource.getMembersCountForWorkspace({
+        const [membersCount, pendingInvitationsCount] = await Promise.all([
+          MembershipResource.getMembersCountForWorkspace({
             workspace: owner,
             activeOnly: true,
             transaction: t,
-          });
+          }),
+          MembershipInvitationResource.getPendingInvitationsCountForWorkspace({
+            workspace: owner,
+            transaction: t,
+          }),
+        ]);
 
-        const availableSeats = Math.max(maxUsers - membersCount, 0);
+        const availableSeats = Math.max(
+          maxUsers - membersCount - pendingInvitationsCount,
+          0
+        );
 
         if (availableSeats < invitationRequests.length) {
           const message =
@@ -310,6 +320,7 @@ export async function handleMembershipInvitations(
         originalEmail: string;
         sanitizedEmail: string;
         role: ActiveRoleType;
+        seatType?: MembershipSeatType | null;
       }[] = [];
       for (const req of emailsToSendInvitations) {
         if (existingMemberEmails.has(req.email)) {
@@ -323,6 +334,7 @@ export async function handleMembershipInvitations(
             originalEmail: req.email,
             sanitizedEmail: sanitizeString(req.email),
             role: req.role,
+            seatType: req.seatType,
           });
         }
       }
@@ -347,6 +359,7 @@ export async function handleMembershipInvitations(
       const toCreate: {
         inviteEmail: string;
         initialRole: ActiveRoleType;
+        seatType?: MembershipSeatType | null;
       }[] = [];
       const invitationBySanitizedEmail = new Map<
         string,
@@ -356,12 +369,17 @@ export async function handleMembershipInvitations(
       for (const {
         sanitizedEmail,
         role,
+        seatType,
       } of uniqueCandidateBySanitizedEmail.values()) {
         const existing = existingByEmail.get(sanitizedEmail);
         if (existing) {
           toRevokeModelIds.push(existing.id);
         }
-        toCreate.push({ inviteEmail: sanitizedEmail, initialRole: role });
+        toCreate.push({
+          inviteEmail: sanitizedEmail,
+          initialRole: role,
+          seatType: seatType ?? null,
+        });
       }
 
       await MembershipInvitationResource.bulkRevokeByModelIds(auth, {
@@ -430,22 +448,32 @@ export async function handleMembershipInvitations(
     ...emailResults,
   ];
 
+  // Emit one member.invited event per invited user, each recording the invitee
+  // as the user target and the role they were invited with. A single event with
+  // one target per invite would exceed WorkOS's `maxItems: 20` targets limit on
+  // bulk invites (causing `invalid_audit_log`). Bulk vs. individual is captured
+  // separately by `member.bulk_invited`, so it is not duplicated here.
+  // Key on the sanitized email (trim + lowercase) since that is how invitation
+  // emails are normalized when stored, so the role lookup matches both the
+  // freshly-emailed invites and the unrevoked ones.
+  const roleByEmail = new Map(
+    invitationRequests.map((r) => [sanitizeString(r.email), r.role])
+  );
   const successfulInvites = allResults.filter((r) => r.success);
-  if (successfulInvites.length > 0) {
+  for (const invite of successfulInvites) {
+    const role = roleByEmail.get(sanitizeString(invite.email));
     void emitAuditLogEvent({
       auth,
       action: "member.invited",
       targets: [
         buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        ...successfulInvites.map((r) =>
-          buildAuditLogTarget("user", { sId: r.email, name: r.email })
-        ),
+        buildAuditLogTarget("user", {
+          sId: invite.email,
+          name: invite.email,
+        }),
       ],
       context: getAuditLogContext(auth),
-      metadata: {
-        invited_count: String(successfulInvites.length),
-        emails: successfulInvites.map((r) => r.email).join(","),
-      },
+      metadata: role ? { role } : {},
     });
   }
 

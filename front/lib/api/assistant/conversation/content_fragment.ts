@@ -6,6 +6,7 @@ import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -15,12 +16,12 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentInputWithInlinedContent,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import {
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
   isSupportedContentNodeFragmentContentType,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   ContentNodeType,
@@ -65,7 +66,7 @@ export async function toFileContentFragment(
     fileName,
     skipDataSourceIndexing,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     contentFragment: ContentFragmentInputWithInlinedContent;
     fileName?: string;
     skipDataSourceIndexing?: boolean;

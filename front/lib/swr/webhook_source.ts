@@ -1,24 +1,22 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetWebhookSourceViewsListResponseBody } from "@app/lib/resources/webhook_sources_view_resource";
 import {
   emptyArray,
   getErrorFromResponse,
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
-import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
+import type { GetWebhookRequestsResponseBody } from "@app/lib/triggers/webhook";
 import type {
+  DeleteWebhookSourceResponseBody,
   GetWebhookSourcesResponseBody,
+  GetWebhookSourceViewsResponseBody,
   PostWebhookSourcesBody,
-} from "@app/pages/api/w/[wId]/webhook_sources";
-import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
-import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
-import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
+} from "@app/types/api/webhook_source";
 import type { SpaceType } from "@app/types/space";
 import type {
   WebhookSourceForAdminType,
-  WebhookSourceViewForAdminType,
   WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -165,56 +163,6 @@ export function useCreateWebhookSource({
   return createWebhookSource;
 }
 
-export function useUpdateWebhookSourceView({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}) {
-  const sendNotification = useSendNotification();
-
-  const updateWebhookSourceView = useCallback(
-    async (
-      webhookSourceViewId: string,
-      updates: { name: string; description?: string; icon?: string }
-    ): Promise<boolean> => {
-      try {
-        const response = await clientFetch(
-          `/api/w/${owner.sId}/webhook_sources/views/${webhookSourceViewId}`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(updates),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-
-        sendNotification({
-          type: "success",
-          title: "Successfully updated webhook source view",
-        });
-
-        return true;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update webhook source view",
-        });
-        return false;
-      }
-    },
-    [owner.sId, sendNotification]
-  );
-
-  return { updateWebhookSourceView };
-}
-
 export function useDeleteWebhookSource({
   owner,
 }: {
@@ -283,171 +231,6 @@ export function useDeleteWebhookSource({
     deleteWebhookSource,
     isDeleting,
   };
-}
-
-export function useWebhookSourceViewsByWebhookSource({
-  owner,
-  webhookSourceId,
-  disabled,
-}: {
-  owner: LightWorkspaceType;
-  webhookSourceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const configFetcher: Fetcher<GetSpecificWebhookSourceViewsResponseBody> =
-    fetcher;
-  const url = `/api/w/${owner.sId}/webhook_sources/${webhookSourceId}/views`;
-  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    disabled,
-  });
-
-  return {
-    webhookSourceViews:
-      data?.views ??
-      emptyArray<GetSpecificWebhookSourceViewsResponseBody["views"][number]>(),
-    isWebhookSourceViewsLoading: !error && !data && !disabled,
-    isWebhookSourceViewsError: error,
-    mutateWebhookSourceViews: mutate,
-  };
-}
-
-export function useAddWebhookSourceViewToSpace({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}) {
-  const sendNotification = useSendNotification();
-
-  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
-    owner,
-    disabled: true,
-  });
-
-  const createView = useCallback(
-    async ({
-      space,
-      webhookSource,
-    }: {
-      space: SpaceType;
-      webhookSource: WebhookSourceForAdminType;
-    }): Promise<void> => {
-      try {
-        const response = await clientFetch(
-          `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ webhookSourceId: webhookSource.sId }),
-          }
-        );
-
-        if (!response.ok) {
-          const body = await response.json();
-          throw new Error(body.error?.message ?? "Unknown error");
-        }
-
-        sendNotification({
-          type: "success",
-          title: `Webhook source added to space ${space.name}`,
-          description: `${webhookSource.name} has been added to the ${space.name} space successfully.`,
-        });
-
-        await mutateWebhookSourcesWithViews();
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: `Failed to add webhook source to space ${space.name}`,
-          description: `Could not add ${webhookSource.name} to the ${space.name} space. Please try again.`,
-        });
-      }
-    },
-    [sendNotification, owner.sId, mutateWebhookSourcesWithViews]
-  );
-
-  return { addToSpace: createView };
-}
-
-export function useRemoveWebhookSourceViewFromSpace({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}) {
-  const sendNotification = useSendNotification();
-
-  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
-    owner,
-    disabled: true,
-  });
-
-  const deleteView = useCallback(
-    async ({
-      webhookSourceView,
-      space,
-    }: {
-      webhookSourceView: WebhookSourceViewForAdminType;
-      space: SpaceType;
-    }): Promise<void> => {
-      try {
-        const response = await clientFetch(
-          `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views/${webhookSourceView.sId}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.ok) {
-          sendNotification({
-            type: "success",
-            title:
-              space.kind === "system"
-                ? "Webhook source removed from workspace"
-                : "Webhook source removed from space",
-            description: `${webhookSourceView.webhookSource.name} has been removed from the ${space.name} space successfully.`,
-          });
-
-          await mutateWebhookSourcesWithViews();
-        } else {
-          const res = await response.json();
-
-          // Check for foreign key constraint error specifically
-          if (res.error?.type === "webhook_source_view_triggering_agent") {
-            sendNotification({
-              type: "error",
-              title: "Webhook source in use by agents",
-              description:
-                "This webhook source is currently being used by existing agents. Please remove or update those agents first.",
-            });
-          } else {
-            sendNotification({
-              type: "error",
-              title: "Failed to remove webhook source",
-              description:
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                res.error?.message ||
-                `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
-            });
-          }
-        }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to remove webhook source",
-          description: `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
-        });
-      }
-    },
-    [sendNotification, owner.sId, mutateWebhookSourcesWithViews]
-  );
-
-  return { removeFromSpace: deleteView };
 }
 
 export function useWebhookRequestTriggersForTrigger({

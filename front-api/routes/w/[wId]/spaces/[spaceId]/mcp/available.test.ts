@@ -28,12 +28,14 @@ describe("GET /api/w/:wId/spaces/:spaceId/mcp/available", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     // Override the primitive_types_debugger config so the test passes even if
-    // we change the real one.
+    // we change the real one. Availability must be "manual": auto servers get
+    // their global-space view hydrated just in time, so they are never
+    // "available" to add to a space.
     const original = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
     Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
       value: {
         ...original,
-        availability: "auto",
+        availability: "manual",
         isRestricted: ({
           featureFlags,
         }: {

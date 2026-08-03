@@ -8,7 +8,10 @@ import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
+import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
   createContext,
   type ReactNode,
@@ -17,11 +20,55 @@ import {
   useState,
 } from "react";
 
+const STICKY_MODEL_OVERRIDE_STORAGE_KEY = "inputBarModelOverride_v1";
+
+function readStickyModelOverride(): ModelSelectionType | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(
+      STICKY_MODEL_OVERRIDE_STORAGE_KEY
+    );
+    if (!raw) {
+      return undefined;
+    }
+    const parsed = ModelSelectionSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeStickyModelOverride(selection: ModelSelectionType | undefined) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    if (selection === undefined) {
+      window.sessionStorage.removeItem(STICKY_MODEL_OVERRIDE_STORAGE_KEY);
+    } else {
+      window.sessionStorage.setItem(
+        STICKY_MODEL_OVERRIDE_STORAGE_KEY,
+        JSON.stringify(selection)
+      );
+    }
+  } catch {
+    // Best-effort write only.
+  }
+}
+
 /** Payload for the first message when creation is deferred until after navigation. */
 export type PendingConversationMessage = {
   input: string;
   mentions: RichMention[];
   contentFragments: ContentFragmentsType;
+  modelSelection?: ModelSelectionType;
+};
+
+export type PendingInputText = {
+  text: string;
+  replace: boolean;
 };
 
 type CaptureActions = {
@@ -32,14 +79,17 @@ type CaptureActions = {
 };
 
 export const InputBarContext = createContext<{
-  animate: boolean;
+  shouldFocusInput: boolean;
   getAndClearSelectedAgent: () => RichAgentMention | null;
-  setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
+  setShouldFocusInput: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
-  getAndClearPendingInputText: () => string | null;
-  setPendingInputText: (text: string | null) => void;
+  getAndClearPendingInputText: () => PendingInputText | null;
+  setPendingInputText: (
+    text: string | null,
+    options?: { replace?: boolean }
+  ) => void;
   peekPendingFirstMessage: (
     conversationId: string
   ) => PendingConversationMessage | null;
@@ -48,12 +98,18 @@ export const InputBarContext = createContext<{
     message: PendingConversationMessage
   ) => void;
   clearPendingFirstMessage: (conversationId: string) => void;
+  isLoadingGoTemplate: boolean;
+  setIsLoadingGoTemplate: (loading: boolean) => void;
+  stickyModelOverride: ModelSelectionType | undefined;
+  setStickyModelOverride: (selection: ModelSelectionType | undefined) => void;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
+  // Fired right before submit; the extension uses it to snapshot browser tab state.
+  onBeforeSubmit?: () => void;
 }>({
-  animate: false,
+  shouldFocusInput: false,
   getAndClearSelectedAgent: () => null,
-  setAnimate: () => {},
+  setShouldFocusInput: () => {},
   setSelectedAgent: () => {},
   selectedSingleAgent: null,
   setSelectedSingleAgent: () => {},
@@ -62,6 +118,10 @@ export const InputBarContext = createContext<{
   peekPendingFirstMessage: () => null,
   setPendingFirstMessage: () => {},
   clearPendingFirstMessage: () => {},
+  isLoadingGoTemplate: false,
+  setIsLoadingGoTemplate: () => {},
+  stickyModelOverride: undefined,
+  setStickyModelOverride: () => {},
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -79,14 +139,16 @@ interface InputBarContextProviderProps {
   children: ReactNode;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
+  onBeforeSubmit?: () => void;
 }
 
 export function InputBarContextProvider({
   children,
   fileUploaderService,
   captureActions,
+  onBeforeSubmit,
 }: InputBarContextProviderProps) {
-  const [animate, setAnimate] = useState<boolean>(false);
+  const [shouldFocusInput, setShouldFocusInput] = useState<boolean>(false);
 
   // Useful when a component needs to set the selected agent for the input bar but do not have direct access to the input bar.
   const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
@@ -97,9 +159,23 @@ export function InputBarContextProvider({
   const [selectedSingleAgent, setSelectedSingleAgent] =
     useState<RichAgentMention | null>(null);
 
-  // Useful when a component needs to pre-fill the input bar with text (e.g. butler suggestions).
-  const [pendingInputText, setPendingInputTextState] = useState<string | null>(
-    null
+  // Useful when a component needs to pre-fill the input bar with text.
+  const [pendingInputText, setPendingInputTextState] =
+    useState<PendingInputText | null>(null);
+  const [isLoadingGoTemplate, setIsLoadingGoTemplate] = useState(false);
+
+  // Sticky model-picker override, hydrated from sessionStorage on mount and
+  // written through on every change so it survives reloads within the tab.
+  const [stickyModelOverride, setStickyModelOverrideState] = useState<
+    ModelSelectionType | undefined
+  >(() => readStickyModelOverride());
+
+  const setStickyModelOverride = useCallback(
+    (selection: ModelSelectionType | undefined) => {
+      writeStickyModelOverride(selection);
+      setStickyModelOverrideState(selection);
+    },
+    []
   );
 
   // First message stashed while navigating to a newly-created conversation (deferred-send flow).
@@ -135,9 +211,9 @@ export function InputBarContextProvider({
   const setSelectedAgentOuter = useCallback(
     (agentMention: RichAgentMention | null) => {
       if (agentMention) {
-        setAnimate(true);
+        setShouldFocusInput(true);
       } else {
-        setAnimate(false);
+        setShouldFocusInput(false);
       }
       setSelectedAgent(agentMention);
     },
@@ -153,19 +229,29 @@ export function InputBarContextProvider({
   }, [selectedAgent, setSelectedAgent]);
 
   const getAndClearPendingInputText = useCallback(() => {
-    const text = pendingInputText;
+    const pending = pendingInputText;
     setPendingInputTextState(null);
-    return text;
+    return pending;
   }, [pendingInputText]);
 
-  const setPendingInputText = useCallback((text: string | null) => {
-    setPendingInputTextState(text);
-  }, []);
+  const setPendingInputText = useCallback(
+    (text: string | null, options?: { replace?: boolean }) => {
+      if (text === null) {
+        setPendingInputTextState(null);
+        return;
+      }
+      setPendingInputTextState({
+        text,
+        replace: options?.replace ?? false,
+      });
+    },
+    []
+  );
 
   const value = useMemo(
     () => ({
-      animate,
-      setAnimate,
+      shouldFocusInput,
+      setShouldFocusInput,
       getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
       selectedSingleAgent,
@@ -175,11 +261,16 @@ export function InputBarContextProvider({
       peekPendingFirstMessage,
       setPendingFirstMessage,
       clearPendingFirstMessage,
+      isLoadingGoTemplate,
+      setIsLoadingGoTemplate,
+      stickyModelOverride,
+      setStickyModelOverride,
       captureActions,
       fileUploaderService,
+      onBeforeSubmit,
     }),
     [
-      animate,
+      shouldFocusInput,
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
       selectedSingleAgent,
@@ -188,8 +279,12 @@ export function InputBarContextProvider({
       peekPendingFirstMessage,
       setPendingFirstMessage,
       clearPendingFirstMessage,
+      isLoadingGoTemplate,
+      stickyModelOverride,
+      setStickyModelOverride,
       captureActions,
       fileUploaderService,
+      onBeforeSubmit,
     ]
   );
 
@@ -207,7 +302,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   const conversationId = useActiveConversationId();
 
   const { workspace } = useAuth();
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
 
   const useCaseMetadata = useMemo(() => {
     if (!conversationId) {
@@ -219,7 +314,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }, [conversationId]);
 
   const fileUploaderService = useFileUploaderService({
-    hasSandboxTools: hasFeature("sandbox_tools"),
+    hasSandboxTools: isComputerFeatureEnabled(featureFlags),
     owner: workspace,
     useCase: "conversation",
     useCaseMetadata,

@@ -11,7 +11,7 @@ import type {
   GetSuggestionsResponseBody,
   PatchSuggestionRequestBody,
   PatchSuggestionResponseBody,
-} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/suggestions";
+} from "@app/types/api/assistant/agent_suggestion";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 

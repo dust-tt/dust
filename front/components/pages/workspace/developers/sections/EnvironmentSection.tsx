@@ -19,10 +19,11 @@ import {
 import { timeAgoFrom } from "@app/lib/utils";
 import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import {
-  WORKSPACE_SANDBOX_ENV_VAR_KINDS,
-  type WorkspaceSandboxEnvVarKind,
-  type WorkspaceSandboxEnvVarType,
+  SANDBOX_ENV_VAR_KINDS,
+  type SandboxEnvVarKind,
+  type SandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
@@ -34,20 +35,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  GlobeAltIcon,
-  InformationCircleIcon,
+  Edit04,
+  Globe01,
+  InfoCircle,
   Input,
   Label,
   ListGroup,
   ListItem,
-  LockIcon,
+  Lock01,
   Page,
-  PencilSquareIcon,
-  PlusIcon,
+  Plus,
   SliderToggle,
   Spinner,
   TextArea,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -67,14 +68,14 @@ function parseAllowedDomainsText(value: string): string[] {
     .filter((domain) => domain.length > 0);
 }
 
-function getEnvVarSuffix(envVar: WorkspaceSandboxEnvVarType): string {
+function getEnvVarSuffix(envVar: SandboxEnvVarType): string {
   const prefix = envVarPrefixForKind(envVar.kind);
   return envVar.name.startsWith(prefix)
     ? envVar.name.slice(prefix.length)
     : envVar.name;
 }
 
-function labelForKind(kind: WorkspaceSandboxEnvVarKind): string {
+function labelForKind(kind: SandboxEnvVarKind): string {
   switch (kind) {
     case "config":
       return "Config";
@@ -96,7 +97,7 @@ const formSchema = z
         "Suffix must start with A-Z and then use only A-Z, 0-9, or underscore, up to 64 characters."
       ),
     value: z.string().min(1, "Value is required."),
-    kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS),
+    kind: z.enum(SANDBOX_ENV_VAR_KINDS),
     allowedDomainsText: z.string(),
   })
   .superRefine((data, ctx) => {
@@ -175,17 +176,15 @@ export function EnvironmentSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const hasSandboxAdmin =
-    featureFlags.includes("sandbox_tools") &&
-    featureFlags.includes("sandbox_workspace_admin");
+  const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [envVarToReplace, setEnvVarToReplace] =
-    useState<WorkspaceSandboxEnvVarType | null>(null);
+    useState<SandboxEnvVarType | null>(null);
   const [envVarToDelete, setEnvVarToDelete] =
-    useState<WorkspaceSandboxEnvVarType | null>(null);
+    useState<SandboxEnvVarType | null>(null);
   const [envVarToConfigureDomains, setEnvVarToConfigureDomains] =
-    useState<WorkspaceSandboxEnvVarType | null>(null);
+    useState<SandboxEnvVarType | null>(null);
   const [domainsText, setDomainsText] = useState("");
 
   const {
@@ -345,7 +344,7 @@ export function EnvironmentSection() {
     setIsDialogOpen(true);
   };
 
-  const openReplaceDialog = (envVar: WorkspaceSandboxEnvVarType) => {
+  const openReplaceDialog = (envVar: SandboxEnvVarType) => {
     reset({
       name: getEnvVarSuffix(envVar),
       value: "",
@@ -357,7 +356,7 @@ export function EnvironmentSection() {
     setIsDialogOpen(true);
   };
 
-  const openConfigureDomainsDialog = (envVar: WorkspaceSandboxEnvVarType) => {
+  const openConfigureDomainsDialog = (envVar: SandboxEnvVarType) => {
     setDomainsText(envVar.allowedDomains?.join(", ") ?? "");
     setEnvVarToConfigureDomains(envVar);
   };
@@ -419,14 +418,14 @@ export function EnvironmentSection() {
   const renderBody = () => {
     if (!isAdmin) {
       return (
-        <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Only workspace admins can manage Computer environment variables.
         </ContentMessage>
       );
     }
     if (!hasSandboxAdmin) {
       return (
-        <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Computer administration is not enabled for this workspace.
         </ContentMessage>
       );
@@ -438,7 +437,7 @@ export function EnvironmentSection() {
       return (
         <ContentMessage
           variant="warning"
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           size="lg"
           title="Failed to load"
         >
@@ -456,7 +455,7 @@ export function EnvironmentSection() {
 
         <ContentMessage
           variant="info"
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           size="lg"
           title="Choose the right kind for each value"
         >
@@ -489,7 +488,7 @@ export function EnvironmentSection() {
         <div className="flex justify-end">
           <Button
             label="Add variable"
-            icon={PlusIcon}
+            icon={Plus}
             onClick={openAddDialog}
             disabled={isUpsertingWorkspaceSandboxEnvVar}
           />
@@ -514,11 +513,11 @@ export function EnvironmentSection() {
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <pre
                       title={envVar.name}
-                      className="min-w-0 self-start overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
+                      className="min-w-0 self-start overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
                     >
                       {envVar.name}
                     </pre>
-                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="text-xs text-muted-foreground">
                       Updated{" "}
                       {timeAgoFrom(envVar.updatedAt, { useLongFormat: true })}{" "}
                       ago by {updatedBy}
@@ -536,7 +535,7 @@ export function EnvironmentSection() {
                           <Chip
                             key={domain}
                             size="xs"
-                            color="white"
+                            color="primary"
                             label={domain}
                           />
                         ))}
@@ -546,7 +545,7 @@ export function EnvironmentSection() {
                     <Button
                       variant="outline"
                       size="mini"
-                      icon={envVar.kind === "config" ? LockIcon : GlobeAltIcon}
+                      icon={envVar.kind === "config" ? Lock01 : Globe01}
                       tooltip={
                         envVar.kind === "config"
                           ? `Promote ${envVar.name} to HTTPS secret`
@@ -558,7 +557,7 @@ export function EnvironmentSection() {
                     <Button
                       variant="outline"
                       size="mini"
-                      icon={PencilSquareIcon}
+                      icon={Edit04}
                       tooltip={`Replace value of ${envVar.name}`}
                       disabled={isAnyMutationPending}
                       onClick={() => openReplaceDialog(envVar)}
@@ -566,7 +565,7 @@ export function EnvironmentSection() {
                     <Button
                       variant="warning"
                       size="mini"
-                      icon={TrashIcon}
+                      icon={Trash01}
                       tooltip={`Delete ${envVar.name}`}
                       disabled={isAnyMutationPending}
                       onClick={() => setEnvVarToDelete(envVar)}
@@ -604,12 +603,11 @@ export function EnvironmentSection() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-col">
                       <Label>HTTPS secret</Label>
-                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      <span className="text-xs text-muted-foreground">
                         Keep the value out of the Computer environment.
                       </span>
                     </div>
                     <SliderToggle
-                      size="sm"
                       selected={kindField.value === "https_secret"}
                       disabled={isUpsertingWorkspaceSandboxEnvVar}
                       onClick={() => {
@@ -624,9 +622,7 @@ export function EnvironmentSection() {
                   </div>
                   <ContentMessage
                     variant={kindValue === "https_secret" ? "info" : "warning"}
-                    icon={
-                      kindValue === "https_secret" ? LockIcon : GlobeAltIcon
-                    }
+                    icon={kindValue === "https_secret" ? Lock01 : Globe01}
                     size="sm"
                   >
                     {kindValue === "https_secret" ? (
@@ -649,7 +645,7 @@ export function EnvironmentSection() {
                 <Label htmlFor="sandbox-env-var-name">Name</Label>
                 <div className="relative">
                   <span
-                    className="pointer-events-none absolute left-3 top-0 flex h-9 select-none items-center text-sm text-muted-foreground dark:text-muted-foreground-night"
+                    className="pointer-events-none absolute left-3 top-0 flex h-9 select-none items-center text-sm text-muted-foreground"
                     aria-hidden="true"
                     title={`The ${namePrefix} prefix is reserved and cannot be removed.`}
                   >
@@ -726,8 +722,8 @@ export function EnvironmentSection() {
                 <div
                   className={
                     valueMessage.isError
-                      ? "text-xs text-foreground-warning dark:text-foreground-warning-night"
-                      : "text-xs text-muted-foreground dark:text-muted-foreground-night"
+                      ? "text-xs text-foreground-warning"
+                      : "text-xs text-muted-foreground"
                   }
                 >
                   {valueMessage.message}
@@ -743,7 +739,7 @@ export function EnvironmentSection() {
             }}
             rightButtonProps={{
               label: isReplacing ? "Replace" : "Save",
-              icon: LockIcon,
+              icon: Lock01,
               onClick: () => {
                 void handleSubmit(onSubmit)();
               },
@@ -777,7 +773,7 @@ export function EnvironmentSection() {
                 {envVarToConfigureDomains.kind === "config" ? (
                   <ContentMessage
                     variant="warning"
-                    icon={InformationCircleIcon}
+                    icon={InfoCircle}
                     title="Promotion only takes effect on next wake"
                   >
                     Running Computers keep the previous {SANDBOX_ENV_VAR_PREFIX}
@@ -813,9 +809,7 @@ export function EnvironmentSection() {
                     ? "Promote"
                     : "Save",
                 icon:
-                  envVarToConfigureDomains.kind === "config"
-                    ? LockIcon
-                    : GlobeAltIcon,
+                  envVarToConfigureDomains.kind === "config" ? Lock01 : Globe01,
                 onClick: () => {
                   void handleConfigureDomains();
                 },

@@ -22,7 +22,7 @@ export async function compactionActivity(
     sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<void> {
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
   const compactionRes = await runCompaction(auth, {
     conversationId,
     compactionMessageId,
@@ -48,7 +48,7 @@ export async function compactionCleanupActivity(
     compactionMessageVersion: number;
   }
 ): Promise<void> {
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
   await failCompactionMessage(auth, {
     conversationId,
     compactionMessageId,

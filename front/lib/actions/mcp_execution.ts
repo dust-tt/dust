@@ -1,15 +1,6 @@
-import {
-  generatePlainTextFile,
-  uploadFileToConversationDataSource,
-} from "@app/lib/actions/action_file_helpers";
-import {
-  computeTextByteSize,
-  FILE_OFFLOAD_RESOURCE_SIZE_BYTES,
-  FILE_OFFLOAD_SNIPPET_LENGTH,
-  FILE_OFFLOAD_TEXT_SIZE_BYTES,
-} from "@app/lib/actions/action_output_limits";
+import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
+import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import type {
-  LightMCPToolConfigurationType,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -17,6 +8,7 @@ import { augmentInputsWithConfiguration } from "@app/lib/actions/mcp_internal_ac
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isBlobResource,
+  isResourceContentWithText,
   isResourceWithName,
   isRunAgentQueryProgressOutput,
   isStoreResourceProgressOutput,
@@ -24,24 +16,19 @@ import {
   isToolGeneratedFilePath,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type {
+  ActionGeneratedFileType,
+  ToolContext,
+  ToolOutputItemType,
+} from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-} from "@app/types/assistant/conversation";
-import type {
-  FileUseCase,
-  FileUseCaseMetadata,
-  SupportedFileContentType,
-} from "@app/types/files";
+import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
   extensionsForContentType,
   isSupportedFileContentType,
@@ -53,14 +40,9 @@ import {
   toWellFormed,
 } from "@app/types/shared/utils/string_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 import { extname } from "path";
 import type { Logger } from "pino";
-
-const TEXT_OFFLOAD_EXEMPT_MCP_SERVERS: readonly string[] = [
-  "conversation_files",
-  "files",
-  "sandbox",
-];
 
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
@@ -84,43 +66,69 @@ function sanitizeStringsDeep<T>(input: T): T {
   return input;
 }
 
+function getFileName(resource: { uri: string }): string {
+  return isResourceWithName(resource)
+    ? resource.name
+    : (resource.uri.split("/").pop() ?? "generated-file");
+}
+
+/**
+ * Builds the model-visible snippet for a content block whose full text was offloaded to the
+ * file system by persistToolOutput. The scoped path pointer is what lets the model read the
+ * rest of the content back, so it must always be present.
+ */
+function makeOffloadedSnippet(text: string, scopedPath: string): string {
+  const head = text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH);
+  // The offload threshold is in bytes while the snippet cut is in characters, so multibyte
+  // content can be offloaded without losing any character here — only claim truncation when
+  // characters were actually dropped.
+  const truncatedSuffix = head.length < text.length ? "... (truncated)" : "";
+  return `${head}${truncatedSuffix}\n[Full content archived at ${scopedPath}]`;
+}
+
 export async function processToolNotification(
   auth: Authenticator,
   notification: MCPProgressNotificationType,
   {
-    action,
-    agentConfiguration,
-    conversation,
-    agentMessage,
+    toolContext,
   }: {
-    action: AgentMCPActionResource;
-    agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
-    agentMessage: AgentMessageType;
+    toolContext: ToolContext;
   }
 ): Promise<{
   event: ToolNotificationEvent;
-  storedItems: AgentMCPActionOutputItemModel[];
+  outputItems: ToolOutputItemType[];
 }> {
+  const { runContext } = toolContext;
+  assert(runContext, "processToolNotification requires a tool run context.");
+
   const output = notification.params._meta.data.output;
 
-  let storedItems: AgentMCPActionOutputItemModel[] = [];
+  let outputItems: ToolOutputItemType[] = [];
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    storedItems = await action.createOutputItems(
+    const outputRes = await runContext.action.createOutputItems(
       auth,
       output.contents.map((content) => ({
         content: sanitizeStringsDeep(content),
       }))
     );
+    if (outputRes.isErr()) {
+      throw outputRes.error;
+    }
+    outputItems = outputRes.value;
   }
 
   // Specific handling for run_agent notifications indicating the tool has
   // started and can be resumed: the action is updated to save the resumeState.
-  if (isRunAgentQueryProgressOutput(output)) {
-    await action.updateStepContext({
-      ...action.stepContext,
+  // Sandbox function actions carry no step context to persist a resume state on, so this only
+  // applies to agent loop run contexts.
+  if (
+    isRunAgentQueryProgressOutput(output) &&
+    isAgentLoopRunContext(runContext)
+  ) {
+    await runContext.action.updateStepContext({
+      ...runContext.action.stepContext,
       resumeState: {
         userMessageId: output.userMessageId,
         conversationId: output.conversationId,
@@ -128,52 +136,67 @@ export async function processToolNotification(
     });
   }
 
-  // Regular notifications, we yield them as is with the type "tool_notification".
-  return {
-    event: {
-      type: "tool_notification",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      conversationId: conversation.sId,
-      messageId: agentMessage.sId,
-      action: {
-        ...action.toJSON(),
-        output: null,
-        generatedFiles: [],
-      },
-      notification: notification.params,
-    },
-    storedItems,
-  };
+  // Regular notifications, we yield them as is with the type "tool_notification", scoped to the
+  // run context they were emitted from.
+  switch (runContext.contextType) {
+    case "agent_loop":
+      return {
+        event: {
+          type: "tool_notification",
+          created: Date.now(),
+          configurationId: runContext.agentConfiguration.sId,
+          conversationId: runContext.conversation.sId,
+          messageId: runContext.agentMessage.sId,
+          action: {
+            ...runContext.action.toJSON(),
+            output: null,
+            generatedFiles: [],
+          },
+          notification: notification.params,
+        },
+        outputItems,
+      };
+    case "sandbox_function":
+      return {
+        event: {
+          type: "tool_notification",
+          created: Date.now(),
+          sandboxFunctionId: runContext.invocation.sandboxFunction.sId,
+          invocationId: runContext.invocation.sId,
+          action: runContext.action.toJSON(),
+          notification: notification.params,
+        },
+        outputItems,
+      };
+    default:
+      return assertNever(runContext);
+  }
 }
 
 /**
- * Processes tool results, handles file uploads, and creates output items.
+ * Processes tool results, handles file uploads, and persists the output: one output item per
+ * content block in an agent loop, a single GCS object holding the full content array for a
+ * sandbox function invocation.
  * Returns the processed content and generated files.
  */
 export async function processToolResults(
   auth: Authenticator,
   {
-    action,
-    conversation,
     localLogger,
     toolCallResultContent,
-    toolConfiguration,
+    toolContext,
   }: {
-    action: AgentMCPActionResource;
-    conversation: ConversationType;
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
-    toolConfiguration: LightMCPToolConfigurationType;
+    toolContext: ToolContext;
   }
 ): Promise<{
-  outputItems: AgentMCPActionOutputItemModel[];
+  outputItems: ToolOutputItemType[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
-  const fileUseCase: FileUseCase = "conversation";
-  const fileUseCaseMetadata: FileUseCaseMetadata = {
-    conversationId: conversation.sId,
-  };
+  const { runContext } = toolContext;
+  assert(runContext, "processToolResults requires a tool run context.");
+  const { toolConfiguration } = runContext;
 
   const timestamp = Date.now();
   const cleanContent: {
@@ -182,46 +205,39 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      await persistToolOutput(auth, conversation, block, {
+      const res = await persistToolOutput(auth, runContext, block, {
         toolName: toolConfiguration.name,
         serverName: toolConfiguration.mcpServerName,
       });
+      if (res.isErr()) {
+        return {
+          content: {
+            type: "text",
+            text: "Failed to save the tool output.",
+          },
+          file: null,
+        };
+      }
 
       switch (block.type) {
         case "text": {
-          // If the text is too large we create a file and return a resource block that references the file.
-          // These files are offloaded purely for size reasons. the model reads them directly via the
-          // "cat" approach and never uses semantic search on them. `skipDataSourceIndexing` prevents
-          // them from being indexed in Qdrant, which would bloat the vector store for no benefit.
-          if (
-            computeTextByteSize(block.text) > FILE_OFFLOAD_TEXT_SIZE_BYTES &&
-            !TEXT_OFFLOAD_EXEMPT_MCP_SERVERS.includes(
-              toolConfiguration.mcpServerName
-            )
-          ) {
-            const fileName = `${toolConfiguration.mcpServerName}_${timestamp}_${idx}.txt`;
-            const snippet =
-              block.text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH) +
-              "... (truncated)";
-
-            const file = await generatePlainTextFile(auth, {
-              title: fileName,
-              conversationId: conversation.sId,
-              content: block.text,
-              snippet,
-              hideFromUser: true,
-              skipDataSourceIndexing: true,
-            });
+          // If persistToolOutput wrote this block to DustFileSystem (too large), return a resource
+          // block pointing at the scoped path. The model reads it via the `cat` tool.
+          if (res.value !== null) {
+            const snippet = makeOffloadedSnippet(
+              block.text,
+              res.value.scopedPath
+            );
             return {
               content: {
                 type: "resource",
                 resource: {
-                  uri: file.getPublicUrl(auth),
+                  uri: res.value.scopedPath,
                   mimeType: "text/plain",
                   text: snippet,
                 },
               },
-              file,
+              file: null,
             };
           }
           return {
@@ -232,6 +248,7 @@ export async function processToolResults(
             file: null,
           };
         }
+
         case "image": {
           const fileName = isResourceWithName(block)
             ? block.name
@@ -241,17 +258,17 @@ export async function processToolResults(
             base64Data: block.data,
             mimeType: block.mimeType,
             fileName,
-            block,
-            fileUseCase,
-            fileUseCaseMetadata,
+            toolContext,
           });
         }
+
         case "audio": {
           return {
             content: block,
             file: null,
           };
         }
+
         case "resource": {
           // File path only, pass through as-is.
           if (isToolGeneratedFilePath(block)) {
@@ -271,10 +288,15 @@ export async function processToolResults(
               auth,
               block.resource.fileId
             );
+            const conversation = isAgentLoopRunContext(runContext)
+              ? runContext.conversation
+              : null;
+
             // We need to create the conversation data source in case the file comes from a subagent
             // who uploaded it to its own conversation but not the main agent's.
             // Skip for project_context files — they are already indexed via their own data source.
-            if (file && file.useCase !== "project_context") {
+            // Skip outside of a conversation — there is no conversation data source to upsert to.
+            if (file && file.useCase !== "project_context" && conversation) {
               // Files uploaded by client-side tools (e.g. the Chrome extension) may not have a
               // conversationId in their metadata since the tool doesn't know it at upload time.
               // Patch it here so the JIT data source creation works correctly.
@@ -298,34 +320,60 @@ export async function processToolResults(
               },
               file,
             };
-          } else if (
-            block.resource.mimeType &&
-            // File generated by the tool, not upserted yet.
-            isSupportedFileContentType(block.resource.mimeType)
-          ) {
-            if (isBlobResource(block)) {
+          }
+
+          // File generated by the tool, not upserted yet.
+          if (isBlobResource(block)) {
+            const { mimeType } = block.resource;
+
+            let fileName: string;
+            if (mimeType && isSupportedFileContentType(mimeType)) {
               const extensionFromContentType =
-                extensionsForContentType(
-                  block.resource.mimeType as SupportedFileContentType
-                )[0] || "";
+                extensionsForContentType(mimeType)[0] || "";
               const extensionFromURI = extname(block.resource.uri);
-              const fileName = extensionFromURI
+              fileName = extensionFromURI
                 ? block.resource.uri
                 : `${block.resource.uri}${extensionFromContentType}`;
-
-              return handleBase64Upload(auth, {
-                base64Data: block.resource.blob,
-                mimeType: block.resource.mimeType,
-                fileName: fileName,
-                block,
-                fileUseCase,
-                fileUseCaseMetadata,
-              });
+            } else {
+              fileName = getFileName(block.resource);
             }
 
-            const fileName = isResourceWithName(block.resource)
-              ? block.resource.name
-              : (block.resource.uri.split("/").pop() ?? "generated-file");
+            return handleBase64Upload(auth, {
+              base64Data: block.resource.blob,
+              mimeType: mimeType ?? "application/octet-stream",
+              fileName,
+              toolContext,
+            });
+          }
+
+          // Non-blob resource generated by the tool (referenced by URI, not inline
+          // base64), not upserted yet.
+          if (
+            block.resource.mimeType &&
+            isSupportedFileContentType(block.resource.mimeType)
+          ) {
+            const fileName = getFileName(block.resource);
+
+            // Files land on the conversation in an agent loop, on the pod's shared project
+            // context in a sandbox function invocation.
+            let fileUseCase: FileUseCase;
+            let fileUseCaseMetadata: FileUseCaseMetadata;
+            switch (runContext.contextType) {
+              case "agent_loop":
+                fileUseCase = "conversation";
+                fileUseCaseMetadata = {
+                  conversationId: runContext.conversation.sId,
+                };
+                break;
+              case "sandbox_function":
+                fileUseCase = "project_context";
+                fileUseCaseMetadata = {
+                  spaceId: runContext.invocation.sandboxFunction.space.sId,
+                };
+                break;
+              default:
+                assertNever(runContext);
+            }
 
             const fileUpsertResult = await processAndStoreFromUrl(auth, {
               url: block.resource.uri,
@@ -353,60 +401,57 @@ export async function processToolResults(
               content: block,
               file: fileUpsertResult.value,
             };
-          } else {
-            const text =
-              "text" in block.resource &&
-              typeof block.resource.text === "string"
-                ? toWellFormed(stripNullBytes(block.resource.text))
-                : null;
+          }
 
-            // Sanitize the entire resource object to remove null bytes from all string fields
-            const sanitizedResource = sanitizeStringsDeep(block.resource);
+          const text = isResourceContentWithText(block)
+            ? toWellFormed(stripNullBytes(block.resource.text))
+            : null;
 
-            // If the resource text is too large, we create a file and return a resource block that references the file.
-            // Same as the text block case above: offloaded for size, not for search. Skip Qdrant indexing.
-            if (
-              text &&
-              computeTextByteSize(text) > FILE_OFFLOAD_RESOURCE_SIZE_BYTES
-            ) {
-              const fileName =
-                block.resource.uri?.split("/").pop() ??
-                `resource_${Date.now()}.txt`;
-              const snippet =
-                text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH) +
-                "... (truncated)";
+          // Sanitize the entire resource object to remove null bytes from all string fields
+          const sanitizedResource = sanitizeStringsDeep(block.resource);
 
-              const file = await generatePlainTextFile(auth, {
-                title: fileName,
-                conversationId: conversation.sId,
-                content: text,
-                snippet,
-                hideFromUser: true,
-                skipDataSourceIndexing: true,
-              });
-              return {
-                content: {
-                  type: block.type,
-                  resource: {
-                    ...sanitizedResource,
-                    text: snippet,
-                  },
-                },
-                file,
-              };
-            }
+          // Large resource text was already offloaded by persistToolOutput above.
+          if (res.value !== null) {
+            const snippet =
+              text !== null
+                ? makeOffloadedSnippet(text, res.value.scopedPath)
+                : "";
             return {
               content: {
                 type: block.type,
                 resource: {
                   ...sanitizedResource,
-                  ...(text ? { text } : {}),
+                  text: snippet,
                 },
               },
               file: null,
             };
           }
+
+          localLogger.info(
+            {
+              mimeType: block.resource.mimeType ?? null,
+              toolName: toolConfiguration.name,
+              serverName: toolConfiguration.mcpServerName,
+              blobBytes: isBlobResource(block)
+                ? Buffer.byteLength(block.resource.blob, "utf8")
+                : 0,
+            },
+            "MCP tool returned an embedded resource with an unsupported or missing mimeType; storing it inline in the conversation."
+          );
+
+          return {
+            content: {
+              type: block.type,
+              resource: {
+                ...sanitizedResource,
+                ...(text ? { text } : {}),
+              },
+            },
+            file: null,
+          };
         }
+
         case "resource_link": {
           return {
             content: block,
@@ -420,14 +465,6 @@ export async function processToolResults(
     {
       concurrency: 10,
     }
-  );
-
-  const outputItems = await action.createOutputItems(
-    auth,
-    cleanContent.map((c) => ({
-      content: sanitizeStringsDeep(c.content),
-      fileId: c.file?.id,
-    }))
   );
 
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
@@ -462,7 +499,22 @@ export async function processToolResults(
     })
   );
 
-  return { outputItems, generatedFiles };
+  // Persist the processed contents on the run context's action: per-item rows for agent loop
+  // actions, a single output object for sandbox function actions.
+  const outputRes = await runContext.action.createOutputItems(
+    auth,
+    cleanContent.map((c) => ({
+      content: sanitizeStringsDeep(c.content),
+      fileId: c.file?.id,
+    }))
+  );
+
+  // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
+  if (outputRes.isErr()) {
+    throw outputRes.error;
+  }
+
+  return { outputItems: outputRes.value, generatedFiles };
 }
 
 /**
@@ -478,6 +530,12 @@ export function getAugmentedInputs(
     rawInputs: Record<string, unknown>;
   }
 ): Record<string, unknown> {
+  // Remote MCP tools pass inputSchema through as-is; only Dust internal tools
+  // inject configured data sources, tables, etc. via augmentInputsWithConfiguration.
+  if (!isInternalServerSideMCPToolConfiguration(actionConfiguration)) {
+    return rawInputs;
+  }
+
   return augmentInputsWithConfiguration({
     owner: auth.getNonNullableWorkspace(),
     rawInputs,

@@ -27,7 +27,7 @@ const specifications: AgentActionSpecification[] = [
   },
 ];
 
-export interface SkillDescriptionSuggestionInputs {
+interface SkillDescriptionSuggestionInputs {
   instructions: string;
   agentFacingDescription: string;
   tools: { name: string; description: string }[];

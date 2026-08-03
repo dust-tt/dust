@@ -49,34 +49,6 @@ function makeInstructionSuggestion(input: {
   };
 }
 
-function makeToolSuggestion(input: {
-  sId: string;
-  analysis: string;
-  action: "add" | "remove";
-  toolId: string;
-  skillConfigurationId?: string;
-  source?: "reinforcement" | "synthetic";
-}): SkillSuggestionType {
-  return {
-    sId: input.sId,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    skillConfigurationId: input.skillConfigurationId ?? SKILL_SID,
-    analysis: input.analysis,
-    title: null,
-    state: "pending",
-    source: input.source ?? "synthetic",
-    sourceConversationsCount: 0,
-    visibleSourceConversationIds: [],
-    notificationConversationId: null,
-    updatedBy: null,
-    kind: "edit",
-    suggestion: {
-      toolEdits: [{ action: input.action, toolId: input.toolId }],
-    },
-  };
-}
-
 function makeAgentFacingDescriptionSuggestion(input: {
   sId: string;
   analysis: string;
@@ -188,7 +160,6 @@ Score 3 if well-merged with all themes, clear structure, and analysis referencin
     {
       scenarioId: "merge-duplicate-tools",
       type: "aggregation",
-      useInlineTools: true,
       skillConfig: {
         name: "Engineering Helper",
         sId: "skill_engineering",
@@ -197,29 +168,44 @@ Score 3 if well-merged with all themes, clear structure, and analysis referencin
           "Help engineers with their daily work. Assist with task management and process questions.",
       },
       syntheticSuggestions: [
-        makeToolSuggestion({
+        makeInstructionSuggestion({
           sId: "sug-1",
           skillConfigurationId: "skill_engineering",
           analysis:
             "User asked to create a JIRA ticket but the skill couldn't. Adding JIRA would enable direct ticket creation.",
-          action: "add",
-          toolId: "mcp_jira",
+          instructionEdits: [
+            {
+              targetBlockId: "block-jira",
+              content:
+                'Use <tool id="mcp_jira" name="JIRA" /> to create JIRA tickets directly for engineers.',
+            },
+          ],
         }),
-        makeToolSuggestion({
+        makeInstructionSuggestion({
           sId: "sug-2",
           skillConfigurationId: "skill_engineering",
           analysis:
             "User wanted to check sprint status in JIRA. The skill had no way to query JIRA data.",
-          action: "add",
-          toolId: "mcp_jira",
+          instructionEdits: [
+            {
+              targetBlockId: "block-jira",
+              content:
+                'Use <tool id="mcp_jira" name="JIRA" /> to query sprint status and ticket data.',
+            },
+          ],
         }),
-        makeToolSuggestion({
+        makeInstructionSuggestion({
           sId: "sug-3",
           skillConfigurationId: "skill_engineering",
           analysis:
             "User asked to assign a JIRA ticket to a teammate. Without the JIRA tool, the skill could only suggest doing it manually.",
-          action: "add",
-          toolId: "mcp_jira",
+          instructionEdits: [
+            {
+              targetBlockId: "block-jira",
+              content:
+                'Use <tool id="mcp_jira" name="JIRA" /> to assign tickets to teammates.',
+            },
+          ],
         }),
       ],
       workspaceContext: WORKSPACE_CONTEXT,
@@ -235,10 +221,9 @@ as an inline <tool id="mcp_jira" name="JIRA" /> reference to skill "skill_engine
 - Merge the 3 individual suggestions into a single recommendation
 - Mention that 3 conversations support this suggestion
 - Include a comprehensive analysis covering the different use cases (ticket creation, sprint status, assignment)
-- Convert the legacy source toolEdits into an instruction edit with an inline <tool> tag; it MUST NOT include toolEdits
+- Merge the 3 inline <tool> instruction edits into a single instruction edit that keeps exactly one inline <tool id="mcp_jira" name="JIRA" /> reference
 
 Score 0 if no edit_skill call or if it creates 3 separate calls.
-Score 0 if the final edit_skill call uses toolEdits instead of an inline <tool> instruction edit.
 Score 1 if merged but analysis doesn't reference multiple conversations/use cases.
 Score 2 if properly merged with multi-conversation reference but analysis could be better.
 Score 3 if well-merged with clear analysis covering all use cases and conversation count.`,
@@ -462,7 +447,6 @@ Score 3 if no edit_skill suggestion is created AND reject_suggestion is not call
     {
       scenarioId: "merge-description-edits-keep-tool-separate",
       type: "aggregation",
-      useInlineTools: true,
       skillConfig: {
         name: "Payment Issue Resolver",
         sId: "skill_payment_resolver",
@@ -487,13 +471,18 @@ Score 3 if no edit_skill suggestion is created AND reject_suggestion is not call
           content:
             "For payment failures and chargeback disputes only. Skip this skill for invoice or receipt requests — those are handled elsewhere.",
         }),
-        makeToolSuggestion({
+        makeInstructionSuggestion({
           sId: "sug-tool-1",
           skillConfigurationId: "skill_payment_resolver",
           analysis:
             "User asked the skill to file an internal incident ticket for a flagged chargeback. The skill had no JIRA tool to do so, it's crucial to add it.",
-          action: "add",
-          toolId: "mcp_jira",
+          instructionEdits: [
+            {
+              targetBlockId: "block-jira",
+              content:
+                'Use <tool id="mcp_jira" name="JIRA" /> to file an internal incident ticket for a flagged chargeback.',
+            },
+          ],
         }),
       ],
       workspaceContext: WORKSPACE_CONTEXT,
@@ -510,11 +499,10 @@ Score 3 if no edit_skill suggestion is created AND reject_suggestion is not call
       judgeCriteria: `Two of the three drafts target the agent-facing description (both about narrowing routing), and one is unrelated tooling work (adding JIRA). Aggregation rules require:
 - ONE description-edit suggestion per skill, merging both description drafts (sug-desc-1 + sug-desc-2). The merged description must explicitly limit the skill to payment failures + chargebacks AND steer the agent away from generic billing/invoice/account-management requests.
 - The description edit MUST be its own standalone edit_skill call. Do NOT bundle it with the tool addition (different topic, different fix).
-- A separate edit_skill call that converts the legacy JIRA tool addition (sug-tool-1) into an instruction edit with an inline <tool id="mcp_jira" name="JIRA" /> reference. It MUST NOT include toolEdits.
+- A separate edit_skill call that keeps the JIRA tool addition (sug-tool-1) as its own instruction edit with an inline <tool id="mcp_jira" name="JIRA" /> reference.
 
 Score 0 if no edit_skill call carries an agentFacingDescriptionEdit for skill_payment_resolver.
 Score 0 if the description edit and the tool addition are bundled into a single edit_skill call.
-Score 0 if the JIRA addition is output as toolEdits instead of an inline <tool> instruction edit.
 Score 0 if more than 2 edit_skill calls are produced (failure to merge sug-desc-1 + sug-desc-2).
 Score 1 if 2 separate edit_skill calls are made but the merged description doesn't explicitly carve out billing/invoice routing (i.e. it stays vague).
 Score 2 if 2 separate edit_skill calls are made and the merged description narrows scope but does not reference both supporting drafts (sug-desc-1 + sug-desc-2 in sourceSuggestionIds).

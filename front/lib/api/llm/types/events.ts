@@ -1,6 +1,9 @@
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import type { AgentMessagePhase } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentMessagePhase,
+  AgentProviderPassthroughContentType,
+} from "@app/types/assistant/agent_message_content";
 
 export type Delta = {
   delta: string;
@@ -10,10 +13,18 @@ export type Text = {
   text: string;
 };
 
+// Prompt-cache diagnostics: why the cache prefix could not be reused vs. the
+// previous request. `type` is the reason. `cacheMissedInputTokens` is the
+// estimated lost-cache magnitude (only present on the `*_changed` reasons).
+export interface CacheMissReason {
+  type: string;
+  cacheMissedInputTokens?: number;
+}
+
 // Provider response identification event
 export interface ResponseIdEvent {
   type: "interaction_id";
-  content: { modelInteractionId: string };
+  content: { modelInteractionId: string; cacheMissReason?: CacheMissReason };
   metadata: LLMClientMetadata;
 }
 
@@ -52,6 +63,7 @@ export interface ToolCall {
   id: string;
   name: string;
   arguments: Record<string, unknown>;
+  namespace?: string;
 }
 
 export interface ToolCallEvent {
@@ -72,6 +84,15 @@ export interface ReasoningGeneratedEvent {
   metadata: LLMClientMetadata & { id?: string; encrypted_content?: string };
 }
 
+// Opaque provider-specific block that must be persisted and replayed verbatim
+// to the producing provider. The generic pipeline forwards `block` without
+// interpreting it.
+export interface ProviderPassthroughEvent {
+  type: "provider_passthrough";
+  content: AgentProviderPassthroughContentType["value"];
+  metadata: LLMClientMetadata;
+}
+
 export type LLMOutputItem =
   | TextGeneratedEvent
   | ReasoningGeneratedEvent
@@ -80,10 +101,20 @@ export type LLMOutputItem =
 // Completion results
 
 export interface TokenUsage {
+  // Total cache-write tokens across all cache retention durations.
   cacheCreationTokens?: number;
+  // Breakdown of cacheCreationTokens by cache retention duration, for
+  // providers that bill long-lived cache writes at a premium over short-lived
+  // ones. Absent when the provider only reports a flat total.
+  longCacheCreationTokens?: number;
+  shortCacheCreationTokens?: number;
   cachedTokens?: number;
+  // Total input tokens including cache hits and cache creation tokens.
   inputTokens: number;
-  outputTokens: number;
+  // Total output tokens billed by the provider, including reasoning tokens.
+  // Do not add reasoningTokens to this value. reasoningTokens is a subset.
+  totalOutputTokens: number;
+  // Reasoning and thinking portion of totalOutputTokens.
   reasoningTokens?: number;
   totalTokens: number;
   // Raw input tokens after the last cache breakpoint (not from cache).
@@ -103,6 +134,9 @@ export interface SuccessCompletionEvent {
   textGenerated?: TextGeneratedEvent;
   reasoningGenerated?: ReasoningGeneratedEvent;
   toolCalls?: ToolCallEvent[];
+  // Raw provider stop/finish reason, verbatim and unmapped: why the turn ended.
+  // Diagnostics only.
+  stopReason?: string;
   metadata: LLMClientMetadata;
 }
 
@@ -128,6 +162,7 @@ export type LLMEvent =
   | ToolCallEvent
   | TextGeneratedEvent
   | ReasoningGeneratedEvent
+  | ProviderPassthroughEvent
   | TokenUsageEvent
   | SuccessCompletionEvent
   | EventError;

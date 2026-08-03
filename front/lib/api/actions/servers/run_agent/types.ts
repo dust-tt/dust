@@ -1,12 +1,15 @@
 import type {
-  ToolFileAuthRequiredEvent,
-  ToolPersonalAuthRequiredEvent,
-} from "@app/lib/actions/mcp_internal_actions/events";
-import type {
   BlockedAwaitingInputOutputResourceType,
   SingleResourceToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { MCPApproveExecutionEvent } from "@dust-tt/client";
+// Client event types: blocking events are collected from the child agent stream parsed with the
+// public client schemas and serialized back into a client-shaped tool output resource.
+import type {
+  MCPApproveExecutionEvent,
+  ToolAskUserQuestionEvent,
+  ToolFileAuthRequiredEvent,
+  ToolPersonalAuthRequiredEvent,
+} from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export interface ChildAgentBlob {
@@ -16,7 +19,7 @@ export interface ChildAgentBlob {
 
 // Resume state for run_agent.
 
-export type RunAgentResumeState = Record<string, unknown> & {
+type RunAgentResumeState = Record<string, unknown> & {
   conversationId: string;
   userMessageId: string;
 };
@@ -39,7 +42,8 @@ export function isRunAgentResumeState(
 export type RunAgentBlockingEvent =
   | MCPApproveExecutionEvent
   | ToolPersonalAuthRequiredEvent
-  | ToolFileAuthRequiredEvent;
+  | ToolFileAuthRequiredEvent
+  | ToolAskUserQuestionEvent;
 
 /**
  * Make a tool blocked awaiting input response.

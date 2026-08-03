@@ -2,38 +2,39 @@ import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
+import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import Custom404 from "@app/components/pages/Custom404";
+import { getModelLogoByModelId } from "@app/components/providers/types";
 import {
   useSetContentWidth,
   useSetNavChildren,
 } from "@app/components/sparkle/AppLayoutContext";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   compareForFuzzySort,
   getAgentSearchString,
   subFilter,
 } from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import { isAdmin } from "@app/types/user";
 import {
   Button,
   Chip,
-  ContactsRobotIcon,
-  ListSelectIcon,
-  MagnifyingGlassIcon,
+  ContactsRobot,
+  ListSelect,
   Page,
-  PlusIcon,
+  Plus,
   SearchInput,
   Spinner,
   Tabs,
@@ -64,18 +65,6 @@ export const AGENT_MANAGER_TABS = [
     label: "Archived",
     description: "Archived agents.",
   },
-  {
-    id: "search",
-    label: "Active",
-    icon: MagnifyingGlassIcon,
-    description: "Active agents matching your search",
-  },
-  {
-    id: "search_archived",
-    label: "Archived",
-    icon: MagnifyingGlassIcon,
-    description: "Archived agents matching your search",
-  },
 ] as const;
 
 export type AssistantManagerTabsType =
@@ -87,33 +76,33 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 export function ManageAgentsPage() {
   const owner = useWorkspace();
-  const { user, isBuilder } = useAuth();
+  const { user } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
+  const [selectedModels, setSelectedModels] = useState<AgentModelFilterType[]>(
+    []
+  );
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
 
-  const { featureFlags } = useFeatureFlags();
+  const { isDark } = useTheme();
 
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") && !isBuilder;
-  const shouldDisableAgentFetching = isRestrictedFromAgentCreation;
+  const { hasPermission } = useWorkspacePermissions();
+
+  const canCreateAgent = hasPermission("create", "agent");
+  const canPublishAgent = hasPermission("publish", "agent");
+  // Users who can publish agents can view the page to discover existing agents
+  // and identify the ones they can edit, even without create permission.
+  const canManageAgents = canCreateAgent || canPublishAgent;
+  const shouldDisableAgentFetching = !canManageAgents;
   const isSearchActive = assistantSearch.trim() !== "";
 
-  const [selectedSearchTab, setSelectedSearchTab] = useState<
-    "search" | "search_archived"
-  >("search");
-
   const activeTab = useMemo(() => {
-    if (isSearchActive) {
-      return selectedSearchTab;
-    }
-
     return selectedTab && isValidTab(selectedTab) ? selectedTab : "all_custom";
-  }, [isSearchActive, selectedTab, selectedSearchTab]);
+  }, [selectedTab]);
 
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
@@ -139,25 +128,38 @@ export function ManageAgentsPage() {
     workspaceId: owner.sId,
     agentsGetView: "archived",
     includes: ["usage", "feedbacks", "editors"],
-    disabled:
-      shouldDisableAgentFetching ||
-      (selectedTab !== "archived" && !isSearchActive),
+    disabled: shouldDisableAgentFetching || selectedTab !== "archived",
   });
 
   const agentsByTab = useMemo(() => {
-    const selectedTagIds = selectedTags.map((tag) => tag.sId);
+    const selectedTagIds = new Set(selectedTags.map((tag) => tag.sId));
+    const selectedModelIds = new Set(
+      selectedModels.map((model) => model.modelId)
+    );
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter((a) => {
-        if (selectedTagIds.length === 0) {
-          return true;
+        if (
+          selectedTagIds.size > 0 &&
+          !a.tags.some((t) => selectedTagIds.has(t.sId))
+        ) {
+          return false;
         }
-        return a.tags.some((t) => selectedTagIds.includes(t.sId));
+        if (
+          selectedModelIds.size > 0 &&
+          !selectedModelIds.has(a.model.modelId)
+        ) {
+          return false;
+        }
+        return true;
       })
       .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
     const searchLower = assistantSearch.toLowerCase();
-    const filterAndSortBySearch = (agents: LightAgentConfigurationType[]) =>
-      agents
+    const filteredList = (agents: LightAgentConfigurationType[]) => {
+      if (!isSearchActive) {
+        return agents;
+      }
+      return agents
         .filter((a) => subFilter(searchLower, getAgentSearchString(a)))
         .sort((a, b) =>
           compareForFuzzySort(
@@ -166,23 +168,25 @@ export function ManageAgentsPage() {
             getAgentSearchString(b)
           )
         );
+    };
 
     return {
-      // do not show the "all" tab while still loading all agents
-      all_custom: allAgents.filter((a) => a.scope !== "global"),
-      editable_by_me: allAgents.filter((a) => a.canEdit),
-      global: allAgents.filter((a) => a.scope === "global"),
-      archived: archivedAgentConfigurations.sort((a, b) =>
-        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+      all_custom: filteredList(allAgents.filter((a) => a.scope !== "global")),
+      editable_by_me: filteredList(allAgents.filter((a) => a.canEdit)),
+      global: filteredList(allAgents.filter((a) => a.scope === "global")),
+      archived: filteredList(
+        archivedAgentConfigurations.sort((a, b) =>
+          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+        )
       ),
-      search: filterAndSortBySearch(agentConfigurations),
-      search_archived: filterAndSortBySearch(archivedAgentConfigurations),
     };
   }, [
     agentConfigurations,
     archivedAgentConfigurations,
     selectedTags,
+    selectedModels,
     assistantSearch,
+    isSearchActive,
   ]);
 
   const { uniqueTags } = useMemo(() => {
@@ -193,6 +197,20 @@ export function ManageAgentsPage() {
     ).sort((a, b) => a.name.localeCompare(b.name));
 
     return { uniqueTags };
+  }, [agentConfigurations]);
+
+  const uniqueModels = useMemo(() => {
+    // Agents pointing at a model we no longer support fall back to their raw
+    // modelId, as the Model column of the agents table does.
+    const models = agentConfigurations.map((a) => ({
+      modelId: a.model.modelId,
+      displayName:
+        getSupportedModelConfig(a.model)?.displayName ?? a.model.modelId,
+    }));
+    // Remove duplicate models by unique modelId.
+    return Array.from(
+      new Map(models.map((model) => [model.modelId, model])).values()
+    ).sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [agentConfigurations]);
 
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
@@ -229,23 +247,6 @@ export function ManageAgentsPage() {
     await mutateAgentConfigurations();
   };
 
-  // if search is active, show search tabs, otherwise show all tabs except search tabs
-  const visibleTabs = useMemo(() => {
-    const searchTab = AGENT_MANAGER_TABS.find((tab) => tab.id === "search");
-    const searchArchivedTab = AGENT_MANAGER_TABS.find(
-      (tab) => tab.id === "search_archived"
-    );
-    if (!searchTab || !searchArchivedTab) {
-      throw new Error("Unexpected: Search tabs not found");
-    }
-
-    return isSearchActive
-      ? [searchTab, searchArchivedTab]
-      : AGENT_MANAGER_TABS.filter(
-          (tab) => tab.id !== "search" && tab.id !== "search_archived"
-        );
-  }, [isSearchActive]);
-
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -255,7 +256,7 @@ export function ManageAgentsPage() {
   }, []);
 
   useEffect(() => {
-    if (isRestrictedFromAgentCreation) {
+    if (!canManageAgents) {
       return;
     }
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -269,7 +270,7 @@ export function ManageAgentsPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [isRestrictedFromAgentCreation]);
+  }, [canManageAgents]);
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,
@@ -281,7 +282,7 @@ export function ManageAgentsPage() {
 
   return (
     <>
-      {isRestrictedFromAgentCreation ? (
+      {!canManageAgents ? (
         <Custom404 />
       ) : (
         <>
@@ -291,8 +292,8 @@ export function ManageAgentsPage() {
             agentId={detailedAgentId}
             onClose={() => setDetailedAgentId(null)}
           />
-          <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
-            <Page.Header title="Manage Agents" icon={ContactsRobotIcon} />
+          <div className="flex w-full flex-col gap-8 pb-4">
+            <Page.Header title="Manage Agents" icon={ContactsRobot} />
             <Page.Vertical gap="md" align="stretch">
               <div className="flex flex-row gap-2">
                 <SearchInput
@@ -310,7 +311,7 @@ export function ManageAgentsPage() {
                     {isAdmin(owner) && (
                       <Button
                         variant="outline"
-                        icon={ListSelectIcon}
+                        icon={ListSelect}
                         label="Batch edit"
                         onClick={() => {
                           setIsBatchEdit(true);
@@ -318,13 +319,18 @@ export function ManageAgentsPage() {
                       />
                     )}
 
+                    <ModelsFilterMenu
+                      models={uniqueModels}
+                      selectedModels={selectedModels}
+                      setSelectedModels={setSelectedModels}
+                    />
                     <TagsFilterMenu
                       tags={uniqueTags}
                       selectedTags={selectedTags}
                       setSelectedTags={setSelectedTags}
                       owner={owner}
                     />
-                    {!isRestrictedFromAgentCreation && (
+                    {canCreateAgent && (
                       <CreateDropdown
                         owner={owner}
                         dataGtmLocation="assistantsWorkspace"
@@ -333,14 +339,30 @@ export function ManageAgentsPage() {
                   </div>
                 )}
               </div>
-              {selectedTags.length > 0 && (
-                <div className="flex flex-row gap-2">
+              {(selectedModels.length > 0 || selectedTags.length > 0) && (
+                <div className="flex flex-row flex-wrap gap-2">
+                  {selectedModels.map((model) => (
+                    <Chip
+                      key={model.modelId}
+                      label={model.displayName}
+                      size="xs"
+                      color="primary"
+                      icon={getModelLogoByModelId(model.modelId, isDark)}
+                      onRemove={() =>
+                        setSelectedModels(
+                          selectedModels.filter(
+                            (m) => m.modelId !== model.modelId
+                          )
+                        )
+                      }
+                    />
+                  ))}
                   {selectedTags.map((tag) => (
                     <Chip
                       key={tag.sId}
                       label={tag.name}
                       size="xs"
-                      color="golden"
+                      color="info"
                       onRemove={() =>
                         setSelectedTags(selectedTags.filter((t) => t !== tag))
                       }
@@ -363,31 +385,19 @@ export function ManageAgentsPage() {
                 ) : (
                   <Tabs value={activeTab}>
                     <TabsList>
-                      {visibleTabs.map((tab) => (
+                      {AGENT_MANAGER_TABS.map((tab) => (
                         <TabsTrigger
                           key={tab.id}
                           value={tab.id}
                           label={tab.label}
                           onClick={() => {
-                            if (isSearchActive) {
-                              if (
-                                tab.id === "search" ||
-                                tab.id === "search_archived"
-                              ) {
-                                setSelectedSearchTab(tab.id);
-                              }
-                            } else {
-                              setSelectedTab(tab.id);
-                            }
+                            setSelectedTab(tab.id);
                           }}
                           tooltip={
                             AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                               ?.description
                           }
-                          isCounter={
-                            tab.id !== "archived" &&
-                            tab.id !== "search_archived"
-                          }
+                          isCounter={tab.id !== "archived"}
                           counterValue={`${agentsByTab[tab.id].length}`}
                         />
                       ))}
@@ -418,12 +428,12 @@ export function ManageAgentsPage() {
                   />
                 ) : (
                   !assistantSearch &&
-                  !isRestrictedFromAgentCreation && (
+                  canCreateAgent && (
                     <div className="pt-2">
                       <EmptyCallToAction
                         href={`/w/${owner.sId}/builder/agents/create`}
                         label="Create an agent"
-                        icon={PlusIcon}
+                        icon={Plus}
                         data-gtm-label="assistantCreationButton"
                         data-gtm-location="assistantsWorkspace"
                       />

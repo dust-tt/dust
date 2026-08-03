@@ -1,16 +1,15 @@
-import type { MemberRowData } from "@app/components/members/MemberSelectionTable";
-import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
+import {
+  type MemberRowData,
+  MemberSelectionTable,
+  type SearchMemberType,
+} from "@app/components/members/MemberSelectionTable";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types/space";
-import type {
-  LightWorkspaceType,
-  SpaceUserType,
-  UserType,
-} from "@app/types/user";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import {
   Button,
-  CheckIcon,
+  Check,
   DataTable,
   Sheet,
   SheetContainer,
@@ -37,10 +36,9 @@ interface SpaceMembersMode extends BaseManageUsersPanelProps {
 
 interface EditorsOnlyMode extends BaseManageUsersPanelProps {
   mode: "editors-only";
-  editors: UserType[];
-  onEditorsChange: (editors: UserType[]) => void;
+  editors: SearchMemberType[];
+  onEditorsChange: (editors: SearchMemberType[]) => void;
   title?: string;
-  buildersOnly?: boolean;
 }
 
 type ManageUsersPanelProps = SpaceMembersMode | EditorsOnlyMode;
@@ -52,11 +50,9 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const sendNotification = useSendNotification();
   const doUpdateSpace = useUpdateSpace({ owner });
 
-  const buildersOnly = mode === "editors-only" ? props.buildersOnly : undefined;
-
   const [currentMembers, setCurrentMembers] = useState<Set<string>>(new Set());
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
-  const [selectedUsers, setSelectedUsers] = useState<UserType[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<SearchMemberType[]>([]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset state when panel opens
   useEffect(() => {
@@ -146,7 +142,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
 
   const handleSelectionChange = (
     newMembers: Set<string>,
-    users: UserType[]
+    users: SearchMemberType[]
   ) => {
     setCurrentMembers(newMembers);
     setSelectedUsers(users);
@@ -190,7 +186,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
                 size="xs"
                 variant={isEditor ? "highlight" : "outline"}
                 label={isEditor ? "Editor" : "Set as editor"}
-                icon={isEditor ? CheckIcon : undefined}
+                icon={isEditor ? Check : undefined}
                 onClick={(e) => {
                   toggleEditor(sId);
                   e.stopPropagation();
@@ -226,7 +222,6 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
             selectedMemberIds={currentMembers}
             onSelectionChange={handleSelectionChange}
             extraColumns={editorColumn}
-            buildersOnly={buildersOnly}
             initialMembers={initialMembers}
           />
         </SheetContainer>

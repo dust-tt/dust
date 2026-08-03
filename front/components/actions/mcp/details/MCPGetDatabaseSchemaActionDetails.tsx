@@ -16,7 +16,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  TableIcon,
+  Table,
 } from "@dust-tt/sparkle";
 
 export function MCPGetDatabaseSchemaActionDetails({
@@ -38,7 +38,7 @@ export function MCPGetDatabaseSchemaActionDetails({
           ? "Getting database schema"
           : "Get database schema"
       }
-      visual={TableIcon}
+      visual={Table}
     >
       {displayContext !== "conversation" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">
@@ -68,9 +68,7 @@ function DatabaseSchemaSection({
   if (displayContext === "sidebar-single-action") {
     return (
       <div>
-        <span className="font-medium text-foreground dark:text-foreground-night">
-          Database Schema
-        </span>
+        <span className="font-medium text-foreground">Database Schema</span>
         <div className="py-2">
           {schemas.map((schema, idx) => (
             <CodeBlock
@@ -89,7 +87,7 @@ function DatabaseSchemaSection({
   return (
     <Collapsible defaultOpen={false}>
       <CollapsibleTrigger>
-        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        <span className="text-sm font-semibold text-foreground">
           Database Schema
         </span>
       </CollapsibleTrigger>
@@ -120,9 +118,7 @@ function ExampleRowsSection({
   if (displayContext === "sidebar-single-action") {
     return (
       <div>
-        <span className="font-medium text-foreground dark:text-foreground-night">
-          Sample Data
-        </span>
+        <span className="font-medium text-foreground">Sample Data</span>
         <div className="py-2">
           {examples.map((example, idx) => (
             <CodeBlock
@@ -141,7 +137,7 @@ function ExampleRowsSection({
   return (
     <Collapsible defaultOpen={false}>
       <CollapsibleTrigger>
-        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        <span className="text-sm font-semibold text-foreground">
           Sample Data
         </span>
       </CollapsibleTrigger>

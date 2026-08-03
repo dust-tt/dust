@@ -1,7 +1,7 @@
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
-export const PRODUCTION_DUST_API = "https://dust.tt";
+const PRODUCTION_DUST_API = "https://dust.tt";
 
 // Pluggable base URL resolver (e.g. RegionContext in the SPA).
 let baseUrlResolver: (() => string) | null = null;
@@ -44,14 +44,6 @@ const config = {
     // public API URL.
     let override = EnvironmentConfig.getOptionalEnvVariable(
       "DUST_INTERNAL_API_URL"
-    );
-    if (override) {
-      return override;
-    }
-
-    // Remove this when transitioned to DUST_INTERNAL_API_URL
-    override = EnvironmentConfig.getOptionalEnvVariable(
-      "DUST_INTERNAL_CLIENT_FACING_URL"
     );
     if (override) {
       return override;
@@ -101,6 +93,22 @@ const config = {
   },
   getSendgridApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("SENDGRID_API_KEY");
+  },
+  // Dedicated Anthropic API key scoped to our EAP workspace. Optional: only set
+  // in deployments that serve EAP models (those with `useEapKey` in their config).
+  getAnthropicEapApiKey: (): string | null => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("ANTHROPIC_EAP_API_KEY") ?? null
+    );
+  },
+  // Anthropic API key for Dust-managed features (e.g. the Academy quiz chat).
+  // Optional: only set in deployments that serve these features.
+  getDustManagedAnthropicApiKey: (): string | null => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "DUST_MANAGED_ANTHROPIC_API_KEY"
+      ) ?? null
+    );
   },
   getSupportEmailAddress: (): { name: string; email: string } => {
     return {
@@ -379,6 +387,22 @@ const config = {
   getDocumentRendererUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
   },
+  // In local dev Gotenberg runs in Docker and cannot reach localhost.
+  // Set DOCUMENT_RENDERER_APP_URL=http://host.docker.internal:3011 in .env.local.
+  getDocumentRendererAppUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_APP_URL") ??
+      config.getAppUrl()
+    );
+  },
+  // API URL reachable from Gotenberg's Chromium (inside Docker).
+  // Set DOCUMENT_RENDERER_API_URL=http://host.docker.internal:3000 in .env.local.
+  getDocumentRendererApiUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_API_URL") ??
+      config.getApiBaseUrl()
+    );
+  },
   // Public viz URL (used by Gotenberg which routes through egress proxy).
   getVizPublicUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("VIZ_PUBLIC_URL");
@@ -453,6 +477,12 @@ const config = {
   },
   getContentfulAccessToken: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ACCESS_TOKEN");
+  },
+  getContentfulEnvironment: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ENVIRONMENT") ??
+      "master"
+    );
   },
   getContentfulPreviewSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
@@ -634,11 +664,26 @@ const config = {
       "METRONOME_STRIPE_DELIVERY_METHOD_ID"
     );
   },
-  getVertexAiProjectId: (): string => {
-    return EnvironmentConfig.getEnvVariable("VERTEX_AI_PROJECT_ID");
+  getDevEnvName: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DEV_ENV_NAME");
+  },
+  getVertexAiProjectId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("VERTEX_AI_PROJECT_ID");
   },
   getDustWebhooksPublicUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DUST_WEBHOOKS_PUBLIC_URL");
+  },
+  getConvertAPIKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("CONVERTAPI_API_KEY");
+  },
+  getImgproxyUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("IMGPROXY_URL");
+  },
+  getImgproxyKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("IMGPROXY_KEY");
+  },
+  getImgproxySalt: (): string => {
+    return EnvironmentConfig.getEnvVariable("IMGPROXY_SALT");
   },
 };
 

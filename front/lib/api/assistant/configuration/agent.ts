@@ -1,30 +1,18 @@
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import {
-  WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
-  WEB_SEARCH_BROWSE_SERVER_NAME,
-} from "@app/lib/api/actions/servers/web_search_browse/metadata";
-import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   enrichAgentConfigurations,
+  getModelForAgentConfiguration,
   isSelfHostedImageWithValidContentType,
 } from "@app/lib/api/assistant/configuration/helpers";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
-import {
-  canPublishForAuth,
-  getPublishingRestrictionLevel,
-  PUBLISHING_RESTRICTIONS,
-} from "@app/lib/api/assistant/publishing_restrictions";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import config from "@app/lib/api/config";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { isRemoteDatabase } from "@app/lib/data_sources";
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -39,9 +27,8 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
@@ -54,6 +41,8 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
@@ -72,9 +61,7 @@ import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
-import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -82,7 +69,7 @@ import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_util
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 import {
@@ -105,11 +92,17 @@ const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
  */
 export async function createPendingAgentConfiguration(
   auth: Authenticator
-): Promise<{ sId: string }> {
+): Promise<Result<{ sId: string }, Error>> {
+  const canCreate = await auth.hasWorkspacePermission("create", "agent");
+  if (!canCreate) {
+    return new Err(new Error("Creating agents is restricted."));
+  }
+
   const owner = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
 
   const sId = generateRandomModelSId();
+  const { defaultModel } = await getModelsForAuth(auth);
 
   await withTransaction(async (t) => {
     const agent = await AgentConfigurationModel.create(
@@ -121,11 +114,10 @@ export async function createPendingAgentConfiguration(
         name: PENDING_AGENT_PLACEHOLDER_NAME,
         description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
         instructions: null,
-        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: defaultModel.providerId,
+        modelId: defaultModel.modelId,
         temperature: 0.7,
-        reasoningEffort:
-          CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+        reasoningEffort: defaultModel.defaultReasoningEffort,
         maxStepsPerRun: 8,
         reinforcement: "auto",
         pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
@@ -154,7 +146,7 @@ export async function createPendingAgentConfiguration(
     });
   });
 
-  return { sId };
+  return new Ok({ sId });
 }
 
 export async function getAgentConfigurationsWithVersion<
@@ -162,7 +154,10 @@ export async function getAgentConfigurationsWithVersion<
 >(
   auth: Authenticator,
   agentIdsWithVersion: { agentId: string; agentVersion: number }[],
-  { variant }: { variant: V }
+  {
+    variant,
+    dangerouslySkipPermissionFiltering,
+  }: { variant: V; dangerouslySkipPermissionFiltering?: boolean }
 ): Promise<
   V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
@@ -192,10 +187,9 @@ export async function getAgentConfigurationsWithVersion<
     },
   });
 
-  const allowedAgentModels = await filterAgentsByRequestedSpaces(
-    auth,
-    workspaceAgentModels
-  );
+  const allowedAgentModels = dangerouslySkipPermissionFiltering
+    ? workspaceAgentModels
+    : await filterAgentsByRequestedSpaces(auth, workspaceAgentModels);
   const workspaceAgents = await enrichAgentConfigurations(
     auth,
     allowedAgentModels,
@@ -252,6 +246,43 @@ export async function listsAgentConfigurationVersions<
     : LightAgentConfigurationType[];
 }
 
+async function fetchLatestWorkspaceAgentModels(
+  auth: Authenticator,
+  workspaceAgentIds: string[]
+): Promise<AgentConfigurationModel[]> {
+  if (workspaceAgentIds.length === 0) {
+    return [];
+  }
+  // Use window function for optimal performance - single query, single pass
+  const query = `
+    SELECT *
+    FROM (
+      SELECT *,
+              ROW_NUMBER() OVER (
+                PARTITION BY "sId"
+                ORDER BY version DESC
+              ) as rn
+      FROM agent_configurations
+      WHERE "workspaceId" = :workspaceId
+        AND "sId" IN (:agentIds)
+    ) ranked_agents
+    WHERE rn = 1
+    ORDER BY version DESC
+  `;
+
+  return (
+    (await AgentConfigurationModel.sequelize?.query(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentIds: workspaceAgentIds,
+      },
+      model: AgentConfigurationModel,
+      mapToModel: true,
+    })) ?? []
+  );
+}
+
 /**
  * Get the latest versions of multiple agents.
  */
@@ -261,10 +292,12 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
     agentIds,
     variant,
     globalAgentContext,
+    dangerouslySkipPermissionFiltering,
   }: {
     agentIds: string[];
     variant: V;
     globalAgentContext?: GlobalAgentContext;
+    dangerouslySkipPermissionFiltering?: boolean;
   }
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
@@ -291,42 +324,20 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     let workspaceAgents: AgentConfigurationType[] = [];
     if (workspaceAgentIds.length > 0) {
-      // Use window function for optimal performance - single query, single pass
-      const query = `
-        SELECT *
-        FROM (
-          SELECT *,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY "sId"
-                    ORDER BY version DESC
-                  ) as rn
-          FROM agent_configurations
-          WHERE "workspaceId" = :workspaceId
-            AND "sId" IN (:agentIds)
-        ) ranked_agents
-        WHERE rn = 1
-        ORDER BY version DESC
-      `;
-
-      const agentModels =
-        (await AgentConfigurationModel.sequelize?.query(query, {
-          type: QueryTypes.SELECT,
-          replacements: {
-            workspaceId: owner.id,
-            agentIds: workspaceAgentIds,
-          },
-          model: AgentConfigurationModel,
-          mapToModel: true,
-        })) ?? [];
-
-      const allowedAgentModels = await filterAgentsByRequestedSpaces(
+      const agentModels = await fetchLatestWorkspaceAgentModels(
         auth,
-        agentModels
+        workspaceAgentIds
       );
+
+      const allowedAgentModels = dangerouslySkipPermissionFiltering
+        ? agentModels
+        : await filterAgentsByRequestedSpaces(auth, agentModels);
       workspaceAgents = await enrichAgentConfigurations(
         auth,
         allowedAgentModels,
-        { variant }
+        {
+          variant,
+        }
       );
     }
 
@@ -348,11 +359,13 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
     agentVersion,
     variant,
     globalAgentContext,
+    dangerouslySkipPermissionFiltering,
   }: {
     agentId: string;
     agentVersion?: number;
     variant: V;
     globalAgentContext?: GlobalAgentContext;
+    dangerouslySkipPermissionFiltering?: boolean;
   }
 ): Promise<
   | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
@@ -365,6 +378,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
         [{ agentId, agentVersion }],
         {
           variant,
+          dangerouslySkipPermissionFiltering,
         }
       );
       return (
@@ -377,6 +391,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
       agentIds: [agentId],
       variant,
       globalAgentContext,
+      dangerouslySkipPermissionFiltering,
     });
     return (
       (agent as V extends "light"
@@ -384,6 +399,35 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
         : AgentConfigurationType) || null
     );
   });
+}
+
+type AgentLabel = {
+  sId: string;
+  name: string;
+  pictureUrl: string | null;
+  model: AgentModelConfigurationType;
+};
+
+export async function getAgentLabelsByIds(
+  auth: Authenticator,
+  agentIds: string[]
+): Promise<AgentLabel[]> {
+  if (!auth.isManager()) {
+    return [];
+  }
+
+  const workspaceAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
+  const agentModels = await fetchLatestWorkspaceAgentModels(
+    auth,
+    workspaceAgentIds
+  );
+
+  return agentModels.map((agent) => ({
+    sId: agent.sId,
+    name: agent.name,
+    pictureUrl: agent.pictureUrl,
+    model: getModelForAgentConfiguration(agent),
+  }));
 }
 
 /**
@@ -510,31 +554,41 @@ export async function createAgentConfiguration(
 
   // For hidden agents, track previous editors to disable triggers when editors are removed.
   let previousEditorIds: Set<ModelId> = new Set();
+  // The scope the agent has before this write. A new agent starts hidden, so saving it
+  // visible counts as publishing.
+  let currentScope: AgentConfigurationScope = "hidden";
   if (agentConfigurationId) {
     const existingAgent = await getAgentConfiguration(auth, {
       agentId: agentConfigurationId,
       variant: "light",
     });
-    if (existingAgent && scope === "hidden") {
-      const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-        auth,
-        existingAgent
-      );
-      if (editorGroupRes.isOk()) {
-        const members = await editorGroupRes.value.getActiveMembers(auth);
-        previousEditorIds = new Set(members.map((m) => m.id));
+    if (existingAgent) {
+      currentScope = existingAgent.scope;
+      if (scope === "hidden") {
+        const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+          auth,
+          existingAgent
+        );
+        if (editorGroupRes.isOk()) {
+          const members = await editorGroupRes.value.getActiveMembers(auth);
+          previousEditorIds = new Set(members.map((m) => m.id));
+        }
       }
     }
-    if (existingAgent && existingAgent.scope !== "visible") {
-      const { canPublish, message } = await canPublishAgent(auth);
-      if (!canPublish && scope === "visible" && status === "active") {
-        return new Err(new Error(message!));
-      }
-    }
-  } else {
+  }
+
+  if (
+    needsPublishPermission({
+      currentScope,
+      newScope: scope,
+      isActive: status === "active",
+    })
+  ) {
     const { canPublish, message } = await canPublishAgent(auth);
-    if (!canPublish && scope === "visible" && status === "active") {
-      return new Err(new Error(message ?? "Publishing agents is restricted."));
+    if (!canPublish) {
+      return new Err(
+        new Error(message ?? "You don't have permission to publish agents.")
+      );
     }
   }
 
@@ -621,6 +675,16 @@ export async function createAgentConfiguration(
         userFavorite = userRelation?.favorite ?? false;
       }
 
+      // `existingAgent` is null both when no `agentConfigurationId` was given and when one was
+      // given but didn't match a real row — the latter would otherwise let a caller bypass the
+      // capability check by passing a nonexistent id and taking the "create new" branch below.
+      if (!existingAgent) {
+        const canCreate = await auth.hasWorkspacePermission("create", "agent");
+        if (!canCreate) {
+          throw new Error("Creating agents is restricted.");
+        }
+      }
+
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
 
@@ -703,6 +767,11 @@ export async function createAgentConfiguration(
         );
       }
 
+      const canManageProtectedTags = await auth.hasWorkspacePermission(
+        "publish",
+        "agent"
+      );
+
       const existingTags = existingAgent
         ? await TagResource.listForAgent(auth, existingAgent.id)
         : [];
@@ -710,7 +779,7 @@ export async function createAgentConfiguration(
         .filter((t) => t.kind === "protected")
         .map((t) => t.sId);
       if (
-        !isBuilder(owner) &&
+        !canManageProtectedTags &&
         !existingReservedTags.every((reservedTagId) =>
           tags.some((tag) => tag.sId === reservedTagId)
         )
@@ -731,7 +800,7 @@ export async function createAgentConfiguration(
           const tagResource = tagResourceById.get(tag.sId);
           if (tagResource) {
             if (
-              !isBuilder(owner) &&
+              !canManageProtectedTags &&
               tagResource.kind === "protected" &&
               !existingReservedTags.includes(tagResource.sId)
             ) {
@@ -794,7 +863,7 @@ export async function createAgentConfiguration(
             }
           }
 
-          if (!group.canWrite(auth) && auth.user()) {
+          if (!group.canAdministrate(auth) && auth.user()) {
             logger.error(
               {
                 workspaceId: owner.sId,
@@ -940,322 +1009,37 @@ export async function createAgentConfiguration(
   }
 }
 
-export async function createGenericAgentConfiguration(
+// Cancels every still-scheduled wake-up targeting the given agent, deleting the
+// backing Temporal schedule (cron) or pending workflow (one-shot). Errors are
+// logged but do not abort the caller.
+async function cancelWakeUpsForAgent(
   auth: Authenticator,
-  {
-    name,
-    description,
-    instructions,
-    pictureUrl,
-    model,
-    subAgent,
-  }: {
-    name: string;
-    description: string;
-    instructions: string;
-    pictureUrl: string;
-    model: AgentModelConfigurationType;
-    subAgent?: {
-      name: string;
-      description: string;
-      instructions: string;
-      pictureUrl: string;
-    };
-  }
-): Promise<
-  Result<
-    {
-      agentConfiguration: LightAgentConfigurationType;
-      subAgentConfiguration?: LightAgentConfigurationType;
-    },
-    Error
-  >
-> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return new Err(new Error("Unexpected `auth` without `workspace`."));
-  }
-
-  const user = auth.user();
-  if (!user) {
-    return new Err(new Error("Unexpected `auth` without `user`."));
-  }
-
-  async function cleanupAgentsOnError(
-    auth: Authenticator,
-    mainAgentId: string | null,
-    subAgentId: string | null
-  ): Promise<void> {
-    try {
-      if (mainAgentId) {
-        await archiveAgentConfiguration(auth, mainAgentId);
-      }
-      if (subAgentId) {
-        await archiveAgentConfiguration(auth, subAgentId);
-      }
-    } catch (error) {
-      logger.error(
-        {
-          error,
-          mainAgentId,
-          subAgentId,
-        },
-        "Failed to cleanup agents after error"
-      );
-    }
-  }
-
-  const result = await createAgentConfiguration(auth, {
-    name,
-    description,
-    instructions,
-    instructionsHtml: null,
-    pictureUrl,
-    status: "active",
-    scope: "hidden", // Unpublished
-    model,
-    templateId: null,
-    requestedSpaceIds: [],
-    tags: [],
-    editors: [user.toJSON()], // Only the current user as editor
-    authorId: user.id,
-  });
-
-  if (result.isErr()) {
-    return result;
-  }
-
-  const agentConfiguration = result.value;
-
-  const [webSearchMCPServerView, searchMCPServerView] = await Promise.all([
-    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "web_search_&_browse"
-    ),
-    MCPServerViewResource.getMCPServerViewForAutoInternalTool(auth, "search"),
-  ]);
-
-  if (!webSearchMCPServerView) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(new Error("Could not find web search MCP server view"));
-  }
-  if (!searchMCPServerView) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(new Error("Could not find search MCP server view"));
-  }
-
-  const webSearchResult = await createAgentActionConfiguration(
+  agentConfigurationId: string
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+  const wakeUps = await WakeUpResource.listByAgentConfigurationId(
     auth,
-    {
-      type: "mcp_server_configuration",
-      name: WEB_SEARCH_BROWSE_SERVER_NAME,
-      description: WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
-      mcpServerViewId: webSearchMCPServerView.sId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      dustAppConfiguration: null,
-      timeFrame: null,
-      jsonSchema: null,
-    } as ServerSideMCPServerConfigurationType,
-    agentConfiguration
+    agentConfigurationId
   );
 
-  if (webSearchResult.isErr()) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(
-      new Error("Could not create web search action configuration")
-    );
-  }
-
-  const dataSourceViews =
-    await DataSourceViewResource.listAssistantDefaultSelected(auth);
-
-  if (dataSourceViews.length > 0) {
-    const searchResult = await createAgentActionConfiguration(
-      auth,
-      {
-        type: "mcp_server_configuration",
-        name: "data_sources_file_system",
-        description: "Browse all workspace data sources as a file system.",
-        mcpServerViewId: searchMCPServerView.sId,
-        dataSources: dataSourceViews.map((dsView) => ({
-          dataSourceViewId: dsView.sId,
-          workspaceId: owner.sId,
-          filter: { parents: null, tags: null },
-        })),
-        tables: null,
-        childAgentId: null,
-        additionalConfiguration: {},
-        dustAppConfiguration: null,
-        timeFrame: null,
-        jsonSchema: null,
-      } as ServerSideMCPServerConfigurationType,
-      agentConfiguration
-    );
-
-    if (searchResult.isErr()) {
-      await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-      return new Err(new Error("Could not create search action configuration"));
-    }
-  }
-
-  // Add query_tables_v2 tools for data warehouses in global space.
-  const queryTablesV2View =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "query_tables_v2"
-    );
-
-  if (!queryTablesV2View) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(new Error("Could not find query_tables_v2 MCP server view"));
-  }
-
-  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-  const globalDataSourceViews = await DataSourceViewResource.listBySpace(
-    auth,
-    globalSpace
-  );
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  for (const dsView of globalDataSourceViews) {
-    if (
-      !isRemoteDatabase(dsView.dataSource) ||
-      !dsView.dataSource.connectorId
-    ) {
-      continue;
-    }
-
-    const tablesRes = await coreAPI.getTables({
-      projectId: dsView.dataSource.dustAPIProjectId,
-      dataSourceId: dsView.dataSource.dustAPIDataSourceId,
-      viewFilter: dsView.toViewFilter(),
-    });
-
-    if (tablesRes.isErr()) {
-      await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-      return new Err(
-        new Error(
-          `Failed to get tables for data warehouse "${dsView.dataSource.name}"`
-        )
-      );
-    }
-
-    const tables = tablesRes.value.tables;
-
-    if (tables.length > 0) {
-      const warehouseType =
-        dsView.dataSource.connectorProvider === "snowflake"
-          ? "Snowflake"
-          : "BigQuery";
-
-      const tableConfigs: TableDataSourceConfiguration[] = tables.map(
-        (table) => ({
-          workspaceId: owner.sId,
-          dataSourceViewId: dsView.sId,
-          tableId: table.table_id,
-        })
-      );
-
-      const tablesQueryResult = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "mcp_server_configuration",
-          name: `query_${dsView.dataSource.name}_data_warehouse`,
-          description: `Query any of the tables available in the "${dsView.dataSource.name}" ${warehouseType} data warehouse.`,
-          mcpServerViewId: queryTablesV2View.sId,
-          dataSources: null,
-          tables: tableConfigs,
-          childAgentId: null,
-          additionalConfiguration: {},
-          dustAppConfiguration: null,
-          timeFrame: null,
-          jsonSchema: null,
-        } as ServerSideMCPServerConfigurationType,
-        agentConfiguration
-      );
-
-      if (tablesQueryResult.isErr()) {
+  await concurrentExecutor(
+    wakeUps,
+    async (wakeUp) => {
+      const cancelResult = await wakeUp.forceCancel(auth);
+      if (cancelResult.isErr()) {
         logger.error(
           {
-            error: tablesQueryResult.error,
-            dataSourceName: dsView.dataSource.name,
-            workspaceId: owner.sId,
+            workspaceId: workspace.sId,
+            agentConfigurationId,
+            wakeUpId: wakeUp.sId,
+            error: cancelResult.error,
           },
-          "Failed to create query tool for data warehouse"
-        );
-
-        await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-        return new Err(
-          new Error(
-            `Failed to create query tool for data warehouse "${dsView.dataSource.name}"`
-          )
+          `Failed to cancel wake-up ${wakeUp.sId} for agent ${agentConfigurationId}`
         );
       }
-    }
-  }
-
-  if (!subAgent) {
-    return new Ok({ agentConfiguration });
-  }
-
-  const subAgentResult = await createGenericAgentConfiguration(auth, {
-    name: subAgent.name,
-    description: subAgent.description,
-    instructions: subAgent.instructions,
-    pictureUrl: subAgent.pictureUrl,
-    model,
-  });
-
-  if (subAgentResult.isErr()) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(
-      new Error(`Failed to create sub-agent: ${subAgentResult.error.message}`)
-    );
-  }
-
-  const subAgentConfiguration = subAgentResult.value.agentConfiguration;
-  const subAgentId = subAgentConfiguration.sId;
-
-  const runAgentMCPServerView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "run_agent"
-    );
-
-  if (!runAgentMCPServerView) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
-    return new Err(new Error("Could not find run_agent MCP server view"));
-  }
-
-  const runAgentActionResult = await createAgentActionConfiguration(
-    auth,
-    {
-      type: "mcp_server_configuration",
-      name: `run_${subAgentConfiguration.name}`,
-      description: `Run the ${subAgentConfiguration.name} sub-agent. The sub-agent has access to the same tools as the main agent, except for the ability to spawn sub-agents.`,
-      mcpServerViewId: runAgentMCPServerView.sId,
-      dataSources: null,
-      tables: null,
-      childAgentId: subAgentConfiguration.sId,
-      additionalConfiguration: {},
-      dustAppConfiguration: null,
-      timeFrame: null,
-      jsonSchema: null,
-    } as ServerSideMCPServerConfigurationType,
-    agentConfiguration
+    },
+    { concurrency: 5 }
   );
-
-  if (runAgentActionResult.isErr()) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
-    return new Err(
-      new Error("Could not create run_agent action configuration")
-    );
-  }
-
-  return new Ok({ agentConfiguration, subAgentConfiguration });
 }
 
 export async function archiveAgentConfiguration(
@@ -1295,6 +1079,8 @@ export async function archiveAgentConfiguration(
       );
     }
   }
+
+  await cancelWakeUpsForAgent(auth, agentConfigurationId);
 
   const updated = await AgentConfigurationModel.update(
     { status: "archived" },
@@ -1477,6 +1263,65 @@ export async function restoreAgentConfiguration(
   return new Ok({ restored: updated[0] > 0 });
 }
 
+// Deletes the agent-scoped resources that are keyed by the agent sId (stable
+// across versions) and therefore have no DB foreign key to cascade on: triggers
+// (with their Temporal schedule), wake-ups (with their Temporal schedule /
+// pending workflow) and favorite / agent-user-relation rows.
+export async function cleanupAgentScopedResourcesForHardDeletion(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const triggers = await TriggerResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  await concurrentExecutor(
+    triggers,
+    async (trigger) => {
+      const deleteResult = await trigger.delete(auth);
+      if (deleteResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            agentConfigurationId,
+            triggerId: trigger.sId,
+            error: deleteResult.error,
+          },
+          `Failed to delete trigger ${trigger.sId} while hard-deleting agent ${agentConfigurationId}`
+        );
+      }
+    },
+    { concurrency: 4 }
+  );
+
+  const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  const deletableWakeUpIds: ModelId[] = [];
+  for (const wakeUp of wakeUps) {
+    const cleanupResult = await wakeUp.forceCancel(auth);
+    if (cleanupResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          agentConfigurationId,
+          wakeUpId: wakeUp.sId,
+          error: cleanupResult.error,
+        },
+        `Failed cleaning up wake-up ${wakeUp.sId} Temporal state while hard-deleting agent ${agentConfigurationId}; leaving row for retry`
+      );
+      continue;
+    }
+    deletableWakeUpIds.push(wakeUp.id);
+  }
+  await WakeUpResource.deleteByModelIds(auth, deletableWakeUpIds);
+
+  await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
+}
+
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
@@ -1604,6 +1449,11 @@ export async function batchHardDeletePendingAgentConfigurations(
       transaction: t,
     });
 
+    await AgentUserRelationResource.deleteForAgents(
+      agents.map((a) => a.sId),
+      { workspaceId, transaction: t }
+    );
+
     await AgentConfigurationModel.destroy({
       where: { id: agentIds, workspaceId },
       transaction: t,
@@ -1653,7 +1503,7 @@ export async function updateAgentPermissions(
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
         // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canWrite(auth)) {
+        if (!editorGroupRes.value.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1672,7 +1522,7 @@ export async function updateAgentPermissions(
 
       if (usersToRemove.length > 0) {
         // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canWrite(auth)) {
+        if (!editorGroupRes.value.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1737,12 +1587,35 @@ async function canPublishAgent(auth: Authenticator): Promise<{
   canPublish: boolean;
   message: string | null;
 }> {
-  const featureFlags = await getFeatureFlags(auth);
-  const level = getPublishingRestrictionLevel(featureFlags);
-  if (!level || canPublishForAuth(auth, level)) {
+  const canPublish = await auth.hasWorkspacePermission("publish", "agent");
+  if (canPublish) {
     return { canPublish: true, message: null };
   }
-  return { canPublish: false, message: PUBLISHING_RESTRICTIONS[level].message };
+  return {
+    canPublish: false,
+    message: "You don't have permission to publish agents.",
+  };
+}
+
+// Does changing an agent's scope publish or unpublish it? Both require the workspace "publish
+// agents" permission. Publishing means an active agent becomes visible; unpublishing means an
+// active visible agent becomes hidden. A pure edit, or any change on a non-active
+// (draft/pending/archived) agent, needs no publish permission.
+function needsPublishPermission({
+  currentScope,
+  newScope,
+  isActive,
+}: {
+  currentScope: AgentConfigurationScope;
+  newScope: AgentConfigurationScope;
+  isActive: boolean;
+}): boolean {
+  if (!isActive) {
+    return false;
+  }
+  const publishes = currentScope !== "visible" && newScope === "visible";
+  const unpublishes = currentScope === "visible" && newScope === "hidden";
+  return publishes || unpublishes;
 }
 
 export async function updateAgentConfigurationsScope(
@@ -1766,12 +1639,19 @@ export async function updateAgentConfigurationsScope(
     return new Ok(undefined);
   }
 
-  const { canPublish, message } = await canPublishAgent(auth);
-  if (scope === "visible" && !canPublish) {
-    if (
-      editableAgents.some((a) => a.scope !== "visible" && a.status === "active")
-    ) {
-      return new Err(new Error(message ?? "Publishing agents is restricted."));
+  const batchNeedsPublishPermission = editableAgents.some((a) =>
+    needsPublishPermission({
+      currentScope: a.scope,
+      newScope: scope,
+      isActive: a.status === "active",
+    })
+  );
+  if (batchNeedsPublishPermission) {
+    const { canPublish, message } = await canPublishAgent(auth);
+    if (!canPublish) {
+      return new Err(
+        new Error(message ?? "You don't have permission to publish agents.")
+      );
     }
   }
 
@@ -1907,37 +1787,4 @@ export async function filterAgentsByRequestedSpaces(
   );
 
   return allowedBySpaceIds;
-}
-
-export async function updateAgentReinforcementMode(
-  auth: Authenticator,
-  agentId: string,
-  reinforcement: AgentReinforcementMode
-): Promise<void> {
-  await AgentConfigurationModel.update(
-    { reinforcement },
-    {
-      where: {
-        sId: agentId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        status: "active",
-      },
-    }
-  );
-}
-
-export async function recordAgentReinforcementAnalysisCompletion(
-  auth: Authenticator,
-  agentId: string
-): Promise<void> {
-  await AgentConfigurationModel.update(
-    { lastReinforcementAnalysisAt: new Date() },
-    {
-      where: {
-        sId: agentId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        status: "active",
-      },
-    }
-  );
 }

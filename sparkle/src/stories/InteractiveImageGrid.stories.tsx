@@ -6,8 +6,23 @@ import { InteractiveImageGrid } from "@sparkle/components/InteractiveImageGrid";
 import { Citation } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/InteractiveImage",
+  title: "Product/Conversation/InteractiveImage",
   component: Citation,
+  parameters: {
+    docs: {
+      description: {
+        component: `A responsive grid that arranges one or many conversation images into an adaptive layout. Takes an \`images\` array (each with \`imageUrl\`, \`alt\`, \`title\`, optional \`downloadUrl\`, and an \`isLoading\` flag) and adjusts its columns to the container width and image count. Passing \`onClose\` makes images removable (showing an X on hover) instead of downloadable.
+
+**When to use**
+- To display a set of agent-generated or attached images together, including mixed loading and loaded states.
+
+**Guidelines**
+- Provide \`alt\` and \`title\` for every image; set \`isLoading\` for placeholders still being generated.
+- Choose between a download affordance (default, via \`downloadUrl\`) and a remove affordance (\`onClose\`) — they are mutually exclusive per the hover button shown.
+- For a single image with finer control over title position and zoom, use **ImagePreview** directly.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Citation>;
 
 export default meta;
@@ -57,20 +72,20 @@ const images = [
 ];
 
 export const InteractiveImageExample = () => (
-  <div className="s-flex s-flex-col s-gap-8">
-    <div className="s-w-[700px]">
+  <div className="flex flex-col gap-8">
+    <div className="w-[700px]">
       <h2>Interactive Image Grid</h2>
       <InteractiveImageGrid images={images} />
     </div>
-    <div className="s-w-[300px]">
+    <div className="w-[300px]">
       <h2>Interactive Image Grid with small width</h2>
       <InteractiveImageGrid images={images} />
     </div>
-    <div className="s-w-[700px]">
+    <div className="w-[700px]">
       <h2>Interactive Image Grid with 1 image</h2>
       <InteractiveImageGrid images={images.slice(1, 2)} />
     </div>
-    <div className="s-w-[700px]">
+    <div className="w-[700px]">
       <h2>Interactive Image Grid with 1 image (loading)</h2>
       <InteractiveImageGrid images={images.slice(0, 1)} />
     </div>
@@ -81,16 +96,16 @@ export const InteractiveImageWithRemove = () => {
   const [removed, setRemoved] = React.useState(false);
 
   return (
-    <div className="s-flex s-flex-col s-gap-8">
+    <div className="flex flex-col gap-8">
       <div>
-        <h2 className="s-mb-2">
+        <h2 className="mb-2">
           With onClose callback (hover to see X button, no download button)
         </h2>
         {removed ? (
-          <div className="s-flex s-h-24 s-w-24 s-items-center s-justify-center s-rounded-2xl s-bg-muted s-text-muted-foreground">
+          <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
             Removed!
             <button
-              className="s-ml-2 s-text-primary-600 s-underline"
+              className="ml-2 text-primary-600 underline"
               onClick={() => setRemoved(false)}
             >
               Reset
@@ -104,7 +119,7 @@ export const InteractiveImageWithRemove = () => {
         )}
       </div>
       <div>
-        <h2 className="s-mb-2">
+        <h2 className="mb-2">
           Without onClose (hover to see download button, no X button)
         </h2>
         <InteractiveImageGrid images={images.slice(1, 2)} />

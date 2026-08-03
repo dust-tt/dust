@@ -5,7 +5,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -25,11 +25,16 @@ const PatchLinkedSlackChannelsRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/linked_slack_channels.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),
-  ensureIsBuilder(),
   validate("json", PatchLinkedSlackChannelsRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "publish",
+    "agent",
+    "Only users who can publish agents can perform this action."
+  ),
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");

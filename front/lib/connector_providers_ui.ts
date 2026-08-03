@@ -20,10 +20,10 @@ import {
   DiscordLogo,
   DriveLogo,
   DustLogoSquare,
-  FolderIcon,
+  Folder,
   GithubLogo,
   GithubWhiteLogo,
-  GlobeAltIcon,
+  Globe01,
   GongLogo,
   IntercomLogo,
   MicrosoftLogo,
@@ -45,7 +45,7 @@ export interface ConnectorOptionsProps {
   plan: PlanType;
 }
 
-export interface ConnectorAdvancedOptionsProps {
+interface ConnectorAdvancedOptionsProps {
   owner: LightWorkspaceType;
   readOnly: boolean;
   controller: SensitivityLabelsController;
@@ -70,7 +70,7 @@ type ConnectorPermissionsConfigurable =
       isPermissionsConfigurableBlocked?: never;
     };
 
-export type ConnectorProviderUIDetails = {
+type ConnectorProviderUIDetails = {
   hide: boolean;
   getLogoComponent: (
     isDark?: boolean
@@ -341,7 +341,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     mismatchError: `You cannot change the URL. Please add a new Public URL instead.`,
     guideLink: "https://docs.dust.tt/docs/website-connection",
     getLogoComponent: () => {
-      return GlobeAltIcon;
+      return Globe01;
     },
     isNested: true,
     permissions: {
@@ -457,7 +457,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
 
 export function getConnectorProviderLogoWithFallback({
   provider,
-  fallback = FolderIcon,
+  fallback = Folder,
   isDark,
 }: {
   provider: ConnectorProvider | null;

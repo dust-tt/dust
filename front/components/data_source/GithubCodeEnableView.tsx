@@ -63,7 +63,6 @@ export function GithubCodeEnableView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetCodeSyncEnabled(!codeSyncEnabled);
               }}
@@ -74,7 +73,7 @@ export function GithubCodeEnableView({
         }
       >
         <ContextItem.Description>
-          <div className="text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-muted-foreground">
             Your GitHub repositories code is synced with Dust every 8h.
           </div>
         </ContextItem.Description>

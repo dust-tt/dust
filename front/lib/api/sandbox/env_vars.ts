@@ -1,14 +1,14 @@
-import type { WorkspaceSandboxEnvVarKind } from "@app/types/sandbox/env_var";
+import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const SANDBOX_ENV_VAR_PREFIX = "DST_";
-export const SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX = "DSEC_";
+const SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX = "DSEC_";
 // Suffix max length is 64 — the wire form is `<prefix><suffix>` (e.g. "DSEC_FOO"),
 // so the rendered name fits comfortably under typical 128-char env-var limits
 // even with our longest prefix.
 export const ENV_VAR_NAME_SUFFIX_REGEX = /^[A-Z][A-Z0-9_]{0,63}$/;
-export const ENV_VAR_NAME_REGEX = ENV_VAR_NAME_SUFFIX_REGEX;
+const ENV_VAR_NAME_REGEX = ENV_VAR_NAME_SUFFIX_REGEX;
 export const MAX_VALUE_BYTES = 32 * 1_024;
 // Tighter than MAX_VALUE_BYTES because https_secret values are substituted
 // into HTTP header lines on the wire — most upstreams cap header lines
@@ -17,7 +17,7 @@ export const MAX_VALUE_BYTES = 32 * 1_024;
 export const MAX_HTTPS_SECRET_VALUE_BYTES = 4 * 1_024;
 export const MAX_VARS_PER_WORKSPACE = 50;
 
-const ENV_VAR_PREFIX_BY_KIND: Record<WorkspaceSandboxEnvVarKind, string> = {
+const ENV_VAR_PREFIX_BY_KIND: Record<SandboxEnvVarKind, string> = {
   config: SANDBOX_ENV_VAR_PREFIX,
   https_secret: SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX,
 };
@@ -32,7 +32,7 @@ export function validateEnvVarName(name: string): Result<void, string> {
   return new Ok(undefined);
 }
 
-export function validateEnvVarValue(value: string): Result<void, string> {
+function validateEnvVarValue(value: string): Result<void, string> {
   if (value.length === 0) {
     return new Err("Environment variable values cannot be empty.");
   }
@@ -75,7 +75,7 @@ export function validateEnvVarValueForKind({
   kind,
   value,
 }: {
-  kind: WorkspaceSandboxEnvVarKind;
+  kind: SandboxEnvVarKind;
   value: string;
 }): Result<void, string> {
   switch (kind) {
@@ -88,7 +88,7 @@ export function validateEnvVarValueForKind({
   }
 }
 
-export function envVarPrefixForKind(kind: WorkspaceSandboxEnvVarKind): string {
+export function envVarPrefixForKind(kind: SandboxEnvVarKind): string {
   return ENV_VAR_PREFIX_BY_KIND[kind];
 }
 
@@ -99,11 +99,11 @@ export function renderEgressSecretPlaceholder(nonce: Buffer): string {
   return `__DSEC_${nonce.toString("hex")}__`;
 }
 
-export function renderWorkspaceSandboxEnvVarName({
+export function renderSandboxEnvVarName({
   kind,
   name,
 }: {
-  kind: WorkspaceSandboxEnvVarKind;
+  kind: SandboxEnvVarKind;
   name: string;
 }): string {
   return `${envVarPrefixForKind(kind)}${name}`;
@@ -115,11 +115,11 @@ export function renderWorkspaceSandboxEnvVarName({
 // - Otherwise the input is validated as a bare suffix and returned as-is.
 //   This bare-suffix branch is what lets new-style API clients POST
 //   suffix-only names without knowing the prefix convention.
-export function parseWorkspaceSandboxEnvVarNameForKind({
+export function parseSandboxEnvVarNameForKind({
   kind,
   name,
 }: {
-  kind: WorkspaceSandboxEnvVarKind;
+  kind: SandboxEnvVarKind;
   name: string;
 }): Result<string, string> {
   const expectedPrefix = envVarPrefixForKind(kind);

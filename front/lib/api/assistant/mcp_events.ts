@@ -17,6 +17,9 @@ interface GetMCPEventsForServerOptions {
 
 const MCP_EVENTS_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes.
 
+// MCP tool results can be large (e.g. file contents): allow up to 16MB.
+export const MCP_RESULTS_MAX_SIZE_BYTES = 16 * 1024 * 1024;
+
 export async function* getMCPEventsForServer(
   auth: Authenticator,
   { mcpServerId, lastEventId }: GetMCPEventsForServerOptions,

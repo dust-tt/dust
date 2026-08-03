@@ -14,6 +14,7 @@ type TopUserExportBucket = {
   doc_count: number;
   last_message?: estypes.AggregationsMaxAggregate;
   active_days?: estypes.AggregationsDateHistogramAggregate;
+  credits?: estypes.AggregationsSumAggregate;
 };
 
 type TopUsersExportAggs = {
@@ -28,6 +29,7 @@ export interface UserExportRow {
   lastMessageSent: string;
   activeDaysCount: number;
   groups: string;
+  credits: number;
 }
 
 export const USER_EXPORT_HEADERS: (keyof UserExportRow)[] = [
@@ -38,6 +40,7 @@ export const USER_EXPORT_HEADERS: (keyof UserExportRow)[] = [
   "lastMessageSent",
   "activeDaysCount",
   "groups",
+  "credits",
 ];
 
 export async function fetchUserExportRows({
@@ -69,9 +72,14 @@ export async function fetchUserExportRows({
               date_histogram: {
                 field: "timestamp",
                 calendar_interval: "day",
+                min_doc_count: 1,
                 time_zone: timezone,
               },
             },
+            // Billed credits per execution via `cost.billable_awu` (0 for the
+            // non-billable errored-terminal part), so no status filter is needed;
+            // the count metrics above stay inclusive of all activity.
+            credits: { sum: { field: "cost.billable_awu" } },
           },
         },
       },
@@ -102,6 +110,7 @@ export async function fetchUserExportRows({
           activeDaysCount: Array.isArray(activeDaysBuckets)
             ? activeDaysBuckets.filter((d) => d.doc_count > 0).length
             : 0,
+          credits: Math.round(b.credits?.value ?? 0),
         },
       ] as const;
     })
@@ -142,6 +151,7 @@ export async function fetchUserExportRows({
       lastMessageSent: metrics?.lastMessageSent ?? "",
       activeDaysCount: metrics?.activeDaysCount ?? 0,
       groups: groupsMap[userModelId] ?? "",
+      credits: metrics?.credits ?? 0,
     };
   });
 

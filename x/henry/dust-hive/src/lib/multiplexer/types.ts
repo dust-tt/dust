@@ -222,8 +222,9 @@ export const MAIN_SESSION_NAME = "dust-hive-main";
 const TAB_NAMES: Record<ServiceName, string> = {
   sparkle: "sparkle",
   sdk: "sdk",
-  front: "front",
   "front-api": "front-api",
+  marketing: "marketing",
+  proxy: "proxy",
   core: "core",
   oauth: "oauth",
   connectors: "connectors",

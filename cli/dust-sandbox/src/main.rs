@@ -24,6 +24,16 @@ enum Commands {
     Healthcheck(commands::healthcheck::HealthcheckArgs),
     /// List sandbox environment variables and DSEC allowlists
     Env(commands::env::EnvArgs),
+    /// Run or inspect sandbox functions
+    Function {
+        #[command(subcommand)]
+        command: commands::function::FunctionCommand,
+    },
+    /// Manage pod databases
+    Db {
+        #[command(subcommand)]
+        command: commands::db::DbCommand,
+    },
     /// Interact with MCP servers and tools
     Tools {
         /// Emit the tool execution result as JSON (`{ content, isError }`)
@@ -60,6 +70,29 @@ async fn run() -> anyhow::Result<()> {
         Commands::Resolve(args) => commands::cmd_resolve(args).await?,
         Commands::Healthcheck(args) => commands::cmd_healthcheck(args)?,
         Commands::Env(args) => commands::cmd_env(args)?,
+        Commands::Function { command } => match command {
+            commands::function::FunctionCommand::Run { name } => {
+                commands::cmd_function_run(&name).await?
+            }
+            commands::function::FunctionCommand::Get { name } => {
+                commands::cmd_function_get(&name).await?
+            }
+            commands::function::FunctionCommand::Build {
+                src,
+                out_bundle,
+                out_schema,
+            } => commands::cmd_function_build(&src, &out_bundle, &out_schema).await?,
+        },
+        Commands::Db { command } => match command {
+            commands::db::DbCommand::Reconcile { name, schema_file } => {
+                commands::cmd_db_reconcile(&name, &schema_file).await?
+            }
+            commands::db::DbCommand::Schema { name, out_schema } => {
+                commands::cmd_db_schema(&name, &out_schema).await?
+            }
+            commands::db::DbCommand::List => commands::cmd_db_list()?,
+            commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
+        },
         Commands::Tools {
             json,
             server_name,
@@ -145,5 +178,124 @@ mod tests {
         let cli = Cli::try_parse_from(["dsbx", "tools", "srv", "tool"]).expect("should parse");
         let (json, ..) = tools_fields(cli);
         assert!(!json);
+    }
+
+    #[test]
+    fn function_run_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "function", "run", "greet"]).expect("parse");
+        match cli.command {
+            Commands::Function { command } => match command {
+                commands::function::FunctionCommand::Run { name } => assert_eq!(name, "greet"),
+                _ => panic!("expected run"),
+            },
+            _ => panic!("expected function"),
+        }
+    }
+
+    #[test]
+    fn function_get_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "function", "get", "greet"]).expect("parse");
+        match cli.command {
+            Commands::Function { command } => match command {
+                commands::function::FunctionCommand::Get { name } => assert_eq!(name, "greet"),
+                _ => panic!("expected get"),
+            },
+            _ => panic!("expected function"),
+        }
+    }
+
+    #[test]
+    fn db_reconcile_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "db",
+            "reconcile",
+            "chat",
+            "/files/pod-x/databases/chat.db.ts",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::Reconcile { name, schema_file } => {
+                    assert_eq!(name, "chat");
+                    assert_eq!(schema_file, "/files/pod-x/databases/chat.db.ts");
+                }
+                _ => panic!("expected reconcile"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_schema_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "db", "schema", "chat", "/tmp/out/chat.db.ts"])
+            .expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::Schema { name, out_schema } => {
+                    assert_eq!(name, "chat");
+                    assert_eq!(out_schema, "/tmp/out/chat.db.ts");
+                }
+                _ => panic!("expected schema"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_list_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "db", "list"]).expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::List => {}
+                _ => panic!("expected list"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_query_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "db", "query", "chat"]).expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::Query { name } => assert_eq!(name, "chat"),
+                _ => panic!("expected query"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_reconcile_requires_schema_file() {
+        assert!(Cli::try_parse_from(["dsbx", "db", "reconcile", "chat"]).is_err());
+    }
+
+    #[test]
+    fn function_build_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "function",
+            "build",
+            "/files/pod-x/greet.ts",
+            "/tmp/out/greet.ts",
+            "/tmp/out/greet.schema.json",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Function { command } => match command {
+                commands::function::FunctionCommand::Build {
+                    src,
+                    out_bundle,
+                    out_schema,
+                } => {
+                    assert_eq!(src, "/files/pod-x/greet.ts");
+                    assert_eq!(out_bundle, "/tmp/out/greet.ts");
+                    assert_eq!(out_schema, "/tmp/out/greet.schema.json");
+                }
+                _ => panic!("expected build"),
+            },
+            _ => panic!("expected function"),
+        }
     }
 }

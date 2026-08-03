@@ -86,7 +86,10 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
             }
 
             session.presentationContextProvider = self
-            session.prefersEphemeralWebBrowserSession = false
+            // Use a private, ephemeral cookie store: the WorkOS web session must not
+            // persist on-device, otherwise logout (which only clears our tokens) leaves
+            // the in-app browser logged in and the next login silently re-authenticates.
+            session.prefersEphemeralWebBrowserSession = true
             session.start()
             webAuthSession = session
         } catch {

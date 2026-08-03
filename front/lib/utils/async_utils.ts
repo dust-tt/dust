@@ -120,3 +120,7 @@ export async function withPeriodicHeartbeat<T>(
     clearInterval(interval);
   }
 }
+
+export async function setTimeoutAync(delayMs: number = 0): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}

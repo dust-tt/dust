@@ -1,4 +1,5 @@
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
+import type { PostConversationForkResponseBody } from "@app/types/api/assistant/conversation/forks";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -14,15 +15,10 @@ const PostConversationForkBodySchema = z.object({
   sourceMessageId: z.string().optional(),
 });
 
-export type PostConversationForkResponseBody = {
-  conversationId: string;
-  parentConversationTitle: string | null;
-  spaceId: string | null;
-};
-
 // Mounted at /api/w/:wId/assistant/conversations/:cId/forks.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

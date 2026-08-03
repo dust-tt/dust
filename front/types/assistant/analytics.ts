@@ -3,6 +3,12 @@ import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 
 import type { AgentMessageStatus, UserMessageOrigin } from "./conversation";
 import type { ConversationSkillOrigin } from "./conversation_skills";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ModelResolutionMethodType,
+  ReasoningEffort,
+} from "./models/types";
 
 /**
  * Types for agent analytics data stored in Elasticsearch
@@ -23,6 +29,14 @@ export interface AgentMessageAnalyticsToolUsed {
   mcp_server_configuration_sid?: string;
   execution_time_ms: number | null;
   status: string;
+  cost_awu: number;
+}
+
+export interface AgentMessageAnalyticsCost {
+  full_awu: number;
+  llm_awu: number;
+  tool_awu: number;
+  billable_awu: number;
 }
 
 export interface AgentMessageAnalyticsFeedback {
@@ -42,16 +56,33 @@ export interface AgentMessageAnalyticsSkillUsed {
   source: ConversationSkillOrigin;
 }
 
+export interface AgentMessageAnalyticsModel {
+  provider_id: ModelProviderIdType;
+  model_id: ModelIdType;
+  reasoning_effort: ReasoningEffort;
+  resolution_method: ModelResolutionMethodType | null;
+}
+
 export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   agent_id: string;
   agent_version: string;
+  // Tag sIds attached to the agent configuration version that produced this
+  // message, captured at index time (reflects the agent's tags at message time).
+  agent_tag_ids: string[];
+  model: AgentMessageAnalyticsModel | null;
+  ancestor_message_ids: string[];
   conversation_id: string;
+  // sId of the space the conversation lives in (any kind), null when the
+  // conversation is not attached to a space.
+  space_id: string | null;
+  cost: AgentMessageAnalyticsCost;
   feedbacks: AgentMessageAnalyticsFeedback[];
   context_origin: UserMessageOrigin | null;
   latency_ms: number;
   message_id: string;
   skills_used: AgentMessageAnalyticsSkillUsed[];
   status: AgentMessageStatus;
+  is_free_seat: boolean;
   timestamp: string; // ISO date string.
   tokens: AgentMessageAnalyticsTokens;
   tools_used: AgentMessageAnalyticsToolUsed[];

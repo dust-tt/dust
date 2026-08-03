@@ -5,8 +5,8 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
-import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
+import type { PokeAgentConfigurationType } from "@app/types/api/poke/agent_configurations";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {

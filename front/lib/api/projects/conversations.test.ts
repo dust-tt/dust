@@ -1,11 +1,18 @@
 import {
   moveConversationOutOfProject,
   moveConversationToProject,
+  toPodConversationListItem,
 } from "@app/lib/api/projects/conversations";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { UserConversationReadsModel } from "@app/lib/models/agent/conversation";
+import {
+  AgentMessageModel,
+  MessageModel,
+  UserConversationReadsModel,
+} from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -13,7 +20,51 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { isPodConversation } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { WorkspaceType } from "@app/types/user";
+import { Op } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
+
+async function fetchRegularAutoGroup(
+  space: SpaceResource,
+  auth: Authenticator
+) {
+  const groupReference = space.groups.find((group) => group.isRegularAuto());
+  if (!groupReference) {
+    return null;
+  }
+  const [group] = await space.fetchGroupResources(auth, {
+    groupReferences: [groupReference],
+  });
+  return group;
+}
+
+async function markConversationAgentMessagesAsSucceeded(
+  workspace: WorkspaceType,
+  conversationId: ModelId,
+  completedAt = new Date()
+) {
+  const messages = await MessageModel.findAll({
+    where: { conversationId, workspaceId: workspace.id },
+  });
+  const agentMessageIds = messages
+    .map((message) => message.agentMessageId)
+    .filter((id): id is ModelId => id !== null);
+
+  if (agentMessageIds.length === 0) {
+    return;
+  }
+
+  await AgentMessageModel.update(
+    { status: "succeeded", completedAt },
+    {
+      where: {
+        id: { [Op.in]: agentMessageIds },
+        workspaceId: workspace.id,
+      },
+    }
+  );
+}
 
 describe("moveConversationToProject", () => {
   let auth: Authenticator;
@@ -44,8 +95,9 @@ describe("moveConversationToProject", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
@@ -107,8 +159,9 @@ describe("moveConversationToProject", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
@@ -269,8 +322,9 @@ describe("moveConversationToProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
@@ -467,8 +521,9 @@ describe("moveConversationToProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
@@ -571,8 +626,9 @@ describe("moveConversationToProject", () => {
 
     // Create destination project and add user as member
     const destinationProject = await SpaceFactory.project(workspace);
-    const destinationProjectGroup = destinationProject.groups.find(
-      (g) => g.kind === "regular"
+    const destinationProjectGroup = await fetchRegularAutoGroup(
+      destinationProject,
+      internalAdminAuth
     );
     if (!destinationProjectGroup) {
       throw new Error("Destination project regular group not found");
@@ -637,8 +693,9 @@ describe("moveConversationToProject", () => {
     );
 
     // Add current user as member (but not editor) of source project
-    const sourceProjectGroup = sourceProject.groups.find(
-      (g) => g.kind === "regular"
+    const sourceProjectGroup = await fetchRegularAutoGroup(
+      sourceProject,
+      internalAdminAuth
     );
     if (!sourceProjectGroup) {
       throw new Error("Source project regular group not found");
@@ -649,8 +706,9 @@ describe("moveConversationToProject", () => {
 
     // Create destination project and add user as member
     const destinationProject = await SpaceFactory.project(workspace);
-    const destinationProjectGroup = destinationProject.groups.find(
-      (g) => g.kind === "regular"
+    const destinationProjectGroup = await fetchRegularAutoGroup(
+      destinationProject,
+      internalAdminAuth
     );
     if (!destinationProjectGroup) {
       throw new Error("Destination project regular group not found");
@@ -699,8 +757,9 @@ describe("moveConversationToProject", () => {
     );
 
     // Add user as member of the project
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
@@ -758,8 +817,9 @@ describe("moveConversationOutOfProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
@@ -839,8 +899,9 @@ describe("moveConversationOutOfProject", () => {
     );
 
     // Add current user as member (but not editor) of project.
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
@@ -902,8 +963,9 @@ describe("moveConversationOutOfProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
@@ -1060,8 +1122,9 @@ describe("moveConversationOutOfProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
@@ -1155,5 +1218,292 @@ describe("moveConversationOutOfProject", () => {
     if (user2After?.lastReadAt) {
       expect(user2After.lastReadAt < newUpdatedAt).toBe(true);
     }
+  });
+});
+
+describe("toPodConversationListItem", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+  });
+
+  it("returns an empty array when no conversations are provided", async () => {
+    const result = await toPodConversationListItem(auth, { conversations: [] });
+    expect(result).toEqual([]);
+  });
+
+  it("maps conversations with user and succeeded agent messages to list items", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Pod List Agent",
+    });
+
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date("2024-06-01T10:00:00Z")],
+    });
+
+    await markConversationAgentMessagesAsSucceeded(
+      workspace,
+      conversationType.id
+    );
+
+    const [conversationResource] =
+      await ConversationResource.fetchByIdsWithReadState(auth, [
+        conversationType.sId,
+      ]);
+    if (!conversationResource) {
+      throw new Error("Conversation not found");
+    }
+
+    const [item] = await toPodConversationListItem(auth, {
+      conversations: [conversationResource],
+    });
+
+    expect(item.id).toBe(conversationType.sId);
+    expect(item.title).toBe("Test Conversation");
+    expect(item.description).toBe("Test user Message.");
+    expect(item.replyCount).toBe(1);
+    expect(item.creator).toMatchObject({
+      name: expect.any(String),
+      visual: expect.any(String),
+      isRounded: true,
+    });
+    expect(item.avatars).toHaveLength(1);
+    expect(item.avatars[0]).toMatchObject({
+      name: "Pod List Agent",
+      visual: agentConfig.pictureUrl,
+      isRounded: false,
+    });
+    expect(item.isRunningAgentLoop).toBe(false);
+    expect(item.created).toBe(conversationResource.createdAt.getTime());
+    expect(item.updated).toBe(conversationResource.updatedAt.getTime());
+  });
+
+  it("excludes agent messages that have not succeeded", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date("2024-06-01T10:00:00Z")],
+    });
+
+    const [conversationResource] =
+      await ConversationResource.fetchByIdsWithReadState(auth, [
+        conversationType.sId,
+      ]);
+    if (!conversationResource) {
+      throw new Error("Conversation not found");
+    }
+
+    const [item] = await toPodConversationListItem(auth, {
+      conversations: [conversationResource],
+    });
+
+    expect(item.replyCount).toBe(0);
+    expect(item.avatars).toHaveLength(0);
+  });
+
+  it("excludes user messages with hidden origins", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation: conversationType,
+      content: "Hidden anchor message",
+      origin: "project_kickoff",
+      rank: 0,
+    });
+
+    const [conversationResource] =
+      await ConversationResource.fetchByIdsWithReadState(auth, [
+        conversationType.sId,
+      ]);
+    if (!conversationResource) {
+      throw new Error("Conversation not found");
+    }
+
+    const [item] = await toPodConversationListItem(auth, {
+      conversations: [conversationResource],
+    });
+
+    expect(item.description).toBe("");
+    expect(item.replyCount).toBe(0);
+    expect(item.creator).toBeUndefined();
+  });
+
+  it("keeps only the latest version per message rank", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Latest Version Agent",
+    });
+
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation: conversationType,
+      content: "Visible user message",
+      rank: 0,
+    });
+
+    const oldAgentMessage = await AgentMessageModel.create({
+      status: "succeeded",
+      agentConfigurationId: agentConfig.sId,
+      agentConfigurationVersion: agentConfig.version,
+      conversationId: conversationType.id,
+      workspaceId: workspace.id,
+      skipToolsValidation: false,
+      completedAt: new Date("2024-06-01T10:00:00Z"),
+    });
+    await MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank: 1,
+      version: 0,
+      conversationId: conversationType.id,
+      parentId: null,
+      agentMessageId: oldAgentMessage.id,
+      workspaceId: workspace.id,
+    });
+
+    const newAgentMessage = await AgentMessageModel.create({
+      status: "succeeded",
+      agentConfigurationId: agentConfig.sId,
+      agentConfigurationVersion: agentConfig.version,
+      conversationId: conversationType.id,
+      workspaceId: workspace.id,
+      skipToolsValidation: false,
+      completedAt: new Date("2024-06-01T11:00:00Z"),
+    });
+    await MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank: 1,
+      version: 1,
+      conversationId: conversationType.id,
+      parentId: null,
+      agentMessageId: newAgentMessage.id,
+      workspaceId: workspace.id,
+    });
+
+    const [conversationResource] =
+      await ConversationResource.fetchByIdsWithReadState(auth, [
+        conversationType.sId,
+      ]);
+    if (!conversationResource) {
+      throw new Error("Conversation not found");
+    }
+
+    const [item] = await toPodConversationListItem(auth, {
+      conversations: [conversationResource],
+    });
+
+    expect(item.replyCount).toBe(1);
+    expect(item.avatars).toHaveLength(1);
+    expect(item.avatars[0]?.name).toBe("Latest Version Agent");
+  });
+
+  it("computes unreadMessageCount from the user's last read timestamp", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const messageTime = new Date("2024-06-01T12:00:00Z");
+
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [messageTime],
+    });
+
+    await markConversationAgentMessagesAsSucceeded(
+      workspace,
+      conversationType.id,
+      messageTime
+    );
+
+    const user = auth.getNonNullableUser();
+    await UserConversationReadsModel.upsert({
+      conversationId: conversationType.id,
+      userId: user.id,
+      workspaceId: workspace.id,
+      lastReadAt: new Date("2024-06-01T10:00:00Z"),
+    });
+
+    const [conversationResource] =
+      await ConversationResource.fetchByIdsWithReadState(auth, [
+        conversationType.sId,
+      ]);
+    if (!conversationResource) {
+      throw new Error("Conversation not found");
+    }
+
+    const [item] = await toPodConversationListItem(auth, {
+      conversations: [conversationResource],
+    });
+
+    expect(item.unreadMessageCount).toBe(2);
+
+    await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation: conversationType,
+    });
+
+    const [readConversationResource] =
+      await ConversationResource.fetchByIdsWithReadState(auth, [
+        conversationType.sId,
+      ]);
+    if (!readConversationResource) {
+      throw new Error("Conversation not found after mark as read");
+    }
+
+    const [readItem] = await toPodConversationListItem(auth, {
+      conversations: [readConversationResource],
+    });
+
+    expect(readItem.unreadMessageCount).toBe(0);
+  });
+
+  it("maps multiple conversations in a single call", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const firstConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date("2024-06-01T10:00:00Z")],
+    });
+    const secondConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date("2024-06-02T10:00:00Z")],
+    });
+
+    await markConversationAgentMessagesAsSucceeded(
+      workspace,
+      firstConversation.id
+    );
+    await markConversationAgentMessagesAsSucceeded(
+      workspace,
+      secondConversation.id
+    );
+
+    const conversationResources =
+      await ConversationResource.fetchByIdsWithReadState(auth, [
+        firstConversation.sId,
+        secondConversation.sId,
+      ]);
+
+    const items = await toPodConversationListItem(auth, {
+      conversations: conversationResources,
+    });
+
+    expect(items).toHaveLength(2);
+    expect(items.map((item) => item.id).sort()).toEqual(
+      [firstConversation.sId, secondConversation.sId].sort()
+    );
   });
 });

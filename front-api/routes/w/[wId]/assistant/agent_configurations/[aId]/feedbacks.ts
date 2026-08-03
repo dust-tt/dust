@@ -16,6 +16,7 @@ const ParamsSchema = z.object({
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/feedbacks.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { aId } = ctx.req.valid("param");

@@ -184,7 +184,7 @@ export const MentionDropdown = forwardRef<
                   className={cn(
                     index === selectedIndex
                       ? "text-highlight-500"
-                      : "text-foreground dark:text-foreground-night"
+                      : "text-foreground"
                   )}
                   onClick={() => {
                     selectItem(index);

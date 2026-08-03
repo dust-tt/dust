@@ -1,13 +1,13 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useUpdateAgentTags } from "@app/lib/swr/tags";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   Button,
-  CheckIcon,
-  ChevronDownIcon,
+  Check,
+  ChevronDown,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
@@ -39,6 +39,8 @@ export const TableTagSelector = ({
   const updateAgentTags = useUpdateAgentTags({
     owner,
   });
+  const { hasPermission } = useWorkspacePermissions();
+  const canPublishAgents = hasPermission("publish", "agent");
   if (isGlobalAgentId(agentConfigurationId)) {
     return null;
   }
@@ -52,14 +54,14 @@ export const TableTagSelector = ({
             size="xs"
             label="Add tags"
             isSelect
-            className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
+            className="invisible text-muted-foreground group-hover:visible"
           />
         ) : (
           <Button
             variant="ghost"
-            icon={ChevronDownIcon}
+            icon={ChevronDown}
             size="xmini"
-            className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
+            className="invisible text-muted-foreground group-hover:visible"
           />
         )}
       </DropdownMenuTrigger>
@@ -71,12 +73,12 @@ export const TableTagSelector = ({
         <DropdownMenuSeparator />
         <DropdownMenuTagList>
           {tags.length === 0 ? (
-            <div className="px-2 py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <div className="px-2 py-2 text-center text-sm text-muted-foreground">
               No tags available
             </div>
           ) : (
             tags
-              .filter((t) => isBuilder(owner) || t.kind !== "protected")
+              .filter((t) => canPublishAgents || t.kind !== "protected")
               .map((t) => {
                 const isChecked = agentTags.some((x) => x.sId === t.sId);
                 return (
@@ -89,8 +91,8 @@ export const TableTagSelector = ({
                   >
                     <DropdownMenuTagItem
                       label={t.name}
-                      color="golden"
-                      icon={isChecked ? CheckIcon : undefined}
+                      color="info"
+                      icon={isChecked ? Check : undefined}
                       onClick={async () => {
                         setIsLoading(true);
                         await updateAgentTags(agentConfigurationId, {

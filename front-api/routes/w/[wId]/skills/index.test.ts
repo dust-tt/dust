@@ -1,19 +1,24 @@
 import { Authenticator } from "@app/lib/auth";
-import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillFileAttachmentModel,
+  SkillMCPServerConfigurationModel,
+} from "@app/lib/models/skill";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
+import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   SkillWithoutInstructionsAndToolsType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
@@ -24,6 +29,29 @@ import { describe, expect, it, vi } from "vitest";
 
 async function setupTest(role: MembershipRoleType = "builder") {
   return createPrivateApiMockRequest({ role });
+}
+
+// The test's own "builder" membership role doesn't grant create/skill by itself anymore — it
+// requires a group grant. Used by tests that specifically need a non-admin caller (e.g. to
+// exercise space-access checks admins would otherwise bypass) while still being allowed to
+// create a skill.
+async function grantCreateSkillCapability(
+  workspace: Awaited<ReturnType<typeof setupTest>>["workspace"],
+  user: Awaited<ReturnType<typeof setupTest>>["user"]
+) {
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  const group = await GroupFactory.regularAuto(
+    workspace,
+    `skill-creator-${user.sId}`
+  );
+  await GroupFactory.withMembers(adminAuth, group, [user]);
+  await GroupPermissionResource.grantTypeWide(adminAuth, {
+    group,
+    grantType: "create",
+    resourceType: "skill",
+  });
 }
 
 function getSkills(
@@ -73,6 +101,237 @@ describe("GET /api/w/:wId/skills", () => {
     );
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
+  });
+
+  it("only lists editors-only skills to members of their editor group", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    // Skill whose editor group the requester belongs to (creator is an editor).
+    await SkillFactory.create(auth, {
+      name: "My Unpublished Skill",
+      availability: "editors",
+    });
+
+    // Skills created by another user: the requester is not in their editor groups.
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, {
+      role: "builder",
+    });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(otherAuth, {
+      name: "Someone Else's Unpublished Skill",
+      availability: "editors",
+    });
+    await SkillFactory.create(otherAuth, {
+      name: "Someone Else's Published Skill",
+      availability: "workspace_users",
+    });
+
+    const response = await getSkills(workspace);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("My Unpublished Skill");
+    expect(skillNames).toContain("Someone Else's Published Skill");
+    expect(skillNames).not.toContain("Someone Else's Unpublished Skill");
+  });
+
+  // Suggestions are created with an empty editor group (SkillResource.makeSuggestion), and
+  // they get editors-only availability. Without the status exemption the editor-visibility
+  // rule would hide them from everyone.
+  it("lists editors-only suggestions to admins who can create skills", async () => {
+    const { workspace, user } = await setupTest("admin");
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await SkillFactory.create(auth, {
+      name: "Suggested Skill",
+      status: "suggested",
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+
+    // A regular unpublished skill the admin does not edit stays hidden: the exemption is
+    // scoped to suggestions, not to admins at large (that is bypassEditorVisibility's job).
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "builder",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(skillOwnerAuth, {
+      name: "Someone Else's Unpublished Skill",
+      availability: "editors",
+    });
+
+    const response = await getSkills(workspace, { status: "suggested" });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("Suggested Skill");
+
+    const activeResponse = await getSkills(workspace);
+    expect(activeResponse.status).toBe(200);
+    const activeSkillNames = (await activeResponse.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(activeSkillNames).not.toContain("Someone Else's Unpublished Skill");
+  });
+
+  it("does not list editors-only suggestions to members who cannot administrate skills", async () => {
+    const { workspace, user } = await setupTest("user");
+
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(adminAuth, {
+      name: "Suggested Skill",
+      status: "suggested",
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+
+    // Even with the create/skill capability, a user cannot administrate the suggestion's
+    // editor group, so the suggestion stays hidden.
+    await grantCreateSkillCapability(workspace, user);
+
+    const response = await getSkills(workspace, { status: "suggested" });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).not.toContain("Suggested Skill");
+  });
+
+  it("lets admins bypass editor visibility to list unpublished skills they do not edit", async () => {
+    const { workspace } = await setupTest("admin");
+
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "builder",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(skillOwnerAuth, {
+      name: "Someone Else's Unpublished Skill",
+      availability: "editors",
+    });
+
+    // The requesting admin is not in the skill's editor group: without the param the
+    // unpublished skill stays hidden.
+    const withoutParamResponse = await getSkills(workspace);
+    expect(withoutParamResponse.status).toBe(200);
+    const withoutParamNames = (await withoutParamResponse.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(withoutParamNames).not.toContain("Someone Else's Unpublished Skill");
+
+    const response = await getSkills(workspace, {
+      bypassEditorVisibility: "true",
+    });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("Someone Else's Unpublished Skill");
+  });
+
+  it("rejects bypassEditorVisibility for non-admins", async () => {
+    const { workspace } = await setupTest("builder");
+
+    const response = await getSkills(workspace, {
+      bypassEditorVisibility: "true",
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "app_auth_error",
+        message: "Only admins can bypass editor visibility.",
+      },
+    });
+  });
+
+  it("filters by availability, with isDefault=true as a deprecated alias", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await SkillFactory.create(auth, {
+      name: "Workspace Skill",
+      availability: "workspace_users",
+    });
+    await SkillFactory.create(auth, {
+      name: "Discoverable Skill",
+      availability: "users_and_agents",
+    });
+
+    const equivalentQueries: Record<string, string>[] = [
+      { availability: "users_and_agents" },
+      { isDefault: "true" },
+    ];
+    for (const query of equivalentQueries) {
+      const response = await getSkills(workspace, query);
+      expect(response.status).toBe(200);
+      const skillNames = (await response.json()).skills.map(
+        (s: SkillWithoutInstructionsAndToolsType) => s.name
+      );
+      expect(skillNames).toContain("Discoverable Skill");
+      expect(skillNames).not.toContain("Workspace Skill");
+    }
+
+    // An explicit availability takes priority over the deprecated alias.
+    const response = await getSkills(workspace, {
+      availability: "workspace_users",
+      isDefault: "true",
+    });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("Workspace Skill");
+    expect(skillNames).not.toContain("Discoverable Skill");
+
+    // Several availabilities can be requested at once (repeated query param).
+    const multiResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/skills?availability=workspace_users&availability=users_and_agents&onlyCustom=true`
+    );
+    expect(multiResponse.status).toBe(200);
+    const multiSkillNames = (await multiResponse.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(multiSkillNames).toContain("Workspace Skill");
+    expect(multiSkillNames).toContain("Discoverable Skill");
+
+    const invalidResponse = await getSkills(workspace, {
+      availability: "everyone",
+    });
+    expect(invalidResponse.status).toBe(400);
   });
 
   it("should only return active skills", async () => {
@@ -233,6 +492,32 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).toContain("Skill In Restricted Space");
   });
 
+  it("includes accessible restricted skills by default but excludes them when globalSpaceOnly=true", async () => {
+    const { workspace, user, auth } = await setupTest("admin");
+
+    await SpaceFactory.defaults(auth);
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [user.sId] });
+
+    await SkillFactory.create(auth, {
+      name: "Member Restricted Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const defaultRes = await getSkills(workspace);
+    const defaultNames = (await defaultRes.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(defaultNames).toContain("Member Restricted Skill");
+
+    const globalRes = await getSkills(workspace, { globalSpaceOnly: "true" });
+    const globalNames = (await globalRes.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(globalNames).not.toContain("Member Restricted Skill");
+  });
+
   it("should not return instructions or tools in skill list", async () => {
     const { workspace, auth, user } = await setupTest();
 
@@ -240,6 +525,10 @@ describe("GET /api/w/:wId/skills", () => {
       name: "Picker Skill",
       userFacingDescription: "Shown in the capabilities picker",
     });
+    const fileAttachmentFindAllSpy = vi.spyOn(
+      SkillFileAttachmentModel,
+      "findAll"
+    );
 
     const response = await getSkills(workspace);
 
@@ -261,7 +550,6 @@ describe("GET /api/w/:wId/skills", () => {
       requestedSpaceIds: [],
       fileAttachments: [],
       isDefault: false,
-      extendedSkillId: null,
     });
     expect(skillWithoutInstructionsAndTools).toHaveProperty("createdAt");
     expect(skillWithoutInstructionsAndTools).toHaveProperty("updatedAt");
@@ -272,6 +560,8 @@ describe("GET /api/w/:wId/skills", () => {
       "instructionsHtml"
     );
     expect(skillWithoutInstructionsAndTools).not.toHaveProperty("tools");
+    expect(fileAttachmentFindAllSpy).not.toHaveBeenCalled();
+    fileAttachmentFindAllSpy.mockRestore();
   });
 
   it("should not fetch dynamic global instructions", async () => {
@@ -407,48 +697,18 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
 
     expect(skillResult).toMatchObject({
       relations: {
-        usage: { count: 0, agents: [] },
+        usage: { count: 0, agents: [], skills: [] },
       },
     });
   });
 
-  it("should not return used-by skills without the nested_skills feature flag", async () => {
+  it("should return child skills", async () => {
     const { workspace, user } = await setupTest();
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
-
-    const { childSkill } = await SkillFactory.createWithNestedSkill(auth, {
-      childOverrides: {
-        name: "Referenced Skill",
-      },
-      parentOverrides: {
-        name: "Parent Skill",
-      },
-    });
-
-    const response = await getSkills(workspace, { withRelations: "true" });
-
-    expect(response.status).toBe(200);
-
-    const skillResult = (await response.json()).skills.find(
-      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
-        s.sId === childSkill.sId
-    );
-
-    expect(skillResult.relations.usage).not.toHaveProperty("skills");
-  });
-
-  it("should return child skills when nested_skills is enabled", async () => {
-    const { workspace, user } = await setupTest();
-
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(auth, "nested_skills");
 
     const { parentSkill, childSkill } =
       await SkillFactory.createWithNestedSkill(auth, {
@@ -479,19 +739,18 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         ],
       },
     });
-    expect(skillResult.relations.childSkills?.[0]).not.toHaveProperty(
+    expect(skillResult.relations.childSkills[0]).not.toHaveProperty(
       "instructions"
     );
   });
 
-  it("should return skills that reference a skill when nested_skills is enabled", async () => {
+  it("should return skills that reference a skill", async () => {
     const { workspace, user } = await setupTest();
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "nested_skills");
 
     const { childSkill, parentSkill } =
       await SkillFactory.createWithNestedSkill(auth, {
@@ -618,7 +877,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: "Simple instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -642,10 +900,113 @@ describe("POST /api/w/:wId/skills", () => {
     expect(createdSkill).not.toBeNull();
   });
 
-  it("creates skill references when nested skills is enabled", async () => {
+  it("defaults new skills to unpublished, without requiring the publish permission", async () => {
+    const { workspace, user } = await setupTest("user");
+    await grantCreateSkillCapability(workspace, user);
+
+    const response = await postSkill(workspace, {
+      name: "Draft Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.skill.availability).toBe("editors");
+  });
+
+  it("requires the publish permission to create a published skill", async () => {
+    const { workspace, user } = await setupTest("user");
+    await grantCreateSkillCapability(workspace, user);
+
+    const response = await postSkill(workspace, {
+      name: "Published Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      availability: "workspace_users",
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("requires the make-discoverable permission to create an auto-discoverable skill", async () => {
+    const { workspace, user } = await setupTest("user");
+    await grantCreateSkillCapability(workspace, user);
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const publisherGroup = await GroupFactory.regularAuto(
+      workspace,
+      `skill-publisher-${user.sId}`
+    );
+    await GroupFactory.withMembers(adminAuth, publisherGroup, [user]);
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group: publisherGroup,
+      grantType: "publish",
+      resourceType: "skill",
+    });
+
+    const body = {
+      name: "Auto-discoverable Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      availability: "users_and_agents",
+    };
+
+    let response = await postSkill(workspace, body);
+    expect(response.status).toBe(403);
+
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group: publisherGroup,
+      grantType: "make_discoverable",
+      resourceType: "skill",
+    });
+
+    response = await postSkill(workspace, body);
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.skill.availability).toBe("users_and_agents");
+  });
+
+  it("lets an admin create a published skill", async () => {
+    const { workspace } = await setupTest("admin");
+
+    const response = await postSkill(workspace, {
+      name: "Published Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      availability: "users_and_agents",
+    });
+
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.skill.availability).toBe("users_and_agents");
+  });
+
+  it("creates skill references", async () => {
     const { auth, workspace } = await setupTest("admin");
 
-    await FeatureFlagFactory.basic(auth, "nested_skills");
     const childSkill = await SkillFactory.create(auth, {
       name: "Referenced Skill",
     });
@@ -654,12 +1015,10 @@ describe("POST /api/w/:wId/skills", () => {
       name: "Parent Skill",
       agentFacingDescription: "To use with another skill",
       userFacingDescription: "A skill with a nested reference",
-      instructions: "Start with the referenced skill.",
+      instructions: `Start with ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
-      referencedSkillIds: [childSkill.sId],
       instructionsHtml: null,
     });
 
@@ -678,21 +1037,53 @@ describe("POST /api/w/:wId/skills", () => {
     ]);
   });
 
+  it("adds requested spaces from nested skill references", async () => {
+    const { auth, workspace, globalGroup } = await setupTest("admin");
+
+    const openSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(openSpace, globalGroup);
+
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Referenced Pod Skill",
+      requestedSpaceIds: [openSpace.id],
+    });
+
+    const response = await postSkill(workspace, {
+      name: "Parent Skill",
+      agentFacingDescription: "To use with another skill",
+      userFacingDescription: "A skill with a nested reference",
+      instructions: `Start with ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.requestedSpaceIds).toContain(openSpace.sId);
+    expect(data.skill.instructions).not.toContain("<unavailable_skill");
+
+    const createdSkill = await SkillResource.fetchById(auth, data.skill.sId);
+    if (!createdSkill) {
+      throw new Error("Expected created skill to be found.");
+    }
+    expect(createdSkill.requestedSpaceIds).toContain(openSpace.id);
+    expect(createdSkill.instructions).not.toContain("<unavailable_skill");
+  });
+
   it("drops missing nested skill references", async () => {
     const { auth, workspace } = await setupTest("admin");
-
-    await FeatureFlagFactory.basic(auth, "nested_skills");
 
     const response = await postSkill(workspace, {
       name: "Parent Skill",
       agentFacingDescription: "To use with another skill",
       userFacingDescription: "A skill with an invalid nested reference",
-      instructions: "Start with an invalid nested reference.",
+      instructions:
+        'Start with <skill id="not-a-skill-reference" name="Ghost Skill" />.',
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
-      referencedSkillIds: ["not-a-skill-reference"],
       instructionsHtml: null,
     });
 
@@ -718,7 +1109,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: "Simple instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
       additionalRequestedSpaceIds: [openSpace.sId],
@@ -741,7 +1131,8 @@ describe("POST /api/w/:wId/skills", () => {
   });
 
   it("rejects additional requested spaces the user cannot access", async () => {
-    const { workspace } = await setupTest("builder");
+    const { workspace, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
 
     const restrictedSpace = await SpaceFactory.regular(workspace);
 
@@ -752,7 +1143,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: "Simple instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
       additionalRequestedSpaceIds: [restrictedSpace.sId],
@@ -765,6 +1155,30 @@ describe("POST /api/w/:wId/skills", () => {
         message: `User does not have access to the following spaces: ${restrictedSpace.sId}`,
       },
     });
+  });
+
+  it("allows restricting a skill to an open Pod the user can access", async () => {
+    const { workspace, globalGroup, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
+
+    const openPod = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(openPod, globalGroup);
+
+    const response = await postSkill(workspace, {
+      name: "Skill Restricted To Open Pod",
+      agentFacingDescription: "To use with an open Pod",
+      userFacingDescription: "A skill with a selected Pod",
+      instructions: "Simple instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      additionalRequestedSpaceIds: [openPod.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.skill.requestedSpaceIds).toContain(openPod.sId);
   });
 
   it("creates a skill configuration with 2 tools", async () => {
@@ -798,7 +1212,6 @@ describe("POST /api/w/:wId/skills", () => {
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
       ],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -845,7 +1258,7 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, user } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    const memberGroup = await GroupFactory.regular(
+    const memberGroup = await GroupFactory.regularAuto(
       workspace,
       "Tool Space Members"
     );
@@ -872,7 +1285,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: "Instructions",
       icon: "PuzzleIcon",
       tools: [{ mcpServerViewId: serverView.sId }],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -932,7 +1344,6 @@ describe("POST /api/w/:wId/skills", () => {
           title: "Folder Node 2",
         },
       ],
-      extendedSkillId: null,
     });
 
     expect(response.status).toBe(200);
@@ -948,7 +1359,7 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, user } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    const memberGroup = await GroupFactory.regular(
+    const memberGroup = await GroupFactory.regularAuto(
       workspace,
       "Knowledge Space Members"
     );
@@ -985,7 +1396,6 @@ describe("POST /api/w/:wId/skills", () => {
           title,
         },
       ],
-      extendedSkillId: null,
     });
 
     expect(response.status).toBe(200);
@@ -1006,10 +1416,9 @@ describe("POST /api/w/:wId/skills", () => {
 });
 
 describe("POST /api/w/:wId/skills - file attachments", () => {
-  it("creates a skill with file attachments when sandbox_tools is enabled", async () => {
+  it("creates a skill with file attachments", async () => {
     const { auth, workspace, user } = await setupTest("builder");
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await grantCreateSkillCapability(workspace, user);
 
     const file1 = await FileFactory.create(auth, user, {
       contentType: "text/plain",
@@ -1033,7 +1442,6 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
       instructions: "Instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
       fileAttachments: [{ fileId: file1.sId }, { fileId: file2.sId }],
@@ -1055,37 +1463,7 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
     expect(createdSkill!.toJSON(auth).fileAttachments).toHaveLength(2);
   });
 
-  it("rejects file attachments when sandbox_tools is not enabled", async () => {
-    const { auth, workspace, user } = await setupTest("admin");
-
-    const file = await FileFactory.create(auth, user, {
-      contentType: "text/plain",
-      fileName: "template.txt",
-      fileSize: 100,
-      status: "ready",
-      useCase: "skill_attachment",
-    });
-
-    const response = await postSkill(workspace, {
-      name: "Skill With Files",
-      agentFacingDescription: "A skill with file attachments",
-      userFacingDescription: "User description",
-      instructions: "Instructions",
-      icon: "PuzzleIcon",
-      tools: [],
-      extendedSkillId: null,
-      attachedKnowledge: [],
-      instructionsHtml: null,
-      fileAttachments: [{ fileId: file.sId }],
-    });
-
-    expect(response.status).toBe(403);
-    expect((await response.json()).error.message).toContain(
-      "File attachments are not supported"
-    );
-  });
-
-  it("succeeds without file attachments when sandbox_tools is not enabled", async () => {
+  it("succeeds without file attachments", async () => {
     const { workspace } = await setupTest("admin");
 
     const response = await postSkill(workspace, {
@@ -1095,7 +1473,6 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
       instructions: "Instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -1106,8 +1483,6 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
 
   it("rejects file attachments with wrong use case", async () => {
     const { auth, workspace, user } = await setupTest("admin");
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",
@@ -1124,7 +1499,6 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
       instructions: "Instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
       fileAttachments: [{ fileId: file.sId }],

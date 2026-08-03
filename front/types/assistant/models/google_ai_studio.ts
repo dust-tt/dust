@@ -13,8 +13,10 @@ export const GEMINI_3_1_FLASH_LITE_MODEL_ID = "gemini-3.1-flash-lite" as const;
 // Deprecated: gemini-3.1-flash-lite-preview was superseded by gemini-3.1-flash-lite.
 export const GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID =
   "gemini-3.1-flash-lite-preview" as const;
+export const GEMINI_3_5_FLASH_LITE_MODEL_ID = "gemini-3.5-flash-lite" as const;
 export const GEMINI_3_FLASH_MODEL_ID = "gemini-3-flash-preview" as const;
 export const GEMINI_3_5_FLASH_MODEL_ID = "gemini-3.5-flash" as const;
+export const GEMINI_3_6_FLASH_MODEL_ID = "gemini-3.6-flash" as const;
 
 export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -50,6 +52,40 @@ export const GEMINI_3_1_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_3_1_FLASH_LITE_MODEL_ID,
   displayName: "Gemini 3.1 Flash Lite",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: false,
+  description: "Google's lightweight large context model (1m context).",
+  shortDescription: "Google's lightweight model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
+  tokenizer: { type: "tiktoken", base: "cl100k_base" },
+  supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+
+// Specs verified against https://ai.google.dev/gemini-api/docs/models
+// (2026-07-25): mirrors the Flash-Lite family — multimodal (vision), 1M token
+// context, up to 64k output tokens, exposes the `none` reasoning effort.
+export const GEMINI_3_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_3_5_FLASH_LITE_MODEL_ID,
+  displayName: "Gemini 3.5 Flash Lite",
   contextSize: 1_000_000,
   recommendedTopK: 64,
   recommendedExhaustiveTopK: 64,
@@ -121,7 +157,7 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   description: "Google's fast large context model (1m context).",
   shortDescription: "Google's fast model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: false, // response format not compatible with tool use
@@ -271,6 +307,40 @@ export const GEMINI_3_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 64,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
+  description: "Google's fast large context model (1m context).",
+  shortDescription: "Google's fast model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "light",
+  tokenizer: { type: "tiktoken", base: "cl100k_base" },
+  useNativeLightReasoning: true,
+  supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+
+// Specs verified against https://ai.google.dev/gemini-api/docs/models
+// (2026-07-25): Gemini 3.6 Flash is multimodal (vision) + agentic, with a 1M
+// token context window and up to 64k output tokens.
+export const GEMINI_3_6_FLASH_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_3_6_FLASH_MODEL_ID,
+  displayName: "Gemini 3.6 Flash",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
   description: "Google's latest fast large context model (1m context).",
   shortDescription: "Google's fast model.",
   isLegacy: false,
@@ -289,6 +359,8 @@ export const GEMINI_3_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   supportsBatchProcessing: true,
   regionalAvailability: {
+    // Day-one Vertex AI availability in us-central1; the EU (europe-west1)
+    // agent-platform endpoint is not live yet (mirrors Gemini 3.5 Flash).
     "us-central1": true,
     "europe-west1": false,
   },

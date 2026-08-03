@@ -14,6 +14,7 @@ export type GetResponseBody = {
 // Mounted at /api/stripe/webhook.
 const app = createHono();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetResponseBody> => ctx.json({ success: true })

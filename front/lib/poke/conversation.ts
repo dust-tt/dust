@@ -1,4 +1,8 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import {
+  buildAgentMessageCreditsBreakdownFromAnalytics,
+  fetchAgentMessageCostAnalyticsByMessageIds,
+} from "@app/lib/api/assistant/credit_cost";
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -16,6 +20,7 @@ export async function getPokeConversation(
   includeDeleted?: boolean
 ): Promise<Result<PokeConversationType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversation = await getConversation(
     auth,
     conversationId,
@@ -42,6 +47,14 @@ export async function getPokeConversation(
     const runIdsByAgentMessageId = new Map(
       agentMessagesWithRunIds.map((m) => [m.id, m.runIds])
     );
+
+    // Batch-fetch the stored cost analytics document for every agent message in the
+    // conversation in one shot (rather than per message), so each message's cost
+    // breakdown can be attached with zero additional queries per message.
+    const analyticsByMessageId =
+      await fetchAgentMessageCostAnalyticsByMessageIds(auth, {
+        messageIds: agentMessages.map((m) => m.sId),
+      });
 
     // Cycle through the messages and actions and enrich them with runId(s) and timestamps.
     for (const messages of pokeConversation.content) {
@@ -71,6 +84,17 @@ export async function getPokeConversation(
               a.created = a.createdAt;
             }
           }
+
+          m.costBreakdown = buildAgentMessageCreditsBreakdownFromAnalytics({
+            analytics: analyticsByMessageId.get(m.sId),
+            actions: m.actions.map((a) => ({
+              actionId: a.sId,
+              step: a.step,
+              toolName: a.toolName,
+              internalMCPServerName: a.internalMCPServerName,
+              status: a.status,
+            })),
+          });
         }
       }
     }

@@ -16,17 +16,14 @@ export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     return (
       <div
         ref={ref}
-        className={cn(
-          "s-mx-auto s-w-full s-bg-background s-@container dark:s-bg-background-night",
-          className
-        )}
+        className={cn("mx-auto w-full @container", className)}
         {...props}
       >
-        <ScrollArea className="s-h-full" hideScrollBar>
+        <ScrollArea className="h-full" hideScrollBar>
           <div
             className={cn({
-              "s-mx-auto s-max-w-4xl": fixed,
-              "s-px-3 s-py-8 @sm:s-px-6 @md:s-px-9 @lg:s-px-12": !noPadding,
+              "mx-auto max-w-4xl": fixed,
+              "px-3 py-8 @sm:px-6 @md:px-9 @lg:px-12": !noPadding,
             })}
           >
             {children}

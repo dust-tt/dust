@@ -1,6 +1,11 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import {
+  SKILL_INSTRUCTIONS_LABEL,
+  SKILL_INVOCATION_LABEL,
+} from "@app/lib/skills/labels";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -11,8 +16,8 @@ export const PostSkillSuggestionBodySchema = z.object({
   userFacingDescription: z.string().min(1, "Description is required."),
   agentFacingDescription: z
     .string()
-    .min(1, "What will this skill be used for is required."),
-  instructions: z.string().min(1, "Instructions are required."),
+    .min(1, `${SKILL_INVOCATION_LABEL} is required.`),
+  instructions: z.string().min(1, `${SKILL_INSTRUCTIONS_LABEL} are required.`),
   icon: z.string().nullable(),
   mcpServerViewIds: z.array(z.string()),
 });
@@ -24,6 +29,7 @@ export type PostPokeSkillSuggestionResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/skills/suggestions.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostSkillSuggestionBodySchema),
@@ -59,8 +65,7 @@ app.post(
         agentFacingDescription,
         instructions,
         icon: skillIcon,
-        extendedSkillId: null,
-        isDefault: false,
+        availability: DEFAULT_SKILL_AVAILABILITY,
       },
       {
         mcpServerViewIds,

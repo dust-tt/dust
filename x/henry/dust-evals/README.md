@@ -117,6 +117,22 @@ prompt,judge_prompt
 "Explain photosynthesis","Should mention plants, sunlight, CO2, oxygen."
 ```
 
+### Attaching files to a prompt
+
+Add an optional `files` column to attach one or more files to the agent's
+message (as Dust content fragments). Separate multiple files with commas inside
+the quoted cell. Relative paths are resolved against the CSV file's directory.
+
+```csv
+prompt,judge_prompt,files
+"Compare these two datasets.","Should identify the main differences.","./data/a.csv,./data/b.csv"
+```
+
+Supported types map by extension (pdf, csv, txt, md, json, html, xml, yaml,
+docx, xlsx, png, jpg, jpeg, gif, webp); anything else is uploaded as a generic
+attachment. Dust's per-file size limits apply, and a file that cannot be read or
+uploaded fails that run with a clear error.
+
 ## Scoring Scales
 
 | Scale | Range | Use Case |
@@ -144,7 +160,7 @@ Use `--min-agreement 0.7` to flag results where judges disagreed significantly.
 
 Human-readable summary with:
 - Configuration overview
-- Per-agent statistics (avg score, error rate, timing)
+- Per-agent statistics (avg score, error rate, timing, cost in credits)
 - Sample results
 - Conversation IDs for debugging
 
@@ -161,7 +177,7 @@ Full structured data including:
 Tabular format with columns:
 - prompt, agent_id, run_number, response
 - final_score, judge_votes, judge_agreement
-- agent_duration_ms, agent_conversation_id
+- agent_duration_ms, agent_cost_credits, agent_conversation_id
 - error, was_timeout
 
 ### HTML

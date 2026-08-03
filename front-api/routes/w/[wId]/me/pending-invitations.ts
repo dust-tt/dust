@@ -1,16 +1,14 @@
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
+import type { GetPendingInvitationsResponseBody } from "@app/types/api/invitation";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
-export type GetPendingInvitationsResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
-
 // Mounted at /api/w/:wId/me/pending-invitations.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPendingInvitationsResponseBody> => {
   const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();

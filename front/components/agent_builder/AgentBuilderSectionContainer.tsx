@@ -16,18 +16,14 @@ export function AgentBuilderSectionContainer({
   children,
 }: AgentBuilderSectionContainerProps) {
   return (
-    <section className="flex flex-col gap-3 px-6">
+    <section className="flex flex-col gap-3">
       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-end">
-        <div>
+        <div className="max-w-9/10">
           <div className="flex flex-row items-center gap-2">
-            <h2 className="heading-lg text-foreground dark:text-foreground-night">
-              {title}
-            </h2>
+            <h2 className="heading-lg text-foreground">{title}</h2>
           </div>
           {description && (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {description}
-            </p>
+            <p className="text-sm text-muted-foreground">{description}</p>
           )}
         </div>
         {headerActions && (

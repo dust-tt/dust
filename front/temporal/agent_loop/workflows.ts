@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
+import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
@@ -101,6 +102,13 @@ const { publishDeferredEventsActivity } = proxyActivities<
   startToCloseTimeout: "2 minutes",
 });
 
+const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
+  startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
+});
+
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -131,6 +139,7 @@ const { compactionCleanupActivity } = proxyActivities<
 const {
   finalizeSuccessfulAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
+  finalizeCreditStoppedAgentLoopActivity,
   finalizeCancelledAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
@@ -221,6 +230,9 @@ export async function agentLoopWorkflow({
     gracefulStopRequested = true;
   });
 
+  // Credit stop: the per-step gate found the workspace pool exhausted.
+  let creditStopRequested = false;
+
   const runIds: string[] = [];
 
   try {
@@ -229,6 +241,9 @@ export async function agentLoopWorkflow({
     await executionScope.run(async () => {
       const syncStartTime = Date.now();
       let currentStep = startStep;
+      // Set when the previous step returned nothing at all: the next step runs with tool use
+      // disabled to force a final answer.
+      let forceDisableToolUse = false;
       let childWorkflowHandle: ChildWorkflowHandle<
         typeof agentLoopConversationTitleWorkflow
       > | null = null;
@@ -245,16 +260,20 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        const { runId, shouldContinue } = await executeStepIteration({
-          authType,
-          agentLoopArgs: {
-            ...agentLoopArgs,
-            initialStartTime,
-          },
-          currentStep,
-          runIds,
-          startStep,
-        });
+        const { runId, shouldContinue, retryWithoutTools } =
+          await executeStepIteration({
+            authType,
+            agentLoopArgs: {
+              ...agentLoopArgs,
+              initialStartTime,
+            },
+            currentStep,
+            runIds,
+            startStep,
+            forceDisableToolUse,
+          });
+
+        forceDisableToolUse = retryWithoutTools ?? false;
 
         // Update state with results.
         if (runId) {
@@ -295,6 +314,17 @@ export async function agentLoopWorkflow({
         if (!shouldContinue || gracefulStopRequested) {
           break;
         }
+
+        const creditCheckResult = await checkCreditsActivity(authType, {
+          agentLoopArgs: {
+            ...agentLoopArgs,
+            initialStartTime,
+          },
+        });
+        if (creditCheckResult.shouldStop) {
+          creditStopRequested = true;
+          break;
+        }
       }
 
       const stepsCompleted = currentStep - startStep;
@@ -321,6 +351,11 @@ export async function agentLoopWorkflow({
       await CancellationScope.nonCancellable(async () => {
         if (gracefulStopRequested) {
           await finalizeGracefullyStoppedAgentLoopActivity(
+            authType,
+            argsWithRunIds
+          );
+        } else if (creditStopRequested) {
+          await finalizeCreditStoppedAgentLoopActivity(
             authType,
             argsWithRunIds
           );
@@ -387,15 +422,18 @@ async function executeStepIteration({
   agentLoopArgs,
   runIds,
   startStep,
+  forceDisableToolUse,
 }: {
   authType: AuthenticatorType;
   currentStep: number;
   agentLoopArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   startStep: number;
+  forceDisableToolUse: boolean;
 }): Promise<{
   runId: string | null;
   shouldContinue: boolean;
+  retryWithoutTools?: boolean;
 }> {
   const result = await runModelAndCreateActionsActivity({
     authType,
@@ -403,6 +441,7 @@ async function executeStepIteration({
     runAgentArgs: agentLoopArgs,
     runIds,
     step: currentStep,
+    forceDisableToolUse,
   });
 
   if (!result) {
@@ -413,7 +452,7 @@ async function executeStepIteration({
     };
   }
 
-  const { runId, actionBlobs } = result;
+  const { runId, actionBlobs, retryWithoutTools = false } = result;
 
   // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
@@ -421,7 +460,10 @@ async function executeStepIteration({
       runId,
       // If runId is null that means we unpaused the loop with no new tools (eg: they were all
       // denied) and no LLM call, so we need to continue as the agent loop is not finished.
-      shouldContinue: runId === null,
+      // retryWithoutTools means the model returned nothing: run one more step with tool use
+      // disabled to force a final answer.
+      shouldContinue: runId === null || retryWithoutTools,
+      retryWithoutTools,
     };
   }
 

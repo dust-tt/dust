@@ -7,39 +7,40 @@ import {
   createCommunication,
   createCompany,
   createContact,
+  createCustomObject,
   createDeal,
   createLead,
   createMeeting,
   createNote,
   createTask,
+  createTicket,
+  deleteTask,
   getAssociatedMeetings,
-  getCompany,
-  getContact,
   getCurrentUserId,
-  getDeal,
   getEmailCampaign,
   getFilePublicUrl,
-  getLatestObjects,
   getMarketingEmail,
   getMarketingEmailStatisticsHistogram,
   getMeeting,
-  getObjectByEmail,
   getObjectProperties,
   getUserActivity,
   getUserDetails,
+  listAssociationLabels,
   listAssociations,
+  listCustomObjectSchemas,
   listEmailCampaigns,
   listEmailEvents,
   listMarketingEmails,
   listOwners,
   MAX_COUNT_LIMIT,
-  MAX_LIMIT,
   removeAssociation,
   searchCrmObjects,
   searchOwners,
   updateCompany,
   updateContact,
+  updateCustomObject,
   updateDeal,
+  updateTask,
 } from "@app/lib/api/actions/servers/hubspot/client";
 import {
   ERROR_MESSAGES,
@@ -51,8 +52,6 @@ import {
 import { HUBSPOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/hubspot/metadata";
 import {
   formatHubSpotCreateSuccess,
-  formatHubSpotGetSuccess,
-  formatHubSpotObjectsAsText,
   formatHubSpotSearchResults,
   formatHubSpotUpdateSuccess,
   formatOwnersAsText,
@@ -83,46 +82,24 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
-  get_object_by_email: async ({ objectType, email }, extra) => {
+  list_custom_object_schemas: async (_params, extra) => {
     return withAuth(extra, async (accessToken) => {
-      const object = await getObjectByEmail(accessToken, objectType, email);
-      if (!object) {
-        return new Err(new MCPError(ERROR_MESSAGES.OBJECT_NOT_FOUND));
-      }
-      // Handle different object types properly
-      if ("email" in object) {
-        // This is a SimplePublicObject
-        const formatted = formatHubSpotGetSuccess(object as any, objectType);
-        return new Ok([
-          { type: "text" as const, text: formatted.message },
-          {
-            type: "text" as const,
-            text: JSON.stringify(formatted.result, null, 2),
-          },
-        ]);
-      } else {
-        // This is a PublicOwner - return simpler format
-        const owner = object as any;
+      const schemas = await listCustomObjectSchemas({ accessToken });
+      if (!schemas.length) {
         return new Ok([
           {
             type: "text" as const,
-            text: `${objectType.slice(0, -1)} retrieved successfully`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                id: owner.id,
-                email: owner.email,
-                firstName: owner.firstName,
-                lastName: owner.lastName,
-              },
-              null,
-              2
-            ),
+            text: "No custom object schemas found in this HubSpot account.",
           },
         ]);
       }
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Found ${schemas.length} custom object schema(s).`,
+        },
+        { type: "text" as const, text: JSON.stringify(schemas, null, 2) },
+      ]);
     });
   },
 
@@ -182,70 +159,6 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
           text: `Found ${count} ${objectType} matching the specified filters`,
         },
         { type: "text" as const, text: count.toString() },
-      ]);
-    });
-  },
-
-  get_latest_objects: async ({ objectType, limit = MAX_LIMIT }, extra) => {
-    return withAuth(extra, async (accessToken) => {
-      const objects = await getLatestObjects(accessToken, objectType, limit);
-      if (!objects.length) {
-        return new Err(new MCPError(ERROR_MESSAGES.NO_OBJECTS_FOUND));
-      }
-      const formattedText = formatHubSpotObjectsAsText(objects, objectType);
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "Latest objects retrieved successfully",
-        },
-        { type: "text" as const, text: formattedText },
-      ]);
-    });
-  },
-
-  get_contact: async ({ contactId }, extra) => {
-    return withAuth(extra, async (accessToken) => {
-      const result = await getContact(accessToken, contactId);
-      if (!result) {
-        return new Err(new MCPError(ERROR_MESSAGES.OBJECT_NOT_FOUND));
-      }
-      const formatted = formatHubSpotGetSuccess(result, "contacts");
-      return new Ok([
-        { type: "text" as const, text: formatted.message },
-        {
-          type: "text" as const,
-          text: JSON.stringify(formatted.result, null, 2),
-        },
-      ]);
-    });
-  },
-
-  get_company: async ({ companyId, extraProperties }, extra) => {
-    return withAuth(extra, async (accessToken) => {
-      const result = await getCompany(accessToken, companyId, extraProperties);
-      if (!result) {
-        return new Err(new MCPError(ERROR_MESSAGES.OBJECT_NOT_FOUND));
-      }
-      const formatted = formatHubSpotGetSuccess(result, "companies");
-      return new Ok([
-        { type: "text" as const, text: formatted.message },
-        {
-          type: "text" as const,
-          text: JSON.stringify(formatted.result, null, 2),
-        },
-      ]);
-    });
-  },
-
-  get_deal: async ({ dealId, extraProperties }, extra) => {
-    return withAuth(extra, async (accessToken) => {
-      const result = await getDeal(accessToken, dealId, extraProperties);
-      if (!result) {
-        return new Err(new MCPError(ERROR_MESSAGES.OBJECT_NOT_FOUND));
-      }
-      return new Ok([
-        { type: "text" as const, text: "Deal retrieved successfully." },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -487,6 +400,23 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  list_association_labels: async ({ fromObjectType, toObjectType }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await listAssociationLabels({
+        accessToken,
+        fromObjectType,
+        toObjectType,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Association labels retrieved successfully between ${fromObjectType} and ${toObjectType}`,
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
   get_current_user_id: async (_params, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getCurrentUserId(accessToken);
@@ -697,6 +627,24 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  create_ticket: async ({ properties, associations }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await createTicket({
+        accessToken,
+        properties,
+        associations,
+      });
+      const formatted = formatHubSpotCreateSuccess(result, "tickets");
+      return new Ok([
+        { type: "text" as const, text: formatted.message },
+        {
+          type: "text" as const,
+          text: JSON.stringify(formatted.result, null, 2),
+        },
+      ]);
+    });
+  },
+
   create_lead: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createLead({
@@ -705,7 +653,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
-        { type: "text" as const, text: "Lead (as Deal) created successfully." },
+        { type: "text" as const, text: "Lead created successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
@@ -771,8 +719,36 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  create_custom_object: async (
+    { objectType, properties, associations },
+    extra
+  ) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await createCustomObject({
+        accessToken,
+        objectType,
+        properties,
+        associations,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Custom object (${objectType}) created successfully.`,
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
   create_association: async (
-    { fromObjectType, fromObjectId, toObjectType, toObjectId },
+    {
+      fromObjectType,
+      fromObjectId,
+      toObjectType,
+      toObjectId,
+      associationCategory,
+      associationTypeId,
+    },
     extra
   ) => {
     return withAuth(extra, async (accessToken) => {
@@ -782,6 +758,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         fromObjectId,
         toObjectType,
         toObjectId,
+        associationCategory,
+        associationTypeId,
       });
       return new Ok([
         {
@@ -834,6 +812,71 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       });
       return new Ok([
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  update_custom_object: async ({ objectType, objectId, properties }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await updateCustomObject({
+        accessToken,
+        objectType,
+        objectId,
+        properties,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Custom object (${objectType}) updated successfully.`,
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  update_task: async ({ taskId, properties }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await updateTask({
+        accessToken,
+        taskId,
+        properties,
+      });
+      return new Ok([
+        { type: "text" as const, text: "Task updated successfully." },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  complete_task: async ({ taskId }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await updateTask({
+        accessToken,
+        taskId,
+        properties: { hs_task_status: "COMPLETED" },
+      });
+      return new Ok([
+        { type: "text" as const, text: "Task marked as completed." },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  delete_task: async ({ taskId }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      await deleteTask({
+        accessToken,
+        taskId,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Task ${taskId} deleted successfully.`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify({ success: true }, null, 2),
+        },
       ]);
     });
   },

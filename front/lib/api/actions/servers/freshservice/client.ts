@@ -7,7 +7,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
  * Normalize Freshservice domain for API calls.
  * Handles various input formats: full URLs, domains with protocol, or just subdomain.
  */
-export function normalizeApiDomain(freshserviceDomainRaw: string): string {
+function normalizeApiDomain(freshserviceDomainRaw: string): string {
   // Remove protocol, trailing slash, and trim whitespace
   const domain = freshserviceDomainRaw
     .trim()
@@ -30,7 +30,7 @@ export function normalizeApiDomain(freshserviceDomainRaw: string): string {
 /**
  * Freshservice API client for making authenticated requests.
  */
-export class FreshserviceClient {
+class FreshserviceClient {
   private accessToken: string;
   private freshserviceDomain: string;
 

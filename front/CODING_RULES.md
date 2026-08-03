@@ -130,14 +130,14 @@ class ConversationModel extends Model { }
 
 ### [BACK12] No breaking changes in API endpoints
 
-**Public API (`pages/api/v1/`):** Breaking changes are never allowed. External consumers depend on
-a stable contract. Schemas must be append-only: never remove fields. When adding a new field, it
-must be optional and accept `undefined` as a value even if the latest client code always sends a
-value.
+**Public API (`front-api/routes/v1/`):** Breaking changes are never allowed. External consumers
+depend on a stable contract. Schemas must be append-only: never remove fields. When adding a new
+field, it must be optional and accept `undefined` as a value even if the latest client code always
+sends a value.
 
-**Private API (`pages/api/`):** Breaking changes are acceptable only after enough time has passed
-to be confident that no old clients are still deployed. Until then, follow the same backward
-compatibility rules as the public API. When introducing a breaking change, first deploy the
+**Private API (the rest of `front-api/routes/`):** Breaking changes are acceptable only after enough
+time has passed to be confident that no old clients are still deployed. Until then, follow the same
+backward compatibility rules as the public API. When introducing a breaking change, first deploy the
 updated client code, wait for all old clients to cycle out, then clean up the old contract.
 
 Example:
@@ -231,8 +231,8 @@ to adding, removing, or modifying fields at any level of nesting.
 
 In particular, check and update the following files when modifying API schemas:
 
-- `pages/api/swagger_private_schemas.ts` for private API shared schemas
-- `pages/api/v1/w/[wId]/swagger_schemas.ts` for public API shared schemas
+- `front-api/routes/swagger_private_schemas.ts` for private API shared schemas
+- `front-api/routes/v1/w/[wId]/swagger_schemas.ts` for public API shared schemas
 - The `@swagger` annotation in the endpoint file itself
 
 Every endpoint must have either `@swagger` (with proper documentation) or `@ignoreswagger`
@@ -268,7 +268,7 @@ The Type interface is not to be used in the backend.
 
 ### [BACK16] Keep API handlers thin — business logic belongs in `lib/api/*`
 
-API handlers (under `pages/api/`) should be limited to:
+API handlers (under `front-api/routes/`) should be limited to:
 
 - Authentication and authorization checks
 - HTTP method dispatch
@@ -313,42 +313,6 @@ it into a `lib/api/*` function (creating one if needed). The handler should idea
 authorize → validate → call business function → respond. But if the extraction would force
 HTTP status codes or `APIErrorWithStatusCode` into the lib, push back and keep the logic in
 the handler instead.
-
-### [BACK17] Keep migrated Next and Hono handlers in sync during migration
-
-Hono routes mirror the Next path 1:1: `front/pages/api/<path>.ts` corresponds
-to `front-api/routes/<path>.ts`. Any Next handler that has been migrated to
-Hono must carry a migration marker at the top of the file:
-
-```
-// @migration-status: MIGRATED_TO_HONO
-```
-
-The Hono counterpart is inferred from the file path — no marker is needed on
-the Hono side.
-
-If you modify either side of a migrated pair, you must update the other side
-as well. DangerJS enforces this: if a PR modifies one side without the other,
-the check fails.
-
-If a change is intentionally one-sided (e.g. deleting the Next handler, or
-cleanup that only applies to one framework), add the `skip-migration-check`
-label to the PR.
-
-When migrating a new handler, add the marker to the Next file immediately,
-and place the Hono file at the mirrored path under `front-api/routes/`.
-
-A Next handler typically dispatches by method inside a single `switch
-(req.method)` block, with shared work above the switch running once per
-request. The Hono mirror registers one `app.<verb>(...)` per method, so
-naively translating would duplicate the pre-switch work across each method.
-When the shared work is more than a few lines, factor it out in the Hono
-file.
-
-Reviewer: If a PR touches a file that is part of a migrated pair (a Next file
-carrying `@migration-status: MIGRATED_TO_HONO` paired with a Hono file at the
-same path under `front-api/routes/`), verify the counterpart is also updated
-in the same PR.
 
 ### [BACK18] Business-layer code must not return HTTP error envelopes
 
@@ -456,9 +420,9 @@ the logic back into the handlers and accept the duplication.
 - WorkOS SDK expects all metadata values as strings. Convert numbers and booleans with `String(value)`
 - Schema files use `"string"` as the value type (e.g., `"role": "string"`)
 
-### [AUDIT6] Always include `getAuditLogContext(auth, req)` as the `context` parameter when a `NextApiRequest` is available
+### [AUDIT6] Always pass `getAuditLogContext(auth)` as the `context` parameter
 
-- This captures the client IP from `x-forwarded-for` headers
+- The client IP comes from the `Authenticator`: the auth middlewares (`workspace_auth`, `public_api_auth`, `sandbox_auth`) resolve it from the Hono context via `auth.setClientIp(...)`, preferring forwarded headers over the socket address
 - In Temporal activities or non-HTTP contexts, omit `context` (defaults to `auth.clientIp() ?? "internal"`) or pass `{ location: "internal" }` for direct emit
 
 ### [AUDIT7] Targets always include the workspace as the first target
@@ -491,12 +455,20 @@ that the `AuditAction` union and schema files stay consistent.
 
 ## MCP
 
-### [MCP1] Single file internal servers
+### [MCP1] Internal MCP server structure
 
-If possible, internal MCP servers should fit in one file. The name of the file must match the
-name of the server. If having only one file is not possible, they should be placed into a folder
-that contains a file `index.ts` from where the `createServer` function that creates the server
-will be default exported.
+Internal MCP servers must live in `lib/api/actions/servers/<server_name>/` and separate metadata,
+tool implementation, and server wiring:
+
+- `metadata.ts` exports the literal tool metadata array and the server metadata.
+- `tools/index.ts` defines the schema-inferred `ToolHandlers<typeof TOOLS_METADATA>` and combines
+  them with the metadata using `buildTools`.
+- `index.ts` creates the MCP server, registers its tools (binding the tool handlers to the server metadata), and default
+  exports the McpServer.
+
+Keep server creation local to the provider instead of routing every server through a generic
+`createServer` helper. Additional files such as `client.ts` or `helpers.ts` can be added
+when the integration needs them.
 
 ### [MCP2] Tool output typing
 
@@ -505,6 +477,27 @@ output must be defined in `lib/actions/mcp_internal_actions/output_schemas.ts`. 
 processing the tool output, a type guard that checks the output against the schema
 can be used to identify this output type. In the code of the internal server the type inferred
 from the `zod` schema should be used to type the tool output.
+
+### [MCP3] Tool descriptions start with a bare infinitive verb
+
+Internal MCP tool descriptions must start with a bare infinitive/base verb such as `List`, `Get`,
+`Search`, `Create`, `Update`, or `Retrieve`. Avoid noun phrases, articles, gerunds, and
+third-person verbs at the start of the description. Prefer verbs and wording that match how users
+search for the tool, because these descriptions are part of the BM25 tool-search corpus.
+
+Examples:
+
+```
+// BAD
+Lists available Jira projects.
+The tool retrieves a Zendesk ticket.
+Searching Slack messages by keyword.
+
+// GOOD
+List available Jira projects.
+Retrieve a Zendesk ticket.
+Search Slack messages by keyword.
+```
 
 ## TESTING
 

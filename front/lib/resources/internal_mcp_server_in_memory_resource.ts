@@ -31,8 +31,8 @@ import { DustError } from "@app/lib/error";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
+import { destroyMCPServerViewDependencies } from "@app/lib/resources/mcp_server_view_helper";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -41,6 +41,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 import { Op } from "sequelize";
 
 export class InternalMCPServerInMemoryResource {
@@ -89,6 +90,9 @@ export class InternalMCPServerInMemoryResource {
     const uniqueNames = [...new Set(names)];
     const featureFlags = await getFeatureFlags(auth);
     const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
+    const workspaceAnalyticsEnabled = isWorkspaceAnalyticsEnabled(
+      auth.getNonNullableWorkspace()
+    );
     const plan = auth.getNonNullablePlan();
 
     return new Set(
@@ -97,6 +101,7 @@ export class InternalMCPServerInMemoryResource {
           !INTERNAL_MCP_SERVERS[name].isRestricted?.({
             featureFlags,
             isDeepDiveDisabled,
+            isWorkspaceAnalyticsEnabled: workspaceAnalyticsEnabled,
             plan,
           })
       )
@@ -195,6 +200,9 @@ export class InternalMCPServerInMemoryResource {
       isEnabled = !mcpServer.isRestricted({
         featureFlags,
         isDeepDiveDisabled,
+        isWorkspaceAnalyticsEnabled: isWorkspaceAnalyticsEnabled(
+          auth.getNonNullableWorkspace()
+        ),
         plan: auth.getNonNullablePlan(),
       });
     }
@@ -226,6 +234,7 @@ export class InternalMCPServerInMemoryResource {
       editedByUserId: auth.user()?.id,
       oAuthUseCase: useCase ?? null,
       oauthScope: oauthScope ?? null,
+      isRestrictedToSkills: false,
       ...(viewName ? { name: viewName } : {}),
     });
 
@@ -290,20 +299,15 @@ export class InternalMCPServerInMemoryResource {
     return new Ok(1);
   }
 
-  static async fetchById(
-    auth: Authenticator,
-    id: string,
-    systemSpace: SpaceResource
-  ) {
-    const results = await this.fetchByIds(auth, [id], systemSpace);
+  static async fetchById(auth: Authenticator, id: string) {
+    const results = await this.fetchByIds(auth, [id]);
 
     return results[0] ?? null;
   }
 
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[],
-    systemSpace: SpaceResource
+    ids: string[]
   ): Promise<InternalMCPServerInMemoryResource[]> {
     if (ids.length === 0) {
       return [];
@@ -320,15 +324,29 @@ export class InternalMCPServerInMemoryResource {
       (id) => getAvailabilityOfInternalMCPServerById(id) === "manual"
     );
 
-    const servers = await MCPServerViewModel.findAll({
-      attributes: ["internalMCPServerId"],
-      where: {
-        serverType: "internal",
-        internalMCPServerId: { [Op.in]: manualIds },
-        workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: systemSpace.id,
-      },
-    });
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const servers =
+      manualIds.length > 0
+        ? await MCPServerViewModel.findAll({
+            attributes: ["internalMCPServerId"],
+            include: [
+              {
+                model: SpaceResource.model,
+                attributes: [],
+                required: true,
+                where: {
+                  kind: "system",
+                  workspaceId,
+                },
+              },
+            ],
+            where: {
+              serverType: "internal",
+              internalMCPServerId: { [Op.in]: manualIds },
+              workspaceId,
+            },
+          })
+        : [];
     validIds.push(...removeNulls(servers.map((s) => s.internalMCPServerId)));
 
     const availableIds = [...new Set(validIds)];

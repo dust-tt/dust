@@ -22,17 +22,9 @@ const KNOWLEDGE_CHIP_CLASS =
 // visually consistent in the suggestion diff view.
 const DOCUMENT_ICON = "📄";
 
-declare module "@tiptap/core" {
-  interface Commands<ReturnType> {
-    knowledgeNode: {
-      insertKnowledgeNode: () => ReturnType;
-    };
-  }
-}
-
 export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
 
-export interface KnowledgeNodeOptions {
+interface KnowledgeNodeOptions {
   readOnly: boolean;
 }
 
@@ -46,6 +38,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
   inline: true,
   atom: false, // Make it editable.
   selectable: false, // Allow text cursor inside.
+  draggable: true,
 
   markdownTokenizer: {
     name: "knowledgeNode",
@@ -220,21 +213,6 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
       attrs: {
         selectedItems: [selectedItem],
       },
-    };
-  },
-
-  addCommands() {
-    return {
-      insertKnowledgeNode:
-        () =>
-        ({ commands }) => {
-          return commands.insertContent({
-            type: this.name,
-            attrs: {
-              selectedItems: [],
-            },
-          });
-        },
     };
   },
 

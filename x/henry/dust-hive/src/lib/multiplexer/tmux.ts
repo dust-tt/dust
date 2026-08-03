@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { logger } from "../logger";
 import { getInstallInstructions as getPlatformInstallInstructions } from "../platform";
-import { getActiveServices } from "../services";
+import { ALL_SERVICES } from "../services";
 import { shellQuote } from "../shell";
 import type {
   InstallCheckResult,
@@ -12,7 +12,7 @@ import type {
   MultiplexerAdapter,
   MultiplexerType,
 } from "./types";
-import { SESSION_PREFIX, getTabName } from "./types";
+import { getTabName, SESSION_PREFIX } from "./types";
 
 /**
  * Base directory for tmux layout scripts
@@ -193,6 +193,10 @@ export class TmuxAdapter implements MultiplexerAdapter {
       "# Create the session with the main window",
       `tmux new-session -d -s "$SESSION_NAME" -n "$MAIN_WINDOW" -c "$WORKTREE_PATH"`,
       "",
+      "# Let foreground apps update the outer terminal tab title through tmux",
+      `tmux set-option -t "$SESSION_NAME" set-titles on`,
+      `tmux set-option -t "$SESSION_NAME" set-titles-string "#{pane_title}"`,
+      "",
       "# Run the shell command in the main window (use window name, not index)",
       `tmux send-keys -t "$SESSION_NAME:$MAIN_WINDOW" ${shellQuote(shellCommand)} Enter`,
       "",
@@ -219,7 +223,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
       );
     } else {
       // Individual service windows
-      for (const service of getActiveServices()) {
+      for (const service of ALL_SERVICES) {
         const tabName = getTabName(service);
         lines.push(
           `# Create ${service} logs window`,
@@ -256,6 +260,10 @@ export class TmuxAdapter implements MultiplexerAdapter {
       "",
       "# Create the session with the main window",
       `tmux new-session -d -s "$SESSION_NAME" -n "main" -c "$REPO_ROOT"`,
+      "",
+      "# Let foreground apps update the outer terminal tab title through tmux",
+      `tmux set-option -t "$SESSION_NAME" set-titles on`,
+      `tmux set-option -t "$SESSION_NAME" set-titles-string "#{pane_title}"`,
       "",
       "# Start the user's shell in the main window (use window name, not index)",
       `tmux send-keys -t "$SESSION_NAME:main" ${shellQuote(`exec ${shellPath}`)} Enter`,

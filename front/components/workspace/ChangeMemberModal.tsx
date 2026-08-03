@@ -1,15 +1,18 @@
-import { ROLES_DATA } from "@app/components/members/Roles";
+import {
+  getRoleDescription,
+  ROLE_PROVISIONING_GROUPS_LABEL,
+} from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
-import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
   UserTypeWithWorkspace,
 } from "@app/types/user";
-import { isActiveRoleType } from "@app/types/user";
+import { isActiveRoleType, isAdmin } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -32,6 +35,22 @@ import {
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
+function getMemberRoleMessage({
+  hasActiveRoleProvisioningGroups,
+  role,
+}: {
+  hasActiveRoleProvisioningGroups: boolean;
+  role: ActiveRoleType;
+}): string {
+  if (hasActiveRoleProvisioningGroups) {
+    return `The roles are managed by your identity provider through group provisioning (${ROLE_PROVISIONING_GROUPS_LABEL}). Role changes must be made in your identity provider.`;
+  }
+
+  return `The role defines the rights of a member of the workspace. ${getRoleDescription(
+    role
+  )}`;
+}
+
 export function ChangeMemberModal({
   onClose,
   member,
@@ -40,7 +59,7 @@ export function ChangeMemberModal({
 }: {
   onClose: () => void;
   member: UserTypeWithWorkspace | null;
-  mutateMembers: KeyedMutator<SearchMembersResponseBody>;
+  mutateMembers: KeyedMutator<SearchMembersAdminResponseBody>;
   workspace: LightWorkspaceType;
 }) {
   const { role = null } = member?.workspace ?? {};
@@ -58,9 +77,21 @@ export function ChangeMemberModal({
   const hasActiveRoleProvisioningGroups = () => {
     return (
       roleProvisioningStatus.hasAdminGroup ||
+      roleProvisioningStatus.hasManagerGroup ||
       roleProvisioningStatus.hasBuilderGroup
     );
   };
+
+  const roleMessage =
+    role && isActiveRoleType(role)
+      ? getMemberRoleMessage({
+          hasActiveRoleProvisioningGroups: hasActiveRoleProvisioningGroups(),
+          role,
+        })
+      : "";
+
+  // Revoking an admin requires to be an admin
+  const canRevokeMember = role !== "admin" || isAdmin(workspace);
 
   const handleSave = async () => {
     if (!selectedRole) {
@@ -94,7 +125,7 @@ export function ChangeMemberModal({
               <SheetTitle>{member.fullName || "Unreachable"}</SheetTitle>
             </SheetHeader>
             <SheetContainer>
-              <div className="flex flex-col gap-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="flex flex-col gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
                   <Avatar
                     size="lg"
@@ -103,7 +134,7 @@ export function ChangeMemberModal({
                     isRounded
                   />
                   <div className="flex grow flex-col">
-                    <div className="heading-base text-foreground dark:text-foreground-night">
+                    <div className="heading-base text-foreground">
                       {member.fullName}
                     </div>
                     <div className="font-normal">{member.email}</div>
@@ -112,9 +143,7 @@ export function ChangeMemberModal({
 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="heading-base text-foreground dark:text-foreground-night">
-                      Role:
-                    </div>
+                    <div className="heading-base text-foreground">Role:</div>
                     <RoleDropDown
                       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       selectedRole={selectedRole || role}
@@ -122,85 +151,78 @@ export function ChangeMemberModal({
                       disabled={hasActiveRoleProvisioningGroups()}
                     />
                   </div>
-                  <Page.P>
-                    {hasActiveRoleProvisioningGroups() ? (
-                      "The roles are managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
-                    ) : (
-                      <>
-                        The role defines the rights of a member of the
-                        workspace. {ROLES_DATA[role]["description"]}
-                      </>
-                    )}
-                  </Page.P>
+                  <Page.P>{roleMessage}</Page.P>
                 </div>
 
-                <div className="flex flex-none flex-col gap-2">
-                  <div className="flex-none">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="warning"
-                          label="Revoke member access"
-                          size="sm"
-                          disabled={member.origin === "provisioned"}
-                          tooltip={
-                            member.origin === "provisioned"
-                              ? "This user is managed by your identity provider."
-                              : undefined
-                          }
-                        />
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Confirm deletion</DialogTitle>
-                        </DialogHeader>
-                        {isSaving ? (
-                          <div className="flex justify-center py-8">
-                            <Spinner variant="dark" size="md" />
-                          </div>
-                        ) : (
-                          <>
-                            <DialogContainer>
-                              <div>
-                                Revoke access for user{" "}
-                                <span className="font-bold">
-                                  {member.fullName}
-                                </span>
-                                ?
-                              </div>
-                            </DialogContainer>
-                            <DialogFooter
-                              leftButtonProps={{
-                                label: "Cancel",
-                                variant: "outline",
-                              }}
-                              rightButtonProps={{
-                                label: "Yes, revoke",
-                                variant: "warning",
-                                onClick: async () => {
-                                  await handleMembersRoleChange({
-                                    members: [member],
-                                    role: "none",
-                                    sendNotification,
-                                  });
-                                  await mutateMembers();
-                                  onClose();
-                                },
-                              }}
-                            />
-                          </>
-                        )}
-                      </DialogContent>
-                    </Dialog>
+                {canRevokeMember && (
+                  <div className="flex flex-none flex-col gap-2">
+                    <div className="flex-none">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="warning"
+                            label="Revoke member access"
+                            size="sm"
+                            disabled={member.origin === "provisioned"}
+                            tooltip={
+                              member.origin === "provisioned"
+                                ? "This user is managed by your identity provider."
+                                : undefined
+                            }
+                          />
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Confirm deletion</DialogTitle>
+                          </DialogHeader>
+                          {isSaving ? (
+                            <div className="flex justify-center py-8">
+                              <Spinner variant="dark" size="md" />
+                            </div>
+                          ) : (
+                            <>
+                              <DialogContainer>
+                                <div>
+                                  Revoke access for user{" "}
+                                  <span className="font-bold">
+                                    {member.fullName}
+                                  </span>
+                                  ?
+                                </div>
+                              </DialogContainer>
+                              <DialogFooter
+                                leftButtonProps={{
+                                  label: "Cancel",
+                                  variant: "outline",
+                                }}
+                                rightButtonProps={{
+                                  label: "Yes, revoke",
+                                  variant: "warning",
+                                  onClick: async () => {
+                                    await handleMembersRoleChange({
+                                      members: [member],
+                                      role: "none",
+                                      sendNotification,
+                                    });
+                                    await mutateMembers();
+                                    onClose();
+                                  },
+                                }}
+                              />
+                            </>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    {member.origin !== "provisioned" && (
+                      <Page.P>
+                        Deleting a member will remove them from the workspace.
+                        They will be able to rejoin if they have an invitation
+                        link.
+                      </Page.P>
+                    )}
                   </div>
-                  {member.origin !== "provisioned" && (
-                    <Page.P>
-                      Deleting a member will remove them from the workspace.
-                      They will be able to rejoin if they have an invitation
-                      link.
-                    </Page.P>
-                  )}
-                </div>
+                )}
               </div>
             </SheetContainer>
             <SheetFooter

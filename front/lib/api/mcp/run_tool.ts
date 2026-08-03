@@ -1,6 +1,5 @@
 import type {
   MCPErrorEvent,
-  MCPParamsEvent,
   MCPSuccessEvent,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -19,52 +18,34 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { ToolContext, ToolOutputItemType } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-} from "@app/types/assistant/conversation";
+import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { heartbeat } from "@temporalio/activity";
-
-const TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS = 5 * 1000;
-const TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS =
-  TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS -
-  TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS;
+import assert from "assert";
 
 /**
- * Runs a tool with streaming for the given MCP action configuration.
+ * Runs a tool with streaming for the given tool context.
  *
  * All errors within this function must be handled through `handleMCPActionError`
  * to ensure consistent error reporting and proper conversation flow control.
- * TODO(DURABLE_AGENTS 2025-08-05): This function is going to be used only to execute the tool.
  */
 export async function* runToolWithStreaming(
   auth: Authenticator,
   {
-    action,
-    agentConfiguration,
-    agentMessage,
-    conversation,
+    toolContext,
   }: {
-    action: AgentMCPActionResource;
-    agentConfiguration: AgentConfigurationType;
-    agentMessage: AgentMessageType;
-    conversation: ConversationType;
+    toolContext: ToolContext;
   },
   options?: { signal?: AbortSignal }
 ): AsyncGenerator<
   | MCPApproveExecutionEvent
   | MCPErrorEvent
-  | MCPParamsEvent
   | MCPSuccessEvent
   | ToolNotificationEvent
   | ToolFileAuthRequiredEvent
@@ -74,49 +55,55 @@ export async function* runToolWithStreaming(
   | ToolPausedEvent,
   void
 > {
-  const { toolConfiguration, status, augmentedInputs: inputs } = action;
+  const { runContext } = toolContext;
+  assert(runContext, "runToolWithStreaming requires a tool run context.");
+
+  const { action, toolConfiguration } = runContext;
+  const { status } = action;
 
   const signal = options?.signal;
 
+  // Inputs as issued in the run context.
+  const inputs = isAgentLoopRunContext(runContext)
+    ? runContext.action.augmentedInputs
+    : runContext.action.inputs;
+
   const localLogger = logger.child({
     actionConfigurationId: toolConfiguration.sId,
-    conversationId: conversation.sId,
-    messageId: agentMessage.sId,
-    workspaceId: conversation.owner.sId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    ...(isAgentLoopRunContext(runContext)
+      ? {
+          conversationId: runContext.conversation.sId,
+          messageId: runContext.agentMessage.sId,
+        }
+      : {
+          sandboxFunctionId: runContext.invocation.sandboxFunction.sId,
+          invocationId: runContext.invocation.sId,
+        }),
   });
 
-  const agentLoopRunContext: AgentLoopRunContextType = {
-    agentConfiguration,
-    agentMessage,
-    currentAction: action.toJSON(),
-    conversation,
-    stepContext: action.stepContext,
-    toolConfiguration,
-  };
-
-  await action.updateStatus("running");
+  // Sandbox function actions and auto-allowed agent-loop actions are created in running
+  // status; only approved or resumed actions still carry a pre-run status to transition.
+  if (isAgentLoopRunContext(runContext) && status !== "running") {
+    await runContext.action.updateStatus("running");
+  }
   const startDate = performance.now();
 
-  const intermediateOutputItems: AgentMCPActionOutputItemModel[] = [];
+  const intermediateOutputItems: ToolOutputItemType[] = [];
 
-  const toolCallResult = yield* tryCallMCPTool(
-    auth,
-    inputs,
-    agentLoopRunContext,
-    {
-      progressToken: action.id,
-      makeToolNotificationEvent: async (notification) => {
-        const { event, storedItems } = await processToolNotification(
-          auth,
-          notification,
-          { action, agentConfiguration, conversation, agentMessage }
-        );
-        intermediateOutputItems.push(...storedItems);
-        return event;
-      },
-      signal,
-    }
-  );
+  const toolCallResult = yield* tryCallMCPTool(auth, inputs, toolContext, {
+    progressToken: action.id,
+    makeToolNotificationEvent: async (notification) => {
+      const { event, outputItems } = await processToolNotification(
+        auth,
+        notification,
+        { toolContext }
+      );
+      intermediateOutputItems.push(...outputItems);
+      return event;
+    },
+    signal,
+  });
 
   // Err here means an exception ahead of calling the tool, like a connection error, an input
   // validation error, or any other kind of error from MCP, but not a tool error, which are returned
@@ -125,8 +112,6 @@ export async function* runToolWithStreaming(
     const endDate = performance.now();
     yield await handleMCPActionError(auth, {
       action,
-      agentConfiguration,
-      agentMessage,
       status,
       errorContent: toolCallResult.content,
       executionDurationMs: endDate - startDate,
@@ -139,11 +124,9 @@ export async function* runToolWithStreaming(
   const { outputItems, generatedFiles } = await withPeriodicHeartbeat(
     () =>
       processToolResults(auth, {
-        action,
-        conversation,
         localLogger,
         toolCallResultContent: toolCallResult.content,
-        toolConfiguration,
+        toolContext,
       }),
     {
       intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
@@ -158,10 +141,7 @@ export async function* runToolWithStreaming(
   // This could be an authentication, validation, or unconditional exit from the action.
   const agentPauseEvents = await getExitOrPauseEvents(auth, {
     outputItems,
-    action,
-    agentConfiguration,
-    agentMessage,
-    conversation,
+    toolContext,
   });
 
   if (agentPauseEvents.length > 0) {
@@ -177,16 +157,9 @@ export async function* runToolWithStreaming(
   yield {
     type: "tool_success",
     created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: removeNulls(
-        [...intermediateOutputItems, ...outputItems].map(
-          hideFileFromActionOutput
-        )
-      ),
-      generatedFiles,
-    },
+    output: removeNulls(
+      [...intermediateOutputItems, ...outputItems].map(hideFileFromActionOutput)
+    ),
+    generatedFiles,
   };
 }

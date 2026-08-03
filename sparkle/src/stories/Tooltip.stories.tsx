@@ -4,7 +4,7 @@ import React from "react";
 import {
   Icon,
   KeyboardShortcut,
-  RobotIcon,
+  Robot,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -13,30 +13,38 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/Tooltip",
+  title: "Overlays/Tooltip",
   component: TooltipProvider,
+  parameters: {
+    docs: {
+      description: {
+        component: `Displays a brief, contextual label when the user hovers or focuses a trigger — ideal for clarifying icon-only controls or surfacing a keyboard shortcut. Use the simple **Tooltip** (a **trigger** plus a **label**, with an optional **shortcut**) for most cases, or compose **TooltipProvider** / **TooltipRoot** / **TooltipTrigger** / **TooltipContent** for full control over placement and timing.
+
+**When to use**
+- To name or explain an icon-only button or a truncated value.
+- To reveal a keyboard shortcut for an action.
+
+**Guidelines**
+- Never place essential information or interactive elements only inside a tooltip — it is not reachable on touch and disappears on blur.
+- Keep labels to a few words.
+- Always provide a tooltip for icon-only buttons.`,
+      },
+    },
+  },
 } satisfies Meta<typeof TooltipProvider>;
 
 export default meta;
 
 export const TooltipExample = () => (
   <Tooltip
-    trigger={
-      <div className="s-text-foreground dark:s-text-foreground-night">
-        Hover
-      </div>
-    }
+    trigger={<div className="text-foreground">Hover</div>}
     label={<p>Add to library</p>}
   />
 );
 
 export const TooltipWithShortcut = () => (
   <Tooltip
-    trigger={
-      <div className="s-text-foreground dark:s-text-foreground-night">
-        Hover for shortcut
-      </div>
-    }
+    trigger={<div className="text-foreground">Hover for shortcut</div>}
     label="Add to library"
     shortcut="Cmd+K"
   />
@@ -50,7 +58,7 @@ export const TooltipWithManual = () => (
       }}
     >
       <TooltipTrigger>
-        <Icon visual={RobotIcon} size="xs" />
+        <Icon visual={Robot} size="xs" />
       </TooltipTrigger>
       <TooltipContent side="right" sideOffset={50}>
         This is a tooltip with a very long label that should wrap onto multiple
@@ -66,12 +74,10 @@ export const TooltipWithKeyboardShortcutComponent = () => (
   <TooltipProvider>
     <TooltipRoot>
       <TooltipTrigger>
-        <div className="s-text-foreground dark:s-text-foreground-night">
-          Hover for inline shortcut
-        </div>
+        <div className="text-foreground">Hover for inline shortcut</div>
       </TooltipTrigger>
       <TooltipContent>
-        <div className="s-inline-flex s-items-center s-gap-2">
+        <div className="inline-flex items-center gap-2">
           <span>Add to library</span>
           <KeyboardShortcut shortcut="Cmd+K" />
         </div>

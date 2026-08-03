@@ -11,6 +11,10 @@ import {
   isMauContract,
   type SeatAwuCreditsPeriod,
 } from "@app/lib/metronome/seat_types";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -35,6 +39,17 @@ export interface SeatTypeInfo {
   // `priceCents` is the amount billed per `billingFrequency` (per month for
   // monthly, per year for annual).
   billingFrequency: SeatBillingFrequency;
+  // Billing floor: the count billed to Metronome even when actual headcount
+  // is lower. Seats within this floor are "free" to assign (already paid).
+  minSeats: number;
+  // Hard cap on assignments; null means no cap.
+  maxSeats: number | null;
+  // Number of workspace members currently assigned to this seat type.
+  assignedCount: number;
+  // Current billing period of this seat type's Metronome subscription (ISO
+  // dates). Used to prorate annual seat changes for the remainder of the
+  // term; null when the subscription has no active period right now.
+  currentBillingPeriod: { startsAt: string; endsAt: string } | null;
 }
 
 // Dynamic seat-type → info map. The list of seat types is driven by the
@@ -44,7 +59,7 @@ export type SeatPlanResponseBody = Partial<
   Record<MembershipSeatType, SeatTypeInfo>
 >;
 
-export function getSeatBillingFrequency(
+function getSeatBillingFrequency(
   billingFrequency: string
 ): SeatBillingFrequency {
   switch (billingFrequency) {
@@ -82,6 +97,16 @@ export async function getSeatPlan(
     return new Err(new SeatPlanError("not_configured"));
   }
 
+  // Non-CP plans (legacy shadow contracts) don't use per-seat billing in the
+  // invite flow — return empty so the UI skips the seat selector and invites
+  // always use "none", consistent with SCIM/auto-join.
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  if (!subscription || !isCreditPricedPlanPrefix(subscription.getPlan().code)) {
+    return new Ok({});
+  }
+
   const creditTypeResult = await getCreditTypeFromContract(contract);
   if (creditTypeResult.isErr()) {
     logger.warn(
@@ -105,7 +130,11 @@ export async function getSeatPlan(
 
   // Build `productId → seatType` from contract subscriptions so we can resolve
   // rate-schedule entries without comparing product names or IDs.
-  const productSeatTypes = await getProductSeatTypes();
+  const [productSeatTypes, seatLimits, seatCounts] = await Promise.all([
+    getProductSeatTypes(),
+    WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
+    MembershipResource.getActiveSeatTypeCountsForWorkspace({ workspace }),
+  ]);
   const seatTypesByProductId = getSeatTypesByProductIdFromContract(
     contract,
     productSeatTypes
@@ -121,6 +150,10 @@ export async function getSeatPlan(
     MembershipSeatType,
     SeatBillingFrequency
   >();
+  const currentBillingPeriodBySeatType = new Map<
+    MembershipSeatType,
+    { startsAt: string; endsAt: string } | null
+  >();
   const seatSubscriptions = getSeatSubscriptionsFromContract(
     contract,
     productSeatTypes
@@ -129,6 +162,16 @@ export async function getSeatPlan(
     billingFrequencyBySeatType.set(
       seatType,
       getSeatBillingFrequency(sub.subscription_rate.billing_frequency)
+    );
+    const currentPeriod = sub.billing_periods.current;
+    currentBillingPeriodBySeatType.set(
+      seatType,
+      currentPeriod
+        ? {
+            startsAt: currentPeriod.starting_at,
+            endsAt: currentPeriod.ending_before,
+          }
+        : null
     );
   }
 
@@ -191,6 +234,7 @@ export async function getSeatPlan(
       seatType,
       productSeatTypes
     );
+    const limit = seatLimits.get(seatType);
     response[seatType] = {
       name,
       awuCredits: awuAllocation.credits,
@@ -198,6 +242,11 @@ export async function getSeatPlan(
       priceCents,
       currency,
       billingFrequency: billingFrequencyBySeatType.get(seatType) ?? "monthly",
+      minSeats: limit?.minSeats ?? 0,
+      maxSeats: limit?.maxSeats ?? null,
+      assignedCount: seatCounts[seatType] ?? 0,
+      currentBillingPeriod:
+        currentBillingPeriodBySeatType.get(seatType) ?? null,
     };
   }
   return new Ok(response);

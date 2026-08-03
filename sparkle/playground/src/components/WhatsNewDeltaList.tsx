@@ -60,17 +60,17 @@ export function WhatsNewDeltaList({
     sectionItemKeys.every((itemKey) => checkedSummaryItems[itemKey]);
 
   return (
-    <div className="s-flex s-flex-col s-gap-2">
-      <div className="s-group/summary-title s-flex s-items-center s-gap-3 s-pt-2">
-        <div className="s-flex s-items-center s-h-4 s-w-4">
+    <div className="flex flex-col gap-2">
+      <div className="group/summary-title flex items-center gap-3 pt-2">
+        <div className="flex items-center h-4 w-4">
           <Icon
             visual={icon}
             size="xs"
-            className={cn("group-hover/summary-title:s-hidden", iconClassName)}
+            className={cn("group-hover/summary-title:hidden", iconClassName)}
           />
           <Checkbox
             size="xs"
-            className="s-hidden group-hover/summary-title:s-inline-block"
+            className="hidden group-hover/summary-title:inline-block"
             checked={areAllSectionItemsChecked}
             onCheckedChange={(checked) => {
               if (checked === true) {
@@ -79,9 +79,7 @@ export function WhatsNewDeltaList({
             }}
           />
         </div>
-        <h4 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-          {label}
-        </h4>
+        <h4 className="heading-lg text-foreground">{label}</h4>
       </div>
 
       {items.map((item) => {
@@ -101,31 +99,29 @@ export function WhatsNewDeltaList({
           <div
             key={itemKey}
             className={cn(
-              "s-flex s-items-start s-gap-3 s-overflow-hidden",
-              "s-transition-all s-duration-200",
+              "flex items-start gap-3 overflow-hidden",
+              "transition-all duration-200",
               isExiting
-                ? "s-max-h-0 s-opacity-0"
+                ? "max-h-0 opacity-0"
                 : isAdded && !hasEntered
-                  ? "s-max-h-0 s-opacity-0"
-                  : "s-max-h-32 s-opacity-100"
+                  ? "max-h-0 opacity-0"
+                  : "max-h-32 opacity-100"
             )}
           >
             <Checkbox
               size="xs"
-              className="s-mt-1"
+              className="mt-1"
               isMutedAfterCheck
               checked={isChecked}
               onCheckedChange={(checked) => {
                 onCheckItem(itemKey, checked === true);
               }}
             />
-            <div className="s-flex s-flex-col">
+            <div className="flex flex-col">
               <div
                 className={cn(
-                  "s-text-base s-min-h-6",
-                  isChecked
-                    ? "s-text-faint s-line-through dark:s-text-faint-night"
-                    : "s-text-foreground dark:s-text-foreground-night"
+                  "text-base min-h-6",
+                  isChecked ? "text-faint line-through" : "text-foreground"
                 )}
               >
                 {shouldTypeChecklistItem ? (
@@ -139,22 +135,18 @@ export function WhatsNewDeltaList({
                 )}
               </div>
               {isChecked && autoCheckRationale ? (
-                <div className="s-text-xs s-text-faint dark:s-text-faint-night">
-                  {autoCheckRationale}
-                </div>
+                <div className="text-xs text-faint">{autoCheckRationale}</div>
               ) : null}
               {relatedConversationIds.length === 0 ? null : (
-                <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="text-xs text-muted-foreground">
                   <span>In </span>
                   {relatedConversationIds.map((conversationId, index) => (
                     <span key={conversationId}>
                       <button
                         type="button"
                         className={cn(
-                          "s-underline hover:s-no-underline",
-                          isChecked
-                            ? "s-text-faint dark:s-text-faint-night"
-                            : "s-text-muted-foreground dark:s-text-muted-foreground-night"
+                          "underline hover:no-underline",
+                          isChecked ? "text-faint" : "text-muted-foreground"
                         )}
                         onClick={(event) => {
                           event.stopPropagation();

@@ -1,19 +1,24 @@
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  SkillAvailability,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
   SkillStatus,
 } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
-import { DataTypes } from "sequelize";
 
 const SKILL_MODEL_ATTRIBUTES = {
   createdAt: {
@@ -31,23 +36,23 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
   },
   name: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   agentFacingDescription: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   userFacingDescription: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   instructions: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   instructionsHtml: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   requestedSpaceIds: {
@@ -55,11 +60,7 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
   },
   icon: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  extendedSkillId: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   source: {
@@ -70,10 +71,10 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.JSONB,
     allowNull: true,
   },
-  isDefault: {
-    type: DataTypes.BOOLEAN,
+  availability: {
+    type: DataTypes.STRING,
     allowNull: false,
-    defaultValue: false,
+    defaultValue: DEFAULT_SKILL_AVAILABILITY,
   },
 } as const satisfies ModelAttributes;
 
@@ -109,16 +110,18 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare icon: string | null;
 
   declare editedBy: ForeignKey<UserModel["id"]> | null;
-  // Not a foreign key, only global skills can be extended.
-  declare extendedSkillId: string | null;
 
   declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
-  declare isDefault: boolean;
+  declare availability: CreationOptional<SkillAvailability>;
+  declare favoriteCount: CreationOptional<number>;
 
   declare reinforcement: CreationOptional<SkillReinforcementMode>;
   declare lastReinforcementAnalysisAt: CreationOptional<Date | null>;
   declare selfImprovementCostsCapMicroUsd: CreationOptional<number | null>;
+  // Same cap expressed in AWU credits, used for workspaces billed by
+  // Metronome. Null means "use the workspace default".
+  declare selfImprovementCostsCapAwuCredits: CreationOptional<number | null>;
   // Lock toggling of self-improvement to admin only.
   declare selfImprovementLock: CreationOptional<boolean>;
 
@@ -128,6 +131,11 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 SkillConfigurationModel.init(
   {
     ...SKILL_MODEL_ATTRIBUTES,
+    favoriteCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
     reinforcement: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -139,6 +147,11 @@ SkillConfigurationModel.init(
       defaultValue: null,
     },
     selfImprovementCostsCapMicroUsd: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    selfImprovementCostsCapAwuCredits: {
       type: DataTypes.BIGINT,
       allowNull: true,
       defaultValue: null,
@@ -158,7 +171,7 @@ SkillConfigurationModel.init(
         concurrently: true,
       },
       {
-        fields: ["workspaceId", "status", "isDefault"],
+        fields: ["workspaceId", "status", "availability"],
         concurrently: true,
       },
       {
@@ -281,6 +294,10 @@ SkillMCPServerConfigurationModel.init(
         fields: ["workspaceId", "skillConfigurationId"],
         name: "idx_skill_mcp_server_config_workspace_skill_config",
       },
+      {
+        fields: ["mcpServerViewId"],
+        concurrently: true,
+      },
     ],
   }
 );
@@ -345,7 +362,7 @@ SkillFileAttachmentModel.init(
       },
     },
     fileName: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
   },

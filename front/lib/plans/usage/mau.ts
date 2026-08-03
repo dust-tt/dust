@@ -11,7 +11,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { QueryTypes } from "sequelize";
 import type Stripe from "stripe";
 
-export async function countActiveUsersForPeriodInWorkspace({
+async function countActiveUsersForPeriodInWorkspace({
   messagesPerMonthForMau,
   since,
   to,

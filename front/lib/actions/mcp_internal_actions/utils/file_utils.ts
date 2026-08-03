@@ -1,40 +1,26 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { resolveFile } from "@app/lib/api/actions/servers/files/tools/utils";
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
   isFileAttachmentType,
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import {
-  DustFileSystem,
-  SCOPED_PREFIX_CONVERSATION,
-  SCOPED_PREFIX_POD,
-} from "@app/lib/api/file_system";
-import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
+  isCanonicalScopedPath,
+  parseScopedFilePath,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { PassThrough } from "stream";
-
-/**
- * Returns true for canonical scoped paths produced by the new DustFileSystem
- * (e.g. `conversation-{id}/file.txt`, `pod-{id}/data.csv`).
- * These are distinct from legacy paths (`conversation/file.txt`, `pod/file.txt`)
- * and from raw file IDs (`fil_xxx`).
- */
-function isCanonicalScopedPath(scopedPath: string): boolean {
-  return (
-    scopedPath.startsWith(SCOPED_PREFIX_CONVERSATION) ||
-    scopedPath.startsWith(SCOPED_PREFIX_POD)
-  );
-}
 
 export function sanitizeFilename(filename: string): string {
   return filename
@@ -45,7 +31,7 @@ export function sanitizeFilename(filename: string): string {
     .substring(0, 255);
 }
 
-export type ConversationFileRef = {
+type ConversationFileRef = {
   contentType: string;
   sizeBytes: number;
   fileName: string;
@@ -63,10 +49,10 @@ export type ConversationFileRef = {
 export async function resolveConversationFileRef(
   auth: Authenticator,
   fileId: string,
-  agentLoopContext: AgentLoopContextType | undefined
+  runContext: AgentLoopRunContext
 ): Promise<Result<ConversationFileRef, string>> {
   // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) produced by the new
-  // DustFileSystem layer. Resolved directly — no conversation context needed.
+  // DustFileSystem layer are resolved directly.
   if (isCanonicalScopedPath(fileId)) {
     const fsResult = await DustFileSystem.fromScopedPath(auth, fileId);
     if (fsResult.isErr()) {
@@ -114,13 +100,9 @@ export async function resolveConversationFileRef(
     });
   }
 
-  if (!agentLoopContext?.runContext) {
-    return new Err("No conversation context available");
-  }
-
   const parsed = parseScopedFilePath(fileId);
   if (parsed) {
-    const conversation = agentLoopContext.runContext.conversation;
+    const conversation = runContext.conversation;
     const resolvedRes = await resolveFile(auth, conversation, fileId);
     if (resolvedRes.isErr()) {
       return new Err(resolvedRes.error.message);
@@ -135,7 +117,7 @@ export async function resolveConversationFileRef(
     });
   }
 
-  const conversation = agentLoopContext.runContext.conversation;
+  const conversation = runContext.conversation;
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {
     return new Err(`File resource not found for fileId ${fileId}`);
@@ -170,7 +152,7 @@ export async function resolveConversationFileRef(
 export async function getFileFromConversationAttachment(
   auth: Authenticator,
   fileId: string,
-  agentLoopContext: AgentLoopContextType
+  runContext: AgentLoopRunContext
 ): Promise<
   Result<
     {
@@ -181,10 +163,6 @@ export async function getFileFromConversationAttachment(
     string
   >
 > {
-  if (!agentLoopContext?.runContext) {
-    return new Err("No conversation context available");
-  }
-
   // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) — resolve via DustFileSystem.
   if (isCanonicalScopedPath(fileId)) {
     const fsResult = await DustFileSystem.fromScopedPath(auth, fileId);
@@ -225,7 +203,7 @@ export async function getFileFromConversationAttachment(
   // Scoped paths resolve through mount path.
   const parsed = parseScopedFilePath(fileId);
   if (parsed) {
-    const conversation = agentLoopContext.runContext.conversation;
+    const conversation = runContext.conversation;
     const resolvedRes = await resolveFile(auth, conversation, fileId);
     if (resolvedRes.isErr()) {
       return new Err(resolvedRes.error.message);
@@ -245,7 +223,7 @@ export async function getFileFromConversationAttachment(
   }
 
   // Legacy fileId path: scan the conversation to find the attachment.
-  const conversation = agentLoopContext.runContext.conversation;
+  const conversation = runContext.conversation;
   let attachment: ConversationAttachmentType | null = null;
 
   for (const versions of conversation.content) {

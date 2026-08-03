@@ -19,15 +19,12 @@ on:
           - core
           - front
           - front-edge
+          - marketing
+          - marketing-edge
           - metabase
           - oauth
           - prodbox
           - viz
-        required: true
-    secrets:
-      GCLOUD_US_PROJECT_ID:
-        required: true
-      GCLOUD_EU_PROJECT_ID:
         required: true
 
 permissions:
@@ -46,9 +43,9 @@ jobs:
         id: project
         run: |
           if [ "${{ inputs.region }}" = "us-central1" ]; then
-            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
           else
-            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
           fi
 
       - id: "auth"

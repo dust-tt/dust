@@ -1,12 +1,9 @@
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useEmailAgentsToggle } from "@app/hooks/useEmailAgentsToggle";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionMailAiIcon,
-  BookOpenIcon,
   Button,
-  Chip,
-  ContextItem,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,6 +19,10 @@ const ENABLE_EMAIL_AGENTS_CONFIRMATION_MESSAGE =
   "As a general rule, caution is advised when forwarding emails or attachments " +
   "from untrusted sources, since those are exposed to security risks such as " +
   "prompt injection.";
+
+const LABEL = "Email agents";
+const DESCRIPTION = `Whether members can reach agents by email at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+const DOCUMENTATION_URL = "https://docs.dust.tt/docs/email-agents";
 
 interface EmailAgentsToggleProps {
   owner: WorkspaceType;
@@ -45,31 +46,10 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
 
   return (
     <>
-      <ContextItem
-        title={
-          <div className="flex items-center gap-2">
-            <span>Email agents</span>
-            <Chip size="xs" color="golden" label="Beta" />
-          </div>
-        }
-        subElement={
-          <div className="flex flex-row items-center gap-2">
-            <span>
-              Allow workspace members to email agents at{" "}
-              <code>AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN}</code>
-            </span>
-            <a
-              href="https://docs.dust.tt/docs/email-agents"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-action-400 hover:text-action-500 text-sm"
-            >
-              <BookOpenIcon className="h-4 w-4" />
-            </a>
-          </div>
-        }
-        visual={<ActionMailAiIcon className="h-6 w-6" />}
-        hasSeparatorIfLast={true}
+      <GovernanceSettingRowLayout
+        label={LABEL}
+        description={DESCRIPTION}
+        documentationUrl={DOCUMENTATION_URL}
         action={
           <SliderToggle
             selected={isEnabled}

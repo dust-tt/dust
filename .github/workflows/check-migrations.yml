@@ -24,6 +24,7 @@ jobs:
           if [ -n "$NEW_FILES" ]; then
             echo ""
             echo "ERROR: connectors/migrations/db/ is frozen. New files detected:"
+            # shellcheck disable=SC2001
             echo "$NEW_FILES" | sed 's/^/  /'
             echo ""
             echo "Use the new phased migration system instead:"

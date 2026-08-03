@@ -1,7 +1,11 @@
+import type {
+  SearchMembersAdminResponseBody,
+  SearchMembersResponseBody,
+} from "@app/lib/api/workspace";
 import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { GROUP_KINDS } from "@app/types/groups";
-import type { UserTypeWithWorkspace } from "@app/types/user";
+import { toLightUserWithWorkspace } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -16,24 +20,26 @@ const SearchMembersQuerySchema = z.object({
   searchTerm: z.string().optional(),
   searchEmails: z.string().optional(),
   groupKind: z.enum(GROUP_KINDS).exclude(["system"]).optional(),
+  // Deprecated: the builder-role filter was removed; accepted but ignored to
+  // avoid breaking clients that still send it. Remove once no client does.
   buildersOnly: z
     .string()
     .transform((v) => v === "true")
     .optional(),
 });
 
-export type SearchMembersResponseBody = {
-  members: UserTypeWithWorkspace[];
-  total: number;
-};
-
 // Mounted at /api/w/:wId/members/search.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", SearchMembersQuerySchema),
-  async (ctx): HandlerResult<SearchMembersResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    SearchMembersResponseBody | SearchMembersAdminResponseBody
+  > => {
     const auth = ctx.get("auth");
     const query = ctx.req.valid("query");
 
@@ -54,12 +60,20 @@ app.get(
         searchTerm: query.searchTerm,
         searchEmails: emails,
         groupKind: query.groupKind,
-        buildersOnly: query.buildersOnly,
       },
       query
     );
 
-    return ctx.json({ members, total });
+    // Non manager callers receive only minimal
+    // essential user data (LightUserType).
+    if (auth.isManager()) {
+      return ctx.json({ members, total });
+    }
+
+    return ctx.json({
+      members: members.map(toLightUserWithWorkspace),
+      total,
+    });
   }
 );
 

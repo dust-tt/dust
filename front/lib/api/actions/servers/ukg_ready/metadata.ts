@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const UKG_READY_TOOLS_METADATA = createToolsRecord({
-  get_my_info: {
+export const UKG_READY_TOOLS_METADATA = [
+  {
+    name: "get_my_info",
     description:
       "Get your own employee information from UKG Ready, including your employee ID, name, and username.",
     schema: {},
@@ -14,8 +12,11 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving UKG Ready employee info",
       done: "Retrieve UKG Ready employee info",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_pto_requests: {
+  {
+    name: "get_pto_requests",
     description:
       "Get your PTO/time-off requests. Can filter by date range and account IDs.",
     schema: {
@@ -37,8 +38,11 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving UKG Ready PTO requests",
       done: "Retrieve UKG Ready PTO requests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_accrual_balances: {
+  {
+    name: "get_accrual_balances",
     description: "Get accrual balances for yourself or a specific employee.",
     schema: {
       accountId: z
@@ -59,8 +63,11 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving UKG Ready accrual balances",
       done: "Retrieve UKG Ready accrual balances",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_pto_request_notes: {
+  {
+    name: "get_pto_request_notes",
     description: "Get notes/comments for a specific PTO request.",
     schema: {
       noteThreadId: z
@@ -74,8 +81,11 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving UKG Ready PTO notes",
       done: "Retrieve UKG Ready PTO notes",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_pto_request: {
+  {
+    name: "create_pto_request",
     description:
       "Create a new time off request. Use get_accrual_balances to see available time off types.",
     schema: {
@@ -131,8 +141,11 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Creating UKG Ready PTO request",
       done: "Create UKG Ready PTO request",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  delete_pto_request: {
+  {
+    name: "delete_pto_request",
     description: "Delete one or more PTO/time-off requests.",
     schema: {
       requestIds: z
@@ -148,8 +161,11 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Deleting UKG Ready PTO request",
       done: "Delete UKG Ready PTO request",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_schedules: {
+  {
+    name: "get_schedules",
     description: "Get work schedules for yourself or a specific employee.",
     schema: {
       username: z
@@ -172,8 +188,11 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Listing UKG Ready schedules",
       done: "List UKG Ready schedules",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_employees: {
+  {
+    name: "get_employees",
     description: "Get a list of active employees.",
     schema: {},
     stake: "never_ask",
@@ -181,8 +200,10 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Listing UKG Ready employees",
       done: "List UKG Ready employees",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const UKG_READY_SERVER = {
   serverInfo: {
@@ -196,15 +217,6 @@ export const UKG_READY_SERVER = {
     },
     icon: "UkgLogo",
     documentationUrl: "https://docs.dust.tt/docs/ukg-ready",
-    instructions: null,
   },
-  tools: Object.values(UKG_READY_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(UKG_READY_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: UKG_READY_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

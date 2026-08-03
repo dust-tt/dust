@@ -1,7 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { clientFetch } from "@app/lib/egress/client";
-import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
+import type { FileUploadRequestResponseBody } from "@app/types/api/files/upload_metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { normalizeError } from "@extension/shared/lib/utils";

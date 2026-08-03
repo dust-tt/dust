@@ -1,0 +1,256 @@
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { describe, expect, it } from "vitest";
+
+import {
+  getSkillSlashCommandItem,
+  getToolSlashCommandItem,
+  MAX_RENDERED_CAPABILITY_ITEMS,
+  matchesSlashCommandCapabilityQuery,
+  type SlashCommandSkillSuggestion,
+  type SlashCommandToolSuggestion,
+  searchCapabilityIndex,
+} from "./SlashCommandCapabilitiesItems";
+
+function toolSuggestion({
+  description = "Search data.",
+  label,
+  name = "search",
+  serverDescription = "Search workspace data.",
+  serverIcon = "ActionMagnifyingGlassIcon",
+  serverName = "search",
+  sId,
+}: {
+  description?: string | null;
+  label?: string;
+  name?: string | null;
+  serverDescription?: string;
+  serverIcon?: MCPServerViewType["server"]["icon"];
+  serverName?: string;
+  sId: string;
+}): SlashCommandToolSuggestion<MCPServerViewType> {
+  return {
+    id: 1,
+    sId,
+    name,
+    description,
+    createdAt: 0,
+    updatedAt: 0,
+    spaceId: "space_1",
+    serverType: "internal",
+    server: {
+      name: serverName,
+      version: "1.0.0",
+      description: serverDescription,
+      sId: `mcp_server_${serverName}`,
+      icon: serverIcon,
+      authorization: null,
+      tools: [],
+      availability: "manual",
+      allowMultipleInstances: false,
+      documentationUrl: null,
+    },
+    oAuthUseCase: null,
+    editedByUser: null,
+    isRestrictedToSkills: false,
+    label,
+  };
+}
+
+function skillSuggestion({
+  editedBy = 1,
+  icon = null,
+  requestedSpaceIds = [],
+  sId,
+  userFacingDescription = "Draft structured memos.",
+  name,
+}: Pick<SlashCommandSkillSuggestion, "name" | "sId"> &
+  Partial<SlashCommandSkillSuggestion>): SlashCommandSkillSuggestion {
+  return {
+    editedBy,
+    icon,
+    name,
+    requestedSpaceIds,
+    sId,
+    userFacingDescription,
+  };
+}
+
+describe("matchesSlashCommandCapabilityQuery", () => {
+  it("matches capability labels with fuzzy slash query matching", () => {
+    expect(
+      matchesSlashCommandCapabilityQuery({
+        label: "Search docs",
+        query: "docs",
+      })
+    ).toBe(true);
+    expect(
+      matchesSlashCommandCapabilityQuery({
+        label: "Create ticket",
+        query: "docs",
+      })
+    ).toBe(false);
+  });
+
+  it("matches against description when label does not match", () => {
+    expect(
+      matchesSlashCommandCapabilityQuery({
+        description: "Search and retrieve documents",
+        label: "Linear",
+        query: "docs",
+      })
+    ).toBe(true);
+  });
+
+  it("does not match against description when description is absent", () => {
+    expect(
+      matchesSlashCommandCapabilityQuery({
+        label: "Linear",
+        query: "docs",
+      })
+    ).toBe(false);
+  });
+});
+
+describe("searchCapabilityIndex ranking", () => {
+  it("sorts capabilities alphabetically when no query is provided", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        { id: "z", sortName: "zendesk" },
+        { id: "a", sortName: "asana" },
+      ],
+      query: "",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["a", "z"]);
+  });
+
+  it("breaks fuzzy ties alphabetically when a query is provided", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        { id: "testlonger", sortName: "testlonger" },
+        { id: "longtest", sortName: "longtest" },
+      ],
+      query: "test",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["longtest", "testlonger"]);
+  });
+
+  it("ranks title matches above description-only matches", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "desc-only",
+          normalizedDescription: "search and retrieve docs",
+          sortName: "linear",
+        },
+        {
+          id: "title-match",
+          normalizedDescription: "view files",
+          sortName: "docs viewer",
+        },
+      ],
+      query: "docs",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["title-match", "desc-only"]);
+  });
+});
+
+describe("searchCapabilityIndex", () => {
+  it("returns only the first ranked result window", () => {
+    const result = searchCapabilityIndex({
+      items: Array.from(
+        { length: MAX_RENDERED_CAPABILITY_ITEMS + 10 },
+        (_, index) => ({
+          id: index,
+          sortName: `capability ${index.toString().padStart(2, "0")}`,
+        })
+      ),
+      query: "",
+    });
+
+    expect(result).toHaveLength(MAX_RENDERED_CAPABILITY_ITEMS);
+    expect(result[0]?.id).toBe(0);
+    expect(result.at(-1)?.id).toBe(MAX_RENDERED_CAPABILITY_ITEMS - 1);
+  });
+
+  it("searches normalized descriptions and preserves group ordering", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "uninstalled-title-match",
+          normalizedDescription: "create an issue",
+          sortGroup: 1,
+          sortName: "linear docs",
+        },
+        {
+          id: "installed-description-match",
+          normalizedDescription: "search docs",
+          sortName: "search",
+        },
+      ],
+      query: "docs",
+    });
+
+    expect(result.map((item) => item.id)).toEqual([
+      "installed-description-match",
+      "uninstalled-title-match",
+    ]);
+  });
+});
+
+describe("getSkillSlashCommandItem", () => {
+  it("builds a slash command item that keeps the selected skill", () => {
+    const skill = skillSuggestion({
+      name: "Create memo",
+      sId: "skill_create_memo",
+      userFacingDescription: "Draft structured memos.",
+    });
+
+    const item = getSkillSlashCommandItem(skill);
+
+    expect(item).toMatchObject({
+      action: "select-skill",
+      data: {
+        skill,
+      },
+      description: "Draft structured memos.",
+      hasDetails: true,
+      id: "skill_create_memo",
+      label: "Create memo",
+    });
+    expect(item.tooltip).toBeUndefined();
+  });
+});
+
+describe("getToolSlashCommandItem", () => {
+  it("builds a slash command item that keeps the selected MCP server view", () => {
+    const tool = toolSuggestion({
+      description: "Draft a ticket.",
+      label: "Create ticket (Product)",
+      name: "Create ticket",
+      serverIcon: "ActionListIcon",
+      serverName: "linear",
+      sId: "mcp_server_view_linear",
+    });
+
+    const item = getToolSlashCommandItem(tool);
+
+    expect(item).toMatchObject({
+      action: "select-tool",
+      data: {
+        tool: {
+          icon: "ActionListIcon",
+          id: "mcp_server_view_linear",
+          name: "Create ticket (Product)",
+          view: tool,
+        },
+      },
+      description: "Draft a ticket.",
+      hasDetails: true,
+      id: "mcp_server_view_linear",
+      label: "Create ticket (Product)",
+    });
+  });
+});

@@ -1,8 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const FILE_GENERATION_TOOL_NAME = "file_generation" as const;
 
@@ -37,10 +34,11 @@ export const BINARY_FORMATS: OutputFormatType[] = [
   "webp",
 ];
 
-export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
-  get_supported_source_formats_for_output_format: {
+export const FILE_GENERATION_TOOLS_METADATA = [
+  {
+    name: "get_supported_source_formats_for_output_format",
     description:
-      "Get a list of source formats supported for a target output format.",
+      "List which input source formats can be converted into a given target output format.",
     schema: {
       output_format: z.enum(OUTPUT_FORMATS).describe("The format to check."),
     },
@@ -49,9 +47,13 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Listing supported formats",
       done: "List supported formats",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  convert_file_format: {
-    description: "Converts a file from one format to another.",
+  {
+    name: "convert_file_format",
+    description:
+      "Convert an existing conversation file into another format, for example turn a document into a PDF.",
     schema: {
       file_name: z
         .string()
@@ -77,9 +79,13 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Converting file",
       done: "Convert file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  generate_file: {
-    description: "Generate a file with some content.",
+  {
+    name: "generate_file",
+    description:
+      "Generate a new file by writing provided text or content out as a document.",
     schema: {
       file_name: z
         .string()
@@ -105,8 +111,10 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Generating file",
       done: "Generate file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const FILE_GENERATION_SERVER = {
   serverInfo: {
@@ -116,15 +124,6 @@ export const FILE_GENERATION_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
-    instructions: null,
   },
-  tools: Object.values(FILE_GENERATION_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(FILE_GENERATION_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: FILE_GENERATION_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

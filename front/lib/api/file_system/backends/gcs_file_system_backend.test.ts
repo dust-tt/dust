@@ -1,6 +1,10 @@
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import {
+  DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
+  getPrivateUploadBucket,
+} from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
+import assert from "assert";
 import { Readable } from "stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +18,7 @@ const WORKSPACE_ID = "ws123";
 const BUCKET = "test-bucket";
 const CONV_ID = "conv456";
 const POD_ID = "pod789";
+const USER_ID = "user789";
 
 function makeBackend() {
   return new GCSFileSystemBackend(WORKSPACE_ID, BUCKET);
@@ -83,6 +88,31 @@ describe("GCSFileSystemBackend.list", () => {
     );
   });
 
+  it("queries the correct GCS prefix for a user mount", async () => {
+    const backend = makeBackend();
+    await backend.list(`user-${USER_ID}/`);
+
+    expect(getAllFilesByPrefixMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prefix: `w/${WORKSPACE_ID}/users/${USER_ID}/files/`,
+      })
+    );
+  });
+
+  it("returns canonical scoped paths for a user mount", async () => {
+    const prefix = `w/${WORKSPACE_ID}/users/${USER_ID}/files/`;
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [gcsFile({ name: `${prefix}memory.md` })],
+      pageFetchCount: 1,
+    });
+
+    const result = await makeBackend().list(`user-${USER_ID}/`);
+    assert(result.isOk());
+
+    expect(result.value[0].path).toBe(`user-${USER_ID}/memory.md`);
+    expect(result.value[0].fileName).toBe("memory.md");
+  });
+
   it("excludes .processed. siblings by default", async () => {
     const prefix = `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/`;
     getAllFilesByPrefixMock.mockResolvedValue({
@@ -101,13 +131,71 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const entries = result.value;
 
     const paths = entries.filter((e) => !e.isDirectory).map((e) => e.path);
     expect(paths).toContain(`conversation-${CONV_ID}/report.pdf`);
     expect(paths).toContain(`conversation-${CONV_ID}/photo.jpg`);
     expect(paths).not.toContain(`conversation-${CONV_ID}/report.processed.txt`);
     expect(paths).not.toContain(`conversation-${CONV_ID}/photo.processed.jpg`);
+  });
+
+  it("hides files inside a hidden (dot-prefixed) directory, except .tool_outputs", async () => {
+    const prefix = `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/`;
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [
+        gcsFile({
+          name: `${prefix}report.pdf`,
+          contentType: "application/pdf",
+        }),
+        gcsFile({
+          name: `${prefix}.pptx_render/deck/slide-001-boxes.jpg`,
+          contentType: "image/jpeg",
+        }),
+        gcsFile({
+          name: `${prefix}.tool_outputs/1700000000000_note.md`,
+          contentType: "text/markdown",
+        }),
+      ],
+      pageFetchCount: 1,
+    });
+
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const paths = result.value.filter((e) => !e.isDirectory).map((e) => e.path);
+    expect(paths).toContain(`conversation-${CONV_ID}/report.pdf`);
+    // .tool_outputs stays visible (the one exempt hidden dir).
+    expect(paths).toContain(
+      `conversation-${CONV_ID}/.tool_outputs/1700000000000_note.md`
+    );
+    // QA renders under a hidden dir are not surfaced to the user.
+    expect(paths).not.toContain(
+      `conversation-${CONV_ID}/.pptx_render/deck/slide-001-boxes.jpg`
+    );
+  });
+
+  it("shows hidden-directory contents when that directory is listed directly", async () => {
+    const prefix = `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/.pptx_render/deck/`;
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [
+        gcsFile({
+          name: `${prefix}slide-001-boxes.jpg`,
+          contentType: "image/jpeg",
+        }),
+      ],
+      pageFetchCount: 1,
+    });
+
+    const result = await makeBackend().list(
+      `conversation-${CONV_ID}/.pptx_render/deck/`
+    );
+    assert(result.isOk());
+    const paths = result.value.filter((e) => !e.isDirectory).map((e) => e.path);
+    expect(paths).toContain(
+      `conversation-${CONV_ID}/.pptx_render/deck/slide-001-boxes.jpg`
+    );
   });
 
   it("includes .processed. siblings when includeProcessed is true", async () => {
@@ -123,9 +211,11 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`, {
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`, {
       includeProcessed: true,
     });
+    assert(result.isOk());
+    const entries = result.value;
 
     const paths = entries.filter((e) => !e.isDirectory).map((e) => e.path);
     expect(paths).toContain(`conversation-${CONV_ID}/report.pdf`);
@@ -139,7 +229,9 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const entries = result.value;
 
     expect(entries[0].path).toBe(`conversation-${CONV_ID}/subdir/data.csv`);
     expect(entries[0].fileName).toBe("data.csv");
@@ -155,9 +247,10 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
 
-    for (const entry of entries) {
+    for (const entry of result.value) {
       expect(entry.isDirectory).toBe(false);
       if (!entry.isDirectory) {
         expect(entry.thumbnailUrl).toBeNull();
@@ -175,7 +268,9 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const entries = result.value;
 
     const dirs = entries.filter((e) => e.isDirectory);
     const files = entries.filter((e) => !e.isDirectory);
@@ -197,8 +292,9 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
-    const entry = entries[0];
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const entry = result.value[0];
 
     expect(entry.isDirectory).toBe(false);
     if (!entry.isDirectory) {
@@ -224,8 +320,9 @@ describe("GCSFileSystemBackend.list", () => {
   });
 
   it("returns empty array for unrecognised scoped path prefix", async () => {
-    const entries = await makeBackend().list("unknown-prefix/foo");
-    expect(entries).toEqual([]);
+    const result = await makeBackend().list("unknown-prefix/foo");
+    assert(result.isOk());
+    expect(result.value).toEqual([]);
   });
 });
 
@@ -347,6 +444,24 @@ describe("GCSFileSystemBackend.write", () => {
       `w/${WORKSPACE_ID}/pods/${POD_ID}/files/data.csv`
     );
     expect(saveMock).toHaveBeenCalledWith(content, { contentType: "text/csv" });
+  });
+
+  it("writes to the correct GCS path for a user", async () => {
+    const content = Buffer.from("# memory");
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+
+    await makeBackend().write(
+      `user-${USER_ID}/memory.md`,
+      content,
+      "text/markdown"
+    );
+
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${WORKSPACE_ID}/users/${USER_ID}/files/memory.md`
+    );
+    expect(saveMock).toHaveBeenCalledWith(content, {
+      contentType: "text/markdown",
+    });
   });
 
   it("converts string content to a Buffer", async () => {
@@ -593,7 +708,8 @@ describe("GCSFileSystemBackend.getDownloadUrl", () => {
       expect(result.value).toBe("https://signed.example.com/file.pdf");
     }
     expect(getSignedUrlMock).toHaveBeenCalledWith(
-      `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/report.pdf`
+      `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/report.pdf`,
+      { expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS }
     );
   });
 
@@ -604,7 +720,21 @@ describe("GCSFileSystemBackend.getDownloadUrl", () => {
       expect(result.value).toBe("https://signed.example.com/file.pdf");
     }
     expect(getSignedUrlMock).toHaveBeenCalledWith(
-      `w/${WORKSPACE_ID}/pods/${POD_ID}/files/data.csv`
+      `w/${WORKSPACE_ID}/pods/${POD_ID}/files/data.csv`,
+      { expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS }
+    );
+  });
+
+  it("uses a custom expiration when requested", async () => {
+    const expirationDelayMs = 15 * 60 * 1000;
+
+    await makeBackend().getDownloadUrl(`conversation-${CONV_ID}/report.pdf`, {
+      expiresInMs: expirationDelayMs,
+    });
+
+    expect(getSignedUrlMock).toHaveBeenCalledWith(
+      `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/report.pdf`,
+      { expirationDelayMs }
     );
   });
 

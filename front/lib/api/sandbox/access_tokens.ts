@@ -1,14 +1,16 @@
 import config from "@app/lib/api/config";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageModel,
+  ConversationModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionType } from "@app/types/actions";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-} from "@app/types/assistant/conversation";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -16,22 +18,155 @@ import { z } from "zod";
 
 export const SANDBOX_TOKEN_PREFIX = "sbt-";
 
-const SandboxExecTokenPayloadSchema = z.object({
-  wId: z.string(),
-  cId: z.string(),
-  // Optional: omitted when the conversation is driven by a non-human actor
-  // (e.g. a Slack bot user with no associated Dust user).
-  uId: z.string().optional(),
-  aId: z.string(),
-  mId: z.string(),
-  sbId: z.string(),
-  execId: z.string(),
-  actionId: z.string(),
-});
+function isDefined<T>(value: T | undefined): value is T {
+  return value !== undefined;
+}
 
-export type SandboxExecTokenPayload = z.infer<
-  typeof SandboxExecTokenPayloadSchema
->;
+const SandboxTokenPayloadSchema = z
+  .object({
+    wId: z.string(),
+    uId: z.string().optional(),
+    sbId: z.string(),
+    execId: z.string(),
+    cId: z.string().optional(),
+    aId: z.string().optional(),
+    aV: z.number().int().nonnegative().optional(),
+    mId: z.string().optional(),
+    actionId: z.string().optional(),
+    spaceId: z.string().optional(),
+    sandboxFunctionId: z.string().optional(),
+    invocationId: z.string().optional(),
+  })
+  .superRefine((payload, ctx) => {
+    const actionClaims = [payload.aId, payload.mId, payload.actionId];
+    const invocationClaims = [
+      payload.spaceId,
+      payload.sandboxFunctionId,
+      payload.invocationId,
+    ];
+    const hasAction =
+      payload.cId !== undefined && actionClaims.every(isDefined);
+    const hasInvocation = invocationClaims.every(isDefined);
+
+    if (actionClaims.some(isDefined) && !hasAction) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Incomplete sandbox action token claims.",
+      });
+    }
+    if (invocationClaims.some(isDefined) && !hasInvocation) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Incomplete sandbox function invocation token claims.",
+      });
+    }
+    if (!hasAction && !hasInvocation) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Sandbox token payload must include action or function invocation claims.",
+      });
+    }
+  });
+
+export type SandboxTokenPayload = z.infer<typeof SandboxTokenPayloadSchema>;
+
+export type SandboxExecTokenPayload = SandboxTokenPayload & {
+  cId: string;
+  aId: string;
+  aV: number;
+  mId: string;
+  actionId: string;
+};
+
+export type SandboxFunctionInvocationTokenPayload = SandboxTokenPayload & {
+  spaceId: string;
+  sandboxFunctionId: string;
+  invocationId: string;
+};
+
+export function isSandboxExecTokenPayload(
+  payload: SandboxTokenPayload
+): payload is SandboxExecTokenPayload {
+  return (
+    payload.cId !== undefined &&
+    payload.aId !== undefined &&
+    payload.aV !== undefined &&
+    payload.mId !== undefined &&
+    payload.actionId !== undefined
+  );
+}
+
+function hasLegacySandboxExecTokenPayload(
+  payload: SandboxTokenPayload
+): payload is SandboxTokenPayload & {
+  cId: string;
+  aId: string;
+  mId: string;
+  actionId: string;
+} {
+  return (
+    payload.cId !== undefined &&
+    payload.aId !== undefined &&
+    payload.mId !== undefined &&
+    payload.actionId !== undefined
+  );
+}
+
+async function resolveLegacySandboxExecAgentVersion(
+  payload: SandboxTokenPayload & {
+    cId: string;
+    aId: string;
+    mId: string;
+  }
+): Promise<number | null> {
+  const workspace = await WorkspaceResource.fetchById(payload.wId);
+  if (!workspace) {
+    return null;
+  }
+
+  const message = await MessageModel.findOne({
+    where: {
+      sId: payload.mId,
+      workspaceId: workspace.id,
+    },
+    attributes: ["id"],
+    include: [
+      {
+        model: ConversationModel,
+        as: "conversation",
+        required: true,
+        attributes: [],
+        where: {
+          sId: payload.cId,
+          workspaceId: workspace.id,
+        },
+      },
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+        attributes: ["agentConfigurationVersion"],
+        where: {
+          agentConfigurationId: payload.aId,
+          workspaceId: workspace.id,
+        },
+      },
+    ],
+  });
+
+  return message?.agentMessage?.agentConfigurationVersion ?? null;
+}
+
+export function isSandboxFunctionInvocationTokenPayload(
+  payload: SandboxTokenPayload
+): payload is SandboxFunctionInvocationTokenPayload {
+  return (
+    payload.spaceId !== undefined &&
+    payload.sandboxFunctionId !== undefined &&
+    payload.invocationId !== undefined
+  );
+}
 
 const EXEC_TOKEN_REDIS_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 
@@ -50,7 +185,7 @@ export function generateExecId(): string {
 }
 
 async function registerExecToken(
-  token: Pick<SandboxExecTokenPayload, "sbId" | "execId">
+  token: Pick<SandboxTokenPayload, "sbId" | "execId">
 ): Promise<void> {
   await runOnRedis({ origin: REDIS_ORIGIN }, (client) =>
     client.set(sandboxTokenRedisKey(token.sbId, token.execId), "1", {
@@ -60,7 +195,7 @@ async function registerExecToken(
 }
 
 export async function revokeExecToken(
-  token: Pick<SandboxExecTokenPayload, "sbId" | "execId">
+  token: Pick<SandboxTokenPayload, "sbId" | "execId">
 ): Promise<void> {
   await runOnRedis({ origin: REDIS_ORIGIN }, (client) =>
     client.del(sandboxTokenRedisKey(token.sbId, token.execId))
@@ -68,7 +203,7 @@ export async function revokeExecToken(
 }
 
 async function isExecTokenValid(
-  token: Pick<SandboxExecTokenPayload, "sbId" | "execId">
+  token: Pick<SandboxTokenPayload, "sbId" | "execId">
 ): Promise<boolean> {
   return runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
     const result = await client.exists(
@@ -105,9 +240,9 @@ export async function generateSandboxExecToken(
     sandboxAction,
     expiryMs = 2 * 60 * 1000, // Default to 2 minutes
   }: {
-    agentConfiguration: AgentConfigurationType;
-    agentMessage: AgentMessageType;
-    conversation: ConversationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    agentMessage: AgentLoopExecutionData["agentMessage"];
+    conversation: AgentLoopExecutionData["conversation"];
     sandbox: SandboxResource;
     execId: string;
     sandboxAction: AgentMCPActionType;
@@ -119,10 +254,52 @@ export async function generateSandboxExecToken(
     cId: conversation.sId,
     uId: auth.user()?.sId,
     aId: agentConfiguration.sId,
+    aV: agentConfiguration.version,
     mId: agentMessage.sId,
     sbId: sandbox.sId,
     actionId: sandboxAction.sId,
     execId,
+  };
+
+  await registerExecToken(payload);
+
+  const secret = config.getSandboxJwtSecret();
+
+  const token = jwt.sign(payload, secret, {
+    algorithm: "HS256",
+    expiresIn: expiryMs / 1000, // expiresIn is in seconds
+  });
+
+  return `${SANDBOX_TOKEN_PREFIX}${token}`;
+}
+
+export async function generateSandboxFunctionInvocationToken(
+  auth: Authenticator,
+  {
+    conversationId,
+    sandbox,
+    sandboxFunction,
+    invocationId,
+    execId,
+    expiryMs = 2 * 60 * 1000, // Default to 2 minutes
+  }: {
+    conversationId?: string;
+    sandbox: SandboxResource;
+    sandboxFunction: { sId: string; space: { sId: string } };
+    invocationId: string;
+    execId: string;
+    expiryMs?: number;
+  }
+): Promise<string> {
+  const payload: SandboxFunctionInvocationTokenPayload = {
+    wId: auth.getNonNullableWorkspace().sId,
+    uId: auth.user()?.sId,
+    cId: conversationId,
+    sbId: sandbox.sId,
+    execId,
+    spaceId: sandboxFunction.space.sId,
+    sandboxFunctionId: sandboxFunction.sId,
+    invocationId,
   };
 
   await registerExecToken(payload);
@@ -142,7 +319,7 @@ export async function generateSandboxExecToken(
  */
 export async function verifySandboxExecToken(
   token: string
-): Promise<SandboxExecTokenPayload | null> {
+): Promise<SandboxTokenPayload | null> {
   if (!token.startsWith(SANDBOX_TOKEN_PREFIX)) {
     return null;
   }
@@ -161,7 +338,7 @@ export async function verifySandboxExecToken(
     return null;
   }
 
-  const parseResult = SandboxExecTokenPayloadSchema.safeParse(rawPayload);
+  const parseResult = SandboxTokenPayloadSchema.safeParse(rawPayload);
   if (!parseResult.success) {
     logger.error(
       { error: parseResult.error.flatten() },
@@ -170,8 +347,7 @@ export async function verifySandboxExecToken(
     return null;
   }
 
-  const payload = parseResult.data;
-
+  let payload = parseResult.data;
   const valid = await isExecTokenValid(payload);
   if (!valid) {
     logger.warn(
@@ -179,6 +355,27 @@ export async function verifySandboxExecToken(
       "Sandbox exec token revoked"
     );
     return null;
+  }
+
+  // Tokens issued before the agent-version claim was introduced remain valid
+  // for pause/resume. Recover their immutable run version from the signed
+  // conversation, message, and agent identifiers instead of falling back to
+  // the agent's latest version.
+  if (hasLegacySandboxExecTokenPayload(payload) && payload.aV === undefined) {
+    const agentVersion = await resolveLegacySandboxExecAgentVersion(payload);
+    if (agentVersion === null) {
+      logger.warn(
+        {
+          agentId: payload.aId,
+          agentMessageId: payload.mId,
+          conversationId: payload.cId,
+          workspaceId: payload.wId,
+        },
+        "Could not resolve the agent version for a legacy sandbox exec token"
+      );
+      return null;
+    }
+    payload = { ...payload, aV: agentVersion };
   }
 
   return payload;

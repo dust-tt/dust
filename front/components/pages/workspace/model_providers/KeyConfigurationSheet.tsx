@@ -120,7 +120,7 @@ export function KeyConfigurationSheet({
           </div>
         </SheetContainer>
         <div className="flex flex-none flex-col gap-2">
-          <div className="flex items-center justify-between border-t border-border p-3 dark:border-border-night">
+          <div className="flex items-center justify-between border-t border-border p-3">
             <Button
               label="Cancel"
               variant="outline"

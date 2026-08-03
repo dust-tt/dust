@@ -1,5 +1,5 @@
+import type { PokeGetWebhookSourceDetails } from "@app/lib/api/poke/webhook_sources";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetWebhookSourceDetails } from "@app/pages/api/poke/workspaces/[wId]/webhook_sources/[wsId]/details";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

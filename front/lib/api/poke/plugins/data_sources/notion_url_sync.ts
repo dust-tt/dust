@@ -37,6 +37,7 @@ export const notionUrlSyncPlugin = createPlugin({
           "List of URLs to sync or delete, separated by a comma (,) or newline",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, dataSource) => {
     if (!dataSource) {

@@ -73,7 +73,7 @@ function RecentWebhookRequestsContent({
     return (
       <div className="flex items-center gap-2">
         <Spinner size="sm" />
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-sm text-muted-foreground">
           Loading recent requests...
         </span>
       </div>
@@ -90,9 +90,7 @@ function RecentWebhookRequestsContent({
 
   if (webhookRequests.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        No webhook requests yet.
-      </p>
+      <p className="text-sm text-muted-foreground">No webhook requests yet.</p>
     );
   }
 
@@ -103,7 +101,7 @@ function RecentWebhookRequestsContent({
   return (
     <div className="space-y-2">
       {wasRateLimited && (
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-sm text-muted-foreground">
           <p>
             Some requests were rate limited.
             <br />
@@ -143,7 +141,7 @@ function RecentWebhookRequestsContent({
                     </pre>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <p className="text-sm text-muted-foreground">
                     No payload available.
                   </p>
                 )}

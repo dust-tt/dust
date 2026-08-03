@@ -1,7 +1,12 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import config from "@app/lib/api/config";
+import type {
+  UpsertFileToDataSourceRequestBody,
+  UpsertFileToDataSourceResponseBody,
+} from "@app/lib/api/files/upsert";
 import { clientFetch } from "@app/lib/egress/client";
+import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   emptyArray,
@@ -9,20 +14,18 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type {
-  UpsertFileToDataSourceRequestBody,
-  UpsertFileToDataSourceResponseBody,
-} from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
-import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type {
   FileShareScope,
   FileTypeWithMetadata,
   SharingGrantType,
 } from "@app/types/files";
+import { DUST_FILE_ID_HEADER } from "@app/types/files";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher, SWRConfiguration } from "swr";
+import { useSWRConfig } from "swr";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,
@@ -43,6 +46,180 @@ export const getFileViewUrl = (
   owner: LightWorkspaceType,
   fileId: string | null | undefined
 ) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
+
+export const getFilePathViewUrl = (
+  owner: LightWorkspaceType,
+  filePath: string
+) => {
+  const encoded = filePath.split("/").map(encodeURIComponent).join("/");
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
+};
+
+/** Relative API path for fetching file text content (for use with clientFetch / useFileContentByUrl). */
+export function getFilePathContentApiPath(
+  owner: LightWorkspaceType,
+  canonicalPath: string
+): string {
+  const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");
+  return `/api/w/${owner.sId}/files/path/${encoded}`;
+}
+
+function getFilePathMetadataApiPath(
+  owner: LightWorkspaceType,
+  canonicalPath: string
+): string {
+  return `${getFilePathContentApiPath(owner, canonicalPath)}?metadata=1`;
+}
+
+export async function fetchFileIdFromPath({
+  owner,
+  filePath,
+}: {
+  owner: LightWorkspaceType;
+  filePath: string;
+}): Promise<string | null> {
+  const response = await clientFetch(
+    getFilePathMetadataApiPath(owner, filePath),
+    { method: "HEAD" }
+  );
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
+  }
+
+  return response.headers.get(DUST_FILE_ID_HEADER);
+}
+
+type FileContentByUrlData =
+  | { kind: "loaded"; content: string }
+  | { kind: "not_found" };
+
+export function useFileContentByUrl({
+  url,
+  disabled,
+}: {
+  url: string | null;
+  disabled?: boolean;
+}) {
+  const isDisabled = disabled || !url;
+
+  const { data, error } = useSWRWithDefaults<
+    string | null,
+    FileContentByUrlData
+  >(
+    url,
+    async (u: string) => {
+      const response = await clientFetch(u);
+      if (response.status === 404) {
+        return { kind: "not_found" };
+      }
+      if (!response.ok) {
+        const errorData = await getErrorFromResponse(response);
+        throw new Error(errorData.message);
+      }
+      return { kind: "loaded", content: await response.text() };
+    },
+    { disabled: isDisabled }
+  );
+
+  const isNotFound = data?.kind === "not_found";
+
+  return {
+    fileContent: data?.kind === "loaded" ? data.content : null,
+    isNotFound,
+    isFileContentLoading: !error && data === undefined && !isDisabled,
+    fileContentError: error ? normalizeError(error) : null,
+  };
+}
+
+export async function writeFileContentByPath({
+  owner,
+  canonicalPath,
+  content,
+  contentType = "text/plain",
+}: {
+  owner: LightWorkspaceType;
+  canonicalPath: string;
+  content: string;
+  contentType?: string;
+}): Promise<void> {
+  const url = getFilePathContentApiPath(owner, canonicalPath);
+  const response = await clientFetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: content,
+  });
+
+  if (!response.ok) {
+    const errorData = await getErrorFromResponse(response);
+    throw new Error(errorData.message);
+  }
+}
+
+export function useWriteFileContentByPath({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutate } = useSWRConfig();
+
+  return async ({
+    canonicalPath,
+    content,
+    contentType = "text/plain",
+    showSuccessNotification = false,
+  }: {
+    canonicalPath: string;
+    content: string;
+    contentType?: string;
+    showSuccessNotification?: boolean;
+  }): Promise<Result<void, Error>> => {
+    const url = getFilePathContentApiPath(owner, canonicalPath);
+
+    try {
+      await writeFileContentByPath({
+        owner,
+        canonicalPath,
+        content,
+        contentType,
+      });
+
+      await mutate<FileContentByUrlData>(
+        url,
+        { kind: "loaded", content },
+        { revalidate: false }
+      );
+
+      if (showSuccessNotification) {
+        sendNotification({
+          type: "success",
+          title: "File saved",
+        });
+      }
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to save file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export const getFilePathDownloadUrl = (
+  owner: LightWorkspaceType,
+  filePath: string
+) => {
+  const encoded = filePath.split("/").map(encodeURIComponent).join("/");
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1`;
+};
 
 export async function downloadFile(
   owner: LightWorkspaceType,
@@ -233,84 +410,32 @@ export function useFileContent({
   };
 }
 
-export function useSkillFileContent({
-  skillId,
-  fileId,
-  owner,
-  disabled,
-}: {
-  skillId: string | null;
-  fileId: string | null;
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const { data, error, mutate, isLoading } = useSWRWithDefaults(
-    skillId && fileId
-      ? `/api/w/${owner.sId}/skills/${skillId}/files/${fileId}/content`
-      : null,
-    async (url: string) => {
-      const response = await clientFetch(url);
-      if (!response.ok) {
-        const errorData = await getErrorFromResponse(response);
-        throw new Error(errorData.message);
-      }
-      return response.text();
-    },
-    { disabled }
-  );
-
-  return {
-    fileContent: data ?? null,
-    isFileContentLoading: isLoading,
-    fileContentError: error ? normalizeError(error) : null,
-    mutateFileContent: mutate,
-  };
-}
-
-export function useFileSignedUrl({
-  fileId,
-  owner,
-  config,
-}: {
-  fileId: string | null;
-  owner: LightWorkspaceType;
-  config?: SWRConfiguration & { disabled?: boolean };
-}) {
-  const { fetcher } = useFetcher();
-  const signedUrlFetcher: Fetcher<{ signedUrl: string }> = fetcher;
-  const isDisabled = config?.disabled ?? !fileId;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    isDisabled ? null : `/api/w/${owner.sId}/files/${fileId}/signed-url`,
-    signedUrlFetcher,
-    config
-  );
-
-  return {
-    signedUrl: data?.signedUrl ?? null,
-    isLoading: isDisabled ? false : !error && !data,
-    error,
-    mutate,
-  };
-}
-
 export function useShareInteractiveContentFile({
   fileId,
   owner,
+  cacheKey,
 }: {
   fileId: string;
   owner: LightWorkspaceType;
+  cacheKey?: string | null;
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
 
   const fileShareFetcher: Fetcher<ShareFileResponseBody> = fetcher;
 
-  const swrKey = `/api/w/${owner.sId}/files/${fileId}/share`;
+  const swrKey = cacheKey
+    ? `/api/w/${owner.sId}/files/${fileId}/share?v=${cacheKey}`
+    : `/api/w/${owner.sId}/files/${fileId}/share`;
 
   const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
 
-  const doShare = async (shareScope: FileShareScope) => {
+  const doShare = async (
+    shareScope: FileShareScope
+  ): Promise<
+    | { success: true; response: ShareFileResponseBody }
+    | { success: false; message: string; unverifiableRefs?: string[] }
+  > => {
     const res = await clientFetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
       method: "POST",
       headers: {
@@ -321,19 +446,30 @@ export function useShareInteractiveContentFile({
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
+      const unverifiableRefs =
+        "unverifiableRefs" in errorData &&
+        Array.isArray(errorData.unverifiableRefs)
+          ? errorData.unverifiableRefs
+          : undefined;
+
       sendNotification({
         type: "error",
-        title: "Failed to share the Frame file.",
-        description: `Error: ${errorData.message}`,
+        title: "Failed to update frame sharing",
+        description: errorData.message,
       });
-      return null;
-    } else {
-      await mutate();
 
-      const response: ShareFileResponseBody = await res.json();
-
-      return response;
+      return {
+        success: false,
+        message: errorData.message,
+        unverifiableRefs,
+      };
     }
+
+    await mutate();
+
+    const response: ShareFileResponseBody = await res.json();
+
+    return { success: true, response };
   };
 
   return {
@@ -348,10 +484,12 @@ export function useShareInteractiveContentFile({
 export function useSharingGrants({
   fileId,
   owner,
+  cacheKey,
   disabled,
 }: {
   fileId: string;
   owner: LightWorkspaceType;
+  cacheKey?: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -359,7 +497,9 @@ export function useSharingGrants({
 
   const grantsFetcher: Fetcher<{ grants: SharingGrantType[] }> = fetcher;
 
-  const swrKey = `/api/w/${owner.sId}/files/${fileId}/share/grants`;
+  const swrKey = cacheKey
+    ? `/api/w/${owner.sId}/files/${fileId}/share/grants?v=${cacheKey}`
+    : `/api/w/${owner.sId}/files/${fileId}/share/grants`;
 
   const { data, error, mutate } = useSWRWithDefaults(swrKey, grantsFetcher, {
     disabled,

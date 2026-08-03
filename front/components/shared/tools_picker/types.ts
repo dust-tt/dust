@@ -21,9 +21,9 @@ const supportedModelSchema = z.object({
 });
 
 export const generationSettingsSchema = z.object({
-  modelSettings: supportedModelSchema,
+  modelSettings: supportedModelSchema.nullable(),
   temperature: z.number().min(0).max(1),
-  reasoningEffort: reasoningEffortSchema,
+  reasoningEffort: reasoningEffortSchema.nullable(),
   responseFormat: z.string().optional(),
 });
 

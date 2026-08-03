@@ -17,7 +17,7 @@ import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
-import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
+import { BookOpen01, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
 export function TranscriptsPage() {
@@ -136,7 +136,7 @@ export function TranscriptsPage() {
           <Page>
             <Page.Header
               title="Meeting transcripts processing"
-              icon={BookOpenIcon}
+              icon={BookOpen01}
               description="Receive meeting minutes processed by email automatically and store them in a Dust Folder."
             />
             <Page.Layout direction="vertical">

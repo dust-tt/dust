@@ -10,7 +10,7 @@ interface ColumnTypeInfo {
   possibleValues?: string[];
 }
 
-export interface CSVRow {
+interface CSVRow {
   [key: string]: string;
 }
 

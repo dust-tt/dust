@@ -1,4 +1,5 @@
 import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -39,6 +40,16 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+async function createPendingAgent(
+  authenticator: Authenticator
+): Promise<{ sId: string }> {
+  const res = await createPendingAgentConfiguration(authenticator);
+  if (res.isErr()) {
+    throw res.error;
+  }
+  return res.value;
+}
+
 async function getEditorGroupId(
   agentConfigurationId: number,
   workspaceId: number
@@ -56,7 +67,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
       role: "admin",
     });
 
-    const { sId } = await createPendingAgentConfiguration(authenticator);
+    const { sId } = await createPendingAgent(authenticator);
     const agent = await AgentConfigurationModel.findOne({
       where: { sId, workspaceId: workspace.id },
     });
@@ -85,7 +96,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
       role: "admin",
     });
 
-    const { sId } = await createPendingAgentConfiguration(authenticator);
+    const { sId } = await createPendingAgent(authenticator);
     const agent = await AgentConfigurationModel.findOne({
       where: { sId, workspaceId: workspace.id },
     });
@@ -114,7 +125,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
 
     const sIds: string[] = [];
     for (let i = 0; i < 3; i++) {
-      const { sId } = await createPendingAgentConfiguration(authenticator);
+      const { sId } = await createPendingAgent(authenticator);
       sIds.push(sId);
     }
 
@@ -166,8 +177,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     });
 
     // Create a pending agent that will expire.
-    const { sId: expiredId } =
-      await createPendingAgentConfiguration(authenticator);
+    const { sId: expiredId } = await createPendingAgent(authenticator);
     const expiredAgent = await AgentConfigurationModel.findOne({
       where: { sId: expiredId, workspaceId: workspace.id },
     });
@@ -180,8 +190,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     vi.advanceTimersByTime(PAST_THRESHOLD_MS);
 
     // Create a fresh pending agent (after time advance, so it's young).
-    const { sId: freshId } =
-      await createPendingAgentConfiguration(authenticator);
+    const { sId: freshId } = await createPendingAgent(authenticator);
     const freshAgent = await AgentConfigurationModel.findOne({
       where: { sId: freshId, workspaceId: workspace.id },
     });

@@ -22,6 +22,7 @@ export const revokeUsersPlugin = createPlugin({
           "Comma separated list of user IDs to revoke from the workspace",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, workspace, args) => {
     const userIds = args.userIds.trim();

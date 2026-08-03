@@ -1,0 +1,42 @@
+import { googleAiStudioConfigSchema } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
+import {
+  GEMINI_3_CONTEXT_SIZE,
+  GEMINI_3_MAX_OUTPUT_TOKENS,
+} from "@app/lib/model_constructors/providers/google_ai_studio/models/shared";
+import { GEMINI_THINKING_OFF_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
+import { GEMINI_3_5_FLASH } from "@app/lib/model_constructors/types/models";
+
+import { z } from "zod";
+
+export const CONTEXT_SIZE = 1_000_000;
+export const MAX_OUTPUT_TOKENS = 65_536;
+
+const DEFAULT_REASONING_EFFORT = "high";
+
+// Exposes `none`: gemini-3.5-flash accepts `thinkingBudget: 0` and returns 0
+// thought tokens (verified live 2026-07-27), so thinking genuinely turns off.
+export const configSchema = googleAiStudioConfigSchema.extend({
+  reasoning: z
+    .object({
+      effort: z.enum(GEMINI_THINKING_OFF_SUPPORTED_REASONING_EFFORTS),
+    })
+    .default({ effort: DEFAULT_REASONING_EFFORT }),
+});
+
+// Mixin carrying shared config; runtime base differs per surface.
+export function WithGoogleGeminiThreeDotFiveFlashConfig<
+  TBase extends abstract new (
+    ...args: any[]
+  ) => object,
+>(Base: TBase) {
+  abstract class GoogleGeminiThreeDotFiveFlash extends Base {
+    static readonly model = GEMINI_3_5_FLASH;
+
+    static readonly configSchema = configSchema;
+
+    static readonly contextSize = GEMINI_3_CONTEXT_SIZE;
+    static readonly maxOutputTokens = GEMINI_3_MAX_OUTPUT_TOKENS;
+  }
+
+  return GoogleGeminiThreeDotFiveFlash;
+}

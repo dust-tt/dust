@@ -1,12 +1,16 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
-import { getLLM } from "@app/lib/api/llm";
+import { getBatchLLM } from "@app/lib/api/llm";
 import { writeBatchUserMessages } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
+import { getBatchEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameters,
+  LLMStreamParameters,
+} from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import { getLargeWhitelistedModelWithBatchMode } from "@app/lib/reinforcement/models";
 import {
   hasSuggestionSelfConflict,
@@ -15,6 +19,7 @@ import {
 import {
   ALL_TOOLS,
   DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
   type ExploratoryToolCallInfo,
   getEditSkillToolSchema,
   getReinforcedSkillsMetadata,
@@ -31,6 +36,7 @@ import {
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -43,19 +49,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const REINFORCEMENT_SKILLS_AGENT_ID = "reinforcement";
 
 // Tool schemas for reinforced skills (exploration + terminal).
-function buildReinforcedSkillsToolDefinitions({
-  useInlineTools,
-}: {
-  useInlineTools: boolean;
-}): Record<
+function buildReinforcedSkillsToolDefinitions(): Record<
   string,
   { description: string; schema: z.ZodObject<z.ZodRawShape> }
 > {
   return {
     get_available_tools: {
-      description: useInlineTools
-        ? "Get the list of available tools (MCP servers) that can be referenced in skill instructions with inline <tool> tags."
-        : "Get the list of available tools (MCP servers) that can be added to skills.",
+      description:
+        "Get the list of available tools (MCP servers) that can be referenced in skill instructions with inline <tool> tags.",
       schema: z.object({}),
     },
     [DESCRIBE_MCP_TOOL_NAME]: {
@@ -63,6 +64,13 @@ function buildReinforcedSkillsToolDefinitions({
         "Get detailed information about a specific MCP server: its description, and each tool's name, description, and input parameters. Use this to understand what a tool can do before suggesting instruction changes that reference it.",
       schema: z.object({
         mcpId: z.string().describe("The sId of the MCP server to describe"),
+      }),
+    },
+    [DESCRIBE_SKILL_TOOL_NAME]: {
+      description:
+        "Get detailed information about a skill referenced in the conversation or in another skill's instructions. Returns the skill's name, description, instructions, and configured tools.",
+      schema: z.object({
+        skillId: z.string().describe("The sId of the skill to describe"),
       }),
     },
     search_knowledge: {
@@ -84,10 +92,9 @@ function buildReinforcedSkillsToolDefinitions({
       }),
     },
     edit_skill: {
-      description: useInlineTools
-        ? "Suggest edits to a skill's instructions and/or agent-facing description."
-        : "Suggest edits to a skill's instructions and/or configured tools.",
-      schema: getEditSkillToolSchema({ useInlineTools }),
+      description:
+        "Suggest edits to a skill's instructions and/or agent-facing description.",
+      schema: getEditSkillToolSchema(),
     },
     reject_suggestion: {
       description:
@@ -106,33 +113,6 @@ function buildReinforcedSkillsToolDefinitions({
   };
 }
 
-async function shouldUseInlineTools(auth: Authenticator): Promise<boolean> {
-  const featureFlags = await getFeatureFlags(auth);
-  return featureFlags.includes("nested_skills");
-}
-
-function getToolEdits(data: Record<string, unknown>) {
-  const toolEdits = data.toolEdits;
-  if (!Array.isArray(toolEdits)) {
-    return undefined;
-  }
-
-  return toolEdits.filter(
-    (
-      edit
-    ): edit is {
-      action: "add" | "remove";
-      toolId: string;
-    } =>
-      edit !== null &&
-      typeof edit === "object" &&
-      "action" in edit &&
-      (edit.action === "add" || edit.action === "remove") &&
-      "toolId" in edit &&
-      typeof edit.toolId === "string"
-  );
-}
-
 const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
   sourceSuggestionIds: z
     .array(z.string())
@@ -144,13 +124,10 @@ const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
 };
 
 export function buildReinforcedSkillsSpecifications(
-  operationType: ReinforcedSkillsOperationType,
-  { useInlineTools = false }: { useInlineTools?: boolean } = {}
+  operationType: ReinforcedSkillsOperationType
 ): AgentActionSpecification[] {
   const isAggregation = operationType === "reinforcement_aggregate_suggestions";
-  const toolDefinitions = buildReinforcedSkillsToolDefinitions({
-    useInlineTools,
-  });
+  const toolDefinitions = buildReinforcedSkillsToolDefinitions();
 
   return ALL_TOOLS.filter((toolName) => {
     // reject_suggestion is only available during aggregation.
@@ -245,8 +222,7 @@ export function buildReinforcedSkillsLLMParams(
     systemPrompt: string;
     userMessage: string;
   },
-  operationType: ReinforcedSkillsOperationType,
-  { useInlineTools = false }: { useInlineTools?: boolean } = {}
+  operationType: ReinforcedSkillsOperationType
 ): LLMStreamParameters {
   return {
     conversation: {
@@ -259,9 +235,7 @@ export function buildReinforcedSkillsLLMParams(
       ],
     },
     prompt: systemPrompt,
-    specifications: buildReinforcedSkillsSpecifications(operationType, {
-      useInlineTools,
-    }),
+    specifications: buildReinforcedSkillsSpecifications(operationType),
   };
 }
 
@@ -275,20 +249,14 @@ export async function createReinforcedSkillsConversation(
     operationType,
     contextId,
     skillIds,
-    useInlineTools,
   }: {
     prompt: { systemPrompt: string; userMessage: string };
     operationType: ReinforcedSkillsOperationType;
     contextId: string;
     skillIds: string[];
-    useInlineTools?: boolean;
   }
 ): Promise<string> {
-  const resolvedUseInlineTools =
-    useInlineTools ?? (await shouldUseInlineTools(auth));
-  const llmParams = buildReinforcedSkillsLLMParams(prompt, operationType, {
-    useInlineTools: resolvedUseInlineTools,
-  });
+  const llmParams = buildReinforcedSkillsLLMParams(prompt, operationType);
   const { conversation: llmConversation, ...llmParamsWithoutConversation } =
     llmParams;
   const writeResult = await writeBatchUserMessages(auth, {
@@ -308,32 +276,39 @@ export async function createReinforcedSkillsConversation(
  */
 export async function getReinforcedSkillsLLM(
   auth: Authenticator,
-  operationType: ReinforcedSkillsOperationType,
-  { forBatch }: { forBatch?: boolean } = {}
-): Promise<LLM | null> {
+  operationType: ReinforcedSkillsOperationType
+): Promise<LLM<DustBatchEndpointConstructor> | null> {
   const owner = auth.workspace();
   if (!owner) {
     return null;
   }
 
-  const model = forBatch
-    ? await getLargeWhitelistedModelWithBatchMode(auth)
-    : getLargeWhitelistedModel(auth);
+  const model = await getLargeWhitelistedModelWithBatchMode(auth);
   if (!model) {
     return null;
   }
+
+  const endpoint = await getBatchEndpointFromLegacyModelId(auth, model.modelId);
+  if (!endpoint) {
+    return null;
+  }
+
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  return getLLM(auth, {
-    modelId: model.modelId,
+  const llmParameters: LLMParameters<DustBatchEndpointConstructor> = {
     credentials,
+    modelInfo: { endpoint },
     context: {
       operationType,
       workspaceId: owner.sId,
       userId: auth.user()?.sId,
     },
-  });
+  };
+
+  const batchLLM = await getBatchLLM(auth, llmParameters);
+
+  return batchLLM;
 }
 
 /**
@@ -347,7 +322,6 @@ export async function processSkillReinforcedEvents({
   contextId,
   conversation,
   eligibleSkillIds,
-  useInlineTools,
 }: {
   auth: Authenticator;
   events: LLMEvent[];
@@ -356,7 +330,6 @@ export async function processSkillReinforcedEvents({
   contextId: string;
   conversation?: ConversationResource;
   eligibleSkillIds: string[];
-  useInlineTools?: boolean;
 }): Promise<ProcessReinforcedSkillsEventsResult> {
   const errorEvents = events.filter((e) => e.type === "error");
   if (errorEvents.length > 0) {
@@ -400,8 +373,6 @@ export async function processSkillReinforcedEvents({
   const approvedSourceSuggestionIds: string[] = [];
   const successfulToolCalls: TerminalToolCallSuccess[] = [];
   const failedToolCalls: TerminalToolCallFailure[] = [];
-  const resolvedUseInlineTools =
-    useInlineTools ?? (await shouldUseInlineTools(auth));
 
   for (const event of toolCallEvents) {
     const { id, name, arguments: args } = event.content;
@@ -415,7 +386,6 @@ export async function processSkillReinforcedEvents({
       contextId,
       conversation,
       eligibleSkillIds,
-      useInlineTools: resolvedUseInlineTools,
     });
     switch (result.type) {
       case "created": {
@@ -472,7 +442,6 @@ async function createSkillSuggestionsFromToolCall({
   contextId,
   conversation,
   eligibleSkillIds,
-  useInlineTools,
 }: {
   auth: Authenticator;
   toolName: string;
@@ -482,13 +451,10 @@ async function createSkillSuggestionsFromToolCall({
   contextId: string;
   conversation?: ConversationResource;
   eligibleSkillIds: string[];
-  useInlineTools: boolean;
 }): Promise<ToolCallResult> {
   switch (toolName) {
     case "edit_skill": {
-      const parsed = getEditSkillToolSchema({ useInlineTools }).safeParse(
-        actionArguments
-      );
+      const parsed = getEditSkillToolSchema().safeParse(actionArguments);
       if (!parsed.success) {
         logger.warn(
           { contextId, toolName, error: parsed.error },
@@ -522,20 +488,27 @@ async function createSkillSuggestionsFromToolCall({
 
       const hasInstructionEdits =
         (parsed.data.instructionEdits?.length ?? 0) > 0;
-      const toolEdits = useInlineTools ? undefined : getToolEdits(parsed.data);
-      const hasToolEdits = (toolEdits?.length ?? 0) > 0;
       const hasAgentFacingDescriptionEdit =
         parsed.data.agentFacingDescriptionEdit !== undefined;
+      if (!hasInstructionEdits && !hasAgentFacingDescriptionEdit) {
+        return {
+          type: "error",
+          errorMessage:
+            "edit_skill requires at least one instruction edit or description edit.",
+        };
+      }
+
       if (
-        !hasInstructionEdits &&
-        !hasToolEdits &&
-        !hasAgentFacingDescriptionEdit
+        hasAgentFacingDescriptionEdit &&
+        parsed.data.agentFacingDescriptionEdit.content.length >
+          AGENT_FACING_DESCRIPTION_MAX_LENGTH
       ) {
         return {
           type: "error",
-          errorMessage: useInlineTools
-            ? "edit_skill requires at least one instruction edit or description edit."
-            : "edit_skill requires at least one instruction edit, tool edit, or description edit.",
+          errorMessage:
+            `The suggested agent-facing description is too long ` +
+            `(${parsed.data.agentFacingDescriptionEdit.content.length} characters). ` +
+            `It must be ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters or less.`,
         };
       }
 
@@ -551,7 +524,6 @@ async function createSkillSuggestionsFromToolCall({
         hasSuggestionSelfConflict(
           {
             instructionEdits: parsed.data.instructionEdits,
-            toolEdits,
             agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           skill.instructionsHtml
@@ -559,9 +531,8 @@ async function createSkillSuggestionsFromToolCall({
       ) {
         return {
           type: "error",
-          errorMessage: useInlineTools
-            ? "Suggestion has conflicting edits (overlapping block targets)."
-            : "Suggestion has conflicting edits (overlapping block targets or duplicate tool IDs).",
+          errorMessage:
+            "Suggestion has conflicting edits (overlapping block targets).",
         };
       }
 
@@ -591,7 +562,6 @@ async function createSkillSuggestionsFromToolCall({
           kind: "edit",
           suggestion: {
             instructionEdits: parsed.data.instructionEdits,
-            ...(toolEdits !== undefined ? { toolEdits } : {}),
             agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           analysis: parsed.data.analysis ?? null,

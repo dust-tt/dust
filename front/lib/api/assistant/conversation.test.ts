@@ -7,6 +7,7 @@ import {
   retryAgentMessage,
   softDeleteAgentMessage,
   softDeleteUserMessageAndReplies,
+  updateAgentMessageWithFinalStatus,
 } from "@app/lib/api/assistant/conversation";
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -27,7 +28,6 @@ import {
   ConversationModel,
   MentionModel,
   MessageModel,
-  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -39,11 +39,12 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
-} from "@app/types/api/internal/assistant";
-import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
+import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
@@ -85,13 +86,11 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
 }));
 
 import { runOnRedis } from "@app/lib/api/redis";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 // Mock rateLimiter from the utils module
@@ -103,6 +102,31 @@ const TEST_CREDIT_EXPIRATION_DAYS = 365;
 const TEST_CREDIT_EXPIRATION_DELAY_MS =
   TEST_CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
 const TEST_DAILY_USAGE_TTL_SECONDS = 60 * 60;
+
+async function fetchConversationResource(
+  auth: Authenticator,
+  sId: string
+): Promise<ConversationResource> {
+  const resource = await ConversationResource.fetchById(auth, sId);
+  if (!resource) {
+    throw new Error(`Failed to fetch conversation resource: ${sId}`);
+  }
+  return resource;
+}
+
+async function fetchRegularAutoGroup(
+  space: SpaceResource,
+  auth: Authenticator
+) {
+  const groupReference = space.groups.find((group) => group.isRegularAuto());
+  if (!groupReference) {
+    return null;
+  }
+  const [group] = await space.fetchGroupResources(auth, {
+    groupReferences: [groupReference],
+  });
+  return group;
+}
 
 async function createActiveProgrammaticCredit(
   auth: Authenticator
@@ -137,6 +161,7 @@ describe("retryAgentMessage", () => {
     ReturnType<typeof createResourceTest>
   >["globalGroup"];
   let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig: LightAgentConfigurationType;
   let agentMessage: AgentMessageType;
 
@@ -168,6 +193,10 @@ describe("retryAgentMessage", () => {
       throw new Error("Failed to fetch conversation");
     }
     conversation = fetchedConversationResult.value;
+    conversationResource = await fetchConversationResource(
+      auth,
+      conversationWithoutContent.sId
+    );
 
     // Find the agent message in the conversation
     const agentMessages = conversation.content
@@ -196,7 +225,7 @@ describe("retryAgentMessage", () => {
     expect(userMessage).toBeDefined();
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -215,42 +244,8 @@ describe("retryAgentMessage", () => {
           userMessageId: userMessage!.sId,
           userMessageVersion: userMessage!.version,
           userMessageOrigin: userMessage!.context.origin,
-          conversationBranchId: conversation.branchId,
+          conversationBranchId: null,
         },
-        startStep: 0,
-      });
-    }
-  });
-
-  it("should pass non-null conversation branchId when retrying in a branch", async () => {
-    const branchId = "branch-test-id";
-
-    const userMessage = conversation.content
-      .flat()
-      .filter(isUserMessageType)
-      .find((m) => m.sId === agentMessage.parentMessageId);
-
-    expect(userMessage).toBeDefined();
-
-    const branchedConversation: ConversationType = {
-      ...conversation,
-      branchId,
-    };
-
-    const result = await retryAgentMessage(auth, {
-      conversation: branchedConversation,
-      message: agentMessage,
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-
-    if (result.isOk()) {
-      expect(launchAgentLoopWorkflow).toHaveBeenCalledWith({
-        auth,
-        agentLoopArgs: expect.objectContaining({
-          conversationBranchId: branchId,
-        }),
         startStep: 0,
       });
     }
@@ -258,7 +253,7 @@ describe("retryAgentMessage", () => {
 
   it("should call publishAgentMessagesEvents with correct arguments", async () => {
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -288,7 +283,7 @@ describe("retryAgentMessage", () => {
     const originalId = agentMessage.sId;
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -319,7 +314,7 @@ describe("retryAgentMessage", () => {
     };
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: nonExistentMessage,
     });
 
@@ -335,7 +330,7 @@ describe("retryAgentMessage", () => {
   it("should return error when message was already retried", async () => {
     // First retry
     const firstRetry = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
     expect(firstRetry.isOk()).toBe(true);
@@ -345,7 +340,7 @@ describe("retryAgentMessage", () => {
 
     // Try to retry again with the same original message
     const secondRetry = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -361,7 +356,7 @@ describe("retryAgentMessage", () => {
 
   it("should preserve agent message properties in the retry", async () => {
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -396,19 +391,15 @@ describe("retryAgentMessage", () => {
       }
     );
 
-    // Refresh conversation
-    const refreshedConversationResult = await getConversation(
+    // Refresh conversation resource
+    const refreshedConversationResource = await fetchConversationResource(
       auth,
       conversation.sId
     );
-    if (refreshedConversationResult.isErr()) {
-      throw new Error("Failed to fetch conversation");
-    }
-    const refreshedConversation = refreshedConversationResult.value;
-    expect(refreshedConversation.hasError).toBe(true);
+    expect(refreshedConversationResource.toJSON().hasError).toBe(true);
 
     const result = await retryAgentMessage(auth, {
-      conversation: refreshedConversation,
+      conversationResource: refreshedConversationResource,
       message: agentMessage,
     });
 
@@ -433,7 +424,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(0);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -456,7 +447,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -475,7 +466,7 @@ describe("retryAgentMessage", () => {
     };
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: messageWithInvalidParent,
     });
 
@@ -505,7 +496,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -538,7 +529,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -564,7 +555,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(0);
 
     const result = await retryAgentMessage(systemKeyAuth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -594,7 +585,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(mixedAuth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -615,7 +606,7 @@ describe("retryAgentMessage", () => {
 
     // Try to retry the agent message
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -635,6 +626,7 @@ describe("retryAgentMessage", () => {
     let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let projectConversation: ConversationType;
+    let projectConversationResource: ConversationResource;
     let projectAgentMessage: AgentMessageType;
     let agentWithDifferentSpace: LightAgentConfigurationType;
 
@@ -650,11 +642,13 @@ describe("retryAgentMessage", () => {
       const user = auth.getNonNullableUser();
       const userJson = user.toJSON();
 
-      const projectSpaceGroup = projectSpace.groups.find(
-        (g) => g.kind === "regular"
+      const projectSpaceGroup = await fetchRegularAutoGroup(
+        projectSpace,
+        internalAdminAuth
       );
-      const anotherProjectSpaceGroup = anotherProjectSpace.groups.find(
-        (g) => g.kind === "regular"
+      const anotherProjectSpaceGroup = await fetchRegularAutoGroup(
+        anotherProjectSpace,
+        internalAdminAuth
       );
 
       if (projectSpaceGroup) {
@@ -747,6 +741,10 @@ describe("retryAgentMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       projectConversation = fetchedConversationResult.value;
+      projectConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
 
       // Find the agent message in the conversation
       const agentMessages = projectConversation.content
@@ -760,22 +758,26 @@ describe("retryAgentMessage", () => {
       vi.clearAllMocks();
     });
 
-    it("should return error when agent is restricted by space usage in project conversation with more than one manual member on that project", async () => {
+    it("should succeed when retrying an agent that is restricted by space usage in a project conversation", async () => {
+      // Agent messages already present in a Pod conversation were either usable
+      // at creation time or approved via validateAgentMention; retry must work.
+      const rateLimiterSpy = vi
+        .spyOn(rateLimiterModule, "rateLimiter")
+        .mockResolvedValue(100);
+
       const result = await retryAgentMessage(auth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         message: projectAgentMessage,
       });
 
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.status_code).toBe(400);
-        expect(result.error.api_error.type).toBe("invalid_request_error");
-        expect(result.error.api_error.message).toContain(
-          "restricted by space usage"
-        );
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
       }
-      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
-      expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
+      expect(launchAgentLoopWorkflow).toHaveBeenCalled();
+      expect(publishAgentMessagesEvents).toHaveBeenCalled();
+
+      rateLimiterSpy.mockRestore();
     });
 
     it("should succeed when agent uses the same project space", async () => {
@@ -820,6 +822,10 @@ describe("retryAgentMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       const sameSpaceConversation = fetchedConversationResult.value;
+      const sameSpaceConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
 
       const agentMessages = sameSpaceConversation.content
         .flat()
@@ -835,7 +841,7 @@ describe("retryAgentMessage", () => {
         .mockResolvedValue(100);
 
       const result = await retryAgentMessage(auth, {
-        conversation: sameSpaceConversation,
+        conversationResource: sameSpaceConversationResource,
         message: sameSpaceAgentMessage,
       });
 
@@ -887,6 +893,10 @@ describe("retryAgentMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       const globalSpaceConversation = fetchedConversationResult.value;
+      const globalSpaceConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
 
       const agentMessages = globalSpaceConversation.content
         .flat()
@@ -902,7 +912,7 @@ describe("retryAgentMessage", () => {
         .mockResolvedValue(100);
 
       const result = await retryAgentMessage(auth, {
-        conversation: globalSpaceConversation,
+        conversationResource: globalSpaceConversationResource,
         message: globalSpaceAgentMessage,
       });
 
@@ -911,170 +921,6 @@ describe("retryAgentMessage", () => {
 
       rateLimiterSpy.mockRestore();
     });
-  });
-});
-
-describe("getConversation with branches", () => {
-  let auth: Authenticator;
-  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
-  let conversationId: string;
-  let branchId: string;
-
-  beforeEach(async () => {
-    const setup = await createResourceTest({});
-    auth = setup.authenticator;
-    workspace = setup.workspace;
-
-    const user = setup.user;
-
-    const conversation = await ConversationModel.create({
-      workspaceId: workspace.id,
-      sId: generateRandomModelSId(),
-      title: "Branching conversation",
-      requestedSpaceIds: [],
-    });
-    conversationId = conversation.sId;
-
-    const beforeBranchUserMessage = await UserMessageModel.create({
-      userId: user.id,
-      workspaceId: workspace.id,
-      content: "before branch",
-      userContextUsername: "testuser",
-      userContextTimezone: "UTC",
-      userContextFullName: "Test User",
-      userContextEmail: "test@example.com",
-      userContextProfilePictureUrl: null,
-      userContextOrigin: "web",
-      clientSideMCPServerIds: [],
-    });
-    await MessageModel.create({
-      workspaceId: workspace.id,
-      sId: generateRandomModelSId(),
-      rank: 0,
-      conversationId: conversation.id,
-      parentId: null,
-      userMessageId: beforeBranchUserMessage.id,
-      agentMessageId: null,
-      contentFragmentId: null,
-    });
-
-    const atBranchUserMessage = await UserMessageModel.create({
-      userId: user.id,
-      workspaceId: workspace.id,
-      content: "at branch",
-      userContextUsername: "testuser",
-      userContextTimezone: "UTC",
-      userContextFullName: "Test User",
-      userContextEmail: "test@example.com",
-      userContextProfilePictureUrl: null,
-      userContextOrigin: "web",
-      clientSideMCPServerIds: [],
-    });
-    const atBranchMessage = await MessageModel.create({
-      workspaceId: workspace.id,
-      sId: generateRandomModelSId(),
-      rank: 1,
-      conversationId: conversation.id,
-      parentId: null,
-      userMessageId: atBranchUserMessage.id,
-      agentMessageId: null,
-      contentFragmentId: null,
-    });
-
-    const afterBranchUserMessage = await UserMessageModel.create({
-      userId: user.id,
-      workspaceId: workspace.id,
-      content: "after branch main",
-      userContextUsername: "testuser",
-      userContextTimezone: "UTC",
-      userContextFullName: "Test User",
-      userContextEmail: "test@example.com",
-      userContextProfilePictureUrl: null,
-      userContextOrigin: "web",
-      clientSideMCPServerIds: [],
-    });
-    await MessageModel.create({
-      workspaceId: workspace.id,
-      sId: generateRandomModelSId(),
-      rank: 2,
-      conversationId: conversation.id,
-      parentId: null,
-      userMessageId: afterBranchUserMessage.id,
-      agentMessageId: null,
-      contentFragmentId: null,
-    });
-
-    const branch = await ConversationBranchResource.makeNew(auth, {
-      state: "open",
-      previousMessageId: atBranchMessage.id,
-      conversationId: conversation.id,
-      userId: user.id,
-    });
-    branchId = branch.sId;
-
-    const branchUserMessage = await UserMessageModel.create({
-      userId: user.id,
-      workspaceId: workspace.id,
-      content: "branch message",
-      userContextUsername: "testuser",
-      userContextTimezone: "UTC",
-      userContextFullName: "Test User",
-      userContextEmail: "test@example.com",
-      userContextProfilePictureUrl: null,
-      userContextOrigin: "web",
-      clientSideMCPServerIds: [],
-    });
-    await MessageModel.create({
-      workspaceId: workspace.id,
-      sId: generateRandomModelSId(),
-      rank: 3,
-      conversationId: conversation.id,
-      parentId: null,
-      userMessageId: branchUserMessage.id,
-      agentMessageId: null,
-      contentFragmentId: null,
-      branchId: branch.id,
-    });
-  });
-
-  it("returns only main-thread messages when branchId is not provided", async () => {
-    const result = await getConversation(auth, conversationId);
-
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      const conv = result.value;
-      expect(conv.branchId).toBeNull();
-
-      const userMessages = conv.content.flat().filter(isUserMessageType);
-      const contents = userMessages.map((m) => m.content);
-
-      expect(contents).toEqual(
-        expect.arrayContaining([
-          "before branch",
-          "at branch",
-          "after branch main",
-        ])
-      );
-      expect(contents).not.toContain("branch message");
-    }
-  });
-
-  it("returns messages up to the branch point plus branch messages when branchId is provided, and sets branchId on the conversation", async () => {
-    const result = await getConversation(auth, conversationId, false, branchId);
-
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      const conv = result.value;
-      expect(conv.branchId).toBe(branchId);
-
-      const userMessages = conv.content.flat().filter(isUserMessageType);
-      const contents = userMessages.map((m) => m.content);
-
-      expect(contents).toEqual(
-        expect.arrayContaining(["before branch", "at branch", "branch message"])
-      );
-      expect(contents).not.toContain("after branch main");
-    }
   });
 });
 
@@ -1243,6 +1089,7 @@ describe("softDeleteAgentMessage", () => {
 describe("softDeleteUserMessageAndReplies", () => {
   let auth: Authenticator;
   let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig: LightAgentConfigurationType;
 
   beforeEach(async () => {
@@ -1270,6 +1117,10 @@ describe("softDeleteUserMessageAndReplies", () => {
       throw new Error("Failed to fetch conversation");
     }
     conversation = fetchedConversationResult.value;
+    conversationResource = await fetchConversationResource(
+      auth,
+      conversationWithoutContent.sId
+    );
   });
 
   it("cascade-deletes the agent message that replied to the deleted user message", async () => {
@@ -1282,7 +1133,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
-      conversation,
+      conversationResource,
     });
 
     expect(result.isOk()).toBe(true);
@@ -1326,7 +1177,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: lastUser,
-      conversation,
+      conversationResource,
     });
     expect(result.isOk()).toBe(true);
 
@@ -1349,7 +1200,7 @@ describe("softDeleteUserMessageAndReplies", () => {
     // Pre-delete the agent directly.
     const preDelete = await softDeleteAgentMessage(auth, {
       message: firstAgent,
-      conversation,
+      conversation: conversationResource.toJSON(),
     });
     expect(preDelete.isOk()).toBe(true);
 
@@ -1359,6 +1210,10 @@ describe("softDeleteUserMessageAndReplies", () => {
       throw new Error("Failed to refetch conversation");
     }
     const refetchedConversation = refetched.value;
+    const refetchedConversationResource = await fetchConversationResource(
+      auth,
+      conversation.sId
+    );
     const firstUser = refetchedConversation.content
       .flat()
       .find((m): m is UserMessageType => isUserMessageType(m));
@@ -1371,7 +1226,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUser,
-      conversation: refetchedConversation,
+      conversationResource: refetchedConversationResource,
     });
     expect(result.isOk()).toBe(true);
 
@@ -1402,7 +1257,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
-      conversation,
+      conversationResource,
     });
     expect(result.isOk()).toBe(true);
 
@@ -1410,6 +1265,64 @@ describe("softDeleteUserMessageAndReplies", () => {
       messageIds: [firstAgentMessage.sId],
       conversationId: conversation.sId,
     });
+  });
+
+  it("starts a follow-up after deleting the previous running reply", async () => {
+    const oneTurnConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const fetched = await getConversation(auth, oneTurnConversation.sId);
+    if (fetched.isErr()) {
+      throw fetched.error;
+    }
+    const userMessage = fetched.value.content
+      .flat()
+      .find((message): message is UserMessageType =>
+        isUserMessageType(message)
+      );
+    if (!userMessage) {
+      throw new Error("No user message found in conversation");
+    }
+
+    const deleted = await softDeleteUserMessageAndReplies(auth, {
+      message: userMessage,
+      conversationResource: await fetchConversationResource(
+        auth,
+        oneTurnConversation.sId
+      ),
+    });
+    expect(deleted.isOk()).toBe(true);
+
+    const afterDelete = await getConversation(auth, oneTurnConversation.sId);
+    if (afterDelete.isErr()) {
+      throw afterDelete.error;
+    }
+
+    const user = auth.getNonNullableUser().toJSON();
+    const followUp = await postUserMessage(auth, {
+      conversationResource: await fetchConversationResource(
+        auth,
+        oneTurnConversation.sId
+      ),
+      content: "Follow-up",
+      mentions: [{ configurationId: agentConfig.sId }],
+      context: {
+        username: user.username,
+        timezone: "UTC",
+        fullName: user.fullName,
+        email: user.email,
+        profilePictureUrl: user.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(followUp.isOk()).toBe(true);
+    if (followUp.isOk()) {
+      expect(followUp.value.userMessage.visibility).toBe("visible");
+      expect(followUp.value.agentMessages).toHaveLength(1);
+    }
   });
 
   it("does not signal gracefullyStopAgentLoop when the cascaded agent reply already finished", async () => {
@@ -1439,7 +1352,10 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
-      conversation: refetched.value,
+      conversationResource: await fetchConversationResource(
+        auth,
+        conversation.sId
+      ),
     });
     expect(result.isOk()).toBe(true);
 
@@ -1453,7 +1369,11 @@ describe("postUserMessage", () => {
   let globalGroup: Awaited<
     ReturnType<typeof createResourceTest>
   >["globalGroup"];
+  let globalSpace: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalSpace"];
   let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig1: LightAgentConfigurationType;
 
   beforeEach(async () => {
@@ -1461,6 +1381,7 @@ describe("postUserMessage", () => {
     auth = setup.authenticator;
     workspace = setup.workspace;
     globalGroup = setup.globalGroup;
+    globalSpace = setup.globalSpace;
 
     agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 1",
@@ -1482,6 +1403,10 @@ describe("postUserMessage", () => {
       throw new Error("Failed to fetch conversation");
     }
     conversation = fetchedConversationResult.value;
+    conversationResource = await fetchConversationResource(
+      auth,
+      conversationWithoutContent.sId
+    );
 
     vi.clearAllMocks();
   });
@@ -1520,7 +1445,10 @@ describe("postUserMessage", () => {
     const noCreditUserJson = noCreditUser.toJSON();
 
     const result = await postUserMessage(noCreditAuth, {
-      conversation: fetchedConversationResult.value,
+      conversationResource: await fetchConversationResource(
+        noCreditAuth,
+        fetchedConversationResult.value.sId
+      ),
       content: "Programmatic message",
       mentions: [],
       context: {
@@ -1551,6 +1479,40 @@ describe("postUserMessage", () => {
     rateLimiterSpy.mockRestore();
   });
 
+  it("should reject mentions of a retired global agent", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const result = await postUserMessage(auth, {
+      conversationResource: await fetchConversationResource(
+        auth,
+        conversation.sId
+      ),
+      content: `Hello @claude-4-sonnet`,
+      mentions: [
+        {
+          configurationId: GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
+        } satisfies AgentMention,
+      ],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "zapier",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(400);
+      expect(result.error.api_error.type).toBe("agent_inaccessible");
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+  });
+
   it("should preserve agent mentions in the returned userMessage", async () => {
     const mentions: MentionType[] = [
       {
@@ -1562,7 +1524,7 @@ describe("postUserMessage", () => {
     const userJson = user.toJSON();
 
     const result = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content: `Hello @${agentConfig1.name}`,
       mentions,
       context: {
@@ -1627,7 +1589,7 @@ describe("postUserMessage", () => {
     const userJson = user.toJSON();
 
     const result = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content: `Hello @${mentionedUser.username}`,
       mentions,
       context: {
@@ -1695,7 +1657,7 @@ describe("postUserMessage", () => {
     const userJson = user.toJSON();
 
     const result = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content: `Hello @${mentionedUser.username} and @${agentConfig1.name}`,
       mentions,
       context: {
@@ -1752,7 +1714,7 @@ describe("postUserMessage", () => {
     const userJson = user.toJSON();
 
     const result = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content: "Hello without mentions",
       mentions: [],
       context: {
@@ -1792,6 +1754,7 @@ describe("postUserMessage", () => {
       const compactionMessageRow = await CompactionMessageModel.create({
         status: "created",
         content: null,
+        conversationId: conversation.id,
         workspaceId: workspace.id,
       });
       await MessageModel.create({
@@ -1810,7 +1773,10 @@ describe("postUserMessage", () => {
       }
 
       const result = await postUserMessage(auth, {
-        conversation: fetched.value,
+        conversationResource: await fetchConversationResource(
+          auth,
+          fetched.value.sId
+        ),
         content: "should be blocked",
         mentions: [],
         context: {
@@ -1843,6 +1809,7 @@ describe("postUserMessage", () => {
       const compactionMessageRow = await CompactionMessageModel.create({
         status: "succeeded",
         content: "compacted summary",
+        conversationId: conversation.id,
         workspaceId: workspace.id,
       });
       await MessageModel.create({
@@ -1862,7 +1829,10 @@ describe("postUserMessage", () => {
       }
 
       const result = await postUserMessage(auth, {
-        conversation: fetched.value,
+        conversationResource: await fetchConversationResource(
+          auth,
+          fetched.value.sId
+        ),
         content: "should be allowed",
         mentions: [],
         context: {
@@ -1894,7 +1864,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "Hello without explicit mentions",
         mentions: [],
         context: {
@@ -1952,7 +1922,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const firstFromUser = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "first from A",
         mentions: [],
         context: {
@@ -1987,7 +1957,10 @@ describe("postUserMessage", () => {
       vi.clearAllMocks();
 
       const secondFromUser = await postUserMessage(auth, {
-        conversation: afterFirst.value,
+        conversationResource: await fetchConversationResource(
+          auth,
+          afterFirst.value.sId
+        ),
         content: "second from A",
         mentions: [],
         context: {
@@ -2034,7 +2007,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "From extension",
         mentions: [],
         context: {
@@ -2072,7 +2045,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "Hello without explicit mentions",
         mentions: [],
         context: {
@@ -2126,7 +2099,10 @@ describe("postUserMessage", () => {
         }
 
         resultWithOtherAgent = await postUserMessage(auth, {
-          conversation: afterFirstPostResult.value,
+          conversationResource: await fetchConversationResource(
+            auth,
+            afterFirstPostResult.value.sId
+          ),
           content: "Hello with explicit agent mention",
           mentions: [
             {
@@ -2196,7 +2172,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "API message",
         mentions: [],
         context: {
@@ -2240,7 +2216,7 @@ describe("postUserMessage", () => {
       const userBJson = userB.toJSON();
 
       const firstFromA = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "first from A",
         mentions: [],
         context: {
@@ -2267,7 +2243,10 @@ describe("postUserMessage", () => {
       }
 
       const firstFromB = await postUserMessage(authB, {
-        conversation: afterA.value,
+        conversationResource: await fetchConversationResource(
+          authB,
+          afterA.value.sId
+        ),
         content: "first from B",
         mentions: [],
         context: {
@@ -2296,7 +2275,10 @@ describe("postUserMessage", () => {
       vi.clearAllMocks();
 
       const secondFromA = await postUserMessage(auth, {
-        conversation: afterB.value,
+        conversationResource: await fetchConversationResource(
+          auth,
+          afterB.value.sId
+        ),
         content: "second from A",
         mentions: [],
         context: {
@@ -2328,7 +2310,7 @@ describe("postUserMessage", () => {
     let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let nonMemberAuth: Authenticator;
     let memberAuth: Authenticator;
-    let projectConversation: ConversationType;
+    let projectConversationResource: ConversationResource;
 
     beforeEach(async () => {
       // Create a project space
@@ -2351,8 +2333,9 @@ describe("postUserMessage", () => {
       );
 
       // Add member user to the project space group
-      const projectSpaceGroup = projectSpace.groups.find(
-        (g) => g.kind === "regular"
+      const projectSpaceGroup = await fetchRegularAutoGroup(
+        projectSpace,
+        internalAdminAuth
       );
       if (projectSpaceGroup) {
         const addRes = await projectSpaceGroup.dangerouslyAddMember(
@@ -2389,7 +2372,10 @@ describe("postUserMessage", () => {
       if (fetchedConversationResult.isErr()) {
         throw new Error("Failed to fetch conversation");
       }
-      projectConversation = fetchedConversationResult.value;
+      projectConversationResource = await fetchConversationResource(
+        memberAuth,
+        conversationWithoutContent.sId
+      );
     });
 
     it("should allow posting a message when user is a project member", async () => {
@@ -2397,7 +2383,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(memberAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from a project member",
         mentions: [],
         context: {
@@ -2424,7 +2410,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(nonMemberAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from a non-member",
         mentions: [],
         context: {
@@ -2466,7 +2452,7 @@ describe("postUserMessage", () => {
       expect(restrictedPod?.isOpen()).toBe(false);
 
       const result = await postUserMessage(apiKeyAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from an integration",
         mentions: [],
         context: {
@@ -2515,7 +2501,7 @@ describe("postUserMessage", () => {
       expect(openPod?.isOpen()).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from an integration",
         mentions: [],
         context: {
@@ -2563,7 +2549,7 @@ describe("postUserMessage", () => {
       expect(openPod?.isOpen()).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from an integration",
         mentions: [],
         context: {
@@ -2591,14 +2577,12 @@ describe("postUserMessage", () => {
       const user = memberAuth.getNonNullableUser();
       const userJson = user.toJSON();
 
-      // Create a conversation with a non-existent spaceId
-      const conversationWithInvalidSpace: ConversationType = {
-        ...projectConversation,
-        spaceId: "invalid-space-id",
-      };
+      const fetchPodSpy = vi
+        .spyOn(SpaceResource, "fetchById")
+        .mockResolvedValue(null);
 
       const result = await postUserMessage(memberAuth, {
-        conversation: conversationWithInvalidSpace,
+        conversationResource: projectConversationResource,
         content: "Hello",
         mentions: [],
         context: {
@@ -2611,6 +2595,8 @@ describe("postUserMessage", () => {
         },
         skipToolsValidation: false,
       });
+
+      fetchPodSpy.mockRestore();
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -2643,7 +2629,10 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(nonMemberAuth, {
-        conversation: regularConversation,
+        conversationResource: await fetchConversationResource(
+          nonMemberAuth,
+          regularConversation.sId
+        ),
         content: "Hello from a non-member to regular conversation",
         mentions: [],
         context: {
@@ -2685,7 +2674,7 @@ describe("postUserMessage", () => {
       );
 
       const result = await postUserMessage(apiKeyAuth, {
-        conversation,
+        conversationResource,
         content: "Hello from API key",
         mentions: [],
         context: {
@@ -2706,10 +2695,11 @@ describe("postUserMessage", () => {
     });
   });
 
-  describe("restricted agent branch creation", () => {
+  describe("restricted agent in project conversation", () => {
     let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let projectConversation: ConversationType;
+    let projectConversationResource: ConversationResource;
     let agentWithDifferentSpace: LightAgentConfigurationType;
 
     async function setupProjectWithRestrictedAgent({
@@ -2725,11 +2715,13 @@ describe("postUserMessage", () => {
       );
       const user = auth.getNonNullableUser();
 
-      const projectSpaceGroup = projectSpace.groups.find(
-        (g) => g.kind === "regular"
+      const projectSpaceGroup = await fetchRegularAutoGroup(
+        projectSpace,
+        internalAdminAuth
       );
-      const anotherProjectSpaceGroup = anotherProjectSpace.groups.find(
-        (g) => g.kind === "regular"
+      const anotherProjectSpaceGroup = await fetchRegularAutoGroup(
+        anotherProjectSpace,
+        internalAdminAuth
       );
 
       if (projectSpaceGroup) {
@@ -2818,14 +2810,18 @@ describe("postUserMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       projectConversation = fetchedConversationResult.value;
+      projectConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
     }
 
-    describe("with projects feature flag enabled regarding branches", () => {
+    describe("when posting with a restricted agent", () => {
       beforeEach(async () => {
         await setupProjectWithRestrictedAgent();
       });
 
-      it("should create a branch and put first message in branch when posting with restricted agent", async () => {
+      it("records a restricted mention without an agent message", async () => {
         const user = auth.getNonNullableUser();
         const userJson = user.toJSON();
 
@@ -2833,15 +2829,8 @@ describe("postUserMessage", () => {
           .spyOn(rateLimiterModule, "rateLimiter")
           .mockResolvedValue(100);
 
-        const branchesBefore =
-          await ConversationBranchResource.listForConversation(
-            auth,
-            projectConversation.id
-          );
-        expect(branchesBefore.length).toBe(0);
-
         const result = await postUserMessage(auth, {
-          conversation: projectConversation,
+          conversationResource: projectConversationResource,
           content: `Hello @${agentWithDifferentSpace.name}`,
           mentions: [{ configurationId: agentWithDifferentSpace.sId }],
           context: {
@@ -2860,126 +2849,33 @@ describe("postUserMessage", () => {
           return;
         }
 
-        const branchesAfter =
-          await ConversationBranchResource.listForConversation(
-            auth,
-            projectConversation.id
-          );
-        expect(branchesAfter.length).toBe(1);
-        const branch = branchesAfter[0];
-        expect(projectConversation.branchId).toBe(branch.sId);
+        expect(result.value.agentMessages.length).toBe(0);
 
-        const newUserMessageId = result.value.userMessage.id;
-        const newUserMessageRow = await MessageModel.findOne({
+        const mentionRow = await MentionModel.findOne({
           where: {
-            id: newUserMessageId,
+            messageId: result.value.userMessage.id,
             workspaceId: workspace.id,
+            agentConfigurationId: agentWithDifferentSpace.sId,
           },
         });
-        expect(newUserMessageRow).not.toBeNull();
-        expect(newUserMessageRow!.branchId).toBe(branch.id);
+        expect(mentionRow).not.toBeNull();
+        expect(mentionRow!.status).toBe("agent_restricted_by_space_usage");
 
-        const agentMessages = result.value.agentMessages;
-        expect(agentMessages.length).toBe(1);
-        const agentMessageRow = await MessageModel.findOne({
-          where: {
-            id: agentMessages[0].id,
-            workspaceId: workspace.id,
-          },
-        });
-        expect(agentMessageRow).not.toBeNull();
-        expect(agentMessageRow!.branchId).toBe(branch.id);
-
-        rateLimiterSpy.mockRestore();
-      });
-
-      it("should put subsequent messages in branch when conversation has branchId", async () => {
-        const user = auth.getNonNullableUser();
-        const userJson = user.toJSON();
-
-        const rateLimiterSpy = vi
-          .spyOn(rateLimiterModule, "rateLimiter")
-          .mockResolvedValue(100);
-
-        const firstPost = await postUserMessage(auth, {
-          conversation: projectConversation,
-          content: `First message @${agentWithDifferentSpace.name}`,
-          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
-          context: {
-            username: userJson.username,
-            timezone: "UTC",
-            fullName: userJson.fullName,
-            email: userJson.email,
-            profilePictureUrl: userJson.image,
-            origin: "web",
-          },
-          skipToolsValidation: false,
-        });
-
-        expect(firstPost.isOk()).toBe(true);
-        if (!firstPost.isOk()) {
-          return;
-        }
-
-        expect(projectConversation.branchId).toBeDefined();
-        const branchId = projectConversation.branchId!;
-
-        const conversationWithBranch = await getConversation(
-          auth,
-          projectConversation.sId,
-          false,
-          branchId
-        );
-        expect(conversationWithBranch.isOk()).toBe(true);
-        if (conversationWithBranch.isErr()) {
-          return;
-        }
-        const convInBranch = conversationWithBranch.value;
-
-        const secondPost = await postUserMessage(auth, {
-          conversation: convInBranch,
-          content: "Second message in branch",
-          mentions: [],
-          context: {
-            username: userJson.username,
-            timezone: "UTC",
-            fullName: userJson.fullName,
-            email: userJson.email,
-            profilePictureUrl: userJson.image,
-            origin: "web",
-          },
-          skipToolsValidation: false,
-        });
-
-        expect(secondPost.isOk()).toBe(true);
-        if (!secondPost.isOk()) {
-          return;
-        }
-
-        const secondUserMessageRow = await MessageModel.findOne({
-          where: {
-            id: secondPost.value.userMessage.id,
-            workspaceId: workspace.id,
-          },
-        });
-        expect(secondUserMessageRow).not.toBeNull();
-        const branchRow = await ConversationBranchResource.fetchById(
-          auth,
-          branchId
-        );
-        expect(branchRow).not.toBeNull();
-        expect(secondUserMessageRow!.branchId).toBe(branchRow!.id);
+        const agentMentions =
+          result.value.userMessage.richMentions.filter(isRichAgentMention);
+        expect(agentMentions).toHaveLength(1);
+        expect(agentMentions[0].status).toBe("agent_restricted_by_space_usage");
 
         rateLimiterSpy.mockRestore();
       });
     });
 
-    describe("with empty conversation and projects feature flag enabled", () => {
+    describe("with empty conversation", () => {
       beforeEach(async () => {
         await setupProjectWithRestrictedAgent({ messagesCreatedAt: [] });
       });
 
-      it("should create a branch with an anchor message when first message mentions a restricted agent", async () => {
+      it("records a restricted mention when first message mentions a restricted agent", async () => {
         const user = auth.getNonNullableUser();
         const userJson = user.toJSON();
 
@@ -2990,7 +2886,7 @@ describe("postUserMessage", () => {
         expect(projectConversation.content.length).toBe(0);
 
         const result = await postUserMessage(auth, {
-          conversation: projectConversation,
+          conversationResource: projectConversationResource,
           content: `Hello @${agentWithDifferentSpace.name}`,
           mentions: [{ configurationId: agentWithDifferentSpace.sId }],
           context: {
@@ -3009,60 +2905,8 @@ describe("postUserMessage", () => {
           return;
         }
 
-        const branchesAfter =
-          await ConversationBranchResource.listForConversation(
-            auth,
-            projectConversation.id
-          );
-        expect(branchesAfter.length).toBe(1);
-        const branch = branchesAfter[0];
-        expect(projectConversation.branchId).toBe(branch.sId);
+        expect(result.value.agentMessages.length).toBe(0);
 
-        // Anchor message: rank 0, empty content, origin "branch_anchor".
-        const anchorMessageRow = await MessageModel.findOne({
-          where: {
-            conversationId: projectConversation.id,
-            workspaceId: workspace.id,
-            rank: 0,
-            branchId: null,
-          },
-          include: [
-            {
-              model: UserMessageModel,
-              as: "userMessage",
-              required: true,
-            },
-          ],
-        });
-        expect(anchorMessageRow).not.toBeNull();
-        expect(anchorMessageRow!.userMessage!.content).toBe("");
-        expect(anchorMessageRow!.userMessage!.userContextOrigin).toBe(
-          "branch_anchor"
-        );
-
-        // The actual user message lives on the branch at rank 1.
-        const newUserMessageRow = await MessageModel.findOne({
-          where: {
-            id: result.value.userMessage.id,
-            workspaceId: workspace.id,
-          },
-        });
-        expect(newUserMessageRow).not.toBeNull();
-        expect(newUserMessageRow!.branchId).toBe(branch.id);
-        expect(newUserMessageRow!.rank).toBe(1);
-
-        // Agent message also lives on the branch.
-        expect(result.value.agentMessages.length).toBe(1);
-        const agentMessageRow = await MessageModel.findOne({
-          where: {
-            id: result.value.agentMessages[0].id,
-            workspaceId: workspace.id,
-          },
-        });
-        expect(agentMessageRow).not.toBeNull();
-        expect(agentMessageRow!.branchId).toBe(branch.id);
-
-        // Mention is approved (not restricted) because it lives on a branch.
         const mentionRow = await MentionModel.findOne({
           where: {
             messageId: result.value.userMessage.id,
@@ -3071,7 +2915,92 @@ describe("postUserMessage", () => {
           },
         });
         expect(mentionRow).not.toBeNull();
-        expect(mentionRow!.status).toBe("approved");
+        expect(mentionRow!.status).toBe("agent_restricted_by_space_usage");
+
+        rateLimiterSpy.mockRestore();
+      });
+
+      it("records a restricted mention when the conversation only contains content fragments", async () => {
+        const user = auth.getNonNullableUser();
+        const userJson = user.toJSON();
+        const dsViewInGlobalSpace = await DataSourceViewFactory.folder(
+          workspace,
+          globalSpace,
+          user
+        );
+
+        const blob = new Ok({
+          contentType: "text/plain" as const,
+          fileId: null,
+          nodeId: "task-instructions-node-id",
+          nodeDataSourceViewId: dsViewInGlobalSpace.id,
+          nodeType: "document" as const,
+          sourceUrl: null,
+          textBytes: null,
+          title: "How to complete the task",
+        });
+        vi.mocked(getContentFragmentBlob).mockResolvedValueOnce(blob);
+
+        expect(projectConversation.content.length).toBe(0);
+
+        const contentFragmentRes = await postNewContentFragment(
+          auth,
+          projectConversation,
+          {
+            title: "How to complete the task",
+            nodeId: "task-instructions-node-id",
+            nodeDataSourceViewId: dsViewInGlobalSpace.sId,
+          },
+          null
+        );
+        expect(contentFragmentRes.isOk()).toBe(true);
+
+        const conversationWithContentFragmentRes = await getConversation(
+          auth,
+          projectConversation.sId
+        );
+        expect(conversationWithContentFragmentRes.isOk()).toBe(true);
+        if (conversationWithContentFragmentRes.isErr()) {
+          return;
+        }
+        projectConversation = conversationWithContentFragmentRes.value;
+        expect(projectConversation.content.length).toBe(1);
+
+        const rateLimiterSpy = vi
+          .spyOn(rateLimiterModule, "rateLimiter")
+          .mockResolvedValue(100);
+
+        const result = await postUserMessage(auth, {
+          conversationResource: projectConversationResource,
+          content: `Hello @${agentWithDifferentSpace.name}`,
+          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (!result.isOk()) {
+          return;
+        }
+
+        expect(result.value.agentMessages.length).toBe(0);
+
+        const mentionRow = await MentionModel.findOne({
+          where: {
+            messageId: result.value.userMessage.id,
+            workspaceId: workspace.id,
+            agentConfigurationId: agentWithDifferentSpace.sId,
+          },
+        });
+        expect(mentionRow).not.toBeNull();
+        expect(mentionRow!.status).toBe("agent_restricted_by_space_usage");
 
         rateLimiterSpy.mockRestore();
       });
@@ -3129,6 +3058,7 @@ describe("compactConversation", () => {
     const compactionMessageRow = await CompactionMessageModel.create({
       status: "succeeded",
       content: "compacted summary",
+      conversationId: conversation.id,
       workspaceId: workspace.id,
     });
     await MessageModel.create({
@@ -3169,6 +3099,7 @@ describe("compactConversation", () => {
       status: "created",
       agentConfigurationId: agentConfig.sId,
       agentConfigurationVersion: 0,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });
@@ -3203,7 +3134,7 @@ describe("compactConversation", () => {
 describe("editUserMessage", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
-  let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig1: LightAgentConfigurationType;
   let agentConfig2: LightAgentConfigurationType;
   let originalUserMessage: UserMessageType;
@@ -3229,27 +3160,19 @@ describe("editUserMessage", () => {
       visibility: "unlisted",
     });
 
-    const fetchedConversationResult = await getConversation(
+    conversationResource = await fetchConversationResource(
       auth,
       conversationWithoutContent.sId
     );
-    if (fetchedConversationResult.isErr()) {
-      throw new Error("Failed to fetch conversation");
-    }
-    conversation = fetchedConversationResult.value;
 
-    // Create an original user message with agent mentions
+    // Create an original user message without mentions or agent replies.
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
     const postResult = await postUserMessage(auth, {
-      conversation,
-      content: `Original message with @${agentConfig1.name}`,
-      mentions: [
-        {
-          configurationId: agentConfig1.sId,
-        } satisfies AgentMention,
-      ],
+      conversationResource,
+      content: "Original message without mentions",
+      mentions: [],
       context: {
         username: userJson.username,
         timezone: "UTC",
@@ -3259,6 +3182,7 @@ describe("editUserMessage", () => {
         origin: "web",
       },
       skipToolsValidation: false,
+      skipDustAutoMention: true,
     });
 
     if (postResult.isErr()) {
@@ -3269,20 +3193,17 @@ describe("editUserMessage", () => {
     vi.clearAllMocks();
   });
 
-  it("should preserve agent mentions when editing a user message", async () => {
+  it("should preserve the agent mention when editing a user message", async () => {
     const mentions: MentionType[] = [
       {
         configurationId: agentConfig1.sId,
       } satisfies AgentMention,
-      {
-        configurationId: agentConfig2.sId,
-      } satisfies AgentMention,
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
-      content: `Edited message with @${agentConfig1.name} and @${agentConfig2.name}`,
+      content: `Edited message with @${agentConfig1.name}`,
       mentions,
       skipToolsValidation: false,
     });
@@ -3293,38 +3214,102 @@ describe("editUserMessage", () => {
 
       // Verify userMessage has mentions
       expect(userMessage.mentions).toBeDefined();
-      expect(userMessage.mentions.length).toBe(2);
+      expect(userMessage.mentions.length).toBe(1);
 
       // Verify userMessage has richMentions
       expect(userMessage.richMentions).toBeDefined();
-      expect(userMessage.richMentions.length).toBe(2);
+      expect(userMessage.richMentions.length).toBe(1);
 
-      // Verify all mentions are agent mentions
+      // Verify the mention is an agent mention for the right agent
       const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
-      expect(agentMentions.length).toBe(2);
+      expect(agentMentions.length).toBe(1);
+      expect(agentMentions[0].id).toBe(agentConfig1.sId);
 
-      // Verify the agent configurations match
-      const mentionedAgentIds = agentMentions.map((m) => m.id);
-      expect(mentionedAgentIds).toContain(agentConfig1.sId);
-      expect(mentionedAgentIds).toContain(agentConfig2.sId);
-
-      // Verify mentions are stored in the database for the edited message
+      // Verify the mention is stored in the database for the edited message
       const mentionsInDb = await MentionModel.findAll({
         where: {
           messageId: userMessage.id,
           workspaceId: workspace.id,
         },
       });
-      expect(mentionsInDb.length).toBe(2);
-      const agentConfigIdsInDb = mentionsInDb
-        .map((m) => m.agentConfigurationId)
-        .filter((id): id is string => id !== null);
-      expect(agentConfigIdsInDb).toContain(agentConfig1.sId);
-      expect(agentConfigIdsInDb).toContain(agentConfig2.sId);
+      expect(mentionsInDb.length).toBe(1);
+      expect(mentionsInDb[0].agentConfigurationId).toBe(agentConfig1.sId);
 
-      // Verify launchAgentLoopWorkflow was called for agent mentions
+      // Verify launchAgentLoopWorkflow was called for the agent mention
       expect(launchAgentLoopWorkflow).toHaveBeenCalled();
     }
+  });
+
+  it("should create an agent message per mention when editing with several agents", async () => {
+    const mentions: MentionType[] = [
+      {
+        configurationId: agentConfig1.sId,
+      } satisfies AgentMention,
+      {
+        configurationId: agentConfig2.sId,
+      } satisfies AgentMention,
+    ];
+
+    const result = await editUserMessage(auth, {
+      conversationResource,
+      message: originalUserMessage,
+      content: `Edited message with @${agentConfig1.name} and @${agentConfig2.name}`,
+      mentions,
+      skipToolsValidation: false,
+    });
+
+    // Several agent mentions are only logged, the public API still relies on them.
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage, agentMessages } = result.value;
+
+      expect(agentMessages.length).toBe(2);
+
+      const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
+      expect(agentMentions.map((m) => m.id).sort()).toEqual(
+        [agentConfig1.sId, agentConfig2.sId].sort()
+      );
+    }
+  });
+
+  it("should not create agent messages when editing a message that already has agent replies", async () => {
+    // An agent reply after the original message means the edit creates no agent messages.
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const postResult = await postUserMessage(auth, {
+      conversationResource,
+      content: `Hello @${agentConfig1.name}`,
+      mentions: [{ configurationId: agentConfig1.sId } satisfies AgentMention],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+      skipDustAutoMention: true,
+    });
+    expect(postResult.isOk()).toBe(true);
+    vi.clearAllMocks();
+
+    const result = await editUserMessage(auth, {
+      conversationResource,
+      message: originalUserMessage,
+      content: `Edited message with @${agentConfig1.name} and @${agentConfig2.name}`,
+      mentions: [
+        { configurationId: agentConfig1.sId } satisfies AgentMention,
+        { configurationId: agentConfig2.sId } satisfies AgentMention,
+      ],
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.agentMessages.length).toBe(0);
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 
   it("should preserve user mentions when editing a user message", async () => {
@@ -3341,7 +3326,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with @${mentionedUser.username}`,
       mentions,
@@ -3399,7 +3384,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with @${mentionedUser.username} and @${agentConfig2.name}`,
       mentions,
@@ -3446,7 +3431,7 @@ describe("editUserMessage", () => {
 
   it("should preserve empty mentions array when editing removes all mentions", async () => {
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: "Edited message without mentions",
       mentions: [],
@@ -3493,7 +3478,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with only user mention @${mentionedUser.username}`,
       mentions,
@@ -3571,12 +3556,13 @@ describe("postNewContentFragment", () => {
 
     // SpaceFactory.project creates a group and associates it with the space
     // We need to add the user to those groups
-    // The groups are available on space.groups
-    const projectSpaceGroup = projectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
-    const anotherProjectSpaceGroup = anotherProjectSpace.groups.find(
-      (g) => g.kind === "regular"
+    const anotherProjectSpaceGroup = await fetchRegularAutoGroup(
+      anotherProjectSpace,
+      internalAdminAuth
     );
 
     if (projectSpaceGroup) {
@@ -4029,17 +4015,16 @@ describe("postNewContentFragment", () => {
       });
       expect(messageCountAfterFirst).toBe(1);
 
-      const conversationWithoutContentResult =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          conversationWithoutContent.sId
-        );
-      expect(conversationWithoutContentResult.isOk()).toBe(true);
-      if (conversationWithoutContentResult.isErr()) {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversationWithoutContent.sId
+      );
+      expect(conversationResource).not.toBeNull();
+      if (!conversationResource) {
         throw new Error("Failed to fetch conversation metadata");
       }
 
-      const conversationAfterFirst = conversationWithoutContentResult.value;
+      const conversationAfterFirst = conversationResource.toJSON();
 
       const second = await postNewContentFragment(
         auth,
@@ -4111,19 +4096,18 @@ describe("postNewContentFragment", () => {
       );
       expect(first.isOk()).toBe(true);
 
-      const conversationMetadataResult =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          conversationWithoutContent.sId
-        );
-      expect(conversationMetadataResult.isOk()).toBe(true);
-      if (conversationMetadataResult.isErr()) {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversationWithoutContent.sId
+      );
+      expect(conversationResource).not.toBeNull();
+      if (!conversationResource) {
         throw new Error("Failed to fetch conversation metadata");
       }
 
       const second = await postNewContentFragment(
         auth,
-        conversationMetadataResult.value,
+        conversationResource.toJSON(),
         {
           ...input,
           supersededContentFragmentId: first.isOk()
@@ -4139,157 +4123,15 @@ describe("postNewContentFragment", () => {
         );
       }
     });
-
-    it("allows superseding a trunk content fragment from a branch conversation", async () => {
-      const user = auth.getNonNullableUser();
-      const blob = new Ok({
-        contentType: "text/plain" as const,
-        fileId: null,
-        nodeId: "branch-node-id",
-        nodeDataSourceViewId: dsViewInGlobalSpace.id,
-        nodeType: "document" as const,
-        sourceUrl: null,
-        textBytes: null,
-        title: "Branch superseded fragment",
-      });
-      vi.mocked(getContentFragmentBlob)
-        .mockResolvedValueOnce(blob)
-        .mockResolvedValueOnce(blob);
-
-      const conversationWithoutContent = await ConversationFactory.create(
-        auth,
-        {
-          agentConfigurationId: agentConfig.sId,
-          messagesCreatedAt: [],
-        }
-      );
-
-      const conversationResult = await getConversation(
-        auth,
-        conversationWithoutContent.sId
-      );
-      expect(conversationResult.isOk()).toBe(true);
-      if (conversationResult.isErr()) {
-        throw new Error("Failed to fetch conversation");
-      }
-
-      const input: ContentFragmentInputWithContentNode = {
-        title: "Branch superseded fragment",
-        nodeId: "branch-node-id",
-        nodeDataSourceViewId: dsViewInGlobalSpace.sId,
-      };
-      const context = {
-        username: user.username,
-        fullName: user.fullName(),
-        email: user.email,
-        profilePictureUrl: null,
-      };
-
-      const first = await postNewContentFragment(
-        auth,
-        conversationResult.value,
-        input,
-        context
-      );
-      expect(first.isOk()).toBe(true);
-      if (first.isErr()) {
-        throw new Error("Failed to create the trunk content fragment");
-      }
-
-      const branch = await ConversationBranchResource.makeNew(auth, {
-        state: "open",
-        previousMessageId: first.value.id,
-        conversationId: conversationResult.value.id,
-        userId: user.id,
-      });
-
-      const branchConversationResult = await getConversation(
-        auth,
-        conversationWithoutContent.sId,
-        false,
-        branch.sId
-      );
-      expect(branchConversationResult.isOk()).toBe(true);
-      if (branchConversationResult.isErr()) {
-        throw new Error("Failed to fetch branch conversation");
-      }
-
-      const second = await postNewContentFragment(
-        auth,
-        branchConversationResult.value,
-        {
-          ...input,
-          supersededContentFragmentId: first.value.contentFragmentId,
-        },
-        context
-      );
-      expect(second.isOk()).toBe(true);
-      if (second.isOk()) {
-        expect(second.value.contentFragmentId).toBe(
-          first.value.contentFragmentId
-        );
-      }
-    });
   });
 });
 
 describe("isConversationEventAllowedForAuth", () => {
   let auth: Authenticator;
-  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
-  let otherAuth: Authenticator;
-  let branchId: string;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
-    workspace = setup.workspace;
-
-    const user = setup.user;
-    const otherUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
-    otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      otherUser.sId,
-      workspace.sId
-    );
-
-    const conversation = await ConversationModel.create({
-      workspaceId: workspace.id,
-      sId: generateRandomModelSId(),
-      title: "Branch test conversation",
-      requestedSpaceIds: [],
-    });
-
-    const baseUserMessage = await UserMessageModel.create({
-      userId: user.id,
-      workspaceId: workspace.id,
-      content: "Base message",
-      userContextUsername: "testuser",
-      userContextTimezone: "UTC",
-      userContextFullName: "Test User",
-      userContextEmail: "test@example.com",
-      userContextProfilePictureUrl: null,
-      userContextOrigin: "web",
-      clientSideMCPServerIds: [],
-    });
-
-    const baseMessage = await MessageModel.create({
-      workspaceId: workspace.id,
-      sId: generateRandomModelSId(),
-      rank: 0,
-      conversationId: conversation.id,
-      parentId: null,
-      userMessageId: baseUserMessage.id,
-      agentMessageId: null,
-      contentFragmentId: null,
-    });
-
-    const branch = await ConversationBranchResource.makeNew(auth, {
-      state: "open",
-      previousMessageId: baseMessage.id,
-      conversationId: conversation.id,
-      userId: user.id,
-    });
-    branchId = branch.sId;
   });
 
   it("returns true for agent_message_done event", async () => {
@@ -4300,6 +4142,7 @@ describe("isConversationEventAllowedForAuth", () => {
       configurationId: "config-1",
       messageId: "msg-1",
       status: "success" as const,
+      costCredits: null,
     };
     const result = await isConversationEventAllowedForAuth(auth, { event });
     expect(result).toBe(true);
@@ -4315,7 +4158,7 @@ describe("isConversationEventAllowedForAuth", () => {
     expect(result).toBe(true);
   });
 
-  it("returns true for user_message_new when message has no branchId", async () => {
+  it("returns true for user_message_new event", async () => {
     const event: UserMessageNewEvent = {
       type: "user_message_new",
       created: Date.now(),
@@ -4329,54 +4172,7 @@ describe("isConversationEventAllowedForAuth", () => {
     expect(result).toBe(true);
   });
 
-  it("returns true for user_message_new when branch exists and auth can read it", async () => {
-    const event: UserMessageNewEvent = {
-      type: "user_message_new",
-      created: Date.now(),
-      messageId: "msg-1",
-      message: {
-        branchId,
-        contentFragments: [],
-      } as unknown as UserMessageNewEvent["message"],
-    };
-    const result = await isConversationEventAllowedForAuth(auth, { event });
-    expect(result).toBe(true);
-  });
-
-  it("returns false for user_message_new when branch exists but auth cannot read it", async () => {
-    const event: UserMessageNewEvent = {
-      type: "user_message_new",
-      created: Date.now(),
-      messageId: "msg-1",
-      message: {
-        branchId,
-        contentFragments: [],
-      } as unknown as UserMessageNewEvent["message"],
-    };
-    const result = await isConversationEventAllowedForAuth(otherAuth, {
-      event,
-    });
-    expect(result).toBe(false);
-  });
-
-  it("returns false for user_message_new when branchId does not exist", async () => {
-    const event: UserMessageNewEvent = {
-      type: "user_message_new",
-      created: Date.now(),
-      messageId: "msg-1",
-      message: {
-        branchId: makeSId("conversation_branch", {
-          id: 999999,
-          workspaceId: workspace.id,
-        }),
-        contentFragments: [],
-      } as unknown as UserMessageNewEvent["message"],
-    };
-    const result = await isConversationEventAllowedForAuth(auth, { event });
-    expect(result).toBe(false);
-  });
-
-  it("returns true for agent_message_new when message has no branchId", async () => {
+  it("returns true for agent_message_new event", async () => {
     const event = {
       type: "agent_message_new" as const,
       created: Date.now(),
@@ -4386,32 +4182,6 @@ describe("isConversationEventAllowedForAuth", () => {
     };
     const result = await isConversationEventAllowedForAuth(auth, { event });
     expect(result).toBe(true);
-  });
-
-  it("returns true for agent_message_new when branch exists and auth can read it", async () => {
-    const event = {
-      type: "agent_message_new" as const,
-      created: Date.now(),
-      configurationId: "config-1",
-      messageId: "msg-1",
-      message: { branchId } as AgentMessageType,
-    };
-    const result = await isConversationEventAllowedForAuth(auth, { event });
-    expect(result).toBe(true);
-  });
-
-  it("returns false for agent_message_new when branch exists but auth cannot read it", async () => {
-    const event = {
-      type: "agent_message_new" as const,
-      created: Date.now(),
-      configurationId: "config-1",
-      messageId: "msg-1",
-      message: { branchId } as AgentMessageType,
-    };
-    const result = await isConversationEventAllowedForAuth(otherAuth, {
-      event,
-    });
-    expect(result).toBe(false);
   });
 });
 
@@ -4618,18 +4388,181 @@ describe("conversation fetch forkingData", () => {
       },
     ];
 
-    const conversationResult =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        parentConversation.sId,
-        { includeForkingData: true }
-      );
-    expect(conversationResult.isOk()).toBe(true);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      parentConversation.sId,
+      { includeForkingData: true }
+    );
+    expect(conversationResource).not.toBeNull();
+    const forkingData = await conversationResource!.fetchForkingData(auth);
+    expect(forkingData).toEqual({
+      forkedChildren: expectedForkedChildren,
+    });
+  });
+});
 
-    if (conversationResult.isOk()) {
-      expect(conversationResult.value.forkingData).toEqual({
-        forkedChildren: expectedForkedChildren,
-      });
+describe("postUserMessage no-seat gate", () => {
+  it("rejects messages from a member with the `none` seat type", async () => {
+    // Credit-priced (Metronome) workspace — the seat gate only applies there.
+    const workspace = await WorkspaceFactory.creditPriced();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, {
+      role: "user",
+      seatType: "none",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Seatless Test Agent",
+      description: "Agent for the no-seat gate test",
+    });
+    const created = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+    const fetched = await getConversation(auth, created.sId);
+    if (fetched.isErr()) {
+      throw new Error("Failed to fetch conversation");
     }
+
+    const userJson = user.toJSON();
+    const result = await postUserMessage(auth, {
+      conversationResource: await fetchConversationResource(
+        auth,
+        fetched.value.sId
+      ),
+      content: `Hello @${agent.name}`,
+      mentions: [{ configurationId: agent.sId } satisfies AgentMention],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("no_seat");
+    }
+  });
+});
+
+describe("updateAgentMessageWithFinalStatus", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let conversation: ConversationType;
+  let agentMessage: AgentMessageType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversationWithoutContent = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const fetchedConversationResult = await getConversation(
+      auth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    conversation = fetchedConversationResult.value;
+
+    const agentMessages = conversation.content
+      .flat()
+      .filter((m): m is AgentMessageType => m.type === "agent_message");
+    if (agentMessages.length === 0) {
+      throw new Error("No agent message found in conversation");
+    }
+    agentMessage = agentMessages[0];
+
+    vi.clearAllMocks();
+  });
+
+  it("only applies the first terminal status (finalization is single-shot)", async () => {
+    const first = await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "interrupted",
+    });
+    expect(first.status).toBe("interrupted");
+
+    // A late terminal event from an orphaned activity (e.g. an LLM call still
+    // running after an interrupt) must not overwrite the final status.
+    const second = await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "succeeded",
+    });
+    expect(second.status).toBe("interrupted");
+
+    const agentMessageRow = await AgentMessageModel.findOne({
+      where: { id: agentMessage.agentMessageId, workspaceId: workspace.id },
+    });
+    expect(agentMessageRow?.status).toBe("interrupted");
+  });
+
+  it("does not promote pending messages nor spawn a new agent loop when already finalized", async () => {
+    await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "interrupted",
+    });
+
+    // Queue a steering message, pending at the time the late terminal event arrives. The
+    // conversation already has messages at ranks 0 and 1.
+    const { messageRow } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "steering message",
+      rank: 2,
+    });
+    await MessageModel.update(
+      { visibility: "pending" },
+      {
+        where: { id: messageRow.id, workspaceId: workspace.id },
+        // Bulk update constructs a dummy instance failing the beforeValidate hook; the row is
+        // already valid, we only update visibility.
+        validate: false,
+      }
+    );
+
+    vi.clearAllMocks();
+
+    const result = await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "succeeded",
+    });
+    expect(result.status).toBe("interrupted");
+
+    // The pending steering message must remain pending: no promotion, no new agent loop.
+    const pendingMessageRow = await MessageModel.findOne({
+      where: { id: messageRow.id, workspaceId: workspace.id },
+    });
+    expect(pendingMessageRow?.visibility).toBe("pending");
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 });

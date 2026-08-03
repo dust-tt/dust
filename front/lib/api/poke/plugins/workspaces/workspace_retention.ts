@@ -28,6 +28,7 @@ export const workspaceRetentionPlugin = createPlugin({
         async: true,
       },
     },
+    requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth) => {
     const retentionDays = await getWorkspaceDataRetention(auth);

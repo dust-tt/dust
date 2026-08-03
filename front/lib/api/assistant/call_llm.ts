@@ -1,10 +1,14 @@
-import { getLLM } from "@app/lib/api/llm";
+import { getStreamLLM } from "@app/lib/api/llm";
+import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
-import type { ModelIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
@@ -13,12 +17,13 @@ export interface LLMConfig {
   functionCall?: string | null;
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
+  reasoningEffort?: ReasoningEffort;
   temperature?: number;
   useCache?: boolean;
   useStream?: boolean;
 }
 
-export interface LLMOptions {
+interface LLMOptions {
   tracingRecords?: Record<string, string>;
   context?: LLMTraceContext;
   onRunId?: (runId: string) => Promise<void> | void;
@@ -55,10 +60,21 @@ export async function runMultiActionsAgent(
     skipEmbeddingApiKeyRequirement: true,
   });
 
-  const llm = await getLLM(auth, {
+  const endpoint = await getStreamEndpointFromLegacyModelId(
+    auth,
+    config.modelId
+  );
+  if (!endpoint) {
+    return new Err(new Error(`Model ${config.modelId} not supported`));
+  }
+
+  const llm = await getStreamLLM(auth, {
     credentials,
-    modelId: config.modelId,
-    temperature: config.temperature,
+    modelInfo: {
+      endpoint,
+      reasoningEffort: config.reasoningEffort,
+      temperature: config.temperature,
+    },
     context: options.context,
   });
 

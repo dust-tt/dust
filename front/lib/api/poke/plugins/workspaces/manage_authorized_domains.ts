@@ -131,6 +131,7 @@ export const addAuthorizedDomain = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const domain = args.domain.trim().toLowerCase();

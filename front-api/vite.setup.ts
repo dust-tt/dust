@@ -9,6 +9,7 @@ vi.mock("@app/lib/api/config", async (importOriginal) => {
     "@app/tests/utils/mocks/app_config"
   );
   return createAppConfigMock(importOriginal, {
+    getAcademyJwtSecret: () => "test-academy-jwt-secret",
     getApiBaseUrl: () => "http://localhost:3000",
     getAppUrl: () => "http://localhost:3000",
     getCoreAPIConfig: () => ({
@@ -21,6 +22,7 @@ vi.mock("@app/lib/api/config", async (importOriginal) => {
       webhookSecret: "test",
     }),
     getDocumentRendererUrl: () => "http://localhost:3100",
+    getEgressPolicyBucket: () => "test-egress-policy-bucket",
     getDustInviteTokenSecret: () => "test-invite-secret-32chars!!!!!",
     getInvitationEmailTemplate: () => "d-test",
     getOAuthAPIConfig: () => ({
@@ -36,4 +38,11 @@ vi.mock("@app/lib/api/config", async (importOriginal) => {
     getVizJwtSecret: () => "test-secret",
     getVizPublicUrl: () => "https://viz.dust.tt",
   });
+});
+
+vi.mock("@app/lib/api/mcp_server/urls", async (importOriginal) => {
+  return {
+    ...(await importOriginal()),
+    getMcpResourceServerUrl: () => "http://localhost:3000/mcp",
+  };
 });

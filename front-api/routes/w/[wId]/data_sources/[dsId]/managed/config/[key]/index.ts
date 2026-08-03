@@ -1,16 +1,13 @@
 import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/types/api/data_sources/managed_config";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetOrPostManagedDataSourceConfigResponseBody = {
-  configValue: string;
-};
 
 const PostManagedDataSourceConfigRequestBodySchema = z.object({
   configValue: z.string(),
@@ -49,6 +46,7 @@ const ALLOWED_CONFIG_KEYS = new Set<string>([
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/config/:key.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

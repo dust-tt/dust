@@ -1,35 +1,22 @@
 import { UserSchema } from "@app/types/user";
 import { z } from "zod";
 
-export const WAKEUP_STATUSES = [
-  "scheduled",
-  "fired",
-  "cancelled",
-  "expired",
-] as const;
+const WAKEUP_STATUSES = ["scheduled", "fired", "cancelled", "expired"] as const;
 
 export const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
 
 export const WakeUpStatusSchema = z.enum(WAKEUP_STATUSES);
 export type WakeUpStatus = z.infer<typeof WakeUpStatusSchema>;
 
-export const WakeUpOneShotScheduleConfigSchema = z.object({
+const WakeUpOneShotScheduleConfigSchema = z.object({
   type: z.literal("one_shot"),
   fireAt: z.number(),
 });
-export type WakeUpOneShotScheduleConfig = z.infer<
-  typeof WakeUpOneShotScheduleConfigSchema
->;
-
-export const WakeUpCronScheduleConfigSchema = z.object({
+const WakeUpCronScheduleConfigSchema = z.object({
   type: z.literal("cron"),
   cron: z.string(),
   timezone: z.string(),
 });
-export type WakeUpCronScheduleConfig = z.infer<
-  typeof WakeUpCronScheduleConfigSchema
->;
-
 export const WakeUpScheduleConfigSchema = z.discriminatedUnion("type", [
   WakeUpOneShotScheduleConfigSchema,
   WakeUpCronScheduleConfigSchema,

@@ -49,15 +49,13 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
       cell: ({ row }) => {
         const usage = row.original.usage;
         if (!usage) {
-          return (
-            <span className="text-gray-400 dark:text-gray-400-night">-</span>
-          );
+          return <span className="text-primary-400">-</span>;
         }
         return (
           <div>
             <span className="font-medium">{usage.count}</span>
             {usage.count > 0 && (
-              <span className="ml-1 text-xs text-gray-500 dark:text-gray-500-night">
+              <span className="ml-1 text-xs text-primary-500">
                 (
                 {usage.agents
                   .map((a) => a.name)

@@ -3,24 +3,28 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
-  ArrowGoBackIcon,
   Button,
   ContextItem,
   cn,
-  DocumentIcon,
   EmptyCTA,
-  PlusIcon,
+  File02,
+  Plus,
+  ReverseLeft,
   Spinner,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, useFormState } from "react-hook-form";
 
 export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
+  const { featureFlags } = useFeatureFlags();
   const { setValue } = useFormContext<SkillBuilderFormData>();
+  const { disabled: disableUpload } = useFormState<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const [canScrollFilesDown, setCanScrollFilesDown] = useState(false);
 
@@ -37,7 +41,7 @@ export function SkillBuilderFilesSection() {
   const fileListBottomSentinelRef = useRef<HTMLDivElement>(null);
 
   const { handleFilesUpload, isProcessingFiles } = useFileUploaderService({
-    hasSandboxTools: false,
+    hasSandboxTools: isComputerFeatureEnabled(featureFlags),
     owner,
     useCase: "skill_attachment",
     useCaseMetadata: skillId ? { skillId } : undefined,
@@ -108,11 +112,20 @@ export function SkillBuilderFilesSection() {
   };
 
   const onUploadClick = () => {
+    if (disableUpload) {
+      return;
+    }
+
     fileInputRef.current?.click();
   };
 
   const onFileInputChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (disableUpload) {
+        e.target.value = "";
+        return;
+      }
+
       const files = e.target.files;
       if (!files || files.length === 0) {
         return;
@@ -144,7 +157,13 @@ export function SkillBuilderFilesSection() {
       // Reset input so re-uploading the same file triggers onChange.
       e.target.value = "";
     },
-    [handleFilesUpload, append, existingFileNames, sendNotification]
+    [
+      disableUpload,
+      handleFilesUpload,
+      append,
+      existingFileNames,
+      sendNotification,
+    ]
   );
 
   const headerActions = !isDiffMode && hasFileAttachments && (
@@ -152,9 +171,9 @@ export function SkillBuilderFilesSection() {
       type="button"
       onClick={onUploadClick}
       label="Upload files"
-      icon={isProcessingFiles ? Spinner : PlusIcon}
+      icon={isProcessingFiles ? Spinner : Plus}
       variant="outline"
-      disabled={isProcessingFiles}
+      disabled={disableUpload || isProcessingFiles}
     />
   );
 
@@ -162,10 +181,8 @@ export function SkillBuilderFilesSection() {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-            Files
-          </h3>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <h3 className="heading-lg font-semibold text-foreground">Files</h3>
+          <p className="text-sm text-muted-foreground">
             Add files that will be available to the skill at runtime. Templates,
             schemas, scripts, or reference materials.
           </p>
@@ -175,16 +192,17 @@ export function SkillBuilderFilesSection() {
             <Button
               variant="outline"
               size="sm"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeft}
               onClick={restoreFiles}
               label="Restore files"
+              disabled={disableUpload}
             />
           )}
           {headerActions}
         </div>
       </div>
 
-      {!isDiffMode && (
+      {!isDiffMode && !disableUpload && (
         <input
           ref={fileInputRef}
           type="file"
@@ -206,9 +224,9 @@ export function SkillBuilderFilesSection() {
                 type="button"
                 onClick={onUploadClick}
                 label="Upload files"
-                icon={PlusIcon}
+                icon={Plus}
                 variant="outline"
-                disabled={isProcessingFiles}
+                disabled={disableUpload || isProcessingFiles}
               />
             }
             className="py-8"
@@ -230,20 +248,20 @@ export function SkillBuilderFilesSection() {
                       <span
                         className={cn(
                           "text-sm font-normal",
-                          isAdded && "text-success dark:text-success-night"
+                          isAdded && "text-success"
                         )}
                       >
                         {field.fileName}
                       </span>
                     }
-                    visual={<ContextItem.Visual visual={DocumentIcon} />}
-                    hoverAction={!isDiffMode}
+                    visual={<ContextItem.Visual visual={File02} />}
+                    hoverAction={!isDiffMode && !disableUpload}
                     action={
-                      !isDiffMode ? (
+                      !isDiffMode && !disableUpload ? (
                         <Button
                           type="button"
                           variant="ghost"
-                          icon={XMarkIcon}
+                          icon={XClose}
                           size="xs"
                           onClick={() => remove(originalIndex)}
                         />
@@ -257,9 +275,9 @@ export function SkillBuilderFilesSection() {
           </div>
           <div
             className={cn(
-              "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t",
+              "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t",
               "from-background via-background/60 to-transparent transition-opacity duration-300",
-              "dark:from-background-night dark:via-background-night/60",
+              "",
               canScrollFilesDown ? "opacity-100" : "opacity-0"
             )}
             aria-hidden

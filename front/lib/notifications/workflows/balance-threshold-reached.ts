@@ -12,7 +12,7 @@ import z from "zod";
 const BalanceThresholdReachedPayloadSchema = z.object({
   workspaceId: z.string(),
   workspaceName: z.string(),
-  // The credit-balance threshold (in AWU credits) the admin configured.
+  // The credit-balance threshold (in credits) the admin configured.
   balanceThresholdCredits: z.number(),
   // The remaining balance reported by Metronome when the alert fired, if known.
   remainingBalanceCredits: z.number().nullable(),

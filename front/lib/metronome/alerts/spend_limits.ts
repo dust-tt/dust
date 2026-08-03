@@ -1,4 +1,5 @@
 import {
+  baseUniquenessKey,
   clearMetronomeAlert,
   findMetronomeAlert,
   upsertMetronomeAlert,
@@ -181,16 +182,59 @@ export async function listMetronomePerUserCapsForWorkspace({
       alert_statuses: ["ENABLED"],
     })) {
       const key = entry.alert.uniqueness_key;
-      if (!key || !key.startsWith(prefix)) {
+      if (!key) {
         continue;
       }
-      const userId = key.slice(prefix.length);
+      const baseKey = baseUniquenessKey(key);
+      if (!baseKey.startsWith(prefix)) {
+        continue;
+      }
+      const userId = baseKey.slice(prefix.length);
       if (!userId) {
         continue;
       }
       caps.set(userId, entry);
     }
     return new Ok(caps);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * List per-user 80% warning alerts for a workspace, as a `Map<userId,
+ * CustomerAlert>`. Mirrors `listMetronomePerUserCapsForWorkspace` for the
+ * companion warning alerts.
+ */
+export async function listMetronomePerUserWarningAlertsForWorkspace({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<Result<Map<string, CustomerAlert>, Error>> {
+  const prefix = perUserWarningAlertUniquenessKeyPrefix(workspaceId);
+  const warnings = new Map<string, CustomerAlert>();
+  try {
+    for await (const entry of listMetronomeAlerts({
+      customer_id: metronomeCustomerId,
+      alert_statuses: ["ENABLED"],
+    })) {
+      const key = entry.alert.uniqueness_key;
+      if (!key) {
+        continue;
+      }
+      const baseKey = baseUniquenessKey(key);
+      if (!baseKey.startsWith(prefix)) {
+        continue;
+      }
+      const userId = baseKey.slice(prefix.length);
+      if (!userId) {
+        continue;
+      }
+      warnings.set(userId, entry);
+    }
+    return new Ok(warnings);
   } catch (err) {
     return new Err(normalizeError(err));
   }
@@ -206,31 +250,85 @@ const spendLimitCacheResolver = ({
   workspaceId: string;
 }) => `${metronomeCustomerId}-${workspaceId}`;
 
-async function fetchPerUserCapThresholds(args: {
+// A resolved per-user / per-seat-type cap: the AWU threshold, the id of the
+// backing Metronome cap alert, and the id of its companion 80% warning alert
+// (so callers can deep-link to both). `warningAlertId` is null when no warning
+// alert exists.
+export type MetronomeCapAlertInfo = {
+  threshold: number;
+  alertId: string;
+  warningAlertId: string | null;
+};
+
+// The Metronome alert ids backing a per-user cap override, for dashboard deep
+// links. Intentionally carries no threshold: the cap value lives on the
+// membership (`poolCapOverrideAwuCredits`), and the alert's threshold can lag
+// it (e.g. after a seat-type change) until the next override write re-syncs.
+export type MetronomeCapAlertIds = {
+  alertId: string;
+  warningAlertId: string | null;
+};
+
+async function fetchPerUserCapAlertIds(args: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<Record<string, number>> {
-  const result = await listMetronomePerUserCapsForWorkspace(args);
-  if (result.isErr()) {
-    throw result.error;
+}): Promise<Record<string, MetronomeCapAlertIds>> {
+  const capPrefix = perUserAlertUniquenessKeyPrefix(args.workspaceId);
+  const warningPrefix = perUserWarningAlertUniquenessKeyPrefix(
+    args.workspaceId
+  );
+
+  const capIdByUser = new Map<string, string>();
+  const warningIdByUser = new Map<string, string>();
+
+  // Single scan: the per-user cap and its 80% warning share the customer alert
+  // list, so match both prefixes in one pass instead of two list calls.
+  try {
+    for await (const entry of listMetronomeAlerts({
+      customer_id: args.metronomeCustomerId,
+      alert_statuses: ["ENABLED"],
+    })) {
+      const rawKey = entry.alert.uniqueness_key;
+      if (!rawKey) {
+        continue;
+      }
+      const key = baseUniquenessKey(rawKey);
+      if (key.startsWith(capPrefix)) {
+        const userId = key.slice(capPrefix.length);
+        if (userId) {
+          capIdByUser.set(userId, entry.alert.id);
+        }
+      } else if (key.startsWith(warningPrefix)) {
+        const userId = key.slice(warningPrefix.length);
+        if (userId) {
+          warningIdByUser.set(userId, entry.alert.id);
+        }
+      }
+    }
+  } catch (err) {
+    throw normalizeError(err);
   }
-  const thresholds: Record<string, number> = {};
-  for (const [userId, entry] of result.value) {
-    thresholds[userId] = entry.alert.threshold;
+
+  const caps: Record<string, MetronomeCapAlertIds> = {};
+  for (const [userId, alertId] of capIdByUser) {
+    caps[userId] = {
+      alertId,
+      warningAlertId: warningIdByUser.get(userId) ?? null,
+    };
   }
-  return thresholds;
+  return caps;
 }
 
-export const getCachedPerUserCapThresholds = cacheWithRedis(
-  fetchPerUserCapThresholds,
+export const getCachedPerUserCapAlertIds = cacheWithRedis(
+  fetchPerUserCapAlertIds,
   spendLimitCacheResolver,
   { ttlMs: SPEND_LIMIT_CACHE_TTL_MS }
 );
 
-const invalidateCachedPerUserCapThresholds = bestEffortInvalidateCacheWithRedis(
-  fetchPerUserCapThresholds,
+const invalidateCachedPerUserCapAlertIds = bestEffortInvalidateCacheWithRedis(
+  fetchPerUserCapAlertIds,
   spendLimitCacheResolver,
-  "members-usage per-user spend caps"
+  "members-usage per-user spend cap alert ids"
 );
 
 /**
@@ -241,26 +339,73 @@ const invalidateCachedPerUserCapThresholds = bestEffortInvalidateCacheWithRedis(
 async function fetchDefaultCapThresholdsBySeatType(args: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<Record<NormalizedPoolLimitSeatType, number>> {
-  const results = await Promise.all(
-    NORMALIZED_POOL_LIMIT_SEAT_TYPES.map(async (seatType) => {
-      const result = await getMetronomeDefaultUserCapAlertForSeatType({
-        ...args,
+}): Promise<Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>> {
+  const capKeyToSeat = new Map<string, NormalizedPoolLimitSeatType>();
+  const warningKeyToSeat = new Map<string, NormalizedPoolLimitSeatType>();
+  for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
+    capKeyToSeat.set(
+      defaultUserCapAlertUniquenessKeyForSeatType(seatType, args.workspaceId),
+      seatType
+    );
+    warningKeyToSeat.set(
+      defaultUserWarningAlertUniquenessKeyForSeatType(
         seatType,
-      });
-      if (result.isErr()) {
-        throw result.error;
-      }
-      return [seatType, result.value?.alert.threshold ?? null] as const;
-    })
-  );
-  const thresholds = {} as Record<NormalizedPoolLimitSeatType, number>;
-  for (const [seatType, threshold] of results) {
-    if (threshold !== null) {
-      thresholds[seatType] = threshold;
-    }
+        args.workspaceId
+      ),
+      seatType
+    );
   }
-  return thresholds;
+
+  const capBySeat = new Map<
+    NormalizedPoolLimitSeatType,
+    { threshold: number; alertId: string; enabled: boolean }
+  >();
+  const warningIdBySeat = new Map<NormalizedPoolLimitSeatType, string>();
+
+  // Single scan: match every per-seat-type default cap and 80% warning alert in
+  // one pass instead of two `findMetronomeAlert` lookups per seat type.
+  try {
+    for await (const entry of listMetronomeAlerts({
+      customer_id: args.metronomeCustomerId,
+      alert_statuses: ["ENABLED", "DISABLED"],
+    })) {
+      const rawKey = entry.alert.uniqueness_key;
+      if (!rawKey) {
+        continue;
+      }
+      const key = baseUniquenessKey(rawKey);
+      const enabled = entry.alert.status === "enabled";
+      const capSeat = capKeyToSeat.get(key);
+      if (capSeat) {
+        // Prefer an enabled generation over a disabled one for the same seat.
+        const current = capBySeat.get(capSeat);
+        if (!current || (enabled && !current.enabled)) {
+          capBySeat.set(capSeat, {
+            threshold: entry.alert.threshold,
+            alertId: entry.alert.id,
+            enabled,
+          });
+        }
+        continue;
+      }
+      const warningSeat = warningKeyToSeat.get(key);
+      if (warningSeat) {
+        warningIdBySeat.set(warningSeat, entry.alert.id);
+      }
+    }
+  } catch (err) {
+    throw normalizeError(err);
+  }
+
+  const caps = {} as Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>;
+  for (const [seatType, cap] of capBySeat) {
+    caps[seatType] = {
+      threshold: cap.threshold,
+      alertId: cap.alertId,
+      warningAlertId: warningIdBySeat.get(seatType) ?? null,
+    };
+  }
+  return caps;
 }
 
 export const getCachedDefaultCapThresholdsBySeatType = cacheWithRedis(
@@ -316,7 +461,7 @@ export async function upsertMetronomePerUserCapAlert({
     },
     "[Metronome PerUserCap] Synced per-user cap alert"
   );
-  await invalidateCachedPerUserCapThresholds({
+  await invalidateCachedPerUserCapAlertIds({
     metronomeCustomerId,
     workspaceId,
   });
@@ -355,7 +500,7 @@ export async function clearMetronomePerUserCapAlert({
       "[Metronome PerUserCap] Cleared per-user cap alert"
     );
   }
-  await invalidateCachedPerUserCapThresholds({
+  await invalidateCachedPerUserCapAlertIds({
     metronomeCustomerId,
     workspaceId,
   });
@@ -529,6 +674,201 @@ export async function clearMetronomePerUserWarningAlert({
         alertId: result.value.alertId,
       },
       "[Metronome PerUserWarning] Cleared per-user warning alert"
+    );
+  }
+  return new Ok(undefined);
+}
+
+// ============================================================================
+// Per-group cap alerts — one per (group, seat type), using the value-less
+// `user_id` fan-out like the default per-seat-type alerts. Metronome evaluates
+// the threshold (seatAllowance + groupCap) independently for every user; the
+// webhook decides whether it actually applies by comparing the fired threshold
+// to the user's effective cap (a group cap only matters for members for whom it
+// is the highest cap, and never for a user with a personal override). Membership
+// changes therefore need no alert updates — only a change to the group's cap.
+// ============================================================================
+
+function groupCapAlertUniquenessKeyForSeatType(
+  groupId: string,
+  seatType: NormalizedPoolLimitSeatType,
+  workspaceId: string
+): string {
+  return `group-cap-${groupId}-${seatType}-${workspaceId}`;
+}
+
+function groupWarningAlertUniquenessKeyForSeatType(
+  groupId: string,
+  seatType: NormalizedPoolLimitSeatType,
+  workspaceId: string
+): string {
+  return `group-warning-${groupId}-${seatType}-${workspaceId}`;
+}
+
+/**
+ * Idempotently ensure a per-(group, seat-type) cap alert exists with the given
+ * AWU threshold (seatAllowance + groupCap, computed by the caller). If an alert
+ * with a different threshold already exists, it's archived and recreated.
+ */
+export async function upsertMetronomeGroupCapAlertForSeatType({
+  metronomeCustomerId,
+  workspaceId,
+  groupId,
+  seatType,
+  awuCredits,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+  groupId: string;
+  seatType: NormalizedPoolLimitSeatType;
+  awuCredits: number;
+}): Promise<Result<{ alertId: string }, Error>> {
+  const upsertResult = await upsertMetronomeAlert({
+    alert_type: "spend_threshold_reached",
+    name: `Group cap ${groupId} ${seatType} ${workspaceId} (${awuCredits} AWU)`,
+    threshold: awuCredits,
+    credit_type_id: getCreditTypeAwuId(),
+    customer_id: metronomeCustomerId,
+    group_values: [{ key: USER_ID_GROUP_KEY }],
+    uniqueness_key: groupCapAlertUniquenessKeyForSeatType(
+      groupId,
+      seatType,
+      workspaceId
+    ),
+  });
+  if (upsertResult.isErr()) {
+    return new Err(upsertResult.error);
+  }
+
+  logger.info(
+    {
+      workspaceId,
+      groupId,
+      seatType,
+      metronomeCustomerId,
+      alertId: upsertResult.value.alertId,
+      awuCredits,
+    },
+    "[Metronome GroupCap] Synced per-group cap alert"
+  );
+  return new Ok({ alertId: upsertResult.value.alertId });
+}
+
+/**
+ * Idempotently ensure a per-(group, seat-type) 80% warning alert exists. The
+ * threshold is floor(capAwuCredits * 0.8). Skipped if the result would be zero.
+ */
+export async function upsertMetronomeGroupWarningAlertForSeatType({
+  metronomeCustomerId,
+  workspaceId,
+  groupId,
+  seatType,
+  capAwuCredits,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+  groupId: string;
+  seatType: NormalizedPoolLimitSeatType;
+  capAwuCredits: number;
+}): Promise<Result<{ alertId: string } | null, Error>> {
+  const threshold = warningAwuCredits(capAwuCredits);
+  if (threshold <= 0) {
+    return new Ok(null);
+  }
+  const upsertResult = await upsertMetronomeAlert({
+    alert_type: "spend_threshold_reached",
+    name: `Group warning ${groupId} ${seatType} ${workspaceId} (${threshold} AWU / ${Math.round(USER_AWU_WARNING_PERCENTAGE * 100)}% of ${capAwuCredits})`,
+    threshold,
+    credit_type_id: getCreditTypeAwuId(),
+    customer_id: metronomeCustomerId,
+    group_values: [{ key: USER_ID_GROUP_KEY }],
+    uniqueness_key: groupWarningAlertUniquenessKeyForSeatType(
+      groupId,
+      seatType,
+      workspaceId
+    ),
+  });
+  if (upsertResult.isErr()) {
+    return new Err(upsertResult.error);
+  }
+  logger.info(
+    {
+      workspaceId,
+      groupId,
+      seatType,
+      metronomeCustomerId,
+      alertId: upsertResult.value.alertId,
+      threshold,
+      capAwuCredits,
+    },
+    "[Metronome GroupWarning] Synced per-group warning alert"
+  );
+  return new Ok({ alertId: upsertResult.value.alertId });
+}
+
+/**
+ * Archive the per-(group, seat-type) cap alert, if any. Idempotent.
+ */
+export async function clearMetronomeGroupCapAlertForSeatType({
+  metronomeCustomerId,
+  workspaceId,
+  groupId,
+  seatType,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+  groupId: string;
+  seatType: NormalizedPoolLimitSeatType;
+}): Promise<Result<void, Error>> {
+  const result = await clearMetronomeAlert({
+    metronomeCustomerId,
+    uniquenessKey: groupCapAlertUniquenessKeyForSeatType(
+      groupId,
+      seatType,
+      workspaceId
+    ),
+  });
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+  if (result.value) {
+    logger.info(
+      { workspaceId, groupId, seatType, metronomeCustomerId },
+      "[Metronome GroupCap] Cleared per-group cap alert"
+    );
+  }
+  return new Ok(undefined);
+}
+
+/**
+ * Archive the per-(group, seat-type) 80% warning alert, if any. Idempotent.
+ */
+export async function clearMetronomeGroupWarningAlertForSeatType({
+  metronomeCustomerId,
+  workspaceId,
+  groupId,
+  seatType,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+  groupId: string;
+  seatType: NormalizedPoolLimitSeatType;
+}): Promise<Result<void, Error>> {
+  const result = await clearMetronomeAlert({
+    metronomeCustomerId,
+    uniquenessKey: groupWarningAlertUniquenessKeyForSeatType(
+      groupId,
+      seatType,
+      workspaceId
+    ),
+  });
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+  if (result.value) {
+    logger.info(
+      { workspaceId, groupId, seatType, metronomeCustomerId },
+      "[Metronome GroupWarning] Cleared per-group warning alert"
     );
   }
   return new Ok(undefined);

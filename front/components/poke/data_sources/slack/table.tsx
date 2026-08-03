@@ -2,7 +2,7 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { SlackAutoReadPattern } from "@app/types/connectors/slack";
 import type { DataSourceType } from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
-import { IconButton, TrashIcon } from "@dust-tt/sparkle";
+import { IconButton, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 function prepareSlackAutoReadPatternsForDisplay(
@@ -52,7 +52,7 @@ function makeColumnsForSlackAutoReadPatterns(
       cell: ({ row }) => {
         return (
           <IconButton
-            icon={TrashIcon}
+            icon={Trash01}
             size="xs"
             variant="warning"
             onClick={async () => {
@@ -84,8 +84,8 @@ export function SlackAutoReadPatternsTable({
       : "Slack Bot Auto Join Channels Patterns";
 
   return (
-    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
+    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-muted-background">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4">
         <h2 className="text-md font-bold">{tableTitle}</h2>
       </div>
       <div className="flex flex-grow flex-col justify-center p-4">

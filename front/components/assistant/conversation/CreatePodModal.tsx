@@ -14,10 +14,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  GlobeAltIcon,
+  Globe01,
   Input,
   Label,
-  LockIcon,
+  Lock01,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
@@ -155,7 +155,7 @@ export function CreatePodModal({
                 autoFocus
               />
               {nameNotAvailable && (
-                <div className="mt-1 text-xs text-warning-500 dark:text-warning-500">
+                <div className="mt-1 text-xs text-warning-500">
                   A Pod or space with this name already exists.
                 </div>
               )}
@@ -167,7 +167,7 @@ export function CreatePodModal({
                 disabled={!areWorkspaceOpenPodsAllowed}
                 onChange={setIsPodOpen}
               />
-              <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <div className="text-xs text-muted-foreground">
                 {isPodOpen
                   ? "Anyone in the workspace can find and join the Pod."
                   : "Only invited members can access the Pod."}
@@ -204,8 +204,8 @@ function AccessSwitch({ isOpen, disabled, onChange }: AccessSwitchProps) {
       onValueChange={(value) => onChange(value === "open")}
       disabled={disabled}
     >
-      <ButtonsSwitch value="open" label="Open" icon={GlobeAltIcon} />
-      <ButtonsSwitch value="restricted" label="Restricted" icon={LockIcon} />
+      <ButtonsSwitch value="open" label="Open" icon={Globe01} />
+      <ButtonsSwitch value="restricted" label="Restricted" icon={Lock01} />
     </ButtonsSwitchList>
   );
 

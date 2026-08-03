@@ -23,6 +23,7 @@ const DeleteContentNodeBodySchema = z.object({
 // we keep the same checks here.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
   withSpace({ requireCanRead: true }),

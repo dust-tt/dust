@@ -37,7 +37,7 @@ class ClariHttpError extends Error {
   }
 }
 
-export interface SearchCallsParams {
+interface SearchCallsParams {
   from_date?: string;
   to_date?: string;
   account_name?: string;
@@ -72,7 +72,7 @@ export function getClariClient(
   return new Ok(new ClariCopilotClient(apiKey, apiPassword));
 }
 
-export class ClariCopilotClient {
+class ClariCopilotClient {
   private apiKey: string;
   private apiPassword: string;
 

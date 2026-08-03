@@ -1,20 +1,20 @@
 import { useCallback, useState } from "react";
 
-export function useSubmitFunction<T extends unknown[]>(
-  submitFn: (...data: T) => Promise<void>
+export function useSubmitFunction<T extends unknown[], R = void>(
+  submitFn: (...data: T) => Promise<R>
 ) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submit = useCallback(
-    async (...data: T) => {
+    async (...data: T): Promise<R | undefined> => {
       if (isSubmitting) {
-        return;
+        return undefined;
       }
 
       setIsSubmitting(true);
 
       try {
-        await submitFn(...data);
+        return await submitFn(...data);
       } finally {
         setIsSubmitting(false);
       }

@@ -8,19 +8,26 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
-import type { KeyType } from "@app/types/key";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { ApiKeyCreditState, KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { redactString } from "@app/types/shared/utils/string_utils";
-import type { LightWorkspaceType, RoleType } from "@app/types/user";
+import type {
+  AssignableRoleType,
+  LightWorkspaceType,
+  RoleType,
+} from "@app/types/user";
 import { formatUserFullName } from "@app/types/user";
 import { blake3 } from "@napi-rs/blake-hash";
+import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
@@ -36,6 +43,7 @@ type CachedKeyData = Omit<
 
 export interface KeyAuthType {
   id: ModelId;
+  userModelId: ModelId | null;
   name: string;
   isSystem: boolean;
   role: RoleType;
@@ -44,6 +52,10 @@ export interface KeyAuthType {
 
 export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
+
+// "Last used" is only shown coarsely in the UI; skip DB writes within this window
+// to avoid row-lock contention on hot API keys.
+export const MARK_AS_USED_MIN_INTERVAL_MS = 60 * 60 * 1000;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
@@ -78,6 +90,8 @@ export class KeyResource extends BaseResource<KeyModel> {
       isSystem: key.isSystem,
       role: key.role,
       monthlyCapMicroUsd: key.monthlyCapMicroUsd,
+      monthlyCapAwuCredits: key.monthlyCapAwuCredits,
+      creditState: key.creditState,
       workspaceId: key.workspaceId,
       groupIds: key.groupIds,
       userId: key.userId,
@@ -218,6 +232,24 @@ export class KeyResource extends BaseResource<KeyModel> {
     return new this(KeyResource.model, key.get());
   }
 
+  // All active keys with a given name. Names are not unique, and Metronome
+  // aggregates spend per name, so the per-key credit cap is effectively
+  // per-name: the cap webhook transitions every active key sharing the name.
+  static async listActiveByWorkspaceAndName(
+    workspace: LightWorkspaceType,
+    name: string
+  ) {
+    const keys = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        name,
+        status: "active",
+      },
+    });
+
+    return keys.map((key) => new this(KeyResource.model, key.get()));
+  }
+
   static async listNonSystemKeysByWorkspace(workspace: LightWorkspaceType) {
     const keys = await this.model.findAll({
       where: {
@@ -239,14 +271,16 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   async markAsUsed() {
-    return this.model.update(
-      { lastUsedAt: new Date() },
-      {
-        where: {
-          id: this.id,
-        },
-      }
-    );
+    if (
+      this.lastUsedAt &&
+      Date.now() - this.lastUsedAt.getTime() < MARK_AS_USED_MIN_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    // Use `this.update` (not `model.update`) so the instance and Redis secret
+    // cache stay consistent — otherwise every cached hit would keep writing.
+    return this.update({ lastUsedAt: new Date() });
   }
 
   async setIsDisabled() {
@@ -307,16 +341,21 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
-  toJSON(): KeyType {
-    // We only display the full secret key for the first 10 minutes after creation.
+  toJSON(requestingUserModelId: ModelId): KeyType {
+    // We only display the full secret key to the admin who created it, and only
+    // for the first 10 minutes after creation. Every other admin (or the
+    // creator past the window) sees a redacted value.
     const currentTime = new Date();
     const createdAt = new Date(this.createdAt);
     const timeDifference = Math.abs(
       currentTime.getTime() - createdAt.getTime()
     );
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+    const isCreator = this.userId === requestingUserModelId;
     const secret =
-      differenceInMinutes > 10 ? redactString(this.secret, 4) : this.secret;
+      isCreator && differenceInMinutes <= 10
+        ? this.secret
+        : redactString(this.secret, 4);
 
     return {
       id: this.id,
@@ -329,6 +368,8 @@ export class KeyResource extends BaseResource<KeyModel> {
       groupIds: this.groupIds,
       role: this.role,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
+      monthlyCapAwuCredits: this.monthlyCapAwuCredits,
+      creditState: this.creditState,
     };
   }
 
@@ -336,6 +377,7 @@ export class KeyResource extends BaseResource<KeyModel> {
   toAuthJSON(): KeyAuthType {
     return {
       id: this.id,
+      userModelId: this.userId ?? null,
       name: this.name,
       isSystem: this.isSystem,
       role: this.role,
@@ -347,8 +389,35 @@ export class KeyResource extends BaseResource<KeyModel> {
     return this.status === "active";
   }
 
-  async updateRole({ newRole }: { newRole: RoleType }) {
+  async updateRole({ newRole }: { newRole: AssignableRoleType }) {
     await this.update({ role: newRole });
+  }
+
+  // Adds or removes a single group from groupIds. Idempotent.
+  async setGroupMembership({
+    group,
+    isMember,
+  }: {
+    group: GroupResource;
+    isMember: boolean;
+  }): Promise<void> {
+    const hasGroup = this.groupIds.includes(group.id);
+    if (isMember === hasGroup) {
+      return;
+    }
+
+    const groupIds = isMember
+      ? [...this.groupIds, group.id]
+      : this.groupIds.filter((id) => id !== group.id);
+    await this.update({ groupIds });
+  }
+
+  private async fetchWorkspace(): Promise<LightWorkspaceType> {
+    const [workspace] = await WorkspaceResource.fetchByModelIds([
+      this.workspaceId,
+    ]);
+    assert(workspace, `Workspace not found for key ${this.id}`);
+    return renderLightWorkspaceType({ workspace });
   }
 
   async updateMonthlyCap({
@@ -357,5 +426,19 @@ export class KeyResource extends BaseResource<KeyModel> {
     monthlyCapMicroUsd: number | null;
   }) {
     await this.update({ monthlyCapMicroUsd });
+  }
+
+  async updateMonthlyCapAwuCredits(
+    monthlyCapAwuCredits: number | null,
+    transaction?: Transaction
+  ) {
+    await this.update({ monthlyCapAwuCredits }, transaction);
+  }
+
+  async updateCreditState(
+    creditState: ApiKeyCreditState,
+    transaction?: Transaction
+  ) {
+    await this.update({ creditState }, transaction);
   }
 }

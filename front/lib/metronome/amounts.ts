@@ -42,6 +42,7 @@ export function metronomeAmount(
 export const AWU_PRICE_PER_CREDIT: Record<SupportedCurrency, number> = {
   usd: 0.01,
   eur: 0.0087,
+  gbp: 0.0075,
 };
 
 export function currencyToAwuCredits(

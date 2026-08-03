@@ -22,26 +22,41 @@ import {
   SheetTrigger,
   TextArea,
 } from "@sparkle/components";
+
 import {
-  CloudArrowLeftRightIcon,
-  FolderIcon,
-  GlobeAltIcon,
-  MoreIcon,
-  PencilSquareIcon,
-  RocketIcon,
-  StarIcon,
-  TrashIcon,
-} from "@sparkle/icons/app";
+  DotsHorizontal,
+  Edit04,
+  Folder,
+  Globe01,
+  Rocket02,
+  Trash01,
+} from "@sparkle/icons/v2-stroke";
+import { CloudArrowLeftRight, Star01 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Layouts/Sheet",
+  title: "Overlays/Sheet",
+  parameters: {
+    docs: {
+      description: {
+        component: `A panel that slides in from an edge of the screen, built on Radix Dialog. It composes from **SheetTrigger**, **SheetContent** (with a \`side\` and \`size\`), **SheetHeader** (**SheetTitle**, **SheetDescription**), **SheetContainer** for the scrollable body, and **SheetFooter**, which renders up to three actions via \`leftButtonProps\`, \`rightButtonProps\`, and \`rightEndButtonProps\`.
+
+**When to use**
+- For secondary tasks, detail views, or forms that benefit from more room than a popover but shouldn't navigate away.
+
+**Guidelines**
+- Always give **SheetContent** a **SheetHeader** with a **SheetTitle** for context and accessibility.
+- Put scrollable body content inside **SheetContainer** and keep actions in **SheetFooter**.
+- For a multi-step flow inside a sheet, use **MultiPageSheet**; for a focus-blocking centered modal, use **Dialog**.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;
 
 export function Demo() {
   return (
-    <div className="s-flex s-flex-col s-gap-6">
+    <div className="flex flex-col gap-6">
       <SheetDemo />
       <ContentDemo />
       <SheetCustom />
@@ -53,7 +68,7 @@ export function SheetDemo() {
   const [saveCount, setSaveCount] = React.useState(0);
 
   return (
-    <div className="s-flex s-items-center s-gap-3">
+    <div className="flex items-center gap-3">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" label="Edit demo" />
@@ -63,16 +78,16 @@ export function SheetDemo() {
             <SheetTitle>About me</SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-gap-6">
+            <div className="flex flex-col gap-6">
               <Input label="Firstname" placeholder="John" />
               <Input label="Lastname" placeholder="Doe" />
-              <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <div className="text-xs text-muted-foreground">
                 Tip: Press Cmd/Ctrl + Enter to Save
               </div>
             </div>
           </SheetContainer>
           <SheetFooter
-            sheetCloseClassName="s-flex s-gap-2"
+            sheetCloseClassName="flex gap-2"
             leftButtonProps={{ label: "Cancel", variant: "warning" }}
             rightButtonProps={{
               label: "Save",
@@ -82,9 +97,7 @@ export function SheetDemo() {
           />
         </SheetContent>
       </Sheet>
-      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-        Saved: {saveCount}
-      </span>
+      <span className="text-xs text-muted-foreground">Saved: {saveCount}</span>
     </div>
   );
 }
@@ -99,7 +112,7 @@ export function ContentDemo() {
         <SheetContent size="xl">
           <SheetHeader>
             <Page.Header
-              icon={RocketIcon}
+              icon={Rocket02}
               title={<>Quick Guide for new members</>}
             />
           </SheetHeader>
@@ -118,7 +131,7 @@ export function SheetCustom() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            icon={MoreIcon}
+            icon={DotsHorizontal}
             onClick={(event) => {
               event.currentTarget.focus();
             }}
@@ -147,23 +160,23 @@ export function SheetCustom() {
         </SheetTrigger>
         <SheetContent>
           <SheetHeader>
-            <div className="s-flex s-flex-col s-gap-2">
+            <div className="flex flex-col gap-2">
               <Avatar
                 size="md"
                 name="Aria Doe"
                 visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
               />
-              <div className="s-flex s-flex-col s-gap-0">
+              <div className="flex flex-col gap-0">
                 <SheetTitle>@coucou</SheetTitle>
                 <SheetDescription>
                   The agent that allways says hello.
                 </SheetDescription>
               </div>
-              <div className="s-flex s-gap-2">
-                <Button icon={StarIcon} variant={"outline"} />
+              <div className="flex gap-2">
+                <Button icon={Star01} variant={"outline"} />
                 <Separator orientation="vertical" />
-                <Button icon={PencilSquareIcon} variant={"outline"} />
-                <Button icon={TrashIcon} variant={"outline"} />
+                <Button icon={Edit04} variant={"outline"} />
+                <Button icon={Trash01} variant={"outline"} />
                 <SimpleDropdownDemo />
               </div>
             </div>
@@ -178,7 +191,7 @@ export function SheetCustom() {
 }
 
 const QIG: React.FC = () => (
-  <div className="s-flex s-flex-col s-gap-5">
+  <div className="flex flex-col gap-5">
     <Page.Horizontal>
       <Page.Vertical>
         <Page.H>
@@ -258,7 +271,7 @@ const QIG: React.FC = () => (
       <Page.Horizontal>
         <Page.Vertical sizing="grow">
           <div className="flex items-center gap-2">
-            <Icon visual={CloudArrowLeftRightIcon} />{" "}
+            <Icon visual={CloudArrowLeftRight} />{" "}
             <Page.H variant="h6">Connections</Page.H>
           </div>
           <Page.P>
@@ -269,7 +282,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={FolderIcon} /> <Page.H variant="h6">Folders</Page.H>
+              <Icon visual={Folder} /> <Page.H variant="h6">Folders</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>Upload files (text, pdf, csv) directly in Dust.</Page.P>
@@ -277,8 +290,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={GlobeAltIcon} />{" "}
-              <Page.H variant="h6">Websites</Page.H>
+              <Icon visual={Globe01} /> <Page.H variant="h6">Websites</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>
@@ -380,7 +392,7 @@ const QIG: React.FC = () => (
       <Page.Horizontal>
         <Page.Vertical sizing="grow">
           <div className="flex items-center gap-2">
-            <Icon visual={CloudArrowLeftRightIcon} />{" "}
+            <Icon visual={CloudArrowLeftRight} />{" "}
             <Page.H variant="h6">Connections</Page.H>
           </div>
           <Page.P>
@@ -391,7 +403,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={FolderIcon} /> <Page.H variant="h6">Folders</Page.H>
+              <Icon visual={Folder} /> <Page.H variant="h6">Folders</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>Upload files (text, pdf, csv) directly in Dust.</Page.P>
@@ -399,8 +411,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={GlobeAltIcon} />{" "}
-              <Page.H variant="h6">Websites</Page.H>
+              <Icon visual={Globe01} /> <Page.H variant="h6">Websites</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>
@@ -428,18 +439,18 @@ export function SheetWithThreeButtons() {
             </SheetDescription>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-gap-6">
+            <div className="flex flex-col gap-6">
               <Input label="Example Input" placeholder="Type something..." />
             </div>
           </SheetContainer>
           <SheetFooter
-            sheetCloseClassName="s-flex s-gap-2"
+            sheetCloseClassName="flex gap-2"
             leftButtonProps={{ label: "Cancel", variant: "warning" }}
             rightButtonProps={{ label: "Save", variant: "primary" }}
             rightEndButtonProps={{
               label: "Delete",
               variant: "warning",
-              icon: TrashIcon,
+              icon: Trash01,
             }}
           />
         </SheetContent>
@@ -457,16 +468,16 @@ export function SheetWithIconInTitle() {
         </SheetTrigger>
         <SheetContent side="left">
           <SheetHeader hideButton>
-            <SheetTitle icon={RocketIcon}>About me</SheetTitle>
+            <SheetTitle icon={Rocket02}>About me</SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-gap-6">
+            <div className="flex flex-col gap-6">
               <Input label="Firstname" placeholder="John" />
               <Input label="Lastname" placeholder="Doe" />
             </div>
           </SheetContainer>
           <SheetFooter
-            sheetCloseClassName="s-flex s-gap-2"
+            sheetCloseClassName="flex gap-2"
             leftButtonProps={{ label: "Cancel", variant: "warning" }}
             rightButtonProps={{ label: "Save", disabled: true }}
           />

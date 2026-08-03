@@ -2,6 +2,12 @@ import {
   getLocalAccountPrivilegeHardeningCommand,
   getRootConsumedPathHardeningCommand,
 } from "@app/lib/api/sandbox/hardening";
+import {
+  buildPodPackage,
+  POD_PACKAGE_IMAGE_DIR,
+  POD_PACKAGE_NAME,
+  POD_PACKAGE_VERSION,
+} from "@app/lib/api/sandbox/image/pod_package";
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
@@ -19,8 +25,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.35";
-const DSBX_CLI_VERSION = "0.1.25";
+const DUST_BASE_IMAGE_VERSION = "0.8.63";
+const DSBX_CLI_VERSION = "0.1.40";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -28,9 +34,32 @@ const AGENT_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
+// Modern x86_64 build (requires AVX2). Switch to the baseline variant if a
+// future sandbox CPU lacks it.
+const BUN_VERSION = "1.3.14";
+// dbt Cloud CLI (closed-source; github.com/dbt-labs/dbt-cli). Invoked as `dbt`.
+const DBT_CLI_VERSION = "0.40.18";
+// Snowflake CLI (github.com/snowflakedb/snowflake-cli). Invoked as `snow`.
+// Linux x86_64 .deb from https://sfc-repo.snowflakecomputing.com/snowflake-cli/
+const SNOWFLAKE_CLI_VERSION = "3.23.0";
+const SNOWFLAKE_CLI_DEB_SHA256 =
+  "bb1a3e645c171f43dac44965daa4047c256424bf47c954fef8b2a00d38e84775";
+// LibreOffice "Fresh" PPA. The Ubuntu 24.04 base ships LibreOffice 24.2, whose
+// PDF layout engine places text differently from a current desktop LibreOffice
+// (26.x). Since the pptx QA reads word positions off the soffice-rendered PDF to
+// confirm text collisions, the engine version has to be pinned and reproducible
+// - and close to what authors run - or the same deck detects collisions on one
+// machine and not another. This assumes an Ubuntu base and build-time egress to
+// launchpad.net; if PPAs are blocked, install the TDF .deb bundle instead.
+const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
+// Litestream (Apache-2.0) replicates the pod-state SQLite databases to the
+// GCS replica mount.
+const LITESTREAM_VERSION = "0.5.13";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
+const LITESTREAM_LOCAL_DIR = path.resolve(__dirname, "litestream");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
+const TOKEN_LOCAL_DIR = path.resolve(__dirname, "token");
 
 interface PythonLibrary {
   name: string;
@@ -153,10 +182,14 @@ function getLocalDirContent(
     const full = path.join(dir, subdir);
     return new Map(
       fs
-        .readdirSync(full)
-        .map((filename) => [
-          filename,
-          fs.readFileSync(path.join(full, filename)),
+        .readdirSync(full, { withFileTypes: true })
+        // Only copy regular files. Running the Python tools locally drops a
+        // __pycache__/ directory in here; without this filter the build tries
+        // to readFileSync that directory and dies with EISDIR.
+        .filter((entry) => entry.isFile())
+        .map((entry) => [
+          entry.name,
+          fs.readFileSync(path.join(full, entry.name)),
         ])
     );
   };
@@ -165,15 +198,15 @@ function getLocalDirContent(
 function getAgentProxiedSetupCommand(): string {
   // setgid bit on shared dirs + default POSIX ACLs ensures files created
   // by either agent or agent-proxied are group-owned by `agent` and
-  // group-writable, regardless of the creating process's umask — avoids
+  // group-writable, regardless of the creating process's umask - avoids
   // a perms handoff footgun during the PR1→PR2 rollout window.
   return [
     "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin",
     `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
-    "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/pod",
-    "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/pod",
-    "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/pod",
-    "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/pod",
+    "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files",
+    "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files",
+    "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files",
+    "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files",
   ].join(" && ");
 }
 
@@ -181,6 +214,35 @@ function getEgressResolverUserSetupCommand(): string {
   return [
     "groupadd --system dust-egress-resolver",
     "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver",
+  ].join(" && ");
+}
+
+function getDustStateUserSetupCommand(): string {
+  // dust-state runs the litestream replication daemon (pod state). Primary
+  // group dust-state owns the replica mount point; supplementary membership
+  // in `agent` grants rw on the live databases dir shared with agent-proxied
+  // function code. Deliberately NOT in SANDBOX_UNTRUSTED_UIDS: it never
+  // executes workload code.
+  return [
+    "groupadd --system dust-state",
+    "useradd --system --no-create-home --gid dust-state --groups agent --shell /usr/sbin/nologin dust-state",
+  ].join(" && ");
+}
+
+function getPodStateSetupCommand(): string {
+  // /pod-state/databases holds the live SQLite files: both agent-proxied
+  // function code (group agent) and the litestream daemon (user dust-state)
+  // need rw, so it gets the same setgid + default-ACL treatment as /files.
+  // /pod-state/replica is the gcsfuse mount point for the litestream replica
+  // — the durable copy of pod state. Untrusted workload code must never read
+  // or tamper with it, so the directory is dust-state-only: 0700 here, no
+  // allow_other on the runtime mount.
+  return [
+    "install -d -o root -g root -m 755 /pod-state",
+    "install -d -o dust-state -g agent -m 2770 /pod-state/databases",
+    "setfacl -R -d -m g::rwx /pod-state/databases",
+    "setfacl -R -m g::rwx /pod-state/databases",
+    "install -d -o dust-state -g dust-state -m 700 /pod-state/replica",
   ].join(" && ");
 }
 
@@ -241,47 +303,68 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
 )
   // Create agent user first so e2b creates /home/agent with correct ownership.
   .setUser("agent")
-  // Conversation + Pod files bootstrap.
-  // Pre-create mount directories for faster GCS mounts. `/files/pod` is only mounted when the
-  // conversation belongs to a Pod; the directory always exists in the image so the path is
-  // predictable for the agent prompt.
-  .runCmd(
-    "mkdir -p /files/conversation /files/pod && chmod 777 /files/conversation /files/pod",
-    {
-      user: "root",
-    }
-  )
+  // Create the /files parent directory. Mount subdirectories (conversation-{sId}, pod-{sId}) are
+  // created at runtime by the mount adapter and symlinked to legacy paths (/files/conversation,
+  // /files/pod) for backward compatibility.
+  .runCmd("mkdir -p /files && chmod 777 /files", {
+    user: "root",
+  })
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   .runCmd(getSshHardeningCommand(), { user: "root" })
-  // Create simple netcat-based token server script.
-  .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
-  // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
-  .runCmd(
-    `tee /home/agent/.bin/token-server.sh > /dev/null << 'SHELLEOF'
-#!/bin/bash
-while true; do
-  (echo -ne "HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: $(stat -c %s /tmp/token.json 2>/dev/null || echo 0)\\r\\n\\r\\n"; cat /tmp/token.json 2>/dev/null) | nc -l -p 9876 -q 1
-done
-SHELLEOF`,
+  // The root-owned token broker requires /usr/bin/python3.
+  .runCmd("apt-get update && apt-get install -y python3", { user: "root" })
+  // The per-mount broker helpers live outside the agent's group-writable home and serve
+  // mode-0600 tokens from /run/dust-gcs.
+  .runCmd("mkdir -p /usr/local/bin", { user: "root" })
+  .copy(
+    getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-token-server.py"),
+    "/usr/local/bin/dust-gcs-token-server.py",
     { user: "root" }
   )
-  .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
+  .copy(
+    getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-write-token.sh"),
+    "/usr/local/bin/dust-gcs-write-token.sh",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-token-firewall.sh"),
+    "/usr/local/bin/dust-gcs-token-firewall.sh",
+    { user: "root" }
+  )
+  .runCmd(
+    "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh && " +
+      "chmod 755 /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh",
+    { user: "root" }
+  )
   .runCmd(getEgressResolverUserSetupCommand(), { user: "root" })
-  // Add sentinel file to indicate when the conversation mount is pending. We intentionally do
-  // NOT add an equivalent marker under /files/pod: the Pod mount is conditional (only happens
-  // for Pod conversations), so a baked marker would be misleading in non-Pod conversations where
-  // no mount ever lands.
-  .runCmd("touch /files/conversation/.mount-pending", { user: "root" })
+  .runCmd(getDustStateUserSetupCommand(), { user: "root" })
+  .runCmd(getPodStateSetupCommand(), { user: "root" })
   // Hidden tools: installed but not in manifest (back profile functions)
   .runCmd("apt-get update && apt-get install -y ripgrep fd-find sd", {
     user: "root",
   })
   // Create profile directory and copy profile scripts
   // The other tools are installed in bedrock
+  // Bump LibreOffice past the distro's 24.2 to a current release so the
+  // soffice PDF render (which the pptx QA reads word positions from) matches a
+  // modern desktop engine.
+  .runCmd(
+    "apt-get update && apt-get install -y software-properties-common && " +
+      `add-apt-repository -y ${LIBREOFFICE_PPA} && apt-get update`,
+    { user: "root" }
+  )
+  // Metric-compatible font substitutes so soffice lays text out at the same
+  // positions as the MS fonts it stands in for - Carlito=Calibri,
+  // Caladea=Cambria, Liberation=Arial/Times/Courier - plus Noto as a broad
+  // fallback. Without these, a Calibri/Cambria deck (the PowerPoint defaults)
+  // reflows under a non-metric fallback and the QA misses real text collisions.
+  // fc-cache rebuilds the fontconfig cache so the new fonts resolve at runtime.
   .runCmd(
     "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
-      "libreoffice poppler-utils qpdf",
+      "sqlite3 libreoffice poppler-utils qpdf " +
+      "fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 " +
+      "fonts-noto-core && fc-cache -f",
     { user: "root" }
   )
   .registerTool([
@@ -344,8 +427,36 @@ SHELLEOF`,
         description: "PowerPoint generation library",
         runtime: "node",
       },
+      {
+        name: "zod",
+        version: "4.4.3",
+        description: "Schema validation (sandbox function contracts)",
+        runtime: "node",
+      },
+      {
+        name: "drizzle-orm",
+        version: "0.45.2",
+        description:
+          "SQLite ORM (pod database schema files and function queries)",
+        runtime: "node",
+      },
+      {
+        name: "drizzle-kit",
+        version: "0.31.10",
+        description: "drizzle-kit",
+        runtime: "node",
+      },
+      {
+        name: "@libsql/client",
+        version: "0.17.4",
+        description: "SQLite driver for drizzle-kit",
+        runtime: "node",
+      },
     ],
-    { installCmd: "npm install -g typescript tsx pptxgenjs@4.0.1" }
+    {
+      installCmd:
+        "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4",
+    }
   )
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
@@ -360,6 +471,7 @@ SHELLEOF`,
     name: DSBX_TOOL_NAME,
     description: "Dust CLI",
     runtime: "system",
+    isDustTool: true,
   })
   .runCmd("mkdir -p /skills && chmod 755 /skills", { user: "root" })
   .runCmd(
@@ -378,7 +490,92 @@ SHELLEOF`,
       "apply_patch '*** Begin Patch\\n*** Update File: <path>\\n@@ [context]\\n-old\\n+new\\n*** End Patch'",
     returns: "Summary of applied changes (A/M/D per file)",
     runtime: "system",
+    isDustTool: true,
     profile: "openai",
+  })
+  .runCmd(
+    `curl -fsSL https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip -o /tmp/bun.zip && ` +
+      `curl -fsSL https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/SHASUMS256.txt -o /tmp/bun-checksums.txt && ` +
+      "grep 'bun-linux-x64.zip' /tmp/bun-checksums.txt | awk '{print $1 \"  /tmp/bun.zip\"}' | sha256sum -c - && " +
+      "unzip -j /tmp/bun.zip bun-linux-x64/bun -d /tmp && " +
+      "mv /tmp/bun /opt/bin/bun && " +
+      "chown root:root /opt/bin/bun && chmod 755 /opt/bin/bun",
+    { user: "root" }
+  )
+  .registerTool({
+    name: "bun",
+    description: "Fast JavaScript/TypeScript runtime and package manager",
+    runtime: "node",
+  })
+  .runCmd(
+    `curl -fsSL https://github.com/dbt-labs/dbt-cli/releases/download/v${DBT_CLI_VERSION}/dbt_${DBT_CLI_VERSION}_linux_amd64.tar.gz -o /tmp/dbt.tar.gz && ` +
+      `curl -fsSL https://github.com/dbt-labs/dbt-cli/releases/download/v${DBT_CLI_VERSION}/dbt_checksums.txt -o /tmp/dbt-checksums.txt && ` +
+      `grep "dbt_${DBT_CLI_VERSION}_linux_amd64.tar.gz" /tmp/dbt-checksums.txt | awk '{print $1 "  /tmp/dbt.tar.gz"}' | sha256sum -c - && ` +
+      "tar -xzf /tmp/dbt.tar.gz -C /tmp dbt && " +
+      "rm /tmp/dbt.tar.gz /tmp/dbt-checksums.txt && " +
+      "mv /tmp/dbt /opt/bin/dbt && " +
+      "chown root:root /opt/bin/dbt && chmod 755 /opt/bin/dbt",
+    { user: "root" }
+  )
+  .registerTool({
+    name: "dbt",
+    version: DBT_CLI_VERSION,
+    description:
+      "dbt Cloud CLI for running dbt commands against a dbt platform project",
+    runtime: "system",
+  })
+  .runCmd(
+    `curl -fsSL https://sfc-repo.snowflakecomputing.com/snowflake-cli/linux_x86_64/${SNOWFLAKE_CLI_VERSION}/snowflake-cli-${SNOWFLAKE_CLI_VERSION}.x86_64.deb -o /tmp/snowflake-cli.deb && ` +
+      `echo "${SNOWFLAKE_CLI_DEB_SHA256}  /tmp/snowflake-cli.deb" | sha256sum -c - && ` +
+      "apt-get install -y /tmp/snowflake-cli.deb && " +
+      "ln -sf /usr/lib/snowflake/snowflake-cli/snow /opt/bin/snow && " +
+      "chown -h root:root /opt/bin/snow && " +
+      "rm -f /tmp/snowflake-cli.deb",
+    { user: "root" }
+  )
+  .registerTool({
+    name: "snow",
+    version: SNOWFLAKE_CLI_VERSION,
+    description:
+      "Snowflake CLI for managing Snowflake accounts, objects, and apps",
+    runtime: "system",
+  })
+  .runCmd(
+    `curl -fsSL https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-${LITESTREAM_VERSION}-linux-x86_64.tar.gz -o /tmp/litestream.tar.gz && ` +
+      "tar -xzf /tmp/litestream.tar.gz -C /tmp litestream && " +
+      "rm /tmp/litestream.tar.gz && " +
+      "mv /tmp/litestream /opt/bin/litestream && " +
+      "chown root:root /opt/bin/litestream && chmod 755 /opt/bin/litestream",
+    { user: "root" }
+  )
+  // Litestream unit + STATIC config (all paths are pod-state contract
+  // constants), both baked at build. The unit is deliberately NOT enabled:
+  // front starts it at runtime AFTER the replica gcsfuse mount and the
+  // cold-start restore — at boot the daemon would write to the unmounted
+  // local directory (the silent-unmount failure mode) and manage files
+  // mid-restore.
+  .copy(
+    getLocalContent(LITESTREAM_LOCAL_DIR, "litestream.service"),
+    "/etc/systemd/system/litestream.service",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(LITESTREAM_LOCAL_DIR, "litestream.yml"),
+    "/etc/litestream.yml",
+    { user: "root" }
+  )
+  // Vendor @dust/pod into the global node_modules (see pod_package.ts for why
+  // this is a build-time copy rather than an npm install).
+  .runCmd(`mkdir -p ${path.posix.dirname(POD_PACKAGE_IMAGE_DIR)}`, {
+    user: "root",
+  })
+  .copy(buildPodPackage, POD_PACKAGE_IMAGE_DIR, { user: "root" })
+  .registerTool({
+    name: POD_PACKAGE_NAME,
+    version: POD_PACKAGE_VERSION,
+    description:
+      "Pod database access: db(name) returns a drizzle instance over the pod's SQLite database",
+    runtime: "node",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })
   // Core: compiled dust-tools binary + shared shell infra
@@ -508,6 +705,7 @@ SHELLEOF`,
     returns:
       "Header with line range + numbered lines (format: '  N\\tcontent')",
     runtime: "system",
+    isDustTool: true,
     profile: ["anthropic", "openai"],
   })
   .registerTool({
@@ -518,6 +716,7 @@ SHELLEOF`,
     returns:
       "Header with line range + numbered lines (format: '  N\\tcontent')",
     runtime: "system",
+    isDustTool: true,
     profile: "gemini",
   })
   .registerTool({
@@ -527,6 +726,7 @@ SHELLEOF`,
     usage: "write_file <path> <content>",
     returns: "'Wrote <path> (<bytes> bytes)' on success",
     runtime: "system",
+    isDustTool: true,
     profile: ["anthropic", "gemini"],
   })
   .registerTool({
@@ -536,6 +736,7 @@ SHELLEOF`,
     usage: "edit_file [--replace-all] <old_text> <new_text> <path>",
     returns: "'Edited <path>' on success, unified diff on stderr",
     runtime: "system",
+    isDustTool: true,
     profile: ["anthropic", "gemini"],
   })
   // --- grep_files: anthropic has extra flags ---
@@ -547,6 +748,7 @@ SHELLEOF`,
       "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N] [--output-mode content|files|count] [--case-insensitive] [--max-line-length N]",
     returns: "file:line:content format with match count footer",
     runtime: "system",
+    isDustTool: true,
     profile: "anthropic",
   })
   .registerTool({
@@ -557,6 +759,7 @@ SHELLEOF`,
       "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N]",
     returns: "file:line:content format with match count footer",
     runtime: "system",
+    isDustTool: true,
     profile: ["openai", "gemini"],
   })
   // --- glob: uniform with pagination ---
@@ -566,6 +769,7 @@ SHELLEOF`,
     usage: "glob <pattern> [--path PATH] [--offset N] [--limit N]",
     returns: "Sorted file paths with pagination hint",
     runtime: "system",
+    isDustTool: true,
   })
   // --- list_dir: uniform with type suffixes and pagination ---
   .registerTool({
@@ -576,6 +780,7 @@ SHELLEOF`,
     returns: "Sorted paths with type suffixes and pagination hint",
     profile: ["openai", "gemini"],
     runtime: "system",
+    isDustTool: true,
   })
   // --- xlsx_inspect: structural inspection of .xlsx workbooks ---
   .registerTool({
@@ -587,28 +792,53 @@ SHELLEOF`,
     returns:
       "Workbook overview, or one cell per line: '<address>  <formula or value>  [cached result]  numFmt: <fmt>  [font: <color>]  [fill: <color>]'. Empty cells skipped",
     runtime: "system",
+    isDustTool: true,
   })
   // --- pptx_inspect: structural inspection of .pptx decks ---
   .registerTool({
     name: "pptx_inspect",
     description:
-      "Inspect .pptx structure: slides, layouts, shapes, text, charts, tables, embedded media. Use before editing a deck to map layouts and shape positions. --render rasterizes slides to JPEG via soffice + pdftoppm for visual QA",
+      "Inspect and QA .pptx structure (slides, layouts, shapes, text, charts, tables, embedded media) throughout the edit loop. Overview by default, plus modes --slide, --layouts, --text, --media, --render, --qa (post-edit boxed-render + text-readback visual gate) and --compare FILE (template-fidelity [QA: PASS/FAIL] gate). Run with --help for the full per-mode flag reference; the pptx skill covers when and how to use each.",
     usage:
-      "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--render] [--max-shapes N] [--offset N]",
+      "pptx_inspect <file> [--qa N[,N,...]] [--slide N[,N,...]] [--layouts] [--text] [--media] [--render] [--render-dir DIR] [--compare FILE] [--max-shapes N] [--offset N] (see --help)",
     returns:
-      "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' with paragraphs indented. Layouts/text/media views emit format-specific listings. --render prints one absolute JPEG path per slide",
+      "A per-mode text report: deck overview, or per-slide shapes with [!] blockers / [i] advisories, or layouts / text / media listings. --qa and --render publish JPEGs and print their files__cat scoped paths; --compare ends in a [QA: PASS/FAIL] verdict. See --help for field-level detail.",
     runtime: "system",
+    isDustTool: true,
+  })
+  // --- pptx_slides: safe slide-level structural edits ---
+  .registerTool({
+    name: "pptx_slides",
+    description:
+      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+    usage:
+      "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
+    returns: "A one-line summary of the change and the deck's new slide count",
+    runtime: "system",
+    isDustTool: true,
+  })
+  // --- pptx_slides: safe slide-level structural edits ---
+  .registerTool({
+    name: "pptx_slides",
+    description:
+      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+    usage:
+      "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
+    returns: "A one-line summary of the change and the deck's new slide count",
+    runtime: "system",
+    isDustTool: true,
   })
   // --- docx_inspect: structural inspection of .docx documents ---
   .registerTool({
     name: "docx_inspect",
     description:
-      "Inspect .docx structure: sections, headings outline, paragraph and character styles with resolved typography, run formatting, tables, tracked changes, fields, embedded media. Use before editing a document to map style names so the model can apply Heading1 / Normal / Quote rather than restyling inline",
+      "Inspect .docx structure: sections, headings outline, paragraph and character styles with resolved typography, run formatting, tables, tracked changes, fields, embedded media. Use before editing a document to map style names so the model can apply Heading1 / Normal / Quote rather than restyling inline. --render rasterizes pages to JPEG, published into the conversation; the command prints each page's scoped path (a files__cat-readable image). --render-dir DIR is the base dir renders publish under, as DIR/.docx_render/<doc>/ (default /files/conversation)",
     usage:
-      "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] [--sections] [--changes] [--fields] [--media] [--render] [--offset N] [--max N] [--page N]",
+      "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] [--sections] [--changes] [--fields] [--media] [--render] [--render-dir DIR] [--offset N] [--max N] [--page N]",
     returns:
-      "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode emits one absolute jpeg path per page",
+      "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode publishes each page and prints its scoped path (files__cat-readable)",
     runtime: "system",
+    isDustTool: true,
   })
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })

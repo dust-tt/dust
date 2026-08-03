@@ -5,7 +5,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { isToolsetsResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { BoltIcon, Chip } from "@dust-tt/sparkle";
+import { Chip, Zap } from "@dust-tt/sparkle";
 
 export function MCPListToolsActionDetails({
   owner,
@@ -31,10 +31,10 @@ export function MCPListToolsActionDetails({
       actionName={
         displayContext === "conversation" ? `Listing tools` : `List tools`
       }
-      visual={BoltIcon}
+      visual={Zap}
     >
       {displayContext !== "conversation" && (
-        <div className="pl-6 pt-4 text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+        <div className="pl-6 pt-4 text-sm font-normal text-muted-foreground">
           <div className="flex flex-wrap gap-1">
             {results.map((result) => {
               const mcpServerView = mcpServerViews.find(

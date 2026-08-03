@@ -1,10 +1,10 @@
+import Custom404 from "@app/components/pages/Custom404";
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
 
 export function EditSkillPage() {
@@ -23,7 +23,7 @@ export function EditSkillPage() {
   const isNotFound =
     isSkillError ||
     (!isSkillLoading && !skill) ||
-    (skill && (!skill.canWrite || skill.status === "archived"));
+    (skill && (!skill.canAdministrate || skill.status === "archived"));
 
   if (isNotFound) {
     return <Custom404 />;
@@ -32,18 +32,19 @@ export function EditSkillPage() {
   if (isSkillLoading || !skill) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Spinner size="xl" />
+        <Spinner size="lg" />
       </div>
     );
   }
 
   return (
-    <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
-      <SkillBuilder
-        skill={skill}
-        extendedSkill={skill.relations?.extendedSkill ?? undefined}
-        onSaved={mutateSkill}
-      />
+    <SkillBuilderProvider
+      key={skill.sId}
+      owner={owner}
+      user={user}
+      skillId={skill.sId}
+    >
+      <SkillBuilder skill={skill} onSaved={mutateSkill} />
     </SkillBuilderProvider>
   );
 }

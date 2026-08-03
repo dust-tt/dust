@@ -6,6 +6,7 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { cn } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import { useMemo } from "react";
@@ -19,6 +20,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { subscription } = useAuth();
 
   const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
 
   const router = useAppRouter();
 
@@ -29,19 +31,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         currentRoute: router.pathname,
         featureFlags,
         subscription,
+        hasPermission,
       }),
-    [owner, router.pathname, featureFlags, subscription]
+    [owner, router.pathname, featureFlags, subscription, hasPermission]
   );
 
   useSetSubNavigation(subNavigation);
 
   return (
     <div
-      className={cn(
-        "flex h-full w-full flex-col items-center overflow-y-auto pt-4"
-      )}
+      className={cn("flex h-full w-full flex-col items-center pt-4 sm:pt-8")}
     >
-      <div className="flex w-full max-w-6xl grow flex-col px-4 sm:px-8">
+      <div className="flex w-full max-w-6xl grow flex-col px-4 sm:px-8 pb-4 sm:pb-8">
         {children}
       </div>
     </div>

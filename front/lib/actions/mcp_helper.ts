@@ -32,6 +32,34 @@ import {
   asDisplayToolName,
 } from "@app/types/shared/utils/string_utils";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  JsonSchemaType,
+  JsonSchemaValidator,
+  jsonSchemaValidator,
+} from "@modelcontextprotocol/sdk/validation/types.js";
+
+/**
+ * Disables MCP SDK output-schema validation.
+ *
+ * Since SDK 1.22, `Client.listTools()` pre-compiles AJV validators for each tool's
+ * `outputSchema`. Some remote servers (e.g. Google Stitch) declare `$ref`s in
+ * `outputSchema` without in-document `$defs`, which makes `listTools()` throw even
+ * though the RPC response is valid. Dust only consumes `inputSchema` from
+ * `tools/list` and does not validate structured tool output, so we skip
+ * output-schema compilation entirely (same intent as MCP Inspector's try/catch
+ * around `ajv.compile`).
+ */
+class NoOpJsonSchemaValidator implements jsonSchemaValidator {
+  getValidator<T>(_schema: JsonSchemaType): JsonSchemaValidator<T> {
+    return (input) => ({
+      valid: true,
+      data: input as T,
+      errorMessage: undefined,
+    });
+  }
+}
+
+export const NO_OP_MCP_JSON_SCHEMA_VALIDATOR = new NoOpJsonSchemaValidator();
 
 /**
  * JSON-RPC error code for request timeout (MCP RequestTimeout).
@@ -148,12 +176,18 @@ export function isRemoteMCPServerType(
   return serverType === "remote";
 }
 
-export function getMcpServerViewDescription(view: MCPServerViewType): string {
+export function getMcpServerViewDescription(view: {
+  description: string | null;
+  server: Pick<MCPServerType, "description">;
+}): string {
   return view.description ?? view.server.description;
 }
 
 export function getMcpServerViewDisplayName(
-  view: MCPServerViewType,
+  view: {
+    name: string | null;
+    server: Pick<MCPServerType, "sId" | "name">;
+  },
   action?:
     | AgentBuilderMCPConfiguration
     | BuilderAction
@@ -166,7 +200,7 @@ export function getMcpServerViewDisplayName(
 }
 
 export function getMcpServerDisplayName(
-  server: MCPServerType,
+  server: Pick<MCPServerType, "sId" | "name">,
   action?:
     | AgentBuilderMCPConfiguration
     | BuilderAction

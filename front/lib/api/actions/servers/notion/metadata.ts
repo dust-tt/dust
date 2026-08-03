@@ -1,8 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const NOTION_TOOL_NAME = "notion" as const;
 
@@ -204,7 +201,7 @@ const FallbackBlock = z
   })
   .passthrough();
 
-export const NotionBlockSchema: z.ZodType = z.union([
+const NotionBlockSchema: z.ZodType = z.union([
   ParagraphBlock,
   Heading1Block,
   Heading2Block,
@@ -218,9 +215,11 @@ export const NotionBlockSchema: z.ZodType = z.union([
   FallbackBlock,
 ]);
 
-export const NOTION_TOOLS_METADATA = createToolsRecord({
-  search: {
-    description: "Search for pages or databases in Notion.",
+export const NOTION_TOOLS_METADATA = [
+  {
+    name: "search",
+    description:
+      "Search Notion to find and locate pages or databases by keyword across the workspace. Use this first to find a page or database when you only know its name or topic and not its ID.",
     schema: {
       query: z.string().describe("Search query string."),
       relativeTimeFrame: z
@@ -241,8 +240,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Searching Notion",
       done: "Search Notion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  retrieve_page: {
+  {
+    name: "retrieve_page",
     description: "Retrieve a Notion page by its ID.",
     schema: {
       pageId: z.string().describe("The Notion page ID."),
@@ -252,9 +254,13 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion page",
       done: "Retrieve Notion page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  retrieve_database_schema: {
-    description: "Retrieve a Notion database's schema by its ID.",
+  {
+    name: "retrieve_database_schema",
+    description:
+      "Retrieve the schema of a Notion database by its ID: the list of columns and property definitions and their types. Use to inspect a database's structure.",
     schema: {
       databaseId: z.string().describe("The Notion database ID."),
     },
@@ -263,9 +269,13 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion database schema",
       done: "Retrieve Notion database schema",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  retrieve_database_content: {
-    description: "Retrieve the content (pages) of a Notion database by its ID.",
+  {
+    name: "retrieve_database_content",
+    description:
+      "List all entries (the rows and pages) contained in a Notion database by its ID, with optional filtering and sorting. Returns every page in the database.",
     schema: {
       databaseId: z.string().describe("The Notion database ID."),
       filter: dbFilterSchema.optional(),
@@ -281,8 +291,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion database content",
       done: "Retrieve Notion database content",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  query_database: {
+  {
+    name: "query_database",
     description: "Query a Notion database.",
     schema: {
       databaseId: z.string().describe("The Notion database ID."),
@@ -299,8 +312,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Querying Notion database",
       done: "Query Notion database",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_page: {
+  {
+    name: "create_page",
     description: "Create a new Notion page.",
     schema: {
       parent: parentPageSchema.describe(
@@ -315,8 +331,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Creating Notion page",
       done: "Create Notion page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  insert_row_into_database: {
+  {
+    name: "insert_row_into_database",
     description: "Create a new Notion page in a database.",
     schema: {
       databaseId: z.string().describe("The Notion database ID."),
@@ -329,8 +348,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Inserting Notion row",
       done: "Insert Notion row",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_database: {
+  {
+    name: "create_database",
     description: "Create a new Notion database (table).",
     schema: {
       parent: parentPageSchema.describe(
@@ -350,8 +372,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Creating Notion database",
       done: "Create Notion database",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_page: {
+  {
+    name: "update_page",
     description: "Update a Notion page's properties.",
     schema: {
       pageId: z.string().describe("The Notion page ID."),
@@ -362,8 +387,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Updating Notion page",
       done: "Update Notion page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  retrieve_block: {
+  {
+    name: "retrieve_block",
     description: "Retrieve a Notion block by its ID.",
     schema: {
       blockId: z.string().describe("The Notion block ID."),
@@ -373,8 +401,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion block",
       done: "Retrieve Notion block",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  retrieve_block_children: {
+  {
+    name: "retrieve_block_children",
     description: "Retrieve the children of a Notion block or page by its ID.",
     schema: {
       blockId: z.string().describe("The Notion block or page ID."),
@@ -389,8 +420,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion block children",
       done: "Retrieve Notion block children",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  add_page_content: {
+  {
+    name: "add_page_content",
     description:
       "Add a single content block to a Notion page. For multiple blocks, call this action multiple times. Only supports adding to Notion pages. Blocks that can contain children include: page, toggle, to-do, bulleted list, numbered list, callout, and quote.",
     schema: {
@@ -410,8 +444,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Adding Notion page content",
       done: "Add Notion page content",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_comment: {
+  {
+    name: "create_comment",
     description:
       "Create a comment on a Notion page or in an existing discussion thread. Provide either a parent page ID or a discussion ID. Inline comments to start a new thread are not supported via the public API.",
     schema: {
@@ -435,8 +472,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Adding comment on Notion",
       done: "Add comment on Notion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  delete_block: {
+  {
+    name: "delete_block",
     description:
       "Archive (delete) block content in a page. In the Notion UI, this moves the block to the 'trash,' where it can be restored if needed.",
     schema: {
@@ -447,8 +487,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Notion block",
       done: "Delete Notion block",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  delete_page: {
+  {
+    name: "delete_page",
     description:
       "Archive (delete) a page or database row. In the Notion UI, this moves the block to the 'trash,' where it can be restored if needed.",
     schema: {
@@ -459,8 +502,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Notion page",
       done: "Delete Notion page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  fetch_comments: {
+  {
+    name: "fetch_comments",
     description:
       "Retrieve a list of unresolved comment objects from a specified page or block in Notion.",
     schema: {
@@ -473,8 +519,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Fetching comments from Notion",
       done: "Fetch comments from Notion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_row_database: {
+  {
+    name: "update_row_database",
     description:
       "Update a specific property value in a row (page) of a Notion database. Value formats depend on the property type (e.g., text, number, select, date, people, URL, files, checkbox).",
     schema: {
@@ -486,8 +535,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Updating Notion row",
       done: "Update Notion row",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_schema_database: {
+  {
+    name: "update_schema_database",
     description:
       "Update the schema (columns/properties) of an existing Notion database.",
     schema: {
@@ -499,8 +551,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Updating Notion database schema",
       done: "Update Notion database schema",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_users: {
+  {
+    name: "list_users",
     description: "List all users in the Notion workspace.",
     schema: {},
     stake: "never_ask",
@@ -508,8 +563,11 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Listing Notion users",
       done: "List Notion users",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_about_user: {
+  {
+    name: "get_about_user",
     description: "Get information about a specific user by userId.",
     schema: {
       userId: z.string().describe("The Notion user ID."),
@@ -519,8 +577,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion user info",
       done: "Retrieve Notion user info",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const NOTION_SERVER = {
   serverInfo: {
@@ -533,15 +593,6 @@ export const NOTION_SERVER = {
     },
     icon: "NotionLogo",
     documentationUrl: "https://docs.dust.tt/docs/notion-mcp",
-    instructions: null,
   },
-  tools: Object.values(NOTION_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(NOTION_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: NOTION_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -14,6 +14,7 @@ import {
   getColumnsFromListItem,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
+import { isSiteNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   deleteAllSheets,
@@ -57,9 +58,11 @@ import {
   cacheWithRedis,
   concurrentExecutor,
   INTERNAL_MIME_TYPES,
+  normalizeError,
   WithRetriesError,
 } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
+import { GraphError } from "@microsoft/microsoft-graph-client";
 import axios from "axios";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
@@ -100,6 +103,24 @@ export function shouldSyncFileBasedOnSensitivityLabels({
   const labelGuid = getSensitivityLabelIdFromListItemFields(fields);
   // We always sync files that don't have a sensitivity label.
   return !labelGuid || allowedLabels.includes(labelGuid);
+}
+
+/**
+ * The tenant labels that are not in the allowed set. Empty when filtering is
+ * disabled (no allowed labels) — we never exclude anything in that case.
+ */
+export function computeDisallowedLabels({
+  tenantLabels,
+  allowedLabels,
+}: {
+  tenantLabels: string[];
+  allowedLabels: string[];
+}): string[] {
+  if (allowedLabels.length === 0) {
+    return [];
+  }
+  const allowedSet = new Set(allowedLabels);
+  return tenantLabels.filter((label) => !allowedSet.has(label));
 }
 
 export async function removeFileBasedOnSensitivityLabel({
@@ -151,6 +172,7 @@ export async function syncOneFile({
   parentInternalId,
   startSyncTs,
   isBatchSync = false,
+  skipMissingFile = false,
   heartbeat,
 }: {
   connectorId: ModelId;
@@ -160,6 +182,7 @@ export async function syncOneFile({
   parentInternalId: string;
   startSyncTs: number;
   isBatchSync?: boolean;
+  skipMissingFile?: boolean;
   heartbeat: () => Promise<void>;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -240,11 +263,27 @@ export async function syncOneFile({
       statsDClient.increment("microsoft.file.missing_fields");
     }
 
-    const item = (await getItem(
-      localLogger,
-      client,
-      `${itemAPIPath}?${allowedLabels.length > 0 ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS : DRIVE_ITEM_EXPANDS_AND_SELECTS}`
-    )) as DriveItem;
+    let item: DriveItem;
+    try {
+      item = (await getItem(
+        localLogger,
+        client,
+        `${itemAPIPath}?${allowedLabels.length > 0 ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS : DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+      )) as DriveItem;
+    } catch (error) {
+      if (
+        skipMissingFile &&
+        ((error instanceof GraphError && error.statusCode === 404) ||
+          isSiteNotFoundError(error))
+      ) {
+        localLogger.warn(
+          { error: normalizeError(error).message },
+          "File not found while refreshing Microsoft metadata, skipping"
+        );
+        return false;
+      }
+      throw error;
+    }
 
     url = item["@microsoft.graph.downloadUrl"];
     fields = item.listItem?.fields;
@@ -321,6 +360,22 @@ export async function syncOneFile({
       return false;
     }
 
+    // 423 Locked is transient: skip without persisting a skipReason so the next
+    // delta retries the file once it is unlocked.
+    if (axios.isAxiosError(error) && error.response?.status === 423) {
+      localLogger.info(
+        {
+          status: 423,
+          fileName: file.name,
+          internalId: documentId,
+          webUrl: file.webUrl,
+        },
+        "File is locked (423), skipping for this delta"
+      );
+
+      return false;
+    }
+
     // Re-throw other errors
     throw error;
   }
@@ -355,7 +410,16 @@ export async function syncOneFile({
     webUrl: file.webUrl ?? null,
   };
 
-  if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
+  // Microsoft Graph sometimes returns text/plain for CSV files instead of text/csv.
+  // Fall back to extension-based detection so they are routed to handleCsvFile
+  // and not rejected by the too_many_separators heuristic in handleTextFile.
+  const isCsv =
+    mimeType === "application/vnd.ms-excel" ||
+    mimeType === "text/csv" ||
+    (mimeType === "text/plain" &&
+      (file.name?.toLowerCase().endsWith(".csv") ?? false));
+
+  if (isCsv) {
     const data = Buffer.from(downloadRes.data);
 
     const parents = [
@@ -658,6 +722,7 @@ export async function deleteFolder({
   dataSourceConfig,
   internalId,
   deleteRootNode,
+  lastSeenCutoffMs,
   logger,
   reason,
 }: {
@@ -665,6 +730,7 @@ export async function deleteFolder({
   dataSourceConfig: DataSourceConfig;
   internalId: string;
   deleteRootNode?: boolean;
+  lastSeenCutoffMs?: number;
   logger: Logger;
   reason: MicrosoftFolderDeletionReason;
 }) {
@@ -674,6 +740,13 @@ export async function deleteFolder({
   );
 
   if (!folder) {
+    return false;
+  }
+
+  if (
+    lastSeenCutoffMs !== undefined &&
+    (folder.lastSeenTs?.getTime() ?? 0) >= lastSeenCutoffMs
+  ) {
     return false;
   }
 
@@ -713,11 +786,13 @@ export async function deleteFile({
   connectorId,
   dataSourceConfig,
   internalId,
+  lastSeenCutoffMs,
   logger,
 }: {
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   internalId: string;
+  lastSeenCutoffMs?: number;
   logger: Logger;
 }) {
   const file = await MicrosoftNodeResource.fetchByInternalId(
@@ -726,6 +801,13 @@ export async function deleteFile({
   );
 
   if (!file) {
+    return false;
+  }
+
+  if (
+    lastSeenCutoffMs !== undefined &&
+    (file.lastSeenTs?.getTime() ?? 0) >= lastSeenCutoffMs
+  ) {
     return false;
   }
 

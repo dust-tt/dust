@@ -8,6 +8,43 @@ MAX_OUTPUT_BYTES = 48_000
 TEXT_PREVIEW_LIMIT = 80
 
 
+def parse_slide_patterns(raw: str) -> List[int]:
+    """Expand a slide pattern - a comma-separated list of 1-based slide numbers
+    and inclusive `A-B` ranges, e.g. `5`, `2,5,8`, `3-7`, or `2,5,7-9` - into an
+    ordered, de-duplicated list (first occurrence wins). Validates only the
+    pattern syntax; callers check numbers against the deck's slide count. Raises
+    ValueError on malformed input or an empty result."""
+    out: List[int] = []
+    seen = set()
+
+    def add(value: int) -> None:
+        if value not in seen:
+            seen.add(value)
+            out.append(value)
+
+    for token in raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if "-" in token:
+            lo_s, _, hi_s = token.partition("-")
+            lo_s, hi_s = lo_s.strip(), hi_s.strip()
+            if not (lo_s.isdigit() and hi_s.isdigit()):
+                raise ValueError(f"invalid slide range: {token!r}")
+            lo, hi = int(lo_s), int(hi_s)
+            if lo > hi:
+                raise ValueError(f"invalid slide range (start > end): {token!r}")
+            for value in range(lo, hi + 1):
+                add(value)
+        elif token.isdigit():
+            add(int(token))
+        else:
+            raise ValueError(f"invalid slide number: {token!r}")
+    if not out:
+        raise ValueError("no slides specified")
+    return out
+
+
 def flatten_text(text: str) -> str:
     """Collapse OOXML/python-pptx soft and hard breaks to single spaces.
 

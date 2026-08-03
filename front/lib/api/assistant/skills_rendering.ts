@@ -3,36 +3,12 @@ import {
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { INTERACTIVE_CONTENT_INSTRUCTIONS_V2 } from "@app/lib/api/actions/servers/interactive_content/instructions";
-import { framesSkill } from "@app/lib/resources/skill/code_defined/frames";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { stripSkillTagPresentationAttributes } from "@app/lib/skills/format";
 import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
-export type EnabledSkill = SkillResource & {
-  extendedSkill: SkillResource | null;
-};
-
-type SkillInstructionsSource = Pick<SkillResource, "sId" | "instructions">;
-
-// `useFramesV2` is a workspace-level feature flag gate, not a per-agent
-// switch. When a third variant lands, replace the boolean with a
-// discriminated union + exhaustive `switch` so reviewers can't forget a
-// branch (the previous shape used `assertNever` on a `FramesVariant` union).
-export function resolveSkillInstructions({
-  skill,
-  useFramesV2,
-}: {
-  skill: SkillInstructionsSource;
-  useFramesV2: boolean;
-}): string {
-  if (skill.sId !== framesSkill.sId) {
-    return skill.instructions;
-  }
-
-  return useFramesV2 ? INTERACTIVE_CONTENT_INSTRUCTIONS_V2 : skill.instructions;
-}
+export type EnabledSkill = SkillResource;
 
 function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   return {
@@ -49,36 +25,13 @@ function stripInstructionPresentationAttributes(content: string): string {
 }
 
 export function getEnabledSkillInstructions(
-  skill: Pick<SkillResource, "sId" | "name" | "instructions"> & {
-    extendedSkill: SkillInstructionsSource | null;
-  },
-  {
-    useFramesV2 = false,
-  }: {
-    useFramesV2?: boolean;
-  } = {}
+  skill: Pick<SkillResource, "sId" | "name" | "instructions">
 ): string {
-  const { name, extendedSkill } = skill;
   const modelInstructions = stripInstructionPresentationAttributes(
-    resolveSkillInstructions({ skill, useFramesV2 })
+    skill.instructions
   );
 
-  if (!extendedSkill) {
-    return `<${name}>\n${modelInstructions}\n</${name}>`;
-  }
-
-  const extendedModelInstructions = stripInstructionPresentationAttributes(
-    resolveSkillInstructions({ skill: extendedSkill, useFramesV2 })
-  );
-
-  return [
-    `<${name}>`,
-    extendedModelInstructions,
-    "<additional_guidelines>",
-    modelInstructions,
-    "</additional_guidelines>",
-    `</${name}>`,
-  ].join("\n");
+  return `<${skill.name}>\n${modelInstructions}\n</${skill.name}>`;
 }
 
 export function renderEquippedSkillsUserMessage(
@@ -89,29 +42,33 @@ export function renderEquippedSkillsUserMessage(
   }
 
   const enableSkillToolName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
+  // Names are rendered as code literals rather than bold text: `skillName` is matched exactly, and
+  // a literal is copied verbatim far more reliably than prose. Workspaces tend to develop their own
+  // naming conventions, and models otherwise regenerate names to fit the pattern they infer from
+  // the list instead of copying them, which never resolves.
   const lines = equippedSkills.map(
     ({ name, agentFacingDescription }) =>
-      `- **${name}**: ${agentFacingDescription.replaceAll("\n", "\n  ")}`
+      `- \`${name}\`: ${agentFacingDescription.replaceAll("\n", "\n  ")}`
   );
 
   return renderSystemSkillMessage(
     `<dust_system>\n` +
       `The following skills are available for use with the ${enableSkillToolName} tool:\n\n` +
-      `${lines.join("\n")}\n` +
+      `${lines.join("\n")}\n\n` +
+      `Pass \`skillName\` exactly as written between backticks above, character for character: ` +
+      `same case, same spacing, same punctuation, same prefixes and suffixes. Copy the name ` +
+      `rather than retyping it, and do not adjust it to match how other skills in the list are ` +
+      `named. Names are matched exactly, so a modified name will not be found.\n` +
       `</dust_system>`
   );
 }
 
 export function renderEnabledSkillUserMessageFromInstructions({
   skill,
-  useFramesV2 = false,
 }: {
   skill: EnabledSkill;
-  useFramesV2?: boolean;
 }): UserMessageTypeModel {
-  const skillInstructions = getEnabledSkillInstructions(skill, {
-    useFramesV2,
-  });
+  const skillInstructions = getEnabledSkillInstructions(skill);
 
   return renderSystemSkillMessage(
     `<dust_system>\n${skillInstructions}\n</dust_system>`

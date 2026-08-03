@@ -23,6 +23,5 @@ jobs:
         with:
           build-sdks: "true"
           build-sparkle: "true"
-          node-version: '22.22.0'
       - name: Typecheck
         run: npm -w front-spa run tsgo -- --version && npm -w front-spa run tsgo

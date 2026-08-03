@@ -40,7 +40,7 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN uv venv /opt/venv --python 3.14
 
 # Node.js via official tarball
-ARG NODE_VERSION=24.14.0
+ARG NODE_VERSION=24.16.0
 RUN ARCH=$(dpkg --print-architecture) && \
   if [ "$ARCH" = "amd64" ]; then NODE_ARCH="x64"; else NODE_ARCH="arm64"; fi && \
   curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" -o node.tar.xz && \

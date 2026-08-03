@@ -1,11 +1,12 @@
 import { createParser } from "eventsource-parser";
 import type { z } from "zod";
 
-import { normalizeError } from "./error_utils";
+import { errorToString, normalizeError } from "./error_utils";
 import { AgentsAPI } from "./high_level/agents";
 import { ConversationsAPI } from "./high_level/conversations";
 import { FilesAPI } from "./high_level/files";
 import type { DustAPIOptions } from "./high_level/types";
+import { encodeUtf8HeaderValue } from "./http_headers";
 import type {
   AgentConfigurationViewType,
   AgentMessageEventData,
@@ -51,6 +52,7 @@ import type {
   Result,
   SearchRequestBodyType,
   SearchWarningCode,
+  SpaceType,
   ValidateActionRequestBodyType,
   ValidateActionResponseType,
 } from "./types";
@@ -79,6 +81,7 @@ import {
   GetSpaceConversationsForDataSourceResponseSchema,
   GetSpaceMetadataResponseSchema,
   GetSpacesResponseSchema,
+  GetWorkspaceExistsResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
   HeartbeatMCPResponseSchema,
@@ -104,6 +107,7 @@ import {
 export * from "./error_utils";
 export * from "./errors/errors";
 export * from "./high_level";
+export * from "./http_headers";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
@@ -142,6 +146,31 @@ function isStreamTerminationError(e: unknown): boolean {
   }
   return patterns.some((p) => p.test(msg));
 }
+
+// Detects a fetch() rejection caused by the connection dying before any response
+// bytes were received (typically a pooled keep-alive socket the server closed while
+// our request was in flight). Distinct from isStreamTerminationError, which covers
+// mid-stream/post-response failures and includes aborts (never retryable here).
+function isConnectionClosedError(e: unknown): boolean {
+  if (!(e instanceof TypeError)) {
+    return false;
+  }
+  const cause = "cause" in e ? e.cause : undefined;
+  if (!(cause instanceof Error)) {
+    return false;
+  }
+  const code = "code" in cause ? cause.code : undefined;
+  return (
+    code === "UND_ERR_SOCKET" ||
+    code === "ECONNRESET" ||
+    code === "EPIPE" ||
+    /other side closed|socket hang up/i.test(cause.message)
+  );
+}
+
+// Delay before the single retry in _fetchWithError — yields a full event-loop
+// turn so undici processes pending FINs and evicts stale pooled sockets first.
+const CONNECTION_CLOSED_RETRY_DELAY_MS = 100;
 
 function isTransientHttpStatus(status: number): boolean {
   // Only retry on explicit transient statuses; do NOT retry on 5xx.
@@ -294,11 +323,17 @@ export class DustAPI {
   }
 
   async baseHeaders() {
-    const headers: RequestInit["headers"] = {
+    const headers: Record<string, string> = {
       Authorization: `Bearer ${await this.getApiKey()}`,
     };
     if (this._credentials.extraHeaders) {
-      Object.assign(headers, this._credentials.extraHeaders);
+      // Header values must fit in ISO-8859-1 or fetch throws; non-Latin-1
+      // values are carried as RFC 2047 encoded-words (decoded server-side).
+      for (const [key, value] of Object.entries(
+        this._credentials.extraHeaders
+      )) {
+        headers[key] = encodeUtf8HeaderValue(value);
+      }
     }
     return headers;
   }
@@ -1782,6 +1817,29 @@ export class DustAPI {
     return new Ok(r.value.emails);
   }
 
+  /**
+   * Probes the workspace behind the credentials. Errors when the workspace
+   * does not exist, has been relocated or is in maintenance. The endpoint does
+   * no work beyond authentication, so this is the cheapest availability check
+   * available on the public API.
+   */
+  async exists() {
+    const res = await this.request({
+      method: "GET",
+      path: "exists",
+    });
+
+    const r = await this._resultFromResponse(
+      GetWorkspaceExistsResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.exists);
+  }
+
   async getWorkspaceVerifiedDomains() {
     const res = await this.request({
       method: "GET",
@@ -1881,10 +1939,13 @@ export class DustAPI {
     return new Ok(r.value.apps);
   }
 
-  async getSpaces() {
+  async getSpaces(options?: { kinds?: SpaceType["kind"][] }) {
     const res = await this.request({
       method: "GET",
       path: "spaces",
+      query: options?.kinds
+        ? new URLSearchParams({ kinds: options.kinds.join(",") })
+        : undefined,
     });
 
     const r = await this._resultFromResponse(GetSpacesResponseSchema, res);
@@ -2253,13 +2314,28 @@ export class DustAPI {
     } = {}
   ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
     const now = Date.now();
+    const init = { method, headers, body, signal };
     try {
-      const res = await fetch(url, {
-        method,
-        headers,
-        body,
-        signal,
-      });
+      let res: Response;
+      try {
+        res = await fetch(url, init);
+      } catch (e) {
+        // Single retry when the connection died before any response bytes were
+        // received (stale keep-alive socket closed by the server). fetch() can
+        // only reject before response headers, so the server cannot have started
+        // responding and the string body is safe to re-send.
+        if (!isConnectionClosedError(e) || signal?.aborted) {
+          throw e;
+        }
+        this._logger.warn(
+          { url, method, error: e },
+          "DustAPI retrying fetch after connection closed before response"
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, CONNECTION_CLOSED_RETRY_DELAY_MS)
+        );
+        res = await fetch(url, init);
+      }
 
       const responseBody = stream && res.body ? res.body : await res.text();
 
@@ -2275,7 +2351,7 @@ export class DustAPI {
       const duration = Date.now() - now;
       const err: APIError = {
         type: "unexpected_network_error",
-        message: `Unexpected network error from DustAPI: ${e}`,
+        message: `Unexpected network error from DustAPI: ${errorToString(e)}`,
       };
       this._logger.error(
         {

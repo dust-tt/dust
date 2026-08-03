@@ -1,9 +1,9 @@
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeListSuggestions } from "@app/pages/api/poke/workspaces/[wId]/assistants/[aId]/suggestions";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { PokeListSuggestions } from "@app/types/api/poke/agent_configurations";
 import type { Fetcher } from "swr";
 
-export interface PokeSuggestionsFetchProps extends PokeConditionalFetchProps {
+interface PokeSuggestionsFetchProps extends PokeConditionalFetchProps {
   agentId: string;
 }
 

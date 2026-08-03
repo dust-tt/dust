@@ -1,22 +1,20 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   PodTasksCreateTasksInputSchema,
   PodTasksUpdateTasksInputSchema,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const POD_TASKS_SERVER_NAME = "pod_tasks" as const;
 export const CREATE_TASKS_TOOL_NAME = "create_tasks" as const;
 export const UPDATE_TASKS_TOOL_NAME = "update_tasks" as const;
 export const START_TASK_AGENT_TOOL_NAME = "start_task_agent" as const;
 
-export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
-  list_tasks: {
+export const POD_TASKS_TOOLS_METADATA = [
+  {
+    name: "list_tasks",
     description:
       "List tasks in the Pod. " +
       "Defaults to the current user's tasks (assigneeFilter='mine') and open (statusFilter='open') items. ",
@@ -56,8 +54,11 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       running: "Listing tasks",
       done: "List tasks",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  [CREATE_TASKS_TOOL_NAME]: {
+  {
+    name: CREATE_TASKS_TOOL_NAME,
     description:
       "Create one or more new tasks at once in the Pod. Omitting userId (or null) creates an unassigned task unless the Pod has exactly one assignable member, in which case that member is assigned. Pass userId when a specific person should own the task.",
     schema: PodTasksCreateTasksInputSchema.shape,
@@ -66,8 +67,11 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       running: "Creating tasks",
       done: "Create tasks",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  [UPDATE_TASKS_TOOL_NAME]: {
+  {
+    name: UPDATE_TASKS_TOOL_NAME,
     description: "Update one or more existing tasks at once in the Pod.",
     schema: PodTasksUpdateTasksInputSchema.shape,
     stake: "low",
@@ -75,8 +79,11 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       running: "Updating tasks",
       done: "Update tasks",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  [START_TASK_AGENT_TOOL_NAME]: {
+  {
+    name: START_TASK_AGENT_TOOL_NAME,
     description:
       "Start an agent conversation to work on one of your open tasks with status 'todo'. " +
       "If already started, it reuses the existing linked conversation.",
@@ -108,8 +115,10 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       running: "Starting task work",
       done: "Start task work",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const POD_TASKS_SERVER = {
   serverInfo: {
@@ -120,15 +129,6 @@ export const POD_TASKS_SERVER = {
     icon: "ActionCheckCircleIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
-  tools: Object.values(POD_TASKS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(POD_TASKS_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: POD_TASKS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

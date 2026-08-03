@@ -136,7 +136,7 @@ export const TagsSuggestDialog = ({
                       <Chip
                         size="xs"
                         label={suggestion.name}
-                        color="golden"
+                        color="info"
                         className="mb-2"
                       />
                       <ContextItem.Description

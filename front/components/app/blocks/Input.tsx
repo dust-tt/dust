@@ -14,9 +14,9 @@ import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  EyeIcon,
+  Edit04,
+  Eye,
   Label,
-  PencilSquareIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -127,7 +127,7 @@ export default function Input({
         <div className="w-full">
           <div>
             {!((!block.config || !block.config.dataset) && readOnly) ? (
-              <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
+              <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-foreground">
                 <Label>Dataset</Label>
                 <DatasetPicker
                   owner={owner}
@@ -140,7 +140,7 @@ export default function Input({
                   <Button
                     variant="outline"
                     onClick={() => setIsDatasetModalOpen(true)}
-                    icon={readOnly ? EyeIcon : PencilSquareIcon}
+                    icon={readOnly ? Eye : Edit04}
                     label={readOnly ? "View" : "Edit"}
                     size="xs"
                   />
@@ -167,7 +167,7 @@ export default function Input({
                         onClick={() => {
                           window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`;
                         }}
-                        icon={PencilSquareIcon}
+                        icon={Edit04}
                         label="Edit schema"
                       />
                     )}

@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagModel } from "@app/lib/models/tags";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -22,6 +23,10 @@ import type {
   Transaction,
 } from "sequelize";
 import sequelize from "sequelize/lib/sequelize";
+
+export type GetTagsUsageResponseBody = {
+  tags: TagTypeWithUsage[];
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -216,6 +221,43 @@ export class TagResource extends BaseResource<TagModel> {
     );
   }
 
+  /**
+   * List the tags attached to a specific agent configuration version, identified
+   * by its sId and version.
+   */
+  static async listForAgentVersion(
+    auth: Authenticator,
+    agentConfigurationId: string,
+    agentConfigurationVersion: number
+  ): Promise<TagResource[]> {
+    const tagAgents = await TagAgentModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        {
+          model: AgentConfigurationModel,
+          required: true,
+          attributes: [],
+          where: {
+            sId: agentConfigurationId,
+            version: agentConfigurationVersion,
+          },
+        },
+      ],
+    });
+
+    if (tagAgents.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: {
+        id: tagAgents.map((tagAgent) => tagAgent.tagId),
+      },
+    });
+  }
+
   async addToAgent(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
@@ -229,6 +271,39 @@ export class TagResource extends BaseResource<TagModel> {
       tagId: this.id,
       agentConfigurationId: agentConfiguration.id,
     });
+  }
+
+  static async addToAgents(
+    auth: Authenticator,
+    tags: TagResource[],
+    agentConfigurations: LightAgentConfigurationType[]
+  ): Promise<Result<undefined, Error>> {
+    if (
+      !auth.isAdmin() &&
+      agentConfigurations.some(
+        (agentConfiguration) => !agentConfiguration.canEdit
+      )
+    ) {
+      return new Err(
+        new Error("You are not allowed to add tags to this agent")
+      );
+    }
+
+    if (tags.length === 0 || agentConfigurations.length === 0) {
+      return new Ok(undefined);
+    }
+
+    await TagAgentModel.bulkCreate(
+      agentConfigurations.flatMap((agentConfiguration) =>
+        tags.map((tag) => ({
+          workspaceId: auth.getNonNullableWorkspace().id,
+          tagId: tag.id,
+          agentConfigurationId: agentConfiguration.id,
+        }))
+      ),
+      { ignoreDuplicates: true }
+    );
+    return new Ok(undefined);
   }
 
   async removeFromAgent(
@@ -246,6 +321,38 @@ export class TagResource extends BaseResource<TagModel> {
         agentConfigurationId: agentConfiguration.id,
       },
     });
+  }
+
+  static async removeFromAgents(
+    auth: Authenticator,
+    tags: TagResource[],
+    agentConfigurations: LightAgentConfigurationType[]
+  ): Promise<Result<undefined, Error>> {
+    if (
+      !auth.isAdmin() &&
+      agentConfigurations.some(
+        (agentConfiguration) => !agentConfiguration.canEdit
+      )
+    ) {
+      return new Err(
+        new Error("You are not allowed to remove tags from this agent")
+      );
+    }
+
+    if (tags.length === 0 || agentConfigurations.length === 0) {
+      return new Ok(undefined);
+    }
+
+    await TagAgentModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        tagId: tags.map((tag) => tag.id),
+        agentConfigurationId: agentConfigurations.map(
+          (agentConfiguration) => agentConfiguration.id
+        ),
+      },
+    });
+    return new Ok(undefined);
   }
 
   async updateTag({ name, kind }: { name: string; kind: TagKind }) {

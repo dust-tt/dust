@@ -41,7 +41,7 @@ function getLabelFillClass(sourceColor: string): string {
   if (!match) {
     return "fill-white";
   }
-  return Number(match[1]) >= 500 ? "fill-white" : "fill-gray-950";
+  return Number(match[1]) >= 500 ? "fill-white" : "fill-foreground";
 }
 
 // Recharts injects geometry props as `number | string`, so each field is

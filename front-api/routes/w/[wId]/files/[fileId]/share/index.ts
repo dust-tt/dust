@@ -1,12 +1,23 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
+import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
+import {
+  buildShareFileResponse,
+  type ShareFrameViewerFile,
+} from "@app/lib/api/viz/share_frame_viewer_files";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { APIErrorResponse } from "@app/types/error";
-import type { FileShareScope } from "@app/types/files";
 import {
   fileShareScopeSchema,
   isConversationFileUseCase,
   isInteractiveContentType,
+  isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -15,13 +26,9 @@ import { validate } from "@front-api/middlewares/validator";
 import type { Context, TypedResponse } from "hono";
 import { z } from "zod";
 
-export type ShareFileResponseBody = {
-  scope: FileShareScope;
-  sharedAt: number;
-  shareUrl: string;
-};
-
 import grants from "./grants";
+
+export type { ShareFrameViewerFile };
 
 const ShareFileRequestBodySchema = z.object({
   shareScope: fileShareScopeSchema,
@@ -39,6 +46,7 @@ const app = workspaceApp();
 // keeping mounts before leaf handlers matches the convention used elsewhere).
 app.route("/grants", grants);
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -51,15 +59,15 @@ app.get(
       return file;
     }
 
-    const shareInfo = await file.getShareInfo();
-    if (!shareInfo) {
+    const shareResponse = await buildShareFileResponse(auth, file);
+    if (!shareResponse) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
       });
     }
 
-    return ctx.json(shareInfo);
+    return ctx.json(shareResponse);
   }
 );
 
@@ -78,17 +86,77 @@ app.post(
 
     const { shareScope } = ctx.req.valid("json");
 
+    if (shareScope === "public") {
+      const workspace = auth.getNonNullableWorkspace();
+      const publicSharingAllowedByPolicy =
+        workspace.sharingPolicy === "all_scopes";
+      const canPublish =
+        publicSharingAllowedByPolicy &&
+        (await auth.hasWorkspacePermission("publish", "frame"));
+
+      if (!canPublish) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: publicSharingAllowedByPolicy
+              ? "You do not have permission to share this frame publicly."
+              : "Public sharing is disabled for this workspace.",
+          },
+        });
+      }
+    }
+
     await file.setShareScope(auth, shareScope);
 
-    const shareInfo = await file.getShareInfo();
-    if (!shareInfo) {
+    void emitAuditLogEvent({
+      auth,
+      action: "frame.share_scope_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("frame", {
+          sId: file.sId,
+          name: file.fileName ?? file.sId,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        frame_name: file.fileName ?? file.sId,
+        share_scope: shareScope,
+      },
+    });
+
+    const allowlistResult = await ensureAuthorizedFileAccessForShare(
+      auth,
+      file
+    );
+    if (allowlistResult.isErr()) {
+      const allowlistError = allowlistResult.error;
+      return apiError(ctx, {
+        status_code:
+          allowlistError.code === "invalid_request_error" ? 400 : 500,
+        api_error: {
+          type:
+            allowlistError.code === "invalid_request_error"
+              ? "invalid_request_error"
+              : "internal_server_error",
+          message: allowlistError.message,
+          ...(isUnverifiableFrameFileRefsShareError(allowlistError)
+            ? { unverifiableRefs: allowlistError.unverifiableRefs }
+            : {}),
+        },
+      });
+    }
+
+    const shareResponse = await buildShareFileResponse(auth, file);
+    if (!shareResponse) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
       });
     }
 
-    return ctx.json(shareInfo);
+    return ctx.json(shareResponse);
   }
 );
 

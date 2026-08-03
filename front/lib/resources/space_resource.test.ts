@@ -1,6 +1,8 @@
 import { loadAllModels } from "@app/admin/db";
+import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
@@ -8,14 +10,18 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {
@@ -69,7 +75,7 @@ describe("SpaceResource", () => {
       regularGroup = await GroupResource.makeNew({
         name: "Test Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       regularSpace = await SpaceResource.makeNew(
@@ -90,6 +96,90 @@ describe("SpaceResource", () => {
       await MembershipFactory.associate(workspace, user1, { role: "user" });
       await MembershipFactory.associate(workspace, user2, { role: "user" });
       await MembershipFactory.associate(workspace, user3, { role: "user" });
+    });
+
+    it("should delete selected spaces before hard deleting a space", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+        name: "Test Agent",
+        description: "Test agent",
+        scope: "hidden",
+      });
+      const conversation = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      await ConversationSelectedSpaceModel.create({
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        spaceId: regularSpace.id,
+        selectedByUserId: user1.id,
+        origin: "input_bar",
+      });
+
+      const softDeleteResult = await regularSpace.delete(adminAuth, {
+        hardDelete: false,
+      });
+      expect(softDeleteResult.isOk()).toBe(true);
+
+      const deletedSpace = await SpaceResource.fetchById(
+        adminAuth,
+        regularSpace.sId,
+        { includeDeleted: true }
+      );
+      if (!deletedSpace) {
+        throw new Error("Deleted space should exist");
+      }
+
+      const hardDeleteResult = await hardDeleteSpace(adminAuth, deletedSpace);
+
+      expect(hardDeleteResult.isOk()).toBe(true);
+      await expect(
+        ConversationSelectedSpaceModel.count({
+          where: {
+            workspaceId: workspace.id,
+            spaceId: regularSpace.id,
+          },
+        })
+      ).resolves.toBe(0);
+    });
+
+    it("should delete pod-scoped sandbox env vars but keep workspace-scoped ones when hard deleting a space", async () => {
+      const pod = await SpaceFactory.project(workspace, user1.id);
+
+      await SandboxEnvVarFactory.create(adminAuth, {
+        name: "POD_TOKEN",
+        space: pod,
+      });
+      await SandboxEnvVarFactory.create(adminAuth, {
+        name: "WORKSPACE_TOKEN",
+      });
+
+      const softDeleteResult = await pod.delete(adminAuth, {
+        hardDelete: false,
+      });
+      expect(softDeleteResult.isOk()).toBe(true);
+
+      const deletedSpace = await SpaceResource.fetchById(adminAuth, pod.sId, {
+        includeDeleted: true,
+      });
+      if (!deletedSpace) {
+        throw new Error("Deleted space should exist");
+      }
+
+      const hardDeleteResult = await hardDeleteSpace(adminAuth, deletedSpace);
+      expect(hardDeleteResult.isOk()).toBe(true);
+
+      await expect(
+        SandboxEnvVarModel.count({
+          where: { workspaceId: workspace.id, spaceId: pod.id },
+        })
+      ).resolves.toBe(0);
+      await expect(
+        SandboxEnvVarModel.count({
+          where: { workspaceId: workspace.id, name: "WORKSPACE_TOKEN" },
+        })
+      ).resolves.toBe(1);
     });
 
     describe("authorization checks", () => {
@@ -663,7 +753,7 @@ describe("SpaceResource", () => {
         projectMemberGroup = await GroupResource.makeNew({
           name: "Project Members Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
       });
 
@@ -792,6 +882,107 @@ describe("SpaceResource", () => {
           const editors = await projectEditorGroup.getActiveMembers(adminAuth);
           const editorIds = editors.map((m) => m.sId);
           expect(editorIds).toContain(editorUser.sId);
+        });
+
+        it("should no-op when adding an existing editor as a member", async () => {
+          await projectEditorGroup.dangerouslyAddMember(adminAuth, {
+            user: editorUser.toJSON(),
+          });
+
+          const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            editorUser.sId,
+            workspace.sId
+          );
+          const reloadedSpace = await SpaceResource.fetchById(
+            editorAuth,
+            projectSpace.sId
+          );
+
+          const addMembersRes = await reloadedSpace!.addMembers(editorAuth, {
+            userIds: [editorUser.sId],
+          });
+
+          expect(addMembersRes.isOk()).toBe(true);
+          if (addMembersRes.isOk()) {
+            expect(addMembersRes.value).toHaveLength(0);
+          }
+
+          const memberGroupMembers =
+            await projectMemberGroup.getActiveMembers(adminAuth);
+          expect(
+            memberGroupMembers.some((member) => member.sId === editorUser.sId)
+          ).toBe(false);
+
+          const editorGroupMembers =
+            await projectEditorGroup.getActiveMembers(adminAuth);
+          expect(
+            editorGroupMembers.some((member) => member.sId === editorUser.sId)
+          ).toBe(true);
+        });
+
+        it("should promote a member to editor and remove them from members", async () => {
+          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
+            user: memberUser.toJSON(),
+          });
+          await projectEditorGroup.dangerouslyAddMember(adminAuth, {
+            user: editorUser.toJSON(),
+          });
+
+          const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            editorUser.sId,
+            workspace.sId
+          );
+          const reloadedSpace = await SpaceResource.fetchById(
+            editorAuth,
+            projectSpace.sId
+          );
+
+          const addEditorsRes = await reloadedSpace!.addEditors(editorAuth, {
+            userIds: [memberUser.sId],
+          });
+
+          expect(addEditorsRes.isOk()).toBe(true);
+
+          const memberGroupMembers =
+            await projectMemberGroup.getActiveMembers(adminAuth);
+          expect(
+            memberGroupMembers.some((member) => member.sId === memberUser.sId)
+          ).toBe(false);
+
+          const editorGroupMembers =
+            await projectEditorGroup.getActiveMembers(adminAuth);
+          expect(
+            editorGroupMembers.some((member) => member.sId === memberUser.sId)
+          ).toBe(true);
+        });
+
+        it("should reject removing the last editor", async () => {
+          await projectEditorGroup.dangerouslyAddMember(adminAuth, {
+            user: editorUser.toJSON(),
+          });
+
+          const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            editorUser.sId,
+            workspace.sId
+          );
+          const reloadedSpace = await SpaceResource.fetchById(
+            editorAuth,
+            projectSpace.sId
+          );
+
+          const removeEditorsRes = await reloadedSpace!.removeEditors(
+            editorAuth,
+            {
+              userIds: [editorUser.sId],
+            }
+          );
+
+          expect(removeEditorsRes.isErr()).toBe(true);
+          if (removeEditorsRes.isErr()) {
+            expect(removeEditorsRes.error.code).toBe(
+              "group_requirements_not_met"
+            );
+          }
         });
       });
 
@@ -1007,6 +1198,49 @@ describe("SpaceResource", () => {
       expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
     });
 
+    it("hydrates group references directly from group vaults", async () => {
+      const regularSpace = await SpaceFactory.regular(workspace);
+      const [groupReference] = regularSpace.groups;
+      const findAllSpy = vi.spyOn(SpaceModel, "findAll");
+
+      const fetchedSpace = await SpaceResource.fetchById(
+        adminAuth,
+        regularSpace.sId
+      );
+
+      expect(fetchedSpace).not.toBeNull();
+      expect(findAllSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.arrayContaining([
+            expect.objectContaining({
+              as: "groupSpaces",
+              model: GroupSpaceModel,
+            }),
+          ]),
+        })
+      );
+      expect(findAllSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.arrayContaining([
+            expect.objectContaining({ model: GroupResource.model }),
+          ]),
+        })
+      );
+      expect(fetchedSpace?.groups).toEqual([
+        expect.objectContaining({
+          groupId: groupReference.groupId,
+          groupKind: "regular_auto",
+          groupSpaceKind: "member",
+          workspaceId: workspace.id,
+        }),
+      ]);
+      expect(fetchedSpace?.toJSON().groupIds).toEqual([
+        groupReference.groupSId,
+      ]);
+
+      findAllSpy.mockRestore();
+    });
+
     it("should include conversations space when includeConversationsSpace is true", async () => {
       const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
         includeConversationsSpace: true,
@@ -1162,7 +1396,7 @@ describe("SpaceResource", () => {
       regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       const openSpace = await SpaceResource.makeNew(
@@ -1182,7 +1416,7 @@ describe("SpaceResource", () => {
       restrictedGroup = await GroupResource.makeNew({
         name: "Restricted Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       const restrictedSpace = await SpaceResource.makeNew(
@@ -1217,9 +1451,12 @@ describe("SpaceResource", () => {
 
     it("should return project spaces only for members", async () => {
       const projectSpace = await SpaceFactory.project(workspace);
-      const projectGroup = projectSpace.groups.find(
-        (g) => g.kind === "regular"
+      const projectGroupReference = projectSpace.groups.find((group) =>
+        group.isRegularAuto()
       );
+      const [projectGroup] = await projectSpace.fetchGroupResources(adminAuth, {
+        groupReferences: projectGroupReference ? [projectGroupReference] : [],
+      });
 
       // User is not a member, should not see it
       const userSpaces =
@@ -1350,7 +1587,7 @@ describe("SpaceResource", () => {
         regularGroup = await GroupResource.makeNew({
           name: "Regular Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const openSpace = await SpaceResource.makeNew(
@@ -1373,7 +1610,7 @@ describe("SpaceResource", () => {
         restrictedGroup = await GroupResource.makeNew({
           name: "Restricted Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const restrictedSpace = await SpaceResource.makeNew(
@@ -1415,7 +1652,7 @@ describe("SpaceResource", () => {
         regularGroup = await GroupResource.makeNew({
           name: "Project Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const projectSpace = await SpaceResource.makeNew(
@@ -1439,7 +1676,7 @@ describe("SpaceResource", () => {
         restrictedGroup = await GroupResource.makeNew({
           name: "Project Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const projectSpace = await SpaceResource.makeNew(
@@ -1585,20 +1822,27 @@ describe("searchProjectsByNamePaginated", () => {
 // List of all known models that have a foreign key relationship to Space (via vaultId or spaceId)
 // These are Sequelize model names (modelName property), not TypeScript class names
 const KNOWN_SPACE_RELATED_MODELS = [
+  "activation_nudge",
+  "activation_pod",
   "agent_project_configuration",
   "app",
+  "conversation_selected_spaces",
   "content_fragment",
   "conversation",
   "data_source",
   "data_source_view",
   "group_vaults",
   "mcp_server_view",
+  "workspace_sandbox_env_var",
+  "sandbox_function",
+  "sandbox_owner",
   "project_metadata",
   "project_todo",
   "project_todo_state",
   "project_todo_version",
   "takeaways",
   "takeaways_version",
+  "trigger",
   "webhook_sources_view",
   "user_project_preferences",
 ];

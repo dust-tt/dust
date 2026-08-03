@@ -1,22 +1,17 @@
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
-import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type { PostDataSourceRequestBody } from "@app/types/api/data_sources";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthProvider, OAuthUseCase } from "@app/types/oauth/lib";
 import { Err, Ok } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  ArrowPathIcon,
-  BookOpenIcon,
-  Button,
-  ContextItem,
-  SliderToggle,
-} from "@dust-tt/sparkle";
+import { Button, RefreshCw02, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 export function BotToggle({
@@ -27,7 +22,6 @@ export function BotToggle({
   connectorProvider,
   name,
   description,
-  visual,
   documentationUrl,
 }: {
   owner: WorkspaceType;
@@ -41,7 +35,6 @@ export function BotToggle({
   connectorProvider: ConnectorProvider;
   name: string;
   description: string;
-  visual: React.ReactNode;
   documentationUrl?: string;
 }) {
   const { configValue } = useConnectorConfig({
@@ -121,27 +114,52 @@ export function BotToggle({
     setIsChangingBot(false);
   };
 
-  return (
-    <ContextItem
-      title={name}
-      subElement={
-        <div className="flex flex-row items-center gap-2">
-          <span>{description}</span>
-          {documentationUrl && (
-            <a
-              href={documentationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-action-400 hover:text-action-500 text-sm"
-            >
-              <BookOpenIcon className="h-4 w-4" />
-            </a>
-          )}
-        </div>
+  const handleReconnect = async () => {
+    if (!botDataSource) {
+      return;
+    }
+    const cRes = await setupOAuthConnection({
+      owner,
+      provider: oauth.provider,
+      useCase: oauth.useCase ?? "connection",
+      extraConfig: oauth.extraConfig,
+      regionInfo: regionContext.regionInfo,
+    });
+    if (!cRes.isOk()) {
+      sendNotification({
+        type: "error",
+        title: `Failed to reconnect ${name}.`,
+        description: `Could not reconnect the Dust ${name}.`,
+      });
+    } else {
+      const updateRes = await updateConnectorConnectionId(
+        cRes.value.connection_id,
+        oauth.extraConfig,
+        connectorProvider,
+        botDataSource,
+        owner
+      );
+
+      if (updateRes.error) {
+        sendNotification({
+          type: "error",
+          title: `Failed to update the ${name} connection`,
+          description: updateRes.error,
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: `Successfully updated ${name} connection`,
+          description: "The connection was successfully updated.",
+        });
       }
-      visual={visual}
-      truncateSubElement={true}
-      hasSeparatorIfLast={true}
+    }
+  };
+
+  return (
+    <GovernanceSettingRowLayout
+      label={name}
+      description={description}
       action={
         <div className="flex flex-row items-center gap-2">
           {isBotEnabled && botDataSource && (
@@ -149,45 +167,8 @@ export function BotToggle({
               variant="outline"
               label="Reconnect"
               size="xs"
-              icon={ArrowPathIcon}
-              onClick={async () => {
-                const cRes = await setupOAuthConnection({
-                  owner,
-                  provider: oauth.provider,
-                  useCase: oauth.useCase ?? "connection",
-                  extraConfig: oauth.extraConfig,
-                  regionInfo: regionContext.regionInfo,
-                });
-                if (!cRes.isOk()) {
-                  sendNotification({
-                    type: "error",
-                    title: `Failed to reconnect ${name}.`,
-                    description: `Could not reconnect the Dust ${name}.`,
-                  });
-                } else {
-                  const updateRes = await updateConnectorConnectionId(
-                    cRes.value.connection_id,
-                    oauth.extraConfig,
-                    connectorProvider,
-                    botDataSource,
-                    owner
-                  );
-
-                  if (updateRes.error) {
-                    sendNotification({
-                      type: "error",
-                      title: `Failed to update the ${name} connection`,
-                      description: updateRes.error,
-                    });
-                  } else {
-                    sendNotification({
-                      type: "success",
-                      title: `Successfully updated ${name} connection`,
-                      description: "The connection was successfully updated.",
-                    });
-                  }
-                }
-              }}
+              icon={RefreshCw02}
+              onClick={handleReconnect}
             />
           )}
           <SliderToggle
@@ -202,6 +183,7 @@ export function BotToggle({
           />
         </div>
       }
+      documentationUrl={documentationUrl}
     />
   );
 }

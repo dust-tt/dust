@@ -77,18 +77,19 @@ function getMessageTopMargin({
 }
 
 interface MessageItemProps {
-  allowBranchMessages?: boolean;
   data: VirtuosoMessage;
   context: VirtuosoMessageListContext;
   nextData: VirtuosoMessage | null;
   prevData: VirtuosoMessage | null;
-  onAgentMessageCompletionStatusClick?: (messageId: string) => void;
+  onAgentMessageCompletionStatusClick?: (
+    messageId: string,
+    actionId?: string
+  ) => void;
 }
 
 export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
-      allowBranchMessages,
       data,
       context,
       prevData,
@@ -171,11 +172,9 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
             return (
               <AttachmentCitation
-                owner={context.owner}
                 key={index}
                 attachmentCitation={attachmentCitation}
-                conversationId={context.conversation?.sId}
-                compact={!hasImageCitation}
+                size={hasImageCitation ? "md" : "sm"}
               />
             );
           })
@@ -241,11 +240,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return messageUser;
     }, [isAgentMessage, parentMessageId, messageUser, methods.data]);
 
-    if (
-      !allowBranchMessages &&
-      data.branchId &&
-      !isConversationForkNotice(data)
-    ) {
+    // Hide legacy conversation-branch messages (feature removed; main thread only).
+    if (data.branchId && !isConversationForkNotice(data)) {
       return null;
     }
 
@@ -345,6 +341,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={context.owner}
               onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
               isProjectArchived={context.isProjectArchived}
+              setLimitReachedCode={context.setLimitReachedCode}
             />
           )}
           {isAgentMessageWithStreaming(data) && (
@@ -367,48 +364,64 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               additionalMarkdownPlugins={context.additionalMarkdownPlugins}
               isAutoScrollEnabledRef={context.isAutoScrollEnabledRef}
               isProjectArchived={context.isProjectArchived}
+              setLimitReachedCode={context.setLimitReachedCode}
             />
           )}
           {data.visibility !== "deleted" &&
             !isCompactionMessage(data) &&
-            data.richMentions.map((mention, index) => {
-              // To please the type checker
-              if (!context.conversation) {
-                return null;
-              }
-
-              // :warning: make sure to use the index in the key, as the mention.id is the userId
-
-              if (
-                mention.status === "pending_conversation_access" ||
-                mention.status === "pending_project_membership"
-              ) {
+            data.richMentions
+              .filter((mention, index, mentions) => {
+                // Deduplicate restricted-agent cards: duplicate MentionModel rows for
+                // the same agent would otherwise render multiple pending approvals.
+                if (mention.status !== "agent_restricted_by_space_usage") {
+                  return true;
+                }
                 return (
-                  <MentionValidationRequired
-                    key={index}
-                    mention={mention}
-                    message={data}
-                    owner={context.owner}
-                    triggeringUser={triggeringUser}
-                    conversation={context.conversation}
-                  />
+                  mentions.findIndex(
+                    (m) =>
+                      m.status === "agent_restricted_by_space_usage" &&
+                      m.id === mention.id
+                  ) === index
                 );
-              } else if (
-                mention.status === "user_restricted_by_conversation_access" ||
-                mention.status === "agent_restricted_by_space_usage"
-              ) {
-                return (
-                  <MentionInvalid
-                    key={index}
-                    mention={mention}
-                    message={data}
-                    owner={context.owner}
-                    triggeringUser={triggeringUser}
-                    conversation={context.conversation}
-                  />
-                );
-              }
-            })}
+              })
+              .map((mention, index) => {
+                // To please the type checker
+                if (!context.conversation) {
+                  return null;
+                }
+
+                // :warning: make sure to use the index in the key, as the mention.id is the userId
+
+                if (
+                  mention.status === "pending_conversation_access" ||
+                  mention.status === "pending_project_membership" ||
+                  mention.status === "agent_restricted_by_space_usage"
+                ) {
+                  return (
+                    <MentionValidationRequired
+                      key={index}
+                      mention={mention}
+                      message={data}
+                      owner={context.owner}
+                      triggeringUser={triggeringUser}
+                      conversation={context.conversation}
+                    />
+                  );
+                } else if (
+                  mention.status === "user_restricted_by_conversation_access"
+                ) {
+                  return (
+                    <MentionInvalid
+                      key={index}
+                      mention={mention}
+                      message={data}
+                      owner={context.owner}
+                      triggeringUser={triggeringUser}
+                      conversation={context.conversation}
+                    />
+                  );
+                }
+              })}
         </div>
       </>
     );

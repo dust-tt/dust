@@ -229,7 +229,7 @@ export const EmojiDropdown = forwardRef<
                 className={
                   index === selectedIndex
                     ? "text-highlight-500"
-                    : "text-foreground dark:text-foreground-night"
+                    : "text-foreground"
                 }
                 onClick={() => {
                   selectItem(index);

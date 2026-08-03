@@ -7,7 +7,6 @@ import {
   CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
@@ -22,6 +21,7 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import assert from "assert";
 

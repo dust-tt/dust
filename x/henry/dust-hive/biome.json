@@ -1,12 +1,10 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
-  "organizeImports": {
-    "enabled": true
-  },
+  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "complexity": {
         "noExcessiveCognitiveComplexity": "error",
         "noForEach": "warn",
@@ -26,8 +24,8 @@
         "useNodejsImportProtocol": "error"
       },
       "suspicious": {
-        "noConsoleLog": "off",
-        "noExplicitAny": "error"
+        "noExplicitAny": "error",
+        "noConsole": { "level": "off", "options": { "allow": ["log"] } }
       },
       "performance": {
         "noAccumulatingSpread": "error",
@@ -49,6 +47,6 @@
     }
   },
   "files": {
-    "ignore": ["node_modules", "dist", "*.log", "bun.lockb"]
+    "includes": ["**", "!**/node_modules", "!**/dist", "!**/*.log", "!**/bun.lockb"]
   }
 }

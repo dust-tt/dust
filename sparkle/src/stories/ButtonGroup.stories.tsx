@@ -3,21 +3,21 @@ import React from "react";
 
 import {
   BUTTON_VARIANTS,
-  type RegularButtonSize,
+  type ButtonSizeType,
   type ButtonVariantType,
 } from "@sparkle/components/Button";
 
 import {
-  ArrowPathIcon,
+  RefreshCw02,
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
-  ChevronDownIcon,
-  ClipboardIcon,
-  PlusIcon,
-  RobotIcon,
+  ChevronDown,
+  Clipboard,
+  Plus,
+  Robot,
   Separator,
-  TrashIcon,
+  Trash01,
 } from "../index_with_tw_base";
 
 const DefaultButtons = ({
@@ -25,7 +25,7 @@ const DefaultButtons = ({
   size = "sm",
 }: {
   variant?: ButtonVariantType;
-  size?: RegularButtonSize;
+  size?: ButtonSizeType;
 }) => (
   <>
     <Button label="First" variant={variant} size={size} />
@@ -35,9 +35,25 @@ const DefaultButtons = ({
 );
 
 const meta = {
-  title: "Primitives/ButtonGroup",
+  title: "Actions/ButtonGroup",
   component: ButtonGroup,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Groups related **Button**s into a single cohesive control. It lays them out **horizontal** or **vertical** (\`orientation\`), can merge their borders into a segmented control (\`removeGaps\`), and propagates a \`disabled\` state to every child. Use **ButtonGroupDropdown** as a child to attach an overflow menu (e.g. a split-button affordance).
+
+**When to use**
+- To present a set of closely related actions as one unit (e.g. a toolbar segment).
+- To build a split button by pairing a primary **Button** with a **ButtonGroupDropdown** for secondary options.
+
+**Guidelines**
+- Keep all child **Button**s on the same \`variant\` and \`size\` for visual consistency.
+- Use \`removeGaps\` for a segmented look; keep gaps when the actions are independent.
+- For a single button with an attached chevron menu, prefer **SplitButton** (\`FlexSplitButton\`) instead.`,
+      },
+    },
+  },
   argTypes: {
     orientation: {
       description: "Stack buttons horizontally or vertically",
@@ -74,8 +90,8 @@ export const WithIcons: Story = {
   args: {
     children: (
       <>
-        <Button icon={PlusIcon} label="Add" variant="outline" size="sm" />
-        <Button icon={RobotIcon} label="Agent" variant="outline" size="sm" />
+        <Button icon={Plus} label="Add" variant="outline" size="sm" />
+        <Button icon={Robot} label="Agent" variant="outline" size="sm" />
         <Button label="More" variant="outline" size="sm" />
       </>
     ),
@@ -136,8 +152,8 @@ export const WithGaps: Story = {
 const ButtonGroupByVariant = ({ variant }: { variant: ButtonVariantType }) => (
   <>
     <Separator />
-    <h3 className="s-text-primary dark:s-text-primary-50">{variant}</h3>
-    <div className="s-flex s-items-center s-gap-4">
+    <h3 className="text-primary">{variant}</h3>
+    <div className="flex items-center gap-4">
       <ButtonGroup>
         <DefaultButtons variant={variant} size="xs" />
       </ButtonGroup>
@@ -153,7 +169,7 @@ const ButtonGroupByVariant = ({ variant }: { variant: ButtonVariantType }) => (
 
 export const Gallery: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       {BUTTON_VARIANTS.map((variant) => (
         <ButtonGroupByVariant key={variant} variant={variant} />
       ))}
@@ -163,38 +179,34 @@ export const Gallery: Story = {
 
 export const WithDropdownMenu: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       <div>
-        <h3 className="s-mb-2 s-text-sm s-font-medium">
-          Split button with dropdown
-        </h3>
+        <h3 className="mb-2 text-sm font-medium">Split button with dropdown</h3>
         <ButtonGroup>
           <Button
-            icon={ClipboardIcon}
+            icon={Clipboard}
             tooltip="Copy to clipboard"
             variant="outline"
             size="xs"
           />
           <ButtonGroupDropdown
-            trigger={
-              <Button variant="outline" size="xs" icon={ChevronDownIcon} />
-            }
+            trigger={<Button variant="outline" size="xs" icon={ChevronDown} />}
             items={[
-              { label: "Retry", icon: ArrowPathIcon },
-              { label: "Delete", icon: TrashIcon, variant: "warning" },
+              { label: "Retry", icon: RefreshCw02 },
+              { label: "Delete", icon: Trash01, variant: "warning" },
             ]}
           />
         </ButtonGroup>
       </div>
 
       <div>
-        <h3 className="s-mb-2 s-text-sm s-font-medium">Multiple variations</h3>
-        <div className="s-flex s-flex-wrap s-gap-4">
+        <h3 className="mb-2 text-sm font-medium">Multiple variations</h3>
+        <div className="flex flex-wrap gap-4">
           <ButtonGroup>
             <Button label="Copy" variant="outline" size="sm" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="outline" size="sm" icon={ChevronDownIcon} />
+                <Button variant="outline" size="sm" icon={ChevronDown} />
               }
               items={[
                 { label: "Option 1" },
@@ -208,26 +220,21 @@ export const WithDropdownMenu: Story = {
             <Button label="Save" variant="primary" size="sm" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="primary" size="sm" icon={ChevronDownIcon} />
+                <Button variant="primary" size="sm" icon={ChevronDown} />
               }
               items={[{ label: "Save and close" }, { label: "Save as draft" }]}
             />
           </ButtonGroup>
 
           <ButtonGroup>
-            <Button icon={PlusIcon} label="Add" variant="outline" size="sm" />
-            <Button
-              icon={RobotIcon}
-              label="Agent"
-              variant="outline"
-              size="sm"
-            />
+            <Button icon={Plus} label="Add" variant="outline" size="sm" />
+            <Button icon={Robot} label="Agent" variant="outline" size="sm" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="outline" size="sm" icon={ChevronDownIcon} />
+                <Button variant="outline" size="sm" icon={ChevronDown} />
               }
               items={[
-                { label: "More options", icon: PlusIcon },
+                { label: "More options", icon: Plus },
                 { label: "Settings" },
               ]}
             />

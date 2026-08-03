@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -29,6 +34,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/files/:fileId/share/grants.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { fileId } = ctx.req.valid("param");
@@ -85,7 +91,14 @@ app.post(
     const { emails: rawEmails } = ctx.req.valid("json");
 
     const workspace = auth.getNonNullableWorkspace();
-    if (workspace.sharingPolicy === "workspace_only") {
+
+    const externalSharingDisabledByPolicy =
+      workspace.sharingPolicy === "workspace_only";
+    const canInviteExternal =
+      !externalSharingDisabledByPolicy &&
+      (await auth.hasWorkspacePermission("invite", "frame"));
+
+    if (!canInviteExternal) {
       const emails = rawEmails.map((e) => e.toLowerCase());
       const users = await UserResource.fetchByEmails(emails);
 
@@ -108,14 +121,33 @@ app.post(
           status_code: 403,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "Only workspace members can be invited when external sharing is disabled.",
+            message: externalSharingDisabledByPolicy
+              ? "Only workspace members can be invited when external sharing is disabled."
+              : "You do not have permission to invite people outside the workspace. Only workspace members can be invited.",
           },
         });
       }
     }
 
     const grants = await file.addSharingGrants(auth, { emails: rawEmails });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "frame.email_grant_added",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("frame", {
+          sId: file.sId,
+          name: file.fileName ?? file.sId,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        frame_name: file.fileName ?? file.sId,
+        emails: rawEmails.join(","),
+      },
+    });
+
     return ctx.json({ grants });
   }
 );
@@ -145,6 +177,23 @@ app.delete(
         },
       });
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "frame.email_grant_revoked",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("frame", {
+          sId: file.sId,
+          name: file.fileName ?? file.sId,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        frame_name: file.fileName ?? file.sId,
+        email: result.value.email,
+      },
+    });
 
     return ctx.body(null, 204);
   }

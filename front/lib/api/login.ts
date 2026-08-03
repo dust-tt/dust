@@ -23,9 +23,10 @@ import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
 import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import { ONBOARDING_PROFILE_PENDING_METADATA_KEY } from "@app/types/onboarding";
 import type { LightWorkspaceType } from "@app/types/user";
 
-export interface PerformLoginOptions {
+interface PerformLoginOptions {
   inviteToken: string | null;
   wId: string | null;
   utmParams: UTMParams;
@@ -39,10 +40,10 @@ export interface PerformLoginOptions {
 
 /**
  * Transport-agnostic input for `performLogin`. Carries only the request
- * fields the login flow actually reads, so both the Next handler and the
- * Hono handler can call into it.
+ * fields the login flow actually reads, so the Hono login route can call
+ * into it.
  */
-export interface PerformLoginRequest {
+interface PerformLoginRequest {
   cookieHeader: string | undefined;
   forwardedFor: string | string[] | undefined;
   remoteAddress: string | undefined;
@@ -52,7 +53,7 @@ export interface PerformLoginRequest {
  * Result of `performLogin`. The handler at the transport boundary
  * (Next API route or Hono route) maps this to the actual HTTP response.
  */
-export type LoginOutcome =
+type LoginOutcome =
   | { kind: "redirect"; url: string }
   | { kind: "unauthorized" }
   | { kind: "apiError"; error: APIErrorWithContentfulStatusCode };
@@ -314,10 +315,19 @@ export async function performLogin(
     };
   }
 
+  const isFirstLogin = user.lastLoginAt === null;
+
   const redirectOptions: Parameters<typeof buildPostLoginUrl>[1] = {
-    welcome: user.lastLoginAt === null,
+    welcome: isFirstLogin,
     utmParams: Object.keys(utmParams).length > 0 ? utmParams : undefined,
   };
+
+  if (isFirstLogin) {
+    // Mark the profile onboarding (name, job type, favorite platforms) as
+    // pending. Cleared when the user submits the profile form, either on the
+    // /welcome page or in the in-app onboarding dialog (credit-priced flow).
+    await user.setMetadata(ONBOARDING_PROFILE_PENDING_METADATA_KEY, "true");
+  }
 
   await user.recordLoginActivity();
 

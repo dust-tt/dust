@@ -21,14 +21,14 @@ interface PluginCardProps {
 function PluginCard({ onClick, plugin }: PluginCardProps) {
   return (
     <PokeCard
-      className="flex h-20 w-44 cursor-pointer hover:bg-gray-100 dark:hover:bg-muted/10"
+      className="flex h-20 w-44 cursor-pointer hover:bg-muted-background"
       onClick={onClick}
     >
       <PokeCardHeader className="flex space-y-2 overflow-hidden p-2 text-left">
         <PokeCardTitle className="text-sm font-medium">
           {plugin.name}
         </PokeCardTitle>
-        <PokeCardDescription className="overflow-hidden truncate whitespace-normal text-xs">
+        <PokeCardDescription className="overflow-hidden truncate whitespace-normal text-sm">
           {plugin.description}
         </PokeCardDescription>
       </PokeCardHeader>
@@ -73,8 +73,8 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   }, [plugins, searchQuery]);
 
   return (
-    <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
-      <div className="flex items-center justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
+    <div className="flex min-h-48 flex-col rounded-lg border border-separator bg-muted-background">
+      <div className="flex items-center justify-between gap-3 rounded-t-lg border-b border-separator bg-background p-4">
         <div className="flex items-center gap-3">
           <h2 className="text-md font-bold">Plugins</h2>
         </div>
@@ -84,10 +84,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
               placeholder="Search plugins..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn(
-                "w-full bg-white dark:bg-gray-800",
-                showRuns && "invisible"
-              )}
+              className={cn("w-full bg-background", showRuns && "invisible")}
             />
             <Button
               label={showRuns ? "Show Available" : "Show History"}
@@ -99,11 +96,11 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
         </div>
       </div>
 
-      <div className="flex-1">
+      <div className="flex flex-1 flex-col">
         {!showRuns ? (
-          <div className="h-full">
+          <div className="flex flex-1 flex-col">
             {filteredPlugins.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-gray-500">
+              <div className="flex min-h-32 flex-1 items-center justify-center px-4 py-8 text-center text-sm text-muted-foreground">
                 {searchQuery.trim() ? (
                   <p>No plugins match your search.</p>
                 ) : (

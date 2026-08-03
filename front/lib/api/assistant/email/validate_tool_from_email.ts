@@ -3,6 +3,7 @@ import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
+import { resumeAncestorConversations } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { Authenticator } from "@app/lib/auth";
@@ -228,9 +229,22 @@ export async function validateActionFromEmail(
     );
   }
 
-  const [updatedCount] = await action.updateStatus(
-    getMCPApprovalStateFromUserApprovalState(approvalState)
-  );
+  // A blocked action is only actionable while its agent message can still resume: resolving one
+  // from a stale email link after a non-resumable terminal status would relaunch an agent loop
+  // that was already terminated.
+  if (!(await action.canAgentMessageResume(auth))) {
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        "Action belongs to an agent message that can no longer resume"
+      )
+    );
+  }
+
+  const [updatedCount] = await action.updateStatusFromExpected(auth, {
+    status: getMCPApprovalStateFromUserApprovalState(approvalState),
+    expectedStatus: "blocked_validation_required",
+  });
 
   if (updatedCount === 0) {
     logger.info(
@@ -327,7 +341,7 @@ export async function validateActionFromEmail(
       userMessageId: parentMessage.sId,
       userMessageVersion: parentMessage.version,
       userMessageOrigin: parentMessage.userMessage.userContextOrigin,
-      conversationBranchId: message.getBranchId(),
+      conversationBranchId: null,
     },
     startStep: action.stepContent.step,
     waitForCompletion: true,
@@ -342,6 +356,12 @@ export async function validateActionFromEmail(
     },
     `[email] Action ${approvalState === "approved" ? "approved" : "rejected"} via email`
   );
+
+  // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it. The
+  // email validation itself already succeeded, so the wake-up outcome is not propagated.
+  await resumeAncestorConversations(auth, conversationResource, {
+    agentMessageId: messageId,
+  });
 
   return new Ok({
     conversationId: conversationModel.sId,

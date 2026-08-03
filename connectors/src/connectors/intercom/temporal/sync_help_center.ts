@@ -23,6 +23,7 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { htmlToMarkdown } from "@connectors/lib/html_to_markdown";
 import type { IntercomHelpCenterModel } from "@connectors/lib/models/intercom";
 import {
   IntercomArticleModel,
@@ -35,10 +36,8 @@ import {
   concurrentExecutor,
   INTERNAL_MIME_TYPES,
   safeSubstring,
+  stripNullBytes,
 } from "@connectors/types";
-import TurndownService from "turndown";
-
-const turndownService = new TurndownService();
 
 /**
  * If our rights were revoked or the help center is not on intercom anymore we delete it
@@ -370,7 +369,7 @@ export async function upsertArticle({
 
   let articleContentInMarkdown =
     typeof article.body === "string"
-      ? turndownService.turndown(article.body)
+      ? htmlToMarkdown(stripNullBytes(article.body))
       : "";
 
   if (!articleContentInMarkdown) {
@@ -394,7 +393,7 @@ export async function upsertArticle({
   );
   const renderedPage = await renderDocumentTitleAndContent({
     dataSourceConfig,
-    title: article.title,
+    title: stripNullBytes(article.title),
     content: renderedMarkdown,
     createdAt: createdAtDate,
     updatedAt: updatedAtDate,
@@ -416,7 +415,7 @@ export async function upsertArticle({
     documentUrl: articleUrl,
     timestampMs: updatedAtDate.getTime(),
     tags: [
-      `title:${article.title}`,
+      `title:${stripNullBytes(article.title)}`,
       `createdAt:${createdAtDate.getTime()}`,
       `updatedAt:${updatedAtDate.getTime()}`,
     ],
@@ -429,7 +428,7 @@ export async function upsertArticle({
     upsertContext: {
       sync_type: "batch",
     },
-    title: article.title,
+    title: stripNullBytes(article.title),
     mimeType: INTERNAL_MIME_TYPES.INTERCOM.ARTICLE,
     async: true,
   });

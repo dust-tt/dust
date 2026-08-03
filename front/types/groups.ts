@@ -11,8 +11,15 @@ import { isRoleType } from "./user";
  * global group: Contains all users from the workspace. Has access to the global
  * Space which holds all existing datasource created before spaces.
  *
- * regular group: Contains specific users added by workspace admins. Has access
- * to the list of spaces configured by workspace admins.
+ * "regular" groups are groups for which users are selected one by one (as opposed
+ * to provisioned groups whose membership is synced from an external identity
+ * provider). They come in two flavors depending on how the group was created:
+ *
+ * regular_auto group: Created implicitly by Dust (e.g. agent editors, space
+ * members).
+ *
+ * regular_manual group: Created manually by the user via the UI. They can be used
+ * to grant specific permissions to users.
  *
  * agent_editors group: Group specific to represent agent editors, tied to an
  *  agent. Has special permissions: not restricted only to admins. Users can
@@ -25,7 +32,8 @@ import { isRoleType } from "./user";
  *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
-  "regular",
+  "regular_auto",
+  "regular_manual",
   // space_editors is used to know if a member of a manual group can edit the group
   "space_editors",
   "global",
@@ -36,6 +44,30 @@ export const GROUP_KINDS = [
 ] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
 
+// Group kinds that can carry a per-group usage spend limit and be surfaced in
+// the Usage > Groups admin table. Only "provisioned" (SSO/SCIM directory)
+// and regular_manual groups.
+export const CAP_ELIGIBLE_GROUP_KINDS = [
+  "provisioned",
+  "regular_manual",
+] as const;
+
+export function isCapEligibleGroupKind(kind: GroupKind): boolean {
+  return CAP_ELIGIBLE_GROUP_KINDS.some((k) => k === kind);
+}
+
+// Group kinds that represent user-managed membership collections and are
+// surfaced in workspace admin UIs (Groups tab, governance). Excludes internal
+// system/permission groups.
+export const MANAGEABLE_GROUP_KINDS = [
+  "provisioned",
+  "regular_manual",
+] as const;
+
+export function isManageableGroupKind(kind: GroupKind): boolean {
+  return MANAGEABLE_GROUP_KINDS.some((k) => k === kind);
+}
+
 export function isGroupKind(value: unknown): value is GroupKind {
   return GROUP_KINDS.includes(value as GroupKind);
 }
@@ -44,6 +76,10 @@ export function isSystemGroupKind(value: GroupKind): boolean {
 }
 export function isGlobalGroupKind(value: GroupKind): boolean {
   return value === "global";
+}
+
+export function isRegularManualGroupKind(value: GroupKind): boolean {
+  return value === "regular_manual";
 }
 
 export function isAgentEditorGroupKind(value: GroupKind): boolean {
@@ -61,11 +97,15 @@ export type GroupType = {
   kind: GroupKind;
   workspaceId: ModelId;
   memberCount: number;
+  // Per-group usage spend limit (excluding seat allowance), applied per member.
+  // null means the group carries no cap (falls back to the workspace default).
+  poolCapAwuCredits: number | null;
 };
 
 export const GroupKindCodec = z.enum([
   "global",
-  "regular",
+  "regular_auto",
+  "regular_manual",
   "space_editors",
   "agent_editors",
   "skill_editors",

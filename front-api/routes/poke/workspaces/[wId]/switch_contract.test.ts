@@ -1,9 +1,18 @@
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
-import { listMetronomePackages } from "@app/lib/metronome/client";
+import {
+  archiveMetronomeContract,
+  listMetronomePackages,
+  reactivateMetronomeContract,
+} from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
+import {
+  remapMembershipSeatTypesForContract,
+  syncSeatCount,
+} from "@app/lib/metronome/seats";
 import { PlanModel } from "@app/lib/models/plan";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
@@ -30,7 +39,9 @@ vi.mock("@app/lib/metronome/client", async () => {
   >("@app/lib/metronome/client");
   return {
     ...actual,
+    archiveMetronomeContract: vi.fn(),
     listMetronomePackages: vi.fn(),
+    reactivateMetronomeContract: vi.fn(),
   };
 });
 
@@ -42,6 +53,27 @@ vi.mock("@app/lib/metronome/contracts", async () => {
     ...actual,
     ensureMetronomeCustomerForWorkspace: vi.fn(),
     provisionMetronomeContract: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/seats", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/seats")
+  >("@app/lib/metronome/seats");
+  return {
+    ...actual,
+    remapMembershipSeatTypesForContract: vi.fn(),
+    syncSeatCount: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/api/workos/organization", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/api/workos/organization")
+  >("@app/lib/api/workos/organization");
+  return {
+    ...actual,
+    getOrCreateWorkOSOrganization: vi.fn(),
   };
 });
 
@@ -66,12 +98,32 @@ vi.mock("@app/lib/plans/stripe", async () => {
   };
 });
 
+// These tests exercise the production behavior of switchContract, where the
+// Metronome webhook is configured and drives the subscription swap
+// (`contract.start`) asynchronously. Stub a webhook secret so
+// `stepImmediateSubscriptionSwapWithoutWebhook` no-ops here, same as in a
+// real deployment — otherwise it would run inline against the unmocked
+// Metronome client.
+vi.mock("@app/lib/api/config", async () => {
+  const actual = await vi.importActual<typeof import("@app/lib/api/config")>(
+    "@app/lib/api/config"
+  );
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      getMetronomeWebhookSecret: vi.fn().mockReturnValue("test-secret"),
+    },
+  };
+});
+
 const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const EXISTING_CONTRACT_ID = "contract_existing_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";
 const ENT_PACKAGE_ID = "pkg_ent_usd";
 const PRO_PACKAGE_ID = "pkg_pro_usd";
 const BUSINESS_PACKAGE_ID = "pkg_business_usd";
+const BUSINESS_EUR_PACKAGE_ID = "pkg_business_eur";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
 const STRIPE_CUSTOMER_ID = "cus_test_xxx";
 
@@ -81,6 +133,8 @@ async function ensureEnterprisePlan(): Promise<void> {
     name: "Test Enterprise",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    maxAwuCredits: -1,
+    maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
     maxImagesPerWeek: 1000,
     maxUsersInWorkspace: 1000,
@@ -99,12 +153,14 @@ async function ensureEnterprisePlan(): Promise<void> {
     isSSOAllowed: true,
     isSCIMAllowed: true,
     isAuditLogsAllowed: true,
+    maxConnectionsCount: -1,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 100,
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
+    hasAdvancedModelAccess: true,
   });
 }
 
@@ -184,6 +240,13 @@ function postSwitchContract(workspaceId: string, body: unknown) {
 }
 
 beforeEach(() => {
+  vi.mocked(getOrCreateWorkOSOrganization).mockResolvedValue(
+    new Ok({
+      id: "org_test",
+    } as unknown as import("@workos-inc/node").Organization)
+  );
+  vi.mocked(archiveMetronomeContract).mockResolvedValue(new Ok(undefined));
+  vi.mocked(reactivateMetronomeContract).mockResolvedValue(new Ok(undefined));
   vi.mocked(ensureMetronomeCustomerForWorkspace).mockResolvedValue(
     new Ok({ metronomeCustomerId: METRONOME_CUSTOMER_ID })
   );
@@ -199,6 +262,7 @@ beforeEach(() => {
         tier: "enterprise",
         currency: "usd",
         seats: [],
+        billingAnchor: "contract_start_date" as const,
       },
       {
         id: PRO_PACKAGE_ID,
@@ -207,6 +271,7 @@ beforeEach(() => {
         tier: "pro",
         currency: "usd",
         seats: [],
+        billingAnchor: "contract_start_date" as const,
       },
       {
         id: BUSINESS_PACKAGE_ID,
@@ -215,11 +280,35 @@ beforeEach(() => {
         tier: "business",
         currency: "usd",
         seats: [],
+        billingAnchor: "contract_start_date" as const,
+      },
+      {
+        id: BUSINESS_EUR_PACKAGE_ID,
+        name: "Business EUR",
+        aliases: ["business-eur"],
+        tier: "business",
+        currency: "eur",
+        seats: [],
+        billingAnchor: "contract_start_date" as const,
       },
     ])
   );
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
-    new Ok({ metronomeContractId: NEW_CONTRACT_ID })
+    new Ok({ metronomeContractId: NEW_CONTRACT_ID, recovered: false })
+  );
+  vi.mocked(remapMembershipSeatTypesForContract).mockResolvedValue(
+    new Ok(undefined)
+  );
+  vi.mocked(syncSeatCount).mockResolvedValue(
+    new Ok({
+      seatSubscriptionCount: 0,
+      distinctTimestampCount: 0,
+      reconcileSegmentCallCount: 0,
+      transferCount: 0,
+      freeUserCount: 0,
+      didMutateSeatData: false,
+      durationMs: 0,
+    })
   );
 });
 
@@ -407,7 +496,11 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    const response = await postSwitchContract(workspace.sId, proBody());
+    // Future startingAt: pending row is created and waits for contract.start.
+    const response = await postSwitchContract(
+      workspace.sId,
+      proBody({ startingAt: futureIso(2) })
+    );
 
     expect(response.status).toBe(200);
 
@@ -429,8 +522,11 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    // First schedule → pending P1.
-    const firstResponse = await postSwitchContract(workspace.sId, proBody());
+    // Future startingAt: pending row is created and waits for contract.start.
+    const firstResponse = await postSwitchContract(
+      workspace.sId,
+      proBody({ startingAt: futureIso(2) })
+    );
     expect(firstResponse.status).toBe(200);
 
     const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
@@ -445,11 +541,11 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     // Second schedule with a different (business) target → ends P1, creates P2.
     const SECOND_CONTRACT_ID = "contract_new_zzz";
     vi.mocked(provisionMetronomeContract).mockResolvedValueOnce(
-      new Ok({ metronomeContractId: SECOND_CONTRACT_ID })
+      new Ok({ metronomeContractId: SECOND_CONTRACT_ID, recovered: false })
     );
     const secondResponse = await postSwitchContract(
       workspace.sId,
-      businessBody()
+      businessBody({ startingAt: futureIso(2) })
     );
     expect(secondResponse.status).toBe(200);
 
@@ -643,5 +739,51 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
     expect(config?.paygEnabled).toBe(false);
     expect(config?.usageCapCredits).toBe(100_000);
+  });
+});
+
+describe("POST /api/poke/workspaces/[wId]/switch_contract — no Stripe customer", () => {
+  it("provisions a contract with no Stripe billing config when stripeCustomerId is blank", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    const response = await postSwitchContract(
+      workspace.sId,
+      proBody({ stripeCustomerId: "" })
+    );
+
+    expect(response.status).toBe(200);
+    expect(getStripeCustomer).not.toHaveBeenCalled();
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "legacy-pro-monthly",
+        enableStripeBilling: false,
+      })
+    );
+  });
+
+  it("accepts a package in any currency when stripeCustomerId is blank", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    const response = await postSwitchContract(
+      workspace.sId,
+      businessBody({
+        stripeCustomerId: "",
+        metronomePackageId: BUSINESS_EUR_PACKAGE_ID,
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "business-eur",
+        enableStripeBilling: false,
+      })
+    );
   });
 });

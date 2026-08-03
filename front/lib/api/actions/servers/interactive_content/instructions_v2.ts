@@ -13,7 +13,7 @@ Before declaring a frame done, mentally check both the default panel width and f
 - Import React hooks from \`react\` when using them.
 - Hooks, including \`useState\`, \`useEffect\`, and \`useFile\`, must be called at the top level of the component.
 - \`React.createElement\` is not supported.
-- There is no internet access in the frame environment.
+- Outbound network requests (fetch, XHR, WebSocket) are blocked. connect-src is restricted to the Dust service only. External images can be rendered via <img src="https://..."> tags.
 - External links must include \`target="_blank"\` because frames render inside an iframe.
 - When displaying text with < or > symbols in JSX, use HTML entities such as \`&lt;\` and \`&gt;\`, or wrap the string in braces.
 
@@ -59,6 +59,10 @@ The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural
 - Use shadcn/ui components for a polished baseline. Use Cards for individual charts, data visualizations, and key metrics or KPIs. Do not wrap controls, inputs, navigation, or simple text content in Cards. Avoid nested Cards.
 - For shadcn Buttons, use semantic variants such as \`variant="default"\`, \`variant="secondary"\`, \`variant="outline"\`, and \`variant="destructive"\`. Let shadcn handle hover states unless an active or selected state needs a visible accent.
 
+### Animation
+
+\`motion/react\` is available for animations. Use it for entrance transitions, staggered list or card reveals, and conditional mount/unmount effects via \`AnimatePresence\`. Prefer one well-orchestrated entrance sequence over many scattered micro-interactions. Keep entrance durations between 0.3 s and 0.5 s; interactive feedback between 0.15 s and 0.25 s.
+
 ### Chart Rules
 
 - Use shadcn chart components for charts: \`ChartContainer\`, \`ChartConfig\`, \`ChartTooltip\`, and \`ChartTooltipContent\`.
@@ -100,11 +104,32 @@ The same decision rule applies regardless of where the data came from:
 - Never use bare \`conversation/filename\` or \`pod/filename\` paths. They are context-dependent, non-portable, and can silently load the wrong file.
 - Store file IDs as intact strings such as \`"fil_abc123"\`, not as string concatenation.
 - \`file.text()\` is async. Await it inside \`useEffect\`; never call it directly in render logic.
-- For images, always load with \`useFile\`, create a local object URL with \`URL.createObjectURL(file)\`, and render that URL in \`<img>\` or background styles. Do not fetch remote images.
+- For images from the conversation, load with \`useFile\`, create a local object URL with \`URL.createObjectURL(file)\`, and render that URL in \`<img>\` or background styles. External images can be rendered directly via \`<img src="https://...">\`.
 - Custom components that render files should use \`fileId\` as the prop name so server-side prefetching can work.
 - Other frames can be imported as React components by file ID or explicit scoped path, for example \`import MyComponent from "fil_abc123"\` or \`import MyComponent from "conversation-conv_123/MyFrame.tsx"\`. Transitive imports are supported.
 - To let users download data, import \`triggerUserFileDownload\` from \`@dust/react-hooks\` and expose it through a button or other user action. Never auto-trigger downloads.
 - To capture the current visualization, import \`captureScreenshot\` from \`@dust/react-hooks\` and call \`await captureScreenshot("my-chart.png")\` or \`await captureScreenshot()\` from a user-triggered action.
+
+### useUserIdentity Reference
+
+- Import \`useUserIdentity\` from \`@dust/react-hooks\` to know who is viewing the Frame.
+- It returns \`{ isAuthenticated, isWorkspaceMember, user, isLoading, error }\`. When \`isAuthenticated\` is true, \`user\` is \`{ sId, firstName, lastName, fullName, image }\`; otherwise \`user\` is \`null\`.
+- \`isAuthenticated\` is only true for a signed-in member of the workspace that owns the Frame. A viewer of a shared Frame who is signed out, or signed in to a different workspace, is not authenticated.
+- Render the \`isLoading\` state, and treat \`error\` and the unauthenticated case identically: fall back to the unauthenticated view rather than showing an error.
+- A Frame cannot sign anyone in. The viewer is already authenticated to Dust or they are not, and nothing the Frame renders can change that. When a Frame only makes sense for an authenticated member, render a plain view saying the content is unavailable to them, rather than a login prompt or a button that will not work.
+
+\`\`\`tsx
+import { useUserIdentity } from "@dust/react-hooks";
+
+const { user, isAuthenticated, isLoading } = useUserIdentity();
+
+if (isLoading) { return <Spinner />; }
+if (!isAuthenticated) { return <UnavailableToViewer />; }
+return <p>Welcome back, {user.firstName}</p>;
+\`\`\`
+
+- Use it for presentation only: greet the viewer by name, or highlight the rows that are theirs.
+- It tells you who is looking, not what they are allowed to do, and a Frame on its own holds no state to protect. Do not build access control out of it: whatever a Frame renders, its viewer can read.
 
 ### Interaction Rules
 
@@ -128,7 +153,7 @@ These apply to data from any source: the user's prompt, attached files, tool out
 
 - Default output is a single Frame React component with a default export.
 - Use \`@dust/slideshow/v2\` only when the user explicitly asks for slides, a presentation, a deck, or multi-slide content.
-- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
+- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, \`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
 - No other third-party libraries are installed or available.
 `;
 

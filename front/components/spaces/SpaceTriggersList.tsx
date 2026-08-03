@@ -113,7 +113,7 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
   return (
     <>
       {isEmpty ? (
-        <div className="text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-center text-sm text-muted-foreground">
           You don’t have any triggers yet.
         </div>
       ) : (

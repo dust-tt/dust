@@ -100,6 +100,7 @@ describe("renderAllMessages", () => {
               origin: "web",
             },
             reactions: [],
+            requestedModel: null,
           } satisfies UserMessageType,
         ];
       }
@@ -137,6 +138,9 @@ describe("renderAllMessages", () => {
             richMentions: [],
             completionDurationMs: null,
             reactions: [],
+            costCredits: null,
+            resolvedModel: null,
+            modelResolutionMethod: null,
           } satisfies AgentMessageType,
         ];
       }

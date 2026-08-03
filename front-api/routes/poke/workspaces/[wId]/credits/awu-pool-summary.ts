@@ -1,5 +1,5 @@
-import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
 import { getAwuPoolSummary } from "@app/lib/api/credits/awu_pool_summary";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -9,6 +9,7 @@ export type { AwuPoolSummaryResponseBody };
 // Mounted at /api/poke/workspaces/:wId/credits/awu-pool-summary.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
 

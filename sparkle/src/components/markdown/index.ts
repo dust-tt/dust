@@ -2,6 +2,7 @@ export * from "./ActionCardBlock";
 export * from "./CodeBlock";
 export * from "./CodeBlockWithExtendedSupport";
 export * from "./ContentBlockWrapper";
+export * from "./LinkBlock";
 export * from "./Markdown";
 export * from "./MarkdownContentContext";
 export * from "./MarkdownStyleContext";

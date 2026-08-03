@@ -1,7 +1,3 @@
-import {
-  generatePlainTextFile,
-  uploadFileToConversationDataSource,
-} from "@app/lib/actions/action_file_helpers";
 import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -15,10 +11,18 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { summarizeWithLLM } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
+import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
+import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import type { WorkspaceMetadata } from "@app/lib/api/workspace";
+import {
+  isWebBrowseProvider,
+  isWebSearchProvider,
+} from "@app/lib/api/workspace";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -38,25 +42,39 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 const MIN_CHARACTERS_TO_SUMMARIZE = 16_000;
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 const DEFAULT_WEBSEARCH_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;
+const AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT = 10;
 
 async function handleWebsearch(
   { query }: { query: string },
   extra: ToolHandlerExtra
 ) {
-  const { agentLoopContext } = extra;
-  if (!agentLoopContext?.runContext) {
-    return new Err(
-      new MCPError("agentLoopRunContext is required where the tool is called.")
+  const { runContext } = extra;
+
+  const { websearchResultCount, citationsOffset } = isAgentLoopRunContext(
+    runContext
+  )
+    ? runContext.stepContext
+    : {
+        websearchResultCount: AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT,
+        citationsOffset: 0,
+      };
+
+  const rawSearchProvider = (
+    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {}
+  ).webSearchProvider;
+  if (
+    rawSearchProvider !== undefined &&
+    !isWebSearchProvider(rawSearchProvider)
+  ) {
+    logger.warn(
+      { rawSearchProvider },
+      "Invalid webSearchProvider in workspace metadata"
     );
   }
-
-  const agentLoopRunContext = agentLoopContext.runContext;
-
-  const { websearchResultCount, citationsOffset } =
-    agentLoopRunContext.stepContext;
-
   const websearchRes = await webSearch({
-    provider: "firecrawl",
+    provider: isWebSearchProvider(rawSearchProvider)
+      ? rawSearchProvider
+      : "firecrawl",
     query,
     num: websearchResultCount,
   });
@@ -103,14 +121,11 @@ async function handleWebbrowser(
   },
   extra: ToolHandlerExtra
 ) {
-  const { agentLoopContext, auth } = extra;
-  if (!agentLoopContext?.runContext) {
-    return new Err(new MCPError("No conversation context available"));
-  }
+  const { runContext, auth } = extra;
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const { toolConfiguration } = agentLoopContext.runContext;
+  const { toolConfiguration } = runContext;
   const useSummarization =
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
     toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] === true;
@@ -118,7 +133,24 @@ async function handleWebbrowser(
   const isFirecrawlDisabled = await KillSwitchResource.isKillSwitchEnabled(
     "global_disable_firecrawl"
   );
-  const browsingProvider = isFirecrawlDisabled ? "spider" : "firecrawl";
+
+  const rawBrowseProvider = (
+    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {}
+  ).webBrowseProvider;
+  if (
+    rawBrowseProvider !== undefined &&
+    !isWebBrowseProvider(rawBrowseProvider)
+  ) {
+    logger.warn(
+      { rawBrowseProvider },
+      "Invalid webBrowseProvider in workspace metadata"
+    );
+  }
+  const browsingProvider = isWebBrowseProvider(rawBrowseProvider)
+    ? rawBrowseProvider
+    : isFirecrawlDisabled
+      ? "spider"
+      : "firecrawl";
 
   const results = await browseUrls(urls, 8, "markdown", {
     screenshotMode,
@@ -127,8 +159,15 @@ async function handleWebbrowser(
   });
 
   if (useSummarization) {
-    const runCtx = agentLoopContext.runContext;
-    const conversationId = runCtx.conversation.sId;
+    if (!isAgentLoopRunContext(runContext)) {
+      return new Err(
+        new MCPError(
+          "Summarization cannot be enabled outside of an agent loop context."
+        )
+      );
+    }
+
+    const runCtx = runContext;
     const { citationsOffset, websearchResultCount } = runCtx.stepContext;
     const refs = getRefs().slice(
       citationsOffset,
@@ -191,33 +230,34 @@ async function handleWebbrowser(
 
         const snippet = snippetRes.value.slice(0, FILE_OFFLOAD_SNIPPET_LENGTH);
 
-        const baseTitle = title ?? result.url;
-        const fileTitle = `${baseTitle}`;
-        const file = await generatePlainTextFile(auth, {
-          title: fileTitle,
-          conversationId,
-          content: fileContent,
-          snippet,
-          hideFromUser: true,
-          // No need to index web page content in Qdrant.
-          skipDataSourceIndexing: true,
+        const fileTitle = title ?? result.url;
+        const fileName = makeFileName({
+          name: fileTitle,
+          ext: ".txt",
         });
 
-        await uploadFileToConversationDataSource({ auth, file });
+        const writeResult = await writeToToolOutputsFolder(auth, runCtx, {
+          fileName,
+          content: fileContent,
+          contentType: "text/plain",
+        });
 
-        const fileResource = {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-          fileId: file.sId,
+        if (writeResult.isErr()) {
+          throw writeResult.error;
+        }
+
+        const filePathResource = {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+          path: writeResult.value,
+          uri: writeResult.value,
           title: fileTitle,
-          contentType: file.contentType,
-          snippet,
-          uri: file.getPublicUrl(auth),
-          text: "Web page content archived as a file.",
+          contentType: "text/plain",
+          text: snippet,
         };
 
         contentBlocks.push({
           type: "resource",
-          resource: fileResource,
+          resource: filePathResource,
         });
 
         const ref = refs.shift();
@@ -225,7 +265,7 @@ async function handleWebbrowser(
           const websearchResultResource = {
             mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
             title: title ?? result.url,
-            text: `Full web page content available as file ${file.sId}`,
+            text: `Full web page content archived at ${fileName}`,
             uri: result.url,
             reference: ref,
           };

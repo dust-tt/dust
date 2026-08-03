@@ -1,31 +1,28 @@
 import config from "@app/lib/api/config";
 import { isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
-import type { ConnectorConfiguration } from "@app/types/connectors/configuration";
+import type {
+  GetDataSourceConfigurationResponseBody,
+  PatchDataSourceConfigurationResponseBody,
+} from "@app/types/api/data_sources";
 import {
   ConnectorsAPI,
   UpdateConnectorConfigurationTypeSchema,
 } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withDataSource } from "@front-api/middlewares/with_data_source";
 import { withSpace } from "@front-api/middlewares/with_space";
 
-export type GetDataSourceConfigurationResponseBody = {
-  configuration: ConnectorConfiguration;
-};
-
-export type PatchDataSourceConfigurationResponseBody =
-  GetDataSourceConfigurationResponseBody;
-
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/configuration.
 // Only Slack and Webcrawler connectors have configurations; Slack is set from
 // Poke, so this route is effectively for webcrawler-managed data sources.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),
@@ -65,7 +62,7 @@ app.get(
 
 app.patch(
   "/",
-  ensureIsBuilder(),
+  ensureIsManager(),
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   validate("json", UpdateConnectorConfigurationTypeSchema),

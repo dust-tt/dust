@@ -129,11 +129,6 @@ impl WorkerState {
 
     async fn await_pending_queries(&self) {
         // TODO: wait for all pending database queries to finish.
-        loop {
-            // if no pending query...
-            break;
-            // tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
-        }
     }
 
     async fn heartbeat(&self) -> Result<()> {

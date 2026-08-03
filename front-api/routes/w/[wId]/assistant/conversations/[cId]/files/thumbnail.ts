@@ -22,6 +22,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files/thumbnail.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId } = ctx.req.valid("param");
@@ -130,25 +131,13 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const readStream = bucket.file(normalizedPath).createReadStream();
-
-  const webStream = new ReadableStream({
-    start(controller) {
-      readStream.on("data", (chunk) => controller.enqueue(chunk));
-      readStream.on("end", () => controller.close());
-      readStream.on("error", (err) => {
-        logger.error(
-          { err, filePath: normalizedPath },
-          "Error streaming thumbnail (GCS)"
-        );
-        controller.error(err);
-      });
-    },
-    cancel() {
-      readStream.destroy();
-    },
-  });
-
-  return new Response(webStream, {
+  readStream.on("error", (err) =>
+    logger.error(
+      { err, filePath: normalizedPath },
+      "Error streaming thumbnail (GCS)"
+    )
+  );
+  return new Response(readableToReadableStream(readStream), {
     status: 200,
     headers: {
       "Content-Type": contentType,

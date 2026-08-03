@@ -1,6 +1,9 @@
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import type { MaxMessagesTimeframeType } from "@app/types/plan";
+import type {
+  MaxAwuCreditsTimeframeType,
+  MaxMessagesTimeframeType,
+} from "@app/types/plan";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -12,28 +15,55 @@ export class RateLimitError extends Error {}
 
 export const RATE_LIMITER_PREFIX = "rate_limiter";
 
+// Grace period kept after the window boundary before the Redis key expires, so
+// a read straddling the boundary still sees a just-closed window rather than a
+// premature miss.
+const FIXED_WINDOW_EXPIRE_GRACE_MS = 60_000;
+
+// A resolved fixed window: a stable label identifying the current window and
+// the absolute UTC end of that window. The label is appended to the Redis key
+// so each window is a distinct key that naturally expires; `windowEndMs` drives
+// `PEXPIREAT`. Callers resolve these bounds however they like — pure calendar
+// math or an external anchor such as a billing contract — keeping this counter
+// agnostic of window semantics.
+export type FixedWindowBounds = { label: string; windowEndMs: number };
+
 const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
+
+type RateLimiterArgs = {
+  key: string;
+  logger: LoggerInterface;
+  maxPerTimeframe: number;
+  timeframeSeconds: number;
+  incrementBy?: number;
+};
 
 export async function rateLimiter({
   key,
   maxPerTimeframe,
   timeframeSeconds,
   logger,
-}: {
-  key: string;
-  logger: LoggerInterface;
-  maxPerTimeframe: number;
-  timeframeSeconds: number;
-}): Promise<number> {
+  incrementBy = 1,
+}: RateLimiterArgs): Promise<number> {
   const now = new Date();
   const redisKey = makeRateLimiterKey(key);
   const tags: string[] = [];
+
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    throw new Error("incrementBy must be a positive integer.");
+  }
+  if (!Number.isInteger(maxPerTimeframe) || maxPerTimeframe < 0) {
+    throw new Error("maxPerTimeframe must be a non-negative integer.");
+  }
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    throw new Error("timeframeSeconds must be a positive integer.");
+  }
 
   const luaScript = `
     local key = KEYS[1]
     local window_seconds = tonumber(ARGV[1])
     local limit = tonumber(ARGV[2])
-    local value = ARGV[3]
+    local increment_by = tonumber(ARGV[3])
 
     -- Use Redis server time to avoid client clock skew
     local t = redis.call('TIME') -- { seconds, microseconds }
@@ -44,12 +74,13 @@ export async function rateLimiter({
     local window_ms = window_seconds * 1000
     local trim_before = now_ms - window_ms
 
-    -- Current count in window
     local count = redis.call('ZCOUNT', key, trim_before, '+inf')
 
-    if count < limit then
-      -- Allow: record this request at now_ms
-      redis.call('ZADD', key, now_ms, value)
+    if count + increment_by <= limit then
+      -- Allow: record one entry per consumed unit at now_ms.
+      for i = 1, increment_by do
+        redis.call('ZADD', key, now_ms, ARGV[3 + i])
+      end
       -- Keep the key around a bit longer than the window to allow trims
       local ttl_ms = window_ms + 60000
       redis.call('PEXPIRE', key, ttl_ms)
@@ -64,12 +95,14 @@ export async function rateLimiter({
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const values = Array.from({ length: incrementBy }, () => uuidv4());
     const remaining = (await redis.eval(luaScript, {
       keys: [redisKey],
       arguments: [
         timeframeSeconds.toString(),
         maxPerTimeframe.toString(),
-        uuidv4(),
+        incrementBy.toString(),
+        ...values,
       ],
     })) as number;
 
@@ -92,11 +125,74 @@ export async function rateLimiter({
         key,
         maxPerTimeframe,
         timeframeSeconds,
+        incrementBy,
         error: e,
       },
       `RateLimiter error`
     );
     return 1; // Allow request if error is on our side
+  }
+}
+
+/**
+ * Unconditionally records `incrementBy` consumption units against `key`, with no limit guard.
+ *
+ * Unlike `rateLimiter`, which drops the write entirely when count + incrementBy would exceed the
+ * limit, this always persists the entries. Use this for post-hoc recording of a cost that already
+ * happened (e.g. AWU credits for a message that already ran) — enforcement must happen beforehand
+ * via `getRateLimiterCount` + a limit check, not by relying on this function to gatekeep.
+ */
+export async function addRateLimiterCount({
+  key,
+  timeframeSeconds,
+  incrementBy,
+  logger,
+}: {
+  key: string;
+  timeframeSeconds: number;
+  incrementBy: number;
+  logger: LoggerInterface;
+}): Promise<void> {
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    throw new Error("incrementBy must be a positive integer.");
+  }
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    throw new Error("timeframeSeconds must be a positive integer.");
+  }
+
+  const redisKey = makeRateLimiterKey(key);
+  const windowMs = timeframeSeconds * 1000;
+
+  const luaScript = `
+    local key = KEYS[1]
+    local window_ms = tonumber(ARGV[1])
+    local increment_by = tonumber(ARGV[2])
+
+    -- Use Redis server time to avoid client clock skew
+    local t = redis.call('TIME') -- { seconds, microseconds }
+    local now_ms = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
+
+    -- Always record unconditionally: no limit check, no dropped writes.
+    for i = 1, increment_by do
+      redis.call('ZADD', key, now_ms, ARGV[2 + i])
+    end
+
+    -- Keep the key around a bit longer than the window to allow trims
+    redis.call('PEXPIRE', key, window_ms + 60000)
+  `;
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const values = Array.from({ length: incrementBy }, () => uuidv4());
+    await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [windowMs.toString(), incrementBy.toString(), ...values],
+    });
+  } catch (e) {
+    getStatsDClient().increment("ratelimiter.error.count", 1, [
+      "operation:add",
+    ]);
+    logger.error({ key, incrementBy, error: e }, "addRateLimiterCount error");
   }
 }
 
@@ -124,6 +220,10 @@ export async function getRateLimiterCount({
   key: string;
   timeframeSeconds: number;
 }): Promise<Result<number, Error>> {
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    return new Err(new Error("timeframeSeconds must be a positive integer."));
+  }
+
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
     const redisKey = makeRateLimiterKey(key);
@@ -140,17 +240,165 @@ export async function getRateLimiterCount({
 }
 
 export function getTimeframeSecondsFromLiteral(
-  timeframeLiteral: MaxMessagesTimeframeType
+  timeframeLiteral: MaxMessagesTimeframeType | MaxAwuCreditsTimeframeType
 ): number {
   switch (timeframeLiteral) {
     case "day":
       return 60 * 60 * 24; // 1 day.
 
+    case "week":
+      return 60 * 60 * 24 * 7; // 7 days.
+
+    case "month":
     // Lifetime is intentionally mapped to a 30-day period.
     case "lifetime":
       return 60 * 60 * 24 * 30; // 30 days.
 
     default:
       assertNever(timeframeLiteral);
+  }
+}
+
+/**
+ * Unconditionally records `incrementBy` units against a fixed-window counter
+ * identified by `bounds`. Unlike the rolling `addRateLimiterCount`, the key
+ * encodes the current window (via `bounds.label`) and is a plain `INCRBY` with
+ * `PEXPIREAT` set to `bounds.windowEndMs` — enforcement (reading the count and
+ * comparing to a limit) happens beforehand via `getFixedWindowCount`, not here.
+ */
+export async function addFixedWindowCount({
+  key,
+  bounds,
+  incrementBy,
+  logger,
+}: {
+  key: string;
+  bounds: FixedWindowBounds;
+  incrementBy: number;
+  logger: LoggerInterface;
+}): Promise<void> {
+  // Fail open on invalid input, matching the Redis-error path below: recording
+  // runs on the message-send path, so a bad increment must never throw and
+  // break the send — log and skip instead.
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    getStatsDClient().increment("ratelimiter.error.count", 1, [
+      "operation:add_fixed_window",
+    ]);
+    logger.error(
+      { key, label: bounds.label, incrementBy },
+      "addFixedWindowCount: incrementBy must be a positive integer, skipping"
+    );
+    return;
+  }
+
+  const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
+  const expireAtMs = bounds.windowEndMs + FIXED_WINDOW_EXPIRE_GRACE_MS;
+
+  const luaScript = `
+    local key = KEYS[1]
+    local increment_by = tonumber(ARGV[1])
+    local expire_at_ms = tonumber(ARGV[2])
+
+    local total = redis.call('INCRBY', key, increment_by)
+    redis.call('PEXPIREAT', key, expire_at_ms)
+    return total
+  `;
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [incrementBy.toString(), expireAtMs.toString()],
+    });
+  } catch (e) {
+    getStatsDClient().increment("ratelimiter.error.count", 1, [
+      "operation:add_fixed_window",
+    ]);
+    logger.error(
+      { key, label: bounds.label, incrementBy, error: e },
+      "addFixedWindowCount error"
+    );
+  }
+}
+
+/**
+ * Overwrites the fixed-window counter for `key` in the window identified by
+ * `bounds` with an absolute `value` (SET, not INCRBY). Use for backfill /
+ * resync from an external source of truth — regular accounting should use
+ * `addFixedWindowCount`. Returns a Result so callers can report failures.
+ */
+export async function setFixedWindowCount({
+  key,
+  bounds,
+  value,
+  logger,
+}: {
+  key: string;
+  bounds: FixedWindowBounds;
+  value: number;
+  logger: LoggerInterface;
+}): Promise<Result<void, Error>> {
+  if (!Number.isInteger(value) || value < 0) {
+    return new Err(new Error("value must be a non-negative integer."));
+  }
+
+  const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
+  const expireAtMs = bounds.windowEndMs + FIXED_WINDOW_EXPIRE_GRACE_MS;
+
+  const luaScript = `
+    local key = KEYS[1]
+    local value = tonumber(ARGV[1])
+    local expire_at_ms = tonumber(ARGV[2])
+
+    redis.call('SET', key, value)
+    redis.call('PEXPIREAT', key, expire_at_ms)
+  `;
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [value.toString(), expireAtMs.toString()],
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    getStatsDClient().increment("ratelimiter.error.count", 1, [
+      "operation:set_fixed_window",
+    ]);
+    logger.error(
+      { key, label: bounds.label, value, error: e },
+      "setFixedWindowCount error"
+    );
+    return new Err(normalizeError(e));
+  }
+}
+
+/**
+ * Reads the current fixed-window count for `key` in the window identified by
+ * `bounds`. Returns 0 when the window has no entries yet. Mirrors
+ * `getRateLimiterCount` but for the boundary-bucketed counter written by
+ * `addFixedWindowCount`.
+ */
+export async function getFixedWindowCount({
+  key,
+  bounds,
+}: {
+  key: string;
+  bounds: FixedWindowBounds;
+}): Promise<Result<number, Error>> {
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
+
+    const raw = await redis.get(redisKey);
+    const count = raw === null ? 0 : Number(raw);
+
+    if (!Number.isFinite(count)) {
+      return new Err(new Error(`Non-numeric fixed-window count: ${raw}`));
+    }
+
+    return new Ok(count);
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
 }

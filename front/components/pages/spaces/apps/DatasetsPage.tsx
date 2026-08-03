@@ -1,5 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import Custom404 from "@app/components/pages/Custom404";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   LinkWrapper,
@@ -8,9 +9,9 @@ import {
 } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { classNames } from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
-import { Button, Chip, PlusIcon, Spinner, TrashIcon } from "@dust-tt/sparkle";
+import { Button, Chip, Plus, Spinner, Trash01 } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
 export function DatasetsPage() {
@@ -18,7 +19,7 @@ export function DatasetsPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { isBuilder } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -32,7 +33,7 @@ export function DatasetsPage() {
   });
 
   const confirm = useContext(ConfirmContext);
-  const readOnly = !isBuilder;
+  const readOnly = !hasPermission("admin", "dust_app");
 
   const handleDelete = async (datasetName: string) => {
     if (!app) {
@@ -85,7 +86,7 @@ export function DatasetsPage() {
               disabled={readOnly}
               variant="primary"
               label="New Dataset"
-              icon={PlusIcon}
+              icon={Plus}
               onClick={() => {
                 void router.push(
                   `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/new`
@@ -102,15 +103,15 @@ export function DatasetsPage() {
                     href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${d.name}`}
                     className="block"
                   >
-                    <div className="group rounded border border-gray-300 px-4 py-4 dark:border-gray-300-night">
+                    <div className="group rounded border border-primary-300 px-4 py-4">
                       <div className="flex items-center justify-between">
                         <p className="heading-base truncate text-highlight-500">
                           {d.name}
                         </p>
                         {readOnly ? null : (
                           <div className="ml-2 flex flex-shrink-0">
-                            <TrashIcon
-                              className="hidden h-4 w-4 text-gray-400 hover:text-warning group-hover:block dark:text-gray-400-night"
+                            <Trash01
+                              className="hidden h-4 w-4 text-primary-400 hover:text-warning group-hover:block"
                               onClick={async (e) => {
                                 e.preventDefault();
                                 await handleDelete(d.name);
@@ -124,8 +125,8 @@ export function DatasetsPage() {
                           <p
                             className={classNames(
                               d.description
-                                ? "text-gray-700 dark:text-gray-700-night"
-                                : "text-gray-300 dark:text-gray-300-night",
+                                ? "text-primary-700"
+                                : "text-primary-300",
                               "text-s flex items-center"
                             )}
                           >
@@ -140,7 +141,7 @@ export function DatasetsPage() {
               })}
             </ul>
             <div className="mt-2 px-2">
-              <div className="py-2 text-sm text-gray-400 dark:text-gray-400-night">
+              <div className="py-2 text-sm text-primary-400">
                 Datasets are used as input data to apps (
                 <Chip label="input" /> block) or few-shot examples to prompt
                 models (

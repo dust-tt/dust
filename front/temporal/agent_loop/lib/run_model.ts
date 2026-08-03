@@ -1,27 +1,31 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
+import {
+  isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
+  isServerSideMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
-import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import {
-  buildMemoriesContext,
-  buildToolsetsContext,
-} from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+  constructPromptMultiActions,
+  renderToolUseDisabledUserMessage,
+} from "@app/lib/api/assistant/generation";
+import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
-  globalAgentInjectsMemory,
   globalAgentInjectsToolsets,
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
-} from "@app/lib/api/assistant/global_agents/global_agents";
+} from "@app/lib/api/assistant/global_agents/prompt_context";
 import {
   buildUserContext,
   buildWorkspaceContext,
@@ -35,7 +39,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
-import { getLLM } from "@app/lib/api/llm";
+import { getStreamLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -51,15 +55,18 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import {
+  parseAnthropicToolSearchBlock,
+  TOOL_SEARCH_SERVER_TOOL_NAMES,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
+import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
-import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
+import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -72,14 +79,28 @@ import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
-import type { AgentActionsEvent } from "@app/types/assistant/agent";
+import type {
+  AgentActionsEvent,
+  AgentConfigurationType,
+} from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
+  ConversationType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import { isTextContent } from "@app/types/assistant/generation";
-import { isByokProviderId } from "@app/types/assistant/models/providers";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import {
+  isTextContent,
+  type ModelConversationTypeMultiActions,
+} from "@app/types/assistant/generation";
+import {
+  ANTHROPIC_PROVIDER_ID,
+  isByokProviderId,
+  OPENAI_PROVIDER_ID,
+} from "@app/types/assistant/models/providers";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -87,12 +108,49 @@ import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
-const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
-  "web",
-  "slack",
-  "extension",
-  "agent_sidekick",
+const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
+  "api",
+  "cli",
+  "cli_programmatic",
+  "email",
+  "excel",
+  "gsheet",
+  "make",
+  "n8n",
+  "powerpoint",
+  "raycast",
+  "slack_workflow",
+  "teams",
+  "transcript",
+  "zapier",
+  "zendesk",
+  "onboarding_conversation",
+  "reinforced_skill_notification",
+  "reinforcement",
 ];
+
+// Builds the JSON blob whose token count estimates how many tokens the tool
+// definitions actually cost in context, for the model's token budget. When
+// tool search is active, deferred (non-eager) tool schemas are excluded from
+// the model's context until discovered, so they must not count toward the
+// budget the same way eager specs do: only eager specs, plus the tool-search
+// tool itself, are actually in context up front.
+export function buildToolDefinitionsForTokenCount(
+  specifications: AgentActionSpecification[],
+  toolSearchEnabled: boolean
+): string {
+  const specsInContext = toolSearchEnabled
+    ? specifications.filter((s) => s.eager)
+    : specifications;
+  return JSON.stringify([
+    ...(toolSearchEnabled ? [TOOL_SEARCH_TOOL] : []),
+    ...specsInContext.map((s) => ({
+      name: s.name,
+      description: s.description,
+      inputSchema: s.inputSchema,
+    })),
+  ]);
+}
 
 // Concatenate two content strings, ensuring at least one whitespace character
 // between them when both are non-empty. This prevents words from being glued
@@ -112,6 +170,192 @@ function concatWithNewlineBoundary(
   return previous + current;
 }
 
+// TODO(2026-07-06 flav): Avoid leaking provider specifics in the agent loop. The Anthropic
+// passthrough parsing below (block shapes, server tool names) belongs behind a
+// provider-agnostic dispatch keyed on the passthrough provider id.
+function getReplayedToolNames(
+  modelConversation: ModelConversationTypeMultiActions,
+  missingActionCatcherFunctionCallIds: Set<string>
+): string[] {
+  const toolNames = new Set<string>();
+
+  for (const message of modelConversation.messages) {
+    switch (message.role) {
+      case "assistant":
+        for (const content of message.contents) {
+          if (
+            content.type === "function_call" &&
+            !missingActionCatcherFunctionCallIds.has(content.value.id)
+          ) {
+            // Missing-action catcher calls remain in the replay so the model
+            // sees their error, but their attempted names were never tools.
+            toolNames.add(content.value.name);
+          }
+          if (
+            content.type === "provider_passthrough" &&
+            content.value.provider === "anthropic"
+          ) {
+            // OpenAI keeps loaded definitions in the replayed tool_search_output
+            // item. Anthropic requires referenced tools in the current request.
+            const block = parseAnthropicToolSearchBlock(content.value.block);
+
+            if (
+              block?.type === "tool_search_tool_result" &&
+              block.content.type === "tool_search_tool_search_result"
+            ) {
+              for (const ref of block.content.tool_references) {
+                // The search can match the tool search tool itself. Never
+                // synthesize a replay placeholder for it: the Anthropic client
+                // prepends the real server tool, and a placeholder would
+                // duplicate its name in the request.
+                if (
+                  TOOL_SEARCH_SERVER_TOOL_NAMES.some(
+                    (name) => name === ref.tool_name
+                  )
+                ) {
+                  continue;
+                }
+                toolNames.add(ref.tool_name);
+              }
+            }
+          }
+        }
+        break;
+      case "function":
+      case "compaction":
+      case "user":
+        break;
+      default:
+        assertNever(message);
+    }
+  }
+
+  return [...toolNames];
+}
+
+function getMissingActionCatcherFunctionCallIds(
+  conversation: ConversationType
+): Set<string> {
+  const functionCallIds = new Set<string>();
+  const missingActionCatcherMCPServerId = autoInternalMCPServerNameToSId({
+    name: "missing_action_catcher",
+    workspaceId: conversation.owner.id,
+  });
+
+  for (const messageVersions of conversation.content) {
+    for (const message of messageVersions) {
+      if (!isAgentMessageType(message)) {
+        continue;
+      }
+
+      for (const action of message.actions) {
+        // mcpServerId is serialized from the action's
+        // toolConfiguration.toolServerId.
+        if (action.mcpServerId === missingActionCatcherMCPServerId) {
+          functionCallIds.add(action.functionCallId);
+        }
+      }
+    }
+  }
+
+  return functionCallIds;
+}
+
+function buildReplayOnlyToolSpecification(
+  name: string
+): AgentActionSpecification {
+  return {
+    name,
+    description:
+      "Replay-only placeholder for a historical tool call. " +
+      "This tool is not available for new calls.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: true,
+    },
+  };
+}
+
+// A custom agent's configured tools are its identity: they stay in the eagerly
+// loaded set so the model always sees them instead of having to discover them
+// through tool search. The set is small and stable per agent version, so the
+// cached tool prefix stays byte-stable. Global agents keep the curated per-tool
+// metadata flags, and conversation, skill and JIT provided tools stay deferred
+// so mid-conversation additions append to the deferred catalog instead of
+// rewriting the prefix.
+export function buildBaseSpecifications(
+  availableActions: MCPToolConfigurationType[],
+  agentConfiguration: Pick<AgentConfigurationType, "sId" | "actions">
+): AgentActionSpecification[] {
+  const isCustomAgent = !isGlobalAgentId(agentConfiguration.sId);
+  // Tools are matched to configured actions through the configuration's
+  // persisted id, not the server view id: several configurations of the same
+  // internal server share one view (e.g. two query_tables actions), and
+  // runtime-built JIT and skill servers reuse those views too with a synthetic
+  // id of -1. Matching on the view id would wrongly promote JIT tools that
+  // appear mid-conversation, rewriting the cached tool prefix.
+  const agentActionModelIds = new Set(
+    agentConfiguration.actions
+      .filter(isServerSideMCPServerConfiguration)
+      .map((action) => action.id)
+      .filter((id) => id !== -1)
+  );
+
+  return availableActions
+    .map((action) => {
+      const specification = buildToolSpecification(action);
+      if (
+        isCustomAgent &&
+        isServerSideMCPToolConfiguration(action) &&
+        agentActionModelIds.has(action.id)
+      ) {
+        return { ...specification, eager: true };
+      }
+
+      return specification;
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+// Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
+// tools from the replayed history, and promoting them would invalidate the
+// cached tool prefix. We only append placeholders for replayed tools that are
+// no longer configured, since every tool referenced in history must have a
+// definition.
+export function buildSpecificationsWithReplayPlaceholders(
+  baseSpecifications: AgentActionSpecification[],
+  {
+    modelConversation,
+    missingActionCatcherFunctionCallIds = new Set(),
+  }: {
+    modelConversation: ModelConversationTypeMultiActions;
+    missingActionCatcherFunctionCallIds?: Set<string>;
+  }
+): {
+  specifications: AgentActionSpecification[];
+  missingReplayedToolNames: string[];
+} {
+  const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
+  const missingReplayedToolNames = getReplayedToolNames(
+    modelConversation,
+    missingActionCatcherFunctionCallIds
+  )
+    .filter((name) => !currentToolNames.has(name))
+    .sort();
+
+  return {
+    specifications: [
+      ...baseSpecifications,
+      ...missingReplayedToolNames.map((name) =>
+        buildReplayOnlyToolSpecification(name)
+      ),
+    ].sort((left, right) => left.name.localeCompare(right.name)),
+    missingReplayedToolNames,
+  };
+}
+
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
 export async function runModel(
@@ -123,6 +367,7 @@ export async function runModel(
     functionCallStepContentIds,
     durationRecorder,
     activityTimeoutDeadlineMs,
+    forceDisableToolUse = false,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
@@ -130,12 +375,17 @@ export async function runModel(
     functionCallStepContentIds: Record<string, ModelId>;
     durationRecorder: DurationRecorder;
     activityTimeoutDeadlineMs: number;
+    // Set when the previous step came back empty: force the final generation.
+    forceDisableToolUse?: boolean;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
   stepContexts: StepContext[];
+  // The step produced nothing at all: the loop should run one more step with
+  // tool use disabled to force a final answer.
+  retryWithoutTools?: boolean;
 } | null> {
   const {
     agentConfiguration,
@@ -168,7 +418,7 @@ export async function runModel(
 
   localLogger.info("Starting multi-action loop iteration");
 
-  const model = getSupportedModelConfig(agentConfiguration.model);
+  const modelInfo = runAgentData.modelInfo;
 
   async function publishAgentError(
     error: {
@@ -215,98 +465,107 @@ export async function runModel(
     }
   }
 
-  if (!model) {
-    await publishAgentError({
-      code: "model_does_not_support_multi_actions",
-      message:
-        `The model you selected (${agentConfiguration.model.modelId}) ` +
-        `does not support multi-actions.`,
-      metadata: null,
-    });
-    return null;
+  const featureFlags = await getFeatureFlags(auth);
+
+  if (step === 0) {
+    const accessError = await getModelTierAccessErrorForAgentConfiguration(
+      auth,
+      {
+        agentName: agentConfiguration.name,
+        model: modelInfo.endpoint.modelConfig,
+        reasoningEffort: modelInfo.reasoningEffort,
+        featureFlags,
+        agentScope: agentConfiguration.scope,
+      }
+    );
+    if (accessError) {
+      await publishAgentError(accessError);
+      return null;
+    }
   }
 
   const {
     enabledSkills,
     systemSkills,
     equippedSkills,
-    hasConditionalJITTools,
-    mcpActions,
-    mcpToolsListingError,
+    serverToolsAndInstructions: mcpActions,
+    hasSelectedSpacesOutsideAgentScope,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
-    const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
-      auth,
-      {
-        agentConfiguration,
-        conversation,
-        attachments,
-      }
-    );
+    const jitServers = await getJITServers(auth, {
+      agentConfiguration,
+      conversation,
+      attachments,
+    });
+
+    const clientSideMCPServerIds = [
+      ...(userMessage.context.clientSideMCPServerIds ?? []),
+    ];
 
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
         auth,
-        userMessage.context.clientSideMCPServerIds
+        clientSideMCPServerIds
       );
 
-    const { enabledSkills, systemSkills, equippedSkills } =
-      await SkillResource.listForAgentLoop(auth, runAgentData);
+    const {
+      effectiveSpaceIds,
+      enabledSkills,
+      systemSkills,
+      equippedSkills,
+      hasSelectedSpacesOutsideAgentScope,
+    } = await SkillResource.listForAgentLoop(auth, runAgentData);
 
-    const skillServers = await getSkillServers(auth, {
-      agentConfiguration,
-      skills: [...systemSkills, ...enabledSkills],
+    const { skillServers, systemSkillServers } = await getSkillServers(auth, {
+      effectiveSpaceIds,
+      enabledSkills,
+      systemSkills,
     });
 
-    const {
-      serverToolsAndInstructions: mcpActions,
-      error: mcpToolsListingError,
-    } = await startActiveObservation("list-mcp-tools", () =>
-      tryListMCPTools(
-        auth,
-        {
-          agentConfiguration,
-          conversation,
-          agentMessage,
-          clientSideActionConfigurations: clientSideMCPActionConfigurations,
-        },
-        { jitServers, skillServers }
-      )
+    const serverToolsAndInstructions = await startActiveObservation(
+      "list-mcp-tools",
+      () =>
+        tryListMCPTools(
+          auth,
+          {
+            agentConfiguration,
+            conversation,
+            agentMessage,
+            clientSideActionConfigurations: clientSideMCPActionConfigurations,
+          },
+          { jitServers, skillServers, systemSkillServers }
+        )
     );
 
     return {
-      hasConditionalJITTools,
+      hasSelectedSpacesOutsideAgentScope,
       enabledSkills,
       equippedSkills,
       systemSkills,
-      mcpActions,
-      mcpToolsListingError,
+      serverToolsAndInstructions,
     };
   });
 
-  if (mcpToolsListingError) {
-    localLogger.error(
-      {
-        error: mcpToolsListingError,
-      },
-      "Error listing MCP tools."
-    );
-  }
+  // Filter out ask_user_question when no human is available to answer: origins with no
+  // interactive reply surface, or sub-agent runs (conversation depth > 0) where the
+  // "user" is the parent agent rather than a human.
+  const supportsInteractiveQuestions =
+    !ASK_USER_QUESTION_BLOCKED_ORIGINS.includes(userMessage.context.origin) &&
+    conversation.depth === 0;
 
-  // Filter out ask_user_question for origins that don't support interactive questions.
-  const filteredMcpActions = !ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(
-    userMessage.context.origin
-  )
-    ? mcpActions.filter((s) => s.serverName !== "ask_user_question")
-    : mcpActions;
+  const filteredMcpActions = supportsInteractiveQuestions
+    ? mcpActions
+    : mcpActions.filter((s) => s.serverName !== "ask_user_question");
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
-  // If we are on the last step, we don't show any action.
-  // This will force the agent to run the generation.
-  const availableActions = isLastStep
-    ? []
-    : filteredMcpActions.flatMap((s) => s.tools);
+  // On the last step we force the agent to run the generation: the tools are
+  // still sent, so the request keeps the same shape as previous steps (stable
+  // tool definitions preserve prompt caching and keep tool references in the
+  // replayed history resolvable), but the model is forbidden from calling them
+  // (tool choice "none"). Same treatment after an empty step.
+  const disableToolUse = isLastStep || forceDisableToolUse;
+  const availableActions = filteredMcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (agentConfiguration.actions.length || availableActions.length > 0) {
@@ -315,42 +574,23 @@ export async function runModel(
     fallbackPrompt += ".";
   }
 
-  const agentsList = agentConfiguration.instructions?.includes(
-    "{ASSISTANTS_LIST}"
-  )
-    ? await getAgentConfigurationsForView({
-        auth,
-        agentsGetView: auth.user() ? "list" : "all",
-        variant: "light",
-      })
-    : null;
-
-  let memoriesContext: string | undefined;
-  const hasAgentMemoryAction = agentConfiguration.actions.some((action) =>
-    isServerSideMCPServerConfigurationWithName(action, "agent_memory")
-  );
-  if (
-    globalAgentInjectsMemory(agentConfiguration.sId) &&
-    hasAgentMemoryAction &&
-    auth.user()
-  ) {
-    const memories =
-      await AgentMemoryResource.findByAgentConfigurationIdAndUser(auth, {
-        agentConfigurationId: agentConfiguration.sId,
-      });
-    memoriesContext = buildMemoriesContext(memories);
-  }
-
   let toolsetsContext: string | undefined;
   const hasToolsetsAction = agentConfiguration.actions.some((action) =>
     isServerSideMCPServerConfigurationWithName(action, "toolsets")
   );
   if (globalAgentInjectsToolsets(agentConfiguration.sId) && hasToolsetsAction) {
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const allToolsets = await MCPServerViewResource.listBySpace(
-      auth,
-      globalSpace
-    );
+    const allToolsets =
+      await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(auth, [], {
+        includeGlobalSpace: true,
+        // isJITMCPServerView inspects tool input schemas.
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      });
     const filteredToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();
       return (
@@ -376,10 +616,7 @@ export async function runModel(
   });
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const featureFlags = await getFeatureFlags(auth);
-  const hasSandboxTools = featureFlags.includes("sandbox_tools");
-  const hasNestedSkills = featureFlags.includes("nested_skills");
-  const useFramesV2 = featureFlags.includes("frames_skill_v2");
+  const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
   const disableFormattingPrompt = featureFlags.includes(
     "disable_formatting_prompt"
   );
@@ -388,43 +625,40 @@ export async function runModel(
     userMessage,
     agentConfiguration,
     fallbackPrompt,
-    model,
+    modelInfo,
     hasAvailableActions: availableActions.length > 0,
-    errorContext: mcpToolsListingError,
-    agentsList,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
     systemSkills,
-    enabledSkills,
-    equippedSkills,
-    memoriesContext,
     toolsetsContext,
     userContext,
     workspaceContext,
     projectContext,
     isNewFileExplorer,
     hasSandboxTools,
-    hasNestedSkills,
-    useFramesV2,
     disableFormattingPrompt,
+    hasSelectedSpacesOutsideAgentScope,
   });
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
   ]);
 
-  const specifications: AgentActionSpecification[] = [];
-  for (const a of availableActions) {
-    specifications.push(buildToolSpecification(a));
-  }
+  const modelConfig = modelInfo.endpoint.modelConfig;
+
+  // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
+  // deferred behind tool search is a provider-specific policy applied downstream.
+  const toolSearchEnabled =
+    (modelConfig.providerId === ANTHROPIC_PROVIDER_ID ||
+      modelConfig.providerId === OPENAI_PROVIDER_ID) &&
+    !!modelConfig.supportsToolSearch;
+  const baseSpecifications: AgentActionSpecification[] =
+    buildBaseSpecifications(availableActions, agentConfiguration);
 
   // Count the number of tokens used by the functions presented to the model.
   // This is a rough estimate of the number of tokens.
-  const tools = JSON.stringify(
-    specifications.map((s) => ({
-      name: s.name,
-      description: s.description,
-      inputSchema: s.inputSchema,
-    }))
+  const tools = buildToolDefinitionsForTokenCount(
+    baseSpecifications,
+    toolSearchEnabled
   );
 
   // Turn the conversation into a digest that can be presented to the model.
@@ -435,14 +669,15 @@ export async function runModel(
       tracer.trace("renderConversationForModel", async () =>
         renderConversationForModel(auth, {
           conversation,
-          model,
+          model: modelConfig,
           prompt: promptText,
           tools,
-          allowedTokenCount: model.contextSize - model.generationTokensCount,
+          allowedTokenCount:
+            modelConfig.contextSize - modelConfig.generationTokensCount,
           agentConfiguration,
           leadingMessages,
           enabledSkills,
-          useFramesV2,
+          metricsCaller: "agent_loop",
         })
       )
   );
@@ -470,6 +705,28 @@ export async function runModel(
     });
 
     return null;
+  }
+
+  if (disableToolUse) {
+    // Tool choice "none" alone leaves the model with nothing to do; spell it out
+    // so it writes an answer. Its tokens sit outside the render budget.
+    modelConversationRes.value.modelConversation.messages.push(
+      renderToolUseDisabledUserMessage()
+    );
+  }
+
+  const { specifications, missingReplayedToolNames } =
+    buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+      modelConversation: modelConversationRes.value.modelConversation,
+      missingActionCatcherFunctionCallIds:
+        getMissingActionCatcherFunctionCallIds(conversation),
+    });
+
+  if (missingReplayedToolNames.length > 0) {
+    localLogger.info(
+      { missingReplayedToolNames },
+      "Replayed tools missing from current specifications"
+    );
   }
 
   // Temporarily adding this to check if we can consider contents property only in llms
@@ -510,7 +767,7 @@ export async function runModel(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ agentConfiguration })
+    getDelimitersConfiguration(modelInfo)
   );
 
   const traceContext: LLMTraceContext = {
@@ -525,13 +782,9 @@ export async function runModel(
     skipEmbeddingApiKeyRequirement: true,
   });
 
-  const llm = await getLLM(auth, {
+  const llm = await getStreamLLM(auth, {
     credentials,
-    modelId: model.modelId,
-    temperature: agentConfiguration.model.temperature,
-    reasoningEffort: agentConfiguration.model.reasoningEffort,
-    responseFormat: agentConfiguration.model.responseFormat,
-    metaData: agentConfiguration.model.metaData,
+    modelInfo,
     context: traceContext,
     omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
@@ -549,15 +802,18 @@ export async function runModel(
       !output.toolCalls?.length && output.content ? output.content : undefined,
   });
 
-  // Should not happen
+  // The model is listed as supported but no client (legacy or new router) can
+  // serve it. Surface an agent error instead of returning silently, which would
+  // leave the message pending and the UI stuck on "Thinking…" indefinitely.
   if (llm === null) {
-    localLogger.error(
-      {
-        conversationId: conversation.sId,
-        workspaceId: conversation.owner.sId,
-      },
-      "LLM is null in runModel, cannot proceed."
-    );
+    await publishAgentError({
+      code: "model_not_available",
+      message:
+        `The model you selected (${modelConfig.modelId}) ` +
+        `is not available. Please edit the agent to use another model ` +
+        `(advanced settings in the Instructions panel).`,
+      metadata: null,
+    });
 
     return null;
   }
@@ -573,7 +829,7 @@ export async function runModel(
 
   localLogger.info(
     {
-      modelId: model.modelId,
+      modelId: modelConfig.modelId,
       messageCount:
         modelConversationRes.value.modelConversation.messages.length,
       toolCount: specifications.length,
@@ -581,10 +837,7 @@ export async function runModel(
     "[LLM stream] Starting (agent loop)"
   );
 
-  if (
-    modelConversationRes.value.prunedContext === true &&
-    !agentMessage.prunedContext
-  ) {
+  if (modelConversationRes.value.prunedContext && !agentMessage.prunedContext) {
     await updateAgentMessageDBAndMemory(auth, {
       agentMessage,
       update: {
@@ -611,7 +864,11 @@ export async function runModel(
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools,
+    toolSearchEnabled,
+    disableToolUse,
+    cacheDiagnosticsEnabled: featureFlags.includes(
+      "anthropic_cache_diagnostics"
+    ),
     userMessage,
     specifications,
     flushParserTokens,
@@ -619,7 +876,7 @@ export async function runModel(
     agentMessage,
     step,
     agentConfiguration,
-    model,
+    model: modelConfig,
     activityTimeoutDeadlineMs,
     publishAgentError,
     prompt,
@@ -642,12 +899,12 @@ export async function runModel(
 
         if (
           plan.isByok &&
-          isByokProviderId(model.providerId) &&
+          isByokProviderId(modelConfig.providerId) &&
           (type === "authentication_error" || type === "permission_error")
         ) {
           const invalidatedCredential =
             await ProviderCredentialResource.markAsUnhealthy(auth, {
-              providerId: model.providerId,
+              providerId: modelConfig.providerId,
             });
 
           if (invalidatedCredential) {
@@ -666,12 +923,12 @@ export async function runModel(
                 ),
                 buildAuditLogTarget("credential", {
                   sId: invalidatedCredential.sId,
-                  name: model.providerId,
+                  name: modelConfig.providerId,
                 }),
               ],
               context: { location: "internal" },
               metadata: {
-                provider_id: model.providerId,
+                provider_id: modelConfig.providerId,
                 reason: "authentication_failed",
               },
             });
@@ -679,7 +936,7 @@ export async function runModel(
         }
 
         const errorMessage =
-          plan.isByok && isByokProviderId(model.providerId)
+          plan.isByok && isByokProviderId(modelConfig.providerId)
             ? getByokUserFacingLLMErrorMessage(type, metadata)
             : getUserFacingLLMErrorMessage(type, metadata);
 
@@ -711,7 +968,7 @@ export async function runModel(
     }
   }
 
-  const { dustRunId, nativeChainOfThought, output } =
+  const { dustRunId, nativeChainOfThought, output, stopReason } =
     getOutputFromActionResponse.value;
 
   // Create a new object to avoid mutation
@@ -746,19 +1003,24 @@ export async function runModel(
 
   // Create AgentStepContent for each content item (reasoning, text, function calls)
   // This replaces the original agent_step_content event emission
-  for (const [index, content] of output.contents.entries()) {
-    const stepContent = await AgentStepContentResource.createNewVersion({
+  const stepContents = await AgentStepContentResource.createNewVersions(
+    output.contents.map((content, index) => ({
       workspaceId: conversation.owner.id,
       agentMessageId: agentMessage.agentMessageId,
       step,
       index,
       type: content.type,
       value: content,
-    });
+      // Same run id appended to AgentMessage.runIds below. Lets consumption attribution join a
+      // RunUsage (RunModel.dustRunId) to the contents this run emitted.
+      dustRunId,
+    }))
+  );
 
+  for (const [i, content] of output.contents.entries()) {
     // If this is a function call content, track the step content ID
     if (content.type === "function_call") {
-      updatedFunctionCallStepContentIds[content.value.id] = stepContent.id;
+      updatedFunctionCallStepContentIds[content.value.id] = stepContents[i].id;
     }
   }
 
@@ -768,30 +1030,89 @@ export async function runModel(
   if (!output.actions.length) {
     // Successful generation.
     const processedContent = contentParser.getContent() ?? "";
-    if (!processedContent.length) {
+
+    // The answer may have been streamed in an earlier step (text emitted before
+    // a tool call), so an empty step is not an empty message.
+    const answerSoFar = concatWithNewlineBoundary(
+      agentMessage.content,
+      processedContent
+    );
+
+    // No tool call and no text at all: the model produced no answer, either
+    // because it ran out of iterations or because the turn came back empty.
+    // Surface a retryable error, since publishing a success would silently end
+    // the run.
+    if (!answerSoFar.length) {
+      // The provider ended the turn with nothing usable: no tool call, no text
+      // here, no text in an earlier step. The stop reason and the block shape
+      // are the only way to tell the causes apart (a turn cut mid-thinking, an
+      // empty text block, or no content block at all), so log both.
+      const emptyTurnLogFields = {
+        stopReason: stopReason ?? "unknown",
+        contentCount: output.contents.length,
+        contentTypes: output.contents.map((c) => c.type),
+        reasoningEffort: modelInfo.reasoningEffort,
+        chainOfThoughtLength: (
+          nativeChainOfThought ||
+          contentParser.getChainOfThought() ||
+          ""
+        ).length,
+        prunedContext: modelConversationRes.value.prunedContext,
+        inputTokens: modelConversationRes.value.tokensUsed,
+        toolSearchEnabled,
+        toolCount: specifications.length,
+      };
+
+      // Nothing at all came back: no tool call, no text here, no text in an
+      // earlier step. Rather than failing the message, run one more step with
+      // tool use disabled to force a final answer. The retry is a new step so
+      // it gets its own trace and run id.
+      if (!disableToolUse) {
+        localLogger.warn(
+          { modelId: modelConfig.modelId, ...emptyTurnLogFields },
+          "Empty model turn, retrying in a new step without tool use."
+        );
+
+        return {
+          actions: [],
+          runId: dustRunId,
+          functionCallStepContentIds: updatedFunctionCallStepContentIds,
+          stepContexts: [],
+          retryWithoutTools: true,
+        };
+      }
+
       localLogger.warn(
         {
-          modelId: model.modelId,
+          modelId: modelConfig.modelId,
+          isLastStep,
+          ...emptyTurnLogFields,
         },
         "No content generated by the agent."
       );
-    }
 
-    // On the last step, if the model produced no textual content, it effectively
-    // ran out of iterations without finalizing an answer. Surface a retryable
-    // empty_content error.
-    if (isLastStep && !processedContent.length) {
       await publishAgentError(
-        {
-          code: "max_step_reached",
-          message:
-            "This agent took too many steps to answer your query. " +
-            "Try narrowing down your question or breaking it into smaller parts.",
-          metadata: {
-            category: "empty_content",
-            errorTitle: "Too many steps",
-          },
-        },
+        isLastStep
+          ? {
+              code: "max_step_reached",
+              message:
+                "This agent took too many steps to answer your query. " +
+                "Try narrowing down your question or breaking it into smaller parts.",
+              metadata: {
+                category: "empty_content",
+                errorTitle: "Too many steps",
+              },
+            }
+          : {
+              code: "empty_content",
+              message:
+                "The agent stopped without producing an answer. " +
+                "This error can be safely retried.",
+              metadata: {
+                category: "empty_content",
+                errorTitle: "No answer generated",
+              },
+            },
         dustRunId
       );
       return null;
@@ -805,10 +1126,7 @@ export async function runModel(
     const updatedAgentMessage = {
       ...agentMessage,
       chainOfThought: (agentMessage.chainOfThought ?? "") + chainOfThought,
-      content: concatWithNewlineBoundary(
-        agentMessage.content,
-        processedContent
-      ),
+      content: answerSoFar,
       completedTs,
       status: "succeeded",
       completionDurationMs: getCompletionDuration(
@@ -969,6 +1287,7 @@ export async function runModel(
         internalMCPServerId: mcpServerView.internalMCPServerId,
         inputSchema: {},
         availability: "auto_hidden_builder",
+
         permission: "never_ask",
         toolServerId: mcpServerView.internalMCPServerId,
         mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
@@ -1007,7 +1326,7 @@ export async function runModel(
   agentMessage.contents.push(...newContents);
 
   const stepContexts = computeStepContexts({
-    agentConfiguration,
+    model: modelConfig,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
   });

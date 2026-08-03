@@ -15,6 +15,7 @@ const ParamsSchema = z.object({
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId/folders/:fId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
   validate("param", ParamsSchema),
@@ -40,6 +41,7 @@ app.delete(
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       folderId: fId,
+      caller: "private-api",
     });
     if (delRes.isErr()) {
       return apiError(ctx, {

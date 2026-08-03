@@ -44,36 +44,53 @@ import {
   ActionFolderIcon,
   ActionMagicIcon,
   ActionUserGroupIcon,
-  ArrowDownCircleIcon,
-  ArrowUpOnSquareIcon,
-  AttachmentIcon,
+  ArrowCircleBrokenDown,
+  Upload01,
+  Attachment01,
   Avatar,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
+  MessagePlusCircle,
   Chip,
-  CloudArrowDownIcon,
-  Cog6ToothIcon,
-  DocumentIcon,
+  DownloadCloud01,
+  Settings01,
+  File02,
   DoubleIcon,
-  FolderIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
+  Folder,
+  ThumbsDown,
+  ThumbsUp,
   Icon,
-  LogoutIcon,
-  MagicIcon,
-  MagnifyingGlassIcon,
-  PlusIcon,
-  RobotIcon,
+  LogOut01,
+  MagicWand02,
+  SearchMd,
+  Plus,
+  Robot,
   SearchDropdownMenu,
-  SuitcaseIcon,
-  UserGroupIcon,
-  UserIcon,
+  Briefcase01,
+  Users01,
+  User01,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/Dropdown",
+  title: "Forms & Inputs/Dropdown",
   component: DropdownMenu,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A menu of actions or options revealed from a trigger — Sparkle's equivalent of an action or overflow menu. Built on Radix DropdownMenu, it composes from **DropdownMenuTrigger** and **DropdownMenuContent** and supports items with leading icons and keyboard shortcuts, checkbox and radio items, grouping with labels and separators, submenus, a searchbar/filter, and tag lists.
+
+**When to use**
+- To expose secondary or overflow actions tied to a control without cluttering the page.
+- To pick one value from a longer list than a **RadioGroup** comfortably shows.
+
+**Guidelines**
+- The trigger should be a button — wrap it with \`<DropdownMenuTrigger asChild>\`.
+- Keep item labels short and action-first; group related items and use a separator before destructive actions.
+- Use **DropdownMenuCheckboxItem** / **DropdownMenuRadioItem** to reflect selection state instead of plain items.
+- For a large, searchable dataset, use **DropdownMenuSearchbar** rather than an unbounded list.`,
+      },
+    },
+  },
 } satisfies Meta<typeof DropdownMenu>;
 
 export default meta;
@@ -84,7 +101,7 @@ export const SimpleDropdown: Story = {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger>Open Simple Dropdown</DropdownMenuTrigger>
-        <DropdownMenuContent className="s-max-w-[300px]">
+        <DropdownMenuContent className="max-w-[300px]">
           <DropdownMenuLabel label="My Account" />
           <DropdownMenuItem
             icon={() => (
@@ -128,59 +145,52 @@ export const ComplexDropdown: Story = {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger>Open Complex</DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-56">
+        <DropdownMenuContent className="w-56">
           <DropdownMenuLabel label="My Account" />
           <DropdownMenuGroup>
             <DropdownMenuItem
-              icon={UserIcon}
+              icon={User01}
               label="Profile"
               endComponent={
-                <Button
-                  size="icon"
-                  icon={ArrowUpOnSquareIcon}
-                  variant="ghost"
-                />
+                <Button size="icon" icon={Upload01} variant="ghost" />
               }
             />
-            <DropdownMenuItem icon={ArrowDownCircleIcon} label="Billing" />
-            <DropdownMenuItem icon={Cog6ToothIcon} label="Settings" />
-            <DropdownMenuItem icon={UserIcon} label="Keyboard shortcuts" />
+            <DropdownMenuItem icon={ArrowCircleBrokenDown} label="Billing" />
+            <DropdownMenuItem icon={Settings01} label="Settings" />
+            <DropdownMenuItem icon={User01} label="Keyboard shortcuts" />
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuLabel label="Team" />
-            <DropdownMenuItem icon={UserIcon} label="Members" />
+            <DropdownMenuItem icon={User01} label="Members" />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={UserIcon} label="Invite users" />
+              <DropdownMenuSubTrigger icon={User01} label="Invite users" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem icon={MagicIcon} label="Email" />
-                  <DropdownMenuItem
-                    icon={ChatBubbleBottomCenterPlusIcon}
-                    label="Message"
-                  />
+                  <DropdownMenuItem icon={MagicWand02} label="Email" />
+                  <DropdownMenuItem icon={MessagePlusCircle} label="Message" />
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem icon={UserIcon} label="More..." />
-                  <DropdownMenuItem icon={UserIcon} label="More.." />
-                  <DropdownMenuItem icon={UserIcon} label="More..." />
-                  <DropdownMenuItem icon={UserIcon} label="More.." />
-                  <DropdownMenuItem icon={UserIcon} label="More" />
-                  <DropdownMenuItem icon={UserIcon} label="More....." />
-                  <DropdownMenuItem icon={UserIcon} label="More.." />
-                  <DropdownMenuItem icon={UserIcon} label="More" />
-                  <DropdownMenuItem icon={UserIcon} label="More...." />
+                  <DropdownMenuItem icon={User01} label="More..." />
+                  <DropdownMenuItem icon={User01} label="More.." />
+                  <DropdownMenuItem icon={User01} label="More..." />
+                  <DropdownMenuItem icon={User01} label="More.." />
+                  <DropdownMenuItem icon={User01} label="More" />
+                  <DropdownMenuItem icon={User01} label="More....." />
+                  <DropdownMenuItem icon={User01} label="More.." />
+                  <DropdownMenuItem icon={User01} label="More" />
+                  <DropdownMenuItem icon={User01} label="More...." />
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
-            <DropdownMenuItem icon={UserGroupIcon} label="New Team" />
+            <DropdownMenuItem icon={Users01} label="New Team" />
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem icon={GithubLogo} label="GitHub" />
-          <DropdownMenuItem icon={UserIcon} label="Support" />
-          <DropdownMenuItem icon={CloudArrowDownIcon} label="API" disabled />
+          <DropdownMenuItem icon={User01} label="Support" />
+          <DropdownMenuItem icon={DownloadCloud01} label="API" disabled />
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            icon={LogoutIcon}
+            icon={LogOut01}
             label="Log out"
             variant="warning"
             href="/api/auth/logout"
@@ -198,15 +208,15 @@ export const WithShortcuts: Story = {
         <DropdownMenuTrigger asChild>
           <Button label="Quick Actions" variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-64">
+        <DropdownMenuContent className="w-64">
           <DropdownMenuLabel label="Create" />
           <DropdownMenuItem
-            icon={DocumentIcon}
+            icon={File02}
             label="New File"
             endComponent={<DropdownMenuShortcut shortcut="cmd+n" />}
           />
           <DropdownMenuItem
-            icon={FolderIcon}
+            icon={Folder}
             label="New Folder"
             endComponent={<DropdownMenuShortcut shortcut="cmd+shift+n" />}
           />
@@ -218,7 +228,7 @@ export const WithShortcuts: Story = {
             endComponent={<DropdownMenuShortcut shortcut="cmd+shift+p" />}
           />
           <DropdownMenuItem
-            icon={CloudArrowDownIcon}
+            icon={DownloadCloud01}
             label="Download"
             endComponent={<DropdownMenuShortcut shortcut="cmd+shift+d" />}
           />
@@ -240,7 +250,7 @@ export const WithCheckboxes: Story = {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger>Open Checkbox</DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-72">
+        <DropdownMenuContent className="w-72">
           <DropdownMenuLabel label="Interface Settings" />
           <DropdownMenuSeparator />
           <DropdownMenuCheckboxItem
@@ -278,7 +288,7 @@ export const WithRadioGroup: Story = {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger>Open Radio Group</DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-56">
+        <DropdownMenuContent className="w-56">
           <DropdownMenuLabel label="Panel Position" />
           <DropdownMenuSeparator />
           <DropdownMenuRadioGroup value={position} onValueChange={setPosition}>
@@ -459,7 +469,7 @@ export const WithSearchAndPicker: Story = {
       item.toLowerCase().includes(searchText.toLowerCase())
     );
 
-    const mainIcons = [FolderIcon, DocumentIcon];
+    const mainIcons = [Folder, File02];
     const extraIcons = [DriveLogo, NotionLogo, SlackLogo];
 
     const filteredAgents = [
@@ -467,49 +477,49 @@ export const WithSearchAndPicker: Story = {
         name: "Research Assistant",
         description: "Academic research and paper analysis",
         emoji: "🔬",
-        backgroundColor: "s-bg-blue-200",
+        backgroundColor: "bg-blue-200",
       },
       {
         name: "Code Companion",
         description: "Pair programming and code review",
         emoji: "💻",
-        backgroundColor: "s-bg-purple-200",
+        backgroundColor: "bg-purple-200",
       },
       {
         name: "Data Analyst",
         description: "Data visualization and insights",
         emoji: "��",
-        backgroundColor: "s-bg-green-200",
+        backgroundColor: "bg-green-200",
       },
       {
         name: "Content Writer",
         description: "Blog posts and marketing copy",
         emoji: "✍️",
-        backgroundColor: "s-bg-yellow-200",
+        backgroundColor: "bg-yellow-200",
       },
       {
         name: "Customer Support",
         description: "24/7 customer service automation",
         emoji: "🤝",
-        backgroundColor: "s-bg-pink-200",
+        backgroundColor: "bg-pink-200",
       },
       {
         name: "Legal Assistant",
         description: "Contract review and legal research",
         emoji: "⚖️",
-        backgroundColor: "s-bg-red-200",
+        backgroundColor: "bg-red-200",
       },
       {
         name: "Design Assistant",
         description: "UI/UX design and prototyping",
         emoji: "🎨",
-        backgroundColor: "s-bg-indigo-200",
+        backgroundColor: "bg-indigo-200",
       },
       {
         name: "Financial Advisor",
         description: "Investment analysis and planning",
         emoji: "💰",
-        backgroundColor: "s-bg-emerald-200",
+        backgroundColor: "bg-emerald-200",
       },
     ] as const;
 
@@ -567,27 +577,25 @@ export const WithSearchAndPicker: Story = {
     ] as const;
 
     return (
-      <div className="s-flex s-gap-2">
+      <div className="flex gap-2">
         <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
               label={selectedItem || "Attach"}
-              icon={AttachmentIcon}
+              icon={Attachment01}
               variant="outline"
               size="sm"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="s-w-[380px]"
+            className="w-[380px]"
             dropdownHeaders={
               <DropdownMenuSearchbar
                 value={searchText}
                 onChange={setSearchText}
                 name="search"
                 placeholder="Search in Dust"
-                button={
-                  <Button icon={ArrowUpOnSquareIcon} label="Upload File" />
-                }
+                button={<Button icon={Upload01} label="Upload File" />}
               />
             }
           >
@@ -619,9 +627,9 @@ export const WithSearchAndPicker: Story = {
                 );
               })
             ) : (
-              <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-py-8">
-                <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-text-center s-text-base s-font-semibold s-text-primary-400">
-                  <Icon visual={MagnifyingGlassIcon} size="sm" />
+              <div className="flex h-full w-full items-center justify-center py-8">
+                <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
+                  <Icon visual={SearchMd} size="sm" />
                   Search in Dust
                 </div>
               </div>
@@ -630,10 +638,10 @@ export const WithSearchAndPicker: Story = {
         </DropdownMenu>
         <DropdownMenu open={openAgents} onOpenChange={setOpenAgents}>
           <DropdownMenuTrigger asChild>
-            <Button icon={RobotIcon} variant="outline" size="sm" isSelect />
+            <Button icon={Robot} variant="outline" size="sm" isSelect />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="s-h-96 s-w-[380px]"
+            className="h-96 w-[380px]"
             dropdownHeaders={
               <DropdownMenuSearchbar
                 ref={agentsSearchInputRef}
@@ -642,7 +650,7 @@ export const WithSearchAndPicker: Story = {
                 onChange={setSearchText}
                 onKeyDown={() => {}}
                 placeholder="Search Agents"
-                button={<Button icon={PlusIcon} label="Create" />}
+                button={<Button icon={Plus} label="Create" />}
               />
             }
           >
@@ -674,13 +682,13 @@ export const WithSearchAndPicker: Story = {
           <DropdownMenuTrigger asChild>
             <Button
               label={selectedItem || "Add Toolset"}
-              icon={SuitcaseIcon}
+              icon={Briefcase01}
               variant="outline"
               size="sm"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="s-h-96 s-w-[380px]"
+            className="h-96 w-[380px]"
             dropdownHeaders={
               <DropdownMenuSearchbar
                 ref={toolsetsSearchInputRef}
@@ -689,7 +697,7 @@ export const WithSearchAndPicker: Story = {
                 onChange={setSearchText}
                 onKeyDown={() => {}}
                 placeholder="Search Tools"
-                button={<Button icon={PlusIcon} label="Add MCP Server" />}
+                button={<Button icon={Plus} label="Add MCP Server" />}
               />
             }
           >
@@ -723,35 +731,35 @@ export const WithStaticItems: Story = {
         <DropdownMenuTrigger asChild>
           <Button label="System Status" variant="outline" size="sm" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-[250px]">
+        <DropdownMenuContent className="w-[250px]">
           <DropdownMenuLabel label="System Metrics" />
           <DropdownMenuStaticItem label="CPU Usage" value="45%" />
           <DropdownMenuStaticItem label="Memory" value="2.3GB/8GB" />
           <DropdownMenuStaticItem label="Disk Space">
-            <span className="s-flex s-items-center s-gap-2 s-text-muted-foreground">
+            <span className="flex items-center gap-2 text-muted-foreground">
               3
               <Icon
                 size="xs"
-                className="s-text-muted-foreground"
-                visual={HandThumbUpIcon}
+                className="text-muted-foreground"
+                visual={ThumbsUp}
               />
               1
               <Icon
                 size="xs"
-                className="s-text-muted-foreground"
-                visual={HandThumbDownIcon}
+                className="text-muted-foreground"
+                visual={ThumbsDown}
               />
             </span>
           </DropdownMenuStaticItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel label="Actions" />
           <DropdownMenuItem
-            icon={Cog6ToothIcon}
+            icon={Settings01}
             label="System Settings"
             onClick={() => console.log("Settings clicked")}
           />
           <DropdownMenuItem
-            icon={CloudArrowDownIcon}
+            icon={DownloadCloud01}
             label="Download Report"
             onClick={() => console.log("Download clicked")}
           />
@@ -816,19 +824,19 @@ export const WithTags: Story = {
     };
 
     return (
-      <div className="s-flex s-flex-col s-gap-4 s-p-4">
-        <div className="s-flex s-items-center s-gap-2">
+      <div className="flex flex-col gap-4 p-4">
+        <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 label="Select Tags"
-                icon={PlusIcon}
+                icon={Plus}
                 size="sm"
                 isSelect
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="s-w-80">
+            <DropdownMenuContent className="w-80">
               <DropdownMenuLabel label="Available Tags" />
               <DropdownMenuSeparator />
               <DropdownMenuTagList>
@@ -844,34 +852,30 @@ export const WithTags: Story = {
               </DropdownMenuTagList>
 
               <DropdownMenuSeparator />
-              <div className="s-p-2">
+              <div className="p-2">
                 <Button
                   label={isLoading ? "Adding..." : "Add Random Tag"}
                   onClick={handleAddTag}
-                  className="s-w-full"
+                  className="w-full"
                   size="sm"
                   disabled={isLoading}
-                  icon={
-                    isLoading
-                      ? () => <Spinner size="xs" variant="color" />
-                      : undefined
-                  }
+                  icon={isLoading ? () => <Spinner size="xs" /> : undefined}
                 />
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="s-text-sm s-text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             Click to view available tags
           </div>
         </div>
 
-        <div className="s-flex s-flex-wrap s-gap-2 s-rounded-lg s-border s-border-border s-p-4">
-          <span className="s-mr-2 s-text-sm s-text-muted-foreground">
+        <div className="flex flex-wrap gap-2 rounded-lg border border-border p-4">
+          <span className="mr-2 text-sm text-muted-foreground">
             Current tags:
           </span>
           {tags.map((tag) => (
-            <div key={tag} className="s-inline-flex">
+            <div key={tag} className="inline-flex">
               <Chip
                 label={tag}
                 color="highlight"
@@ -899,14 +903,14 @@ export const WithFilters: Story = {
     ];
 
     const allItems = [
-      { name: "Project Proposal.pdf", type: "documents", icon: DocumentIcon },
-      { name: "Q4 Report.docx", type: "documents", icon: DocumentIcon },
-      { name: "Team Photo.jpg", type: "images", icon: FolderIcon },
-      { name: "Logo Design.png", type: "images", icon: FolderIcon },
-      { name: "Product Demo.mp4", type: "videos", icon: FolderIcon },
-      { name: "Tutorial.mov", type: "videos", icon: FolderIcon },
-      { name: "Budget 2024.xlsx", type: "documents", icon: DocumentIcon },
-      { name: "Banner.svg", type: "images", icon: FolderIcon },
+      { name: "Project Proposal.pdf", type: "documents", icon: File02 },
+      { name: "Q4 Report.docx", type: "documents", icon: File02 },
+      { name: "Team Photo.jpg", type: "images", icon: Folder },
+      { name: "Logo Design.png", type: "images", icon: Folder },
+      { name: "Product Demo.mp4", type: "videos", icon: Folder },
+      { name: "Tutorial.mov", type: "videos", icon: Folder },
+      { name: "Budget 2024.xlsx", type: "documents", icon: File02 },
+      { name: "Banner.svg", type: "images", icon: Folder },
     ];
 
     const filteredItems =
@@ -923,14 +927,14 @@ export const WithFilters: Story = {
         <DropdownMenuTrigger asChild>
           <Button
             label={`Files (${filteredItems.length})`}
-            icon={FolderIcon}
+            icon={Folder}
             variant="outline"
             size="sm"
             isSelect
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="s-w-[320px]"
+          className="w-[320px]"
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
@@ -957,7 +961,7 @@ export const WithFilters: Story = {
               />
             ))
           ) : (
-            <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
               No items found
             </div>
           )}
@@ -970,18 +974,16 @@ export const WithFilters: Story = {
 export const WithTooltips: Story = {
   render: () => {
     return (
-      <div className="s-flex s-flex-col s-gap-8 s-p-8">
-        <h3 className="s-text-lg s-font-semibold">
-          Dropdown with Rich Tooltips
-        </h3>
+      <div className="flex flex-col gap-8 p-8">
+        <h3 className="text-lg font-semibold">Dropdown with Rich Tooltips</h3>
 
-        <div className="s-flex s-gap-4">
+        <div className="flex gap-4">
           {/* Knowledge Attachment Example */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button label="Skill Builder Actions" variant="outline" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="s-w-64">
+            <DropdownMenuContent className="w-64">
               <DropdownMenuItem label="Configure Settings" />
               <DropdownTooltipTrigger
                 description="Use company knowledge for context."
@@ -989,13 +991,13 @@ export const WithTooltips: Story = {
                   <img
                     src="/static/landing/product/Knowledge_Tooltips.jpg"
                     alt="Knowledge Search Interface"
-                    className="s-aspect-[4/3] s-w-full s-rounded s-object-cover"
+                    className="aspect-[4/3] w-full rounded object-cover"
                   />
                 }
                 side="right"
                 sideOffset={8}
               >
-                <DropdownMenuItem icon={AttachmentIcon} label="Add Knowledge" />
+                <DropdownMenuItem icon={Attachment01} label="Add Knowledge" />
               </DropdownTooltipTrigger>
               <DropdownTooltipTrigger
                 description="This feature is disabled because you need to configure settings first."
@@ -1004,7 +1006,7 @@ export const WithTooltips: Story = {
               >
                 <DropdownMenuItem
                   label="Save Draft"
-                  icon={CloudArrowDownIcon}
+                  icon={DownloadCloud01}
                   disabled
                 />
               </DropdownTooltipTrigger>
@@ -1016,54 +1018,49 @@ export const WithTooltips: Story = {
             <DropdownMenuTrigger asChild>
               <Button label="Data Actions" variant="outline" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="s-w-64">
+            <DropdownMenuContent className="w-64">
               <DropdownMenuItem label="View Report" />
               <DropdownTooltipTrigger
                 description="Export your data in various formats. Choose from CSV, JSON, or PDF depending on your needs."
                 media={
-                  <div className="s-flex s-items-center s-gap-3">
-                    <div className="s-flex s-h-10 s-w-10 s-items-center s-justify-center s-rounded-full s-bg-green-100">
-                      <CloudArrowDownIcon className="s-h-5 s-w-5 s-text-green-600" />
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                      <DownloadCloud01 className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
-                      <h4 className="s-text-sm s-font-medium s-text-green-800">
+                      <h4 className="text-sm font-medium text-green-800">
                         Export Status
                       </h4>
-                      <p className="s-text-xs s-text-green-600">
-                        Ready to export
-                      </p>
+                      <p className="text-xs text-green-600">Ready to export</p>
                     </div>
                   </div>
                 }
                 side="right"
                 sideOffset={8}
               >
-                <DropdownMenuItem
-                  icon={CloudArrowDownIcon}
-                  label="Export Data"
-                />
+                <DropdownMenuItem icon={DownloadCloud01} label="Export Data" />
               </DropdownTooltipTrigger>
               <DropdownMenuItem label="Share Report" />
             </DropdownMenuContent>
           </DropdownMenu>
 
           {/* Left-side tooltip example */}
-          <div className="s-ml-auto">
+          <div className="ml-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button label="Right Side Menu" variant="outline" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="s-w-56">
+              <DropdownMenuContent className="w-56">
                 <DropdownMenuItem label="Regular Item" />
                 <DropdownTooltipTrigger
                   description="This tooltip appears on the left side when the dropdown is positioned on the right side of the screen."
                   media={
-                    <div className="s-text-center">
-                      <div className="s-mb-2 s-text-2xl">⬅️</div>
-                      <p className="s-text-sm s-font-medium s-text-orange-800">
+                    <div className="text-center">
+                      <div className="mb-2 text-2xl">⬅️</div>
+                      <p className="text-sm font-medium text-orange-800">
                         Positioned Left
                       </p>
-                      <p className="s-mt-1 s-text-xs s-text-orange-600">
+                      <p className="mt-1 text-xs text-orange-600">
                         Perfect for right-side menus
                       </p>
                     </div>
@@ -1071,14 +1068,14 @@ export const WithTooltips: Story = {
                   side="left"
                   sideOffset={8}
                 >
-                  <DropdownMenuItem icon={MagicIcon} label="Help Item" />
+                  <DropdownMenuItem icon={MagicWand02} label="Help Item" />
                 </DropdownTooltipTrigger>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
 
-        <p className="s-max-w-lg s-text-sm s-text-gray-600">
+        <p className="max-w-lg text-sm text-gray-600">
           Hover over menu items with icons to see rich tooltips that provide
           contextual information and step-by-step instructions. The tooltip
           positioning automatically adapts based on available space.

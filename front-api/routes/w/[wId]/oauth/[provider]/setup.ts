@@ -1,5 +1,7 @@
 /** @ignoreswagger */
+
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
+import type { GetOAuthSetupResponseBody } from "@app/types/api/oauth";
 import {
   ExtraConfigTypeSchema,
   OAUTH_PROVIDERS,
@@ -9,10 +11,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export interface GetOAuthSetupResponseBody {
-  redirectUrl: string;
-}
 
 const ProviderParamSchema = z.object({
   provider: z.enum(OAUTH_PROVIDERS),

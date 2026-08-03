@@ -24,11 +24,10 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useAccessibleAgentIds } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { classNames } from "@app/lib/utils";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
   isRichUserMention,
@@ -39,7 +38,7 @@ import {
   ContentMessageAction,
   ContentMessageInline,
   EmptyCTA,
-  InformationCircleIcon,
+  InfoCircle,
 } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
@@ -78,13 +77,9 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const agentBuilderContext = context.agentBuilderContext;
 
   const isMobile = useIsMobile();
-  const { agentConfigurations } = useUnifiedAgentConfigurations({
+  const accessibleAgentIds = useAccessibleAgentIds({
     workspaceId: context.owner.sId,
   });
-  const accessibleAgentIds = useMemo(
-    () => new Set(agentConfigurations.map((a) => a.sId)),
-    [agentConfigurations]
-  );
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
   const {
@@ -108,6 +103,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         m.user?.id === context.user.id &&
         m.visibility !== "deleted"
     );
+
+  const lastRequestedModel = lastUserMessage?.requestedModel ?? null;
 
   // Last agent mentioned by anyone in the conversation. Computed outside useMemo so the
   // result is a stable object reference (same mention object from the message list) that
@@ -135,6 +132,10 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     : contextUsagePercentage >=
         CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"]
       ? "Context is full, compact to continue."
+      : null;
+  const forkBlockMessage =
+    context.conversation?.forkingData?.forkedFrom?.fileCopyStatus === "pending"
+      ? "Wait for the branch to finish preparing."
       : null;
   const showContextUsageBanner =
     contextUsage &&
@@ -196,25 +197,16 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       return [lastAgentMentionInConversation];
     }
 
-    // Fall back to @dust only for new conversations. In existing conversations
-    // where messages are still loading, don't default — wait for messages.
-    if (!context.conversation) {
-      const dustAgent = agentConfigurations.find(
-        (a) => a.sId === GLOBAL_AGENTS_SID.DUST
-      );
-      if (dustAgent) {
-        return [toRichAgentMentionType(dustAgent)];
-      }
-    }
-
+    // For new conversations, the sticky agent (personal default → @dust) is resolved
+    // downstream in `useHandleMentions` once the default has loaded, so we intentionally
+    // emit no agent mention here. In existing conversations where messages are still
+    // loading, don't default either — wait for messages.
     return [];
   }, [
-    context.conversation,
     draftAgent,
     lastUserMessage,
     lastAgentMentionInConversation,
     accessibleAgentIds,
-    agentConfigurations,
     agentBuilderContext,
   ]);
 
@@ -394,7 +386,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     context.projectSpaceName
   ) {
     return (
-      <div className="relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-conversation">
+      <div className="relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 md:max-w-conversation">
         <PodJoinCTA
           owner={context.owner}
           podId={context.projectId}
@@ -471,7 +463,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
   if (context.projectId && context.isProjectArchived) {
     return (
-      <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
+      <div className="mx-auto flex w-full flex-col py-4 md:max-w-conversation">
         <EmptyCTA
           message="This conversation belongs to an archived Pod. No new messages can be sent."
           action={null}
@@ -483,7 +475,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   return (
     <div
       className={classNames(
-        "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-conversation"
+        "relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 md:max-w-conversation"
       )}
     >
       <div className="flex w-full justify-center gap-2">
@@ -496,7 +488,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       </div>
       {blockedActions.length > 0 && (
         <ContentMessageInline
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           variant="primary"
           className="mb-5 flex max-h-dvh w-full"
         >
@@ -537,6 +529,15 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           )}
         </ContentMessageInline>
       )}
+      {forkBlockMessage && (
+        <ContentMessageInline
+          icon={InfoCircle}
+          variant="primary"
+          className="mb-5 flex max-h-dvh w-full"
+        >
+          Preparing branch… You can draft a message while its files are copied.
+        </ContentMessageInline>
+      )}
       {showContextUsageBanner && (
         <ContextUsageWarningBanner
           owner={context.owner}
@@ -563,14 +564,20 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           user={context.user}
           onSubmit={context.handleSubmit}
           stickyMentions={autoMentions}
+          lastRequestedModel={lastRequestedModel}
           conversation={context.conversation}
           draftKey={context.draftKey}
           disableAutoFocus={isMobile || hasUserAnswerRequired}
           disableUserMentions={!!agentBuilderContext}
+          disableAgentMentions={
+            agentBuilderContext?.disableAgentMentions === true
+          }
           actions={agentBuilderContext?.actionsToShow}
           isSubmitting={agentBuilderContext?.isSubmitting === true}
           isAgentBuilder={!!agentBuilderContext}
-          submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
+          submitBlockMessage={
+            forkBlockMessage ?? wakeUpBlockMessage ?? compactionBlockMessage
+          }
           effectiveIsCompact={effectiveIsCompact}
           onExpandInputBar={expandInputBar}
           onEditorFocusChange={onEditorFocusChange}

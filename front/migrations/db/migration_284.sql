@@ -1,1 +1,0 @@
-DROP TABLE "agent_message_contents";

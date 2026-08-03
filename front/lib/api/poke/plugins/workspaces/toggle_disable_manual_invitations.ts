@@ -18,6 +18,7 @@ export const toggleDisableManualInvitationsPlugin = createPlugin({
           "When checked, manual invitations via the 'Invite members' button will be disabled",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

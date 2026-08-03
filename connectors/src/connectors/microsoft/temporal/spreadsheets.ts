@@ -379,11 +379,31 @@ export async function handleSpreadSheet({
   // List synced sheets.
   const syncedWorksheets = await spreadsheet.fetchChildren();
 
+  // Worksheets we already know are permanently unserviceable (e.g. Microsoft Graph
+  // returned a 504 on a previous attempt) so we don't repeatedly pay for a Graph
+  // call we already know will fail. See connectors #9623.
+  const knownSkippedWorksheetIds = new Set(
+    syncedWorksheets
+      .filter((synced) => !!synced.skipReason)
+      .map((synced) => synced.internalId)
+  );
+
   const successfulSheetIdImports: string[] = [];
   for (const worksheet of worksheetsRes.value) {
     await heartbeat();
     if (worksheet.id) {
       const worksheetInternalId = getWorksheetInternalId(worksheet, documentId);
+
+      if (knownSkippedWorksheetIds.has(worksheetInternalId)) {
+        localLogger.info(
+          { worksheetId: worksheet.id, name: worksheet.name },
+          "[Spreadsheet] Skipping worksheet with a previously persisted skip reason."
+        );
+        // Keep it out of the deletion pass below, the skip reason should be preserved.
+        successfulSheetIdImports.push(worksheetInternalId);
+        continue;
+      }
+
       const importResult = await processSheet({
         client,
         connector,

@@ -14,13 +14,12 @@ use crate::search_stores::search_store::{Indexable, NodeItem, SearchStore};
 use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
-use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
-use qdrant_client::qdrant::vectors_output::VectorsOptions;
+use qdrant_client::qdrant::vector_output::Vector;
 use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
-use qdrant_client::{prelude::Payload, qdrant};
+use qdrant_client::{qdrant, Payload};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -532,7 +531,6 @@ impl DataSource {
                 &self.project,
                 &self.data_source_id(),
                 &document_id.to_string(),
-                &None,
             )
             .await?;
 
@@ -710,7 +708,6 @@ impl DataSource {
                     &self.project,
                     &self.data_source_id(),
                     &document_id.to_string(),
-                    &None,
                 )
                 .await?;
 
@@ -930,10 +927,8 @@ impl DataSource {
                     if let Some(qdrant::value::Kind::StringValue(chunk_text)) =
                         result.payload.get("text").and_then(|t| t.kind.as_ref())
                     {
-                        if let Some(VectorsOptions::Vector(v)) = result
-                            .vectors
-                            .as_ref()
-                            .and_then(|v| v.vectors_options.as_ref())
+                        if let Some(Vector::Dense(v)) =
+                            result.vectors.as_ref().and_then(|v| v.get_vector())
                         {
                             let text_hash = format!(
                                 "{}",
@@ -947,7 +942,7 @@ impl DataSource {
                                 text_hash,
                                 EmbedderVector {
                                     created: document.created,
-                                    vector: v.data.iter().map(|&v| v as f64).collect(),
+                                    vector: v.data.into_iter().map(|v| v as f64).collect(),
                                     model: embedder_config.model_id.clone(),
                                     provider: embedder_config.provider_id.to_string(),
                                 },
@@ -1391,7 +1386,7 @@ impl DataSource {
 
                 tokio::spawn(async move {
                     match store
-                        .load_data_source_document(&project, &data_source_id, &document_id, &None)
+                        .load_data_source_document(&project, &data_source_id, &document_id)
                         .await?
                     {
                         Some(mut d) => {
@@ -1658,6 +1653,9 @@ impl DataSource {
 
         info!(
             data_source_internal_id = self.internal_id(),
+            qdrant_shard_key = qdrant_client
+                .shard_key_name(&self.internal_id)
+                .unwrap_or_else(|_| "unknown".to_string()),
             document_count = documents.len(),
             chunk_count = documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
             with_query = has_vector,
@@ -1810,17 +1808,11 @@ impl DataSource {
         document_id: &str,
         view_filter: &Option<SearchFilter>,
         remove_system_tags: bool,
-        version_hash: &Option<String>,
     ) -> Result<Option<Document>> {
         let store = store.clone();
 
         let mut d = match store
-            .load_data_source_document(
-                &self.project,
-                &self.data_source_id,
-                document_id,
-                version_hash,
-            )
+            .load_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?
         {
             Some(d) => d,
@@ -1863,7 +1855,7 @@ impl DataSource {
         document_id: &str,
     ) -> Result<()> {
         let document = match store
-            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .load_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?
         {
             Some(document) => document,
@@ -2000,7 +1992,6 @@ impl DataSource {
                 document_id,
                 None,
                 &None,
-                &None,
                 false,
             )
             .await?;
@@ -2056,7 +2047,6 @@ impl DataSource {
                 &self.data_source_id,
                 document_id,
                 None,
-                &None,
                 &None,
                 false,
             )
@@ -2155,24 +2145,17 @@ impl DataSource {
             "Deleting tables"
         );
 
-        // Process tables deletion in chunks to avoid too much concurrency
-        for (batch_index, chunk) in tables.chunks(100).enumerate() {
-            info!(
-                data_source_internal_id = self.internal_id(),
-                batch_index = batch_index,
-                batch_size = chunk.len(),
-                "Deleting table batch"
-            );
-
-            try_join_all(
-                chunk
-                    .iter()
-                    // not deleting from search index here, as it's done more efficiently in the
-                    // full-nodes deletion below
-                    .map(|t| t.delete(store.clone(), databases_store.clone(), None)),
-            )
-            .await?;
-        }
+        // Process tables deletion with bounded concurrency to avoid monopolizing the SQL pool.
+        stream::iter(tables.into_iter().map(|t| {
+            let store = store.clone();
+            let databases_store = databases_store.clone();
+            // not deleting from search index here, as it's done more efficiently in the
+            // full-nodes deletion below
+            async move { t.delete(store, databases_store, None).await }
+        }))
+        .buffer_unordered(16)
+        .try_collect::<Vec<_>>()
+        .await?;
 
         info!(
             data_source_internal_id = self.internal_id(),
@@ -2180,19 +2163,26 @@ impl DataSource {
             "Deleted tables"
         );
 
-        // Delete folders (concurrently).
+        // Delete folders with bounded concurrency.
         let (folders, total) = store
             .list_data_source_folders(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
 
-        try_join_all(folders.iter().map(|f| {
-            store.delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
+        stream::iter(folders.into_iter().map(|f| {
+            let store = store.clone();
+            async move {
+                store
+                    .delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
+                    .await
+            }
         }))
+        .buffer_unordered(16)
+        .try_collect::<Vec<_>>()
         .await?;
 
         info!(
             data_source_internal_id = self.internal_id(),
-            table_count = total,
+            folder_count = total,
             "Deleted folders"
         );
 
@@ -2220,9 +2210,8 @@ impl DataSource {
     ) -> Result<Option<DocumnentBlobPayload>> {
         let store = store.clone();
 
-        // Only fetch latest version by passing None as version_hash.
         let d = match store
-            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .load_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?
         {
             Some(d) => d,

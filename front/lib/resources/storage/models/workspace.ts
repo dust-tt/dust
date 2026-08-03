@@ -1,5 +1,6 @@
 import type { SubscriptionModel } from "@app/lib/models/plan";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
@@ -12,7 +13,6 @@ import type {
   WorkspaceSharingPolicy,
 } from "@app/types/user";
 import type { CreationOptional, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
 
 const DEFAULT_SHARING_POLICY: WorkspaceSharingPolicy = "all_scopes";
 

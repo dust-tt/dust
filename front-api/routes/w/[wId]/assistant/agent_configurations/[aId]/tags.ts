@@ -1,17 +1,12 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { TagType } from "@app/types/tag";
-import { isBuilder } from "@app/types/user";
+import type { PatchAgentTagsResponseBody } from "@app/types/api/assistant/configuration/agent_tags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PatchAgentTagsResponseBody = {
-  tags: TagType[];
-};
 
 const ParamsSchema = z.object({
   aId: z.string(),
@@ -34,6 +29,7 @@ const PatchAgentTagsRequestBodySchema = z
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/tags.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),
@@ -86,7 +82,7 @@ app.patch(
     }
 
     if (
-      !isBuilder(auth.getNonNullableWorkspace()) &&
+      !(await auth.hasWorkspacePermission("publish", "agent")) &&
       (tagsToAdd.some((tag) => tag.kind === "protected") ||
         tagsToRemove.some((tag) => tag.kind === "protected"))
     ) {

@@ -45,6 +45,7 @@ export const conversationKillSwitchPlugin = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["engineering"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

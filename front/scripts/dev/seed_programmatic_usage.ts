@@ -1,10 +1,12 @@
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { awuFromMicroUsd } from "@app/lib/metronome/events";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { AgentMessageAnalyticsData } from "@app/types/assistant/analytics";
+import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
 const TOKEN_PROMPT_RANGE = { min: 100, max: 5000 };
@@ -99,12 +101,28 @@ async function seedProgrammaticUsage(
     const document: AgentMessageAnalyticsData = {
       agent_id: `seed-agent-${i % AGENT_COUNT}`,
       agent_version: "1",
+      agent_tag_ids: [],
+      model: {
+        provider_id: "anthropic",
+        model_id: CLAUDE_SONNET_4_6_MODEL_ID,
+        reasoning_effort: "medium",
+        resolution_method: "agent",
+      },
+      ancestor_message_ids: [],
       conversation_id: `seed-conv-${i}`,
+      space_id: null,
+      cost: {
+        full_awu: awuFromMicroUsd(costMicroUsd),
+        llm_awu: awuFromMicroUsd(costMicroUsd),
+        tool_awu: 0,
+        billable_awu: awuFromMicroUsd(costMicroUsd),
+      },
       context_origin: "api",
       latency_ms: randomInt(LATENCY_MS_RANGE.min, LATENCY_MS_RANGE.max),
       message_id: messageId,
       skills_used: [],
       status: "succeeded",
+      is_free_seat: false,
       timestamp: timestamp.toISOString(),
       tokens: {
         prompt: randomInt(TOKEN_PROMPT_RANGE.min, TOKEN_PROMPT_RANGE.max),

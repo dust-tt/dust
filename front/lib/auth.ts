@@ -1,15 +1,29 @@
 import config from "@app/lib/api/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
-import type { SandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
-import { SANDBOX_TOKEN_PREFIX } from "@app/lib/api/sandbox/access_tokens";
+import type {
+  SandboxExecTokenPayload,
+  SandboxFunctionInvocationTokenPayload,
+  SandboxTokenPayload,
+} from "@app/lib/api/sandbox/access_tokens";
+import {
+  isSandboxExecTokenPayload,
+  isSandboxFunctionInvocationTokenPayload,
+  SANDBOX_TOKEN_PREFIX,
+} from "@app/lib/api/sandbox/access_tokens";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
-import { getWorkOSSession } from "@app/lib/api/workos/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
+import {
+  allWorkspacePermissions,
+  grantTypesForVerb,
+  workspacePermissionsFromGrants,
+} from "@app/lib/resources/group_permission_registry";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import {
@@ -20,14 +34,26 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+} from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type {
+  ConcreteResourceType,
+  GrantVerb,
+  WorkspacePermissions,
+} from "@app/types/group_permissions";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
+import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
@@ -37,25 +63,24 @@ import type {
 import { hasRolePermissions } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
+import {
+  isWhitelistableFeature,
+  WHITELISTABLE_FEATURES,
+} from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
   LightWorkspaceType,
   RoleType,
   WorkspaceType,
 } from "@app/types/user";
-import { isAdmin, isBuilder, isUser } from "@app/types/user";
+import { isAdmin, isBuilder, isManager, isUser } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import memoizer from "lru-memoizer";
-import type {
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-} from "next";
 import type { Transaction } from "sequelize";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
@@ -96,6 +121,7 @@ export interface AuthenticatorType {
   subscriptionId: string | null;
   isByok: boolean;
   key?: KeyAuthType;
+  attributionKey?: { id: ModelId; name: string };
   clientIp?: string;
 }
 
@@ -108,6 +134,10 @@ export interface AuthenticatorType {
  */
 export class Authenticator {
   _key?: KeyAuthType;
+  // Attribution-only key reference. Records which API key a request should be
+  // *attributed* to for usage analytics, independently of `_key`. It never
+  // influences authorization (role, caps, system-key checks all read `_key`).
+  _attributionKey?: { id: ModelId; name: string };
   _role: RoleType;
   _subscription: SubscriptionResource | null;
   _user: UserResource | null;
@@ -126,6 +156,7 @@ export class Authenticator {
     authMethod,
     subscription,
     key,
+    attributionKey,
     providersHealth,
     clientIp,
   }: {
@@ -136,6 +167,7 @@ export class Authenticator {
     authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
+    attributionKey?: { id: ModelId; name: string };
     providersHealth?: ProvidersHealth | null;
     clientIp?: string;
   }) {
@@ -149,6 +181,7 @@ export class Authenticator {
     this._subscription = subscription || null;
     this._authMethod = authMethod;
     this._key = key;
+    this._attributionKey = attributionKey;
     this._providersHealth = providersHealth ?? null;
     this._clientIp = clientIp;
     if (user) {
@@ -478,7 +511,7 @@ export class Authenticator {
   }
 
   static async fromSandboxToken(
-    claims: SandboxExecTokenPayload,
+    claims: SandboxTokenPayload,
     wId: string
   ): Promise<Result<Authenticator, APIErrorWithContentfulStatusCode>> {
     if (claims.wId !== wId) {
@@ -565,13 +598,42 @@ export class Authenticator {
       subscription = activeSubscription;
     }
 
-    // Restrict groups to the conversation's spaces so the sandbox auth can only
-    // access resources visible to the conversation, not everything the user can.
-    const groupModelIds = await this.restrictGroupsToConversationSpaces(
-      baseGroupModelIds,
-      claims.cId,
-      workspace.id
-    );
+    // Restrict groups to the sandbox owner's spaces so sandbox auth can only
+    // access resources visible to the workload, not everything the user can.
+    const groupModelIdSets: ModelId[][] = [];
+    if (isSandboxExecTokenPayload(claims)) {
+      const groupModelIdsRes = await this.restrictGroupsToSandboxExecSpaces(
+        baseGroupModelIds,
+        claims,
+        workspace.id
+      );
+      if (groupModelIdsRes.isErr()) {
+        return new Err(groupModelIdsRes.error);
+      }
+      groupModelIdSets.push(groupModelIdsRes.value);
+    }
+    if (isSandboxFunctionInvocationTokenPayload(claims)) {
+      const groupModelIdsRes =
+        await this.restrictGroupsToSandboxFunctionInvocationSpaces(
+          baseGroupModelIds,
+          claims,
+          workspace.id
+        );
+      if (groupModelIdsRes.isErr()) {
+        return new Err(groupModelIdsRes.error);
+      }
+      groupModelIdSets.push(groupModelIdsRes.value);
+    }
+    if (groupModelIdSets.length === 0) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "Unsupported sandbox token payload.",
+        },
+      });
+    }
+    const groupModelIds = [...new Set(groupModelIdSets.flat())];
 
     const providersHealth = await this.fetchByokProvidersHealth(
       workspace,
@@ -591,29 +653,81 @@ export class Authenticator {
     );
   }
 
-  /**
-   * Given a user's full group IDs, restricts them to only the groups associated
-   * with the conversation's requested spaces. Falls back to the full set if the
-   * conversation is not found or has no requested spaces.
-   */
-  private static async restrictGroupsToConversationSpaces(
-    userGroupIds: ModelId[],
-    conversationId: string,
-    workspaceId: ModelId
-  ): Promise<ModelId[]> {
+  private static async fetchRequestedSpaceIdsForSandboxTokenAuth({
+    conversationId,
+    workspaceId,
+  }: {
+    conversationId: string;
+    workspaceId: ModelId;
+  }): Promise<ModelId[] | null> {
+    // Keep this direct lookup local to Authenticator for now. Sandbox-token
+    // auth is being constructed here, and importing ConversationResource would
+    // currently create an auth <-> conversation_resource runtime cycle because
+    // ConversationResource imports auth helpers such as hasFeatureFlag.
     const conversation = await ConversationModel.findOne({
-      where: { sId: conversationId, workspaceId: workspaceId },
+      where: { sId: conversationId, workspaceId },
       attributes: ["requestedSpaceIds"],
     });
 
-    if (!conversation || conversation.requestedSpaceIds.length === 0) {
-      return userGroupIds;
+    return conversation?.requestedSpaceIds ?? null;
+  }
+
+  /**
+   * Given a user's full group IDs, restricts them to the groups associated with
+   * the conversation and the agent's requested spaces. The agent can use tools
+   * backed by spaces that are not explicitly selected on the conversation.
+   *
+   * Falls back to the full set if the conversation is not found or has no
+   * requested spaces, preserving the existing behavior for legacy conversations.
+   */
+  private static async restrictGroupsToSandboxExecSpaces(
+    userGroupIds: ModelId[],
+    claims: SandboxExecTokenPayload,
+    workspaceId: ModelId
+  ): Promise<Result<ModelId[], APIErrorWithContentfulStatusCode>> {
+    const [conversationRequestedSpaceIds, agentConfiguration] =
+      await Promise.all([
+        this.fetchRequestedSpaceIdsForSandboxTokenAuth({
+          workspaceId,
+          conversationId: claims.cId,
+        }),
+        AgentConfigurationModel.findOne({
+          where: {
+            sId: claims.aId,
+            version: claims.aV,
+            workspaceId,
+          },
+          attributes: ["requestedSpaceIds"],
+        }),
+      ]);
+
+    if (!agentConfiguration && !isGlobalAgentId(claims.aId)) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message:
+            "The agent version referenced by the sandbox token was not found.",
+        },
+      });
+    }
+
+    if (
+      conversationRequestedSpaceIds === null ||
+      conversationRequestedSpaceIds.length === 0
+    ) {
+      return new Ok(userGroupIds);
+    }
+
+    const requestedSpaceIds = new Set(conversationRequestedSpaceIds);
+    for (const spaceId of agentConfiguration?.requestedSpaceIds ?? []) {
+      requestedSpaceIds.add(spaceId);
     }
 
     const spaceGroups = await GroupSpaceModel.findAll({
       where: {
-        vaultId: conversation.requestedSpaceIds,
-        workspaceId: workspaceId,
+        vaultId: [...requestedSpaceIds],
+        workspaceId,
       },
       attributes: ["groupId"],
     });
@@ -622,7 +736,83 @@ export class Authenticator {
       spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
     );
 
-    return userGroupIds.filter((id) => allowedGroupIds.has(id));
+    return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
+  }
+
+  private static async restrictGroupsToSandboxFunctionInvocationSpaces(
+    userGroupIds: ModelId[],
+    claims: SandboxFunctionInvocationTokenPayload,
+    workspaceId: ModelId
+  ): Promise<Result<ModelId[], APIErrorWithContentfulStatusCode>> {
+    if (!isResourceSId("space", claims.spaceId)) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The sandbox token pod space is invalid.",
+        },
+      });
+    }
+
+    const podSpaceModelId = getResourceIdFromSId(claims.spaceId);
+    if (podSpaceModelId === null) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The sandbox token pod space is invalid.",
+        },
+      });
+    }
+
+    const allowedSpaceIds = new Set<ModelId>([podSpaceModelId]);
+
+    // Auto internal MCP server views live in the global space: without it, a function invocation
+    // cannot list or call any tool. Group membership still applies (the groups below are
+    // intersected with the token's base groups).
+    const globalSpace = await SpaceModel.findOne({
+      attributes: ["id"],
+      where: { workspaceId, kind: "global" },
+    });
+    if (globalSpace) {
+      allowedSpaceIds.add(globalSpace.id);
+    }
+
+    if (claims.cId) {
+      const requestedSpaceIds =
+        await this.fetchRequestedSpaceIdsForSandboxTokenAuth({
+          workspaceId,
+          conversationId: claims.cId,
+        });
+
+      if (requestedSpaceIds === null) {
+        return new Err({
+          status_code: 401,
+          api_error: {
+            type: "invalid_sandbox_token_error",
+            message: "The sandbox token conversation is invalid.",
+          },
+        });
+      }
+
+      for (const spaceId of requestedSpaceIds) {
+        allowedSpaceIds.add(spaceId);
+      }
+    }
+
+    const spaceGroups = await GroupSpaceModel.findAll({
+      where: {
+        vaultId: [...allowedSpaceIds],
+        workspaceId,
+      },
+      attributes: ["groupId"],
+    });
+
+    const allowedGroupIds = new Set(
+      spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
+    );
+
+    return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
   }
 
   /**
@@ -786,6 +976,9 @@ export class Authenticator {
     workspaceId: string,
     options?: {
       dangerouslyRequestAllGroups: boolean;
+      // Only applies when dangerouslyRequestAllGroups is true. Overrides the group kinds fetched,
+      // e.g. to include editor groups that are excluded by default.
+      groupKinds?: GroupKind[];
     }
   ): Promise<Authenticator> {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -798,6 +991,7 @@ export class Authenticator {
         if (options?.dangerouslyRequestAllGroups) {
           return GroupResource.internalFetchAllWorkspaceGroups({
             workspaceId: workspace.id,
+            ...(options.groupKinds ? { groupKinds: options.groupKinds } : {}),
           });
         } else {
           const globalGroup =
@@ -941,8 +1135,73 @@ export class Authenticator {
     return isBuilder(this.workspace());
   }
 
+  isManager(): boolean {
+    return isManager(this.workspace());
+  }
+
   isAdmin(): boolean {
     return isAdmin(this.workspace());
+  }
+
+  /**
+   * Whether the caller holds a workspace-level capability. A capability is asked as a verb (e.g.
+   * "create"), expanded via the registry into the stored grant types (role names) that imply it, and
+   * checked against the type-wide (-1) group_permissions rows. Admins bypass unconditionally
+   * (billing/security are admin-by-default). Otherwise we look for a -1 grant on any of the caller's
+   * groups; "*" grants match any grant type / resource type.
+   *
+   * Cold path: a query per check is fine — no caching yet (pending auth-resolution decision).
+   */
+  async hasWorkspacePermission(
+    verb: GrantVerb,
+    resourceType: ConcreteResourceType
+  ): Promise<boolean> {
+    // Reject invalid capability queries (e.g. create/billing) up front, so a "*" grant can't satisfy
+    // a pair the registry forbids, and so callers fail fast on a programmer error.
+    const grantTypes = grantTypesForVerb(resourceType, verb, "type");
+    assert(
+      grantTypes.length > 0,
+      `Verb "${verb}" is not allowed (no type-level role grants it) on resource type "${resourceType}".`
+    );
+
+    if (this.isAdmin()) {
+      return true;
+    }
+    if (!this.workspace()) {
+      return false;
+    }
+
+    const grants = await GroupPermissionResource.listForGroups(this, {
+      groupModelIds: this._groupModelIds,
+      resourceId: WHOLE_TYPE_RESOURCE_ID,
+    });
+
+    return grants.some(
+      (grant) =>
+        (grant.resourceType === resourceType || grant.resourceType === "*") &&
+        (grant.grantType === "*" || grantTypes.includes(grant.grantType))
+    );
+  }
+
+  /**
+   * All workspace-level (type-wide) verbs the caller holds, grouped by resource type. This is the
+   * batch companion to hasWorkspacePermission: it expands every type-wide (-1) grant on the
+   * caller's groups into the verbs it confers. Admins hold every type-level capability by default,
+   * and "*" grants expand to all type-level verbs of the matched resource type(s), mirroring
+   * hasWorkspacePermission's semantics.
+   */
+  async getWorkspacePermissions(): Promise<WorkspacePermissions> {
+    // Admins bypass grants entirely: every type-level capability is theirs by default.
+    if (this.isAdmin()) {
+      return allWorkspacePermissions();
+    }
+
+    const grants = await GroupPermissionResource.listForGroups(this, {
+      groupModelIds: this._groupModelIds,
+      resourceId: WHOLE_TYPE_RESOURCE_ID,
+    });
+
+    return workspacePermissionsFromGrants(grants);
   }
 
   isSystemKey(): boolean {
@@ -1197,6 +1456,37 @@ export class Authenticator {
     return this._key ?? null;
   }
 
+  attributionKey(): { id: ModelId; name: string } | null {
+    return this._attributionKey ?? null;
+  }
+
+  attributionKeyModelId(): ModelId | null {
+    return this._attributionKey?.id ?? null;
+  }
+
+  // Returns a copy of this authenticator carrying an attribution-only key
+  // reference. Used to attribute usage to the original caller's key when an
+  // internal flow re-authenticates with the workspace system key (e.g. run_agent
+  // sub-agents). This is attribution only: `_key` is left untouched, so role,
+  // caps and system-key checks keep operating on the actual (system) key.
+  withAttributionKey(attributionKey: {
+    id: ModelId;
+    name: string;
+  }): Authenticator {
+    return new Authenticator({
+      authMethod: this._authMethod,
+      key: this._key,
+      attributionKey,
+      role: this._role,
+      groupModelIds: this._groupModelIds,
+      user: this._user,
+      subscription: this._subscription,
+      workspace: this._workspace,
+      clientIp: this._clientIp,
+      providersHealth: this._providersHealth,
+    });
+  }
+
   toJSON(): AuthenticatorType {
     const workspace = this._workspace;
     assert(workspace, "Workspace is required to serialize Authenticator");
@@ -1210,6 +1500,7 @@ export class Authenticator {
       subscriptionId: this._subscription?.sId ?? null,
       isByok: this.plan()?.isByok ?? false,
       key: this._key,
+      attributionKey: this._attributionKey,
       clientIp: this._clientIp,
     };
   }
@@ -1261,25 +1552,25 @@ export class Authenticator {
       groupModelIds: groupIds,
       subscription,
       key: authType.key,
+      attributionKey: authType.attributionKey,
       providersHealth,
       clientIp: authType.clientIp,
     });
   }
-}
 
-/**
- * Retrieves the workos session from the request/response.
- * @param req NextApiRequest request object
- * @param res NextApiResponse response object
- * @returns Promise<any>
- */
-export async function getSession(
-  req: NextApiRequest | GetServerSidePropsContext["req"],
-  res: NextApiResponse | GetServerSidePropsContext["res"]
-): Promise<SessionWithUser | null> {
-  const workOsSession = await getWorkOSSession(req, res);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  return workOsSession || null;
+  /**
+   * Rebuilds an Authenticator from a serialized snapshot and refreshes group
+   * memberships from the database. Used by the agent loop, which freezes auth at
+   * workflow start: tools that grant new group access (e.g. create_pod) must see
+   * up-to-date memberships on subsequent steps.
+   */
+  static async fromJsonWithRefrehedGroups(
+    authType: AuthenticatorType
+  ): Promise<Authenticator> {
+    const auth = await Authenticator.fromJSON(authType);
+    await auth.refresh();
+    return auth;
+  }
 }
 
 /**
@@ -1564,14 +1855,19 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
 
         // Add global flags that aren't already set at workspace level.
         for (const globalFlag of globalFlags) {
+          const globalFlagName = globalFlag.name;
+          if (!isWhitelistableFeature(globalFlagName)) {
+            continue;
+          }
+
           if (
-            !workspaceFlagNames.has(globalFlag.name) &&
+            !workspaceFlagNames.has(globalFlagName) &&
             GlobalFeatureFlagResource.isInRollout(
               workspace.id,
               globalFlag.rolloutPercentage
             )
           ) {
-            effectiveFlags.push(globalFlag.name);
+            effectiveFlags.push(globalFlagName);
           }
         }
 
@@ -1586,11 +1882,9 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
   ttl: 3000,
 });
 
-export function getFeatureFlags(
-  auth: Authenticator
+export function getFeatureFlagsForWorkspace(
+  workspace: LightWorkspaceType
 ): Promise<WhitelistableFeature[]> {
-  const workspace = auth.getNonNullableWorkspace();
-
   return new Promise((resolve, reject) => {
     _getFeatureFlags(workspace, (err, result) => {
       if (err) {
@@ -1600,6 +1894,12 @@ export function getFeatureFlags(
       }
     });
   });
+}
+
+export function getFeatureFlags(
+  auth: Authenticator
+): Promise<WhitelistableFeature[]> {
+  return getFeatureFlagsForWorkspace(auth.getNonNullableWorkspace());
 }
 
 export async function hasFeatureFlag(
@@ -1624,18 +1924,24 @@ export function getApiKeyNameFromHeaders(headers: {
 }) {
   const apiKeyName = headers[DustApiKeyNameHeader];
   if (isString(apiKeyName)) {
-    return apiKeyName;
+    return decodeUtf8HeaderValue(apiKeyName);
   }
   return undefined;
 }
 
 export function getApiKeyNameHeader(auth: Authenticator) {
-  const key = auth.key();
-  if (!key || !key.name) {
+  // Prefer the attribution key name over the request's own key so the original
+  // caller's key name propagates transitively through nested internal system-key
+  // calls (e.g. a sub-agent that itself spawns sub-agents). Without this, a nested
+  // call would forward the system key name ("DustSystemKey") and lose attribution.
+  const name = auth.attributionKey()?.name ?? auth.key()?.name;
+  if (!name) {
     return undefined;
   }
 
+  // The name may exceed Latin-1 (emoji, non-Latin scripts); DustAPI encodes
+  // extra header values on the wire (see @dust-tt/client baseHeaders).
   return {
-    [DustApiKeyNameHeader]: key.name,
+    [DustApiKeyNameHeader]: name,
   };
 }

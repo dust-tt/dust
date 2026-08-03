@@ -1,6 +1,11 @@
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { usePrivateConversationUrlsToggle } from "@app/hooks/usePrivateConversationUrlsToggle";
 import type { WorkspaceType } from "@app/types/user";
-import { ContextItem, LockIcon, SliderToggle } from "@dust-tt/sparkle";
+import { SliderToggle } from "@dust-tt/sparkle";
+
+const LABEL = "Private conversation URLs by default";
+const DESCRIPTION =
+  "Whether conversation URLs are private by default, limiting access to participants";
 
 interface PrivateConversationUrlsToggleProps {
   owner: WorkspaceType;
@@ -13,11 +18,9 @@ export function PrivateConversationUrlsToggle({
     usePrivateConversationUrlsToggle({ owner });
 
   return (
-    <ContextItem
-      title="Private conversation URLs by default"
-      subElement="Restrict conversation URL access to participants only by default"
-      visual={<LockIcon className="h-6 w-6" />}
-      hasSeparatorIfLast={true}
+    <GovernanceSettingRowLayout
+      label={LABEL}
+      description={DESCRIPTION}
       action={
         <SliderToggle
           selected={isEnabled}

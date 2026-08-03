@@ -3,46 +3,16 @@ import {
   getBillingStripeCustomerId,
   getStripeClient,
 } from "@app/lib/plans/stripe";
+import type {
+  BillingAddress,
+  BillingInfo,
+  BillingPaymentMethod,
+} from "@app/types/api/billing/info";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
 import type Stripe from "stripe";
-
-export type BillingAddress = {
-  line1: string | null;
-  line2: string | null;
-  city: string | null;
-  state: string | null;
-  postalCode: string | null;
-  country: string | null;
-};
-
-export type BillingProfile = {
-  name: string | null;
-  email: string | null;
-  phone: string | null;
-  address: BillingAddress | null;
-};
-
-export type BillingPaymentMethod = {
-  type: string;
-  brand: string | null;
-  last4: string | null;
-  expMonth: number | null;
-  expYear: number | null;
-  bankName: string | null;
-  country: string | null;
-};
-
-export type BillingInfo = {
-  profile: BillingProfile;
-  paymentMethod: BillingPaymentMethod | null;
-};
-
-export type GetBillingInfoResponseBody = {
-  billingInfo: BillingInfo | null;
-};
 
 function serializeAddress(
   address: Stripe.Address | null | undefined

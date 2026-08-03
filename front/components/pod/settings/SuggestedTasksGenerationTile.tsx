@@ -4,14 +4,14 @@ import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettings
 import type { InitialTasksSyncLookbackValue } from "@app/lib/project_task/analyze_document/types";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
-import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import type { RichSpaceType } from "@app/types/api/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   Icon,
-  InformationCircleIcon,
+  InfoCircle,
   SliderToggle,
-  SparklesIcon,
+  Stars02,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useRef, useState } from "react";
@@ -23,6 +23,11 @@ const SUGGEST_TASKS_TOOLTIP_NON_EDITOR = `${SUGGEST_TASKS_TOOLTIP} Only Pod edit
 
 const LAST_SCAN_NEVER_TOOLTIP =
   "Dust has not run an automatic scan for task suggestions for this Pod yet.";
+
+// Static chip hoisted out of the component so it isn't recreated every render.
+const EXPERIMENTAL_CHIP = (
+  <Chip color="info" label="Experimental" size="mini" />
+);
 
 function lastScanTooltip(lastTodoAnalysisAt: number | null): string {
   if (lastTodoAnalysisAt == null) {
@@ -135,12 +140,10 @@ export function SuggestedTasksGenerationTile({
   return (
     <div className="flex items-center justify-between gap-4">
       <PodSettingsOptionLabel
-        icon={SparklesIcon}
+        icon={Stars02}
         title="Suggest tasks"
         description="Automatic task suggestions from Pod activity"
-        trailingInTitle={
-          <Chip color="golden" label="Experimental" size="mini" />
-        }
+        trailingInTitle={EXPERIMENTAL_CHIP}
       />
       <div className="flex shrink-0 items-center gap-2">
         <Tooltip
@@ -148,10 +151,10 @@ export function SuggestedTasksGenerationTile({
           trigger={
             <button
               type="button"
-              className="inline-flex rounded-md p-1 text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+              className="inline-flex rounded-md p-1 text-muted-foreground hover:text-foreground"
               aria-label="Last automatic task suggestion scan"
             >
-              <Icon visual={InformationCircleIcon} size="sm" />
+              <Icon visual={InfoCircle} size="sm" />
             </button>
           }
         />
@@ -160,7 +163,6 @@ export function SuggestedTasksGenerationTile({
           trigger={
             <div>
               <SliderToggle
-                size="xs"
                 selected={pod.todoGenerationEnabled}
                 disabled={sliderDisabled}
                 onClick={onToggleClick}

@@ -1,10 +1,10 @@
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
@@ -24,18 +24,18 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ArrowCircleIcon,
-  ArrowGoBackIcon,
   Button,
-  CheckCircleIcon,
-  CloudArrowUpIcon,
+  CheckCircle,
   CodeBlock,
-  CommandLineIcon,
-  EyeIcon,
-  FullscreenExitIcon,
-  FullscreenIcon,
+  Eye,
+  Maximize01,
+  Minimize01,
+  RefreshCw01,
+  ReverseLeft,
   Spinner,
+  Terminal,
   Tooltip,
+  UploadCloud02,
 } from "@dust-tt/sparkle";
 import React, {
   useCallback,
@@ -154,18 +154,24 @@ export function FrameRenderer({
       newText,
       oldText,
       targetFileId,
+      source,
     }: {
       newText: string;
       oldText: string;
       targetFileId?: string;
+      source?: string;
     }) => {
       try {
+        // Location-based edits address the published entry Frame (the clicked bundle); the source
+        // path inside `source` resolves within its build root. Legacy context edits route to the
+        // nested target file.
+        const editFileId = source ? fileId : (targetFileId ?? fileId);
         const response = await clientFetch(
-          `/api/w/${owner.sId}/files/${targetFileId ?? fileId}/edit-text`,
+          `/api/w/${owner.sId}/files/${editFileId}/edit-text`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ oldText, newText }),
+            body: JSON.stringify({ oldText, newText, source }),
           }
         );
 
@@ -343,8 +349,8 @@ export function FrameRenderer({
 
   if (error) {
     return (
-      <div className="flex h-full flex-col">
-        <InteractiveContentHeader onClose={onClosePanel} />
+      <div className="flex h-panel flex-col">
+        <ConversationSidePanelHeader onClose={onClosePanel} />
         <CenteredState>
           <p className="text-warning-500">
             Error loading file: {error.message}
@@ -355,11 +361,11 @@ export function FrameRenderer({
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <InteractiveContentHeader onClose={onClosePanel}>
+    <div className="flex h-panel flex-col">
+      <ConversationSidePanelHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
           <Button
-            icon={showCode ? EyeIcon : CommandLineIcon}
+            icon={showCode ? Eye : Terminal}
             onClick={() => setShowCode(!showCode)}
             tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
             variant="ghost"
@@ -372,7 +378,12 @@ export function FrameRenderer({
               fileContent={fileContent ?? null}
               fileName={fileMetadata?.fileName}
             />
-            <ShareFrameSheet fileId={fileId} owner={owner} />
+            <ShareFrameSheet
+              key={contentHash ?? fileId}
+              fileId={fileId}
+              owner={owner}
+              contentHash={contentHash}
+            />
             <PinPodBannerButton
               owner={owner}
               spaceId={projectId ?? ""}
@@ -384,7 +395,7 @@ export function FrameRenderer({
             />
             {projectSaveState === "saved" && (
               <Button
-                icon={CheckCircleIcon}
+                icon={CheckCircle}
                 variant="ghost"
                 disabled={true}
                 label={isMobile ? undefined : "Saved"}
@@ -393,7 +404,7 @@ export function FrameRenderer({
             )}
             {projectSaveState === "supported" && (
               <Button
-                icon={CloudArrowUpIcon}
+                icon={UploadCloud02}
                 variant="ghost"
                 label={
                   isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
@@ -405,7 +416,7 @@ export function FrameRenderer({
             )}
           </div>
         </div>
-      </InteractiveContentHeader>
+      </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
         {isLoading ? (
@@ -418,7 +429,7 @@ export function FrameRenderer({
           </div>
         ) : (
           <div className="h-full">
-            <VisualizationActionIframe
+            <AuthenticatedVisualizationActionIframe
               agentConfigurationId={
                 fileMetadata?.useCaseMetadata
                   .lastEditedByAgentConfigurationId ?? ""
@@ -481,7 +492,7 @@ function PreviewActionButtons({
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
   return (
-    <div className="fixed bottom-4 right-3 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
+    <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-background p-1 shadow-md">
       {clientType !== "extension" && (
         <Tooltip
           label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
@@ -489,7 +500,7 @@ function PreviewActionButtons({
           tooltipTriggerAsChild
           trigger={
             <Button
-              icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+              icon={isFullScreen ? Minimize01 : Maximize01}
               variant="ghost"
               size="xs"
               onClick={isFullScreen ? exitFullScreen : enterFullScreen}
@@ -511,7 +522,7 @@ function PreviewActionButtons({
               variant="ghost"
               disabled={!hasPreviousVersion}
               size="xs"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeft}
               onClick={onRevert}
             />
           }
@@ -523,7 +534,7 @@ function PreviewActionButtons({
         tooltipTriggerAsChild
         trigger={
           <Button
-            icon={ArrowCircleIcon}
+            icon={RefreshCw01}
             variant="ghost"
             size="xs"
             onClick={reloadFile}

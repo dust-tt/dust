@@ -16,9 +16,12 @@ export function renderPlanFromModel({
         isSlackBotAllowed: plan.isSlackbotAllowed,
         maxMessages: plan.maxMessages,
         maxMessagesTimeframe: plan.maxMessagesTimeframe,
+        maxAwuCredits: plan.maxAwuCredits,
+        maxAwuCreditsTimeframe: plan.maxAwuCreditsTimeframe,
         isDeepDiveAllowed: plan.isDeepDiveAllowed,
       },
       connections: {
+        count: plan.maxConnectionsCount,
         isConfluenceAllowed: plan.isManagedConfluenceAllowed,
         isSlackAllowed: plan.isManagedSlackAllowed,
         isNotionAllowed: plan.isManagedNotionAllowed,
@@ -55,6 +58,7 @@ export function renderPlanFromModel({
     trialPeriodDays: plan.trialPeriodDays,
     isByok: plan.isByok,
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
+    hasAdvancedModelAccess: plan.hasAdvancedModelAccess,
   };
 }
 

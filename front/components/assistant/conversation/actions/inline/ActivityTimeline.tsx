@@ -6,7 +6,7 @@ import {
 } from "@app/components/assistant/conversation/actions/inline/utils";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { ChevronRightIcon, cn, Icon } from "@dust-tt/sparkle";
+import { ChevronRight, cn, Icon } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
 interface RunningToolRow {
@@ -15,7 +15,7 @@ interface RunningToolRow {
   onClick?: () => void;
 }
 
-export interface ActivityTimelineProps {
+interface ActivityTimelineProps {
   completedSteps: InlineActivityStep[];
   runningToolRows: RunningToolRow[];
   activeCotContent: string;
@@ -53,7 +53,7 @@ export function ActivityTimeline({
   return (
     <div className="flex flex-col text-sm">
       <button
-        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
+        className="self-start text-muted-foreground hover:text-foreground transition-colors duration-200 flex gap-1 items-center"
         onClick={toggleCollapse}
       >
         {headerLabel}
@@ -63,7 +63,7 @@ export function ActivityTimeline({
             isCollapsed ? "rotate-0" : "rotate-90"
           )}
         >
-          <Icon size="xs" visual={ChevronRightIcon} />
+          <Icon size="xs" visual={ChevronRight} />
         </span>
       </button>
 
@@ -99,11 +99,11 @@ export function ActivityTimeline({
                 case "action": {
                   const row = (
                     <TimelineRow icon={getActionStepIcon(step)} isLast={isLast}>
-                      <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                      <span className="text-muted-foreground flex items-center gap-1">
                         {step.label}
                         <Icon
                           size="xs"
-                          visual={ChevronRightIcon}
+                          visual={ChevronRight}
                           className={cn(
                             "shrink-0",
                             onActionClick ? "opacity-50" : "opacity-0"
@@ -145,11 +145,11 @@ export function ActivityTimeline({
                 index === runningToolRows.length - 1 && !showTrailingSpinner;
               const rowEl = (
                 <TimelineRow spinner isLast={isLast}>
-                  <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                  <span className="text-muted-foreground flex items-center gap-1">
                     {row.label}
                     <Icon
                       size="xs"
-                      visual={ChevronRightIcon}
+                      visual={ChevronRight}
                       className={cn(
                         "shrink-0",
                         row.onClick ? "opacity-50" : "opacity-0"
@@ -175,7 +175,7 @@ export function ActivityTimeline({
 
             {terminalRow && (
               <TimelineRow icon={terminalRow.icon} isLast>
-                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-sm text-muted-foreground">
                   {terminalRow.label}
                 </span>
               </TimelineRow>

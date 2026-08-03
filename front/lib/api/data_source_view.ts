@@ -8,6 +8,7 @@ import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
+import { SortingParamsCodec } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -15,6 +16,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { PatchDataSourceViewType } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type { CoreAPIDatasourceViewFilter } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -26,6 +28,7 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { z } from "zod";
 
 const DEFAULT_PAGINATION_LIMIT = 1000;
 const CORE_MAX_PAGE_SIZE = 1000;
@@ -363,3 +366,22 @@ export async function listDataSourceViewsWithUsage(
     { concurrency: 4 }
   );
 }
+
+// Request schema for the content-nodes endpoints. Kept in lib because it
+// references SortingParamsCodec from `@app/lib/api/pagination`.
+export const GetContentNodesOrChildrenRequestBody = z.object({
+  internalIds: z.array(z.string().nullable()).optional(),
+  parentId: z.string().optional(),
+  viewType: ContentNodesViewTypeCodec,
+  sorting: SortingParamsCodec.optional(),
+});
+export type GetContentNodesOrChildrenRequestBodyType = z.infer<
+  typeof GetContentNodesOrChildrenRequestBody
+>;
+
+export type GetDataSourceViewContentNodes = {
+  nodes: DataSourceViewContentNode[];
+  total: number;
+  totalIsAccurate: boolean;
+  nextPageCursor: string | null;
+};

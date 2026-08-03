@@ -18,6 +18,7 @@ export type GetMCPServersResponseBody = {
 // space.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),
@@ -31,18 +32,26 @@ app.get(
       workspaceServerViews,
     ] = await Promise.all([
       InternalMCPServerInMemoryResource.listByWorkspace(auth),
-      RemoteMCPServerResource.listByWorkspace(auth),
-      MCPServerViewResource.listByWorkspace(auth),
+      RemoteMCPServerResource.listByWorkspace(auth, {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }),
+      MCPServerViewResource.listByWorkspaceEnsuringAutoViews(auth),
     ]);
 
     const globalServersId = workspaceServerViews
       .filter((s) => s.space.kind === "global")
-      .map((s) => s.toJSON().server.sId);
+      .map((s) => s.mcpServerId);
 
     const spaceServerViews = workspaceServerViews.filter(
       (s) => s.space.id === space.id
     );
-    const spaceServersId = spaceServerViews.map((s) => s.toJSON().server.sId);
+    const spaceServersId = spaceServerViews.map((s) => s.mcpServerId);
 
     const availableServer: MCPServerType[] = [];
 

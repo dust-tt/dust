@@ -7,16 +7,49 @@ import {
 import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import type { TokenizerConfig } from "../../tokenizer";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
-import type { MODEL_IDS, SUPPORTED_MODEL_CONFIGS } from "./models";
-import type { BYOK_MODEL_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "./providers";
+import type { SUPPORTED_MODEL_CONFIGS } from "./models";
+import { MODEL_IDS } from "./models";
+import type { BYOK_MODEL_PROVIDER_IDS } from "./providers";
+import { MODEL_MAKER_IDS, MODEL_PROVIDER_IDS } from "./providers";
 import { ORDERED_REASONING_EFFORTS } from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
+export type ModelMakerIdType = (typeof MODEL_MAKER_IDS)[number];
 
 export const CUSTOM_THINKING_TYPES = ["auto", "enabled"] as const;
 export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
+
+// Raw model selection coming from the input-bar model picker: an explicit
+// provider/model pick, with an optional reasoning-effort override.
+export const ModelSelectionSchema = z.object({
+  providerId: z.enum(MODEL_PROVIDER_IDS),
+  modelId: z.enum(MODEL_IDS),
+  reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
+});
+export type ModelSelectionType = z.infer<typeof ModelSelectionSchema>;
+
+// A concrete model resolved from a picker selection at message-send time.
+export type ResolvedRequestedModel = {
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
+  reasoningEffort: ReasoningEffort;
+};
+
+// How an agent message's model was resolved: "agent" (ran the agent's own
+// configured model, no override), "user" (ran a per-message model picked from
+// the input-bar picker), "auto" (resolved through the auto model), or
+// "auto_fast" / "auto_complex" (resolved through a curated stream tier).
+export const MODEL_RESOLUTION_METHODS = [
+  "agent",
+  "user",
+  "auto",
+  "auto_fast",
+  "auto_complex",
+] as const;
+export type ModelResolutionMethodType =
+  (typeof MODEL_RESOLUTION_METHODS)[number];
 
 // z.object (not z.record) so every reasoning effort key is required.
 const ReasoningEffortSupportSchema = z.object({
@@ -35,7 +68,7 @@ const WhitelistableFeatureSchema = z.custom<WhitelistableFeature>(
 );
 
 const AvailabilityConditionSchema = z.object({
-  enterprise: z.boolean().optional(),
+  plansWithAdvancedModels: z.boolean().optional(),
   featureFlag: WhitelistableFeatureSchema.optional(),
 });
 
@@ -47,6 +80,7 @@ const CustomAvailabilityConditionSchema = z.object({
 // This is the source of truth for the structure of ModelConfigurationType.
 export const ModelConfigurationSchema = z.object({
   providerId: z.string(),
+  modelMaker: z.enum(MODEL_MAKER_IDS).optional(),
   modelId: z.string(),
   displayName: z.string(),
   contextSize: z.number(),
@@ -75,8 +109,23 @@ export const ModelConfigurationSchema = z.object({
   }),
   customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
   customBetas: z.array(z.string()).optional(),
+  // Ordered list of fallback model ids (3 max), sent as the `fallbacks` param on
+  // Anthropic streaming requests so the API retries on these models when the
+  // primary model's safety classifiers decline the request.
+  // https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback#server-side-fallback
+  fallbackModels: z.array(z.string()).optional(),
+  // If true, the model is served through the dedicated EAP (Early Access
+  // Program) Anthropic API key (ANTHROPIC_EAP_API_KEY) instead of the
+  // workspace's Dust-managed / BYOK credentials, for models hosted in a
+  // separate Anthropic workspace. Only consulted for Anthropic models;
+  // ignored for other providers.
+  useEapKey: z.boolean().optional(),
   disablePrefill: z.boolean().optional(),
   supportsBatchProcessing: z.boolean().optional(),
+  // If true, the model supports deferring rarely-used tool definitions out of
+  // its active context until searched/discovered on demand. Must not be enabled
+  // based on a feature flag alone, since unsupported models reject the request.
+  supportsToolSearch: z.boolean().optional(),
   // Specify if the model is available in specific regions.
   regionalAvailability: z.record(z.enum(SUPPORTED_REGIONS), z.boolean()),
   availableIfOneOf: AvailabilityConditionSchema.optional(),
@@ -104,8 +153,8 @@ export type ModelConfigurationType = Omit<
   // If object is empty, model is not available.
   // If defined, model must satisfy one of the conditions to be available.
   availableIfOneOf?: {
-    // If set to true and workspace is enterprise, model is available.
-    enterprise?: boolean;
+    // If set to true, model is available for plans with advanced models access.
+    plansWithAdvancedModels?: boolean;
     // If set, model is available if feature flag is enabled.
     featureFlag?: WhitelistableFeature;
   };
@@ -150,4 +199,10 @@ export function getMinimumReasoningEffort(
   support: ReasoningEffortSupport
 ): ReasoningEffort {
   return ORDERED_REASONING_EFFORTS.find((effort) => support[effort]) || "none";
+}
+
+export function getMaximumReasoningEffort(
+  support: ReasoningEffortSupport
+): ReasoningEffort {
+  return getAvailableReasoningEfforts(support).at(-1) || "none";
 }

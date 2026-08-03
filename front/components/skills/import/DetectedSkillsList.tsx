@@ -9,10 +9,10 @@ import {
   ContentMessage,
   createSelectionColumn,
   DataTable,
-  InformationCircleIcon,
-  PuzzleIcon,
+  DataTableLoadingSkeleton,
+  InfoCircle,
+  PuzzlePiece01,
   ScrollableDataTable,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo } from "react";
@@ -44,7 +44,7 @@ function getColumns(): ColumnDef<SkillRowData>[] {
       accessorKey: "name",
       header: "Skill name",
       cell: (info: SkillCellInfo) => (
-        <DataTable.CellContent icon={PuzzleIcon}>
+        <DataTable.CellContent icon={PuzzlePiece01}>
           {info.row.original.name}
         </DataTable.CellContent>
       ),
@@ -131,20 +131,16 @@ export function DetectedSkillsList({
 
   return (
     <>
+      {isDetecting && <DataTableLoadingSkeleton rows={3} />}
       {detectError && (
         <ContentMessage
           title="Detection failed"
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           variant="warning"
           size="lg"
         >
           {detectError}
         </ContentMessage>
-      )}
-      {isDetecting && (
-        <div className="flex items-center justify-center py-4">
-          <Spinner size="md" />
-        </div>
       )}
       {rows.length > 0 && (
         <ScrollableDataTable<SkillRowData>

@@ -15,17 +15,25 @@ import type {
 import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection/suggest_mcp_servers";
 import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Octokit } from "@octokit/core";
 import path from "path";
+
+export type ImportSkillsResponseBody = {
+  imported: SkillType[];
+  updated: SkillType[];
+  skipped: { name: string; message: string }[];
+};
 
 const FILE_IMPORT_CONCURRENCY = 4;
 
@@ -34,6 +42,12 @@ type ImportSkillsResult = {
   updated: SkillResource[];
   skipped: { name: string; message: string }[];
 };
+
+// Wider than GitHubSkillDetectionError (shared with the read-only detect endpoint, which never
+// produces this variant): only the actual import/creation path checks the create/skill capability.
+type ImportSkillsFromGitHubError =
+  | GitHubSkillDetectionError
+  | { type: "unauthorized"; message: string };
 
 /**
  * Imports skills from a GitHub repository. Detects skills, fetches their
@@ -50,9 +64,14 @@ export async function importSkillsFromGitHub(
     names: string[];
     onConflict?: "error" | "skip";
   }
-): Promise<Result<ImportSkillsResult, GitHubSkillDetectionError>> {
-  const featureFlags = await getFeatureFlags(auth);
-  const allowFileAttachments = featureFlags.includes("sandbox_tools");
+): Promise<Result<ImportSkillsResult, ImportSkillsFromGitHubError>> {
+  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+    return new Err({
+      type: "unauthorized",
+      message: "Creating skills is restricted.",
+    });
+  }
+
   const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
   const clientResult = initGitHubRepoClient({ repoUrl, accessToken });
   if (clientResult.isErr()) {
@@ -116,24 +135,21 @@ export async function importSkillsFromGitHub(
       continue;
     }
 
-    let fileAttachments: FileResource[] = [];
-    if (allowFileAttachments) {
-      const skillDirPath = path.dirname(skill.skillMdPath);
-      const uploadResults = await concurrentExecutor(
-        skill.attachments,
-        (attachment) =>
-          uploadAttachment(auth, {
-            octokit,
-            owner,
-            repo,
-            attachment,
-            skillDirPath,
-          }),
-        { concurrency: FILE_IMPORT_CONCURRENCY }
-      );
+    const skillDirPath = path.dirname(skill.skillMdPath);
+    const uploadResults = await concurrentExecutor(
+      skill.attachments,
+      (attachment) =>
+        uploadAttachment(auth, {
+          octokit,
+          owner,
+          repo,
+          attachment,
+          skillDirPath,
+        }),
+      { concurrency: FILE_IMPORT_CONCURRENCY }
+    );
 
-      fileAttachments = removeNulls(uploadResults);
-    }
+    const fileAttachments = removeNulls(uploadResults);
 
     if (existing) {
       const attachedKnowledge = await existing.getAttachedKnowledge(auth);
@@ -147,7 +163,7 @@ export async function importSkillsFromGitHub(
         mcpServerViews: existing.mcpServerViews,
         attachedKnowledge,
         requestedSpaceIds: existing.requestedSpaceIds,
-        ...(allowFileAttachments ? { fileAttachments } : {}),
+        fileAttachments,
         source: "github",
         sourceMetadata: {
           repoUrl,
@@ -155,11 +171,9 @@ export async function importSkillsFromGitHub(
         },
       });
 
-      if (allowFileAttachments) {
-        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-          skillId: existing.sId,
-        });
-      }
+      await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+        skillId: existing.sId,
+      });
 
       updated.push(existing);
     } else {
@@ -194,26 +208,23 @@ export async function importSkillsFromGitHub(
           instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
           editedBy: user.id,
           requestedSpaceIds: [],
-          extendedSkillId: null,
           icon,
           source: "github",
           sourceMetadata: {
             repoUrl,
             filePath: skill.skillMdPath,
           },
-          isDefault: false,
+          availability: DEFAULT_SKILL_AVAILABILITY,
         },
         {
           mcpServerViews: detectedMCPServerViews,
-          ...(allowFileAttachments ? { fileAttachments } : {}),
+          fileAttachments,
         }
       );
 
-      if (allowFileAttachments) {
-        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-          skillId: skillResource.sId,
-        });
-      }
+      await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+        skillId: skillResource.sId,
+      });
 
       imported.push(skillResource);
     }

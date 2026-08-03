@@ -1,0 +1,2 @@
+prompt,judge_prompt,files
+"Summarize this report.","Should cover the key findings.","./files/categorization_pct.csv"

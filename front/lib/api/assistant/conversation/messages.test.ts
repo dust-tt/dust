@@ -2,20 +2,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock signalAgentUsage before importing the module that uses it
 vi.mock("@app/lib/api/assistant/agent_usage", () => ({
-  signalAgentUsage: vi.fn(),
+  signalAgentUsage: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import {
+  attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
+  createCompactionMessage,
   createUserMessage,
+  resolveModelsForMentionedAgents,
 } from "@app/lib/api/assistant/conversation/messages";
+import { canAgentBeUsedInProjectConversation } from "@app/lib/api/assistant/conversation/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
+  CompactionMessageModel,
   MentionModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -101,6 +106,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -135,6 +144,7 @@ describe("createAgentMessages", () => {
       await ConversationFactory.getMessage(auth, agentMessages[0].id);
     expect(agentMessageInDb).not.toBeNull();
     expect(agentMessageInDb?.status).toBe("created");
+    expect(agentMessageInDb?.conversationId).toBe(conversation.id);
 
     expect(messageInDb).not.toBeNull();
     expect(messageInDb?.rank).toBe(1);
@@ -180,6 +190,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1, agentConfig2],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -252,6 +266,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -294,6 +312,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -329,6 +351,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: true,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -378,6 +404,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: true,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -423,6 +453,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -472,6 +506,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 10,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1, agentConfig2],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -612,6 +650,10 @@ describe("createAgentMessages", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(auth, {
+            agentConfigurations: [agentConfigWithSpaces!],
+          }),
+          restrictedAgentIds: new Set<string>(),
         },
         transaction,
       });
@@ -739,6 +781,10 @@ describe("createAgentMessages", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(auth, {
+            agentConfigurations: [agentConfigWithSpaces!],
+          }),
+          restrictedAgentIds: new Set<string>(),
         },
         transaction,
       });
@@ -866,6 +912,10 @@ describe("createAgentMessages", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(auth, {
+            agentConfigurations: [agentConfigWithSpaces!],
+          }),
+          restrictedAgentIds: new Set<string>(),
         },
         transaction,
       });
@@ -924,6 +974,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -1034,8 +1088,13 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+        configuration: updatedAgentConfig!,
+        conversation: spaceConversation.toJSON(),
+      });
+
       const { agentMessages, richMentions } = await createAgentMessages(auth, {
-        conversation: spaceConversation,
+        conversation: spaceConversation.toJSON(),
         metadata: {
           type: "create",
           mentions,
@@ -1043,6 +1102,12 @@ describe("createAgentMessages", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(auth, {
+            agentConfigurations: [updatedAgentConfig!],
+          }),
+          restrictedAgentIds: canAgentBeUsed
+            ? new Set<string>()
+            : new Set([updatedAgentConfig!.sId]),
         },
       });
 
@@ -1178,10 +1243,18 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1189,6 +1262,12 @@ describe("createAgentMessages", () => {
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            resolvedModels: await resolveModelsForMentionedAgents(userAuth, {
+              agentConfigurations: [updatedAgentConfig],
+            }),
+            restrictedAgentIds: canAgentBeUsed
+              ? new Set<string>()
+              : new Set([updatedAgentConfig.sId]),
           },
         }
       );
@@ -1215,7 +1294,7 @@ describe("createAgentMessages", () => {
       expect(mentionInDb?.status).toBe("agent_restricted_by_space_usage");
     });
 
-    it("should allow agent mentions when agent uses restricted spaces other than conversation's space but the user is the sole manual member of the restricted conversation space", async () => {
+    it("should reject agent mentions when agent uses restricted spaces other than conversation's space even if the user is the sole manual member of the conversation space", async () => {
       const conversationSpace = await SpaceFactory.regular(workspace);
       const user = auth.getNonNullableUser();
       const adminAuth = await Authenticator.internalAdminForWorkspace(
@@ -1310,10 +1389,18 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1321,17 +1408,25 @@ describe("createAgentMessages", () => {
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            resolvedModels: await resolveModelsForMentionedAgents(userAuth, {
+              agentConfigurations: [updatedAgentConfig],
+            }),
+            restrictedAgentIds: canAgentBeUsed
+              ? new Set<string>()
+              : new Set([updatedAgentConfig.sId]),
           },
         }
       );
 
-      expect(agentMessages).toHaveLength(1);
-      expect(agentMessages[0].configuration.sId).toBe(agentConfig.sId);
+      // Normally this agent would not be mentionable: getAgentConfiguration
+      // filters agents by requestedSpaceIds the user cannot read. This test
+      // bypasses that early check to assert the Pod-level guard still rejects.
+      expect(agentMessages).toHaveLength(0);
 
       expect(richMentions).toHaveLength(1);
       if (isRichAgentMention(richMentions[0])) {
         expect(richMentions[0].id).toBe(agentConfig.sId);
-        expect(richMentions[0].status).toBe("approved");
+        expect(richMentions[0].status).toBe("agent_restricted_by_space_usage");
       }
 
       const mentionInDb = await MentionModel.findOne({
@@ -1342,7 +1437,7 @@ describe("createAgentMessages", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("approved");
+      expect(mentionInDb?.status).toBe("agent_restricted_by_space_usage");
     });
 
     it("should allow agent mentions when agent uses global space other than conversation's space", async () => {
@@ -1431,10 +1526,18 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1442,6 +1545,12 @@ describe("createAgentMessages", () => {
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            resolvedModels: await resolveModelsForMentionedAgents(userAuth, {
+              agentConfigurations: [updatedAgentConfig],
+            }),
+            restrictedAgentIds: canAgentBeUsed
+              ? new Set<string>()
+              : new Set([updatedAgentConfig.sId]),
           },
         }
       );
@@ -1498,7 +1607,7 @@ describe("createAgentMessages", () => {
       const globalGroup = globalGroupRes.value;
 
       // Add global group directly to make it open (if not already there)
-      const existingGroupIds = openSpace.groups.map((g) => g.sId);
+      const existingGroupIds = openSpace.groups.map((g) => g.groupSId);
       const hasGlobalGroup = existingGroupIds.includes(globalGroup.sId);
 
       // If global group is not already there, associate it directly
@@ -1580,10 +1689,18 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1591,6 +1708,12 @@ describe("createAgentMessages", () => {
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            resolvedModels: await resolveModelsForMentionedAgents(userAuth, {
+              agentConfigurations: [updatedAgentConfig],
+            }),
+            restrictedAgentIds: canAgentBeUsed
+              ? new Set<string>()
+              : new Set([updatedAgentConfig.sId]),
           },
         }
       );
@@ -1670,6 +1793,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -1694,6 +1818,7 @@ describe("createUserMessage", () => {
 
     expect(userMessageInDb).not.toBeNull();
     expect(userMessageInDb?.content).toBe(content);
+    expect(userMessageInDb?.conversationId).toBe(conversation.id);
     expect(userMessageInDb?.userId).toBe(user.id);
     expect(userMessageInDb?.userContextUsername).toBe(context.username);
     expect(userMessageInDb?.userContextTimezone).toBe(context.timezone);
@@ -1716,15 +1841,24 @@ describe("createUserMessage", () => {
       origin: "web",
     };
 
+    // Attribution happens at the caller (postUserMessage), before the message transaction.
+    const attributedUser = await attributeUserFromWorkspaceAndEmail(
+      workspace,
+      context.email
+    );
+    expect(attributedUser).not.toBeNull();
+    expect(attributedUser?.email).toBe(userJson.email);
+
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content,
         metadata: {
           type: "create",
-          user: null, // User should be attributed from email
+          user: attributedUser,
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -1743,6 +1877,7 @@ describe("createUserMessage", () => {
     const originMessage = await withTransaction(async (transaction) => {
       const originAgentMessage = await AgentMessageModel.create(
         {
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
           agentConfigurationId: "not-a-real-agent",
@@ -1790,6 +1925,7 @@ describe("createUserMessage", () => {
           rank,
           context,
           agenticMessageData,
+          requestedModel: null,
         },
         transaction,
       });
@@ -1835,6 +1971,7 @@ describe("createUserMessage", () => {
           rank,
           context,
           agenticMessageData,
+          requestedModel: null,
         },
         transaction,
       });
@@ -1875,6 +2012,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -1918,6 +2056,7 @@ describe("createUserMessage", () => {
     const originMessage = await withTransaction(async (transaction) => {
       const originAgentMessage = await AgentMessageModel.create(
         {
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
           agentConfigurationId: "not-a-real-agent",
@@ -1961,6 +2100,7 @@ describe("createUserMessage", () => {
             origin: "web",
           },
           agenticMessageData,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2020,6 +2160,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank: 0,
           context: originalContext,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2091,6 +2232,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -2183,6 +2325,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: null,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -2238,6 +2381,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -2295,6 +2439,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2342,6 +2487,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2382,6 +2528,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank: 0,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2396,6 +2543,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank: 1,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2429,6 +2577,7 @@ describe("createUserMessage", () => {
           user: null,
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2441,5 +2590,39 @@ describe("createUserMessage", () => {
     const { userMessage: userMessageInDb } =
       await ConversationFactory.getMessage(auth, userMessage.id);
     expect(userMessageInDb?.userId).toBeNull();
+  });
+});
+
+describe("createCompactionMessage", () => {
+  it("should populate conversationId on the compaction message row", async () => {
+    const setup = await createResourceTest({});
+    const auth = setup.authenticator;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    const compactionMessage = await withTransaction(async (transaction) =>
+      createCompactionMessage(auth, {
+        conversation,
+        rank: 0,
+        transaction,
+      })
+    );
+
+    const compactionMessageRow = await CompactionMessageModel.findOne({
+      where: {
+        id: compactionMessage.compactionMessageId,
+        workspaceId: setup.workspace.id,
+      },
+    });
+    expect(compactionMessageRow).not.toBeNull();
+    expect(compactionMessageRow?.conversationId).toBe(conversation.id);
   });
 });

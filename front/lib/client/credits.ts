@@ -1,0 +1,44 @@
+import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+
+// Format a number of AWU credits for display (thousands separators, at most
+// one decimal). Shared across the credits usage table and the message /
+// conversation cost menu entries.
+export function formatCredits(credits: number): string {
+  return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
+}
+
+// Short recurring-period label for a fair-use timeframe (e.g. "per day").
+// Returns an empty string for the "lifetime" sentinel, which has no period.
+export function formatFairUseTimeframe(
+  timeframe: MaxAwuCreditsTimeframeType
+): string {
+  switch (timeframe) {
+    case "day":
+      return "per day";
+    case "week":
+      return "per week";
+    case "month":
+      return "per month";
+    case "lifetime":
+      return "";
+    default:
+      assertNeverAndIgnore(timeframe);
+      return "";
+  }
+}
+
+export function formatCreditsCompact(credits: number): string {
+  return credits.toLocaleString("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
+}
+
+export function formatMicroUsdCompact(microUsd: number): string {
+  const dollars = microUsd / 1_000_000;
+  return `$${dollars.toLocaleString("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  })}`;
+}

@@ -167,6 +167,13 @@ export const getConfig = async ({
           },
           exclude: /node_modules/,
         },
+        {
+          test: /\.woff2$/i,
+          type: "asset/resource",
+          generator: {
+            filename: "static/fonts/[name][ext]",
+          },
+        },
       ],
     },
     plugins: [
@@ -234,6 +241,10 @@ export const getConfig = async ({
           {
             from: resolvePath("../../ui/request-mic.js"),
             to: path.join(buildDirPath, "request-mic.js"),
+          },
+          {
+            from: resolvePath("../../ui/pcm-processor.js"),
+            to: path.join(buildDirPath, "pcm-processor.js"),
           },
           {
             context: resolvePath("../../ui/images"),

@@ -4,7 +4,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 
-export type WorkspaceMCPServerAuthRefError =
+type WorkspaceMCPServerAuthRefError =
   | {
       kind: "connection_not_found";
       message: string;

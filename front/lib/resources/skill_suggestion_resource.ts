@@ -166,13 +166,14 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       skillResources.map((s) => [s.id, s])
     );
 
-    // Filter suggestions to only include those for skills the user can edit.
+    // Filter suggestions to only include those for skills the user can
+    // administrate.
     const resources = removeNulls(
       suggestions.map((suggestion) => {
         const skillResource = skillResourceByModelId.get(
           suggestion.skillConfigurationId
         );
-        if (!skillResource || !skillResource.canWrite(auth)) {
+        if (!skillResource || !skillResource.canAdministrate(auth)) {
           return null;
         }
         const user = suggestion.updatedByUser;
@@ -368,6 +369,25 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         },
       }
     );
+  }
+
+  /**
+   * Returns whether any pending suggestions remain linked to the given
+   * notification conversation.
+   */
+  static async hasPendingForNotificationConversation(
+    auth: Authenticator,
+    notificationConversationModelId: ModelId
+  ): Promise<boolean> {
+    const count = await SkillSuggestionModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        notificationConversationModelId,
+        state: "pending",
+      },
+    });
+
+    return count > 0;
   }
 
   static async bulkUpdateState(

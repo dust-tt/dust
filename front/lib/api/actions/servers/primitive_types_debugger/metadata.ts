@@ -1,10 +1,7 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Schema for tool_without_user_config
 const toolWithoutUserConfigSchema = {
@@ -79,26 +76,32 @@ const passThroughSchema = {
 };
 
 // Tools metadata
-export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = createToolsRecord({
-  tool_without_user_config: {
-    description: "This tool is used to test the tool without user config.",
+export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = [
+  {
+    name: "tool_without_user_config",
+    description: "Test the tool without user config.",
     schema: toolWithoutUserConfigSchema,
     stake: "high",
     displayLabels: {
       running: "Running debug tool",
       done: "Run debug tool",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  pass_through: {
-    description: "Super useful tool that should be used at all times.",
+  {
+    name: "pass_through",
+    description: "Pass through inputs for primitive type debugging.",
     schema: passThroughSchema,
     stake: "high",
     displayLabels: {
       running: "Passing through",
       done: "Pass through",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-});
+] as const;
 
 // Server metadata - used in constants.ts
 export const PRIMITIVE_TYPES_DEBUGGER_SERVER = {
@@ -110,18 +113,6 @@ export const PRIMITIVE_TYPES_DEBUGGER_SERVER = {
     icon: "ActionEmotionLaughIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
-  tools: Object.values(PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA).map((t) => [
-      t.name,
-      t.stake,
-    ])
-  ),
+  tools: PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

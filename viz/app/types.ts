@@ -6,6 +6,31 @@ interface GetFileParams {
   fileId: string;
 }
 
+interface CallFunctionParams {
+  functionIdOrSlug: string;
+  input?: unknown;
+}
+
+export interface WorkspaceUserIdentity {
+  sId: string;
+  firstName: string;
+  lastName: string | null;
+  fullName: string;
+  image: string | null;
+}
+
+export type UserIdentityState =
+  | {
+      isAuthenticated: true;
+      isWorkspaceMember: true;
+      user: WorkspaceUserIdentity;
+    }
+  | {
+      isAuthenticated: false;
+      isWorkspaceMember: false;
+      user: null;
+    };
+
 interface SetContentHeightParams {
   height: number;
 }
@@ -25,10 +50,15 @@ interface EditTextParams {
   oldText: string;
   newText: string;
   targetFileId?: string;
+  // Clicked element's `data-source` ("<relPath>:<line>:<col>") for location-based edits on a
+  // published (bundled) Frame. When set, oldText/newText are the visible (trimmed) text.
+  source?: string;
 }
 
 // Define a mapped type to extend the base with specific parameters.
 export type VisualizationRPCRequestMap = {
+  callFunction: CallFunctionParams;
+  getUserIdentity: null;
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
@@ -44,6 +74,8 @@ export type VisualizationRPCCommand = keyof VisualizationRPCRequestMap;
 // Command results.
 
 export interface CommandResultMap {
+  callFunction: unknown;
+  getUserIdentity: UserIdentityState;
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };

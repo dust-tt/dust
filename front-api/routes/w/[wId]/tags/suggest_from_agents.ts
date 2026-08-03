@@ -1,5 +1,6 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getWorkspaceTagSuggestions } from "@app/lib/api/assistant/tag_manager";
+import type { GetSuggestionsResponseBody } from "@app/types/api/assistant/tag_manager";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isAdmin } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -28,19 +29,10 @@ const DEFAULT_SUGGESTIONS = [
   "Product",
 ];
 
-export type GetSuggestionsResponseBody = {
-  suggestions:
-    | {
-        name: string;
-        agents: { sId: string; name: string }[];
-      }[]
-    | null
-    | undefined;
-};
-
 // Mounted at /api/w/:wId/tags/suggest_from_agents.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetSuggestionsResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

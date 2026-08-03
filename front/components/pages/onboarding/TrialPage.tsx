@@ -1,13 +1,6 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useKillSwitches } from "@app/lib/swr/kill";
-import {
-  Button,
-  CheckIcon,
-  DustLogoSquare,
-  Icon,
-  Page,
-} from "@dust-tt/sparkle";
+import { Button, Check, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
@@ -15,11 +8,8 @@ export function TrialPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
   const { hasFeature } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
 
-  const isMetronome =
-    hasFeature("metronome_billing") ||
-    !killSwitches?.includes("global_disable_metronome_billing");
+  const isMetronome = !hasFeature("legacy_billing");
 
   const skip = async () => {
     void router.push(`/w/${workspace.sId}/subscribe`);
@@ -58,7 +48,7 @@ export function TrialPage() {
                 title="Get started for free"
                 icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
               />
-              <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+              <p className="-mt-4 text-muted-foreground">
                 No credit card required · No time limit
               </p>
 
@@ -66,13 +56,11 @@ export function TrialPage() {
                 {freePlanFeatures.map((feature, index) => (
                   <li key={index} className="flex items-center gap-3">
                     <Icon
-                      visual={CheckIcon}
+                      visual={Check}
                       size="sm"
                       className="text-primary-500"
                     />
-                    <span className="text-foreground dark:text-foreground-night">
-                      {feature}
-                    </span>
+                    <span className="text-foreground">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -105,20 +93,14 @@ export function TrialPage() {
               title="Start your free trial"
               icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
             />
-            <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+            <p className="-mt-4 text-muted-foreground">
               No credit card required
             </p>
             <ul className="flex flex-col gap-4">
               {legacyFeatures.map((feature, index) => (
                 <li key={index} className="flex items-center gap-3">
-                  <Icon
-                    visual={CheckIcon}
-                    size="sm"
-                    className="text-primary-500"
-                  />
-                  <span className="text-foreground dark:text-foreground-night">
-                    {feature}
-                  </span>
+                  <Icon visual={Check} size="sm" className="text-primary-500" />
+                  <span className="text-foreground">{feature}</span>
                 </li>
               ))}
             </ul>

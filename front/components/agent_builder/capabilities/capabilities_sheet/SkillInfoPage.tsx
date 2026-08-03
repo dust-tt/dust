@@ -3,16 +3,17 @@ import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButton
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { hasRelations } from "@app/lib/skill";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  InformationCircleIcon,
+  InfoCircle,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
@@ -33,7 +34,7 @@ export function SkillInfoPage({
   onClose,
 }: SkillInfoPageProps) {
   const [selectedTab, setSelectedTab] = useState<SkillTabType>("info");
-  const showEditorsTabs = skill.canWrite;
+  const showEditorsTabs = skill.canAdministrate;
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -53,13 +54,13 @@ export function SkillInfoPage({
             <TabsTrigger
               value="info"
               label="Info"
-              icon={InformationCircleIcon}
+              icon={InfoCircle}
               onClick={() => setSelectedTab("info")}
             />
             <TabsTrigger
               value="editors"
               label="Editors"
-              icon={UserGroupIcon}
+              icon={Users01}
               onClick={() => setSelectedTab("editors")}
             />
           </TabsList>
@@ -94,11 +95,7 @@ function SkillInfoContent({
     if (!skill.updatedAt) {
       return null;
     }
-    return new Date(skill.updatedAt).toLocaleDateString("en-US", {
-      year: "2-digit",
-      month: "2-digit",
-      day: "2-digit",
-    });
+    return formatTimestampToFriendlyDate(skill.updatedAt, "compactWithDay");
   }, [skill.updatedAt]);
 
   const editedBy = useMemo(
@@ -106,7 +103,7 @@ function SkillInfoContent({
     [skill.relations.editedByUser?.fullName]
   );
 
-  const editorsForAvatars = useMemo(() => {
+  const editorAvatars = useMemo(() => {
     const seen = new Set<string>();
     const users: UserType[] = [];
     const maybePush = (u: UserType | null | undefined) => {
@@ -120,29 +117,33 @@ function SkillInfoContent({
     for (const editor of skill.relations.editors ?? []) {
       maybePush(editor);
     }
-    return users.slice(0, 3);
+    return users.map((editor) => ({
+      name: editor.fullName,
+      visual: editor.image ?? undefined,
+      isRounded: true,
+    }));
   }, [skill.relations.editedByUser, skill.relations.editors]);
 
   return (
     <div className="flex flex-col gap-4">
       {editedBy && editedAt && (
-        <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
           <div>
-            Edited by {editedBy}, {editedAt}
+            Last edited {editedAt} by {editedBy}
           </div>
-          {editorsForAvatars.length > 0 && (
-            <div className="flex items-center -space-x-2">
-              {editorsForAvatars.map((u) => (
-                <Avatar key={u.sId} size="sm" visual={u.image} isRounded />
-              ))}
-            </div>
+          {editorAvatars.length > 0 && (
+            <Avatar.Stack
+              avatars={editorAvatars}
+              nbVisibleItems={3}
+              size="sm"
+            />
           )}
         </div>
       )}
       <SkillInfoTab
         owner={owner}
         skill={skill}
-        showDescription
+        showDescription={false}
         spaces={spaces}
       />
     </div>

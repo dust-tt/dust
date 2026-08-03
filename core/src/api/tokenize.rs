@@ -113,25 +113,37 @@ pub async fn tokenize_batch(
 pub async fn tokenize_batch_count(
     Json(payload): Json<TokenizeBatchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match tokenize_batch_internal(payload).await {
+    // Count tokens through the encode path (token ids only) rather than the full tokenize path,
+    // which allocates an owned String per token for the whole batch at once and OOMs on large
+    // payloads. Token counting is purely local to the tokenizer, so we skip building the provider
+    // LLM (and its credentials) entirely.
+    let tokenizer = match TokenizerSingleton::from_config(&payload.tokenizer) {
+        Some(tokenizer) => tokenizer,
+        None => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_tokenizer",
+                "Failed to tokenize text - unsupported tokenizer",
+                None,
+            )
+        }
+    };
+
+    match tokenizer.batch_count(payload.texts).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
             "Failed to tokenize text",
             Some(e),
         ),
-        Ok(res) => {
-            // Only return counts instead of full token arrays to avoid OOM.
-            let counts: Vec<usize> = res.iter().map(|tokens| tokens.len()).collect();
-            (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "counts": counts,
-                    })),
-                }),
-            )
-        }
+        Ok(counts) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "counts": counts,
+                })),
+            }),
+        ),
     }
 }

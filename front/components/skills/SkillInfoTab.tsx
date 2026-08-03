@@ -8,7 +8,6 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -22,7 +21,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Chip,
-  DocumentIcon,
+  File02,
   Separator,
   Spinner,
   Tooltip,
@@ -44,7 +43,6 @@ export function SkillInfoTab({
   showDescription = true,
 }: SkillInfoTabProps) {
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
-  const { hasFeature } = useFeatureFlags();
 
   const showDiscoverableSkills = skill.sId === "discover_skills";
 
@@ -52,7 +50,7 @@ export function SkillInfoTab({
     useSkills({
       owner,
       status: "active",
-      isDefault: true,
+      availability: "users_and_agents",
       disabled: !showDiscoverableSkills,
     });
 
@@ -92,7 +90,7 @@ export function SkillInfoTab({
     [skill.relations?.childSkills]
   );
 
-  const showChildSkills = hasFeature("nested_skills") && childSkills.length > 0;
+  const showChildSkills = childSkills.length > 0;
 
   const handleKnowledgeItemsChange = useCallback((items: KnowledgeItem[]) => {
     setKnowledgeItems(items);
@@ -101,7 +99,7 @@ export function SkillInfoTab({
   const showSeparator =
     !!skill.instructions ||
     knowledgeItems.length > 0 ||
-    (hasFeature("sandbox_tools") && skill.fileAttachments.length > 0) ||
+    skill.fileAttachments.length > 0 ||
     sortedMCPServerViews.length > 0 ||
     showChildSkills ||
     showDiscoverableSkills ||
@@ -110,7 +108,7 @@ export function SkillInfoTab({
   return (
     <div className="flex flex-col gap-4">
       {showDescription && skill.userFacingDescription ? (
-        <div className="text-sm text-foreground dark:text-foreground-night">
+        <div className="text-sm text-foreground">
           {skill.userFacingDescription}
         </div>
       ) : null}
@@ -119,13 +117,10 @@ export function SkillInfoTab({
 
       {skill.instructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Guidelines
-          </div>
+          <div className="heading-lg text-foreground">Guidelines</div>
           <SkillInstructionsReadOnlyEditor
             content={skill.instructions}
             htmlContent={skill.instructionsHtml ?? ""}
-            enableSkillReferences={hasFeature("nested_skills")}
             owner={owner}
             onKnowledgeItemsChange={handleKnowledgeItemsChange}
             className="max-h-150 overflow-y-auto"
@@ -134,9 +129,7 @@ export function SkillInfoTab({
       )}
       {knowledgeItems.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Knowledge
-          </div>
+          <div className="heading-lg text-foreground">Knowledge</div>
           <div className="flex flex-wrap gap-2">
             {knowledgeItems.filter(isFullKnowledgeItem).map((item) => (
               <KnowledgeChip
@@ -149,17 +142,15 @@ export function SkillInfoTab({
           </div>
         </div>
       )}
-      {hasFeature("sandbox_tools") && skill.fileAttachments.length > 0 && (
+      {skill.fileAttachments.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Files
-          </div>
+          <div className="heading-lg text-foreground">Files</div>
           <div className="flex flex-wrap gap-2">
             {skill.fileAttachments.map((file) => (
               <AttachmentChip
                 key={file.fileId}
                 label={file.fileName}
-                icon={{ visual: DocumentIcon }}
+                icon={{ visual: File02 }}
                 color="primary"
                 size="xs"
               />
@@ -169,12 +160,10 @@ export function SkillInfoTab({
       )}
       {showChildSkills && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Skills
-          </div>
+          <div className="heading-lg text-foreground">Skills</div>
           <div className="grid grid-cols-2 gap-2">
             {childSkills.map((childSkill) => {
-              const SkillAvatar = getSkillAvatarIcon(childSkill.icon);
+              const SkillAvatar = getSkillAvatarIcon(childSkill);
 
               return (
                 <Tooltip
@@ -195,9 +184,7 @@ export function SkillInfoTab({
       )}
       {sortedMCPServerViews.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Tools
-          </div>
+          <div className="heading-lg text-foreground">Tools</div>
           <div className="grid grid-cols-2 gap-2">
             {sortedMCPServerViews.map((view) => (
               <Tooltip
@@ -218,9 +205,7 @@ export function SkillInfoTab({
 
       {showDiscoverableSkills && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Discoverable Skills
-          </div>
+          <div className="heading-lg text-foreground">Discoverable Skills</div>
           {isDiscoverableLoading ? (
             <div className="flex flex-row items-center gap-2">
               <Spinner size="xs" />
@@ -228,7 +213,7 @@ export function SkillInfoTab({
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {discoverableSkills.map((s) => {
-                const SkillAvatar = getSkillAvatarIcon(s.icon);
+                const SkillAvatar = getSkillAvatarIcon(s);
                 return (
                   <Tooltip
                     key={s.sId}
@@ -250,9 +235,7 @@ export function SkillInfoTab({
 
       {shouldLoadSpaces ? (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Spaces
-          </div>
+          <div className="heading-lg text-foreground">Spaces and Pods</div>
           {isSpacesLoading ? (
             <div className="flex flex-row items-center gap-2">
               <Spinner size="xs" />
@@ -261,7 +244,7 @@ export function SkillInfoTab({
             <div className="flex flex-wrap gap-2">
               {sortedSpaces.map(({ space, name, Icon }) => (
                 <Chip key={space.sId} label={name} size="sm">
-                  <Icon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
+                  <Icon className="h-4 w-4 text-muted-foreground" />
                 </Chip>
               ))}
             </div>

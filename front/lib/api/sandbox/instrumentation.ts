@@ -3,16 +3,11 @@ import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import tracer from "@app/logger/tracer";
 
-interface MetricContext {
-  workspaceId: string;
-  region?: string;
-}
-
-function buildTags(ctx: MetricContext): string[] {
-  return [
-    `workspace_id:${ctx.workspaceId}`,
-    `region:${ctx.region ?? regionConfig.getCurrentRegion()}`,
-  ];
+// Intentionally NOT tagged by workspace_id: region (+ operation/status) is
+// what matters for aggregates, and workspace_id multiplies cardinality past
+// Datadog custom-metric limits. Per-workspace drill-down stays in APM traces.
+function regionTag(): string {
+  return `region:${regionConfig.getCurrentRegion()}`;
 }
 
 // Semantic phases of the "zero to first executed command" startup path, in
@@ -26,8 +21,8 @@ function buildTags(ctx: MetricContext): string[] {
 //
 // Naming: coarse phases are snake_case (`provider_ensure`, `gcs_mount`);
 // sub-steps are `<area>.step` (`gcs.gcsfuse_mount`) so they group by prefix.
-export type SandboxStartupPhase =
-  // Coarse phases (one per ensureSandboxReady step).
+type SandboxStartupPhase =
+  // Coarse phases (one per sandbox readiness step).
   | "total"
   | "provider_ensure"
   | "egress_prep"
@@ -50,11 +45,17 @@ export type SandboxStartupPhase =
   | "egress.wait_healthy"
   | "egress.healthcheck"
   | "egress.install_trust_bundle"
-  // GCS FUSE mount sub-steps. token_server brackets the single exec that writes
-  // the token, starts the token server, and polls it ready (was three execs).
+  // GCS token minting, broker startup, and individual gcsfuse mount commands.
   | "gcs.mint_token"
   | "gcs.token_server"
-  | "gcs.gcsfuse_mount";
+  | "gcs.gcsfuse_mount"
+  // Pod state bring-up (cold start only, after gcs_mount): restore replicated
+  // SQLite databases, then start the daemon (its static directory-watcher
+  // config is baked in the image).
+  | "pod_state_setup"
+  | "pod_state.enumerate"
+  | "pod_state.restore_db"
+  | "pod_state.start_daemon";
 
 // Opens a parent APM span for a startup phase. The provider.* child spans nest
 // underneath automatically, so this adds semantic grouping (and a per-phase
@@ -75,15 +76,9 @@ export function traceSandboxStartupPhase<T>(
   });
 }
 
-// The single net-new aggregate metric: the headline "0 -> first command" wall
-// time for one ensureSandboxReady, split cold (fresh create path) vs warm
-// (wake/reuse). This is NOT covered by sandbox.tools.duration, whose timer
-// starts only once setup is already done and times the user command alone.
-//
-// Intentionally NOT tagged by workspace_id: the cold/warm split per region is
-// what matters for latency, and workspace_id would multiply cardinality on a
-// per-ensureSandboxReady distribution. Per-workspace drill-down stays available
-// via APM traces.
+// Headline "0 -> first command" wall time for one sandbox readiness run,
+// split cold (fresh create) vs warm (wake/reuse). Not covered by
+// sandbox.tools.duration, which starts only once setup is done.
 export function recordSandboxStartupTotal(
   durationMs: number,
   { region, cold }: { region?: string; cold: boolean },
@@ -97,23 +92,19 @@ export function recordSandboxStartupTotal(
 }
 
 export function recordLifecycleOperation(
-  operation: "create" | "wake" | "sleep" | "destroy",
-  ctx: MetricContext
+  operation: "create" | "wake" | "sleep" | "destroy"
 ): void {
-  getStatsDClient().increment(
-    `sandbox.lifecycle.${operation}`,
-    1,
-    buildTags(ctx)
-  );
+  getStatsDClient().increment(`sandbox.lifecycle.${operation}`, 1, [
+    regionTag(),
+  ]);
 }
 
 export function recordStateDuration(
   previousStatus: SandboxStatus,
-  durationMs: number,
-  ctx: MetricContext
+  durationMs: number
 ): void {
   getStatsDClient().distribution("sandbox.lifecycle.duration", durationMs, [
-    ...buildTags(ctx),
+    regionTag(),
     `status:${previousStatus}`,
   ]);
 }
@@ -121,12 +112,20 @@ export function recordStateDuration(
 export function recordToolDuration(
   tool: string,
   durationMs: number,
-  ctx: MetricContext,
   status: "success" | "error" = "success"
 ): void {
   getStatsDClient().distribution("sandbox.tools.duration", durationMs, [
-    ...buildTags(ctx),
     `tool:${tool}`,
+    `status:${status}`,
+  ]);
+}
+
+// Health of the pod-state pre-sleep flush: a success/failure counter. Datadog
+// monitors page on the failure count; the stable logger.error message next to
+// each failing call site carries the cause.
+export function recordPodStateHealth(status: "success" | "failure"): void {
+  getStatsDClient().increment("sandbox.pod_state.health", 1, [
+    regionTag(),
     `status:${status}`,
   ]);
 }

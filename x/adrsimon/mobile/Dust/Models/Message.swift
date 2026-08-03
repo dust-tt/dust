@@ -77,7 +77,10 @@ struct ContentFragment: Codable, Identifiable, Hashable {
 // MARK: - Generated File (attached to AgentMessage)
 
 struct GeneratedFile: Codable, Identifiable, Hashable {
-    let fileId: String
+    // Files backed by a Dust FileResource carry a `fileId`; path-only files
+    // (oversized tool output offloaded to disk) carry `filePath` and a null `fileId`.
+    let fileId: String?
+    let filePath: String?
     let title: String
     let contentType: String
     let createdAt: Double?
@@ -85,7 +88,7 @@ struct GeneratedFile: Codable, Identifiable, Hashable {
     let hidden: Bool?
 
     var id: String {
-        fileId
+        fileId ?? filePath ?? title
     }
 
     var isVisible: Bool {
@@ -122,6 +125,7 @@ struct AgentMessage: Codable, Identifiable {
     let configuration: AgentConfiguration
     var generatedFiles: [GeneratedFile]?
     var citations: [String: CitationReference]?
+    var error: StreamingError?
 
     var id: String {
         sId
@@ -171,13 +175,20 @@ enum ToolStake: String, Decodable {
 
 enum ErrorCategory: String, Decodable {
     case retryableModelError = "retryable_model_error"
+    case contextWindowExceeded = "context_window_exceeded"
+    case emptyContent = "empty_content"
+    case providerInternalError = "provider_internal_error"
     case streamError = "stream_error"
+    case unknownError = "unknown_error"
+    case invalidResponseFormatConfiguration = "invalid_response_format_configuration"
 }
 
 struct ToolApprovalInfo: Equatable {
     let actionId: String
     let messageId: String
     let conversationId: String
+    /// sId of the user whose turn triggered the action; only they may approve it.
+    let triggeringUserId: String?
     let toolName: String?
     let mcpServerName: String?
     let agentName: String?
@@ -196,6 +207,7 @@ struct ToolApprovalInfo: Equatable {
         actionId: String,
         messageId: String,
         conversationId: String,
+        triggeringUserId: String?,
         toolName: String?,
         mcpServerName: String?,
         agentName: String?,
@@ -206,6 +218,7 @@ struct ToolApprovalInfo: Equatable {
         self.actionId = actionId
         self.messageId = messageId
         self.conversationId = conversationId
+        self.triggeringUserId = triggeringUserId
         self.toolName = toolName
         self.mcpServerName = mcpServerName
         self.agentName = agentName
@@ -232,6 +245,7 @@ struct ToolApprovalInfo: Equatable {
             actionId: event.actionId ?? "",
             messageId: event.messageId ?? fallbackMessageId,
             conversationId: event.conversationId ?? fallbackConversationId,
+            triggeringUserId: event.userId,
             toolName: event.metadata?.toolName,
             mcpServerName: event.metadata?.mcpServerName,
             agentName: event.metadata?.agentName,
@@ -246,6 +260,7 @@ struct ToolApprovalInfo: Equatable {
             actionId: action.actionId ?? "",
             messageId: action.messageId ?? "",
             conversationId: action.conversationId ?? fallbackConversationId,
+            triggeringUserId: action.userId,
             toolName: action.metadata?.toolName,
             mcpServerName: action.metadata?.mcpServerName,
             agentName: action.metadata?.agentName,
@@ -280,7 +295,7 @@ struct ErrorInfo: Equatable {
     let messageId: String
 
     var isRetryable: Bool {
-        category == .retryableModelError || category == .streamError
+        category == .retryableModelError || category == .streamError || category == .emptyContent
     }
 
     init(from error: StreamingError, messageId: String) {
@@ -292,6 +307,47 @@ struct ErrorInfo: Equatable {
     }
 }
 
+/// What the agent is waiting on the user for. Outlives the stream until resolved.
+enum BlockedState: Equatable {
+    case approval(ToolApprovalInfo)
+    case personalAuth(provider: String, toolName: String)
+    case fileAuth(fileName: String, toolName: String)
+    case userQuestion(UserQuestionInfo)
+}
+
+struct UserQuestionInfo: Equatable {
+    let actionId: String
+    let messageId: String
+    let conversationId: String
+    /// sId of the user whose turn triggered the question; only they may answer it.
+    let triggeringUserId: String?
+    let question: UserQuestion
+
+    init(from event: ToolAskUserQuestionEvent, fallbackMessageId: String, fallbackConversationId: String) {
+        self.actionId = event.actionId ?? ""
+        self.messageId = event.messageId ?? fallbackMessageId
+        self.conversationId = event.conversationId ?? fallbackConversationId
+        self.triggeringUserId = event.userId
+        self.question = event.question
+    }
+
+    init(from action: BlockedAction, question: UserQuestion, fallbackConversationId: String) {
+        self.actionId = action.actionId ?? ""
+        self.messageId = action.messageId ?? ""
+        self.conversationId = action.conversationId ?? fallbackConversationId
+        self.triggeringUserId = action.userId
+        self.question = question
+    }
+}
+
+/// Mirrors front's `canCurrentUserRespondToParentUserMessage`: a viewer may respond to a
+/// blocked action only when it has no associated user (API-key run) or the action was
+/// triggered by that same viewer. Prevents one teammate from approving another's tool calls.
+func canRespondToBlockedAction(triggeringUserId: String?, currentUserSId: String?) -> Bool {
+    triggeringUserId == nil || triggeringUserId == currentUserSId
+}
+
+/// Derived view projection of `Activity` overlaid with any `BlockedState`. Not stored.
 enum AgentStreamingPhase: Equatable {
     case idle
     case thinking
@@ -299,6 +355,18 @@ enum AgentStreamingPhase: Equatable {
     case personalAuthRequired(provider: String, toolName: String)
     case fileAuthRequired(fileName: String, toolName: String)
     case approvalRequired(approval: ToolApprovalInfo)
+    case userQuestionRequired(question: UserQuestionInfo)
+}
+
+extension BlockedState {
+    var asPhase: AgentStreamingPhase {
+        switch self {
+        case let .approval(info): .approvalRequired(approval: info)
+        case let .personalAuth(provider, toolName): .personalAuthRequired(provider: provider, toolName: toolName)
+        case let .fileAuth(fileName, toolName): .fileAuthRequired(fileName: fileName, toolName: toolName)
+        case let .userQuestion(info): .userQuestionRequired(question: info)
+        }
+    }
 }
 
 enum ConversationMessage: Identifiable {

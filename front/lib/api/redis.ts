@@ -51,8 +51,10 @@ export const REDIS_CACHE_CONCURRENCY = 32;
 
 export type RedisUsageTagsType =
   | "agent_recent_authors"
+  | "agent_step_content_cache"
   | "agent_usage"
   | "assistant_generation"
+  | "cache_diagnostics"
   | "cache_with_redis"
   | "cancel_message_generation"
   | "conversation_events"
@@ -63,6 +65,7 @@ export type RedisUsageTagsType =
   | "key_usage_tracking"
   | "lock"
   | "sandbox_exec_tokens"
+  | "sandbox_function_invocation_events"
   | "mcp_client_side_request"
   | "mcp_client_side_results"
   | "mentions_count"
@@ -71,6 +74,7 @@ export type RedisUsageTagsType =
   | "metronome_limit"
   | "metronome_webhook_dedup"
   | "awu_purchase_status"
+  | "checkout_payment_status"
   | "message_events"
   | "notion_url_sync"
   | "poke_cache_invalidation"

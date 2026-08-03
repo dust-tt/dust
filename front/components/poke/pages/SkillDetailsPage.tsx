@@ -65,7 +65,8 @@ export function SkillDetailsPage() {
     );
   }
 
-  const { skill, editedByUser, spaces } = skillDetails;
+  const { skill, editedByUser, spaces, agentsUsage, usedBySkills } =
+    skillDetails;
 
   return (
     <div>
@@ -160,6 +161,69 @@ export function SkillDetailsPage() {
       </div>
 
       <div className="mt-4">
+        <div className="border-material-200 rounded-lg border p-4">
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger>
+              <h2 className="text-md font-bold">
+                Used by ({agentsUsage.count} agents, {usedBySkills.length}{" "}
+                skills)
+              </h2>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-4 flex flex-row gap-4">
+                <div className="flex-1">
+                  <h3 className="pb-2 text-sm font-bold">
+                    Agents ({agentsUsage.count})
+                  </h3>
+                  {agentsUsage.agents.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      No agents use this skill.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {agentsUsage.agents.map((agent) => (
+                        <div key={agent.sId}>
+                          <LinkWrapper
+                            href={`/poke/${owner.sId}/assistants/${agent.sId}`}
+                            className="text-highlight-500"
+                          >
+                            {agent.name}
+                          </LinkWrapper>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="pb-2 text-sm font-bold">
+                    Skills ({usedBySkills.length})
+                  </h3>
+                  {usedBySkills.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      No skills use this skill.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {usedBySkills.map((usedBySkill) => (
+                        <div key={usedBySkill.sId}>
+                          <LinkWrapper
+                            href={`/poke/${owner.sId}/skills/${usedBySkill.sId}`}
+                            className="text-highlight-500"
+                          >
+                            {usedBySkill.name}
+                          </LinkWrapper>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      </div>
+
+      <div className="mt-4">
         <SelfImprovingSkillsConversationDataTable owner={owner} skillId={sId} />
       </div>
 
@@ -179,7 +243,7 @@ export function SkillDetailsPage() {
                   <Spinner />
                 </div>
               ) : versions.length === 0 ? (
-                <p className="text-muted-foreground dark:text-muted-foreground-night py-4 text-sm">
+                <p className="text-muted-foreground py-4 text-sm">
                   No previous versions.
                 </p>
               ) : (
@@ -191,7 +255,7 @@ export function SkillDetailsPage() {
                     >
                       <div className="mb-2 flex items-center gap-2">
                         <span className="font-bold">v{version.version}</span>
-                        <span className="text-foreground dark:text-foreground-night">
+                        <span className="text-foreground">
                           {version.createdAt
                             ? formatTimestampToFriendlyDate(version.createdAt)
                             : "N/A"}

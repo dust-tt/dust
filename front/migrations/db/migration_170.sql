@@ -1,1 +1,0 @@
-ALTER TABLE "public"."labs_transcripts_configurations" ADD COLUMN "isDefaultWorkspaceConfiguration" BOOLEAN NOT NULL DEFAULT false;

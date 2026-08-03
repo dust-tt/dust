@@ -2,23 +2,20 @@ engine biome(1.0)
 language js
 
 // Disallows `!important` in CSS produced from JS/TS (CSS-in-JS, template
-// literals, inline style strings) and Tailwind v3's `!` important-prefix
-// utilities (e.g. `focus:!ring-0`, `!mt-0`). See CODING_RULES.md [GEN12].
+// literals, inline style strings) and Tailwind v4's `!` important-suffix
+// utilities (e.g. `text-foreground!`, `mt-0!`). See CODING_RULES.md [GEN12].
 // Narrow exceptions for third-party library overrides and dev tooling are
 // scoped via biome.json overrides.
 //
 // One regex with an internal 3-way alternation (one branch per quote style).
 // Each branch matches a full string/template literal and excludes only its own
 // delimiter, so inner quotes of a different kind are handled (e.g. an apostrophe
-// inside a double-quoted string). Combining the branches into a single regex
-// rather than a Grit `or { r"...", r"...", r"..." }` roughly halves this rule's
-// runtime: Biome attempts one node match / one compiled automaton per node
-// instead of three. Each branch covers all three flagged forms:
+// inside a double-quoted string). Each branch covers two flagged forms:
 //   - `!important` keyword (CSS-in-JS, template literals, inline styles)
-//   - Tailwind modifier-prefixed important: `:!<utility>` (e.g. `focus:!ring-0`)
-//   - Tailwind leading important: `!<utility>` right after the opening quote
+//   - Tailwind v4 suffix important: `<utility>!` (e.g. `text-foreground!`, `mt-0!`)
+//     Anchored to a hyphenated class pattern to avoid matching natural English like "Hello!"
 pattern css_important_string() {
-    r"(?:\"(?:![a-z]|[^\"]*(?:!important|:![a-z]))[^\"]*\"|'(?:![a-z]|[^']*(?:!important|:![a-z]))[^']*'|`(?:![a-z]|[^`]*(?:!important|:![a-z]))[^`]*`)"
+    r"(?:\"[^\"]*(?:!important|[a-z0-9]-[a-z0-9!-]*!)[^\"]*\"|'[^']*(?:!important|[a-z0-9]-[a-z0-9!-]*!)[^']*'|`[^`]*(?:!important|[a-z0-9]-[a-z0-9!-]*!)[^`]*`)"
 }
 
 css_important_string() as $val where {

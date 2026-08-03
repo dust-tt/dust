@@ -2,11 +2,11 @@ import type { ConversationError } from "@app/types/assistant/conversation";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {
+  AlertCircle,
   Button,
-  ExclamationCircleIcon,
   Icon,
   LinkWrapper,
-  LoginIcon,
+  LogIn01,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -36,7 +36,7 @@ export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
 function ConversationAccessRestricted() {
   return (
     <ErrorDisplay
-      icon={ExclamationCircleIcon}
+      icon={AlertCircle}
       title="You don't have access to this page"
       message={["This conversation may include restricted data."]}
     />
@@ -46,7 +46,7 @@ function ConversationAccessRestricted() {
 function ConversationNotFound() {
   return (
     <ErrorDisplay
-      icon={ExclamationCircleIcon}
+      icon={AlertCircle}
       title="Conversation Not Found"
       message="This conversation may have been deleted or moved."
     />
@@ -76,25 +76,17 @@ interface ErrorDisplayProps {
 export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
   return (
     <div className="flex h-dvh flex-col items-center justify-center gap-3">
-      {icon && (
-        <Icon
-          visual={icon}
-          className="dark:text-golder-400-night text-golden-400"
-          size="lg"
-        />
-      )}
-      <p className="heading-xl text-center text-foreground dark:text-foreground-night">
-        {title}
-      </p>
-      <p className="copy-sm text-center text-muted-foreground dark:text-muted-foreground-night">
+      {icon && <Icon visual={icon} className="text-info-400" size="lg" />}
+      <p className="heading-xl text-center text-foreground">{title}</p>
+      <div className="copy-sm text-center text-muted-foreground">
         {Array.isArray(message) ? (
           message.map((line, index) => <p key={index}>{line}</p>)
         ) : (
           <p>{message}</p>
         )}
-      </p>
+      </div>
       <LinkWrapper href="/">
-        <Button variant="outline" label="Back to homepage" icon={LoginIcon} />
+        <Button variant="outline" label="Back to homepage" icon={LogIn01} />
       </LinkWrapper>
     </div>
   );

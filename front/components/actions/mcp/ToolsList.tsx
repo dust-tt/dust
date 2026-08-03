@@ -3,6 +3,7 @@ import type {
   ToolSettings,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
+  canToolUseMediumStakeLevel,
   encodeMCPToolNameForForm,
   getDefaultInternalToolStakeLevel,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
@@ -24,7 +25,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  InformationCircleIcon,
+  InfoCircle,
 } from "@dust-tt/sparkle";
 import { memo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
@@ -71,7 +72,7 @@ function ToolItem({
 
   const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
     high: "High (always ask for confirmation)",
-    medium: "Medium (allows per-agent confirmation save)",
+    medium: "Medium (allows input-scoped confirmation save)",
     low: "Low (allows user-global confirmation save)",
     never_ask: "Never ask (automatic execution)",
   };
@@ -80,18 +81,23 @@ function ToolItem({
     <div className="flex flex-col gap-1 pb-2">
       <div className="flex items-center gap-2">
         {mayUpdate && <Checkbox checked={toolEnabled} onClick={handleToggle} />}
-        <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
+        <h4 className="heading-base flex-grow text-foreground">
           {asDisplayName(tool.name)}
         </h4>
       </div>
       {tool.description && (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {tool.description}
-        </p>
+        <Collapsible>
+          <CollapsibleTrigger label="Description" variant="secondary" />
+          <CollapsibleContent>
+            <p className="whitespace-pre-wrap break-words pt-1 text-sm text-muted-foreground">
+              {tool.description}
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
       )}
       {toolEnabled && (
         <Card variant="primary" className="flex-col">
-          <div className="heading-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="heading-sm text-muted-foreground">
             Tool stake setting
           </div>
           <div className="flex justify-end">
@@ -181,7 +187,7 @@ export const ToolsList = memo(
               className="mb-4 mt-2 w-full"
               variant="blue"
               size="lg"
-              icon={InformationCircleIcon}
+              icon={InfoCircle}
               title="User Approval Settings"
             >
               <ul>
@@ -189,8 +195,8 @@ export const ToolsList = memo(
                   <b>High stake</b> tools need explicit user approval.
                 </li>
                 <li>
-                  <b>Medium stake</b> tools allow users to save per-agent
-                  confirmations.
+                  <b>Medium stake</b> tools allow users to save confirmations
+                  for specific tool inputs.
                 </li>
                 <li>
                   Users can completely disable confirmations for{" "}
@@ -204,6 +210,11 @@ export const ToolsList = memo(
 
             <div className="flex flex-col gap-4">
               {tools.map((tool) => {
+                const availableStakeLevels = MCP_TOOL_STAKE_LEVELS.filter(
+                  (stakeLevel) =>
+                    stakeLevel !== "medium" ||
+                    canToolUseMediumStakeLevel(mcpServerView.server, tool.name)
+                );
                 const defaultSettings = getDefaultToolSettings({
                   tool,
                   toolMetadataByName,
@@ -217,7 +228,7 @@ export const ToolsList = memo(
                       tool={tool}
                       settings={defaultSettings}
                       mayUpdate={mayUpdate}
-                      availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+                      availableStakeLevels={availableStakeLevels}
                       onChange={noop}
                     />
                   );
@@ -233,7 +244,7 @@ export const ToolsList = memo(
                       <ToolItem
                         tool={tool}
                         mayUpdate={mayUpdate}
-                        availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+                        availableStakeLevels={availableStakeLevels}
                         settings={field.value ?? defaultSettings}
                         onChange={field.onChange}
                       />

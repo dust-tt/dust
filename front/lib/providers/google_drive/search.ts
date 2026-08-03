@@ -1,4 +1,3 @@
-import { SUPPORTED_MIMETYPES } from "@app/lib/api/actions/servers/google_drive/metadata";
 import {
   PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
   PROVIDER_SEARCH_MAX_PAGE_SIZE,
@@ -12,6 +11,18 @@ import type {
 } from "@app/lib/search/tools/types";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import TurndownService from "turndown";
+
+const SUPPORTED_MIMETYPES = [
+  "application/vnd.google-apps.document",
+  "application/vnd.google-apps.presentation",
+  "application/vnd.google-apps.spreadsheet",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
 
 const turndownService = new TurndownService({
   headingStyle: "atx",

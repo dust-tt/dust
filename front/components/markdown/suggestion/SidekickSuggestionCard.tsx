@@ -40,8 +40,8 @@ import {
   Avatar,
   Button,
   DiffBlock,
-  EyeIcon,
-  FolderIcon,
+  Eye,
+  Folder,
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -124,7 +124,7 @@ const InstructionsSuggestionCard = memo(
               <Button
                 variant="outline"
                 size="xs"
-                icon={EyeIcon}
+                icon={Eye}
                 tooltip="Review in instructions"
                 onClick={() => focusOnSuggestion(agentSuggestion)}
               />
@@ -391,7 +391,7 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
   return (
     <ActionCardBlock
       {...labels}
-      visual={<Avatar icon={getSkillAvatarIcon(skill.icon)} size="sm" />}
+      visual={<Avatar icon={getSkillAvatarIcon(skill)} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
       rejectedTitle={`${skill.name} skill suggestion rejected`}
@@ -623,7 +623,7 @@ function KnowledgeSuggestionCard({
     ? CONNECTOR_UI_CONFIGURATIONS[
         dataSourceView.dataSource.connectorProvider
       ].getLogoComponent()
-    : FolderIcon;
+    : Folder;
 
   const hasVisibleScope = hasNodeScope && selectedNodes.length > 0;
   const description =

@@ -18,7 +18,7 @@ import {
   updateCrawlerCrawlFrequency,
 } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
-import { getTemporalClient } from "@connectors/lib/temporal";
+import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
@@ -30,27 +30,26 @@ import type {
   ConnectorsCommandType,
   TemporalCheckQueueResponseType,
   TemporalCommandType,
+  TemporalStopWorkflowResponseType,
   TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
 } from "@connectors/types";
 import { isConnectorError } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
 import fs from "fs";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import PQueue from "p-queue";
 import readline from "readline";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-// Schema for permissions file validation
-const PermissionsFileSchema = t.record(
-  t.string,
-  t.union([
-    t.literal("read"),
-    t.literal("write"),
-    t.literal("read_write"),
-    t.literal("none"),
+const PermissionsFileSchema = z.record(
+  z.string(),
+  z.union([
+    z.literal("read"),
+    z.literal("write"),
+    z.literal("read_write"),
+    z.literal("none"),
   ])
 );
 
@@ -91,33 +90,6 @@ export async function runCommand(adminCommand: AdminCommandType) {
     default:
       assertNever(adminCommand);
   }
-}
-
-export async function getConnectorOrThrow({
-  workspaceId,
-  dataSourceId,
-}: {
-  workspaceId: string | undefined;
-  dataSourceId: string | undefined;
-}): Promise<ConnectorModel> {
-  if (!workspaceId) {
-    throw new Error("Missing workspace ID (wId)");
-  }
-  if (!dataSourceId) {
-    throw new Error("Missing dataSource ID (dsId)");
-  }
-  const connector = await ConnectorModel.findOne({
-    where: {
-      workspaceId,
-      dataSourceId: dataSourceId,
-    },
-  });
-  if (!connector) {
-    throw new Error(
-      `No connector found for ${dataSourceId} workspace with ID ${workspaceId}`
-    );
-  }
-  return connector;
 }
 
 export async function throwOnError<T>(p: Promise<Result<T, Error>>) {
@@ -237,15 +209,15 @@ export const connectors = async ({
           const fileContent = fs.readFileSync(permissionsFile, "utf8");
           const parsedPermissions = JSON.parse(fileContent);
 
-          // Validate using io-ts schema
-          const validation = PermissionsFileSchema.decode(parsedPermissions);
+          const validation = PermissionsFileSchema.safeParse(parsedPermissions);
 
-          if (isLeft(validation)) {
-            const pathError = reporter.formatValidationErrors(validation.left);
-            throw new Error(`Invalid permissions file format: ${pathError}`);
+          if (!validation.success) {
+            throw new Error(
+              `Invalid permissions file format: ${fromError(validation.error).toString()}`
+            );
           }
 
-          permissions = validation.right;
+          permissions = validation.data;
         } catch (error) {
           if (error instanceof SyntaxError) {
             throw new Error(
@@ -488,6 +460,7 @@ export const temporal = async ({
 }: TemporalCommandType): Promise<
   | AdminSuccessResponseType
   | TemporalCheckQueueResponseType
+  | TemporalStopWorkflowResponseType
   | TemporalUnprocessedWorkflowsResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "temporal", command, args });
@@ -545,6 +518,18 @@ export const temporal = async ({
           .filter((q) => q.pollers === 0)
           .map((q) => q.queue),
       };
+    }
+
+    case "stop-workflow": {
+      const { workflowId, reason } = args;
+      if (!workflowId) {
+        throw new Error("Missing --workflowId argument");
+      }
+      const terminated = await terminateWorkflow(
+        workflowId,
+        reason ?? "Terminated via CLI"
+      );
+      return { workflowId, terminated };
     }
   }
 };

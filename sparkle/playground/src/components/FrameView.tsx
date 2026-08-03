@@ -1,29 +1,29 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
-  ArrowCircleIcon,
-  ArrowDownOnSquareIcon,
-  ArrowGoBackIcon,
+  RefreshCw01,
+  Download01,
+  ReverseLeft,
   Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  CommandLineIcon,
+  ClipboardCheck,
+  Clipboard,
+  Terminal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  FullscreenIcon,
-  LinkIcon,
-  MoreIcon,
+  Maximize01,
+  Link01,
+  DotsHorizontal,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SpaceOpenIcon,
+  SpaceOpen,
   TextArea,
-  XMarkIcon,
+  XClose,
   useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -74,50 +74,38 @@ export function FrameView() {
   };
 
   return (
-    <div className="s-h-screen s-w-full s-bg-background">
+    <div className="h-screen w-full bg-background">
       <Allotment
         vertical={false}
         proportionalLayout={true}
         defaultSizes={[50, 50]}
-        className="s-h-full s-w-full s-flex-1"
+        className="h-full w-full flex-1"
       >
         <Allotment.Pane
           minSize={320}
           preferredSize={50}
-          className="s-h-full s-border-r s-border-border"
+          className="h-full border-r border-border"
         >
-          <div className="s-h-full s-w-full" />
+          <div className="h-full w-full" />
         </Allotment.Pane>
 
-        <Allotment.Pane minSize={320} preferredSize={50} className="s-h-full">
-          <div className="s-flex s-h-full s-flex-col">
-            <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-bg-background s-px-3">
-              <Button
-                icon={ArrowCircleIcon}
-                variant="ghost"
-                tooltip="Refresh"
-              />
-              <Button
-                icon={FullscreenIcon}
-                variant="ghost"
-                tooltip="Full screen"
-              />
-              <Button
-                icon={ArrowDownOnSquareIcon}
-                variant="ghost"
-                tooltip="Export"
-              />
-              <Button icon={LinkIcon} variant="ghost" tooltip="Share" />
-              <div className="s-flex s-h-8 s-items-center s-gap-1">
+        <Allotment.Pane minSize={320} preferredSize={50} className="h-full">
+          <div className="flex h-full flex-col">
+            <div className="flex h-14 w-full items-center gap-2 border-b border-border bg-background px-3">
+              <Button icon={RefreshCw01} variant="ghost" tooltip="Refresh" />
+              <Button icon={Maximize01} variant="ghost" tooltip="Full screen" />
+              <Button icon={Download01} variant="ghost" tooltip="Export" />
+              <Button icon={Link01} variant="ghost" tooltip="Share" />
+              <div className="flex h-8 items-center gap-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button icon={MoreIcon} variant="ghost" />
+                    <Button icon={DotsHorizontal} variant="ghost" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem label="Revert" icon={ArrowGoBackIcon} />
+                    <DropdownMenuItem label="Revert" icon={ReverseLeft} />
                     <DropdownMenuItem
                       label="Code view"
-                      icon={CommandLineIcon}
+                      icon={Terminal}
                       onClick={() => setIsCodeViewOpen(true)}
                     />
                     <DropdownMenuSeparator />
@@ -131,15 +119,15 @@ export function FrameView() {
                     {!isAddedToProject && (
                       <DropdownMenuItem
                         label="Add to project"
-                        icon={SpaceOpenIcon}
+                        icon={SpaceOpen}
                         onClick={handleAddToProject}
                       />
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <div className="s-flex-1" />
-              <Button icon={XMarkIcon} variant="ghost" />
+              <div className="flex-1" />
+              <Button icon={XClose} variant="ghost" />
             </div>
           </div>
         </Allotment.Pane>
@@ -149,12 +137,12 @@ export function FrameView() {
           <SheetHeader>
             <SheetTitle>Frame: Code view</SheetTitle>
           </SheetHeader>
-          <div className="s-flex s-h-full s-flex-col s-gap-3 s-px-4">
-            <div className="s-flex s-justify-end">
+          <div className="flex h-full flex-col gap-3 px-4">
+            <div className="flex justify-end">
               <Button
                 size="sm"
                 variant="outline"
-                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                icon={isCopied ? ClipboardCheck : Clipboard}
                 label={isCopied ? "Copied" : "Copy to clipboard"}
                 onClick={handleCopyCode}
               />

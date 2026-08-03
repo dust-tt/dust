@@ -55,6 +55,12 @@ type WebhookProviderServiceDataMap = {
 export type WebhookServiceDataForProvider<P extends WebhookProvider> =
   WebhookProviderServiceDataMap[P];
 
+export type GetServiceDataResponseType<
+  P extends WebhookProvider = WebhookProvider,
+> = {
+  serviceData: WebhookServiceDataForProvider<P>;
+};
+
 // Data-only presets (no React components). Safe to import from temporal workers
 // and server-side code without pulling in sparkle/React.
 export const WEBHOOK_PRESETS = {

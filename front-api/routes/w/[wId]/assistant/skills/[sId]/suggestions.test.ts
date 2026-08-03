@@ -35,6 +35,28 @@ async function setup(options: { role?: MembershipRoleType } = {}) {
   return { workspace, auth, skill };
 }
 
+async function setupAdminWithOtherBuilderSkill() {
+  const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+  const skillOwner = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, skillOwner, {
+    role: "builder",
+  });
+  const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    skillOwner.sId,
+    workspace.sId
+  );
+  const skill = await SkillFactory.create(ownerAuth, {
+    name: "Other Builder Skill",
+  });
+  await ownerAuth.refresh();
+  const suggestion = await SkillSuggestionFactory.create(ownerAuth, skill, {
+    state: "pending",
+  });
+
+  return { workspace, skill, suggestion };
+}
+
 function patch(workspace: { sId: string }, sId: string, body: unknown) {
   return honoApp.request(
     `/api/w/${workspace.sId}/assistant/skills/${sId}/suggestions`,
@@ -254,6 +276,19 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     expect((await response.json()).suggestions[0].state).toBe("approved");
   });
 
+  it("admin can update suggestions for a skill they do not edit", async () => {
+    const { workspace, skill, suggestion } =
+      await setupAdminWithOtherBuilderSkill();
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+  });
+
   it("returns 403 for non-editor of the skill", async () => {
     const { workspace } = await setup();
 
@@ -399,6 +434,18 @@ describe("GET /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
       state: "pending",
     });
+
+    const response = await get(workspace, skill.sId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.suggestions).toHaveLength(1);
+    expect(body.suggestions[0].sId).toBe(suggestion.sId);
+  });
+
+  it("returns suggestions to an admin for a skill they do not edit", async () => {
+    const { workspace, skill, suggestion } =
+      await setupAdminWithOtherBuilderSkill();
 
     const response = await get(workspace, skill.sId);
 

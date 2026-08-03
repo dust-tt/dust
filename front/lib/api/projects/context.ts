@@ -1,14 +1,16 @@
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getAttachmentFromContentFragment,
   isContentNodeAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import {
-  createGCSMountDirectory,
+  DustFileSystemError,
+  podScopedPath,
+} from "@app/lib/api/file_system/types";
+import {
   deleteGCSMountFile,
-  type GCSMountDirectoryEntry,
   moveFile,
   renameGCSMountDirectory,
   renameGCSMountFile,
@@ -32,13 +34,47 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
+import type { FileSystemDirectoryEntry } from "@app/types/api/file_system/types";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Op } from "sequelize";
+import { z } from "zod";
+
+/** GET: project context (file-backed + content-node fragments). */
+export type GetProjectContextResponseBody = {
+  attachments: ConversationAttachmentType[];
+};
+
+const PostProjectContextContentNodeItemSchema = z.object({
+  title: z.string().min(1, "title is required"),
+  nodeId: z.string().min(1, "nodeId is required"),
+  nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
+  url: z.string().nullable().optional(),
+  supersededContentFragmentId: z.string().nullable().optional(),
+});
+
+export const PostProjectContextContentNodeBodySchema = z.object({
+  items: z.array(PostProjectContextContentNodeItemSchema),
+});
+
+export type PostProjectContextContentNodeFragment = {
+  sId: string;
+  title: string;
+  contentType: string;
+  nodeId: string;
+  nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
+};
+
+export type PostProjectContextContentNodeResponseBody = {
+  contentFragments: PostProjectContextContentNodeFragment[];
+  errors: Array<{ index: number; message: string }>;
+};
 
 /**
  * Folder internal id under which conversation transcripts are indexed in the dust_project
@@ -49,53 +85,6 @@ export function getProjectConversationFolderInternalId(
   spaceId: string
 ): string {
   return `dust-project-${dustProjectConnectorId}-project-${spaceId}`;
-}
-
-export async function listProjectContentFragments(
-  auth: Authenticator,
-  space: SpaceResource
-): Promise<ContentFragmentResource[]> {
-  return ContentFragmentResource.listBySpace(auth, space);
-}
-
-/**
- * Project context files for a space from latest file-backed `content_fragments`
- * rows (`spaceId`), in fragment order (`createdAt` DESC).
- */
-export async function listProjectContextFiles(
-  auth: Authenticator,
-  space: SpaceResource
-): Promise<FileResource[]> {
-  const fragments = await ContentFragmentResource.listBySpace(auth, space);
-  const fileModelIds = removeNulls(fragments.map((fr) => fr.fileId));
-
-  const filesByModelId = new Map<number, FileResource>();
-  if (fileModelIds.length > 0) {
-    const fetched = await FileResource.fetchByModelIdsWithAuth(
-      auth,
-      fileModelIds
-    );
-    for (const f of fetched) {
-      filesByModelId.set(f.id, f);
-    }
-  }
-
-  const files: FileResource[] = [];
-  const seenIds = new Set<string>();
-
-  for (const fragment of fragments) {
-    if (fragment.fileId == null) {
-      continue;
-    }
-    const file = filesByModelId.get(fragment.fileId);
-    if (!file || seenIds.has(file.sId)) {
-      continue;
-    }
-    seenIds.add(file.sId);
-    files.push(file);
-  }
-
-  return files;
 }
 
 /**
@@ -366,6 +355,36 @@ export async function addFileToProject(
     }
 
     const destFileName = file.fileName;
+    const destScopedPath = podScopedPath(space.sId, destFileName);
+
+    // Reject the move when a file with the same name already exists in the Pod, rather
+    // than silently overwriting it. moveFile (raw GCS) does not check, so we check the
+    // destination through a Pod-scoped file system first.
+    const fsRes = await DustFileSystem.forPod(auth, space);
+    if (fsRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: fsRes.error.message,
+      });
+    }
+
+    const destExistsRes = await fsRes.value.exists(destScopedPath);
+    if (destExistsRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: destExistsRes.error.message,
+      });
+    }
+    if (destExistsRes.value) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "A file with this name already exists in the Pod.",
+      });
+    }
+
     const moveRes = await moveFile(auth, {
       file,
       sourceGcsPath: file.mountFilePath,
@@ -562,6 +581,7 @@ export async function removeFileFromProject(
 /**
  * Create an empty folder in a project GCS mount via a trailing-slash placeholder object.
  */
+// TODO(FILE_SYSTEM): Delete this abstraction.
 export async function createProjectFolder(
   auth: Authenticator,
   {
@@ -573,19 +593,25 @@ export async function createProjectFolder(
     folderName: string;
     parentRelativePath?: string;
   }
-): Promise<Result<GCSMountDirectoryEntry, Error>> {
+): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
   if (!space.isProject()) {
-    return new Err(new Error("Space is not a project."));
+    return new Err(
+      new DustFileSystemError("invalid_path", "Space is not a project.")
+    );
   }
 
   const folderNameRes = validateMountFolderName(folderName);
   if (folderNameRes.isErr()) {
-    return folderNameRes;
+    return new Err(
+      new DustFileSystemError("invalid_path", folderNameRes.error.message)
+    );
   }
 
   const parentRes = normalizeMountParentRelativePath(parentRelativePath);
   if (parentRes.isErr()) {
-    return parentRes;
+    return new Err(
+      new DustFileSystemError("invalid_path", parentRes.error.message)
+    );
   }
 
   const relativeDirPath = joinMountRelativePath(
@@ -593,11 +619,12 @@ export async function createProjectFolder(
     folderNameRes.value
   );
 
-  return createGCSMountDirectory(
-    auth,
-    { useCase: "pod", podId: space.sId },
-    { relativeDirPath }
-  );
+  const fsResult = await DustFileSystem.forPod(auth, space);
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  return fsResult.value.mkdir(podScopedPath(space.sId, relativeDirPath));
 }
 
 /**
@@ -707,18 +734,14 @@ export async function renameProjectFile(
     return new Ok(undefined);
   }
 
-  // Look up the linked FileResource by either the new `pods/` form or the old
-  // `projects/` form, since old DB rows are not yet backfilled.
   const podsPrefix = getPodFilesBasePath({
     workspaceId: owner.sId,
     podId: space.sId,
   });
   const podsGcsPath = `${podsPrefix}${normalized}`;
-  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
     podsGcsPath,
-    legacyGcsPath,
   ]);
 
   const renameResult = await renameGCSMountFile(
@@ -804,12 +827,8 @@ export async function deleteProjectFile(
     }
   }
 
-  const podsGcsPath = `${mountBasePath}${normalized}`;
-  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
-
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    podsGcsPath,
-    legacyGcsPath,
+    gcsPath,
   ]);
   if (fileResources.length > 0) {
     return removeFileFromProject(auth, {

@@ -114,3 +114,51 @@ pub async fn batch_tokenize_async(
 
     Ok(r)
 }
+
+// Counts tokens per text without materializing the token strings. `batch_tokenize_async` clones an
+// owned String per token for the whole batch at once, which blows up memory (and OOMs) when only
+// counts are needed; encoding to token ids and taking the length keeps peak memory tiny.
+pub async fn batch_count_async(
+    ssp: Arc<RwLock<SentencePieceProcessor>>,
+    texts: Vec<String>,
+) -> Result<Vec<usize>> {
+    let r = tokio::task::spawn_blocking(move || {
+        texts
+            .par_iter()
+            .map(|text| {
+                let guard = ssp.read();
+                guard.encode(text).map(|p| p.len())
+            })
+            .collect::<Result<Vec<usize>, SentencePieceError>>()
+            .map_err(|e| anyhow::anyhow!(e))
+    })
+    .await??;
+
+    Ok(r)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::providers::sentencepiece::sentencepiece::batch_count_async;
+    use crate::providers::sentencepiece::sentencepiece::batch_tokenize_async;
+    use crate::providers::sentencepiece::sentencepiece::mistral_instruct_tokenizer_240216_model_v2_base_singleton;
+
+    #[tokio::test]
+    async fn batch_count_matches_tokenize_test() {
+        let spp = mistral_instruct_tokenizer_240216_model_v2_base_singleton();
+        let texts = vec![
+            "Un petit Soupinou".to_string(),
+            "Soupinou 🤗".to_string(),
+            "This is a test         with a lot of spaces".to_string(),
+            "".to_string(),
+        ];
+
+        let tokenized = batch_tokenize_async(spp.clone(), texts.clone())
+            .await
+            .unwrap();
+        let counts = batch_count_async(spp, texts).await.unwrap();
+
+        let expected: Vec<usize> = tokenized.iter().map(|tokens| tokens.len()).collect();
+        assert_eq!(counts, expected);
+    }
+}

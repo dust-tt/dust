@@ -13,13 +13,13 @@ import {
   pathToString,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
-import type { DataSourceContentNode } from "@app/lib/api/search";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type { DataSourceContentNode } from "@app/types/api/search";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";

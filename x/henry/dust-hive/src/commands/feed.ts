@@ -2,9 +2,9 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import * as p from "@clack/prompts";
 import { requireEnvironment } from "../lib/commands";
+import { getEnvironmentWorktreeDir } from "../lib/environment";
 import { directoryExists, fileExists } from "../lib/fs";
 import { logger } from "../lib/logger";
-import { getWorktreeDir } from "../lib/paths";
 import { restoreTerminal } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { getStateInfo } from "../lib/state";
@@ -83,7 +83,7 @@ export async function feedCommand(
   }
 
   // Get front directory path
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const frontPath = path.join(worktreePath, "front");
 
   // Get list of available scenarios

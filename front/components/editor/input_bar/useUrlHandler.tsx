@@ -6,6 +6,34 @@ import { useCallback, useEffect } from "react";
 
 import type { URLState } from "../extensions/input_bar/URLStorageExtension";
 
+// `insertContentAt` defaults to `updateSelection: true`, which drops the caret
+// right after the inserted node. When the user had already typed past the
+// pasted URL (caret at or after the replaced range), that places the caret
+// before their typed text and scrambles subsequent input. Re-map the caret by
+// the document size delta so it stays at the user's logical typing position.
+// When the caret was inside/before the URL we leave the default untouched.
+export function remapCaretAfterUrlReplacement(
+  editor: Editor,
+  {
+    savedCursor,
+    oldDocSize,
+    replacedTo,
+  }: { savedCursor: number; oldDocSize: number; replacedTo: number }
+): void {
+  if (savedCursor < replacedTo) {
+    return;
+  }
+
+  const delta = editor.state.doc.content.size - oldDocSize;
+  // Clamp to the last selectable position: `content.size - 1` excludes the
+  // paragraph's closing token, which is not a valid caret position.
+  const newPos = Math.min(
+    savedCursor + delta,
+    editor.state.doc.content.size - 1
+  );
+  editor.commands.setTextSelection(newPos);
+}
+
 const useUrlHandler = (
   editor: Editor | null,
   selectedNode: DataSourceViewContentNode | null,
@@ -59,11 +87,25 @@ const useUrlHandler = (
             { type: "text", text: " " },
           ];
 
+          // Capture the caret and document size before the insertion so we
+          // can restore the user's logical typing position afterwards.
+          const { from: savedCursor } = editor.state.selection;
+          const oldDocSize = doc.content.size;
+
           try {
             const success = editor.commands.insertContentAt(
               { from: pendingUrl.from, to: pendingUrl.to },
               content
             );
+
+            if (success) {
+              remapCaretAfterUrlReplacement(editor, {
+                savedCursor,
+                oldDocSize,
+                replacedTo: pendingUrl.to,
+              });
+            }
+
             resolve(success);
           } catch (error) {
             console.error("Failed to replace URL:", error);

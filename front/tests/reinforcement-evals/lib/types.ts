@@ -8,7 +8,7 @@ import {
 } from "@app/tests/utils/conversation_test_factories";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 
-export interface MockMcpToolInput {
+interface MockMcpToolInput {
   name: string;
   type: string;
   description?: string;
@@ -44,6 +44,8 @@ export interface WorkspaceContext {
   mcpDescriptions?: MockMcpDescription[];
   /** Optional knowledge nodes returned when search_knowledge is called during eval. */
   searchKnowledgeNodes?: MockSearchKnowledgeNode[];
+  /** Optional skill configs returned when describe_skill is called during eval. */
+  skillConfigs?: MockSkillConfig[];
 }
 
 function slugify(name: string): string {
@@ -65,7 +67,7 @@ export function mockTool(
   };
 }
 
-export interface MockFeedback {
+interface MockFeedback {
   direction: AgentMessageFeedbackDirection;
   comment?: string;
 }
@@ -78,7 +80,7 @@ export interface MockAction {
   output?: string | null;
 }
 
-export interface MockConversationMessage {
+interface MockConversationMessage {
   role: "user" | "agent";
   content: string;
   feedback?: MockFeedback;
@@ -127,7 +129,6 @@ export interface MockSkillConfig {
 
 interface BaseTestCase {
   scenarioId: string;
-  useInlineTools?: boolean;
   expectedToolCalls?: ToolCallAssertion[];
   judgeCriteria: string;
   workspaceContext: WorkspaceContext;
@@ -200,12 +201,6 @@ export type ToolCallAssertion =
       sourceSuggestionIds?: string[];
     }
   | {
-      type: "editSkillWithTool";
-      skillId: string;
-      toolId: string;
-      sourceSuggestionIds?: string[];
-    }
-  | {
       type: "editSkillWithInlineToolReference";
       skillId: string;
       toolId: string;
@@ -238,15 +233,6 @@ export function editSkillWithInstructions(
   sourceSuggestionIds?: string[]
 ): ToolCallAssertion {
   return { type: "editSkillWithInstructions", skillId, sourceSuggestionIds };
-}
-
-/** Expects an edit_skill call with a toolEdit for the given skill and tool. */
-export function editSkillWithTool(
-  skillId: string,
-  toolId: string,
-  sourceSuggestionIds?: string[]
-): ToolCallAssertion {
-  return { type: "editSkillWithTool", skillId, toolId, sourceSuggestionIds };
 }
 
 /** Expects an edit_skill call that adds/references a tool via instructionEdits. */

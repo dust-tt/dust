@@ -12,6 +12,7 @@ export type { GetWorkspaceProgrammaticCostResponse };
 // Mounted at /api/poke/workspaces/:wId/analytics/programmatic-cost.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", validate("query", ProgrammaticCostQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 

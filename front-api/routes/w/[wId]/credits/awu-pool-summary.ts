@@ -1,11 +1,9 @@
-import type {
-  AwuPoolSummaryError,
-  AwuPoolSummaryResponseBody,
-} from "@app/lib/api/credits/awu_pool_summary";
+import type { AwuPoolSummaryError } from "@app/lib/api/credits/awu_pool_summary";
 import { getAwuPoolSummary } from "@app/lib/api/credits/awu_pool_summary";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
@@ -44,9 +42,10 @@ function summaryErrorToApi(ctx: Context, err: AwuPoolSummaryError) {
 // Mounted at /api/w/:wId/credits/awu-pool-summary.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
     const auth = ctx.get("auth");
 

@@ -11,7 +11,7 @@ import type {
   GetSkillSuggestionsResponseBody,
   PatchSkillSuggestionRequestBody,
   PatchSkillSuggestionResponseBody,
-} from "@app/pages/api/w/[wId]/assistant/skills/[sId]/suggestions";
+} from "@app/types/api/assistant/skills/suggestions";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 

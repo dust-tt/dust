@@ -40,7 +40,6 @@ export const createConnectorOptionsPdfEnabled = (description: string) => {
           action={
             <div className="relative">
               <SliderToggle
-                size="xs"
                 onClick={async () => {
                   await handleSetPdfEnabled(!pdfEnabled);
                 }}
@@ -51,9 +50,7 @@ export const createConnectorOptionsPdfEnabled = (description: string) => {
           }
         >
           <ContextItem.Description>
-            <div className="text-muted-foreground dark:text-muted-foreground-night">
-              {description}
-            </div>
+            <div className="text-muted-foreground">{description}</div>
           </ContextItem.Description>
         </ContextItem>
       </ContextItem.List>

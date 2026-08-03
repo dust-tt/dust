@@ -39,7 +39,7 @@ describe("GroupSpaceMemberResource", () => {
       const testGroup = await GroupResource.makeNew({
         name: "Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       const groupSpaceMember = await GroupSpaceMemberResource.makeNew(auth, {
@@ -52,6 +52,7 @@ describe("GroupSpaceMemberResource", () => {
       expect(groupSpaceMember.vaultId).toBe(regularSpace.id);
       expect(groupSpaceMember.workspaceId).toBe(workspace.id);
       expect(groupSpaceMember.kind).toBe("member");
+      expect(groupSpaceMember.groupKind).toBe("regular_auto");
     });
   });
 
@@ -144,7 +145,7 @@ describe("GroupSpaceEditorResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       await expect(
@@ -171,6 +172,7 @@ describe("GroupSpaceEditorResource", () => {
 
       expect(groupSpaceEditor).toBeInstanceOf(GroupSpaceEditorResource);
       expect(groupSpaceEditor.kind).toBe("project_editor");
+      expect(groupSpaceEditor.groupKind).toBe("provisioned");
     });
   });
 
@@ -220,7 +222,7 @@ describe("GroupSpaceEditorResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       // Delete existing editor groups
@@ -235,6 +237,7 @@ describe("GroupSpaceEditorResource", () => {
       // Create a GroupSpaceModel with a non-editor group
       await GroupSpaceModel.create({
         groupId: regularGroup.id,
+        groupKind: regularGroup.kind,
         vaultId: projectSpace.id,
         workspaceId: workspace.id,
         kind: "project_editor",
@@ -293,7 +296,7 @@ describe("GroupSpaceViewerResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       await expect(
@@ -328,6 +331,7 @@ describe("GroupSpaceViewerResource", () => {
       expect(result?.groupId).toBe(globalGroup.id);
       expect(result?.vaultId).toBe(projectSpace.id);
       expect(result?.kind).toBe("project_viewer");
+      expect(result?.groupKind).toBe("global");
     });
 
     it("should throw an assertion error when space is not a project space", async () => {
@@ -349,12 +353,13 @@ describe("GroupSpaceViewerResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       // Create a GroupSpaceModel with a non-global group
       await GroupSpaceModel.create({
         groupId: regularGroup.id,
+        groupKind: regularGroup.kind,
         vaultId: projectSpace.id,
         workspaceId: workspace.id,
         kind: "project_viewer",

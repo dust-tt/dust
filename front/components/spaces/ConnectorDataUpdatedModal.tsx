@@ -9,7 +9,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SparklesIcon,
+  Stars02,
 } from "@dust-tt/sparkle";
 
 type DataSourceViewSelectionModalProps = {
@@ -35,7 +35,7 @@ export const ConnectorDataUpdatedModal = ({
         }}
       >
         <SheetHeader>
-          <SheetTitle icon={SparklesIcon}>Data sync in progress...</SheetTitle>
+          <SheetTitle icon={Stars02}>Data sync in progress...</SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <ContentMessage>

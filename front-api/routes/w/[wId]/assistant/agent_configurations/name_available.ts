@@ -15,6 +15,7 @@ const GetAgentConfigurationNameIsAvailableSchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/name_available.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", GetAgentConfigurationNameIsAvailableSchema),

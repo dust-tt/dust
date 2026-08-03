@@ -12,10 +12,10 @@ import {
   ActionIcons,
   Button,
   Chip,
-  ClipboardIcon,
+  Clipboard,
   cn,
-  EyeIcon,
-  EyeSlashIcon,
+  Eye,
+  EyeOff,
   IconButton,
   IconPicker,
   Input,
@@ -109,12 +109,12 @@ export function WebhookSourceDetailsInfo({
   return (
     <div className="flex flex-col gap-2">
       {editedLabel !== null && (
-        <div className="flex w-full justify-end text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="flex w-full justify-end text-sm text-muted-foreground">
           {editedLabel}
         </div>
       )}
 
-      <div className="space-y-5 text-foreground dark:text-foreground-night">
+      <div className="space-y-5 text-foreground">
         <div className="space-y-2">
           <Label htmlFor="trigger-name-icon">
             {provider ? "Name" : "Name & Icon"}
@@ -181,7 +181,7 @@ export function WebhookSourceDetailsInfo({
               {webhookUrl}
             </p>
             <IconButton
-              icon={ClipboardIcon}
+              icon={Clipboard}
               onClick={() => handleCopy(webhookUrl, "Webhook URL")}
               size="xs"
             />
@@ -240,12 +240,12 @@ export function WebhookSourceDetailsInfo({
               </p>
               <div>
                 <IconButton
-                  icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
+                  icon={isSecretVisible ? EyeOff : Eye}
                   onClick={() => setIsSecretVisible((prev) => !prev)}
                   size="xs"
                 />
                 <IconButton
-                  icon={ClipboardIcon}
+                  icon={Clipboard}
                   onClick={() =>
                     handleCopy(
                       webhookSourceView.webhookSource.secret ?? "",

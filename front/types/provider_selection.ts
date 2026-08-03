@@ -7,11 +7,13 @@ export const ALL_PROVIDERS_SELECTED: ProvidersSelection = {
   anthropic: true,
   mistral: true,
   google_ai_studio: true,
-  togetherai: true,
   deepseek: true,
   fireworks: true,
   xai: true,
   noop: true,
+  auto: true,
+  auto_fast: true,
+  auto_complex: true,
 };
 
 export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
@@ -19,11 +21,13 @@ export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
   anthropic: false,
   mistral: false,
   google_ai_studio: false,
-  togetherai: false,
   deepseek: false,
   fireworks: false,
   xai: false,
   noop: false,
+  auto: true,
+  auto_fast: true,
+  auto_complex: true,
 };
 
 export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {
@@ -31,9 +35,11 @@ export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {
   anthropic: "Anthropic",
   mistral: "Mistral AI",
   google_ai_studio: "Google",
-  togetherai: "TogetherAI",
   deepseek: "Deepseek",
   fireworks: "Fireworks",
   xai: "xAI",
   noop: "noop",
+  auto: "Auto",
+  auto_fast: "Fast",
+  auto_complex: "Complex",
 };

@@ -2,24 +2,31 @@ import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbo
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
 import type {
-  FileSystemEntry,
   FileSystemMount,
+  SandboxOnlyMount,
 } from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
+  SCOPED_PREFIX_USER,
 } from "@app/lib/api/file_system/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
+import { getCachedPrivateUploadSignedUrl } from "@app/lib/file_storage/signed_url_cache";
 import logger from "@app/logger/logger";
+import type {
+  FileSystemDirectoryEntry,
+  FileSystemEntry,
+} from "@app/types/api/file_system/types";
 import { stripMimeParameters } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { Readable } from "stream";
+import { pipeline } from "stream/promises";
 
 import type { FileSystemBackend } from "./file_system_backend";
 
@@ -28,7 +35,7 @@ import type { FileSystemBackend } from "./file_system_backend";
 // ---------------------------------------------------------------------------
 
 type ParsedScopedPath = {
-  kind: "conversation" | "pod";
+  kind: "conversation" | "pod" | "user";
   id: string;
   /** Path component after `<kind>-<id>/`, empty string for a root listing. */
   rel: string;
@@ -55,6 +62,11 @@ function parseScopedPath(scopedPath: string): ParsedScopedPath | null {
   if (prefix.startsWith(SCOPED_PREFIX_POD)) {
     const id = prefix.slice(SCOPED_PREFIX_POD.length);
     return id ? { kind: "pod", id, rel } : null;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_USER)) {
+    const id = prefix.slice(SCOPED_PREFIX_USER.length);
+    return id ? { kind: "user", id, rel } : null;
   }
 
   return null;
@@ -93,6 +105,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       case "pod":
         return `w/${this.workspaceId}/pods/${p.id}/files/${p.rel}`;
 
+      case "user":
+        return `w/${this.workspaceId}/users/${p.id}/files/${p.rel}`;
+
       default:
         assertNever(p.kind);
     }
@@ -115,6 +130,11 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       return `${SCOPED_PREFIX_POD}${pod[1]}/${pod[2]}`;
     }
 
+    const user = rest.match(/^users\/([^/]+)\/files\/(.*)$/);
+    if (user) {
+      return `${SCOPED_PREFIX_USER}${user[1]}/${user[2]}`;
+    }
+
     return null;
   }
 
@@ -127,6 +147,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       case "pod":
         return `w/${this.workspaceId}/pods/${mount.id}/files`;
 
+      case "user":
+        return `w/${this.workspaceId}/users/${mount.id}/files`;
+
       default:
         assertNever(mount.kind);
     }
@@ -138,7 +161,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       maxFiles,
       includeProcessed = false,
     }: { maxFiles?: number; includeProcessed?: boolean } = {}
-  ): Promise<FileSystemEntry[]> {
+  ): Promise<Result<FileSystemEntry[], DustFileSystemError>> {
     const normalised = scopedPath.endsWith("/") ? scopedPath : `${scopedPath}/`;
     const gcsPrefix = this.toGCSPath(normalised);
 
@@ -148,41 +171,62 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         "GCSFileSystemBackend.list: unrecognised scoped path"
       );
 
-      return [];
+      return new Ok([]);
     }
 
     const bucket = getPrivateUploadBucket();
     let rawFiles: { name: string; metadata: Record<string, unknown> }[];
 
-    if (maxFiles !== undefined) {
-      rawFiles = await bucket.getFiles({
-        prefix: gcsPrefix,
-        maxResults: maxFiles,
-      });
-    } else {
-      const result = await bucket.getAllFilesByPrefix({
-        prefix: gcsPrefix,
-        pageSize: GCS_LIST_PAGE_SIZE,
-      });
+    try {
+      if (maxFiles !== undefined) {
+        rawFiles = await bucket.getFiles({
+          prefix: gcsPrefix,
+          maxResults: maxFiles,
+        });
+      } else {
+        const result = await bucket.getAllFilesByPrefix({
+          prefix: gcsPrefix,
+          pageSize: GCS_LIST_PAGE_SIZE,
+        });
 
-      if (result.pageFetchCount > 1) {
-        logger.warn(
-          {
-            workspaceId: this.workspaceId,
-            prefix: gcsPrefix,
-            pageFetchCount: result.pageFetchCount,
-            objectCount: result.files.length,
-          },
-          "GCSFileSystemBackend.list: multiple GCS list requests, prefix has many objects"
-        );
+        if (result.pageFetchCount > 1) {
+          logger.warn(
+            {
+              workspaceId: this.workspaceId,
+              prefix: gcsPrefix,
+              pageFetchCount: result.pageFetchCount,
+              objectCount: result.files.length,
+            },
+            "GCSFileSystemBackend.list: multiple GCS list requests, prefix has many objects"
+          );
+        }
+
+        rawFiles = result.files;
       }
-
-      rawFiles = result.files;
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
     }
 
     const folderPlaceholders = rawFiles.filter((f) => f.name.endsWith("/"));
     const regularFiles = rawFiles.filter((f) => {
       if (f.name.endsWith("/")) {
+        return false;
+      }
+
+      // Hide files inside a hidden ("."-prefixed, non-tool-outputs) directory
+      // below the listed prefix. Listing is recursive, so the folder filter
+      // below (which only hides the dot-directory *entry*) is not enough on its
+      // own — without this, e.g. pptx/docx QA renders under .pptx_render/ /
+      // .docx_render/ would still surface. Computed relative to the listed
+      // prefix, so listing a hidden directory directly still returns its files.
+      const relDirs = f.name.slice(gcsPrefix.length).split("/").slice(0, -1);
+      if (
+        relDirs.some(
+          (seg) => seg.startsWith(".") && seg !== TOOL_OUTPUTS_FOLDER_NAME
+        )
+      ) {
         return false;
       }
 
@@ -246,7 +290,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       };
     });
 
-    return [...folderEntries, ...fileEntries];
+    return new Ok([...folderEntries, ...fileEntries]);
   }
 
   async read(
@@ -343,7 +387,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async write(
     scopedPath: string,
-    content: Buffer | string,
+    content: Buffer | string | Readable,
     contentType: string
   ): Promise<Result<void, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
@@ -357,10 +401,64 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
-      const buf = isString(content) ? Buffer.from(content) : content;
-      await getPrivateUploadBucket().file(gcsPath).save(buf, { contentType });
+      const file = getPrivateUploadBucket().file(gcsPath);
+
+      if (isString(content) || Buffer.isBuffer(content)) {
+        const buf = isString(content) ? Buffer.from(content) : content;
+        await file.save(buf, { contentType });
+      } else {
+        await pipeline(
+          content,
+          file.createWriteStream({ contentType, resumable: false })
+        );
+      }
 
       return new Ok(undefined);
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
+    }
+  }
+
+  async mkdir(
+    scopedPath: string
+  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
+    const gcsPath = this.toGCSPath(scopedPath);
+    if (!gcsPath) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `GCSFileSystemBackend.mkdir: unrecognised scoped path: ${scopedPath}`
+        )
+      );
+    }
+
+    const dirGcsPath = `${gcsPath}/`;
+    try {
+      const bucket = getPrivateUploadBucket();
+      const [exists] = await bucket.file(dirGcsPath).exists();
+      if (exists) {
+        return new Err(
+          new DustFileSystemError(
+            "already_exists",
+            "A directory already exists at this path."
+          )
+        );
+      }
+
+      await bucket.file(dirGcsPath).save(Buffer.alloc(0), {
+        contentType: "application/x-directory",
+      });
+
+      const fileName = gcsPath.split("/").pop() ?? "";
+      return new Ok({
+        isDirectory: true as const,
+        fileName,
+        path: scopedPath,
+        sizeBytes: 0,
+        lastModifiedMs: Date.now(),
+      });
     } catch (err) {
       return new Err(
         new DustFileSystemError("internal", normalizeError(err).message)
@@ -499,7 +597,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async getDownloadUrl(
     scopedPath: string,
-    _opts?: { expiresInMs?: number; fileName?: string }
+    opts?: { expiresInMs?: number; fileName?: string }
   ): Promise<Result<string, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
@@ -512,7 +610,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
-      const url = await getPrivateUploadBucket().getSignedUrl(gcsPath);
+      const url = await getCachedPrivateUploadSignedUrl(gcsPath, {
+        expirationDelayMs: opts?.expiresInMs,
+      });
 
       return new Ok(url);
     } catch (err) {
@@ -523,15 +623,64 @@ export class GCSFileSystemBackend implements FileSystemBackend {
   }
 
   createSandboxAdapter(
-    mounts: ReadonlyArray<FileSystemMount>
+    mounts: ReadonlyArray<FileSystemMount>,
+    sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
   ): SandboxMountAdapter {
     const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
-    const targets: GCSMountTarget[] = mounts.map((mount) => ({
-      gcsPrefix: this.mountRootGCSPrefix(mount),
-      sandboxMountPoint: mount.sandboxMountPoint,
-      legacySandboxMountPoint: mount.legacySandboxMountPoint,
-    }));
+    const targets: GCSMountTarget[] = [
+      ...mounts
+        .filter(
+          (mount): mount is FileSystemMount & { sandboxMountPoint: string } =>
+            mount.sandboxMountPoint !== null
+        )
+        .map(
+          (mount): GCSMountTarget => ({
+            gcsPrefix: this.mountRootGCSPrefix(mount),
+            sandboxMountPoint: mount.sandboxMountPoint,
+            legacySandboxMountPoint: mount.legacySandboxMountPoint,
+            readOnly: false,
+            mountProfile: "workload",
+          })
+        ),
+      ...sandboxOnlyMounts.map(
+        (mount): GCSMountTarget => ({
+          gcsPrefix: this.sandboxOnlyMountGCSPrefix(mount),
+          sandboxMountPoint: mount.sandboxMountPoint,
+          legacySandboxMountPoint: null,
+          readOnly: mount.readOnly,
+          mountProfile: this.sandboxOnlyMountProfile(mount),
+        })
+      ),
+    ];
 
     return new GCSSandboxMountAdapter(bucket, targets);
+  }
+
+  private sandboxOnlyMountGCSPrefix(mount: SandboxOnlyMount): string {
+    switch (mount.kind) {
+      case "pod_sandbox_functions":
+        return `w/${this.workspaceId}/pods/${mount.id}/sandbox-functions`;
+
+      case "pod_state":
+        return `w/${this.workspaceId}/pods/${mount.id}/state`;
+
+      default:
+        assertNever(mount.kind);
+    }
+  }
+
+  private sandboxOnlyMountProfile(
+    mount: SandboxOnlyMount
+  ): GCSMountTarget["mountProfile"] {
+    switch (mount.kind) {
+      case "pod_sandbox_functions":
+        return "pod_sandbox_functions";
+
+      case "pod_state":
+        return "pod_state_replica";
+
+      default:
+        assertNever(mount.kind);
+    }
   }
 }

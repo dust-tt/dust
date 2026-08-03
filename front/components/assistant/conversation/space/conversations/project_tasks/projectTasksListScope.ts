@@ -67,7 +67,7 @@ export function normalizeTasksOwnerFilterFromPersistedBlob(
 }
 
 /** Query string for GET /spaces/:id/project_tasks (canonical `period` + `people`). */
-export function taskOwnerFilterToSearchParams(
+function taskOwnerFilterToSearchParams(
   filter: TaskOwnerFilter
 ): URLSearchParams {
   const params = new URLSearchParams();

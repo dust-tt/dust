@@ -71,3 +71,7 @@ export async function fetchVersionMarkers(
 
   return new Ok(versionMarkers);
 }
+
+export type GetVersionMarkersResponse = {
+  versionMarkers: AgentVersionMarker[];
+};

@@ -1,5 +1,8 @@
 import {
   generateSandboxExecToken,
+  generateSandboxFunctionInvocationToken,
+  isSandboxExecTokenPayload,
+  isSandboxFunctionInvocationTokenPayload,
   SANDBOX_TOKEN_PREFIX,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -43,7 +46,6 @@ async function setupTest() {
   });
 
   const sandbox = await SandboxResource.makeNew(auth, {
-    conversationId: conversation.id,
     providerId: "test-provider-id",
     status: "running",
     baseImage: "dust-base",
@@ -84,7 +86,16 @@ async function setupTest() {
     displayLabels: null,
   };
 
-  return { auth, agentConfig, agentMessage, conversation, sandbox, mockAction };
+  return {
+    auth,
+    agentConfig,
+    agentMessage,
+    conversation,
+    mockAction,
+    sandbox,
+    user,
+    workspace,
+  };
 }
 
 describe("sandbox access tokens", () => {
@@ -112,12 +123,119 @@ describe("sandbox access tokens", () => {
     const payload = await verifySandboxExecToken(token);
 
     expect(payload).not.toBeNull();
+    if (!payload || !isSandboxExecTokenPayload(payload)) {
+      return;
+    }
     expect(payload!.wId).toBe(auth.getNonNullableWorkspace().sId);
     expect(payload!.cId).toBe(conversation.sId);
     expect(payload!.uId).toBe(auth.getNonNullableUser().sId);
     expect(payload!.aId).toBe(agentConfig.sId);
+    expect(payload!.aV).toBe(agentConfig.version);
     expect(payload!.mId).toBe(agentMessage.sId);
     expect(payload!.sbId).toBe(sandbox.sId);
+  });
+
+  it("recovers the pinned agent version for legacy exec tokens", async () => {
+    const {
+      auth,
+      agentConfig,
+      agentMessage,
+      conversation,
+      sandbox,
+      mockAction,
+    } = await setupTest();
+
+    const token = await generateSandboxExecToken(auth, {
+      agentConfiguration: agentConfig,
+      agentMessage,
+      conversation,
+      sandbox,
+      execId: "legacy-exec-id",
+      sandboxAction: mockAction,
+    });
+    const decoded = jwt.decode(
+      token.slice(SANDBOX_TOKEN_PREFIX.length)
+    ) as Record<string, unknown>;
+    const { aV: _agentVersion, ...legacyClaims } = decoded;
+    const legacyToken =
+      SANDBOX_TOKEN_PREFIX +
+      jwt.sign(legacyClaims, TEST_SECRET, { algorithm: "HS256" });
+
+    const payload = await verifySandboxExecToken(legacyToken);
+
+    expect(payload).not.toBeNull();
+    expect(isSandboxExecTokenPayload(payload!)).toBe(true);
+    expect(payload?.aV).toBe(agentConfig.version);
+  });
+
+  it("rejects an exec token referencing a missing agent version", async () => {
+    const {
+      auth,
+      agentConfig,
+      agentMessage,
+      conversation,
+      sandbox,
+      mockAction,
+      workspace,
+    } = await setupTest();
+
+    const token = await generateSandboxExecToken(auth, {
+      agentConfiguration: agentConfig,
+      agentMessage,
+      conversation,
+      sandbox,
+      execId: "missing-version-exec-id",
+      sandboxAction: mockAction,
+    });
+    const payload = await verifySandboxExecToken(token);
+    if (!payload || !isSandboxExecTokenPayload(payload)) {
+      throw new Error("Expected a valid sandbox exec token.");
+    }
+
+    const authResult = await Authenticator.fromSandboxToken(
+      { ...payload, aV: agentConfig.version + 1_000 },
+      workspace.sId
+    );
+
+    expect(authResult.isErr()).toBe(true);
+    if (authResult.isErr()) {
+      expect(authResult.error.api_error.type).toBe(
+        "invalid_sandbox_token_error"
+      );
+    }
+  });
+
+  it("round-trip: generate function invocation token → verify → check claims", async () => {
+    const { auth, sandbox } = await setupTest();
+    const pod = await SpaceFactory.project(auth.getNonNullableWorkspace());
+
+    const token = await generateSandboxFunctionInvocationToken(auth, {
+      sandbox,
+      sandboxFunction: {
+        sId: "sfn_test",
+        space: { sId: pod.sId },
+      },
+      conversationId: "conv_test",
+      invocationId: "test-invocation-id",
+      execId: "test-exec-id",
+    });
+
+    expect(token.startsWith(SANDBOX_TOKEN_PREFIX)).toBe(true);
+
+    const payload = await verifySandboxExecToken(token);
+
+    expect(payload).not.toBeNull();
+    if (!payload || !isSandboxFunctionInvocationTokenPayload(payload)) {
+      return;
+    }
+    expect(payload.wId).toBe(auth.getNonNullableWorkspace().sId);
+    expect(payload.cId).toBe("conv_test");
+    expect(payload.uId).toBe(auth.getNonNullableUser().sId);
+    expect(payload.sbId).toBe(sandbox.sId);
+    expect(payload.execId).toBe("test-exec-id");
+    expect(payload.spaceId).toBe(pod.sId);
+    expect(payload.sandboxFunctionId).toBe("sfn_test");
+    expect(payload.invocationId).toBe("test-invocation-id");
   });
 
   it("tampered token is rejected", async () => {

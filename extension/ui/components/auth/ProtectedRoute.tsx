@@ -2,6 +2,8 @@ import { cn, Spinner } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import type { RouteChangeMesssage } from "@extension/shared/messages";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
+import { ExtensionClientSideMCPServerProvider } from "@extension/ui/components/conversation/ExtensionClientSideMCPServerProvider";
+import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
 import { ExtensionQuickActionsProvider } from "@extension/ui/components/quick_actions/ExtensionQuickActionsProvider";
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
@@ -43,8 +45,7 @@ export const ProtectedRoute = () => {
       <div
         className={cn(
           "flex h-screen items-center justify-center",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "bg-background text-foreground"
         )}
       >
         <Spinner />
@@ -56,12 +57,15 @@ export const ProtectedRoute = () => {
     <div
       className={cn(
         "flex h-screen flex-col gap-2 overflow-y-auto",
-        "bg-background text-foreground",
-        "dark:bg-background-night dark:text-foreground-night"
+        "bg-background text-foreground"
       )}
     >
       <ExtensionQuickActionsProvider owner={workspace}>
-        <Outlet />
+        <ExtensionClientSideMCPServerProvider>
+          <ExtensionInputBarProvider workspace={workspace}>
+            <Outlet />
+          </ExtensionInputBarProvider>
+        </ExtensionClientSideMCPServerProvider>
       </ExtensionQuickActionsProvider>
     </div>
   );

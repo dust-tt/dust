@@ -1,7 +1,7 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { InformationCircleIcon, SliderToggle, Tooltip } from "@dust-tt/sparkle";
-import { useFormContext } from "react-hook-form";
+import { InfoCircle, SliderToggle, Tooltip } from "@dust-tt/sparkle";
+import { useFormContext, useFormState } from "react-hook-form";
 
 interface SkillBuilderEnableSuggestionsSectionProps {
   selfImprovementLock: boolean;
@@ -15,11 +15,12 @@ export function SkillBuilderEnableSuggestionsSection({
   const isDisabled = !isAllowedByWorkspace || selfImprovementLock;
 
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
+  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
   const reinforcement = watch("reinforcement");
   const enabled = reinforcement !== "off";
 
   const handleToggle = () => {
-    if (isDisabled) {
+    if (isReadOnly || isDisabled) {
       return;
     }
     setValue("reinforcement", enabled ? "off" : "on", { shouldDirty: true });
@@ -28,8 +29,8 @@ export function SkillBuilderEnableSuggestionsSection({
   return (
     <div className="flex flex-col gap-2">
       {isDisabled && (
-        <div className="flex items-start gap-1.5 text-xs text-muted-foreground dark:text-muted-foreground-night">
-          <InformationCircleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <InfoCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
             {!isAllowedByWorkspace
               ? "Self-improving skills are disabled in your workspace. Ask your admin to enable this feature."
@@ -38,21 +39,17 @@ export function SkillBuilderEnableSuggestionsSection({
         </div>
       )}
       <div
-        className={`flex items-center gap-2 ${isDisabled ? "cursor-not-allowed opacity-50" : ""}`}
+        className={`flex items-center gap-2 ${isReadOnly || isDisabled ? "cursor-not-allowed opacity-50" : ""}`}
       >
         <SliderToggle
+          disabled={isReadOnly || isDisabled}
           selected={enabled && !isDisabled}
           onClick={handleToggle}
-          size="xs"
         />
-        <span className="text-sm text-foreground dark:text-foreground-night">
-          Self-improve
-        </span>
+        <span className="text-sm text-foreground">Self-improve</span>
         <Tooltip
           label="Dust will analyze how this skill is used and suggest improvements to its instructions over time."
-          trigger={
-            <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
-          }
+          trigger={<InfoCircle className="text-muted-foreground h-4 w-4" />}
         />
       </div>
     </div>

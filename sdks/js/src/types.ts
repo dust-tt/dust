@@ -19,11 +19,13 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "anthropic"
   | "mistral"
   | "google_ai_studio"
-  | "togetherai"
   | "deepseek"
   | "fireworks"
   | "xai"
   | "noop"
+  | "auto"
+  | "auto_fast"
+  | "auto_complex"
 >();
 
 export type KnownModelLLMId =
@@ -38,6 +40,11 @@ export type KnownModelLLMId =
   | "gpt-5.2"
   | "gpt-5.4"
   | "gpt-5.5"
+  | "gpt-5.6-sol"
+  | "gpt-5.6-terra"
+  | "gpt-5.6-luna"
+  | "gpt-5.4-mini"
+  | "gpt-5.4-nano"
   | "gpt-5-nano"
   | "gpt-5-mini"
   | "gpt-5"
@@ -60,7 +67,10 @@ export type KnownModelLLMId =
   | "claude-opus-4-6"
   | "claude-opus-4-7"
   | "claude-opus-4-8"
+  | "claude-opus-5"
+  | "claude-fable-5"
   | "claude-sonnet-4-6"
+  | "claude-sonnet-5"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-medium-3-5"
@@ -75,35 +85,56 @@ export type KnownModelLLMId =
   | "gemini-3.1-pro-preview"
   | "gemini-3-flash-preview"
   | "gemini-3.5-flash"
-  | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
-  | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
-  | "Qwen/QwQ-32B-Preview" // togetherai
-  | "Qwen/Qwen2-72B-Instruct" // togetherai
-  | "deepseek-ai/DeepSeek-V3" // togetherai
-  | "deepseek-ai/DeepSeek-R1" // togetherai
+  | "gemini-3.5-flash-lite"
+  | "gemini-3.6-flash"
   | "deepseek-chat" // deepseek api
-  | "deepseek-reasoner" // deepseek api
-  | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
+  | "accounts/fireworks/models/kimi-k2p6" // fireworks
+  | "accounts/fireworks/models/kimi-k3" // fireworks
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
+  | "accounts/fireworks/models/glm-5p2" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
+  | "grok-4.5" // xAI
   | "grok-4-latest" // xAI
   | "grok-4-fast-non-reasoning-latest"
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
-  | "noop"; // Noop
+  | "noop" // Noop
+  | "auto" // Auto
+  | "auto_fast" // Fast stream tier
+  | "auto_complex"; // Complex stream tier
 
 // Cast to allow custom/unknown model IDs while preserving autocomplete.
 const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
   KnownModelLLMId | (string & {})
 >;
+
+// Flexible so the SDK does not need updating when new efforts are added; the
+// server re-validates against the concrete set and rejects unknown values.
+// copied from reasoning.ts to avoid circular dependency
+const ReasoningEffortSchema = FlexibleEnumSchema<
+  "none" | "light" | "medium" | "high"
+>();
+
+// Explicit per-message model + reasoning-effort selection. Providing it makes
+// the mentioned agent(s) run this model instead of their configured one, when
+// it is available to the workspace (otherwise the server falls back). Uses the
+// flexible enums above so unknown-but-syntactically-valid values reach the
+// server, which validates them and returns a 400 on truly unknown ids.
+export const PublicModelSelectionSchema = z.object({
+  providerId: ModelProviderIdSchema,
+  modelId: ModelLLMIdSchema,
+  reasoningEffort: ReasoningEffortSchema.optional(),
+});
+
+export type PublicModelSelection = z.infer<typeof PublicModelSelectionSchema>;
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
 
@@ -225,6 +256,7 @@ export const supportedImageFileFormats = {
   "image/webp": [".webp"],
   "image/svg+xml": [".svg"],
   "image/bmp": [".bmp"],
+  "image/x-icon": [".ico"],
 } as const;
 
 export const supportedAudioFileFormats = {
@@ -236,6 +268,14 @@ export const supportedAudioFileFormats = {
   "audio/webm": [".webm"],
   // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
   "video/webm": [".webm"],
+} as const;
+
+export const supportedFontFileFormats = {
+  "font/woff": [".woff"],
+  "font/woff2": [".woff2"],
+  "font/otf": [".otf"],
+  "font/ttf": [".ttf"],
+  "font/collection": [".ttc", ".otc"],
 } as const;
 
 // Webhook trigger endpoint (skeleton) response type
@@ -279,6 +319,7 @@ const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
   | keyof typeof supportedAudioFileFormats
+  | keyof typeof supportedFontFileFormats
   | (typeof INTERNAL_MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
@@ -288,17 +329,22 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
   | keyof typeof supportedAudioFileFormats
+  | keyof typeof supportedFontFileFormats
 >();
 
 const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 const FrameSlideshowContentTypeSchema = z.literal(
   "application/vnd.dust.frame.slideshow"
 );
+const SandboxFunctionContentTypeSchema = z.literal(
+  "application/vnd.dust.sandbox.function"
+);
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
   FrameSlideshowContentTypeSchema,
+  SandboxFunctionContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(
@@ -354,7 +400,6 @@ const USER_MESSAGE_ORIGINS = [
   "project_kickoff",
   "reinforced_skill_notification",
   "reinforcement",
-  "branch_anchor",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
@@ -683,45 +728,40 @@ export type RetrievalDocumentPublicType = z.infer<
 >;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
+  | "activation_scheduler"
+  | "activation_skill"
   | "advanced_notion_management"
-  | "agent_builder_copilot"
-  | "agent_builder_copilot_builders"
-  | "agent_builder_shrink_wrap"
+  | "allow_scim"
+  | "allow_sso"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
+  | "anthropic_cache_diagnostics"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
-  | "sessions_branching"
+  | "claude_fable_5_feature"
   | "databricks_tool"
   | "deepseek_feature"
-  | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
+  | "exa_people_and_company"
+  | "disable_computer_feature"
   | "disable_formatting_prompt"
   | "disable_run_logs"
-  | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
-  | "dust_academy"
-  | "dust_agent_gpt_5_5_default"
+  | "dust_agent_gpt_5_6_luna_default"
+  | "dust_agent_sonnet_5_default"
   | "dust_internal_global_agents"
-  | "dust_no_spa"
-  | "dust_spa"
   | "fireworks_new_model_feature"
-  | "force_us_api_url"
-  | "frames_skill_v2"
-  | "gemini_3_1_pro_feature"
-  | "clari_copilot_mcp"
   | "google_sheets_tool"
-  | "gpt_image_2_feature"
-  | "hootl_subscriptions"
+  | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
+  | "models_picker"
   | "netsuite_mcp"
-  | "nested_skills"
   | "noop_model_feature"
   | "notion_private_integration"
   | "allow_old_notion_mcp"
@@ -730,41 +770,38 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_usage_mcp"
   | "power_bi_mcp"
   | "reinforced_agents"
-  | "reinforcement_ui"
-  | "self_improving_skills_report_usage"
-  | "metronome_billing"
+  | "self_improvement_beta_tester"
+  | "legacy_billing"
   | "plan_mode"
   | "poke_mcp"
-  | "restrict_agents_publishing"
-  | "restrict_agents_publishing_to_admins"
+  | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
-  | "sandbox_dsbx_tools"
-  | "sandbox_tools"
-  | "sandbox_workspace_admin"
+  | "sandbox_functions"
   | "self_created_slack_app_connector_rollout"
+  | "servicenow_tool"
   | "show_debug_tools"
-  | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
-  | "slideshow"
-  | "skills_as_user_messages"
   | "run_tools_from_prompt"
   | "usage_data_api"
+  | "usage_page_read_only"
+  | "pricing_groups"
+  | "workspace_analytics"
   | "xai_feature"
   | "conversations_slack_notifications"
-  | "anthropic_reasoning_token_count"
   | "collapsible_messages"
   | "use_dust_keys"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
-  | "conversation_search_indexing"
-  | "conversation_search_read"
-  | "deferred_conversation_creation"
-  | "new_file_explorer"
   | "use_vertex_for_supported_models"
-  | "metronome_billing_usage_page"
-  | "user_settings_v2"
+  | "live_speech_to_text"
+  | "workspace_default_agent"
+  | "whitelabel_frames"
+  | "workday_mcp"
+  | "user_memory"
+  | "similar_agents_check"
+  | "enforce_user_spend_limit_rate_cap"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -772,7 +809,7 @@ export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 const WorkspaceSegmentationSchema =
   FlexibleEnumSchema<"interesting">().nullable();
 
-const RoleSchema = z.enum(["admin", "builder", "user", "none"]);
+const RoleSchema = z.enum(["admin", "manager", "builder", "user", "none"]);
 
 const LightWorkspaceSchema = z.object({
   id: ModelIdSchema,
@@ -827,14 +864,26 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
-const ActionGeneratedFileSchema = z.object({
-  fileId: z.string(),
+const ActionGeneratedFileBaseSchema = z.object({
   title: z.string(),
-  contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
   isInProjectContext: z.boolean().optional(),
 });
+
+const ActionGeneratedFileSchema = z.union([
+  // File backed by a Dust FileResource: always a supported content type.
+  ActionGeneratedFileBaseSchema.extend({
+    contentType: ActionGeneratedFileContentTypeSchema,
+    fileId: z.string(),
+  }),
+  // File path only, no FileResource in DB. Not restricted to supported content types.
+  ActionGeneratedFileBaseSchema.extend({
+    contentType: z.string(),
+    fileId: z.null(),
+    filePath: z.string(),
+  }),
+]);
 
 export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
 
@@ -1295,7 +1344,9 @@ const MCPStakeLevelSchema = z
   .optional();
 
 const MCPValidationMetadataSchema = z.object({
-  agentName: z.string(),
+  // Deprecated (2026-07-09): no longer read by clients, will stop being sent once old clients
+  // have cycled out.
+  agentName: z.string().optional(),
   icon: z
     .union([MCPInternalActionIconSchema, MCPExternalActionIconSchema])
     .optional(),
@@ -1347,20 +1398,6 @@ export type NotificationRunAgentContent = z.infer<
   typeof NotificationRunAgentContentSchema
 >;
 
-const NotificationRunAgentChainOfThoughtSchema = z.object({
-  type: z.literal("run_agent_chain_of_thought"),
-  childAgentId: z.string(),
-  conversationId: z.string(),
-  chainOfThought: z.string(),
-});
-
-const NotificationRunAgentGenerationTokensSchema = z.object({
-  type: z.literal("run_agent_generation_tokens"),
-  childAgentId: z.string(),
-  conversationId: z.string(),
-  text: z.string(),
-});
-
 const NotificationStoreResourceContentSchema = z.object({
   type: z.literal("store_resource"),
   contents: z.array(
@@ -1380,9 +1417,7 @@ const NotificationStoreResourceContentSchema = z.object({
 const NotificationContentSchema = z.union([
   NotificationInteractiveContentFileContentSchema,
   NotificationImageContentSchema,
-  NotificationRunAgentChainOfThoughtSchema,
   NotificationRunAgentContentSchema,
-  NotificationRunAgentGenerationTokensSchema,
   NotificationStoreResourceContentSchema,
   NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,
@@ -1562,6 +1597,7 @@ const ToolAskUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
   configurationId: z.string(),
   conversationId: z.string(),
   created: z.number(),
+  isLastBlockingEventForStep: z.boolean().optional(),
   messageId: z.string(),
   question: UserQuestionItemSchema,
 });
@@ -1840,6 +1876,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "user_not_found"
   | "unprocessable_entity"
   | "workspace_auth_error"
+  | "workspace_can_use_product_required_error"
   | "workspace_not_found"
   | "workspace_user_not_found"
 >();
@@ -2245,9 +2282,14 @@ export type GetConversationResponseType = z.infer<
   typeof GetConversationResponseSchema
 >;
 
-export const PatchConversationRequestSchema = z.object({
-  read: z.boolean(),
-});
+export const PatchConversationRequestSchema = z.union([
+  z.object({
+    read: z.boolean(),
+  }),
+  z.object({
+    title: z.string(),
+  }),
+]);
 
 export type PatchConversationRequestType = z.infer<
   typeof PatchConversationRequestSchema
@@ -2283,6 +2325,14 @@ export type GetWorkspaceVerifiedDomainsResponseType = z.infer<
   typeof GetWorkspaceVerifiedDomainsResponseSchema
 >;
 
+export const GetWorkspaceExistsResponseSchema = z.object({
+  exists: z.literal(true),
+});
+
+export type GetWorkspaceExistsResponseType = z.infer<
+  typeof GetWorkspaceExistsResponseSchema
+>;
+
 export const GetWorkspaceFeatureFlagsResponseSchema = z.object({
   feature_flags: WhitelistableFeaturesSchema.array(),
 });
@@ -2299,6 +2349,9 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
     agenticMessageData: AgenticMessageDataSchema.optional(),
+    // Optional per-message model + reasoning-effort override applied to the
+    // mentioned agent(s). Omitted means each agent runs its configured model.
+    modelSelection: PublicModelSelectionSchema.optional(),
   }),
   z
     .object({
@@ -2399,6 +2452,10 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
           mentions: z.array(MentionSchema),
           context: UserMessageContextSchema,
           agenticMessageData: AgenticMessageDataSchema.optional(),
+          // Optional per-message model + reasoning-effort override applied to
+          // the mentioned agent(s). Omitted means each agent runs its
+          // configured model.
+          modelSelection: PublicModelSelectionSchema.optional(),
         }),
         z
           .object({
@@ -3026,6 +3083,7 @@ const AnalyticsExportTableSchema = z.enum([
   "source",
   "agents",
   "users",
+  "skills",
   "skill_usage",
   "tool_usage",
   "messages",
@@ -3086,6 +3144,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
   | "folders_document"
   | "project_context"
   | "skill_attachment"
+  | "workspace_branding"
 >();
 
 export const FileTypeSchema = z.object({
@@ -3125,6 +3184,7 @@ export const PublicFrameResponseBodySchema = z.object({
   conversationUrl: z.string().nullable(),
   projectUrl: z.string().nullable(),
   file: FileTypeSchema,
+  isAuthenticatedMember: z.boolean().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<
@@ -3135,6 +3195,7 @@ export const PublicVizContentResponseBodySchema = z.object({
   content: z.string(),
   contentType: z.string(),
   metadata: z.record(z.unknown()).optional(),
+  isAuthenticatedMember: z.boolean().optional(),
 });
 
 export type PublicVizContentResponseBodyType = z.infer<
@@ -3307,6 +3368,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionSpeakIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
+  | "AdomikLogo"
   | "AmplitudeLogo"
   | "ApifyLogo"
   | "AsanaLogo"
@@ -3324,6 +3386,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "FathomLogo"
   | "FreshserviceLogo"
   | "FrontLogo"
+  | "GammaLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GitlabLogo"
@@ -3336,6 +3399,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "HubspotLogo"
   | "IntercomLogo"
   | "JiraLogo"
+  | "LemlistLogo"
   | "LinearLogo"
   | "LumaLogo"
   | "MicrosoftExcelLogo"
@@ -3344,6 +3408,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MicrosoftTeamsLogo"
   | "MiroLogo"
   | "MondayLogo"
+  | "NaptaLogo"
   | "NetSuiteLogo"
   | "NotionLogo"
   | "OpenaiLogo"
@@ -3363,6 +3428,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
+  | "YoutrustLogo"
   | "ZendeskLogo"
 >();
 
@@ -3546,6 +3612,7 @@ const MCPServerViewTypeSchema = z.object({
   server: MCPServerTypeSchema,
   oAuthUseCase: z.enum(["personal_actions", "platform_actions"]).nullable(),
   editedByUser: EditedByUserSchema.nullable(),
+  isRestrictedToSkills: z.boolean(),
 });
 
 export type MCPServerViewType = z.infer<typeof MCPServerViewTypeSchema>;

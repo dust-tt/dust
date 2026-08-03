@@ -43,7 +43,9 @@ export async function getTranscriptsGoogleAuth(
       { connectionId, error: tokRes.error, provider },
       "Error retrieving access token"
     );
-    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    if (tokRes.error.code === "token_revoked_error") {
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    }
     throw new Error(`Error retrieving access token from ${provider}`);
   }
 

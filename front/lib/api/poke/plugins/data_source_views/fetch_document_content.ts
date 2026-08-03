@@ -20,6 +20,7 @@ export const fetchDocumentContentPlugin = createPlugin({
           "The id of the document whose content you want to retrieve",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, dataSourceView, args) => {
     if (!dataSourceView) {

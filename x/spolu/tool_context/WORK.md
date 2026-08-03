@@ -1,0 +1,102 @@
+# Failing files post introduction of SandboxFunctionRunContextType
+
++ means compatible and done
+~ means compatible and needs work (asserts now)
+- means should be filtered (some are libs so all callers should be filtered)
+
+[-]     4  front/lib/actions/mcp_internal_actions/utils/file_utils.ts:109
+[-]     5  front/lib/api/actions/servers/agent_memory/tools/index.ts:53
+[-]     1  front/lib/api/actions/servers/ask_user_question/tools/index.ts:18
+[-]     1  front/lib/api/actions/servers/conversation_files/index.ts:19
+[-]     4  front/lib/api/actions/servers/conversation_files/tools/index.ts:98
+[-]     2  front/lib/api/actions/servers/extract_data/tools/index.ts:56
+[-]     1  front/lib/api/actions/servers/files/tools/agent_loop_fs.ts:15
+[-]     3  front/lib/api/actions/servers/plan_mode/tools/index.ts:28
+[-]     6  front/lib/api/actions/servers/run_agent/index.ts:224
+           // Deeply tied to main conversation for now :/
+[-]     7  front/lib/api/actions/servers/sandbox/tools/index.ts:231
+[-]     4  front/lib/api/actions/servers/schedules_management/tools/index.ts:35
+           // Agent specific
+[-]     4  front/lib/api/actions/servers/skill_management/tools/index.ts:103
+[-]     4  front/lib/api/actions/servers/toolsets/tools/index.ts:25
+[-]     5  front/lib/api/actions/servers/wakeups/tools/index.ts:92
+[-]     1  front/lib/api/actions/servers/helpers.ts:44
+           // TODO: sidekick should be removed from list
+
+[~]     1  front/lib/api/actions/servers/image_generation/helpers.ts:217
+[~]     7  front/lib/api/actions/servers/interactive_content/tools/index.ts:52
+           // We don't know how to create frames directly in pods for now.
+           // Create still conversation tied. Will have to skip for now the server.
+[+]     1  front/lib/api/actions/servers/data_warehouses/tools/index.ts:247
+[+]     1  front/lib/api/actions/servers/data_sources_file_system/tools/cat.ts:169
+[+]     1  front/lib/api/actions/servers/data_sources_file_system/tools/search.ts:55
+[+]     1  front/lib/api/actions/servers/common_utilities/tools/index.ts:100
+[+]     3  front/lib/actions/mcp_internal_actions/wrappers.ts:141
+[+]     1  front/lib/api/actions/servers/google_calendar/helpers.ts:176
+[+]     2  front/lib/api/actions/servers/google_drive/tools/index.ts:300
+[+]     4  front/lib/api/actions/servers/include_data/tools/index.ts:33
+[+]     3  front/lib/api/actions/servers/microsoft_teams/tools/index.ts:532
+[+]     2  front/lib/api/actions/servers/notion/tools/index.ts:118
+[+]     2  front/lib/api/actions/servers/pod_manager/helpers.ts:147
+[+]    11  front/lib/api/actions/servers/pod_manager/tools/index.ts:986
+[+]     3  front/lib/api/actions/servers/pod_tasks/tools/index.ts:303
+[+]     1  front/lib/api/actions/servers/query_tables_v2/tools/index.ts:262
+[+]     3  front/lib/api/actions/servers/run_dust_app/index.ts:141
+[+]     2  front/lib/api/actions/servers/search/tools/index.ts:65
+[+]     3  front/lib/api/actions/servers/slack_personal/tools/index.ts:449
+[+]     2  front/lib/api/actions/servers/snowflake/tools/index.ts:42
+[+]     1  front/lib/api/actions/servers/user_mentions/tools/index.ts:44
+[+]     4  front/lib/api/actions/servers/web_search_browse/tools/index.ts:59
+[+]     1  front/lib/api/mcp/run_tool.ts:91
+
+## MCP servers with partial pod function support
+
+- `file_generation`: `convert_file_format` accepts URLs, but conversation file references still
+  require an agent loop context.
+- `gmail`: draft and send operations work in a pod function context; conversation attachments are
+  require an agent loop context.
+- `google_drive`: `upload_file` still requires an agent loop context to read a conversation file.
+- `image_generation`: reference-image files still require an agent loop context.
+- `jira`: URL attachments work in a pod function context; conversation file attachments still
+  require an agent loop context.
+- `microsoft_drive`: `upload_file` still requires an agent loop context to read a conversation
+  file.
+- `outlook`: mail operations work in a pod function context without attachments; conversation
+  attachments still require an agent loop context.
+- `slack_bot`: message posting works in a pod function context without a file; conversation file
+  attachments still require an agent loop context.
+- `slack_personal`: message posting works in a pod function context without a file; conversation
+  file attachments still require an agent loop context.
+
+## notes
+
+Ideally if createServer returns 0 tools we should not expose the server at all. Would be a nice way
+to dynamically express that a server is not usable.
+
+### TODOs:
+
+- [x] run_tool/mcp_execution: introduce pod tool_outputs (action_output_fs, persistToolOutput)
+- [x] make runToolWithStreaming conversation-free
+  - [x] make processToolNotification conversation-free
+  - [x] make processToolResults conversation-free
+  - [x] make getExitOrPauseEvents conversation-free
+- [x] data_warehouse: flow to tool_outputs if in sandbox function
+- [x] image_generation: flow to tool_outputs if in sandbox function
+- [x] query_tables_v2: flow to tool_outputs if in sandbox function
+- [ ] interactive_content: allow conversation-less create and publish (big one, flavien has context) 
+- [x] timezone on invocation for:
+      - google_calendar
+      - pod_manager/create_conversation
+
+### files server
+
+Maybe:
+  getDustFileSystemForAgentLoop => 
+    getDustFileSystemForToolContext + getDustFileSystemForSandboxFunction
+
+But since we're in a sandbox we should never call these tools?
+
+### interactive_content server
+
+Interestingly only create/revert *require* an agent. I don't believe we know how to create a frame
+directly in the pod through these tools. Maybe we should only have the publish action here?

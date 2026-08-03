@@ -1,18 +1,20 @@
 /**
  * Shared types for the DustFileSystem abstraction.
  *
- * Scoped path: the agent/API-visible path format, e.g. `conversation-{cId}/report.pdf`
- * or `pod-{pId}/data.csv`. Every public interface accepts and returns scoped paths.
+ * Scoped path: the agent/API-visible path format, e.g. `conversation-{cId}/report.pdf`,
+ * `pod-{pId}/data.csv`, or `user-{uId}/memory.md`. Every public interface accepts and
+ * returns scoped paths.
  *
- * FileSystemMount: one logical namespace (conversation or pod) with its scoped prefix,
- * sandbox mount point, backward-compat aliases, and per-mount permissions.
+ * FileSystemMount: one logical namespace (conversation, pod, or user) with its scoped
+ * prefix, sandbox mount point, backward-compat aliases, and per-mount permissions.
  */
 
-export type FileSystemMountKind = "conversation" | "pod";
+export type FileSystemMountKind = "conversation" | "pod" | "user";
 
 /** Canonical scoped-path prefixes (include the trailing dash). */
 export const SCOPED_PREFIX_CONVERSATION = "conversation-" as const;
 export const SCOPED_PREFIX_POD = "pod-" as const;
+export const SCOPED_PREFIX_USER = "user-" as const;
 
 /** Legacy agent-visible path prefixes (no trailing dash/slash). */
 export const LEGACY_PREFIX_CONVERSATION = "conversation" as const;
@@ -27,8 +29,11 @@ export type FileSystemMount = {
   /** Prefix of every scoped path in this mount, e.g. `conversation-{cId}` or `pod-{pId}`. */
   scopedPrefix: string;
 
-  /** Absolute sandbox path, e.g. `/files/conversation-{cId}`. */
-  sandboxMountPoint: string;
+  /**
+   * Absolute sandbox path, e.g. `/files/conversation-{cId}`. Null for scopes that are
+   * never mounted into a sandbox (e.g. the user scope).
+   */
+  sandboxMountPoint: string | null;
 
   /**
    * Legacy scoped prefix (`"conversation"` or `"project"`) accepted for backward compat.
@@ -37,7 +42,7 @@ export type FileSystemMount = {
   legacyPrefix: string | null;
 
   /**
-   * Legacy sandbox mount point (`/files/conversation` or `/files/project`).
+   * Legacy sandbox mount point (`/files/conversation` or `/files/pod`).
    * The sandbox adapter symlinks this to `sandboxMountPoint` after mounting.
    * Null when there is no legacy counterpart.
    */
@@ -50,29 +55,24 @@ export type FileSystemMount = {
   };
 };
 
-type FileSystemEntryBase = {
-  fileName: string;
-  /** Full scoped path, e.g. `conversation-{cId}/folder/report.pdf`. Always canonical. */
-  path: string;
-  sizeBytes: number;
-  lastModifiedMs: number;
-};
+/**
+ * A mount that exists only inside the sandbox filesystem and is never exposed through the
+ * scoped-path API (the agent's file tools never see it). Used for prefixes the sandbox must read
+ * but that are not an agent-visible namespace, e.g. published sandbox-function bundles or the
+ * pod-state litestream replica.
+ */
+export type SandboxOnlyMountKind = "pod_sandbox_functions" | "pod_state";
 
-export type FileSystemDirectoryEntry = FileSystemEntryBase & {
-  isDirectory: true;
-};
+export type SandboxOnlyMount = {
+  kind: SandboxOnlyMountKind;
 
-export type FileSystemFileEntry = FileSystemEntryBase & {
-  isDirectory: false;
-  contentType: string;
-  /** sId of the corresponding FileResource record, or null when none exists. */
-  fileId: string | null;
-  thumbnailUrl: string | null;
-  /** Present when the caller requested signed URLs. */
-  signedDownloadUrl?: string | null;
-};
+  /** sId of the pod this mount belongs to. */
+  id: string;
 
-export type FileSystemEntry = FileSystemDirectoryEntry | FileSystemFileEntry;
+  sandboxMountPoint: string;
+
+  readOnly: boolean;
+};
 
 export type DustFileSystemErrorCode =
   | "unauthorized"
@@ -91,4 +91,33 @@ export class DustFileSystemError extends Error {
     super(message);
     this.name = "DustFileSystemError";
   }
+}
+
+export function isDustFileSystemError(
+  err: unknown,
+  code?: DustFileSystemErrorCode
+): err is DustFileSystemError {
+  return (
+    err instanceof DustFileSystemError &&
+    (code === undefined || err.code === code)
+  );
+}
+
+// Do not import types in the generic file system.
+export function conversationScopedPath({
+  conversationId,
+  rel,
+}: {
+  conversationId: string;
+  rel: string;
+}): string {
+  return `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${rel}`;
+}
+
+export function podScopedPath(spaceId: string, rel: string): string {
+  return `${SCOPED_PREFIX_POD}${spaceId}/${rel}`;
+}
+
+export function userScopedPath(userId: string, rel: string): string {
+  return `${SCOPED_PREFIX_USER}${userId}/${rel}`;
 }

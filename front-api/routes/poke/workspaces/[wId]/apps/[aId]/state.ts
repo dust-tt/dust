@@ -22,6 +22,7 @@ type PostStateResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/apps/:aId/state.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

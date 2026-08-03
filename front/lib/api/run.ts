@@ -19,13 +19,22 @@ import peg from "pegjs";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
 
-export type RunTrace = [[BlockType, string], TraceType[][]];
+type RunTrace = [[BlockType, string], TraceType[][]];
+
+export type {
+  GetRunBlockResponseBody,
+  GetRunResponseBody,
+  GetRunStatusResponseBody,
+  GetRunsResponseBody,
+  PostRunCancelResponseBody,
+  PostRunsResponseBody,
+} from "@app/types/api/apps";
 
 /**
  * Walks an app-run's `block_execution` traces and emits one `RunUsageType` per trace that carries
  * `meta.token_usage`, attaching the block's provider/model and the computed cost in micro-USD.
  */
-export function extractUsageFromExecutions(
+function extractUsageFromExecutions(
   block: { provider_id: ModelProviderIdType; model_id: ModelIdType },
   traces: TraceType[][]
 ): RunUsageType[] {
@@ -50,6 +59,7 @@ export function extractUsageFromExecutions(
         if (token_usage) {
           const promptTokens = token_usage.prompt_tokens;
           const completionTokens = token_usage.completion_tokens;
+          const reasoningTokens = token_usage.reasoning_tokens;
           const cachedTokens = token_usage.cached_tokens;
           const cacheCreationTokens = token_usage.cache_creation_input_tokens;
 
@@ -66,6 +76,7 @@ export function extractUsageFromExecutions(
             modelId: block.model_id,
             promptTokens,
             completionTokens,
+            reasoningTokens: reasoningTokens ?? null,
             cachedTokens: cachedTokens ?? null,
             cacheCreationTokens: cacheCreationTokens ?? null,
             costMicroUsd: usageCostMicroUsd,

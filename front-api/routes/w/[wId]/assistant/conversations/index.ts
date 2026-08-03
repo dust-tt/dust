@@ -5,6 +5,11 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import {
+  addSelectedConversationSpaces,
+  validateSelectableSpaces,
+} from "@app/lib/api/assistant/conversation/selected_spaces";
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -12,9 +17,12 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
+import { InternalPostConversationsRequestBodySchema } from "@app/types/api/assistant";
 import type {
-  ConversationListItemType,
+  GetConversationsResponseBody,
+  PostConversationsResponseBody,
+} from "@app/types/api/assistant/conversation/types";
+import type {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
@@ -25,26 +33,16 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import uniq from "lodash/uniq";
 import { z } from "zod";
 
 import conversation from "./[cId]";
+import { apiErrorForSelectedSpaces } from "./[cId]/selected_spaces_errors";
 import bulkActions from "./bulk-actions";
 import search from "./search";
 import semanticSearch from "./semantic_search";
 import sendOnboarding from "./send-onboarding";
 import spaces from "./spaces";
-
-export type GetConversationsResponseBody = {
-  conversations: ConversationListItemType[];
-  hasMore: boolean;
-  lastValue: string | null;
-};
-
-export type PostConversationsResponseBody = {
-  conversation: ConversationType;
-  message?: UserMessageType;
-  contentFragments: ContentFragmentType[];
-};
 
 // Normalize spaceId: undefined -> null for backward compatibility (users who
 // haven't refreshed their browser may send undefined). Applied via preprocess
@@ -67,6 +65,137 @@ function isConversationNotFoundError(err: unknown): err is ConversationError {
 
 // Mounted under /api/w/:wId/assistant/conversations.
 const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations:
+ *   get:
+ *     summary: List conversations
+ *     description: Retrieve a paginated list of conversations for the authenticated user in the workspace.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved conversations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateConversation'
+ *                 hasMore:
+ *                   type: boolean
+ *                 lastValue:
+ *                   type: string
+ *                   nullable: true
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create a conversation
+ *     description: Create a new conversation, optionally with an initial user message and content fragments.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 nullable: true
+ *               visibility:
+ *                 type: string
+ *                 enum: [unlisted, deleted, test]
+ *               spaceId:
+ *                 type: string
+ *                 nullable: true
+ *               message:
+ *                 type: object
+ *                 properties:
+ *                   content:
+ *                     type: string
+ *                   mentions:
+ *                     type: array
+ *                     items:
+ *                       $ref: '#/components/schemas/PrivateMention'
+ *                   context:
+ *                     type: object
+ *                     properties:
+ *                       timezone:
+ *                         type: string
+ *                       profilePictureUrl:
+ *                         type: string
+ *                         nullable: true
+ *                       origin:
+ *                         type: string
+ *                         nullable: true
+ *                       clientSideMCPServerIds:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       selectedMCPServerViewIds:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       selectedSpaceIds:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *               contentFragments:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               metadata:
+ *                 type: object
+ *                 nullable: true
+ *               selectedSpaceIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               skipToolsValidation:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Successfully created conversation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversation:
+ *                   $ref: '#/components/schemas/PrivateFullConversation'
+ *                 message:
+ *                   $ref: '#/components/schemas/PrivateUserMessage'
+ *                 contentFragments:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateContentFragment'
+ *       401:
+ *         description: Unauthorized
+ */
 
 app.get("/", async (ctx): HandlerResult<GetConversationsResponseBody> => {
   const auth = ctx.get("auth");
@@ -93,14 +222,11 @@ app.get("/", async (ctx): HandlerResult<GetConversationsResponseBody> => {
   const pagination = paginationRes.value;
 
   const result =
-    await ConversationResource.listPrivateConversationsForUserPaginatedFromES(
-      auth,
-      {
-        limit: pagination.limit,
-        lastValue: pagination.lastValue,
-        orderDirection: pagination.orderDirection,
-      }
-    );
+    await ConversationResource.listPrivateConversationsForUserPaginated(auth, {
+      limit: pagination.limit,
+      lastValue: pagination.lastValue,
+      orderDirection: pagination.orderDirection,
+    });
 
   return ctx.json({
     conversations: result.conversations,
@@ -123,8 +249,24 @@ app.post(
       message,
       contentFragments,
       metadata,
+      selectedSpaceIds,
       skipToolsValidation,
     } = ctx.req.valid("json");
+
+    const allSelectedSpaceIds = uniq([
+      ...(selectedSpaceIds ?? []),
+      ...(message?.context.selectedSpaceIds ?? []),
+    ]);
+
+    if (allSelectedSpaceIds.length > 0) {
+      const validationResult = await validateSelectableSpaces(auth, {
+        podId: spaceId,
+        spaceIds: allSelectedSpaceIds,
+      });
+      if (validationResult.isErr()) {
+        return apiErrorForSelectedSpaces(ctx, validationResult.error);
+      }
+    }
 
     if (message?.context.clientSideMCPServerIds) {
       const hasServerAccess = await concurrentExecutor(
@@ -161,12 +303,40 @@ app.post(
       spaceModelId = space.id;
     }
 
-    let newConversation = await createConversation(auth, {
+    const newConversationResource = await createConversation(auth, {
       title,
       visibility,
       spaceId: spaceModelId,
       metadata,
     });
+
+    let newConversation: ConversationType = {
+      ...newConversationResource.toJSON(),
+      content: [],
+      owner: auth.getNonNullableWorkspace(),
+      visibility: visibility,
+    };
+
+    if (allSelectedSpaceIds.length > 0) {
+      const selectedSpacesResult = await addSelectedConversationSpaces(auth, {
+        conversation: newConversation,
+        spaceIds: allSelectedSpaceIds,
+        origin: "input_bar",
+        auditContext: getAuditLogContext(auth),
+        // The conversation was just created by this caller and has no participant row yet (the
+        // `upsertParticipation` call below is what creates the creator row), so there is no other
+        // participant to evict and nothing to check against.
+        enforceCreatorOnly: false,
+      });
+      if (selectedSpacesResult.isErr()) {
+        return apiErrorForSelectedSpaces(ctx, selectedSpacesResult.error);
+      }
+
+      newConversation = {
+        ...newConversation,
+        requestedSpaceIds: selectedSpacesResult.value.effectiveAcl.spaceIds,
+      };
+    }
 
     if (newConversation.depth === 0) {
       await ConversationResource.upsertParticipation(auth, {
@@ -209,14 +379,6 @@ app.post(
 
         newContentFragments.push(r.value);
       }
-
-      newConversation = {
-        ...newConversation,
-        content: [
-          ...newConversation.content,
-          ...newContentFragments.map((contentFragment) => [contentFragment]),
-        ],
-      };
     }
 
     if (message) {
@@ -225,7 +387,8 @@ app.post(
       if (message.context.selectedMCPServerViewIds) {
         const mcpServerViews = await MCPServerViewResource.fetchByIds(
           auth,
-          message.context.selectedMCPServerViewIds
+          message.context.selectedMCPServerViewIds,
+          { isRestrictedToSkills: false }
         );
 
         const r = await ConversationResource.upsertMCPServerViews(auth, {
@@ -252,7 +415,7 @@ app.post(
         const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
 
         const r = await SkillResource.upsertConversationSkills(auth, {
-          conversationId: newConversation.id,
+          conversation: newConversation,
           skills,
           enabled: true,
         });
@@ -282,7 +445,7 @@ app.post(
       // If a message was provided we do await for the message to be created
       // before returning the conversation along with the message.
       const messageRes = await postUserMessage(auth, {
-        conversation: newConversation,
+        conversationResource: newConversationResource,
         content: message.content,
         mentions: message.mentions,
         context: {
@@ -293,8 +456,10 @@ app.post(
           profilePictureUrl: message.context.profilePictureUrl,
           origin: message.context.origin ?? "web",
           clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
+          selectedSpaceIds: allSelectedSpaceIds,
         },
         skipToolsValidation: skipToolsValidation ?? false,
+        modelSelection: message.modelSelection,
       });
       if (messageRes.isErr()) {
         return apiError(ctx, messageRes.error);
@@ -310,6 +475,7 @@ app.post(
       // conversation again will allow to have an up to date view of the
       // conversation with agent messages included so that the user of the API
       // can start streaming events from these agent messages directly.
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       const updatedRes = await getConversation(auth, newConversation.sId);
 
       if (updatedRes.isOk()) {

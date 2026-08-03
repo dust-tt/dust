@@ -9,7 +9,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 
 import type { ConversationAsset, CreatedAgent, SeedContext } from "./types";
 
-export interface SeedConversationsOptions {
+interface SeedConversationsOptions {
   agents?: Map<string, CreatedAgent>;
   defaultAgentId?: string;
   placeholders?: Record<string, string>;
@@ -121,6 +121,7 @@ export async function seedConversations(
         // Create user message
         const userMessageRow = await UserMessageModel.create({
           userId: conversationUser.id,
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           content: userContent,
           userContextUsername: conversationUser.username ?? "dev-user",
@@ -146,6 +147,7 @@ export async function seedConversations(
           status: "succeeded",
           agentConfigurationId: agentId,
           agentConfigurationVersion: 0,
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
         });

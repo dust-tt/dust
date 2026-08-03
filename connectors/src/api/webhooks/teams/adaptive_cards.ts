@@ -367,7 +367,6 @@ export function createErrorAdaptiveCard({
  * Creates the basic Adaptive Card for tool execution approval for everyone (read-only, no actions)
  */
 export function createBasicToolApprovalAdaptiveCard(data: {
-  agentName: string;
   toolName: string;
   conversationId: string;
   messageId: string;
@@ -403,7 +402,7 @@ export function createBasicToolApprovalAdaptiveCard(data: {
         items: [
           {
             type: "TextBlock",
-            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
+            text: `The agent is requesting permission to use tool **${data.toolName}**`,
             wrap: true,
             spacing: "Small",
           },

@@ -1,10 +1,10 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
-import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
   useRemoveWorkspaceDomain,
   useWorkspaceDomains,
@@ -13,17 +13,17 @@ import type { PlanType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import {
-  ActionGlobeAltIcon,
   Button,
   Chip,
   DataTable,
   EmptyCTA,
+  Globe01,
   IconButton,
   LoadingBlock,
   Page,
-  PlusIcon,
+  Plus,
   Separator,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
@@ -45,13 +45,13 @@ export default function WorkspaceAccessPanel({
   const { addDomainLink, domains, isDomainsLoading } = useWorkspaceDomains({
     owner,
   });
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const workspace = useWorkspace();
+  const scimEnabled = isSCIMEnabled(plan, featureFlags);
   const hasAuditLogsAccess =
     plan.isAuditLogsAllowed || hasFeature("audit_logs");
   const showAuditLogs =
     hasAuditLogsAccess && workspace.metadata?.disableAuditLogs !== true;
-  const showExtensionMcpTools = hasFeature("browser_extension_mcp_tools");
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,18 +70,10 @@ export default function WorkspaceAccessPanel({
         owner={owner}
         plan={plan}
       />
-      {plan.limits.users.isSCIMAllowed && <Separator />}
-      {plan.limits.users.isSCIMAllowed && (
-        <UserProvisioning owner={owner} plan={plan} />
-      )}
+      {scimEnabled && <Separator />}
+      {scimEnabled && <UserProvisioning owner={owner} plan={plan} />}
       {showAuditLogs && <Separator />}
       {showAuditLogs && <AuditLogsSection owner={owner} />}
-      {showExtensionMcpTools && (
-        <>
-          <Separator />
-          <ExtensionMcpToolsSection owner={owner} />
-        </>
-      )}
     </div>
   );
 }
@@ -102,7 +94,7 @@ function DomainVerification({
   owner,
 }: DomainVerificationProps) {
   return (
-    <WorkspaceSection icon={ActionGlobeAltIcon} title="Domain Verification">
+    <WorkspaceSection icon={Globe01} title="Domain Verification">
       <Page.P variant="secondary">
         Verify your company domains to enable Single Sign-On (SSO), automatic
         workspace enrollment for team members, and secure connections to your
@@ -116,7 +108,7 @@ function DomainVerification({
             <Button
               label="Add Domain"
               variant="primary"
-              icon={PlusIcon}
+              icon={Plus}
               href={addDomainLink}
             />
           }
@@ -196,13 +188,13 @@ function DomainVerificationTable({
         cell: ({ getValue, row }: CellContext<DomainRowData, string>) => {
           const status = getValue();
           const workspaceVerifiedDomain = row.original.workspaceVerifiedDomain;
-          let chipColor: "success" | "info" | "rose" = "info";
+          let chipColor: "success" | "info" | "warning" = "info";
           let label: string = "Pending";
           if (workspaceVerifiedDomain && status === "verified") {
             chipColor = "success";
             label = "Verified";
           } else if (status === "failed") {
-            chipColor = "rose";
+            chipColor = "warning";
             label = "Failed";
           }
 
@@ -216,7 +208,7 @@ function DomainVerificationTable({
         cell: ({ row }: CellContext<DomainRowData, string>) => {
           return (
             <IconButton
-              icon={XMarkIcon}
+              icon={XClose}
               size="xs"
               variant="ghost"
               onClick={() => handleDeleteDomain(row.original.domain)}
@@ -248,7 +240,7 @@ function DomainVerificationTable({
             label="Add Domain"
             variant="primary"
             href={addDomainLink}
-            icon={PlusIcon}
+            icon={Plus}
           />
         </div>
       )}

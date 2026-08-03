@@ -1,15 +1,15 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { makeExtra } from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import {
   getFileFromConversationAttachment,
   resolveConversationFileRef,
@@ -46,12 +46,11 @@ vi.mock("@app/lib/api/file_system", async (importOriginal) => {
   };
 });
 
-function makeAgentLoopContext(
-  conversation: ConversationType
-): AgentLoopContextType {
+function makeRunContext(conversation: ConversationType): AgentLoopRunContext {
   return {
-    runContext: { conversation },
-  } as unknown as AgentLoopContextType;
+    contextType: "agent_loop",
+    conversation,
+  } as unknown as AgentLoopRunContext;
 }
 
 function makeReadableStream(content: string): Readable {
@@ -99,7 +98,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         canonicalPath,
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isOk()).toBe(true);
@@ -132,7 +131,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         `conversation-${conversation.sId}/missing.pdf`,
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isErr()).toBe(true);
@@ -160,7 +159,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         `conversation-${conversation.sId}/file.txt`,
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isErr()).toBe(true);
@@ -173,7 +172,7 @@ describe("getFileFromConversationAttachment", () => {
         role: "admin",
       });
 
-      const conversation = await createConversation(auth, {
+      const conversationResource = await createConversation(auth, {
         title: "Test",
         visibility: "unlisted",
         spaceId: null,
@@ -185,13 +184,13 @@ describe("getFileFromConversationAttachment", () => {
         fileSize: 100,
         status: "ready",
         useCase: "conversation",
-        useCaseMetadata: { conversationId: conversation.sId },
+        useCaseMetadata: { conversationId: conversationResource.sId },
       });
 
       await ConversationFactory.createContentFragmentMessage({
         auth,
         workspace,
-        conversationId: conversation.id,
+        conversationId: conversationResource.id,
         rank: 0,
         fileId: file.id,
         title: "Report",
@@ -199,11 +198,15 @@ describe("getFileFromConversationAttachment", () => {
         fileName: "report.pdf",
       });
 
-      const conversationResult = await getConversation(auth, conversation.sId);
-      if (conversationResult.isErr()) {
-        throw new Error("Failed to fetch conversation");
+      const conversationRes = await getConversation(
+        auth,
+        conversationResource.sId
+      );
+      if (conversationRes.isErr()) {
+        throw new Error(
+          `Failed to fetch conversation: ${conversationRes.error.type}`
+        );
       }
-      const fullConversation = conversationResult.value;
 
       const expectedContent = "pdf bytes";
       vi.spyOn(FileResource.prototype, "getReadStream").mockReturnValue(
@@ -213,7 +216,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         file.sId,
-        makeAgentLoopContext(fullConversation)
+        makeRunContext(conversationRes.value)
       );
 
       expect(result.isOk()).toBe(true);
@@ -231,21 +234,26 @@ describe("getFileFromConversationAttachment", () => {
         role: "admin",
       });
 
-      const conversation = await createConversation(auth, {
+      const conversationResource = await createConversation(auth, {
         title: "Test",
         visibility: "unlisted",
         spaceId: null,
       });
 
-      const conversationResult = await getConversation(auth, conversation.sId);
-      if (conversationResult.isErr()) {
-        throw new Error("Failed to fetch conversation");
+      const conversationRes = await getConversation(
+        auth,
+        conversationResource.sId
+      );
+      if (conversationRes.isErr()) {
+        throw new Error(
+          `Failed to fetch conversation: ${conversationRes.error.type}`
+        );
       }
 
       const result = await getFileFromConversationAttachment(
         auth,
         "fil_notfound",
-        makeAgentLoopContext(conversationResult.value)
+        makeRunContext(conversationRes.value)
       );
 
       expect(result.isErr()).toBe(true);
@@ -280,7 +288,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "conversation/notes.txt",
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isOk()).toBe(true);
@@ -310,7 +318,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "conversation/missing.pdf",
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isErr()).toBe(true);
@@ -359,7 +367,7 @@ describe("resolveConversationFileRef", () => {
       const result = await resolveConversationFileRef(
         auth,
         canonicalPath,
-        undefined // canonical paths do not need agentLoopContext
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isOk()).toBe(true);
@@ -370,41 +378,6 @@ describe("resolveConversationFileRef", () => {
       expect(result.value.sizeBytes).toBe(512);
       expect(result.value.fileName).toBe("photo.png");
       expect(await result.value.getSignedUrl()).toBe(signedUrl);
-    });
-
-    it("does not require agentLoopContext", async () => {
-      const { authenticator: auth } = await createResourceTest({
-        role: "admin",
-      });
-
-      const conversation = await createConversation(auth, {
-        title: "Test",
-        visibility: "unlisted",
-        spaceId: null,
-      });
-
-      mockFromScopedPath.mockResolvedValue(
-        new Ok({
-          stat: vi
-            .fn()
-            .mockResolvedValue(
-              new Ok({ contentType: "text/plain", sizeBytes: 10 })
-            ),
-          read: vi.fn().mockResolvedValue(new Ok(makeReadableStream("hello"))),
-          getDownloadUrl: vi
-            .fn()
-            .mockResolvedValue(new Ok("https://example.com/url")),
-        })
-      );
-
-      // Pass undefined — should succeed for canonical paths.
-      const result = await resolveConversationFileRef(
-        auth,
-        `conversation-${conversation.sId}/file.txt`,
-        undefined
-      );
-
-      expect(result.isOk()).toBe(true);
     });
 
     it("returns Err when the file is not found", async () => {
@@ -427,7 +400,7 @@ describe("resolveConversationFileRef", () => {
       const result = await resolveConversationFileRef(
         auth,
         `conversation-${conversation.sId}/missing.png`,
-        undefined
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isErr()).toBe(true);
@@ -436,22 +409,6 @@ describe("resolveConversationFileRef", () => {
       }
       expect(result.error).toContain("not found");
     });
-  });
-
-  it("returns Err when agentLoopContext has no runContext", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
-
-    const result = await resolveConversationFileRef(
-      auth,
-      "conversation/file.pdf",
-      undefined
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
-    }
-    expect(result.error).toContain("No conversation context");
   });
 
   it("returns the signed URL and metadata for a legacy fileId", async () => {
@@ -477,7 +434,7 @@ describe("resolveConversationFileRef", () => {
     const result = await resolveConversationFileRef(
       auth,
       file.sId,
-      makeAgentLoopContext({ ...conversation, content: [] })
+      makeExtra(auth, conversation).runContext
     );
 
     expect(result.isOk()).toBe(true);
@@ -516,11 +473,11 @@ describe("resolveConversationFileRef", () => {
       useCaseMetadata: { conversationId: conversationA.sId },
     });
 
-    // But agentLoopContext points to conversation B.
+    // But the run context points to conversation B.
     const result = await resolveConversationFileRef(
       auth,
       file.sId,
-      makeAgentLoopContext({ ...conversationB, content: [] })
+      makeExtra(auth, conversationB).runContext
     );
 
     expect(result.isErr()).toBe(true);

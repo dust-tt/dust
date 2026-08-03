@@ -79,7 +79,7 @@ function ConfirmView({ token }: ConfirmViewProps) {
               <Page.Header
                 title={<span className="text-primary-100">Processing...</span>}
               />
-              <Spinner size="xl" />
+              <Spinner size="lg" />
             </div>
           </div>
         </div>

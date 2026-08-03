@@ -10,14 +10,16 @@ import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/
 import DowngradeToNoPlanButton from "@app/components/poke/subscriptions/DowngradeToNoPlanButton";
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
+import SeatLimitScheduleDialog from "@app/components/poke/subscriptions/SeatLimitScheduleDialog";
 import SwitchContractDialog from "@app/components/poke/subscriptions/SwitchContractDialog";
+import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
 import {
   FREE_NO_PLAN_CODE,
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -33,7 +35,7 @@ import {
   ConfluenceLogo,
   cn,
   GithubLogo,
-  GlobeAltIcon,
+  Globe01,
   GoogleLogo,
   IntercomLogo,
   LinkWrapper,
@@ -83,7 +85,7 @@ function getSubscriptionDisplayStatus(
 const STATUS_CONFIG: Record<
   SubscriptionStatus,
   {
-    chipColor: "info" | "blue" | "warning" | "success" | "rose";
+    chipColor: "info" | "highlight" | "warning" | "success" | "warning";
     chipLabel: string;
     cardClass: string;
   }
@@ -91,32 +93,27 @@ const STATUS_CONFIG: Record<
   paymentFailed: {
     chipColor: "info",
     chipLabel: "Past Due",
-    cardClass:
-      "border-info-200 bg-info-50 dark:border-info-200-night dark:bg-info-50-night",
+    cardClass: "border-info-200 bg-info-50",
   },
   trialing: {
-    chipColor: "blue",
+    chipColor: "highlight",
     chipLabel: "Trialing",
-    cardClass:
-      "border-blue-200 bg-blue-50 dark:border-blue-200-night dark:bg-blue-50-night",
+    cardClass: "border-highlight-200 bg-highlight-50",
   },
   ended: {
     chipColor: "warning",
     chipLabel: "Ended",
-    cardClass:
-      "border-warning-200 bg-warning-50 dark:border-warning-200-night dark:bg-warning-50-night",
+    cardClass: "border-warning-200 bg-warning-50",
   },
   active: {
     chipColor: "success",
     chipLabel: "Active",
-    cardClass:
-      "border-success-200 bg-success-50 dark:border-success-200-night dark:bg-success-50-night",
+    cardClass: "border-success-200 bg-success-50",
   },
   inconsistent: {
-    chipColor: "rose",
+    chipColor: "warning",
     chipLabel: "Inconsistent",
-    cardClass:
-      "border-rose-200 bg-rose-50 dark:border-rose-200-night dark:bg-rose-50-night",
+    cardClass: "border-warning-200 bg-warning-50",
   },
 };
 
@@ -158,7 +155,7 @@ function prepareSubscriptionsForDisplay(
   });
 }
 
-export function SubscriptionsDataTable({
+function SubscriptionsDataTable({
   owner,
   metronomeCustomerId,
   subscriptions,
@@ -306,6 +303,41 @@ function CancelPendingSubscriptionButton({
   );
 }
 
+function SeatCommitmentsSection({
+  owner,
+  seatPlan,
+}: {
+  owner: WorkspaceType;
+  seatPlan: SeatPlanResponseBody | null;
+}) {
+  const entries = Object.entries(seatPlan ?? {});
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="pb-1 pt-4 text-sm font-semibold">Seat Commitments</div>
+      <PokeTable>
+        <PokeTableBody>
+          {entries.map(([seatType, info]) => (
+            <PokeTableRow key={seatType}>
+              <PokeTableCell>{info.name}</PokeTableCell>
+              <PokeTableCell>
+                {info.minSeats} commitment / {info.maxSeats ?? "∞"} max /{" "}
+                {info.assignedCount} used
+              </PokeTableCell>
+            </PokeTableRow>
+          ))}
+        </PokeTableBody>
+      </PokeTable>
+      <div className="pt-2">
+        <SeatLimitScheduleDialog owner={owner} seatPlan={seatPlan} />
+      </div>
+    </>
+  );
+}
+
 interface ActiveSubscriptionTableProps {
   owner: WorkspaceType;
   metronomeCustomerId: string | null;
@@ -315,6 +347,7 @@ interface ActiveSubscriptionTableProps {
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   hasMetronomeBillingFeature: boolean;
   stripeCustomerId: string | null;
+  seatPlan: SeatPlanResponseBody | null;
 }
 
 export function ActiveSubscriptionTable({
@@ -326,6 +359,7 @@ export function ActiveSubscriptionTable({
   programmaticUsageConfig,
   hasMetronomeBillingFeature,
   stripeCustomerId,
+  seatPlan,
 }: ActiveSubscriptionTableProps) {
   const status = getSubscriptionDisplayStatus(subscription);
   const { chipColor, chipLabel, cardClass } = STATUS_CONFIG[status];
@@ -358,8 +392,6 @@ export function ActiveSubscriptionTable({
                 owner={owner}
                 subscription={subscription}
                 programmaticUsageConfig={programmaticUsageConfig}
-                hasMetronomeBillingFeature={hasMetronomeBillingFeature}
-                stripeCustomerId={stripeCustomerId}
               />
             )}
           </div>
@@ -381,15 +413,16 @@ export function ActiveSubscriptionTable({
             subscription={subscription}
             metronomeCustomerId={metronomeCustomerId}
           />
+          <SeatCommitmentsSection owner={owner} seatPlan={seatPlan} />
         </div>
       </div>
       {pendingSubscription && (
         <div className="flex justify-between gap-3">
-          <div className="flex flex-grow flex-col rounded-lg border border-blue-200 bg-blue-50 p-4 pb-2 dark:border-blue-200-night dark:bg-blue-50-night">
+          <div className="flex flex-grow flex-col rounded-lg border border-highlight-200 bg-highlight-50 p-4 pb-2">
             <div className="flex items-center justify-between gap-2 pb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-md font-bold">Pending Subscription</h2>
-                <Chip color="blue" label="Pending activation" size="xs" />
+                <Chip color="highlight" label="Pending activation" size="xs" />
               </div>
               <CancelPendingSubscriptionButton owner={owner} />
             </div>
@@ -460,7 +493,7 @@ export function PlanLimitationsTable({
                       <ConfluenceLogo />
                     ) : null}
                     {activePlan.limits.connections.isWebCrawlerAllowed ? (
-                      <GlobeAltIcon />
+                      <Globe01 />
                     ) : null}
                     {activePlan.limits.connections.isSalesforceAllowed ? (
                       <SalesforceLogo />
@@ -488,11 +521,20 @@ export function PlanLimitationsTable({
               </PokeTableRow>
 
               <PokeTableRow>
-                <PokeTableCell>Max number of messages</PokeTableCell>
+                <PokeTableCell>Messages (pooled) fair use</PokeTableCell>
                 <PokeTableCell>
                   {activePlan.limits.assistant.maxMessages === -1
                     ? "unlimited"
                     : `${activePlan.limits.assistant.maxMessages} / ${activePlan.limits.assistant.maxMessagesTimeframe}`}
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
+                <PokeTableCell>AWUCredits (unpooled) fair use</PokeTableCell>
+                <PokeTableCell>
+                  {activePlan.limits.assistant.maxAwuCredits === -1
+                    ? "unlimited"
+                    : `${activePlan.limits.assistant.maxAwuCredits} / ${activePlan.limits.assistant.maxAwuCreditsTimeframe}`}
                 </PokeTableCell>
               </PokeTableRow>
 
@@ -507,7 +549,7 @@ export function PlanLimitationsTable({
                 <PokeTableCell>Is Opus enabled?</PokeTableCell>
                 <PokeTableCell>
                   {isDustCompanyPlan(activePlan.code) ||
-                  isEntreprisePlanPrefix(activePlan.code)
+                  isEnterprisePlanPrefix(activePlan.code)
                     ? "✅"
                     : "❌"}
                 </PokeTableCell>
@@ -553,16 +595,12 @@ interface UpgradeDowngradeModalProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
-  hasMetronomeBillingFeature: boolean;
-  stripeCustomerId: string | null;
 }
 
 function UpgradeDowngradeModal({
   owner,
   subscription,
   programmaticUsageConfig,
-  hasMetronomeBillingFeature,
-  stripeCustomerId,
 }: UpgradeDowngradeModalProps) {
   const router = useAppRouter();
   const { plans } = usePokePlans();
@@ -650,8 +688,6 @@ function UpgradeDowngradeModal({
                 owner={owner}
                 subscription={subscription}
                 programmaticUsageConfig={programmaticUsageConfig}
-                hasMetronomeBillingFeature={hasMetronomeBillingFeature}
-                stripeCustomerId={stripeCustomerId}
               />
             </div>
             {isProPlanPrefix(subscription.plan.code) && (

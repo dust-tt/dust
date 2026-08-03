@@ -6,19 +6,19 @@ import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overvie
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { fetchVersionMarkers } from "@app/lib/api/assistant/observability/version_markers";
 import type { Authenticator } from "@app/lib/auth";
-import { GPT_4_1_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
+import { GPT_5_4_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type AgentObservabilitySummaryInput = {
+type AgentObservabilitySummaryInput = {
   auth: Authenticator;
   baseQuery: estypes.QueryDslQueryContainer;
   days: number;
   agentName: string;
 };
 
-export type AgentObservabilitySummaryResult = {
+type AgentObservabilitySummaryResult = {
   summaryText: string;
 };
 
@@ -151,7 +151,7 @@ export async function generateAgentObservabilitySummary({
   const res = await runMultiActionsAgent(
     auth,
     {
-      modelId: GPT_4_1_MINI_MODEL_ID,
+      modelId: GPT_5_4_MINI_MODEL_ID,
       providerId: "openai",
     },
     {

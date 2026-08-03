@@ -139,7 +139,6 @@ export function ZendeskConfigView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetNewConfig(
                   ZENDESK_CONFIG_KEYS.SYNC_UNRESOLVED_TICKETS,
@@ -153,7 +152,7 @@ export function ZendeskConfigView({
         }
       >
         <ContextItem.Description>
-          <div className="text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-muted-foreground">
             If activated, Dust will also sync the unresolved tickets.
           </div>
         </ContextItem.Description>
@@ -169,7 +168,6 @@ export function ZendeskConfigView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetNewConfig(
                   ZENDESK_CONFIG_KEYS.HIDE_CUSTOMER_DETAILS,
@@ -183,7 +181,7 @@ export function ZendeskConfigView({
         }
       >
         <ContextItem.Description>
-          <div className="text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-muted-foreground">
             Enable this option to prevent customer names and email addresses
             from being synced with Dust. This does not impact data within
             tickets, only the metadata attached to tickets.
@@ -200,7 +198,7 @@ export function ZendeskConfigView({
         }
       >
         <ContextItem.Description>
-          <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground dark:text-muted-foreground-night">
+          <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground">
             Set the retention period (in days), tickets older than the retention
             period will not be synced with Dust.
             <div className="flex items-center gap-2">

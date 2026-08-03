@@ -42,7 +42,7 @@ export function PaginatedCitationsGrid({
   const paginatedItems = items.slice(startIndex, startIndex + pageSize);
 
   return (
-    <div className="s-flex s-w-full s-flex-col">
+    <div className="flex w-full flex-col">
       <CitationGrid>
         {paginatedItems.map((d, idx) => {
           return (
@@ -60,8 +60,8 @@ export function PaginatedCitationsGrid({
 
       <div
         className={cn(
-          "s-pt-3",
-          items.length > maxItemsPerPage ? "s-visible" : "s-collapse"
+          "pt-3",
+          items.length > maxItemsPerPage ? "visible" : "collapse"
         )}
       >
         <Pagination

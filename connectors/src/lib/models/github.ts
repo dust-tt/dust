@@ -1,7 +1,10 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@connectors/resources/storage/data_types";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class GithubConnectorStateModel extends ConnectorBaseModel<GithubConnectorStateModel> {
   declare createdAt: CreationOptional<Date>;
@@ -191,7 +194,7 @@ GithubCodeRepositoryModel.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
   },
@@ -257,7 +260,7 @@ GithubCodeFileModel.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     contentHash: {
@@ -331,7 +334,7 @@ GithubCodeDirectoryModel.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
   },

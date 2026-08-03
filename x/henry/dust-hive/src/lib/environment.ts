@@ -1,10 +1,20 @@
 import { mkdir, readdir, rm } from "node:fs/promises";
+import { relative, resolve } from "node:path";
 import { z } from "zod";
 import { createTypeGuard } from "./errors";
 import { directoryExists } from "./fs";
-import { DUST_HIVE_ENVS, getEnvDir, getInitializedMarkerPath, getMetadataPath } from "./paths";
+import {
+  DUST_HIVE_ENVS,
+  getEnvDir,
+  getInitializedMarkerPath,
+  getMetadataPath,
+  getWorktreeDir,
+} from "./paths";
 import type { PortAllocation } from "./ports";
 import { loadPortAllocation } from "./ports";
+
+const WorktreeOwnerSchema = z.enum(["hive", "external"]);
+export type WorktreeOwner = z.infer<typeof WorktreeOwnerSchema>;
 
 const EnvironmentMetadataFields = z.object({
   name: z.string(),
@@ -12,6 +22,8 @@ const EnvironmentMetadataFields = z.object({
   workspaceBranch: z.string(),
   createdAt: z.string(),
   repoRoot: z.string(),
+  worktreePath: z.string().optional(),
+  worktreeOwner: WorktreeOwnerSchema.optional(),
 });
 
 export const EnvironmentMetadataSchema = EnvironmentMetadataFields.passthrough();
@@ -26,6 +38,10 @@ export interface Environment {
   metadata: EnvironmentMetadata;
   ports: PortAllocation;
   initialized: boolean;
+}
+
+export function getEnvironmentWorktreeDir(metadata: EnvironmentMetadata): string {
+  return getWorktreeDir(metadata.name, metadata.repoRoot, metadata.worktreePath);
 }
 
 // Validate environment name
@@ -144,6 +160,48 @@ export async function listEnvironments(): Promise<string[]> {
   }
 
   return names.sort();
+}
+
+function isPathAtOrInside(parentPath: string, candidatePath: string): boolean {
+  const relativePath = relative(resolve(parentPath), resolve(candidatePath));
+  return relativePath === "" || !(relativePath.startsWith("..") || relativePath.startsWith("/"));
+}
+
+export function detectEnvironmentFromMetadata(
+  cwd: string,
+  environments: EnvironmentMetadata[]
+): string | null {
+  let bestMatch: { name: string; pathLength: number } | null = null;
+
+  for (const metadata of environments) {
+    const worktreePath = getEnvironmentWorktreeDir(metadata);
+    if (!isPathAtOrInside(worktreePath, cwd)) {
+      continue;
+    }
+
+    if (!bestMatch || worktreePath.length > bestMatch.pathLength) {
+      bestMatch = { name: metadata.name, pathLength: worktreePath.length };
+    }
+  }
+
+  return bestMatch?.name ?? null;
+}
+
+// Detect if the current working directory is inside a registered dust-hive worktree.
+export async function detectEnvironmentFromCwd(cwd = process.cwd()): Promise<string | null> {
+  const envNames = await listEnvironments();
+  const metadataList: EnvironmentMetadata[] = [];
+
+  for (const envName of envNames) {
+    const metadata = await loadMetadata(envName);
+    if (!metadata) {
+      continue;
+    }
+
+    metadataList.push(metadata);
+  }
+
+  return detectEnvironmentFromMetadata(cwd, metadataList);
 }
 
 // Delete environment directory

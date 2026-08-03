@@ -1,8 +1,11 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@connectors/resources/storage/data_types";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { NotionBlockType, PageObjectProperties } from "@connectors/types";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class NotionConnectorStateModel extends ConnectorBaseModel<NotionConnectorStateModel> {
   declare createdAt: CreationOptional<Date>;
@@ -115,7 +118,7 @@ NotionPageModel.init(
       allowNull: true,
     },
     title: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     titleSearchVector: {
@@ -222,7 +225,7 @@ NotionDatabaseModel.init(
       allowNull: true,
     },
     title: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     titleSearchVector: {
@@ -306,7 +309,7 @@ NotionConnectorPageCacheEntryModel.init(
       allowNull: true,
     },
     pagePropertiesText: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
       defaultValue: "{}",
     },
@@ -400,7 +403,7 @@ NotionConnectorBlockCacheEntryModel.init(
       allowNull: false,
     },
     blockText: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     blockType: {
@@ -416,7 +419,7 @@ NotionConnectorBlockCacheEntryModel.init(
       allowNull: false,
     },
     childDatabaseTitle: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     workflowId: {

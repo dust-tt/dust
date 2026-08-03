@@ -3,7 +3,6 @@
  * ISC License
  */
 
-import { useAppRouter } from "@app/lib/platform";
 import { useCallback, useEffect, useState } from "react";
 
 const getUrlFromLocation = (location: Location) => {
@@ -48,9 +47,8 @@ export const useHashParam = (
   key: string,
   defaultValue?: string
 ): [string | undefined, Setter] => {
-  const router = useAppRouter();
-
-  // Hold the internal value for the search param defined by "key" in the hash.
+  // Source of truth for this key's value. Bundled with `options` so the URL-sync
+  // effect knows whether to replaceState or pushState.
   const [innerValue, setInnerValue] = useState<{
     val: string | undefined;
     options: SetterOptions;
@@ -62,67 +60,79 @@ export const useHashParam = (
     options: DEFAULT_OPTIONS,
   });
 
-  // Listen to hash change events and update the internal value if the hash is removed.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  // URL → state: sync innerValue when the hash changes externally (browser
+  // back/forward, another useHashParam instance, or direct location.hash writes).
   useEffect(() => {
-    const onEventComplete = (url: string) => {
-      const hash = getHashFromUrl(url);
-      // If there's no hash after route change, clear the content.
-      if (!hash && innerValue) {
-        setInnerValue({ val: undefined, options: DEFAULT_OPTIONS });
-      }
-    };
-
-    router.events.on("hashChangeComplete", onEventComplete);
-    router.events.on("routeChangeComplete", onEventComplete);
-    return () => {
-      router.events.off("hashChangeComplete", onEventComplete);
-      router.events.off("routeChangeComplete", onEventComplete);
-    };
-  }, [router.events, innerValue, setInnerValue]);
-
-  // Listen to innerValue changes and update the hash in the router if there is a mismatch.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useEffect(() => {
-    if (typeof window !== "undefined" && router.isReady) {
-      // get current hash from window.location, DO NOT DEFAULT TO DEFAULT VALUE.
-      const currentHash = getHashParam(
-        getUrlFromLocation(window.location),
-        key
-      );
-      if (currentHash !== innerValue.val) {
-        const { pathname, search } = window.location;
-        const [prefix, searchParams] = getHashSearchParams(
-          getUrlFromLocation(window.location)
+    const onHashChange = () => {
+      const hash = getHashFromUrl(getUrlFromLocation(window.location));
+      if (!hash) {
+        setInnerValue((prev) =>
+          prev.val !== undefined
+            ? { val: undefined, options: DEFAULT_OPTIONS }
+            : prev
         );
-
-        if (typeof innerValue.val === "undefined" || innerValue.val === "") {
-          searchParams.delete(key);
-        } else {
-          searchParams.set(key, innerValue.val);
-        }
-
-        const hashSearch = searchParams.toString();
-        const hash = hashSearch ? `${prefix}?${hashSearch}` : prefix;
-        const newUrl = `${pathname}${search}${hash ? `#${hash}` : ""}`;
-
-        if (innerValue.options.history === "replace") {
-          window.history.replaceState(window.history.state, "", newUrl);
-        } else {
-          void router.push(newUrl);
-        }
+      } else {
+        const newVal = getHashParam(
+          getUrlFromLocation(window.location),
+          key,
+          defaultValue
+        );
+        setInnerValue((prev) =>
+          prev.val !== newVal ? { val: newVal, options: DEFAULT_OPTIONS } : prev
+        );
       }
-    }
-    // Router object reference changes between renders, excluding it prevents unnecessary updates,
-    // some of which cause an infinite rendering loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultValue, innerValue, key, router.isReady]);
+    };
 
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener("popstate", onHashChange);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("popstate", onHashChange);
+    };
+  }, [key, defaultValue]);
+
+  // State → URL: when innerValue changes (via setValue), write it to the URL
+  // and notify other useHashParam instances via a manual hashchange event.
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    // Get current hash from window.location, DO NOT DEFAULT TO DEFAULT VALUE.
+    const currentHash = getHashParam(getUrlFromLocation(window.location), key);
+    if (currentHash !== innerValue.val) {
+      const { pathname, search } = window.location;
+      const [prefix, searchParams] = getHashSearchParams(
+        getUrlFromLocation(window.location)
+      );
+
+      if (typeof innerValue.val === "undefined" || innerValue.val === "") {
+        searchParams.delete(key);
+      } else {
+        searchParams.set(key, innerValue.val);
+      }
+
+      const hashSearch = searchParams.toString();
+      const hash = hashSearch ? `${prefix}?${hashSearch}` : prefix;
+      const newUrl = `${pathname}${search}${hash ? `#${hash}` : ""}`;
+
+      if (innerValue.options.history === "replace") {
+        window.history.replaceState(window.history.state, "", newUrl);
+      } else {
+        window.history.pushState(window.history.state, "", newUrl);
+      }
+
+      // pushState/replaceState don't fire hashchange natively, so dispatch
+      // manually so other useHashParam instances (watching different keys)
+      // pick up the change via the first effect.
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    }
+  }, [innerValue, key]);
+
+  // Public setter: accepts a value or updater function, updates innerValue
+  // which triggers the state→URL effect above.
   const setValue = useCallback<Setter>(
-    async (
-      newValue?: string | Updater,
-      options: SetterOptions = DEFAULT_OPTIONS
-    ) => {
+    (newValue?: string | Updater, options: SetterOptions = DEFAULT_OPTIONS) => {
       const newInnerValue =
         typeof newValue === "function"
           ? newValue(
@@ -139,6 +149,8 @@ export const useHashParam = (
     [defaultValue, key]
   );
 
+  // Uses `||` intentionally: empty string falls back to defaultValue, matching
+  // the behavior where "" triggers searchParams.delete(key) in the effect.
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return [innerValue.val || defaultValue, setValue];
 };

@@ -16,7 +16,7 @@ import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-export type ProviderField = {
+type ProviderField = {
   name: string;
   label?: string;
   placeholder: string;
@@ -137,18 +137,6 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
           </a>
           &nbsp;(you can create a new key specifically for Dust).
         </p>
-        <p className="mt-2">
-          We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  togetherai: {
-    title: "TogetherAI",
-    fields: [{ name: "api_key", placeholder: "TogetherAI API Key" }],
-    instructions: (
-      <>
-        <p>To use TogetherAI models you must provide your API key.</p>
         <p className="mt-2">
           We'll never use your API key for anything other than to run your apps.
         </p>
@@ -278,7 +266,7 @@ export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
 };
 
-export interface ProviderSetupProps {
+interface ProviderSetupProps {
   owner: WorkspaceType;
   providerId: string;
   title: string;

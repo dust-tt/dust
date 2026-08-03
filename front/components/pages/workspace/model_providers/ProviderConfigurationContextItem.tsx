@@ -11,7 +11,7 @@ import {
   ContentMessage,
   ContextItem,
   Icon,
-  InformationCircleIcon,
+  InfoCircle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -90,15 +90,13 @@ export function ProviderConfigurationContextItem({
         }
       >
         <ContextItem.Description>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {description}
-          </span>
+          <span className="text-sm text-muted-foreground">{description}</span>
         </ContextItem.Description>
 
         {apiKey && isHealthy === false && (
           <ContentMessage
             variant="warning"
-            icon={InformationCircleIcon}
+            icon={InfoCircle}
             title="Invalid API key"
             size="lg"
             className="mt-4"
@@ -108,7 +106,7 @@ export function ProviderConfigurationContextItem({
         )}
 
         {apiKey && (
-          <div className="font-mono text-lg mt-4 text-foreground dark:text-foreground-night truncate">
+          <div className="font-mono text-lg mt-4 text-foreground truncate">
             {apiKey}
           </div>
         )}

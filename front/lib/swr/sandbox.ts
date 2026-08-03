@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -9,17 +10,16 @@ import {
 import type {
   GetWorkspaceEgressPolicyResponseBody,
   PutWorkspaceEgressPolicyResponseBody,
-} from "@app/pages/api/w/[wId]/sandbox/egress-policy";
+} from "@app/types/api/sandbox/egress_policy";
 import type {
-  GetWorkspaceSandboxEnvVarsResponseBody,
-  PostWorkspaceSandboxEnvVarsResponseBody,
-} from "@app/pages/api/w/[wId]/sandbox/env-vars";
-import type { PatchWorkspaceSandboxEnvVarResponseBody } from "@app/pages/api/w/[wId]/sandbox/env-vars/[id]";
+  GetSandboxEnvVarsResponseBody,
+  PostSandboxEnvVarsResponseBody,
+} from "@app/types/api/sandbox/env_vars";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { EMPTY_EGRESS_POLICY } from "@app/types/sandbox/egress_policy";
 import type {
-  WorkspaceSandboxEnvVarKind,
-  WorkspaceSandboxEnvVarType,
+  SandboxEnvVarKind,
+  SandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -37,7 +37,7 @@ function workspaceSandboxEnvVarsUrl(workspaceId: string) {
 type WorkspaceSandboxEnvVarWritePayload = {
   name: string;
   value: string;
-  kind?: WorkspaceSandboxEnvVarKind;
+  kind?: SandboxEnvVarKind;
   allowedDomains?: string[] | null;
 };
 
@@ -72,8 +72,7 @@ export function useWorkspaceSandboxEnvVars({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const envVarsFetcher: Fetcher<GetWorkspaceSandboxEnvVarsResponseBody> =
-    fetcher;
+  const envVarsFetcher: Fetcher<GetSandboxEnvVarsResponseBody> = fetcher;
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     workspaceSandboxEnvVarsUrl(owner.sId),
     envVarsFetcher,
@@ -129,15 +128,14 @@ export function useUpsertWorkspaceSandboxEnvVar({
         return false;
       }
 
-      const data: PostWorkspaceSandboxEnvVarsResponseBody =
-        await response.json();
+      const data: PostSandboxEnvVarsResponseBody = await response.json();
       await mutateWorkspaceSandboxEnvVars();
       sendNotification({
         type: "success",
         title: data.created
           ? "Environment variable created"
           : "Environment variable replaced",
-        description: `${name} has been saved for future sandboxes.`,
+        description: `${name} has been saved for future Computers.`,
       });
       return true;
     } catch (error) {
@@ -175,8 +173,8 @@ export function usePatchWorkspaceSandboxEnvVar({
     envVar,
     kind,
   }: {
-    envVar: WorkspaceSandboxEnvVarType;
-    kind?: WorkspaceSandboxEnvVarKind;
+    envVar: SandboxEnvVarType;
+    kind?: SandboxEnvVarKind;
     allowedDomains?: string[] | null;
   }): Promise<boolean> => {
     setIsPatching(true);
@@ -202,8 +200,7 @@ export function usePatchWorkspaceSandboxEnvVar({
         return false;
       }
 
-      const data: PatchWorkspaceSandboxEnvVarResponseBody =
-        await response.json();
+      const data: PatchSandboxEnvVarResponseBody = await response.json();
       await mutateWorkspaceSandboxEnvVars();
       sendNotification({
         type: "success",
@@ -245,7 +242,7 @@ export function useDeleteWorkspaceSandboxEnvVar({
   });
 
   const deleteWorkspaceSandboxEnvVar = async (
-    envVar: WorkspaceSandboxEnvVarType
+    envVar: SandboxEnvVarType
   ): Promise<boolean> => {
     setIsDeleting(true);
     try {
@@ -314,21 +311,21 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update sandbox network setting");
+        throw new Error("Failed to update Computer network setting");
       }
 
       setIsEnabled(enabled);
       sendNotification({
         type: "success",
-        title: "Sandbox network setting updated",
+        title: "Computer network setting updated",
         description:
-          "Agent-requested sandbox domains setting has been updated.",
+          "Agent-requested Computer domains setting has been updated.",
       });
       return true;
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update sandbox network setting",
+        title: "Failed to update Computer network setting",
         description: normalizeError(error).message,
       });
       return false;
@@ -385,7 +382,7 @@ export function useUpdateWorkspaceEgressPolicy({
         type: "success",
         title: "Network policy updated",
         description:
-          "Sandbox egress policy changes will be applied by the proxy cache shortly.",
+          "Computer egress policy changes will be applied by the proxy cache shortly.",
       });
       return true;
     } catch {

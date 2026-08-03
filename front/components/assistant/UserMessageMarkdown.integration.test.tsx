@@ -1,6 +1,7 @@
-import { render } from "@testing-library/react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
+import { getFilePreviewMarkdownDirective } from "@app/lib/markdown/file_preview";
+import { render, screen } from "@testing-library/react";
+import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { UserMessageMarkdown } from "./UserMessageMarkdown";
@@ -14,10 +15,11 @@ vi.mock("@app/lib/auth/AuthContext", () => ({
 
 // Mock router utilities and hooks for mention directives
 const pushMock = vi.fn();
-vi.mock("next/router", () => ({
-  useRouter: () => ({
+vi.mock("@app/lib/platform", () => ({
+  useAppRouter: () => ({
     push: pushMock,
   }),
+  LinkWrapper: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 const openChangeMock = vi.fn();
@@ -39,6 +41,16 @@ vi.mock("@app/lib/utils/router", () => ({
     ...args: Parameters<typeof getManageSkillsRouteMock>
   ) => getManageSkillsRouteMock(...args),
   setQueryParam: (...args: any[]) => setQueryParamMock(...args),
+}));
+
+// Mock workspace permissions so skill chips can be rendered without a
+// FetcherProvider / live permissions endpoint. Tests toggle the return value to
+// simulate whether the current user can create skills.
+const hasPermissionMock = vi.fn(() => false);
+vi.mock("@app/lib/swr/permissions", () => ({
+  useWorkspacePermissions: () => ({
+    hasPermission: hasPermissionMock,
+  }),
 }));
 
 const mockOwner = {
@@ -217,6 +229,7 @@ Quote text
     });
 
     it("renders inline skill tags as chips", () => {
+      hasPermissionMock.mockReturnValue(false);
       const content =
         'Please use <skill id="skill_123" name="commit" icon="book_open" />';
       const message = { ...mockMessage, content };
@@ -233,14 +246,14 @@ Quote text
       expect(container.textContent).not.toContain("<skill");
     });
 
-    it("links inline skill tags for builders", () => {
+    it("links inline skill tags when the user can create skills", () => {
+      hasPermissionMock.mockReturnValue(true);
       const content =
         'Please use <skill id="skill_123" name="commit" icon="book_open" />';
       const message = { ...mockMessage, content };
-      const builderOwner = { ...mockOwner, role: "builder" } as const;
       const { container } = render(
         <UserMessageMarkdown
-          owner={builderOwner}
+          owner={mockOwner}
           message={message}
           isLastMessage={false}
         />
@@ -296,6 +309,26 @@ Quote text
       );
       // The component should render with pasted attachment directive processed
       expect(container).toBeInTheDocument();
+    });
+
+    it("renders scoped file preview directives as previewable files", () => {
+      const directive = getFilePreviewMarkdownDirective({
+        contentType: "application/pdf",
+        path: "conversation-c1/booklet.pdf",
+        title: "booklet.pdf",
+      });
+      const message = { ...mockMessage, content: directive };
+      render(
+        <FilePreviewProvider owner={mockOwner}>
+          <UserMessageMarkdown
+            owner={mockOwner}
+            message={message}
+            isLastMessage={false}
+          />
+        </FilePreviewProvider>
+      );
+
+      expect(screen.getByText("booklet.pdf")).toBeInTheDocument();
     });
 
     it("handles multiple custom directives in one message", () => {

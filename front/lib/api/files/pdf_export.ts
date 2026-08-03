@@ -4,7 +4,7 @@ import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import {
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isFriendsAndFamilyPlan,
 } from "@app/lib/plans/plan_codes";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -113,7 +113,7 @@ export async function exportInteractiveContentFileAsPdf(
   const shouldHideFooter =
     plan &&
     (isDustCompanyPlan(plan.code) ||
-      isEntreprisePlanPrefix(plan.code) ||
+      isEnterprisePlanPrefix(plan.code) ||
       isFriendsAndFamilyPlan(plan.code));
   const showFooter = !shouldHideFooter;
 

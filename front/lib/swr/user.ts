@@ -1,5 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetWorkspaceUsageStatusResponseBody } from "@app/lib/metronome/user_block";
+import type { GetUserApprovalsResponseBody } from "@app/lib/resources/user_resource";
 import { nonRedirectingFetcher } from "@app/lib/swr/fetcher";
 import {
   emptyArray,
@@ -8,16 +10,17 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
-import type { GetUserResponseBody } from "@app/pages/api/user";
-import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
-import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
-import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
-import type { GetSlackNotificationResponseBody } from "@app/pages/api/w/[wId]/me/slack-notifications";
-import type { GetWorkspaceUsageStatusResponseBody } from "@app/pages/api/w/[wId]/usage-status";
+import type { GetPendingInvitationsResponseBody } from "@app/types/api/invitation";
+import type { GetUserMemoryResponseBody } from "@app/types/api/me/memory";
+import type { GetSlackNotificationResponseBody } from "@app/types/api/me/slack_notifications";
+import type {
+  GetUserMetadataResponseBody,
+  GetUserResponseBody,
+} from "@app/types/api/user";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 export function useUser(
@@ -98,14 +101,14 @@ export function useUserApprovals(owner: LightWorkspaceType) {
   };
 }
 
-export function useDeleteMetadata() {
-  const deleteMetadata = async (prefix: string) => {
-    return clientFetch(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
-      method: "DELETE",
+export function useCompleteUserOnboarding() {
+  const completeUserOnboarding = async () => {
+    return clientFetch("/api/user/onboarding/complete", {
+      method: "POST",
     });
   };
 
-  return { deleteMetadata };
+  return { completeUserOnboarding };
 }
 
 export function useDeleteToolApproval() {
@@ -120,27 +123,6 @@ export function useDeleteToolApproval() {
   };
 
   return { deleteToolApproval };
-}
-
-export function useIsOnboardingConversation(
-  conversationId: string | null,
-  workspaceId: string
-) {
-  const { metadata, isMetadataLoading } = useUserMetadata(
-    "onboarding:conversation",
-    {
-      disabled: !conversationId,
-      workspaceId,
-    }
-  );
-
-  return {
-    isOnboardingConversation:
-      !!conversationId &&
-      !!metadata?.value &&
-      metadata.value === conversationId,
-    isLoading: isMetadataLoading,
-  };
 }
 
 export function usePatchUser() {
@@ -225,6 +207,61 @@ export function usePendingInvitations({
   };
 }
 
+export function useUserMemory({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+  const memoryFetcher: Fetcher<GetUserMemoryResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/me/memory`,
+    memoryFetcher,
+    { disabled }
+  );
+
+  const setMemory = useCallback(
+    async (update: {
+      content?: string;
+      enabled?: boolean;
+    }): Promise<boolean> => {
+      const res = await clientFetch(`/api/w/${owner.sId}/me/memory`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(update),
+      });
+
+      if (res.ok) {
+        sendNotification({ type: "success", title: "Memory saved." });
+        await mutate();
+        return true;
+      }
+
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error saving memory",
+        description: errorData.message,
+      });
+      return false;
+    },
+    [owner.sId, sendNotification, mutate]
+  );
+
+  return {
+    content: data?.content ?? "",
+    isMemoryEnabled: data?.enabled ?? false,
+    isMemoryLoading: !error && !data && !disabled,
+    isMemoryError: error,
+    mutateMemory: mutate,
+    setMemory,
+  };
+}
+
 export function useSlackNotifications(
   workspaceId: string,
   options?: {
@@ -270,9 +307,15 @@ export function useWorkspaceUsageStatus({
   );
 
   return {
-    awuStatus: data?.awuStatus ?? "normal",
+    userNearCreditLimit: data?.userNearCreditLimit ?? false,
     poolCreditState: data?.poolCreditState ?? "active",
     programmaticCreditStatus: data?.programmaticCreditStatus ?? "active",
+    programmaticWarningReached: data?.programmaticWarningReached ?? false,
+    balanceThresholdReached: data?.balanceThresholdReached ?? false,
+    userBlockedReason: data?.userBlockedReason ?? null,
+    canRequestUpgrade: data?.canRequestUpgrade ?? false,
+    hasPendingUpgradeRequest: data?.hasPendingUpgradeRequest ?? false,
+    willAutoUpgrade: data?.willAutoUpgrade ?? false,
     isUsageStatusLoading: !error && !data && !disabled,
   };
 }

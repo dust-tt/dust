@@ -2,26 +2,29 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { reconcileProgrammatic } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomeProgrammaticCapAlerts,
-  getMetronomeProgrammaticCap,
   upsertMetronomeProgrammaticCapAlerts,
 } from "@app/lib/metronome/alerts/programmatic_cap";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Read the workspace's programmatic usage monthly cap.
  *
- * Metronome is the source of truth: the cap is the threshold of the
- * workspace's programmatic cap alert. Returns `null` when no cap is
- * configured.
+ * The cap is persisted on `credit_usage_configurations` (the source of truth);
+ * the Metronome programmatic alerts are derived enforcement. The cap is
+ * non-nullable and defaults to 0 (0 blocks all programmatic access), so a
+ * workspace with no configuration row reads as 0.
  */
 export async function getProgrammaticUsageLimit(
   auth: Authenticator
-): Promise<Result<number | null, Error>> {
+): Promise<Result<number, Error>> {
   const workspace = auth.getNonNullableWorkspace();
   if (!workspace.metronomeCustomerId) {
     return new Err(
@@ -29,25 +32,23 @@ export async function getProgrammaticUsageLimit(
     );
   }
 
-  const result = await getMetronomeProgrammaticCap({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    workspaceId: workspace.sId,
-  });
-  if (result.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to read programmatic cap from Metronome: ${result.error.message}`
-      )
-    );
-  }
-  return new Ok(result.value);
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  return new Ok(config?.programmaticMonthlyCapAwuCredits ?? 0);
 }
 
 /**
- * Set or clear the workspace's programmatic usage monthly cap.
+ * Set the workspace's programmatic usage monthly cap.
  *
- * A strictly positive `monthlyCapCredits` upserts the three programmatic cap
- * alerts (cap, low balance, critical balance); `null` clears them.
+ * Persists the cap on `credit_usage_configurations` (the source of truth),
+ * then derives the Metronome programmatic alerts from it (only for positive
+ * caps; a cap of 0 clears the alerts since it is always depleted — no
+ * threshold transition can ever fire), and finally reconciles
+ * `programmaticCreditState` so usage-status reflects the change immediately
+ * without waiting for a webhook.
+ *
+ * The cap is non-nullable: 0 blocks all programmatic access, a positive value
+ * is the monthly cap. Negative inputs are clamped to 0.
  */
 export async function syncProgrammaticUsageLimit({
   auth,
@@ -55,7 +56,7 @@ export async function syncProgrammaticUsageLimit({
   auditContext,
 }: {
   auth: Authenticator;
-  monthlyCapCredits: number | null;
+  monthlyCapCredits: number;
   auditContext?: AuditLogContext;
 }): Promise<Result<undefined, Error>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -65,21 +66,35 @@ export async function syncProgrammaticUsageLimit({
     );
   }
 
-  // Read previous cap for audit metadata (best-effort).
-  const previousResult = await getMetronomeProgrammaticCap({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    workspaceId: workspace.sId,
-  });
-  const previousCapCredits = previousResult.isOk()
-    ? previousResult.value
-    : null;
+  // Persist the admin's intent first: the credit-usage configuration column is
+  // the source of truth; the Metronome alerts below are derived enforcement (a
+  // failed sync can be retried and re-derives from this value). The config row
+  // is created lazily, so upsert it. Negative inputs are clamped to 0.
+  const normalizedCapCredits = Math.max(0, monthlyCapCredits);
+  const existingConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const previousCapCredits =
+    existingConfig?.programmaticMonthlyCapAwuCredits ?? 0;
+  if (existingConfig) {
+    await existingConfig.updateConfiguration(auth, {
+      programmaticMonthlyCapAwuCredits: normalizedCapCredits,
+    });
+  } else {
+    await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      programmaticMonthlyCapAwuCredits: normalizedCapCredits,
+    });
+  }
 
+  // Alerts only make sense for a positive cap: a cap of 0 means usage is
+  // always fully depleted, so no threshold transition can ever fire.
   const alertResult =
-    monthlyCapCredits !== null && monthlyCapCredits >= 0
+    normalizedCapCredits > 0
       ? await upsertMetronomeProgrammaticCapAlerts({
           metronomeCustomerId: workspace.metronomeCustomerId,
           workspaceId: workspace.sId,
-          monthlyCapCredits,
+          monthlyCapCredits: normalizedCapCredits,
         })
       : await clearMetronomeProgrammaticCapAlerts({
           metronomeCustomerId: workspace.metronomeCustomerId,
@@ -93,16 +108,26 @@ export async function syncProgrammaticUsageLimit({
     );
   }
 
+  // Reconcile programmaticCreditState immediately so /usage-status reflects the
+  // change without waiting for a Metronome webhook.
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (workspaceResource) {
+    await reconcileProgrammatic({
+      workspace: workspaceResource,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
+      execute: true,
+    });
+  }
+
   void emitAuditLogEvent({
     auth,
     action: "workspace.programmatic_usage_limit_updated",
     targets: [buildAuditLogTarget("workspace", workspace)],
     context: auditContext,
     metadata: {
-      previous_monthly_cap_credits:
-        previousCapCredits !== null ? String(previousCapCredits) : "unset",
-      new_monthly_cap_credits:
-        monthlyCapCredits !== null ? String(monthlyCapCredits) : "unset",
+      previous_monthly_cap_credits: String(previousCapCredits),
+      new_monthly_cap_credits: String(normalizedCapCredits),
     },
   });
 

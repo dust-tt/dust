@@ -13,6 +13,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/skills/:sId/restore.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),
@@ -32,18 +33,18 @@ app.post(
       });
     }
 
-    if (!skillResource.canWrite(auth)) {
+    if (!skillResource.canAdministrate(auth)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: "Only editors can restore this skill.",
+          message: "Only admins and editors can restore this skill.",
         },
       });
     }
 
     // Check for existing active skill with the same name.
-    const existingSkill = await SkillResource.fetchActiveByName(
+    const existingSkill = await SkillResource.fetchByName(
       auth,
       skillResource.name
     );

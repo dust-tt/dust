@@ -1,37 +1,33 @@
 import {
-  FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
-  FALLBACK_MCP_TOOL_STAKE_LEVEL,
-} from "@app/lib/actions/constants";
-import { makeServerSideMCPToolConfigurations } from "@app/lib/actions/mcp_actions";
-import {
-  getAvailabilityOfInternalMCPServerById,
-  getInternalMCPServerDisplayedAs,
-  getInternalMCPServerNameFromSId,
-  getInternalMCPServerToolStakes,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+  buildToolConfigurationsFromRawTools,
+  deduplicateMCPServerConfigurations,
+  disambiguateServerNamesBySpace,
+} from "@app/lib/actions/mcp_actions";
+import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
-import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
+import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
+import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
-import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type CreateSandboxChildActionResult = {
+type CreateSandboxChildActionResult = {
   actionId: string;
   // Present only when the child is blocked awaiting approval. Pausing the
   // sandbox freezes the in-sandbox `dsbx` client that is still awaiting THIS
@@ -50,6 +46,7 @@ export async function createSandboxChildAction(
   {
     parentActionId,
     agentId,
+    agentVersion,
     conversationId,
     agentMessageId,
     serverViewId,
@@ -58,6 +55,7 @@ export async function createSandboxChildAction(
   }: {
     parentActionId: string;
     agentId: string;
+    agentVersion: number;
     conversationId: string;
     agentMessageId: string;
     serverViewId: string;
@@ -72,14 +70,19 @@ export async function createSandboxChildAction(
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId,
+    agentVersion,
     variant: "full",
   });
   if (!agentConfiguration) {
     return new Err(new Error("Agent configuration not found."));
   }
 
-  const conversationResult = await getConversation(auth, conversationId);
-  if (conversationResult.isErr()) {
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+
+  if (!conversationResource) {
     return new Err(new Error("Conversation not found."));
   }
 
@@ -91,70 +94,121 @@ export async function createSandboxChildAction(
     return new Err(new Error("Parent action not found."));
   }
 
-  const conversation = conversationResult.value;
+  const agentMessageRes = await conversationResource.getMessageById(
+    auth,
+    agentMessageId
+  );
 
-  const agentMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is AgentMessageType =>
-        m.type === "agent_message" && m.sId === agentMessageId
-    );
-  if (!agentMessage) {
+  if (agentMessageRes.isErr()) {
     return new Err(new Error("Agent message not found."));
   }
 
-  // JIT servers cover tools added via the conversation input bar.
-  let serverSideConfig = agentConfiguration.actions
+  const agentMessageRenderRes = await batchRenderMessages(
+    auth,
+    conversationResource,
+    [agentMessageRes.value],
+    "full"
+  );
+  if (agentMessageRenderRes.isErr()) {
+    return new Err(new Error("Failed to render agent message."));
+  }
+
+  const agentMessage = agentMessageRenderRes.value[0];
+
+  if (!isAgentMessageType(agentMessage)) {
+    return new Err(new Error("Agent message not found."));
+  }
+
+  // Using the fetchConversationWithParticipantState method as we need the read and action required states
+  const conversationRes =
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: need actionRequired/lastReadAt
+    await ConversationResource.fetchConversationWithParticipantState(
+      auth,
+      conversationId
+    );
+
+  if (conversationRes.isErr()) {
+    return new Err(new Error("Failed to fetch conversation."));
+  }
+
+  const conversation = conversationRes.value;
+
+  // JIT servers cover tools added via the conversation input bar, skill
+  // servers cover tools attached through skills. Resolve the server config
+  // through the same deduplication and space-name disambiguation as the direct
+  // agent-loop path (`tryListMCPTools`): when several configs share a name
+  // across spaces, the model-visible name is space-prefixed, and approval keys
+  // are derived from it.
+  const jitServers = await getJITServers(auth, {
+    agentConfiguration,
+    conversation,
+    attachments: [],
+  });
+  const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+    }
+  );
+
+  const serverConfigs = await disambiguateServerNamesBySpace(
+    auth,
+    deduplicateMCPServerConfigurations({
+      agentActions: agentConfiguration.actions,
+      clientSideActions: [],
+      skillServers: [...systemSkillServers, ...skillServers],
+      jitServers,
+    })
+  );
+  const serverSideConfig = serverConfigs
     .filter(isServerSideMCPServerConfiguration)
     .find((a) => a.mcpServerViewId === view.sId);
 
   if (!serverSideConfig) {
-    const { servers: jitServers } = await getJITServers(auth, {
-      agentConfiguration,
-      conversation,
-      attachments: [],
-    });
-    serverSideConfig = jitServers.find((s) => s.mcpServerViewId === view.sId);
-  }
-
-  if (!serverSideConfig) {
     return new Err(
       new Error("Tool is not available to this agent or conversation.")
     );
   }
 
-  const availability = getAvailabilityOfInternalMCPServerById(view.mcpServerId);
-  const internalServerName = getInternalMCPServerNameFromSId(view.mcpServerId);
-  const serverDefaultStake = internalServerName
-    ? getInternalMCPServerToolStakes(internalServerName)[toolName]
-    : undefined;
-
-  const stakeLevel =
-    view.getToolPermission(toolName) ??
-    serverDefaultStake ??
-    (availability === "manual"
-      ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-      : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL);
-
-  const [fullToolConfiguration] = makeServerSideMCPToolConfigurations(
+  // Resolve the tool configuration (stake, enabled state, approval-requiring
+  // arguments, retry policy, timeout) through the same code path as direct
+  // agent-loop tool calls, so that approvals recorded on direct calls apply to
+  // sandbox child calls too.
+  const toolConfigurationsRes = await buildToolConfigurationsFromRawTools(
+    auth,
+    view.mcpServerId,
     serverSideConfig,
-    [
-      {
-        name: toolName,
-        description: "",
-        availability,
-        stakeLevel,
-        toolServerId: view.mcpServerId,
-        retryPolicy: DEFAULT_MCP_TOOL_RETRY_POLICY,
-      },
-    ]
+    [{ name: toolName, description: "" }]
   );
+  if (toolConfigurationsRes.isErr()) {
+    return toolConfigurationsRes;
+  }
+  // Empty when the tool has been disabled by an admin.
+  const [toolConfiguration] = toolConfigurationsRes.value;
 
-  if (!fullToolConfiguration) {
+  if (!toolConfiguration) {
     return new Err(
       new Error("Tool is not available to this agent or conversation.")
     );
   }
+
+  // User tool approvals ("low"/"medium" stakes) are keyed on the prefixed
+  // function-call name the model sees on direct calls (e.g.
+  // `salesforce__update_object`), while `dsbx` sends the raw tool name. Align
+  // the configuration name so approval checks and recordings share one key.
+  const prefixedToolNameRes = tryGetPrefixedToolName(
+    serverSideConfig.name,
+    toolName
+  );
+  if (prefixedToolNameRes.isErr()) {
+    return prefixedToolNameRes;
+  }
+
+  const fullToolConfiguration = {
+    ...toolConfiguration,
+    name: prefixedToolNameRes.value,
+  };
 
   const validateInputsResult = validateToolInputs(rawInputs);
   if (validateInputsResult.isErr()) {
@@ -163,19 +217,24 @@ export async function createSandboxChildAction(
 
   const { status } = await getExecutionStatusFromConfig(auth, {
     actionConfiguration: fullToolConfiguration,
-    agentMessage,
+    skipToolsValidation: agentMessage.skipToolsValidation,
     context: {
-      agentId: agentConfiguration.sId,
       toolInputs: rawInputs,
     },
   });
+
+  // Auto-allowed child actions are launched right after creation: persist them as
+  // "running" directly (like sandbox function actions) instead of rewriting the row at
+  // execution start.
+  const persistedStatus =
+    status === "ready_allowed_implicitly" ? "running" : status;
 
   const action = await createMCPAction(auth, {
     actionConfiguration: fullToolConfiguration,
     agentMessage,
     augmentedInputs: rawInputs,
     conversation,
-    status,
+    status: persistedStatus,
     stepContent: parentAction.stepContent,
     stepContext: {
       ...parentAction.stepContext,
@@ -185,40 +244,17 @@ export async function createSandboxChildAction(
   });
 
   if (status === "blocked_validation_required") {
-    const argumentsRequiringApproval =
-      fullToolConfiguration.argumentsRequiringApproval ?? [];
-    const internalMCPServerName = getInternalMCPServerNameFromSId(
-      fullToolConfiguration.toolServerId
-    );
-    const approvalRequirementEvent: MCPApproveExecutionEvent = {
-      type: "tool_approve_execution",
-      actionId: action.sId,
+    const approvalRequirementEvent: AgentLoopMCPApproveExecutionEvent = {
+      ...(await makeMCPApproveExecutionEventBase(auth, {
+        actionId: action.sId,
+        toolConfiguration: fullToolConfiguration,
+        inputs: rawInputs,
+        approvalSubjectName: agentConfiguration.name,
+      })),
       configurationId: fullToolConfiguration.sId,
       conversationId: conversation.sId,
-      created: Date.now(),
-      inputs: rawInputs,
       messageId: agentMessage.sId,
-      stake: fullToolConfiguration.permission,
-      userId: auth.user()?.sId,
       isLastBlockingEventForStep: true,
-      metadata: {
-        toolName: fullToolConfiguration.originalName,
-        mcpServerName: fullToolConfiguration.mcpServerName,
-        agentName: agentConfiguration.name,
-        icon: fullToolConfiguration.icon,
-        displayedAs: getInternalMCPServerDisplayedAs(
-          fullToolConfiguration.toolServerId
-        ),
-      },
-      argumentsRequiringApproval,
-      approvalArgsLabel: await getApprovalArgsLabel({
-        auth,
-        internalMCPServerName,
-        toolName: fullToolConfiguration.originalName,
-        agentName: agentConfiguration.name,
-        inputs: rawInputs,
-        argumentsRequiringApproval,
-      }),
     };
 
     await updateResourceAndPublishEvent(auth, {
@@ -229,6 +265,13 @@ export async function createSandboxChildAction(
     });
 
     await ConversationResource.markAsActionRequired(auth, { conversation });
+
+    if (!conversation.actionRequired) {
+      notifyManualActionRequired(auth, {
+        conversationId: conversation.sId,
+        actionId: action.sId,
+      });
+    }
 
     // Hand the sandbox pause back to the caller instead of pausing here.
     // `pauseSandboxBashForBlockedChild` freezes the whole sandbox via
@@ -255,7 +298,7 @@ export async function createSandboxChildAction(
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
-      conversationBranchId: agentMessage.branchId,
+      conversationBranchId: null,
       userMessageId: userMessageInfo.userMessageId,
       userMessageVersion: userMessageInfo.userMessageVersion,
       userMessageOrigin: userMessageInfo.userMessageOrigin,

@@ -8,7 +8,6 @@ import type { SpaceType } from "@app/types/space";
 import {
   Button,
   Card,
-  CommandLineIcon,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +15,7 @@ import {
   DropdownMenuTrigger,
   SearchInput,
   Spinner,
+  Terminal,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -133,10 +133,10 @@ export function DustAppSection() {
       id: "name",
       accessorKey: "name",
       cell: ({ row }) => (
-        <DataTable.CellContent icon={CommandLineIcon}>
+        <DataTable.CellContent icon={Terminal}>
           <div className="flex flex-col">
             <div className="heading-sm truncate">{row.original.name}</div>
-            <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div className="truncate text-xs text-muted-foreground">
               {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
               {row.original.description || "No description available"}
             </div>
@@ -155,7 +155,7 @@ export function DustAppSection() {
       error={fieldState.error?.message}
     >
       <div className="flex h-full flex-col gap-3">
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-sm text-muted-foreground">
           The agent will execute a{" "}
           <a
             href="https://docs.dust.tt"
@@ -170,9 +170,7 @@ export function DustAppSection() {
         </div>
 
         <div className="flex flex-row items-center gap-2">
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-            Space:
-          </span>
+          <span className="text-sm font-medium text-foreground">Space:</span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -203,10 +201,10 @@ export function DustAppSection() {
             <div className="flex w-full">
               <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
                 <div className="flex items-center gap-2">
-                  <CommandLineIcon className="h-6 w-6 text-muted-foreground" />
+                  <Terminal className="h-6 w-6 text-muted-foreground" />
                   <div className="text-md font-medium">{field.value.name}</div>
                 </div>
-                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground">
                   {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {field.value.description || "No description available"}
                 </div>

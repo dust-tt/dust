@@ -23,7 +23,7 @@ describe("resolveCurrencyFromStripe", () => {
   it("falls through to customer when subscription currency is unsupported", () => {
     expect(
       resolveCurrencyFromStripe({
-        stripeSubscription: sub("gbp"),
+        stripeSubscription: sub("jpy"),
         stripeCustomer: customer({ currency: "eur" }),
       })
     ).toBe("eur");

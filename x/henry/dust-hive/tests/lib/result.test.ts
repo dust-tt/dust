@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { CommandError, Err, Ok, envNotFoundError } from "../../src/lib/result";
+import { CommandError, Err, envNotFoundError, Ok } from "../../src/lib/result";
 
 describe("result", () => {
   describe("Ok", () => {

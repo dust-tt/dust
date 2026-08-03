@@ -32,6 +32,7 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import type { FrontDataSourceDocumentSectionType } from "@app/types/api/public/data_sources";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -266,7 +267,7 @@ export async function hardDeleteDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource
 ) {
-  assert(auth.isBuilder(), "Only builders can delete data sources.");
+  assert(auth.isAdmin(), "Only admins can delete data sources.");
 
   // Delete all files in the data source's bucket.
   //
@@ -378,10 +379,25 @@ export async function hardDeleteDataSource(
 
   // Delete the data source from core.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const coreDeleteRes = await coreAPI.deleteDataSource({
-    projectId: dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-  });
+  const coreDeleteRes = await tracer.trace(
+    "data_sources.hard_delete_data_source",
+    { resource: dataSource.connectorProvider ?? "managed-none" },
+    async (span) => {
+      span?.setTag("workspace.id", auth.workspace()?.sId ?? "unknown");
+      span?.setTag("data_source.s_id", dataSource.sId);
+      span?.setTag(
+        "data_source.connector_provider",
+        dataSource.connectorProvider ?? "none"
+      );
+      span?.setTag("core.project_id", dustAPIProjectId);
+      span?.setTag("core.data_source_id", dataSource.dustAPIDataSourceId);
+      return coreAPI.deleteDataSource({
+        projectId: dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        caller: "data-sources-api-hard-delete",
+      });
+    }
+  );
   if (coreDeleteRes.isErr()) {
     // Same as above we proceed with the deletion if the data source is not found in core. Otherwise
     // we throw as this is unexpected.
@@ -1089,7 +1105,7 @@ export async function createDataSourceWithoutProvider(
     space: SpaceResource;
     name: string;
     description: string | null;
-    conversation?: ConversationWithoutContentType;
+    conversation?: ConversationWithoutContentType | ConversationResource;
   }
 ): Promise<Result<DataSourceViewResource, DataSourceCreationError>> {
   if (name.startsWith("managed-")) {
@@ -1241,7 +1257,7 @@ export async function createDataSourceWithoutProvider(
 
 async function getOrCreateConversationDataSource(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType | ConversationResource
 ): Promise<
   Result<
     DataSourceResource,
@@ -1334,11 +1350,11 @@ export async function getOrCreateConversationDataSourceFromFile(
     });
   }
 
-  const cRes = await ConversationResource.fetchConversationWithoutContent(
+  const conversation = await ConversationResource.fetchById(
     auth,
     metadataResult.value
   );
-  if (cRes.isErr()) {
+  if (!conversation) {
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
@@ -1346,7 +1362,7 @@ export async function getOrCreateConversationDataSourceFromFile(
     });
   }
 
-  return getOrCreateConversationDataSource(auth, cRes.value);
+  return getOrCreateConversationDataSource(auth, conversation);
 }
 
 async function getAllManagedDataSources(auth: Authenticator) {

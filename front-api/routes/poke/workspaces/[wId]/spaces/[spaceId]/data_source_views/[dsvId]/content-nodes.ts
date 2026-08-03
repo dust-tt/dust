@@ -1,8 +1,8 @@
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
+import type { PokeGetDataSourceViewContentNodes } from "@app/lib/api/poke/data_source_views";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -32,16 +32,10 @@ const ParamsSchema = z.object({
   spaceId: z.string(),
 });
 
-export type PokeGetDataSourceViewContentNodes = {
-  nodes: DataSourceViewContentNode[];
-  total: number;
-  totalIsAccurate: boolean;
-  nextPageCursor: string | null;
-};
-
 // Mounted at /api/poke/workspaces/:wId/spaces/:spaceId/data_source_views/:dsvId/content-nodes.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

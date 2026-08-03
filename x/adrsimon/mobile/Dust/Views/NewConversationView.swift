@@ -13,6 +13,7 @@ struct NewConversationView: View {
     let workspaceId: String
     let tokenProvider: TokenProvider
     var spaceId: String?
+    var autoFocus: Bool = false
     let onConversationCreated: (Conversation) -> Void
 
     @StateObject private var inputBarViewModel: InputBarViewModel
@@ -34,6 +35,7 @@ struct NewConversationView: View {
         workspaceId: String,
         tokenProvider: TokenProvider,
         spaceId: String? = nil,
+        autoFocus: Bool = false,
         onConversationCreated: @escaping (Conversation) -> Void
     ) {
         self.firstName = firstName
@@ -41,6 +43,7 @@ struct NewConversationView: View {
         self.workspaceId = workspaceId
         self.tokenProvider = tokenProvider
         self.spaceId = spaceId
+        self.autoFocus = autoFocus
         self.onConversationCreated = onConversationCreated
         _inputBarViewModel = StateObject(
             wrappedValue: InputBarViewModel(
@@ -87,6 +90,7 @@ struct NewConversationView: View {
 
                 InputBarView(
                     viewModel: inputBarViewModel,
+                    autoFocus: autoFocus,
                     onConversationCreated: onConversationCreated
                 )
                 .opacity(uiOpacity)

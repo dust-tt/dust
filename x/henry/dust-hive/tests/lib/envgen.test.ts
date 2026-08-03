@@ -27,6 +27,11 @@ describe("envgen", () => {
       expect(content).toContain("export OAUTH_PORT=10006");
     });
 
+    it("exports DEV_ENV_NAME combining user and hive name", () => {
+      const content = generateEnvSh("my-feature", ports);
+      expect(content).toMatch(/export DEV_ENV_NAME=\S+-my-feature/);
+    });
+
     it("exports temporal namespaces", () => {
       const content = generateEnvSh("my-feature", ports);
       expect(content).toContain("export TEMPORAL_NAMESPACE=dust-hive-my-feature");
@@ -135,6 +140,17 @@ describe("envgen", () => {
     it("ends with newline", () => {
       const content = generateEnvSh("test", ports);
       expect(content.endsWith("\n")).toBe(true);
+    });
+
+    it("uses front port for DUST_AUTH_REDIRECT_BASE_URL when dynamicWorkosRedirect is enabled", () => {
+      const content = generateEnvSh("test", ports, { dynamicWorkosRedirect: true });
+      expect(content).toContain("export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:10000");
+      expect(content).not.toContain("export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:3000");
+    });
+
+    it("defaults DUST_AUTH_REDIRECT_BASE_URL to :3000 when dynamicWorkosRedirect is false", () => {
+      const content = generateEnvSh("test", ports, { dynamicWorkosRedirect: false });
+      expect(content).toContain("export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:3000");
     });
   });
 });

@@ -8,11 +8,28 @@ export class GroupFactory {
     return GroupResource.makeDefaultsForWorkspace(workspace);
   }
 
-  static async regular(workspace: WorkspaceType, name: string) {
+  static async regularAuto(workspace: WorkspaceType, name: string) {
     return GroupResource.makeNew({
       name,
-      kind: "regular",
+      kind: "regular_auto",
       workspaceId: workspace.id,
+    });
+  }
+
+  static async regularManual(workspace: WorkspaceType, name: string) {
+    return GroupResource.makeNew({
+      name,
+      kind: "regular_manual",
+      workspaceId: workspace.id,
+    });
+  }
+
+  static async provisioned(workspace: WorkspaceType, name: string) {
+    return GroupResource.makeNew({
+      name,
+      kind: "provisioned",
+      workspaceId: workspace.id,
+      workOSGroupId: `workos-group-${name}`,
     });
   }
 

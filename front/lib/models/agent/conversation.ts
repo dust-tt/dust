@@ -1,15 +1,19 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
-import type { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import type { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+  literal,
+  Op,
+} from "@app/lib/resources/storage/data_types";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
 import type {
   AgentMessageStatus,
   CompactionMessageStatus,
@@ -19,8 +23,10 @@ import type {
   ParticipantActionType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
+import { MODEL_RESOLUTION_METHODS } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, literal, Op } from "sequelize";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -60,7 +66,7 @@ ConversationModel.init(
       allowNull: false,
     },
     title: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     visibility: {
@@ -107,6 +113,7 @@ ConversationModel.init(
       {
         fields: ["workspaceId", "spaceId"],
       },
+      { fields: ["spaceId"], concurrently: true },
       {
         fields: ["workspaceId", "createdAt"],
         name: "conversations_workspace_id_created_at_idx",
@@ -198,6 +205,11 @@ ConversationParticipantModel.init(
         name: "conversation_participants_conversation_id",
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "conversationId", "actionRequired"],
+        name: "conversation_participants_workspace_conversation_action_idx",
+        concurrently: true,
+      },
     ],
   }
 );
@@ -286,11 +298,20 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare agenticMessageType: "run_agent" | "agent_handover" | null;
   declare agenticOriginMessageId: string | null;
 
+  // The concrete provider/model/effort triplet requested by the user when
+  // running the agent. null when the user did not request a specific model.
+  declare requestedProviderId: string | null;
+  declare requestedModelId: string | null;
+  declare requestedReasoningEffort: string | null;
+
   declare userContextLastTriggerRunAt: Date | null;
   declare userContextApiKeyId: ForeignKey<KeyModel["id"]> | null;
   declare userContextAuthMethod: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
+  // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
+  // is derived from messages at write time).
+  declare conversationId: ModelId;
 
   declare user?: NonAttribute<UserModel>;
   declare key?: NonAttribute<KeyModel>;
@@ -309,7 +330,7 @@ UserMessageModel.init(
       defaultValue: DataTypes.NOW,
     },
     content: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
@@ -372,6 +393,25 @@ UserMessageModel.init(
       type: DataTypes.STRING(32),
       allowNull: true,
     },
+    requestedProviderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedModelId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedReasoningEffort: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
   },
   {
     modelName: "user_message",
@@ -379,6 +419,7 @@ UserMessageModel.init(
     indexes: [
       { fields: ["userContextOrigin"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
       { fields: ["userContextApiKeyId"], concurrently: true },
       {
         fields: ["workspaceId", "agenticOriginMessageId"],
@@ -451,6 +492,18 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
+  declare costCredits: number | null;
+
+  // The concrete provider/model/effort triplet used by the message when
+  // running the agent. Legacy: null when the message runs the agent's configured model.
+  declare resolvedProviderId: string | null;
+  declare resolvedModelId: string | null;
+  declare resolvedReasoningEffort: string | null;
+  declare modelResolutionMethod: ModelResolutionMethodType | null;
+
+  // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
+  // is derived from messages at write time).
+  declare conversationId: ModelId;
 }
 
 AgentMessageModel.init(
@@ -479,7 +532,7 @@ AgentMessageModel.init(
       allowNull: true,
     },
     errorMessage: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     errorMetadata: {
@@ -536,12 +589,45 @@ AgentMessageModel.init(
       allowNull: true,
       defaultValue: false,
     },
+    costCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    resolvedProviderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    resolvedModelId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    resolvedReasoningEffort: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    modelResolutionMethod: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isIn: [MODEL_RESOLUTION_METHODS],
+      },
+    },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
   },
   {
     modelName: "agent_message",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
       // Index for agent-based data retention queries.
       { fields: ["workspaceId", "agentConfigurationId"], concurrently: true },
     ],
@@ -592,7 +678,7 @@ AgentMessageFeedbackModel.init(
       allowNull: true,
     },
     content: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     isConversationShared: {
@@ -673,6 +759,10 @@ export class CompactionMessageModel extends WorkspaceAwareModel<CompactionMessag
 
   declare status: CompactionMessageStatus;
   declare content: string | null;
+
+  // Denormalized from messages for conversation-scoped fetches (the conversation this compaction
+  // message belongs to — sourceConversationId is the compacted one).
+  declare conversationId: ModelId;
 }
 
 CompactionMessageModel.init(
@@ -701,8 +791,12 @@ CompactionMessageModel.init(
       defaultValue: "created",
     },
     content: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
+    },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
   },
   {
@@ -713,6 +807,7 @@ CompactionMessageModel.init(
         fields: ["workspaceId"],
         concurrently: true,
       },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
     ],
   }
 );
@@ -728,7 +823,7 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare visibility: CreationOptional<MessageVisibility>;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
-  declare branchId: ForeignKey<ConversationBranchModel["id"]> | null;
+  declare branchId: number | null;
 
   declare parentId: ForeignKey<MessageModel["id"]> | null;
   declare userMessageId: ForeignKey<UserMessageModel["id"]> | null;
@@ -743,15 +838,9 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare reactions?: NonAttribute<MessageReactionModel[]>;
 
   declare conversation?: NonAttribute<ConversationModel>;
-  declare branch?: NonAttribute<ConversationBranchModel>;
 
   getBranchId(): string | null {
-    return this.branchId
-      ? makeSId("conversation_branch", {
-          id: this.branchId,
-          workspaceId: this.workspaceId,
-        })
-      : null;
+    return null;
   }
 }
 

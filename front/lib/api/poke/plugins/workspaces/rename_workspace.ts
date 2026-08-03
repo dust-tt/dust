@@ -15,6 +15,7 @@ export const renameWorkspacePlugin = createPlugin({
         description: "The new name for the workspace",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const newName = args.newName.trim();

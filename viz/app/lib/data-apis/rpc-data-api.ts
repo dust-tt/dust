@@ -1,3 +1,4 @@
+import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type {
   CommandResultMap,
@@ -22,6 +23,21 @@ export class RPCDataAPI implements VisualizationDataAPI {
     ) => Promise<CommandResultMap[T]>
   ) {
     this.sendMessage = sendMessage;
+  }
+
+  async callFunction(functionId: string, input?: unknown): Promise<unknown> {
+    try {
+      return await this.sendMessage("callFunction", {
+        functionIdOrSlug: functionId,
+        input,
+      });
+    } catch (error) {
+      throw normalizeSandboxFunctionCallError(error);
+    }
+  }
+
+  async getUserIdentity() {
+    return this.sendMessage("getUserIdentity", null);
   }
 
   async fetchFile(fileId: string): Promise<File | null> {

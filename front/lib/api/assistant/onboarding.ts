@@ -550,15 +550,13 @@ export async function createOnboardingConversationIfNeeded(
 
   // Check for tools with views in the global space (matches what UI considers "configured")
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-  const globalSpaceViews = await MCPServerViewResource.listBySpace(
-    auth,
-    globalSpace
-  );
+  const globalSpaceViews =
+    await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, globalSpace);
   const configuredTools = globalSpaceViews
     .map((v) => getInternalMCPServerNameFromSId(v.internalMCPServerId))
     .filter((name): name is InternalMCPServerNameType => name !== null);
 
-  const conversation = await createConversation(auth, {
+  const conversationResource = await createConversation(auth, {
     title: "Welcome to Dust",
     visibility: "unlisted",
     spaceId: null,
@@ -584,7 +582,7 @@ export async function createOnboardingConversationIfNeeded(
   };
 
   const postRes = await postUserMessage(auth, {
-    conversation,
+    conversationResource,
     content: onboardingSystemMessage,
     mentions: [
       {
@@ -599,7 +597,11 @@ export async function createOnboardingConversationIfNeeded(
     return postRes;
   }
 
-  await user.setMetadata("onboarding:conversation", conversation.sId, owner.id);
+  await user.setMetadata(
+    "onboarding:conversation",
+    conversationResource.sId,
+    owner.id
+  );
 
-  return new Ok(conversation.sId);
+  return new Ok(conversationResource.sId);
 }

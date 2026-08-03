@@ -187,7 +187,7 @@ class E2BTemplateBuilder {
   }
 }
 
-export interface E2BTemplateInfo {
+interface E2BTemplateInfo {
   templateId: string;
   aliases: readonly string[];
 }

@@ -41,6 +41,18 @@ import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
+export interface GetWebhookRequestsResponseBody {
+  requests: Array<{
+    id: number;
+    timestamp: number;
+    status: WebhookRequestTriggerStatus;
+    payload?: {
+      headers?: Record<string, string | string[]>;
+      body?: unknown;
+    };
+  }>;
+}
+
 /**
  * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
  */
@@ -56,7 +68,7 @@ export const HEADERS_ALLOWED_LIST = [
   "webhook-timestamp",
 ];
 
-export function checkSignature({
+function checkSignature({
   headerName,
   algorithm,
   secret,
@@ -129,7 +141,7 @@ export function checkSignature({
   return new Ok(undefined);
 }
 
-export async function validateEventSubscription({
+async function validateEventSubscription({
   webhookSource,
   headers,
   body,
@@ -283,7 +295,7 @@ async function checkWorkspaceRateLimit({
       (await isProgrammaticApiBlocked(owner.sId))
     ) {
       errorMessage =
-        "Your workspace has reached its programmatic monthly spending cap.";
+        "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.";
     }
   }
 
@@ -413,7 +425,7 @@ function matchesPayloadFilter({
   return false;
 }
 
-export async function filterTriggers({
+async function filterTriggers({
   auth,
   webhookSource,
   receivedEventValue,
@@ -526,7 +538,7 @@ export async function filterTriggers({
   return new Ok(filteredTriggers);
 }
 
-export async function storePayloadInGCS(
+async function storePayloadInGCS(
   auth: Authenticator,
   {
     webhookSource,
@@ -662,7 +674,7 @@ export async function processWebhookRequest(
     body: Record<string, unknown>;
     rawBody: string;
   }
-): Promise<Result<void, Error>> {
+): Promise<Result<{ triggerIds: string[] }, Error>> {
   const localLogger = logger.child({
     webhookRequestId: webhookRequest.id,
     webhookSourceId: webhookSource.id,
@@ -698,12 +710,12 @@ export async function processWebhookRequest(
   if (eventValidationResult.isErr()) {
     await webhookRequest.markAsFailed(eventValidationResult.error.message);
     localLogger.error(eventValidationResult.error.message);
-    return new Ok(undefined); // We consider event validation errors as non-retryable.
+    return new Ok({ triggerIds: [] }); // We consider event validation errors as non-retryable.
   }
 
   const { skipReason, receivedEventValue } = eventValidationResult.value;
   if (skipReason) {
-    return new Ok(undefined);
+    return new Ok({ triggerIds: [] });
   }
 
   const filteredTriggersResult = await filterTriggers({
@@ -717,14 +729,14 @@ export async function processWebhookRequest(
   if (filteredTriggersResult.isErr()) {
     await webhookRequest.markAsFailed(filteredTriggersResult.error.message);
     localLogger.error(filteredTriggersResult.error.message);
-    return new Ok(undefined); // We consider filtering errors as non-retryable.
+    return new Ok({ triggerIds: [] }); // We consider filtering errors as non-retryable.
   }
 
   const filteredTriggers = filteredTriggersResult.value;
   if (filteredTriggers.length === 0) {
     localLogger.info("No triggers matched the webhook request.");
     await webhookRequest.markAsProcessed();
-    return new Ok(undefined);
+    return new Ok({ triggerIds: [] });
   }
 
   if (filteredTriggers.some((t) => t.configuration.includePayload)) {
@@ -745,12 +757,12 @@ export async function processWebhookRequest(
   if (launchResult.isErr()) {
     await webhookRequest.markAsFailed(launchResult.error.message);
     localLogger.error(launchResult.error.message);
-    return new Ok(undefined); // We consider launch errors as non-retryable.
+    return new Ok({ triggerIds: [] }); // We consider launch errors as non-retryable.
   }
 
   await webhookRequest.markAsProcessed();
 
-  return new Ok(undefined);
+  return new Ok({ triggerIds: filteredTriggers.map((t) => t.sId) });
 }
 
 export async function fetchRecentWebhookRequestTriggersWithPayload(

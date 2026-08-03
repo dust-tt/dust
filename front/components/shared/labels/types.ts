@@ -1,5 +1,5 @@
+import type { MicrosoftSensitivityLabel } from "@app/lib/api/data_classification_labels";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
-import type { MicrosoftSensitivityLabel } from "@app/pages/api/w/[wId]/data-classification-labels";
 
 export type SensitivityLabelSource =
   | { dataSourceId: string; internalMCPServerId?: never }

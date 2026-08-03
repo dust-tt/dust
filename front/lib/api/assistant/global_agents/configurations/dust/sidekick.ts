@@ -9,7 +9,7 @@ import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/ut
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  isProviderWhitelisted,
+  selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type {
@@ -20,10 +20,11 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { SHARED_PROMPT_SECTIONS } from "./agent_suggestions_shared";
 import { getCompanyDataAction } from "./shared";
 
-export const SIDEKICK_INSTRUCTION_SECTIONS = {
+const SIDEKICK_INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
 You are the Dust Agent Sidekick, an AI assistant embedded in the Agent Builder interface.
 Your role is to guide users through agent configuration by generating actionable suggestions they can accept or reject.
@@ -44,6 +45,12 @@ Follow this process for every interaction:
 
 Step 1: ALWAYS call \`get_agent_config\`. You risk outdated suggestions if you skip this even once.
 The ONLY exception is the first message of a conversation. NEVER call it on the first message, but NEVER skip this step otherwise.
+
+If the \`get_agent_config\` output is truncated and provides an archived-file path, treat the inline output as incomplete. Immediately read the archived file to the end with \`files__cat\`, following each returned \`byte_offset\` exactly.
+
+Do not reason about the configuration, build a plan, or call any \`suggest_*\` tool until the complete configuration has been retrieved — a truncated payload can hide later instructions and the agent's tools and skills entirely. This continuation is part of fetching the agent configuration and does not require heavy-work confirmation.
+
+If the archived file cannot be read completely, stop and tell the user. Do not make suggestions based on the partial configuration.
 
 Step 2: Understand the agent's workflow
 Reason about the agent based on the output of \`get_agent_config\`. Consider: goal, who interacts with it, how data flows in, what the output looks like.
@@ -258,7 +265,7 @@ You DO NOT need to call list_models, list_skills, or list_tools unless explicitl
 </context_guidance>`,
 };
 
-export function buildSidekickInstructions(): string {
+function buildSidekickInstructions(): string {
   const parts: string[] = [
     SIDEKICK_INSTRUCTION_SECTIONS.primary,
     SIDEKICK_INSTRUCTION_SECTIONS.agentWorkflow,
@@ -298,11 +305,13 @@ export function _getSidekickGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     globalAgentContext,
+    featureFlags,
   }: {
     sidekickContext: SidekickContext | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     globalAgentContext?: GlobalAgentContext;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType {
   const companyDataAction = getCompanyDataAction(
@@ -316,15 +325,15 @@ export function _getSidekickGlobalAgent(
       })
     : null;
 
-  const askUserQuestionAction = sidekickContext?.mcpServerViews?.askUserQuestion
+  const templatesAction = sidekickContext?.mcpServerViews?.templates
     ? buildServerSideMCPServerConfiguration({
-        mcpServerView: sidekickContext.mcpServerViews.askUserQuestion,
+        mcpServerView: sidekickContext.mcpServerViews.templates,
       })
     : null;
 
   const actions = [
     ...(contextAction ? [contextAction] : []),
-    ...(askUserQuestionAction ? [askUserQuestionAction] : []),
+    ...(templatesAction ? [templatesAction] : []),
     ...(companyDataAction ? [companyDataAction] : []),
   ];
 
@@ -337,10 +346,10 @@ export function _getSidekickGlobalAgent(
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
-      ? isProviderWhitelisted(auth, "anthropic")
-        ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-        : getSmallWhitelistedModel(auth)
-      : getLargeWhitelistedModel(auth);
+      ? (selectEnabledModel(auth, [CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG], {
+          featureFlags,
+        }) ?? getSmallWhitelistedModel(auth, undefined, { featureFlags }))
+      : getLargeWhitelistedModel(auth, undefined, { featureFlags });
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,

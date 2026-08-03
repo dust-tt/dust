@@ -1,16 +1,17 @@
 import {
-  PLAN_MODE_SERVER_NAME,
-  REQUEST_PLAN_APPROVAL_TOOL_NAME,
-} from "@app/lib/api/actions/servers/plan_mode/metadata";
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { findActivePlanFile } from "@app/lib/api/assistant/plan_mode";
-import { getFileContent } from "@app/lib/api/files/utils";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+  closeActivePlan,
+  getActivePlanContent,
+} from "@app/lib/api/assistant/plan_mode";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { FileType } from "@app/types/files";
+import type {
+  DeleteConversationPlanModeResponseBody,
+  GetConversationPlanModeResponseBody,
+} from "@app/types/api/assistant/plan_mode";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -18,17 +19,10 @@ const ParamsSchema = z.object({
   cId: z.string(),
 });
 
-export type PlanApprovalState = "draft" | "pending" | "approved";
-
-export type GetConversationPlanModeResponseBody = {
-  planFile: FileType | null;
-  content: string | null;
-  approvalState: PlanApprovalState;
-};
-
 // Mounted at /api/w/:wId/assistant/conversations/:cId/plan_mode.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -36,51 +30,75 @@ app.get(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    // Ensure the caller has access to the conversation.
-    const conversationRes = await getLightConversation(auth, cId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
-    }
-
-    const planFile = await findActivePlanFile(auth, cId);
-    if (!planFile) {
-      return ctx.json({
-        planFile: null,
-        content: null,
-        approvalState: "draft" as PlanApprovalState,
-      });
-    }
-
-    // Sequential fetches to avoid holding multiple DB connections from the pool simultaneously.
-    const content = await getFileContent(auth, planFile, "original");
     const conversationResource = await ConversationResource.fetchById(
       auth,
       cId
     );
-    const blockedActions = conversationResource
-      ? await AgentMCPActionResource.listBlockedActionsForConversation(
-          auth,
-          conversationResource
-        )
-      : [];
+    if (!conversationResource) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      );
+    }
 
-    const hasPendingApproval = blockedActions.some(
-      (a) =>
-        a.metadata.mcpServerName === PLAN_MODE_SERVER_NAME &&
-        a.metadata.toolName === REQUEST_PLAN_APPROVAL_TOOL_NAME
+    const conversation = conversationResource.toJSON();
+
+    const contentRes = await getActivePlanContent(auth, conversation);
+    if (contentRes.isErr()) {
+      // A missing plan is Ok(null); an Err here is a real read failure, surfaced not silenced.
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to read the plan content.",
+          },
+        },
+        contentRes.error
+      );
+    }
+
+    return ctx.json({ content: contentRes.value });
+  }
+);
+
+/** @ignoreswagger */
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<DeleteConversationPlanModeResponseBody> => {
+    const auth = ctx.get("auth");
+    const { cId } = ctx.req.valid("param");
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      cId
     );
+    if (!conversationResource) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      );
+    }
 
-    const approvalState: PlanApprovalState = hasPendingApproval
-      ? "pending"
-      : planFile.useCaseMetadata?.planModeLastApproval != null
-        ? "approved"
-        : "draft";
+    const conversation = conversationResource.toJSON();
+    const closeRes = await closeActivePlan(auth, conversation);
+    if (closeRes.isErr()) {
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to close the plan.",
+          },
+        },
+        closeRes.error
+      );
+    }
 
-    return ctx.json({
-      planFile: planFile.toJSON(auth),
-      content,
-      approvalState,
-    });
+    return ctx.json({ success: true });
   }
 );
 

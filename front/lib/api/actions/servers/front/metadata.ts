@@ -1,20 +1,16 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const FRONT_TOOLS_METADATA = createToolsRecord({
-  search_conversations: {
+export const FRONT_TOOLS_METADATA = [
+  {
+    name: "search_conversations",
     description:
-      "Search conversations in Front by keywords, customer email, tags, status, or other criteria. " +
-      "Returns matching conversations with their details.",
+      "Search or find conversations in the Front inbox by keywords, customer email, tags, status, or other criteria. Returns matching conversations with their details.",
     schema: {
       q: z
         .string()
         .describe(
-          "Search query. Can include keywords, email addresses (e.g., 'customer@example.com'), " +
-            "status filters (e.g., 'is:open', 'is:archived'), tag filters (e.g., 'tag:bug'), etc."
+          "Search query: keywords, customer email, status (is:open, is:archived), or tags (tag:bug)."
         ),
       limit: z
         .number()
@@ -29,8 +25,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Searching Front conversations",
       done: "Search Front conversations",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_conversation: {
+  {
+    name: "get_conversation",
     description:
       "Retrieve complete details of a specific conversation by its ID, including subject, status, " +
       "assignee, tags, inbox, and all metadata.",
@@ -44,8 +43,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Front conversation",
       done: "Retrieve Front conversation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_conversation_messages: {
+  {
+    name: "get_conversation_messages",
     description:
       "Retrieve all messages in a conversation, including both external messages (emails) and " +
       "internal comments. Returns the complete message timeline.",
@@ -59,8 +61,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Front messages",
       done: "Retrieve Front messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_contact: {
+  {
+    name: "get_contact",
     description:
       "Look up customer/contact information by email address or contact ID. Returns contact details " +
       "including name, email, and custom fields.",
@@ -79,8 +84,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Looking up Front contact",
       done: "Look up Front contact",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_tags: {
+  {
+    name: "list_tags",
     description: "Get all available tags for categorizing conversations.",
     schema: {},
     stake: "never_ask",
@@ -88,8 +96,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Listing Front tags",
       done: "List Front tags",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_teammates: {
+  {
+    name: "list_teammates",
     description:
       "Get all teammates in the workspace for assignment and collaboration.",
     schema: {},
@@ -98,10 +109,13 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Listing Front teammates",
       done: "List Front teammates",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_customer_history: {
+  {
+    name: "get_customer_history",
     description:
-      "Retrieve past conversations with a specific customer by their email address.",
+      "Retrieve a customer's past conversations in Front, by their email address.",
     schema: {
       customer_email: z
         .string()
@@ -119,8 +133,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Front customer history",
       done: "Retrieve Front customer history",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_inboxes: {
+  {
+    name: "list_inboxes",
     description: "Get all inboxes/channels available in the workspace.",
     schema: {},
     stake: "never_ask",
@@ -128,8 +145,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Listing Front inboxes",
       done: "List Front inboxes",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_conversation_drafts: {
+  {
+    name: "get_conversation_drafts",
     description:
       "List all drafts in a conversation. Returns draft IDs and version tokens needed for editing or deleting drafts.",
     schema: {
@@ -142,8 +162,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Front conversation drafts",
       done: "Retrieve Front conversation drafts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_conversation: {
+  {
+    name: "create_conversation",
     description: "Start a new outbound conversation with a customer.",
     schema: {
       inbox_id: z
@@ -162,8 +185,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Creating Front conversation",
       done: "Create Front conversation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_draft: {
+  {
+    name: "create_draft",
     description:
       "Create a draft reply to a conversation for review before sending.",
     schema: {
@@ -179,8 +205,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Creating draft on Front",
       done: "Create draft on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  delete_draft: {
+  {
+    name: "delete_draft",
     description:
       "Delete a draft that is no longer needed. Requires the version token from get_conversation_drafts for optimistic concurrency.",
     schema: {
@@ -200,8 +229,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Deleting draft on Front",
       done: "Delete draft on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  add_tags: {
+  {
+    name: "add_tags",
     description:
       "Add one or more tags to a conversation for categorization (e.g., bug, feature-request, billing).",
     schema: {
@@ -215,10 +247,13 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Adding tags on Front",
       done: "Add tags on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  add_comment: {
+  {
+    name: "add_comment",
     description:
-      "Add an internal comment/note to a conversation (only visible to team).",
+      "Add an internal comment or note to a Front conversation, visible only to your team.",
     schema: {
       conversation_id: z.string().describe("The unique ID of the conversation"),
       body: z.string().describe("The comment content"),
@@ -232,8 +267,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Adding comment on Front",
       done: "Add comment on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  add_links: {
+  {
+    name: "add_links",
     description:
       "Link related conversations together for better tracking and context.",
     schema: {
@@ -247,10 +285,13 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Linking Front conversations",
       done: "Link Front conversations",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  send_message: {
+  {
+    name: "send_message",
     description:
-      "Send a reply or internal comment to a conversation. Can send as email reply or internal note.",
+      "Reply or respond to a customer on a Front conversation. Sends a customer-facing email by default. Can also post an internal note.",
     schema: {
       conversation_id: z.string().describe("The unique ID of the conversation"),
       body: z.string().describe("The message content (supports markdown)"),
@@ -272,10 +313,13 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Sending message on Front",
       done: "Send message on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  update_conversation_status: {
+  {
+    name: "update_conversation_status",
     description:
-      "Update the status of a conversation (archive, reopen, delete, spam, trash).",
+      "Update the status of a Front conversation: archive (close), reopen, delete, mark as spam, or move to trash.",
     schema: {
       conversation_id: z.string().describe("The unique ID of the conversation"),
       status: z
@@ -289,8 +333,11 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Updating Front conversation status",
       done: "Update Front conversation status",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  assign_conversation: {
+  {
+    name: "assign_conversation",
     description: "Assign a conversation to a specific teammate for handling.",
     schema: {
       conversation_id: z.string().describe("The unique ID of the conversation"),
@@ -301,8 +348,10 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Assigning Front conversation",
       done: "Assign Front conversation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const FRONT_SERVER = {
   serverInfo: {
@@ -313,15 +362,6 @@ export const FRONT_SERVER = {
     authorization: null,
     icon: "FrontLogo",
     documentationUrl: "https://docs.dust.tt/docs/front-mcp",
-    instructions: null,
   },
-  tools: Object.values(FRONT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(FRONT_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: FRONT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

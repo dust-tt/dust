@@ -1,14 +1,20 @@
 import { config } from "@app/lib/api/regions/config";
+import type {
+  FetchAgentTemplateResponse,
+  FetchAssistantTemplatesResponse,
+} from "@app/lib/resources/template_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import logger from "@app/logger/logger";
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { ModelConfig } from "@app/types/assistant/models/types";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
 } from "@app/types/assistant/templates";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+
+export type PokeFetchAssistantTemplateResponse = ReturnType<
+  TemplateResource["toJSON"]
+>;
 
 /**
  * Shared subset of `TemplateModel` attributes that the poke create and
@@ -39,7 +45,7 @@ export function buildSharedTemplateAttributes(
   };
 }
 
-export type PullTemplatesError = "main_region_fetch_failed";
+type PullTemplatesError = "main_region_fetch_failed";
 
 /**
  * Pulls every published template from the main region and upserts it

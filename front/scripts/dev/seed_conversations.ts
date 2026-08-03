@@ -95,7 +95,7 @@ async function createProject(
     memberGroup = await GroupResource.makeNew({
       name: memberGroupName,
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "regular_auto",
     });
   }
 
@@ -156,6 +156,7 @@ async function createConversation(
 
     const userMessageRow = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: exchange.userContent,
       userContextUsername: user.username ?? "dev-user",
@@ -180,6 +181,7 @@ async function createConversation(
       status: "succeeded",
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       agentConfigurationVersion: 0,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });

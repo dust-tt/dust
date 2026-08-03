@@ -1,5 +1,4 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   MAX_PENDING_INSTRUCTIONS_SUGGESTIONS,
   MAX_PENDING_KNOWLEDGE_SUGGESTIONS,
@@ -7,7 +6,10 @@ import {
   MAX_PENDING_SUB_AGENT_SUGGESTIONS,
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
-import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
+import {
+  DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
+} from "@app/lib/reinforcement/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
@@ -15,9 +17,7 @@ import {
   AGENT_SUGGESTION_STATES,
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
 } from "@app/types/suggestions/agent_suggestion";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const AGENT_SIDEKICK_CONTEXT_TOOL_NAME =
   "agent_sidekick_context" as const;
@@ -101,8 +101,9 @@ const ModelSuggestionSchema = z.object({
     .describe("Optional reasoning effort level"),
 });
 
-export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
-  get_available_models: {
+export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = [
+  {
+    name: "get_available_models",
     description:
       "Get the list of available models. Can optionally filter by provider.",
     schema: {
@@ -113,45 +114,77 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
           "Optional provider ID to filter models (e.g., 'openai', 'anthropic', 'google_ai_studio', 'mistral')"
         ),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Listing available models",
       done: "List available models",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  get_available_skills: {
+  {
+    name: "get_available_skills",
     description:
       "Get the list of available skills that can be added to agents. Returns skills accessible to the current user across all spaces they have access to.",
     schema: {},
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Listing available skills",
       done: "List available skills",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  get_available_tools: {
+  {
+    name: "get_available_tools",
     description:
       "Get the list of available tools (MCP servers) that can be added to agents. Returns tools accessible to the current user.",
     schema: {},
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Listing available tools",
       done: "List available tools",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  [DESCRIBE_MCP_TOOL_NAME]: {
+  {
+    name: DESCRIBE_MCP_TOOL_NAME,
     description:
       "Get detailed information about a specific MCP server: its description, and each tool's name, description, and input parameters.",
     schema: {
       mcpId: z.string().describe("The sId of the MCP server to describe"),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Describing MCP server",
       done: "Describe MCP server",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  get_available_agents: {
+  {
+    name: DESCRIBE_SKILL_TOOL_NAME,
+    description:
+      "Get detailed information about a skill: its name, description, instructions, and configured tools.",
+    schema: {
+      skillId: z.string().describe("The sId of the skill to describe"),
+    },
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Describing skill",
+      done: "Describe skill",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "get_available_agents",
     description:
       "Get the list of available agents that can be used as sub-agents. Returns active agents accessible to the current user, excluding global agents.",
     schema: {
@@ -168,24 +201,32 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Listing available agents",
       done: "List available agents",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  inspect_available_agent: {
+  {
+    name: "inspect_available_agent",
     description:
       "Get detailed information about a specific agent by its ID. Returns the agent's name, description, prompt/instructions, list of tool IDs, and list of skill IDs.",
     schema: {
       agentId: z.string().describe("The agent ID (sId) to inspect"),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Inspecting agent",
       done: "Inspect agent",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  get_agent_feedback: {
+  {
+    name: "get_agent_feedback",
     description: "Get user feedback for the agent.",
     schema: {
       limit: z
@@ -209,12 +250,16 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Listing agent feedback",
       done: "List agent feedback",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  get_agent_insights: {
+  {
+    name: "get_agent_insights",
     description:
       "Get insight and analytics data for the agent, including the number of active users, " +
       "the conversation and message counts, and the feedback statistics.",
@@ -226,13 +271,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Number of days to include in the analysis (default: 30)"),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Listing agent insights",
       done: "List agent insights",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   // Suggestion tools
-  suggest_prompt_edits: {
+  {
+    name: "suggest_prompt_edits",
     description:
       "Create suggestions to modify the agent's instructions/prompt using block-based targeting. " +
       "The instructions HTML contains blocks with data-block-id attributes (e.g., 'a3f1b20e'). " +
@@ -248,13 +297,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
           "Array of block modifications. Each targets a block by its data-block-id and provides new content. Each suggestion can have its own analysis."
         ),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Suggesting prompt edits",
       done: "Suggest prompt edits",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  suggest_tools: {
+  {
+    name: "suggest_tools",
     description:
       "Suggest adding or removing tools from the agent's configuration. " +
       "This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. " +
@@ -275,13 +328,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
           "Array of tool additions and/or deletions to suggest. Each tool ID must appear at most once."
         ),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Suggesting tools",
       done: "Suggest tools",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  suggest_sub_agent: {
+  {
+    name: "suggest_sub_agent",
     description:
       "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. " +
       "If a pending suggestion for the same sub-agent already exists, it will be automatically marked as outdated. " +
@@ -301,13 +358,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("Analysis or reasoning for the suggestion"),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Suggesting sub-agent",
       done: "Suggest sub-agent",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  suggest_skills: {
+  {
+    name: "suggest_skills",
     description:
       "Suggest adding or removing skills from the agent's configuration. " +
       "If a pending suggestion for the same skill already exists, it will be automatically marked as outdated. " +
@@ -327,13 +388,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
           "Array of skill additions and/or deletions to suggest. Each skill ID must appear at most once."
         ),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Suggesting skills",
       done: "Suggest skills",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  suggest_model: {
+  {
+    name: "suggest_model",
     description:
       "Suggest changing the agent's LLM model configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
@@ -345,13 +410,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("Analysis or reasoning for the suggestion"),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Suggesting model",
       done: "Suggest model",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  search_knowledge: {
+  {
+    name: "search_knowledge",
     description:
       "Browse or search workspace knowledge sources. " +
       "Without a query: lists all available data source views. " +
@@ -380,13 +449,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
           "Optional category to filter results: 'managed' (connected platforms), 'folder', or 'website'."
         ),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Searching knowledge sources",
       done: "Search knowledge sources",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  suggest_knowledge: {
+  {
+    name: "suggest_knowledge",
     description:
       "Suggest adding or removing knowledge. Get sources from \`search_knowledge\` (call without a query to list all); each source has a knowledgeMethod field — use that as the method here. " +
       "method 'search': semantic search over documents, folders, websites. method 'query_tables': SQL over Snowflake/BigQuery warehouses. " +
@@ -402,13 +475,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("Analysis or reasoning for the suggestion"),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Suggesting knowledge",
       done: "Suggest knowledge",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  list_suggestions: {
+  {
+    name: "list_suggestions",
     description:
       "List existing suggestions for the agent's configuration changes.",
     schema: {
@@ -434,13 +511,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
           "Maximum number of suggestions to return. Results are ordered by creation date (most recent first). If not provided, returns all matching suggestions."
         ),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Listing suggestions",
       done: "List suggestions",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  update_suggestions_state: {
+  {
+    name: "update_suggestions_state",
     description:
       "Update the state of one or more suggestions. Use this to reject or mark suggestions as outdated.",
     schema: {
@@ -459,51 +540,17 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
         )
         .describe("Array of suggestions to update with their new states"),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Updating suggestion state",
       done: "Update suggestion state",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  search_agent_templates: {
-    description:
-      "Search published agent templates. Use jobType for tag-based filtering or query for semantic search. " +
-      "Returns full template details including sidekickInstructions.",
-    schema: {
-      jobType: z
-        .string()
-        .optional()
-        .describe(
-          "User's job type to filter templates by relevant tags (e.g. 'sales', 'engineering', 'legal'). If omitted, returns all published templates."
-        ),
-      query: z
-        .string()
-        .optional()
-        .describe(
-          "Free-text query to semantically search templates. Use when the user describes a specific use case not covered by jobType tags."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Searching templates",
-      done: "Search templates",
-    },
-  },
-  get_agent_template: {
-    description:
-      "Fetch template-specific guidance for the current agent. " +
-      "Use this tool when the agent was created from a template to retrieve specialized sidekickInstructions that define how you should assist with this agent type. " +
-      "These instructions may contain domain-specific rules, preferred approaches, or constraints you should follow.",
-    schema: {
-      templateId: z.string().describe("The sId of the template to retrieve"),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Fetching template",
-      done: "Fetch template",
-    },
-  },
-  inspect_conversation: {
+  {
+    name: "inspect_conversation",
     description:
       "Inspect a conversation to get its shape and summary. Returns the conversation title, " +
       "a timeline of messages with user messages (content and mentions) and agent messages " +
@@ -522,12 +569,16 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("End timeline at this message index (0-based, exclusive)"),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Inspecting conversation",
       done: "Inspect conversation",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  inspect_message: {
+  {
+    name: "inspect_message",
     description:
       "Inspect a specific message in a conversation. Returns detailed information about " +
       "a user message (content, mentions, context, content fragments) or an agent message " +
@@ -536,13 +587,16 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       conversationId: z.string().describe("The conversation ID"),
       messageId: z.string().describe("The ID of the message to inspect"),
     },
+    eager: true,
     stake: "never_ask",
     displayLabels: {
       running: "Inspecting message",
       done: "Inspect message",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-});
+] as const;
 
 export const AGENT_SIDEKICK_CONTEXT_SERVER = {
   serverInfo: {
@@ -553,18 +607,6 @@ export const AGENT_SIDEKICK_CONTEXT_SERVER = {
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,
-    instructions: null,
   },
-  tools: Object.values(AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA).map((t) => [
-      t.name,
-      t.stake,
-    ])
-  ),
+  tools: AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

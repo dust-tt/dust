@@ -1,7 +1,8 @@
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import type { PluginListItem } from "@app/lib/api/poke/types";
+import type { PokeListPluginsForScopeResponseBody } from "@app/lib/api/poke/plugins/list";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
+import { hasPokeRole } from "@app/lib/poke/roles";
 import { isSupportedResourceType } from "@app/types/poke/plugins";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -10,10 +11,6 @@ import { z } from "zod";
 
 import pluginId from "./[pluginId]";
 import runs from "./runs";
-
-export interface PokeListPluginsForScopeResponseBody {
-  plugins: PluginListItem[];
-}
 
 const ListPluginsQuerySchema = z.object({
   resourceType: z.string().refine(isSupportedResourceType, {
@@ -26,6 +23,7 @@ const ListPluginsQuerySchema = z.object({
 // Mounted at /api/poke/plugins.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", ListPluginsQuerySchema),
@@ -47,11 +45,26 @@ app.get(
       ? await fetchPluginResource(auth, resourceType, resourceId)
       : null;
 
-    const pluginList = plugins
-      .filter((p) => !resourceId || p.isApplicableTo(auth, resource))
+    const userRoles = ctx.get("pokeRoles");
+
+    // Resolve applicability first since `isApplicableTo` may be async. The plugin list
+    // per resource type is small and bounded, so a sequential pass is fine here.
+    const applicablePlugins = [];
+    for (const p of plugins) {
+      if (!resourceId || (await p.isApplicableTo(auth, resource))) {
+        applicablePlugins.push(p);
+      }
+    }
+
+    const pluginList = applicablePlugins
       .filter((p) => !p.manifest.isHidden)
       // During maintenance, only show readonly plugins.
       .filter((p) => !maintenance || p.manifest.readonly)
+      .filter(
+        (p) =>
+          !p.manifest.requiredRoles ||
+          hasPokeRole(userRoles, p.manifest.requiredRoles)
+      )
       .map((p) => ({
         id: p.manifest.id,
         name: p.manifest.name,

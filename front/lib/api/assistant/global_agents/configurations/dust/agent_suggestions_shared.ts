@@ -1,26 +1,5 @@
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
-export const REINFORCED_TOOLS_DESCRIPTION = `You have access to the following tools:
-
-## Exploration tools (optional — use these first if you need more context)
-- get_available_skills: Lists all skills available in the workspace. Use this to discover skills you could suggest adding or to verify that suggested skills exist.
-- get_available_tools: Lists all tools (MCP servers) available in the workspace. Use this to discover tools you could suggest adding or to verify that suggested tools exist.
-
-## Suggestion tools (terminal — the conversation ends after these)
-- suggest_prompt_edits: For suggesting instruction changes.
-- suggest_tools: For suggesting tools to add or remove.
-- suggest_skills: For suggesting skills to add or remove.
-
-You can either:
-1. Call exploration tools first to discover available skills/tools, then make informed suggestions.
-2. Go straight to calling suggestion tools if you already have enough context.
-
-When suggestions reference tools or skills, you SHOULD call the exploration tools first to verify they exist and check for alternatives.
-You must do all the suggestions in parallel as after suggestions the conversation will be over.
-You MUST call at least one suggestion tool. If you determine no improvements are needed, call suggest_prompt_edits with an empty suggestions array.
-
-The user will not look at your response. The user ONLY cares about the content of the suggestion tool calls.`;
-
 export const SHARED_PROMPT_SECTIONS = {
   instructionsGuidance: `
 When suggesting instruction improvements, follow these principles:
@@ -116,10 +95,12 @@ next to it. To add or remove blocks, target their parent.
 Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
 These IDs are persisted and stable across editing sessions.
 
-When you receive the agent instructions via \`get_agent_config\`, they will be in HTML format with block IDs:
-\`\`\`html
-<p data-block-id="7f3a2b1c">You are a helpful assistant.</p>
+When you receive the agent instructions via \`get_agent_config\`, they come as \`instructionsHtmlBlocks\`: an array of top-level HTML blocks, one per entry, each with a block ID:
+\`\`\`json
+["<p data-block-id=\\"7f3a2b1c\\">You are a helpful assistant.</p>"]
 \`\`\`
+
+A prompt edit replaces the entire target block. Never edit a block unless you have read that block's complete content, or unseen content may be deleted.
 
 <block_editing_principles>
 1. Targeting a block means REPLACING its content. You cannot add siblings to it (the system will reject it).

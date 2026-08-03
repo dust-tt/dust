@@ -7,9 +7,6 @@ export const apiConfig = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
-  getDustFrontInternalAPIUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_FRONT_INTERNAL_API");
-  },
   getDustFrontAPIUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_FRONT_API");
   },
@@ -67,5 +64,8 @@ export const apiConfig = {
   },
   getDiscordApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("DISCORD_APP_ID");
+  },
+  getProfilerSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
   },
 };

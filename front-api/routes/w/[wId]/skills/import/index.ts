@@ -1,40 +1,36 @@
+import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
 import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/import_skills";
 import logger from "@app/logger/logger";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { ImportSkillsRequestBody } from "@app/types/api/skills/detection/github/import_skills";
+import { ImportSkillsRequestBodySchema } from "@app/types/api/skills/detection/github/import_skills";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
 
+import githubConnection from "./github-connection";
 import upload from "./upload";
 
-const ImportSkillsRequestBodySchema = z.object({
-  repoUrl: z.string(),
-  names: z.array(z.string()),
-});
-
-export type ImportSkillsRequestBody = z.infer<
-  typeof ImportSkillsRequestBodySchema
->;
-
-export type ImportSkillsResponseBody = {
-  imported: SkillType[];
-  updated: SkillType[];
-  skipped: { name: string; message: string }[];
-};
+export type { ImportSkillsRequestBody, ImportSkillsResponseBody };
 
 // Mounted at /api/w/:wId/skills/import.
 const app = workspaceApp();
 
+app.route("/github-connection", githubConnection);
 app.route("/upload", upload);
 
+/** @ignoreswagger */
 app.post(
   "/",
-  ensureIsBuilder(),
   validate("json", ImportSkillsRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "create",
+    "skill",
+    "Importing skills is restricted.",
+    "app_auth_error"
+  ),
   async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
@@ -86,6 +82,14 @@ app.post(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
+              message: error.message,
+            },
+          });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "app_auth_error",
               message: error.message,
             },
           });

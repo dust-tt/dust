@@ -4,6 +4,7 @@ import {
   devFlagSubscribe,
 } from "@app/components/dev/devFlagOverrideStore";
 import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
+import type { WorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -26,10 +27,11 @@ export interface AuthContextValue {
   workspace: LightWorkspaceType;
   subscription: SubscriptionType;
   isAdmin: boolean;
-  isBuilder: boolean;
+  isManager: boolean;
   featureFlags: WhitelistableFeature[];
   vizUrl: string;
   providersHealth: ProvidersHealth | null;
+  workspacePermissions: WorkspacePermissions;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

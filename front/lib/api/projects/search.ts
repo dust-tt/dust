@@ -14,13 +14,13 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-export interface SearchProjectConversationsOptions {
+interface SearchProjectConversationsOptions {
   query: string;
   spaceIds: string[];
   topK: number;
 }
 
-export interface ConversationSearchResult {
+interface ConversationSearchResult {
   conversationId: string;
   score: number;
   spaceId: string;

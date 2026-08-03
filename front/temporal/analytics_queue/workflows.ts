@@ -6,16 +6,19 @@ import type {
 } from "@app/types/assistant/agent_run";
 import { proxyActivities } from "@temporalio/workflow";
 
-const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minutes",
-    retry: {
-      // Analytics is best effort, only retry twice.
-      maximumAttempts: 2,
-      initialInterval: "30 seconds",
-      backoffCoefficient: 2,
-    },
-  });
+const {
+  storeAgentAnalyticsActivity,
+  storeAgentMessageFeedbackActivity,
+  storeAgentMessageConsumptionAttributionActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+  retry: {
+    // Analytics is best effort, only retry twice.
+    maximumAttempts: 2,
+    initialInterval: "30 seconds",
+    backoffCoefficient: 2,
+  },
+});
 
 export async function storeAgentAnalyticsWorkflow(
   authType: AuthenticatorType,
@@ -40,5 +43,18 @@ export async function storeAgentMessageFeedbackWorkflow(
 ): Promise<void> {
   await storeAgentMessageFeedbackActivity(authType, {
     message,
+  });
+}
+
+export async function storeAgentMessageConsumptionAttributionWorkflow(
+  authType: AuthenticatorType,
+  {
+    agentLoopArgs,
+  }: {
+    agentLoopArgs: AgentLoopArgs;
+  }
+): Promise<void> {
+  await storeAgentMessageConsumptionAttributionActivity(authType, {
+    agentLoopArgs,
   });
 }

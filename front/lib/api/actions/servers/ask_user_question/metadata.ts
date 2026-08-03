@@ -1,14 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { UserQuestionSchema } from "@app/lib/actions/types";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
-  ask_user_question: {
+export const ASK_USER_QUESTION_TOOLS_METADATA = [
+  {
+    name: "ask_user_question",
     description:
-      "Asks the user a question during execution.\n\n" +
+      "Ask the user a question during execution.\n\n" +
       "This tool can serve multiple purposes:\n" +
       "- Clarify ambiguous instructions where multiple interpretations are plausible\n" +
       "- Validate major decisions before moving forward\n" +
@@ -34,12 +31,15 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
     },
     enableAlerting: true,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Asking user...",
       done: "User answered",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-});
+] as const;
 
 export const ASK_USER_QUESTION_SERVER = {
   serverInfo: {
@@ -49,18 +49,6 @@ export const ASK_USER_QUESTION_SERVER = {
     icon: "ActionChatBubbleThoughtIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
-  tools: Object.values(ASK_USER_QUESTION_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(ASK_USER_QUESTION_TOOLS_METADATA).map((t) => [
-      t.name,
-      t.stake,
-    ])
-  ),
+  tools: ASK_USER_QUESTION_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -10,11 +10,12 @@ export function AppLayoutTitle({ children, className }: AppLayoutTitleProps) {
   return (
     <div
       className={cn(
-        "flex h-[58px] w-full shrink-0 flex-col border-b border-separator px-4 pl-14 lg:pl-4",
-        "bg-background dark:bg-background-night",
-        "dark:border-separator-night",
+        "h-title",
+        "flex w-full shrink-0 flex-col border-b border-separator px-4 pl-14 md:pl-3",
+        "bg-panel-background",
+        "",
         // When no children, only show on mobile for hamburger menu alignment.
-        !children && "block lg:hidden",
+        !children && "block md:hidden",
         className
       )}
     >
@@ -35,52 +36,6 @@ export function AppLayoutSimpleCloseTitle({
       <BarHeader
         title={title}
         rightActions={<BarHeader.ButtonBar variant="close" onClose={onClose} />}
-        className="ml-10 lg:ml-0"
-      />
-    </AppLayoutTitle>
-  );
-}
-
-export function AppLayoutSimpleSaveCancelTitle({
-  title,
-  onSave,
-  onCancel,
-  isSaving,
-  saveTooltip,
-}: {
-  title: string;
-  onSave?: () => void;
-  onCancel: () => void;
-  isSaving?: boolean;
-  saveTooltip?: string;
-}) {
-  return (
-    <AppLayoutTitle>
-      <BarHeader
-        title={title}
-        rightActions={
-          <BarHeader.ButtonBar
-            variant="validate"
-            cancelButtonProps={{
-              size: "sm",
-              label: "Cancel",
-              variant: "ghost",
-              onClick: onCancel,
-            }}
-            saveButtonProps={
-              onSave
-                ? {
-                    size: "sm",
-                    label: isSaving ? "Saving..." : "Save",
-                    variant: "primary",
-                    onClick: onSave,
-                    disabled: isSaving,
-                    tooltip: saveTooltip,
-                  }
-                : undefined
-            }
-          />
-        }
         className="ml-10 lg:ml-0"
       />
     </AppLayoutTitle>

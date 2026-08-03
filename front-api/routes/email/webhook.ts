@@ -15,6 +15,7 @@ import {
   parseSendgridWebhookContent,
   relayEmailToOtherRegion,
   replyToError,
+  resolveRelayedErrorReply,
   shouldRelayToOtherRegion,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
@@ -52,6 +53,7 @@ function headersToNodeHeaders(webHeaders: Headers): EmailWebhookHeaders {
 // Mounted at /api/email/webhook.
 const app = createHono();
 
+/** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
   const headers = headersToNodeHeaders(ctx.req.raw.headers);
   const authHeader = isString(headers.authorization)
@@ -181,7 +183,9 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       });
       if (userRes.isErr()) {
         if (shouldRelayToOtherRegion({ headers, error: userRes.error })) {
-          const relayRes = await relayEmailToOtherRegion(email);
+          const relayRes = await relayEmailToOtherRegion(email, {
+            sourceError: userRes.error,
+          });
           if (relayRes.isOk()) {
             return;
           }
@@ -195,11 +199,24 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
             "[email] Failed to relay inbound email to other region"
           );
         }
-        await replyToError(email, userRes.error);
+        await replyToError(
+          email,
+          resolveRelayedErrorReply({
+            headers,
+            localError: userRes.error,
+            senderEmail: email.sender.email,
+          })
+        );
         return;
       }
 
       const { user, workspace } = userRes.value;
+      const errorLogContext = {
+        userId: user.sId,
+        userEmail: user.email,
+        workspaceId: workspace.sId,
+        workspaceName: workspace.name,
+      };
 
       const targetEmails = [
         ...(email.envelope.to ?? []),
@@ -208,12 +225,16 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
 
       if (targetEmails.length === 0) {
-        await replyToError(email, {
-          type: "invalid_email_error",
-          message:
-            `Failed to match any valid agent email. ` +
-            `Expected agent email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
-        });
+        await replyToError(
+          email,
+          {
+            type: "invalid_email_error",
+            message:
+              `Failed to match any valid agent email. ` +
+              `Expected agent email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
+          },
+          errorLogContext
+        );
         return;
       }
 
@@ -223,18 +244,26 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       );
 
       if (workspace.metadata?.allowEmailAgents !== true) {
-        await replyToError(email, {
-          type: "invalid_email_error",
-          message:
-            "Email interactions with agents are not enabled for your workspace.",
-        });
+        await replyToError(
+          email,
+          {
+            type: "invalid_email_error",
+            message:
+              "Email interactions with agents are not enabled for your workspace.",
+          },
+          errorLogContext
+        );
         return;
       }
 
       const emailBlacklistedAgentIdsRes =
         getEmailBlacklistedAgentIds(workspace);
       if (emailBlacklistedAgentIdsRes.isErr()) {
-        await replyToError(email, emailBlacklistedAgentIdsRes.error);
+        await replyToError(
+          email,
+          emailBlacklistedAgentIdsRes.error,
+          errorLogContext
+        );
         return;
       }
 
@@ -254,7 +283,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
           targetEmail,
         });
         if (matchResult.isErr()) {
-          await replyToError(email, matchResult.error);
+          await replyToError(email, matchResult.error, errorLogContext);
           continue;
         }
         agentConfigurations.push(matchResult.value.agentConfiguration);
@@ -270,7 +299,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       });
 
       if (triggerRes.isErr()) {
-        await replyToError(email, triggerRes.error);
+        await replyToError(email, triggerRes.error, errorLogContext);
         return;
       }
 

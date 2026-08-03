@@ -1,15 +1,14 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
-  search_calls: {
+export const CLARI_COPILOT_TOOLS_METADATA = [
+  {
+    name: "search_calls",
     description:
-      "Search Clari Copilot calls with optional filters. " +
-      "Returns calls that have finished processing (transcript available). " +
-      "Use get_call_details to fetch the full transcript and AI summary for a specific call.",
+      "Search and list Clari Copilot sales calls, filtering by account or company " +
+      "name, participant email, or date range. " +
+      "Returns matching sales calls that have finished processing (transcript available). " +
+      "Use get_call_details to fetch the AI summary and transcript for one specific call.",
     schema: {
       from_date: z
         .string()
@@ -54,13 +53,16 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
       running: "Searching Clari Copilot calls",
       done: "Search Clari Copilot calls",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_call_details: {
+  {
+    name: "get_call_details",
     description:
       "Retrieve details for a specific Clari Copilot call, including the AI summary, " +
-      "topics discussed, action items, and competitor mentions. " +
-      "The turn-by-turn transcript is excluded by default to limit context size; " +
-      "set include_transcript to true only when the full transcript is needed. " +
+      "topics discussed, action items, competitor mentions, and the turn-by-turn transcript. " +
+      "Set include_transcript to false to omit the transcript and limit context size " +
+      "when only the summary and action items are needed. " +
       "Requires a call ID from search_calls.",
     schema: {
       call_id: z
@@ -70,9 +72,9 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether to include the turn-by-turn transcript (default: false). " +
+          "Whether to include the turn-by-turn transcript (default: true). " +
             "The AI summary, topics, and action items are always included. " +
-            "Set to true only when the full transcript is needed."
+            "Set to false to reduce context size when the transcript isn't needed."
         ),
     },
     stake: "never_ask",
@@ -80,8 +82,10 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
       running: "Fetching Clari Copilot call details",
       done: "Fetch Clari Copilot call details",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const CLARI_COPILOT_SERVER = {
   serverInfo: {
@@ -92,15 +96,6 @@ export const CLARI_COPILOT_SERVER = {
     authorization: null,
     icon: "ClariLogo",
     documentationUrl: null,
-    instructions: null,
   },
-  tools: Object.values(CLARI_COPILOT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(CLARI_COPILOT_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: CLARI_COPILOT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

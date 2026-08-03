@@ -1,0 +1,116 @@
+"use client";
+
+import { AcademySearch } from "@marketing/components/academy/AcademyComponents";
+import { TableOfContents } from "@marketing/components/blog/TableOfContents";
+import type { TocItem } from "@marketing/lib/contentful/tableOfContents";
+import type { SearchableItem } from "@marketing/lib/contentful/types";
+import { LinkWrapper } from "@marketing/lib/platform";
+import {
+  ArrowLeft,
+  Button,
+  Menu01,
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
+
+interface AcademySidebarProps {
+  searchableItems: SearchableItem[];
+  tocItems?: TocItem[];
+  backToAcademy: string;
+  searchPlaceholder: string;
+  mobileMenuTitle: string;
+}
+
+function SidebarContent({
+  searchableItems,
+  tocItems,
+  backToAcademy,
+  searchPlaceholder,
+  onNavigate,
+}: AcademySidebarProps & { onNavigate?: () => void }) {
+  return (
+    <>
+      <div className="flex-shrink-0 border-b border-gray-200 px-3 py-3">
+        <LinkWrapper
+          href="/academy"
+          onClick={onNavigate}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {backToAcademy}
+        </LinkWrapper>
+      </div>
+      <div className="flex-shrink-0 px-3 py-3">
+        <AcademySearch
+          searchableItems={searchableItems}
+          placeholder={searchPlaceholder}
+        />
+      </div>
+
+      {tocItems && tocItems.length > 0 && (
+        <div className="flex-1 overflow-y-auto px-3 pb-4">
+          <TableOfContents
+            items={tocItems}
+            className="static max-h-none [&>h3]:mb-1 [&>h3]:text-xs"
+            onItemClick={onNavigate}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+export function AcademySidebar({
+  tocItems = [],
+  ...props
+}: AcademySidebarProps) {
+  return (
+    <div className="sticky top-16 z-40 hidden h-[calc(100vh-4rem)] w-64 flex-col border-r border-gray-200 bg-white lg:flex">
+      <SidebarContent {...props} tocItems={tocItems} />
+    </div>
+  );
+}
+
+export function MobileMenuButton({
+  searchableItems,
+  tocItems = [],
+  backToAcademy,
+  searchPlaceholder,
+  mobileMenuTitle,
+}: AcademySidebarProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <Button
+        icon={Menu01}
+        variant="ghost"
+        size="sm"
+        className="lg:hidden"
+        onClick={() => setIsOpen(true)}
+        aria-label="Open menu"
+      />
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetContent side="left" size="md" className="p-0">
+          <div className="flex h-full flex-col bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3">
+              <SheetTitle className="text-base font-semibold">
+                {mobileMenuTitle}
+              </SheetTitle>
+            </div>
+            <SidebarContent
+              searchableItems={searchableItems}
+              tocItems={tocItems}
+              backToAcademy={backToAcademy}
+              searchPlaceholder={searchPlaceholder}
+              mobileMenuTitle={mobileMenuTitle}
+              onNavigate={() => setIsOpen(false)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}

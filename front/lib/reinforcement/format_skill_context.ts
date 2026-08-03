@@ -3,20 +3,7 @@ import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { escapeXml } from "@app/types/shared/utils/string_utils";
 
-export function formatSkillContext(
-  skill: SkillType,
-  { useInlineTools = false }: { useInlineTools?: boolean } = {}
-): string {
-  const toolsBlock =
-    !useInlineTools && skill.tools.length > 0
-      ? `<tools>${skill.tools
-          .map(
-            (t) =>
-              `<tool sId="${escapeXml(t.sId)}" name="${escapeXml(t.name ?? "")}"/>`
-          )
-          .join("")}</tools>`
-      : "";
-
+export function formatSkillContext(skill: SkillType): string {
   const descBlock = skill.agentFacingDescription
     ? `<agentFacingDescription>${escapeXml(skill.agentFacingDescription)}</agentFacingDescription>`
     : "";
@@ -27,5 +14,5 @@ export function formatSkillContext(
       )}</instructions>`
     : "";
 
-  return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}">${toolsBlock}${descBlock}${instructionsBlock}</skill>`;
+  return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}">${descBlock}${instructionsBlock}</skill>`;
 }

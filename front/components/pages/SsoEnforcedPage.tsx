@@ -1,7 +1,7 @@
+import Custom404 from "@app/components/pages/Custom404";
 import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
-import Custom404 from "@app/pages/404";
 import { Button, Logo } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -50,7 +50,7 @@ export function SsoEnforcedPage() {
           </div>
           <div className="h-10"></div>
           <div>
-            <p className="font-base mb-8 text-muted-foreground dark:text-muted-foreground-night">
+            <p className="font-base mb-8 text-muted-foreground">
               Access requires Single Sign-On (SSO) authentication. Use your SSO
               provider to sign in.{" "}
             </p>

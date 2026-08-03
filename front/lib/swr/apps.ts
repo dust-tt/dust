@@ -1,16 +1,20 @@
+import type {
+  GetRunBlockResponseBody,
+  GetRunResponseBody,
+  GetRunStatusResponseBody,
+  GetRunsResponseBody,
+  PostRunCancelResponseBody,
+} from "@app/lib/api/run";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
-import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
-import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
-import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
-import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
-import type { GetOrPostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]";
-import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
-import type { GetRunResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]";
-import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
-import type { PostRunCancelResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/cancel";
-import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
+import type {
+  GetAppsResponseBody,
+  GetOrPostAppResponseBody,
+} from "@app/types/api/apps";
+import type { GetDustAppSecretsResponseBody } from "@app/types/api/dust_app_secrets";
+import type { GetKeysResponseBody } from "@app/types/api/keys";
+import type { GetProvidersResponseBody } from "@app/types/api/providers";
 import type { AppType } from "@app/types/app";
 import type { RunRunType } from "@app/types/run";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -193,7 +197,11 @@ export function useProviders({
   };
 }
 
-export function useKeys(owner: LightWorkspaceType) {
+export function useKeys(
+  owner: LightWorkspaceType,
+  options?: { disabled?: boolean }
+) {
+  const disabled = options?.disabled ?? false;
   const { fetcher } = useFetcher();
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
   const { data, error, isValidating } = useSWRWithDefaults(
@@ -201,12 +209,13 @@ export function useKeys(owner: LightWorkspaceType) {
     keysFetcher,
     {
       revalidateOnFocus: false,
+      disabled,
     }
   );
 
   return {
     isKeysError: error,
-    isKeysLoading: !error && !data,
+    isKeysLoading: !error && !data && !disabled,
     isValidating,
     keys: data?.keys ?? emptyArray(),
   };

@@ -1,10 +1,6 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type {
-  ContentNodeAttachmentType,
-  ConversationAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
 import {
   isContentFragmentDataSourceNode,
   isContentNodeAttachmentType,
@@ -13,6 +9,10 @@ import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import type {
+  ContentNodeAttachmentType,
+  ConversationAttachmentType,
+} from "@app/types/api/assistant/conversation/attachments";
 import assert from "assert";
 
 /**

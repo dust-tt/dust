@@ -2,7 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { countEligibleUsersForCredits } from "@app/lib/credits/common";
 import { getCustomerPaymentStatus } from "@app/lib/credits/free";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
@@ -25,7 +25,7 @@ export type CreditPurchaseLimits =
 
 // Where the workspace is billed from. Drives Enterprise detection, the
 // billing-cycle bounds, and the Stripe-only trial / payment-issue guard.
-export type CreditPurchaseLimitsContext =
+type CreditPurchaseLimitsContext =
   | { type: "stripe-subscription"; stripeSubscription: Stripe.Subscription }
   | { type: "metronome"; subscription: SubscriptionResource };
 
@@ -52,7 +52,7 @@ export async function getCreditPurchaseLimits(
   const isEnterprise =
     context.type === "stripe-subscription"
       ? isEnterpriseSubscription(context.stripeSubscription)
-      : isEntreprisePlanPrefix(context.subscription.getPlan().code);
+      : isEnterprisePlanPrefix(context.subscription.getPlan().code);
 
   const { cycleStart, cycleEnd } = getCycleBounds(context);
 

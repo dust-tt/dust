@@ -8,15 +8,15 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowPathIcon,
   Button,
-  ChevronDownIcon,
-  ChevronUpIcon,
+  ChevronDown,
+  ChevronUp,
   Chip,
   Input,
+  LayersThree01,
+  RefreshCw02,
   Spinner,
-  Square3Stack3DIcon,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -95,7 +95,7 @@ export default function Block({
       <div
         className={classNames(
           block.indent == 1 ? "ml-8" : "ml-0",
-          "border-border-dark dark:border-border-dark-night",
+          "border-border-dark",
           "flex flex-col rounded-2xl border px-4 py-4"
         )}
       >
@@ -124,8 +124,8 @@ export default function Block({
                 size="icon"
                 icon={
                   block.config && block.config.use_cache
-                    ? Square3Stack3DIcon
-                    : ArrowPathIcon
+                    ? LayersThree01
+                    : RefreshCw02
                 }
                 onClick={() => handleUseCacheChange(!block.config?.use_cache)}
               />
@@ -141,19 +141,19 @@ export default function Block({
                 />
                 <Button
                   variant="ghost-secondary"
-                  icon={ChevronUpIcon}
+                  icon={ChevronUp}
                   onClick={onBlockUp}
                   size="icon"
                 />
                 <Button
                   variant="ghost-secondary"
-                  icon={ChevronDownIcon}
+                  icon={ChevronDown}
                   onClick={onBlockDown}
                   size="icon"
                 />
                 <Button
                   variant="ghost-secondary"
-                  icon={TrashIcon}
+                  icon={Trash01}
                   onClick={onBlockDelete}
                   size="icon"
                 />
@@ -171,11 +171,11 @@ export default function Block({
           <div
             className={classNames(
               "flex flex-row items-center text-sm",
-              "text-primary-500 dark:text-primary-500-night"
+              "text-primary-500"
             )}
           >
             <div className="ml-2 mr-2">
-              <Spinner size="xs" variant="color" />
+              <Spinner size="xs" />
             </div>
             {` ${status.success_count} successes ${status.error_count} errors`}
           </div>
@@ -183,12 +183,12 @@ export default function Block({
           <div
             className={classNames(
               "flex flex-row items-center text-sm",
-              "text-primary-500 dark:text-primary-500-night"
+              "text-primary-500"
             )}
           >
             <div role="status">
               <div className="ml-2 mr-2">
-                <Spinner size="xs" variant="color" />
+                <Spinner size="xs" />
               </div>
             </div>
             {` 0 successes 0 errors`}

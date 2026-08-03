@@ -1,4 +1,7 @@
-import type { WakeUpType } from "@app/types/assistant/wakeups";
+import type {
+  WakeUpScheduleConfig,
+  WakeUpType,
+} from "@app/types/assistant/wakeups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CronExpressionParser } from "cron-parser";
 import cronstrue from "cronstrue";
@@ -6,7 +9,7 @@ import cronstrue from "cronstrue";
 // Render an instant as a localized time of day in the viewer's local
 // timezone. The locale is resolved from the browser/OS so users in 24h
 // regions see "14:30" and users in 12h regions see "2:30 PM".
-export function formatWakeUpTimeOfDay(timestamp: number): string {
+function formatWakeUpTimeOfDay(timestamp: number): string {
   const date = new Date(timestamp);
   return date.toLocaleTimeString(undefined, {
     hour: "2-digit",
@@ -27,21 +30,26 @@ function prefers24HourTime(): boolean {
 // Compute the millisecond timestamp of the next time a wake-up fires. For
 // one-shot schedules this is the stored `fireAt`; for cron schedules we
 // resolve the next firing in the schedule's stored timezone.
-export function getNextWakeUpFireAt(wakeUp: WakeUpType): number {
-  const config = wakeUp.scheduleConfig;
-  switch (config.type) {
+export function getNextWakeUpFireAtFromScheduleConfig(
+  scheduleConfig: WakeUpScheduleConfig
+): number | null {
+  switch (scheduleConfig.type) {
     case "one_shot":
-      return config.fireAt;
+      return scheduleConfig.fireAt;
     case "cron":
-      return CronExpressionParser.parse(config.cron, { tz: config.timezone })
-        .next()
-        .toDate()
-        .getTime();
+      try {
+        return CronExpressionParser.parse(scheduleConfig.cron, {
+          tz: scheduleConfig.timezone,
+        })
+          .next()
+          .toDate()
+          .getTime();
+      } catch {
+        return null;
+      }
     default:
-      assertNeverAndIgnore(config);
-      // Unknown schedule type from a newer server: treat as "fires now" so
-      // the optimistic-clear timer clears the indicator on the next tick.
-      return Date.now();
+      assertNeverAndIgnore(scheduleConfig);
+      return null;
   }
 }
 

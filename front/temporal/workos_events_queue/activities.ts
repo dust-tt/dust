@@ -22,7 +22,7 @@ import {
   getWorkspaceInfos,
   isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlagsForWorkspace } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
 import type { CustomAttributeKey } from "@app/lib/iam/users";
 import {
@@ -30,7 +30,13 @@ import {
   createOrUpdateUser,
   WORKOS_METADATA_KEY_PREFIX,
 } from "@app/lib/iam/users";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import { isSCIMEnabled } from "@app/lib/plans/scim";
+import {
+  ADMIN_GROUP_NAME,
+  BUILDER_GROUP_NAME,
+  GroupResource,
+  MANAGER_GROUP_NAME,
+} from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -67,9 +73,6 @@ const logger = mainLogger.child(
     msgPrefix: "[WorkOS Event] ",
   }
 );
-
-const ADMIN_GROUP_NAME = "dust-admins";
-const BUILDER_GROUP_NAME = "dust-builders";
 
 // Grace window for treating a user_added event as stale when the user was
 // revoked around the same time. Covers races where WorkOS emits both events
@@ -112,7 +115,7 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
     }
   }
 
-  // For dsync events, verify the plan allows SCIM and the directoryId matches
+  // For dsync events, verify SCIM is enabled and the directoryId matches
   // the current organization's active directory.
   const { data: eventData } = event;
   if (
@@ -122,10 +125,12 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
   ) {
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-    if (!subscription?.getPlan().limits.users.isSCIMAllowed) {
+    const featureFlags = await getFeatureFlagsForWorkspace(workspace);
+    const plan = subscription?.getPlan();
+    if (!plan || !isSCIMEnabled(plan, featureFlags)) {
       logger.warn(
         { workspaceId: workspace.sId, organizationId },
-        "SCIM event received but workspace plan does not allow SCIM, skipping"
+        "SCIM event received but neither the workspace plan nor a feature flag allows SCIM, skipping"
       );
       return;
     }
@@ -210,7 +215,20 @@ async function handleRoleAssignmentForGroup(
     directoryId?: string;
   }
 ) {
-  if (group.name !== ADMIN_GROUP_NAME && group.name !== BUILDER_GROUP_NAME) {
+  // The `dust-builders` provisioning group no longer grants the deprecated builder role. Mirror
+  // the membership into the workspace's manual "Builders" group when it exists; if the group has
+  // not been created, ignore it (provisioning never creates it).
+  if (group.name === BUILDER_GROUP_NAME) {
+    await GroupResource.syncBuilderGroupMembership({
+      workspace,
+      user,
+      isBuilder: action === "add",
+      createIfMissing: false,
+    });
+    return;
+  }
+
+  if (group.name !== ADMIN_GROUP_NAME && group.name !== MANAGER_GROUP_NAME) {
     // Not a special group, no role assignment needed.
     return;
   }
@@ -985,9 +1003,10 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  if (!group.canWrite(auth)) {
-    throw new Error("Only admins or group editors can change group members");
-  }
+  // No canWrite guard here — `auth` is always internalAdminForWorkspace
+  // (trusted SCIM/directory sync), and canWrite returns false for agent_editors/
+  // skill_editors groups (their admin role lacks "write"), which would wrongly abort
+  // deprovisioning. dangerouslyRemoveMember is the intended trusted path.
   const res = await group.dangerouslyRemoveMember(auth, {
     user: user.toJSON(),
     allowProvisionedGroups: true,
@@ -1087,6 +1106,26 @@ async function handleCreateOrUpdateWorkOSUser(
   const workOSUser = workOSUserRes.value;
 
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+
+  // Entra (and other IdPs) disable users via SCIM PATCH active=false, which WorkOS translates
+  // into dsync.user.updated with state='inactive' rather than dsync.user.deleted. Treat this
+  // the same as deletion: revoke membership and remove from all groups.
+  if (eventData.state === "inactive") {
+    if (!user) {
+      logger.info(
+        { workspaceId: workspace.sId, workOSUserId: workOSUser.id },
+        "Inactive user not found in workspace, skipping revocation"
+      );
+      return;
+    }
+    await revokeWorkOSUserMembership(
+      workspace,
+      user,
+      eventData.directoryId,
+      false
+    );
+    return;
+  }
   const externalUser: ExternalUser = {
     email: workOSUser.email,
     email_verified: true,
@@ -1210,6 +1249,84 @@ async function handleCreateOrUpdateWorkOSUser(
   });
 }
 
+async function revokeWorkOSUserMembership(
+  workspace: LightWorkspaceType,
+  user: UserResource,
+  directoryId: string | null | undefined,
+  triggersDeleted: boolean
+) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const groups = await GroupResource.listUserGroupsInWorkspace({
+    user,
+    workspace,
+    groupKinds: GROUP_KINDS.filter((k) => k !== "system" && k !== "global"),
+  });
+
+  for (const group of groups) {
+    // No canWrite guard here — see handleUserRemovedFromGroup. `auth` is
+    // internalAdminForWorkspace, and canWrite is false for agent_editors/skill_editors
+    // groups, which would wrongly abort deprovisioning of editor users.
+    const removeResult = await group.dangerouslyRemoveMember(auth, {
+      user: user.toJSON(),
+      allowProvisionedGroups: true,
+    });
+    if (removeResult.isErr()) {
+      logger.warn(
+        {
+          userId: user.sId,
+          groupId: group.sId,
+          error: removeResult.error,
+        },
+        "Failed to remove user from group"
+      );
+    }
+  }
+
+  const membershipRevokeResult = await revokeAndTrackMembership(auth, user, {
+    allowLastAdminRevocation: true,
+    auditActor: {
+      type: "system",
+      id: String(directoryId ?? "directory_sync"),
+      name: "Directory Sync",
+    },
+  });
+
+  if (membershipRevokeResult.isErr()) {
+    if (membershipRevokeResult.error.type === "already_revoked") {
+      logger.info(
+        { userId: user.sId, workspaceId: workspace.sId },
+        "User membership already revoked, skipping"
+      );
+      return;
+    }
+    throw membershipRevokeResult.error;
+  }
+
+  // Emit SCIM-specific audit event in addition to the generic membership.revoked.
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "scim.user_deprovisioned",
+    actor: {
+      type: "system",
+      id: String(directoryId ?? "directory_sync"),
+      name: "Directory Sync",
+    },
+    targets: [
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("user", {
+        sId: user.sId,
+        name: user.fullName() ?? "unknown",
+      }),
+    ],
+    context: { location: "system" },
+    metadata: {
+      email: user.email,
+      directory_id: String(directoryId ?? "unknown"),
+      triggers_deleted: String(triggersDeleted),
+    },
+  });
+}
+
 async function handleDeleteWorkOSUser(
   workspace: LightWorkspaceType,
   event: DsyncUserDeletedEvent
@@ -1234,79 +1351,12 @@ async function handleDeleteWorkOSUser(
   // Clear WorkOS custom attributes before revoking membership.
   await clearCustomAttributesFromUserMetadata(user, workspace);
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const groups = await GroupResource.listUserGroupsInWorkspace({
+  await revokeWorkOSUserMembership(
+    workspace,
     user,
-    workspace,
-    groupKinds: GROUP_KINDS.filter((k) => k !== "system" && k !== "global"),
-  });
-
-  for (const group of groups) {
-    if (!group.canWrite(auth)) {
-      throw new Error("Only admins or group editors can change group members");
-    }
-    const removeResult = await group.dangerouslyRemoveMember(auth, {
-      user: user.toJSON(),
-      allowProvisionedGroups: true,
-    });
-    if (removeResult.isErr()) {
-      logger.warn(
-        {
-          userId: user.sId,
-          groupId: group.sId,
-          error: removeResult.error,
-        },
-        "Failed to remove user from group"
-      );
-    }
-  }
-
-  const membershipRevokeResult = await revokeAndTrackMembership(auth, user, {
-    allowLastAdminRevocation: true,
-    auditActor: {
-      type: "system",
-      id: String(eventData.directoryId ?? "directory_sync"),
-      name: "Directory Sync",
-    },
-  });
-
-  if (membershipRevokeResult.isErr()) {
-    if (membershipRevokeResult.error.type === "already_revoked") {
-      logger.info(
-        {
-          userId: user.sId,
-          workspaceId: workspace.sId,
-        },
-        "User membership already revoked, skipping"
-      );
-      return;
-    }
-    throw membershipRevokeResult.error;
-  }
-
-  // Emit SCIM-specific audit event in addition to the generic membership.revoked.
-  void emitAuditLogEventDirect({
-    workspace,
-    action: "scim.user_deprovisioned",
-    actor: {
-      type: "system",
-      id: String(eventData.directoryId ?? "directory_sync"),
-      name: "Directory Sync",
-    },
-    targets: [
-      buildAuditLogTarget("workspace", workspace),
-      buildAuditLogTarget("user", {
-        sId: user.sId,
-        name: user.fullName() ?? "unknown",
-      }),
-    ],
-    context: { location: "system" },
-    metadata: {
-      email: user.email,
-      directory_id: String(eventData.directoryId ?? "unknown"),
-      triggers_deleted: "true",
-    },
-  });
+    eventData.directoryId,
+    true
+  );
 }
 
 async function handleGroupDelete(

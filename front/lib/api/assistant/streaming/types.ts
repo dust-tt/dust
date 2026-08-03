@@ -1,8 +1,8 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import type {
-  ToolAskUserQuestionEvent,
-  ToolFileAuthRequiredEvent,
-  ToolPersonalAuthRequiredEvent,
+  AgentLoopToolAskUserQuestionEvent,
+  AgentLoopToolFileAuthRequiredEvent,
+  AgentLoopToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   AgentActionSuccessEvent,
@@ -19,10 +19,12 @@ import type {
   AgentMessageNewEvent,
   CompactionMessageDoneEvent,
   CompactionMessageNewEvent,
+  ConversationForkPreparedEvent,
   ConversationTitleEvent,
   PlanUpdatedEvent,
   UserMessageNewEvent,
   UserMessagePromotedEvent,
+  WakeUpUpdatedEvent,
 } from "@app/types/assistant/conversation";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
@@ -37,9 +39,9 @@ export type AgentMessageEvents =
   | AgentToolCallStartedEvent
   | GenerationTokensEvent
   | ToolErrorEvent
-  | ToolAskUserQuestionEvent
-  | ToolFileAuthRequiredEvent
-  | ToolPersonalAuthRequiredEvent;
+  | AgentLoopToolAskUserQuestionEvent
+  | AgentLoopToolFileAuthRequiredEvent
+  | AgentLoopToolPersonalAuthRequiredEvent;
 
 export type ConversationEvents =
   | ConversationTitleEvent
@@ -49,7 +51,9 @@ export type ConversationEvents =
   | AgentMessageDoneEvent
   | CompactionMessageNewEvent
   | CompactionMessageDoneEvent
-  | PlanUpdatedEvent;
+  | ConversationForkPreparedEvent
+  | PlanUpdatedEvent
+  | WakeUpUpdatedEvent;
 
 export const TERMINAL_AGENT_MESSAGE_EVENT_TYPES: AgentMessageEvents["type"][] =
   [

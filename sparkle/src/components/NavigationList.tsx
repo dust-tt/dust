@@ -14,37 +14,15 @@ import {
 } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { TypingAnimation } from "@sparkle/components/TypingAnimation";
-import { ChevronDownIcon, ChevronUpIcon, MoreIcon } from "@sparkle/icons/app";
+import { Lock01 } from "@sparkle/icons";
+import {
+  ChevronDown,
+  ChevronUp,
+  DotsHorizontal,
+} from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import * as React from "react";
-
-const NavigationListItemStyles = cva(
-  cn(
-    "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
-    "s-items-center s-outline-none s-rounded-xl s-text-sm s-px-3 s-py-2 s-transition-colors s-duration-300",
-    "data-[disabled]:s-pointer-events-none",
-    "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night",
-    "hover:s-text-foreground dark:hover:s-text-foreground-night",
-    "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
-  ),
-  {
-    variants: {
-      state: {
-        active: "active:s-bg-primary-150 dark:active:s-bg-primary-200-night",
-        selected: cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "s-bg-primary-100 dark:s-bg-primary-200-night"
-        ),
-        unselected:
-          "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      },
-    },
-    defaultVariants: {
-      state: "unselected",
-    },
-  }
-);
 
 interface NavigationListProps {
   viewportRef?: React.RefObject<HTMLDivElement>;
@@ -59,10 +37,10 @@ const NavigationList = React.forwardRef<
     <ScrollArea
       ref={ref}
       viewportRef={viewportRef}
-      className={cn(className, "s-transition-all s-duration-300")}
+      className={className}
       {...props}
     >
-      <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
+      <div className="flex flex-col gap-0.5">{children}</div>
       <ScrollBar />
     </ScrollArea>
   );
@@ -75,6 +53,7 @@ interface NavigationListItemProps
   extends React.HTMLAttributes<HTMLDivElement>,
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
+  disabled?: boolean;
   label?: string;
   labelAnimation?: "none" | "typing" | "streaming";
   onTypingAnimationComplete?: () => void;
@@ -95,6 +74,7 @@ const NavigationListItem = React.forwardRef<
     {
       className,
       selected,
+      disabled,
       label,
       labelAnimation = "none",
       onTypingAnimationComplete,
@@ -114,22 +94,14 @@ const NavigationListItem = React.forwardRef<
     },
     ref
   ) => {
-    const [isPressed, setIsPressed] = React.useState(false);
-
-    const handleMouseDown = (event: React.MouseEvent) => {
-      if (!(event.target as HTMLElement).closest(".button-class")) {
-        setIsPressed(true);
-      }
-    };
-
     const getStatusDotColor = () => {
       switch (status) {
         case "unread":
-          return "s-h-2 s-w-2 s-m-1 s-bg-highlight-500 dark:s-bg-highlight-500-night";
+          return "h-2 w-2 m-1 bg-highlight-500";
         case "blocked":
-          return "s-h-2 s-w-2 s-m-1 s-bg-golden-400 dark:s-bg-golden-400-night";
+          return "h-2 w-2 m-1 bg-info-400";
         case "error":
-          return "s-h-2 s-w-2 s-m-1 s-bg-warning-400 dark:s-bg-warning-400-night";
+          return "h-2 w-2 m-1 bg-warning-400";
         default:
           return "";
       }
@@ -137,49 +109,51 @@ const NavigationListItem = React.forwardRef<
 
     const shouldShowStatusDot = status !== "idle";
     const counterValue = count && count > 0 ? count : undefined;
-    const shouldHideStatusIndicators = Boolean(moreMenu && selected);
 
     return (
       <div
-        className={cn("s-group/menu-item s-relative", className)}
+        className={cn("group/menu-item relative", className)}
         ref={ref}
         data-nav="menu-button"
         data-selected={selected}
+        data-disabled={disabled}
         {...props}
       >
         <LinkWrapper
-          href={href}
+          href={disabled ? undefined : href}
           target={target}
           rel={rel}
           replace={replace}
           shallow={shallow}
         >
           <div
+            aria-disabled={disabled}
             className={cn(
-              "s-peer/menu-button",
-              NavigationListItemStyles({
-                state: selected
-                  ? "selected"
-                  : isPressed
-                    ? "active"
-                    : "unselected",
-              })
+              "peer/menu-button",
+              "text-muted-foreground font-medium",
+              "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
+              "items-center outline-hidden rounded-lg text-sm p-2 transition-colors duration-150 motion-reduce:transition-none",
+              "data-[disabled]:pointer-events-none",
+              "hover:bg-hover hover:text-primary",
+              selected && "bg-selected text-primary",
+              disabled && "pointer-events-none cursor-default opacity-50"
             )}
-            onMouseLeave={() => {
-              setIsPressed(false);
-            }}
-            onMouseDown={handleMouseDown}
-            onMouseUp={() => setIsPressed(false)}
           >
-            {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
+            {(icon || disabled) && (
+              <Icon
+                visual={disabled ? Lock01 : icon}
+                size="xs"
+                className="m-0.5 text-muted-foreground"
+              />
+            )}
             {avatar}
             {label && (
               <span
                 className={cn(
-                  "s-overflow-hidden s-text-ellipsis s-whitespace-nowrap",
+                  "overflow-hidden text-ellipsis whitespace-nowrap",
                   !suffix &&
-                    "s-grow group-focus-within/menu-item:s-pr-8 group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8",
-                  hasActivity && "s-font-semibold"
+                    "grow group-focus-within/menu-item:pr-8 group-hover/menu-item:pr-8 group-data-[selected=true]/menu-item:pr-8",
+                  hasActivity && "font-semibold"
                 )}
               >
                 {labelAnimation === "typing" ? (
@@ -198,32 +172,32 @@ const NavigationListItem = React.forwardRef<
             {suffix && (
               <div
                 className={cn(
-                  "s-flex s-grow s-flex-shrink-0 s-items-center",
+                  "flex grow flex-shrink-0 items-center justify-end",
                   moreMenu &&
-                    "group-focus-within/menu-item:s-hidden group-hover/menu-item:s-hidden"
+                    "group-focus-within/menu-item:hidden group-hover/menu-item:hidden"
                 )}
               >
                 {suffix}
               </div>
             )}
-            {counterValue !== undefined && !shouldHideStatusIndicators && (
+            {counterValue !== undefined && (
               <Counter
                 value={counterValue}
                 size="xs"
                 variant="outline"
                 className={cn(
-                  "s-flex-shrink-0 s-translate-x-0.5",
+                  "flex-shrink-0 translate-x-0.5",
                   moreMenu &&
-                    "group-focus-within/menu-item:s-hidden group-hover/menu-item:s-hidden"
+                    "group-focus-within/menu-item:hidden group-hover/menu-item:hidden"
                 )}
               />
             )}
-            {shouldShowStatusDot && !shouldHideStatusIndicators && (
+            {shouldShowStatusDot && (
               <div
                 className={cn(
-                  "s-heading-xs s-flex s-flex-shrink-0 s-items-center s-justify-center s-rounded-full",
+                  "heading-xs flex flex-shrink-0 items-center justify-center rounded-full",
                   moreMenu &&
-                    "group-focus-within/menu-item:s-hidden group-hover/menu-item:s-hidden",
+                    "group-focus-within/menu-item:hidden group-hover/menu-item:hidden",
                   getStatusDotColor()
                 )}
               />
@@ -240,75 +214,64 @@ NavigationListItem.displayName = "NavigationListItem";
 interface NavigationListItemActionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
+  forceVisible?: boolean;
 }
 
 const NavigationListItemAction = React.forwardRef<
   HTMLDivElement,
   NavigationListItemActionProps
->(({ className, ...props }, ref) => {
+>(({ className, forceVisible, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "s-absolute s-right-2 s-top-1.5 s-opacity-0 s-transition-opacity",
-        "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100",
+        "absolute right-2 top-1.5 transition-opacity",
+        forceVisible
+          ? "opacity-100"
+          : "opacity-0 group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
         className
       )}
       {...props}
     >
-      <Button size="xmini" icon={MoreIcon} variant="ghost" />
+      <Button
+        size="xmini"
+        icon={DotsHorizontal}
+        variant="ghost"
+        className="hover:bg-hover active:bg-selected"
+      />
     </div>
   );
 });
 NavigationListItemAction.displayName = "NavigationListItemAction";
 
-const variantStyles = cva("", {
-  variants: {
-    variant: {
-      primary: "s-text-foreground dark:s-text-foreground-night",
-      secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-    },
-    isSticky: {
-      true: cn(
-        "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
-        "s-border-border dark:s-border-border-night"
-      ),
-    },
-  },
-  defaultVariants: {
-    variant: "primary",
-    isSticky: false,
-  },
-});
-
-const labelStyles = cva(
-  "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-pr-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
-);
-
 interface NavigationListLabelProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof variantStyles> {
+  extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
+  icon?: React.ComponentType;
   action?: React.ReactNode;
+  isSticky?: boolean;
 }
 
 const NavigationListLabel = React.forwardRef<
   HTMLDivElement,
   NavigationListLabelProps
->(({ className, variant, label, isSticky, action, ...props }, ref) => (
+>(({ className, label, icon, isSticky, action, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      labelStyles(),
-      variantStyles({ variant, isSticky }),
-      "s-pl-3",
+      "flex items-center justify-between gap-2 pt-4 pb-2 px-2 whitespace-nowrap overflow-hidden text-ellipsis",
+      "text-sm",
+      "bg-app-background",
+      "text-muted-foreground",
+      isSticky && "sticky top-0 z-10 border-border",
       className
     )}
     {...props}
   >
-    <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
-      <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
+    <div className="flex items-center gap-1 overflow-hidden text-ellipsis">
+      {icon && <Icon visual={icon} size="xs" />}
+      <span className="overflow-hidden text-ellipsis">{label}</span>
     </div>
     {action}
   </div>
@@ -316,27 +279,10 @@ const NavigationListLabel = React.forwardRef<
 
 NavigationListLabel.displayName = "NavigationListLabel";
 
-const variantCompactStyles = cva(
-  "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-foreground dark:s-text-foreground-night s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
-  {
-    variants: {
-      isSticky: {
-        true: cn(
-          "s-sticky s-top-0 s-z-10 s-bg-muted-background dark:s-bg-muted-background-night",
-          "s-border-border dark:s-border-border-night"
-        ),
-      },
-    },
-    defaultVariants: {
-      isSticky: false,
-    },
-  }
-);
-
 interface NavigationListCompactLabelProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof variantCompactStyles> {
+  extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
+  isSticky?: boolean;
 }
 
 const NavigationListCompactLabel = React.forwardRef<
@@ -345,10 +291,14 @@ const NavigationListCompactLabel = React.forwardRef<
 >(({ className, label, isSticky, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(variantCompactStyles({ isSticky }), className)}
+    className={cn(
+      "flex px-2 py-1 pl-3 text-[10px] font-semibold text-faint pt-3 uppercase whitespace-nowrap overflow-hidden text-ellipsis",
+      isSticky && "sticky top-0 z-10 bg-muted-background border-border",
+      className
+    )}
     {...props}
   >
-    <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
+    <div className="flex items-center gap-1 overflow-hidden text-ellipsis">
       {label}
     </div>
   </div>
@@ -360,13 +310,14 @@ interface NavigationListCollapsibleSectionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   icon?: React.ComponentType;
+  /** Count badge shown next to the label (e.g. number of unread items). */
+  count?: number;
   action?: React.ReactNode;
   actionOnHover?: boolean;
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  type?: "static" | "collapse" | "collapseAndScroll";
-  variant?: "primary" | "secondary";
+  type?: "static" | "collapse";
   children: React.ReactNode;
   /** Number of children to show when partially collapsed. undefined = show all (current behavior). */
   visibleItems?: number;
@@ -378,30 +329,24 @@ interface NavigationListCollapsibleSectionProps
 
 const collapseableStyles = cva(
   cn(
-    "s-py-2 s-px-2.5 s-w-full s-flex-1 s-text-left s-w-full",
-    "s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
-    "s-select-none",
-    "s-outline-none s-rounded-xl s-transition-colors s-duration-300",
-    "data-[disabled]:s-pointer-events-none",
-    "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night"
+    "w-full flex-1 text-left w-full",
+    "text-muted-foreground",
+    "text-sm whitespace-nowrap overflow-hidden text-ellipsis",
+    "select-none",
+    "outline-hidden rounded-xl",
+    "data-[disabled]:pointer-events-none"
   ),
   {
     variants: {
-      variant: {
-        primary: "s-text-foreground dark:s-text-foreground-night",
-        secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      },
       isCollapsible: {
         true: cn(
-          "s-cursor-pointer s-mb-0.5",
-          "hover:s-text-foreground dark:hover:s-text-foreground-night",
-          "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
+          "cursor-pointer mb-0.5"
+          // "hover:bg-primary-100"
         ),
         false: "",
       },
     },
     defaultVariants: {
-      variant: "primary",
       isCollapsible: false,
     },
   }
@@ -415,12 +360,12 @@ const NavigationListCollapsibleSection = React.forwardRef<
     {
       label,
       icon,
+      count,
       action,
       actionOnHover = true,
       children,
       className,
       type = "static",
-      variant = "primary",
       defaultOpen,
       open,
       onOpenChange,
@@ -446,31 +391,26 @@ const NavigationListCollapsibleSection = React.forwardRef<
       : [];
 
     const isCollapsible = type !== "static";
+    const counterValue = count && count > 0 ? count : undefined;
     const labelElement = (
-      <div
-        className={cn(
-          "notranslate",
-          collapseableStyles({ variant, isCollapsible })
-        )}
-      >
-        {icon ? (
-          <span className="s-flex s-items-center s-gap-1.5">
-            <Icon visual={icon} size="xs" />
-            <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
-          </span>
-        ) : (
-          label
-        )}
+      <div className={cn("notranslate", collapseableStyles({ isCollapsible }))}>
+        <span className="flex items-center gap-1.5">
+          {icon && <Icon visual={icon} size="xs" />}
+          <span className="overflow-hidden text-ellipsis">{label}</span>
+          {counterValue !== undefined && (
+            <Counter value={counterValue} size="xs" variant="highlight" />
+          )}
+        </span>
       </div>
     );
 
     const actionElement = action && (
       <div
         className={cn(
-          "s-m-1.5 s-flex s-gap-1 s-pr-0.5 s-transition-opacity",
+          "flex gap-1 transition-opacity",
           actionOnHover
-            ? "[@media(hover:hover)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
-            : "s-opacity-100"
+            ? "[@media(hover:hover)_and_(pointer:fine)]:opacity-0 hover:opacity-100 group-has-[:focus-visible]/menu-item:opacity-100 group-hover/menu-item:opacity-100"
+            : "opacity-100"
         )}
         onClick={(e) => {
           e.stopPropagation();
@@ -488,20 +428,18 @@ const NavigationListCollapsibleSection = React.forwardRef<
     };
 
     const renderedContent = (
-      <div className="s-flex s-flex-col s-gap-0.5">
+      <div className="flex flex-col gap-0.5">
         {visibleChildrenSlice}
         {hasPartialCollapse && (
           <Collapsible open={isShowingAll} onOpenChange={setIsShowingAll}>
             <CollapsibleContent>
-              <div className="s-flex s-flex-col s-gap-0.5">
-                {overflowChildren}
-              </div>
+              <div className="flex flex-col gap-0.5">{overflowChildren}</div>
             </CollapsibleContent>
-            <div className="s-px-1.5 s-py-1 s-gap-1 s-flex">
+            <div className="px-1.5 py-1 gap-1 flex">
               {isShowingAll ? (
                 <Button
                   size="xs"
-                  icon={ChevronUpIcon}
+                  icon={ChevronUp}
                   variant="ghost-secondary"
                   label="Hide"
                   onClick={() => setIsShowingAll(false)}
@@ -509,13 +447,13 @@ const NavigationListCollapsibleSection = React.forwardRef<
               ) : (
                 <Button
                   size="xs"
-                  icon={ChevronDownIcon}
+                  icon={ChevronDown}
                   variant="ghost-secondary"
                   label="Show all"
                   isCounter={overflowCount !== undefined && overflowCount > 0}
                   counterValue={String(overflowCount)}
                   className={
-                    overflowHasActivity ? "[&>div]:s-font-bold" : undefined
+                    overflowHasActivity ? "[&>div]:font-bold" : undefined
                   }
                   onClick={() => setIsShowingAll(true)}
                 />
@@ -529,7 +467,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     if (type === "static") {
       return (
         <div ref={ref} className={className} {...props}>
-          <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
+          <div className="group/menu-item relative flex flex-1 items-center justify-start gap-2 pl-2 py-1.5 font-medium">
             {labelElement}
             {actionElement}
           </div>
@@ -545,28 +483,10 @@ const NavigationListCollapsibleSection = React.forwardRef<
       ...props,
     };
 
-    if (type === "collapseAndScroll") {
-      return (
-        <Collapsible ref={ref} className={className} {...collapsibleProps}>
-          <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
-            <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
-            {actionElement}
-          </div>
-          <CollapsibleContent>
-            <ScrollArea>
-              {renderedContent}
-              <ScrollBar />
-            </ScrollArea>
-          </CollapsibleContent>
-        </Collapsible>
-      );
-    }
-
-    // type === "collapse" (default collapsible behavior)
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
-          <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
+        <div className="group/menu-item relative flex flex-1 items-center text-sm font-medium justify-start gap-2 pl-2 py-1.5 text-muted-foreground">
+          <CollapsibleTrigger hideChevron>{label}</CollapsibleTrigger>
           {actionElement}
         </div>
         <CollapsibleContent>{renderedContent}</CollapsibleContent>

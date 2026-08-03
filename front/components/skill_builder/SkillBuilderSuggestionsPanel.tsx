@@ -1,5 +1,3 @@
-import { getDefaultMCPAction } from "@app/components/agent_builder/types";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
@@ -8,17 +6,17 @@ import {
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import {
-  Chip,
-  ContentMessage,
-  LightbulbIcon,
-  ScrollArea,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Lightbulb04, ScrollArea, Spinner } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 
-export function SkillBuilderSuggestionsPanel() {
+interface SkillBuilderSuggestionsPanelProps {
+  disabled?: boolean;
+}
+
+export function SkillBuilderSuggestionsPanel({
+  disabled = false,
+}: SkillBuilderSuggestionsPanelProps) {
   const {
     owner,
     skillId,
@@ -36,8 +34,6 @@ export function SkillBuilderSuggestionsPanel() {
     () => getValues("agentFacingDescription") ?? "",
     [getValues]
   );
-  const { mcpServerViews } = useMCPServerViewsContext();
-
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
     useSkillSuggestions({
       skillId,
@@ -50,38 +46,6 @@ export function SkillBuilderSuggestionsPanel() {
     skillId,
     workspaceId: owner.sId,
   });
-
-  const applyToolEdits = useCallback(
-    (suggestion: SkillSuggestionType) => {
-      const { toolEdits } = suggestion.suggestion;
-      if (!toolEdits || toolEdits.length === 0) {
-        return;
-      }
-
-      let currentTools = getValues("tools");
-
-      for (const edit of toolEdits) {
-        if (edit.action === "add") {
-          const alreadyAdded = currentTools.some(
-            (t) => t.configuration.mcpServerViewId === edit.toolId
-          );
-          if (!alreadyAdded) {
-            const view = mcpServerViews.find((v) => v.sId === edit.toolId);
-            if (view) {
-              currentTools = [...currentTools, getDefaultMCPAction(view)];
-            }
-          }
-        } else {
-          currentTools = currentTools.filter(
-            (t) => t.configuration.mcpServerViewId !== edit.toolId
-          );
-        }
-      }
-
-      setValue("tools", currentTools, { shouldDirty: true });
-    },
-    [getValues, setValue, mcpServerViews]
-  );
 
   const applyAgentFacingDescriptionEdit = useCallback(
     (suggestion: SkillSuggestionType) => {
@@ -99,10 +63,13 @@ export function SkillBuilderSuggestionsPanel() {
 
   const handleAccept = useCallback(
     async (suggestion: SkillSuggestionType) => {
+      if (disabled) {
+        return;
+      }
+
       const result = await patchSuggestions([suggestion.sId], "approved");
       if (result) {
         acceptInstructionEdits?.(suggestion.sId);
-        applyToolEdits(suggestion);
         applyAgentFacingDescriptionEdit(suggestion);
         setSelectedSuggestionId(null);
         await mutateSuggestions();
@@ -112,21 +79,25 @@ export function SkillBuilderSuggestionsPanel() {
       patchSuggestions,
       mutateSuggestions,
       acceptInstructionEdits,
-      applyToolEdits,
       applyAgentFacingDescriptionEdit,
       setSelectedSuggestionId,
+      disabled,
     ]
   );
 
   const handleDecline = useCallback(
     async (suggestion: SkillSuggestionType) => {
+      if (disabled) {
+        return;
+      }
+
       const result = await patchSuggestions([suggestion.sId], "rejected");
       if (result) {
         setSelectedSuggestionId(null);
         await mutateSuggestions();
       }
     },
-    [patchSuggestions, mutateSuggestions, setSelectedSuggestionId]
+    [patchSuggestions, mutateSuggestions, setSelectedSuggestionId, disabled]
   );
 
   const handleSelect = useCallback(
@@ -141,17 +112,10 @@ export function SkillBuilderSuggestionsPanel() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-1 px-4 pb-3 pt-4">
-        <div className="flex items-center gap-2">
-          <h2 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-            Suggestions
-          </h2>
-          <Chip size="xs" color="golden" label="Beta" />
-        </div>
-        <ContentMessage variant="info" size="lg">
-          Skill suggestions are currently in beta testing. We are very
-          interested in your feedback to improve the feature.
-        </ContentMessage>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <h2 className="heading-lg font-semibold text-foreground">
+          Suggestions
+        </h2>
+        <p className="text-sm text-muted-foreground">
           Dust continuously analyses conversations using this skill to suggest
           improvements.
         </p>
@@ -165,8 +129,8 @@ export function SkillBuilderSuggestionsPanel() {
             </div>
           ) : suggestions.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
-              <LightbulbIcon className="text-muted-foreground dark:text-muted-foreground-night" />
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <Lightbulb04 className="text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
                 No pending suggestions.
               </p>
             </div>
@@ -184,6 +148,7 @@ export function SkillBuilderSuggestionsPanel() {
                 isSelected={selectedSuggestionId === suggestion.sId}
                 onSelect={() => handleSelect(suggestion.sId)}
                 workspaceId={owner.sId}
+                disabled={disabled}
               />
             ))
           )}

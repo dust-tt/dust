@@ -34,7 +34,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
       );
     });
 
-    it("should return 400 when sole admin tries to change own role to builder", async () => {
+    it("should return 400 when sole admin tries to change own role to user", async () => {
       const { workspace, user } = await createPrivateApiMockRequest({
         method: "POST",
         role: "admin",
@@ -45,7 +45,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "builder" }),
+          body: JSON.stringify({ role: "user" }),
         }
       );
 
@@ -120,14 +120,39 @@ describe("POST /api/w/:wId/members/:uId", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "builder" }),
+          body: JSON.stringify({ role: "manager" }),
         }
       );
 
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.member).toBeDefined();
-      expect(data.member.workspaces[0].role).toBe("builder");
+      expect(data.member.workspaces[0].role).toBe("manager");
+    });
+
+    it("should return 400 when assigning the deprecated builder role", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetUser.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "builder" }),
+        }
+      );
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error.type).toBe("invalid_request_error");
     });
 
     it("should return 400 when sole admin tries to revoke themselves", async () => {
@@ -282,6 +307,118 @@ describe("POST /api/w/:wId/members/:uId", () => {
     });
   });
 
+  describe("manager escalation guard", () => {
+    it("should return 403 when manager tries to change an admin's role", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "manager",
+      });
+
+      const targetAdmin = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetAdmin, {
+        role: "admin",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetAdmin.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "user" }),
+        }
+      );
+
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.error.type).toBe("workspace_auth_error");
+      expect(data.error.message).toBe(
+        "You do not have permission to assign or modify the admin role."
+      );
+    });
+
+    it("should return 403 when manager tries to promote a user to admin", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "manager",
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetUser.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "admin" }),
+        }
+      );
+
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.error.type).toBe("workspace_auth_error");
+      expect(data.error.message).toBe(
+        "You do not have permission to assign or modify the admin role."
+      );
+    });
+
+    it("should return 403 when manager tries to revoke an admin", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "manager",
+      });
+
+      const targetAdmin = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetAdmin, {
+        role: "admin",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetAdmin.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "revoked" }),
+        }
+      );
+
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.error.type).toBe("workspace_auth_error");
+      expect(data.error.message).toBe(
+        "You do not have permission to assign or modify the admin role."
+      );
+    });
+
+    it("should return 200 when manager changes a non-admin user's role", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "manager",
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetUser.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "manager" }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.member).toBeDefined();
+      expect(data.member.workspaces[0].role).toBe("manager");
+    });
+  });
+
   describe("GET /api/w/:wId/members/:uId", () => {
     const allowedAttributes = new Set([
       "id",
@@ -419,7 +556,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "builder" }),
+          body: JSON.stringify({ role: "manager" }),
         }
       );
 

@@ -1,6 +1,11 @@
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -15,7 +20,6 @@ import {
   isValidTriggerStatus,
 } from "@app/types/assistant/triggers";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare createdAt: CreationOptional<Date>;
@@ -43,6 +47,12 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
    */
   declare agentConfigurationId: ForeignKey<AgentConfigurationModel["sId"]>;
   declare editor: ForeignKey<UserModel["id"]>;
+
+  /**
+   * Pod (Project Space) the trigger's conversation is created in. Null means the
+   * conversation is created in the default space, matching legacy behavior.
+   */
+  declare spaceId: ForeignKey<SpaceModel["id"]> | null;
 }
 
 TriggerModel.init(
@@ -70,12 +80,12 @@ TriggerModel.init(
       allowNull: false,
     },
     naturalLanguageDescription: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       defaultValue: null,
     },
     customPrompt: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       defaultValue: null,
     },
@@ -104,6 +114,10 @@ TriggerModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    spaceId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
   },
   {
     modelName: "trigger",
@@ -124,6 +138,7 @@ TriggerModel.init(
     indexes: [
       { fields: ["workspaceId", "agentConfigurationId", "name"] },
       { fields: ["workspaceId", "webhookSourceViewId"] },
+      { fields: ["spaceId"], concurrently: true },
     ],
   }
 );
@@ -136,4 +151,10 @@ TriggerModel.belongsTo(WebhookSourcesViewModel, {
   foreignKey: { name: "webhookSourceViewId", allowNull: true },
   onDelete: "RESTRICT",
   onUpdate: "CASCADE",
+});
+
+TriggerModel.belongsTo(SpaceModel, {
+  as: "space",
+  foreignKey: { name: "spaceId", allowNull: true },
+  onDelete: "RESTRICT",
 });

@@ -5,10 +5,13 @@ import {
 } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 
 /**
  * Called when a sandbox-child action enters a blocked state. Flips the
@@ -22,7 +25,7 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 export async function pauseSandboxBashForBlockedChild(
   auth: Authenticator,
   action: AgentMCPActionResource,
-  conversation: { sId: string }
+  conversation: ConversationWithoutContentType
 ): Promise<void> {
   const info = action.stepContext.sandboxChildActionInfo;
   if (!isSandboxChildActionInfo(info)) {
@@ -55,9 +58,9 @@ export async function pauseSandboxBashForBlockedChild(
   // reconnects via execId. DB-first is the self-converging shape.
   await parentAction.updateStatus("blocked_child_action_input_required");
 
-  const pauseResult = await SandboxResource.pauseForApproval(
+  const pauseResult = await ConversationSandboxAdapter.pauseSandboxForApproval(
     auth,
-    conversation.sId
+    conversation
   );
   if (pauseResult.isErr()) {
     logger.error(

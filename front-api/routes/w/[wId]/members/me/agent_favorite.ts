@@ -1,7 +1,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
-import type { PostAgentUserFavoriteResponseBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
-import { PostAgentUserFavoriteRequestBodySchema } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
+import type { PostAgentUserFavoriteResponseBody } from "@app/types/api/assistant/user_relation";
+import { PostAgentUserFavoriteRequestBodySchema } from "@app/types/api/assistant/user_relation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -9,6 +9,7 @@ import { validate } from "@front-api/middlewares/validator";
 // Mounted at /api/w/:wId/members/me/agent_favorite.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostAgentUserFavoriteRequestBodySchema),

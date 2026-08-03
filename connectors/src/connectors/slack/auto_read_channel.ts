@@ -64,22 +64,22 @@ export async function autoReadChannel(
     logger
   );
 
-  // Make a simple API call to check if workspace is accessible
-  // If workspace is in maintenance, the API will return 503
-  const spacesRes = await dustAPI.getSpaces();
-  if (spacesRes.isErr()) {
+  // Probe the workspace: /exists does no work beyond authentication and
+  // returns an error when the workspace is gone, relocated or in maintenance.
+  const existsRes = await dustAPI.exists();
+  if (existsRes.isErr()) {
     logger.info(
       {
         connectorId: connector.id,
         teamId,
         workspaceId: dataSourceConfig.workspaceId,
-        error: spacesRes.error.message,
+        error: existsRes.error.message,
       },
       "Skipping auto-read channel: workspace API call failed (likely in maintenance)"
     );
     return new Err(
       new Error(
-        `Cannot auto-read channel: workspace is unavailable (${spacesRes.error.message})`
+        `Cannot auto-read channel: workspace is unavailable (${existsRes.error.message})`
       )
     );
   }

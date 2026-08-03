@@ -14,6 +14,36 @@ export type CachedContract = Omit<ContractV2, "commits" | "credits">;
 // Null values are NOT cached: when no contract is found we want a fresh fetch next time.
 
 /**
+ * Resolve a workspace's Metronome customer id and the contract id of its
+ * active subscription. Returns null when either is missing.
+ */
+export async function resolveActiveMetronomeIds(workspaceId: string): Promise<{
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+} | null> {
+  const workspace = await WorkspaceModel.findOne({
+    attributes: ["id", "metronomeCustomerId"],
+    where: { sId: workspaceId },
+  });
+  if (!workspace?.metronomeCustomerId) {
+    return null;
+  }
+
+  const subscription = await SubscriptionModel.findOne({
+    attributes: ["metronomeContractId"],
+    where: { workspaceId: workspace.id, status: "active" },
+  });
+  if (!subscription?.metronomeContractId) {
+    return null;
+  }
+
+  return {
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    metronomeContractId: subscription.metronomeContractId,
+  };
+}
+
+/**
  * Fetch the active Metronome contract for a workspace.
  * Resolves metronomeCustomerId from the workspace table and contractId from
  * the active subscription. Returns null when either is missing or on failure.
@@ -22,36 +52,22 @@ async function fetchActiveContract(
   workspaceId: string
 ): Promise<CachedContract | null> {
   try {
-    const workspace = await WorkspaceModel.findOne({
-      attributes: ["id", "metronomeCustomerId"],
-      where: { sId: workspaceId },
-    });
-    if (!workspace?.metronomeCustomerId) {
+    const ids = await resolveActiveMetronomeIds(workspaceId);
+    if (!ids) {
       return null;
     }
-
-    const subscription = await SubscriptionModel.findOne({
-      attributes: ["metronomeContractId"],
-      where: { workspaceId: workspace.id, status: "active" },
-    });
-    if (!subscription?.metronomeContractId) {
-      return null;
-    }
+    const { metronomeCustomerId, metronomeContractId } = ids;
 
     const result = await getMetronomeContractById({
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      metronomeContractId: subscription.metronomeContractId,
+      metronomeCustomerId,
+      metronomeContractId,
     });
     if (result.isErr()) {
       throw result.error;
     }
 
     logger.info(
-      {
-        workspaceId,
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        contractId: subscription.metronomeContractId,
-      },
+      { workspaceId, metronomeCustomerId, contractId: metronomeContractId },
       "[Metronome Contract] Contract fetched"
     );
 

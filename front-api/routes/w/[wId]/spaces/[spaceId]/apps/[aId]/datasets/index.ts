@@ -4,8 +4,12 @@ import { checkDatasetData } from "@app/lib/datasets";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
+import type {
+  GetDatasetsResponseBody,
+  PostDatasetResponseBody,
+} from "@app/types/api/datasets";
+import { PostDatasetRequestBodySchema } from "@app/types/api/datasets";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { DatasetType } from "@app/types/dataset";
 import type { APIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -14,38 +18,13 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context, TypedResponse } from "hono";
-import { z } from "zod";
 
 import name from "./[name]";
-
-export type GetDatasetsResponseBody = {
-  datasets: DatasetType[];
-};
-
-export type PostDatasetResponseBody = {
-  dataset: DatasetType;
-};
-
-export const PostDatasetRequestBodySchema = z.object({
-  dataset: z.object({
-    name: z.string(),
-    description: z.string().nullable(),
-    data: z.array(z.record(z.string(), z.any())),
-  }),
-  schema: z.array(
-    z.object({
-      key: z.string(),
-      type: z.enum(["string", "number", "boolean", "json"]),
-      description: z.string().nullable(),
-    })
-  ),
-});
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/datasets.
 //
 // Interacting with datasets requires write access to the app's space.
-// Read permission is not enough as it's available to all space users (or
-// everybody for public spaces).
+// Read permission is not enough as it's available to all space users.
 const app = workspaceApp();
 
 // Shared prelude for GET and POST: resolves the app from `:aId`, verifies it
@@ -92,6 +71,7 @@ async function loadApp(
   return { appResource, aId };
 }
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanWrite: true }),

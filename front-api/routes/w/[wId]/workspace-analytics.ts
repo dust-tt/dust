@@ -9,6 +9,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/workspace-analytics.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

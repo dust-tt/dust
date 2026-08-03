@@ -3,10 +3,10 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import type { GenericErrorContent } from "@app/types/assistant/agent";
 import { isAgentErrorCategory } from "@app/types/assistant/agent";
 import {
-  ArrowPathIcon,
   Button,
   ContentMessage,
-  InformationCircleIcon,
+  InfoCircle,
+  RefreshCw02,
 } from "@dust-tt/sparkle";
 
 interface ErrorMessageProps {
@@ -23,7 +23,8 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
     isAgentErrorCategory(error.metadata?.category) &&
     (error.metadata?.category === "retryable_model_error" ||
       error.metadata?.category === "stream_error" ||
-      error.metadata?.category === "empty_content");
+      error.metadata?.category === "empty_content" ||
+      error.metadata?.category === "credits_exhausted");
 
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () => retryHandler()
@@ -34,7 +35,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
       title={`${error.metadata?.errorTitle ?? "Something went wrong"}`}
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"
-      icon={InformationCircleIcon}
+      icon={InfoCircle}
     >
       <div className="whitespace-normal break-words">
         {error.message}
@@ -45,7 +46,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
               href={CONTEXT_WINDOW_DOC_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-foreground dark:hover:text-foreground-night"
+              className="underline hover:text-foreground"
             >
               Learn more
             </a>
@@ -56,7 +57,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
         <Button
           variant="outline"
           size="xs"
-          icon={ArrowPathIcon}
+          icon={RefreshCw02}
           label="Retry"
           onClick={retry}
           disabled={isRetrying}

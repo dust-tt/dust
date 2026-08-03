@@ -1,15 +1,10 @@
-import {
-  clearWorkspacePoolDepleted,
-  setWorkspaceCreditPoolStatus,
-  setWorkspacePoolDepleted,
-} from "@app/lib/metronome/user_block";
+import { setWorkspaceCreditPoolStatus } from "@app/lib/metronome/user_block";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
 export type WorkspaceCreditContext = {
@@ -50,6 +45,38 @@ export type WorkspaceCreditEvent =
 const LOW_BALANCE_THRESHOLD_AWU = 100;
 const CRITICAL_BALANCE_THRESHOLD_AWU = 10;
 
+/**
+ * The canonical pool credit state implied purely by the current AWU balance
+ * and whether PAYG is enabled. This mirrors what `syncPoolCreditStateFromBalance`
+ * produces by dispatching `credits_added` / `pool_exhausted` through the
+ * machine, expressed as a pure function so callers can *check* whether the
+ * persisted `workspace.poolCreditState` has drifted from reality without
+ * mutating anything.
+ *
+ *   balance <= 0            -> overage (PAYG on) / depleted (PAYG off)
+ *   0 < balance <= 10       -> active_critical_balance
+ *   10 < balance <= 100     -> active_low_balance
+ *   balance > 100           -> active
+ */
+export function expectedPoolCreditStateFromBalance({
+  balanceAwu,
+  paygEnabled,
+}: {
+  balanceAwu: number;
+  paygEnabled: boolean;
+}): WorkspacePoolCreditState {
+  if (balanceAwu <= 0) {
+    return paygEnabled ? "overage" : "depleted";
+  }
+  if (balanceAwu <= CRITICAL_BALANCE_THRESHOLD_AWU) {
+    return "active_critical_balance";
+  }
+  if (balanceAwu <= LOW_BALANCE_THRESHOLD_AWU) {
+    return "active_low_balance";
+  }
+  return "active";
+}
+
 type WorkspaceCreditGuard = (
   ctx: WorkspaceCreditContext,
   event: WorkspaceCreditEvent
@@ -65,46 +92,6 @@ type WorkspaceCreditTransition = {
 function balanceAtMost(threshold: number): WorkspaceCreditGuard {
   return (_ctx, event) =>
     "balanceAwu" in event && event.balanceAwu <= threshold;
-}
-
-function syncWorkspacePoolCacheForState(
-  state: WorkspacePoolCreditState,
-  ctx: WorkspaceCreditContext,
-  transaction: Transaction | undefined
-): void {
-  switch (state) {
-    case "active":
-    case "overage":
-      invalidateCacheAfterCommit(transaction, () =>
-        clearWorkspacePoolDepleted(ctx.workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceCreditPoolStatus(ctx.workspaceId, state)
-      );
-      return;
-
-    case "active_low_balance":
-    case "active_critical_balance":
-      invalidateCacheAfterCommit(transaction, () =>
-        clearWorkspacePoolDepleted(ctx.workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceCreditPoolStatus(ctx.workspaceId, state)
-      );
-      return;
-
-    case "depleted":
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspacePoolDepleted(ctx.workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceCreditPoolStatus(ctx.workspaceId, state)
-      );
-      return;
-
-    default:
-      assertNever(state);
-  }
 }
 
 const TRANSITIONS: WorkspaceCreditTransition[] = [
@@ -325,7 +312,9 @@ export async function transitionWorkspaceCreditState(
   if (currentState !== match.to) {
     await workspace.updatePoolCreditState(match.to, transaction);
   }
-  syncWorkspacePoolCacheForState(match.to, ctx, transaction);
+  invalidateCacheAfterCommit(transaction, () =>
+    setWorkspaceCreditPoolStatus(ctx.workspaceId, match.to)
+  );
   logger.info(
     {
       workspaceId: ctx.workspaceId,
@@ -338,4 +327,36 @@ export async function transitionWorkspaceCreditState(
   );
 
   return new Ok(match.to);
+}
+
+/**
+ * Authoritatively set the workspace pool credit state to `targetState`,
+ * bypassing the event/transition graph. Used by reconciliation, which computes
+ * the expected state directly from the live AWU balance + PAYG via
+ * `expectedPoolCreditStateFromBalance`. Persists the new state and syncs the
+ * same caches the transitions do.
+ */
+export async function setWorkspacePoolCreditStateReconciled(
+  workspace: WorkspaceResource,
+  targetState: WorkspacePoolCreditState,
+  ctx: WorkspaceCreditContext,
+  { transaction }: { transaction?: Transaction } = {}
+): Promise<WorkspacePoolCreditState> {
+  const currentState = workspace.poolCreditState;
+  if (currentState !== targetState) {
+    await workspace.updatePoolCreditState(targetState, transaction);
+  }
+  invalidateCacheAfterCommit(transaction, () =>
+    setWorkspaceCreditPoolStatus(ctx.workspaceId, targetState)
+  );
+  logger.info(
+    {
+      workspaceId: ctx.workspaceId,
+      fromState: currentState,
+      toState: targetState,
+      wasStateChanged: currentState !== targetState,
+    },
+    "[WorkspaceCreditStateMachine] State reconciled"
+  );
+  return targetState;
 }

@@ -11,7 +11,7 @@ export function ContentNodeMentionBlock({
   url: string;
 }) {
   return (
-    <AttachmentChip label={title} href={url} target="_blank" color="white" />
+    <AttachmentChip label={title} href={url} target="_blank" color="primary" />
   );
 }
 

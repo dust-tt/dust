@@ -1,63 +1,22 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import type { PokeMCPServerViewListItemType } from "@app/lib/api/poke/mcp_server_views";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-interface MCPServerView {
-  sId: string;
-  name: string | null;
-  createdAt: number;
-  updatedAt: number;
-  spaceId: string;
-  serverType: string;
-  server: {
-    sId: string;
-    name: string;
-    description: string;
-  };
+interface MCPServerView extends PokeMCPServerViewListItemType {
   editedAt?: number;
   editedBy?: string;
   mcpServerViewLink: string;
   spaceLink: string;
 }
 
-export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
-  return [
-    {
-      accessorKey: "sId",
-      cell: ({ row }) => {
-        const { mcpServerViewLink, sId } = row.original;
-
-        return <LinkWrapper href={mcpServerViewLink}>{sId}</LinkWrapper>;
-      },
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="sId" />
-      ),
-    },
-    {
-      accessorKey: "name",
-      cell: ({ row }) => {
-        const { mcpServerViewLink, name } = row.original;
-
-        return <LinkWrapper href={mcpServerViewLink}>{name ?? ""}</LinkWrapper>;
-      },
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Custom name" />
-      ),
-    },
-    {
-      accessorKey: "server.name",
-      cell: ({ row }) => {
-        const { mcpServerViewLink, server } = row.original;
-
-        return (
-          <LinkWrapper href={mcpServerViewLink}>{server.name}</LinkWrapper>
-        );
-      },
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Server name" />
-      ),
-    },
+export function makeColumnsForMCPServerViews({
+  hideSpaceColumn = false,
+}: {
+  hideSpaceColumn?: boolean;
+} = {}): ColumnDef<MCPServerView>[] {
+  const columns: ColumnDef<MCPServerView>[] = [
     {
       accessorKey: "server.sId",
       cell: ({ row }) => {
@@ -66,25 +25,39 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
         return `${server.sId}`;
       },
       header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Server ID" />
+        <PokeColumnSortableHeader column={column} label="sId" />
       ),
     },
     {
-      accessorKey: "space",
+      accessorKey: "server.name",
       cell: ({ row }) => {
-        const { spaceLink, spaceId } = row.original;
-        return <LinkWrapper href={spaceLink}>{spaceId}</LinkWrapper>;
+        const { name, server } = row.original;
+        return name ? `${server.name} (${name})` : server.name;
+      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Name" />
+      ),
+    },
+  ];
+
+  if (!hideSpaceColumn) {
+    columns.push({
+      accessorKey: "space.name",
+      cell: ({ row }) => {
+        const { spaceLink, space } = row.original;
+        return (
+          <span onClick={(e) => e.stopPropagation()}>
+            <LinkWrapper href={spaceLink}>{space.name}</LinkWrapper>
+          </span>
+        );
       },
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Space" />
       ),
-    },
-    {
-      accessorKey: "editedBy",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Last edited by" />
-      ),
-    },
+    });
+  }
+
+  columns.push(
     {
       accessorKey: "createdAt",
       cell: ({ row }) => {
@@ -92,6 +65,12 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       },
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Created at" />
+      ),
+    },
+    {
+      accessorKey: "editedBy",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Last edited by" />
       ),
     },
     {
@@ -104,6 +83,8 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Last edited at" />
       ),
-    },
-  ];
+    }
+  );
+
+  return columns;
 }

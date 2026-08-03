@@ -3,14 +3,16 @@ import {
   POD_TASKS_SERVER_NAME,
   UPDATE_TASKS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_tasks/metadata";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { serializeProjectTaskDirective } from "@app/lib/project_task/format";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -18,8 +20,10 @@ import type { APIErrorType } from "@app/types/error";
 import type { PodTaskSourceInfo, PodTaskType } from "@app/types/project_task";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { resolveDefaultAgentId } from "@app/types/user";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { toFileContentFragment } from "../api/assistant/conversation/content_fragment";
+import { ConversationResource } from "../resources/conversation_resource";
 
 type StartProjectTaskAgentError = {
   statusCode: ContentfulStatusCode;
@@ -118,6 +122,36 @@ function buildTaskKickoffPrompt({
   ].join("\n");
 }
 
+// A task conversation should start with the pod's default agent if available.
+async function resolveDefaultAgentIdForTask(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<string> {
+  const featureFlags = await getFeatureFlags(auth);
+  const hasWorkspaceDefaultAgent = featureFlags.includes(
+    "workspace_default_agent"
+  );
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+
+  const candidateId = resolveDefaultAgentId({
+    owner: auth.getNonNullableWorkspace(),
+    podDefaultAgentId: metadata?.defaultAgentId ?? null,
+    hasWorkspaceDefaultAgentFeature: hasWorkspaceDefaultAgent,
+  });
+  if (!candidateId || candidateId === GLOBAL_AGENTS_SID.DUST) {
+    return GLOBAL_AGENTS_SID.DUST;
+  }
+
+  const agent = await getAgentConfiguration(auth, {
+    agentId: candidateId,
+    variant: "extra_light",
+  });
+  if (!agent || agent.status !== "active") {
+    return GLOBAL_AGENTS_SID.DUST;
+  }
+  return candidateId;
+}
+
 export async function startAgentForProjectTask(
   auth: Authenticator,
   {
@@ -184,11 +218,11 @@ export async function startAgentForProjectTask(
   });
 
   let conversationId = await task.getLatestConversationId(auth);
-  let conversation;
+  let conversationResource: ConversationResource | null = null;
   let action: "created" | "appended" = "appended";
 
   if (!conversationId) {
-    conversation = await createConversation(auth, {
+    conversationResource = await createConversation(auth, {
       title: `Task · ${task.text.slice(0, 80)}`,
       visibility: "unlisted",
       spaceId: space.id,
@@ -198,27 +232,27 @@ export async function startAgentForProjectTask(
     });
 
     await task.addConversation(auth, {
-      conversationModelId: conversation.id,
+      conversationModelId: conversationResource.id,
     });
-    conversationId = conversation.sId;
+    conversationId = conversationResource.sId;
     action = "created";
   } else {
-    const conversationRes = await getConversation(auth, conversationId, false);
-    if (conversationRes.isErr()) {
-      const conversationErrorType = conversationRes.error.type;
+    conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
       return new Err({
-        statusCode:
-          conversationErrorType === "conversation_not_found" ? 404 : 403,
-        type: conversationErrorType,
-        message: conversationRes.error.message,
+        statusCode: 404,
+        type: "conversation_not_found",
+        message: "Conversation not found",
       });
     }
-    conversation = conversationRes.value;
   }
 
   // Add the prompt as a file attachment to the conversation.
   const contentFragmentRes = await toFileContentFragment(auth, {
-    conversation,
+    conversation: conversationResource,
     contentFragment: {
       title: "How to complete the task",
       content: prompt,
@@ -236,7 +270,7 @@ export async function startAgentForProjectTask(
 
   const contentFragmentMsgRes = await postNewContentFragment(
     auth,
-    conversation,
+    conversationResource.toJSON(),
     contentFragmentRes.value,
     null
   );
@@ -248,18 +282,6 @@ export async function startAgentForProjectTask(
       message: contentFragmentMsgRes.error.message,
     });
   }
-
-  // Get the updated conversation with the new content fragment.
-  const conversationRes = await getConversation(auth, conversationId);
-  if (conversationRes.isErr()) {
-    return new Err({
-      statusCode: 400,
-      type: "invalid_request_error",
-      message: conversationRes.error.message,
-    });
-  }
-
-  conversation = conversationRes.value;
 
   const taskDirective = serializeProjectTaskDirective({
     label: task.text,
@@ -274,12 +296,17 @@ export async function startAgentForProjectTask(
     "\n\n" +
     "Read the attached file in full for more instructions.";
 
+  // Use the explicitly requested agent if provided, otherwise fall back to the
+  // pod/workspace default agent for tasks (resolves to @dust when none applies).
+  const resolvedAgentConfigurationId =
+    agentConfigurationId ?? (await resolveDefaultAgentIdForTask(auth, space));
+
   const messageRes = await postUserMessage(auth, {
-    conversation,
+    conversationResource,
     content,
     mentions: [
       {
-        configurationId: agentConfigurationId ?? GLOBAL_AGENTS_SID.DUST,
+        configurationId: resolvedAgentConfigurationId,
       },
     ],
     context: {

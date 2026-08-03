@@ -3,16 +3,29 @@ import React, { useState } from "react";
 
 import {
   cn,
-  InformationCircleIcon,
+  InfoCircle,
   SearchInput,
   SearchInputWithPopover,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/SearchInput",
+  title: "Forms & Inputs/SearchInput",
   component: SearchInput,
   parameters: {
     layout: "padded",
+    docs: {
+      description: {
+        component: `A search-specific text field with a built-in search icon and clear affordance, wired through a simplified **value** / **onChange** (string) contract. The companion **SearchInputWithPopover** adds a results dropdown with keyboard navigation, custom **renderItem**, an optional **onSelectAll**, sticky top/bottom content, item counts, and a **noResults** state.
+
+**When to use**
+- For freeform search or filter input, optionally surfacing live results in an attached popover.
+
+**Guidelines**
+- **onChange** receives the raw string value (not a DOM event), so manage the query in state directly.
+- Reach for **SearchInputWithPopover** when results should appear inline; supply **renderItem** and handle selection via **onItemSelect**.
+- For generic short text or number entry use **Input**; for multi-line input use **TextArea**.`,
+      },
+    },
   },
   argTypes: {
     placeholder: {
@@ -93,12 +106,12 @@ export function SearchInputWithPopoverScrollableExample() {
       onOpenChange={setOpen}
       items={filteredItems}
       stickyTopContent={
-        <div className="s-text-xs s-text-muted-foreground">
+        <div className="text-xs text-muted-foreground">
           Tip: use Ctrl+K to focus search.
         </div>
       }
       stickyBottomContent={
-        <div className="s-text-xs s-text-muted-foreground">
+        <div className="text-xs text-muted-foreground">
           Press Enter to select the highlighted result.
         </div>
       }
@@ -107,8 +120,8 @@ export function SearchInputWithPopoverScrollableExample() {
       contentMessage={{
         title: "You can add a custom message here",
         variant: "green",
-        icon: InformationCircleIcon,
-        className: "s-w-full",
+        icon: InfoCircle,
+        className: "w-full",
         size: "lg",
       }}
       displayItemCount={true}
@@ -118,8 +131,8 @@ export function SearchInputWithPopoverScrollableExample() {
           key={item}
           role="option"
           className={cn(
-            "s-cursor-pointer s-truncate s-px-2 s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
-            selected && "s-bg-primary-100"
+            "cursor-pointer truncate px-2 py-2 hover:bg-primary-100",
+            selected && "bg-primary-100"
           )}
           onClick={() => {
             setValue(item);
@@ -146,7 +159,7 @@ export function SearchInputWithPopoverSelectAllExample() {
   );
 
   return (
-    <div className="s-flex s-max-w-md s-flex-col s-gap-2">
+    <div className="flex max-w-md flex-col gap-2">
       <SearchInputWithPopover
         name="search"
         placeholder="Search teams..."
@@ -172,8 +185,8 @@ export function SearchInputWithPopoverSelectAllExample() {
             key={item}
             role="option"
             className={cn(
-              "s-cursor-pointer s-truncate s-px-2 s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
-              selected && "s-bg-primary-100"
+              "cursor-pointer truncate px-2 py-2 hover:bg-primary-100",
+              selected && "bg-primary-100"
             )}
             onClick={() => {
               setValue(item);
@@ -185,7 +198,7 @@ export function SearchInputWithPopoverSelectAllExample() {
         )}
         noResults="No teams found"
       />
-      <div className="s-text-xs s-text-muted-foreground">
+      <div className="text-xs text-muted-foreground">
         Use Select all to capture the full list.
       </div>
     </div>

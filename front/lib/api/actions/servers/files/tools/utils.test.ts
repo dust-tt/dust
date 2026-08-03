@@ -15,10 +15,10 @@ describe("frameFileCreateRejectedError", () => {
 });
 
 describe("frameFileEditRejectedError", () => {
-  it("names the files list and interactive_content edit tools", () => {
-    expect(frameFileEditRejectedError().message).toContain("files__list");
+  it("names the files edit and interactive_content publish tools", () => {
+    expect(frameFileEditRejectedError().message).toContain("files__edit");
     expect(frameFileEditRejectedError().message).toContain(
-      "interactive_content__edit_interactive_content_file"
+      "interactive_content__publish_interactive_content_file"
     );
   });
 });

@@ -1,5 +1,4 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import {
   getInternalMCPServerNameFromSId,
   type InternalMCPServerNameType,
@@ -16,7 +15,11 @@ import {
   getToolDisplayLabels,
   getToolNameFromFunctionCallName,
 } from "@app/lib/actions/tool_display_labels";
-import type { StepContext } from "@app/lib/actions/types";
+import type {
+  ActionGeneratedDBFileType,
+  StepContext,
+  ToolOutputItemType,
+} from "@app/lib/actions/types";
 import {
   isFileAuthorizationInfo,
   isSandboxChildActionInfo,
@@ -40,7 +43,7 @@ import {
 import {
   batchFetchContentsFromGcs,
   batchWriteContentsToGcs,
-  deleteContentsFromGcs,
+  deleteActionOutputsFromGcs,
   warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -63,8 +66,11 @@ import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
+import type { AttachmentCreator } from "@app/types/api/assistant/conversation/attachments";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { UNRESUMABLE_AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -84,12 +90,14 @@ import type {
 import { Op } from "sequelize";
 import { AgentStepContentModel } from "../models/agent/agent_step_content";
 
+type ConversationGeneratedFileType = ActionGeneratedDBFileType & {
+  creator: AttachmentCreator | null;
+};
+
 // Batch size for fetching output items to avoid loading too many large rows at once.
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
-
-const CONCURRENCY_UPDATE_OUTPUT_ITEMS = 16;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -194,7 +202,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       conversation,
       stepContent,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       stepContent: AgentStepContentResource;
     },
     blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId">,
@@ -286,7 +294,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversation: ConversationResource
-  ): Promise<BlockedToolExecution[]> {
+  ): Promise<AgentLoopBlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const latestAgentMessages =
@@ -302,7 +310,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     // Scope by agentMessageId to fully use the (workspaceId, agentMessageId, status) index,
     // avoiding a broad scan + join through messages to filter by conversationId.
-    const blockedActions = await AgentMCPActionModel.findAll({
+    const blockedActionRows = await AgentMCPActionModel.findAll({
       include: [
         {
           model: AgentMessageModel,
@@ -312,6 +320,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             "id",
             "agentConfigurationId",
             "agentConfigurationVersion",
+            "status",
           ],
           include: [
             {
@@ -332,6 +341,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       },
       order: [["createdAt", "ASC"]],
     });
+
+    // A blocked action is only actionable while its agent message can still resume: exclude
+    // actions left behind by messages that reached a non-resumable terminal status before their
+    // blocked tools got resolved. Filtered application-side: agent_messages has no index on
+    // status, and the rows are already narrowed to the conversation's latest agent messages.
+    const blockedActions = blockedActionRows.filter(
+      (a) =>
+        !UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(a.agentMessage!.status)
+    );
 
     const parentUserMessageIds = removeNulls(
       blockedActions.map((a) => a.agentMessage!.message!.parentId)
@@ -363,7 +381,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const parentUserMessageById = keyBy(parentUserMessages, "id");
 
-    const blockedActionsList: BlockedToolExecution[] = [];
+    const blockedActionsList: AgentLoopBlockedToolExecution[] = [];
 
     // Fetch agent configurations with their specific versions from the actions.
     const agentConfigVersionPairs = removeNulls(
@@ -395,7 +413,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       getAgentConfigurationsWithVersion(auth, agentConfigVersionPairs, {
         variant: "extra_light",
       }),
-      MCPServerViewResource.fetchByIds(auth, mcpServerViewIds),
+      MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
+        includeHeavyAttributes: ["authorization"],
+      }),
     ]);
 
     const agentConfigurationMap = new Map(
@@ -426,13 +446,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
         : null;
 
-      const authorizationInfo =
-        mcpServerView?.toJSON().server.authorization ?? null;
+      const authorizationInfo = mcpServerView?.getAuthorization() ?? null;
 
       const mcpServerId = mcpServerView?.mcpServerId;
-      const mcpServerDisplayName = mcpServerView
-        ? getMcpServerViewDisplayName(mcpServerView.toJSON())
-        : undefined;
+      const mcpServerDisplayName = mcpServerView?.getDisplayName();
 
       const parentUserMessage =
         parentUserMessageById[agentMessage.message.parentId!];
@@ -440,7 +457,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       assert(parentUserMessage.userMessage, "Parent user message not found.");
 
       const baseActionParams: Omit<
-        BlockedToolExecution,
+        AgentLoopBlockedToolExecution,
         "status" | "authorizationInfo"
       > = {
         // Compute approval labels from persisted configuration + stored inputs.
@@ -459,7 +476,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         metadata: {
           toolName: action.toolConfiguration.originalName,
           mcpServerName: action.toolConfiguration.mcpServerName,
-          agentName: agentConfiguration.name,
+          agentName: "agent",
           icon: action.toolConfiguration.icon,
         },
         argumentsRequiringApproval:
@@ -706,36 +723,305 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  static async listBlockedActionsForAgentMessage(
+  /**
+   * List FileResource-backed files generated by agent actions in a conversation, without loading
+   * the full conversation content. Only the latest version of each agent message rank is
+   * considered. Path-only generated files (no `fileId`) are omitted — same filter as
+   * `listAttachments`.
+   *
+   * When `upToRank` is set, only files from agent messages with `rank <= upToRank` are returned.
+   */
+  static async listGeneratedFilesForConversation(
     auth: Authenticator,
-    { agentMessageId }: { agentMessageId: ModelId }
-  ): Promise<AgentMCPActionResource[]> {
-    const actions = await this.baseFetch(auth, {
+    {
+      conversationId,
+      upToRank,
+    }: {
+      conversationId: ModelId;
+      upToRank?: number;
+    }
+  ): Promise<ConversationGeneratedFileType[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    let latestAgentMessages =
+      await ConversationResource.getLatestAgentMessageIdByRank(auth, {
+        conversationId,
+      });
+
+    if (upToRank !== undefined) {
+      latestAgentMessages = latestAgentMessages.filter(
+        (m) => m.rank <= upToRank
+      );
+    }
+
+    const latestAgentMessageIds = latestAgentMessages.map(
+      (m) => m.agentMessageId
+    );
+
+    if (latestAgentMessageIds.length === 0) {
+      return [];
+    }
+
+    // Scope by agentMessageId to use the (workspaceId, agentMessageId) index.
+    const actions = await AgentMCPActionModel.findAll({
+      attributes: ["id", "agentMessageId"],
       where: {
-        agentMessageId,
-        status: {
-          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
-        },
+        workspaceId: owner.id,
+        agentMessageId: { [Op.in]: latestAgentMessageIds },
       },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: [
+            "id",
+            "agentConfigurationId",
+            "agentConfigurationVersion",
+          ],
+        },
+      ],
     });
 
     if (actions.length === 0) {
       return [];
     }
 
-    // Assert all blocked actions have the same step.
-    const steps = actions.map((a) => a.stepContent.step);
-    const uniqueSteps = [...new Set(steps)];
-    assert(
-      uniqueSteps.length === 1,
-      `All blocked actions must be from the same step, got ${steps.join(", ")}`
+    const actionIds = actions.map((a) => a.id);
+    const outputItems = await AgentMCPActionOutputItemModel.findAll({
+      attributes: ["id", "agentMCPActionId", "fileId"],
+      where: {
+        workspaceId: owner.id,
+        agentMCPActionId: { [Op.in]: actionIds },
+        fileId: { [Op.ne]: null },
+      },
+    });
+
+    if (outputItems.length === 0) {
+      return [];
+    }
+
+    const fileIds = removeNulls(outputItems.map((o) => o.fileId));
+    const files = await FileModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        id: { [Op.in]: fileIds },
+      },
+    });
+    const fileById = keyBy(files, "id");
+
+    const agentConfigVersionPairs = removeNulls(
+      actions.map((a) => {
+        const agentMessage = a.agentMessage;
+        if (!agentMessage) {
+          return null;
+        }
+        return {
+          agentId: agentMessage.agentConfigurationId,
+          agentVersion: agentMessage.agentConfigurationVersion,
+        };
+      })
     );
+
+    const agentConfigurations = await getAgentConfigurationsWithVersion(
+      auth,
+      agentConfigVersionPairs,
+      {
+        variant: "extra_light",
+        // Historical agents in a conversation the user can already read.
+        dangerouslySkipPermissionFiltering: true,
+      }
+    );
+    const agentConfigurationMap = new Map(
+      agentConfigurations.map((a) => [`${a.sId}:${a.version}`, a])
+    );
+
+    const actionById = keyBy(actions, "id");
+    const agentMessageIdToRank = new Map(
+      latestAgentMessages.map((m) => [m.agentMessageId, m.rank])
+    );
+
+    const generatedFiles: Array<
+      ConversationGeneratedFileType & { rank: number }
+    > = [];
+
+    for (const item of outputItems) {
+      if (!item.fileId) {
+        continue;
+      }
+      const file = fileById[item.fileId.toString()];
+      if (!file) {
+        continue;
+      }
+
+      const action = actionById[item.agentMCPActionId.toString()];
+      const agentMessage = action?.agentMessage;
+      if (!agentMessage) {
+        continue;
+      }
+
+      const agentConfiguration = agentConfigurationMap.get(
+        `${agentMessage.agentConfigurationId}:${agentMessage.agentConfigurationVersion}`
+      );
+
+      const creator: AttachmentCreator | null = agentConfiguration
+        ? {
+            type: "agent",
+            name: agentConfiguration.name,
+            pictureUrl: agentConfiguration.pictureUrl,
+          }
+        : null;
+
+      generatedFiles.push({
+        fileId: FileResource.modelIdToSId({
+          id: file.id,
+          workspaceId: file.workspaceId,
+        }),
+        contentType: file.contentType,
+        title: file.fileName,
+        snippet: file.snippet,
+        createdAt: file.createdAt.getTime(),
+        updatedAt: file.updatedAt.getTime(),
+        isInProjectContext: file.useCase === "project_context",
+        hidden: file.useCaseMetadata?.hideFromUser ?? false,
+        skipDataSourceIndexing:
+          file.useCaseMetadata?.skipDataSourceIndexing ?? false,
+        creator,
+        rank: agentMessageIdToRank.get(agentMessage.id) ?? 0,
+      });
+    }
+
+    // Match conversation content order so later ranks overwrite earlier ones when
+    // consumers dedupe by fileId (same behavior as walking conversation.content).
+    generatedFiles.sort((a, b) => a.rank - b.rank);
+
+    return generatedFiles.map(({ rank: _rank, ...file }) => file);
+  }
+
+  /**
+   * A message should never have blocked actions from more than one step, and resume paths rely
+   * on that to resume the agent loop from a single, unambiguous step. By default this enforces the
+   * invariant and throws on a violation, surfacing the bug. `dangerouslyBypassSameStepCheck` (used
+   * by the unstick-conversation poke plugin) skips the check so a genuinely stuck conversation can
+   * still be finalized.
+   */
+  static async listBlockedActionsForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      transaction,
+      dangerouslyBypassSameStepCheck = false,
+    }: {
+      agentMessageId: ModelId;
+      transaction?: Transaction;
+      dangerouslyBypassSameStepCheck?: boolean;
+    }
+  ): Promise<AgentMCPActionResource[]> {
+    const actions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId,
+          status: {
+            [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+          },
+        },
+      },
+      transaction
+    );
+
+    if (actions.length === 0) {
+      return [];
+    }
+
+    if (!dangerouslyBypassSameStepCheck) {
+      const steps = actions.map((a) => a.stepContent.step);
+      const uniqueSteps = [...new Set(steps)];
+      assert(
+        uniqueSteps.length === 1,
+        `All blocked actions must be from the same step, got ${steps.join(", ")}`
+      );
+    }
 
     return actions;
   }
 
   /**
-   * Creates output items in DB and writes their content to GCS.
+   * Denies all still-blocked actions of an agent message. Must run inside the same
+   * transaction as the message's terminal status update so that "message terminal" and
+   * "blocked actions denied" commit atomically. Guarded on blocked statuses so a concurrent
+   * approval that already transitioned the action is not clobbered. Returns the actions
+   * actually denied, with their pre-deny resources.
+   *
+   * `dangerouslyBypassSameStepCheck` is forwarded to listBlockedActionsForAgentMessage: leave it
+   * false to enforce the single-step invariant; the unstick-conversation poke plugin passes true to
+   * finalize an anomalous, genuinely stuck conversation instead of throwing.
+   */
+  static async denyBlockedActionsForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      transaction,
+      dangerouslyBypassSameStepCheck = false,
+    }: {
+      agentMessageId: ModelId;
+      transaction: Transaction;
+      dangerouslyBypassSameStepCheck?: boolean;
+    }
+  ): Promise<AgentMCPActionResource[]> {
+    const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId,
+      transaction,
+      dangerouslyBypassSameStepCheck,
+    });
+
+    if (blockedActions.length === 0) {
+      return [];
+    }
+
+    const [, affectedRows] = await AgentMCPActionModel.update(
+      { status: "denied" },
+      {
+        where: {
+          // Scoping by agentMessageId lets the (workspaceId, agentMessageId, status) index
+          // drive the update; the id list keeps it restricted to the rows fetched above.
+          agentMessageId,
+          id: { [Op.in]: blockedActions.map((a) => a.id) },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+        },
+        returning: true,
+        transaction,
+      }
+    );
+
+    const deniedActionIds = new Set(affectedRows.map((a) => a.id));
+
+    return blockedActions.filter((a) => deniedActionIds.has(a.id));
+  }
+
+  /**
+   * Whether the agent message owning this action can still resume. Resolving a blocked action
+   * (approving, denying, answering, retrying) is only allowed while the message can resume:
+   * otherwise it would relaunch an agent loop that was already terminated.
+   */
+  async canAgentMessageResume(auth: Authenticator): Promise<boolean> {
+    const agentMessage = await AgentMessageModel.findOne({
+      attributes: ["status"],
+      where: {
+        id: this.agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return (
+      agentMessage !== null &&
+      !UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(agentMessage.status)
+    );
+  }
+
+  /**
+   * Writes output content to GCS and creates its DB rows.
    * Content is also written to DB to ease rollback during the migration period.
    */
   async createOutputItems(
@@ -744,64 +1030,91 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       content: CallToolResult["content"][number];
       fileId?: ModelId;
     }>
-  ): Promise<AgentMCPActionOutputItemModel[]> {
-    const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
-      contents.map((c) => ({
-        agentMCPActionId: this.id,
-        // Write content to DB (kept during migration period to ease rollback).
-        content: c.content,
-        citations: getCitationsFromToolOutput([c.content]),
-        fileId: c.fileId,
-        workspaceId: this.workspaceId,
-      }))
-    );
-
+  ): Promise<Result<ToolOutputItemType[], Error>> {
+    // Write GCS first: the helper retries and cleans up partial batches, and DB insertion only
+    // starts once every object has been persisted.
     const gcsResult = await batchWriteContentsToGcs(
       auth,
       this,
-      outputItems.map((item) => ({
-        itemId: item.id,
-        content: item.content,
-      }))
+      contents.map(({ content }) => content)
     );
 
-    // GCS write is retried internally. If it still fails we surface the error rather than leaving
-    // rows with no `contentGcsPath`. There is no acceptable degraded state.
     if (gcsResult.isErr()) {
-      // TODO(2026-05-08 FLAV) Return a result and refactor all call sites.
-      throw gcsResult.error;
+      return new Err(gcsResult.error);
     }
 
-    await warmGcsContentCache(
-      auth,
-      removeNulls(
-        outputItems.map((item) => {
-          const gcsPath = gcsResult.value.get(item.id);
-          return gcsPath
-            ? { itemId: item.id, gcsPath, content: item.content }
-            : null;
+    let outputItems: AgentMCPActionOutputItemModel[];
+    try {
+      outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
+        contents.map((c, index) => {
+          const contentGcsPath = gcsResult.value[index];
+          assert(contentGcsPath, "GCS path not found for output item.");
+
+          const { generatedFilePath, generatedFileContentType } =
+            isToolGeneratedFilePath(c.content)
+              ? {
+                  generatedFilePath: c.content.resource.path,
+                  generatedFileContentType: c.content.resource.contentType,
+                }
+              : { generatedFilePath: null, generatedFileContentType: null };
+
+          return {
+            agentMCPActionId: this.id,
+            // Write content to DB (kept during migration period to ease rollback).
+            content: c.content,
+            contentGcsPath,
+            citations: getCitationsFromToolOutput([c.content]),
+            fileId: c.fileId,
+            workspaceId: this.workspaceId,
+            generatedFilePath,
+            generatedFileContentType,
+          };
         })
+      );
+    } catch (err) {
+      // A DB error can be ambiguous after commit, so keep the GCS objects rather than risk
+      // deleting content referenced by committed rows. Action-prefix cleanup removes orphans.
+      return new Err(normalizeError(err));
+    }
+
+    try {
+      await warmGcsContentCache(
+        auth,
+        removeNulls(
+          outputItems.map((item) =>
+            item.contentGcsPath
+              ? {
+                  itemId: item.id,
+                  gcsPath: item.contentGcsPath,
+                  content: item.content,
+                }
+              : null
+          )
+        )
+      );
+    } catch (err) {
+      // Cache warming is best-effort and must not turn a successful persistence into a retry.
+      logger.warn(
+        { err: normalizeError(err), actionId: this.sId },
+        "Failed to warm MCP output content cache"
+      );
+    }
+
+    // Return the stored contents in the generic tool output item shape.
+    return new Ok(
+      removeNulls(
+        outputItems.map((item) =>
+          item.content
+            ? {
+                content: item.content,
+                fileId: item.fileId ?? null,
+                file: item.file ?? null,
+                workspaceId: item.workspaceId,
+              }
+            : null
+        )
       )
     );
-
-    // Update DB rows with their GCS paths.
-    // TODO(2026-02-25 PERF): Optimize by writing items only once.
-    await concurrentExecutor(
-      outputItems,
-      async (item) => {
-        const gcsPath = gcsResult.value.get(item.id);
-        if (gcsPath) {
-          await AgentMCPActionOutputItemModel.update(
-            { contentGcsPath: gcsPath },
-            { where: { id: item.id, workspaceId: this.workspaceId } }
-          );
-          item.contentGcsPath = gcsPath;
-        }
-      },
-      { concurrency: CONCURRENCY_UPDATE_OUTPUT_ITEMS }
-    );
-
-    return outputItems;
   }
 
   static async fetchOutputItemsByActionIds(
@@ -943,38 +1256,41 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   /**
    * Destroys output items by action IDs, cleaning up GCS files first.
-   * GCS deletion failures are logged but do not block DB cleanup — orphaned
-   * GCS files can be cleaned up later and don't cause data issues.
+   * Paths under the canonical action prefix are removed with one prefix delete
+   * per action that has GCS content. Any leftover paths (e.g. legacy layouts)
+   * are deleted individually. Failures are logged but do not block DB cleanup —
+   * orphaned GCS files can be cleaned up later and don't cause data issues.
    */
   static async destroyOutputItemsByActionIds(
     auth: Authenticator,
     actionIds: ModelId[]
   ): Promise<void> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    if (actionIds.length === 0) {
+      return;
+    }
 
-    // Fetch items with GCS paths (only need id + contentGcsPath — no TOAST hit).
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch items with GCS paths (only need contentGcsPath — no TOAST hit).
     const gcsItems = await AgentMCPActionOutputItemModel.findAll({
       attributes: ["id", "contentGcsPath"],
       where: {
-        workspaceId,
+        workspaceId: workspace.id,
         agentMCPActionId: { [Op.in]: actionIds },
         contentGcsPath: { [Op.ne]: null },
       },
     });
 
-    // TODO(2026-02-25 PERF): Remove this post-migration.
-    // Delete GCS files. Failures are logged inside deleteContentsFromGcs but do not block DB
-    // cleanup.
-    if (gcsItems.length > 0) {
-      await deleteContentsFromGcs(
-        removeNulls(gcsItems.map((item) => item.contentGcsPath))
-      );
-    }
+    const gcsPaths = removeNulls(gcsItems.map((item) => item.contentGcsPath));
+
+    // Results intentionally unused. Failures must not block DB cleanup. Prefixes are deleted even
+    // without persisted paths to clean objects orphaned between the GCS and DB writes.
+    await deleteActionOutputsFromGcs(auth, actionIds, gcsPaths);
 
     // Delete all output items from DB.
     await AgentMCPActionOutputItemModel.destroy({
       where: {
-        workspaceId,
+        workspaceId: workspace.id,
         agentMCPActionId: { [Op.in]: actionIds },
       },
     });
@@ -1101,6 +1417,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                   };
                 }
 
+                // Fallback for light rendering (ignoreContent: true excludes the content column).
+                if (o.generatedFilePath && o.generatedFileContentType) {
+                  const filePath = o.generatedFilePath;
+                  return {
+                    fileId: null,
+                    filePath,
+                    title: filePath.split("/").pop() ?? filePath,
+                    contentType: o.generatedFileContentType,
+                    snippet: null,
+                    hidden: false,
+                  };
+                }
+
                 return null;
               })
             ),
@@ -1176,6 +1505,64 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return this.update({
       status,
     });
+  }
+
+  /**
+   * Updates only if the action still has the expected status. Combined with the invariant that
+   * blocked actions are denied in the same transaction as their message's terminal status update
+   * (see updateAgentMessageWithFinalStatus), a blocked-status transition implies resumability.
+   */
+  async updateStatusFromExpected(
+    auth: Authenticator,
+    {
+      status,
+      expectedStatus,
+    }: {
+      status: ToolExecutionStatus;
+      expectedStatus: ToolExecutionStatus;
+    }
+  ): Promise<[affectedCount: number]> {
+    return AgentMCPActionModel.update(
+      { status },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: expectedStatus,
+        },
+      }
+    );
+  }
+
+  /**
+   * Resolves the (light) agent configuration that owns this action, via the
+   * action's agent message. Returns null if the agent message can't be found.
+   * Keeps the agent-message model lookup inside the resource layer.
+   */
+  async getLightAgentConfiguration(
+    auth: Authenticator
+  ): Promise<LightAgentConfigurationType | null> {
+    const agentMessage = await AgentMessageModel.findOne({
+      attributes: ["agentConfigurationId", "agentConfigurationVersion"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.agentMessageId,
+      },
+    });
+    if (!agentMessage) {
+      return null;
+    }
+    const [agentConfiguration] = await getAgentConfigurationsWithVersion(
+      auth,
+      [
+        {
+          agentId: agentMessage.agentConfigurationId,
+          agentVersion: agentMessage.agentConfigurationVersion,
+        },
+      ],
+      { variant: "light" }
+    );
+    return agentConfiguration ?? null;
   }
 
   async markAsErrored({
@@ -1287,5 +1674,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   get functionCallName(): string {
     return this.stepContent.value.value.name;
+  }
+
+  // The raw arguments string the model emitted, before Dust augments it with preconfigured values
+  // and secrets (those land in the serialized `params`). Kept off the serialized type so it stays
+  // server-side, where consumption attribution reads it.
+  get functionCallArguments(): string {
+    return this.stepContent.value.value.arguments;
   }
 }

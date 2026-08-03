@@ -1,0 +1,265 @@
+import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
+import {
+  getSeatBarClasses,
+  getSeatIconColorClass,
+} from "@app/components/workspace/seat_styles";
+import {
+  CP_MAX_SEAT_COST_MONTHLY,
+  CP_MAX_SEAT_COST_YEARLY,
+  CP_PRO_SEAT_COST_MONTHLY,
+  CP_PRO_SEAT_COST_YEARLY,
+  getPriceAsString,
+  useUserBillingCurrency,
+} from "@app/lib/client/subscription";
+import {
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
+  MAX_SEAT_MONTHLY_AWU_CREDITS,
+  PRO_SEAT_MONTHLY_AWU_CREDITS,
+} from "@app/lib/metronome/constants";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { MembershipSeatType } from "@app/types/memberships";
+import type { BillingPeriod } from "@app/types/plan";
+import {
+  Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
+  Check,
+  Chip,
+  cn,
+  Icon,
+  LayerSingle,
+  LayersThree01,
+  LayersTwo01,
+} from "@dust-tt/sparkle";
+import type React from "react";
+
+// Shared building blocks for the plan-selection pages (SelectSubscriptionPage
+// and the credit-priced SubscribePage). Page-specific chrome (titles, headers,
+// admin/loading logic) lives in each page.
+
+export type PaidPlanTier = "pro" | "max";
+
+interface PlanCardProps {
+  icon: React.ComponentType<{ className?: string }>;
+  seatType: Extract<MembershipSeatType, "free" | "pro" | "max">;
+  name: string;
+  credits: string;
+  creditsLabel: string;
+  priceLabel: string;
+  features: string[];
+  action: React.ReactNode;
+  footnote?: string;
+}
+
+export function PlanCard({
+  icon,
+  seatType,
+  name,
+  credits,
+  creditsLabel,
+  priceLabel,
+  features,
+  action,
+  footnote,
+}: PlanCardProps) {
+  // The "free" seat maps to the muted bar track, which matches the card
+  // background (invisible in dark mode), so use a contrasting neutral instead.
+  const iconBackgroundClass =
+    seatType === "free" ? "bg-muted" : getSeatBarClasses(seatType).track;
+  const iconColorClass = getSeatIconColorClass(seatType);
+
+  return (
+    <div className="flex w-full flex-col rounded-2xl border border-border bg-background p-6">
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            "flex h-7 w-7 items-center justify-center rounded-lg",
+            iconBackgroundClass
+          )}
+        >
+          <Icon visual={icon} size="sm" className={iconColorClass} />
+        </div>
+        <span className="text-lg font-semibold text-foreground">{name}</span>
+      </div>
+
+      <div className="mt-6 flex items-baseline gap-2">
+        <span className="text-4xl font-bold text-foreground">{credits}</span>
+        <span className="whitespace-nowrap text-sm text-muted-foreground">
+          {creditsLabel}
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">{priceLabel}</p>
+
+      <ul className="mt-6 flex flex-col gap-3">
+        {features.map((feature) => (
+          <li key={feature} className="flex items-start gap-2">
+            <Icon
+              visual={Check}
+              size="sm"
+              className="mt-0.5 text-primary-500"
+            />
+            <span className="text-sm text-foreground">{feature}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-auto flex flex-col items-center gap-2 pt-12">
+        {action}
+        {footnote && (
+          <p className="text-center text-xs text-muted-foreground">
+            {footnote}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface BillingPeriodSwitchProps {
+  defaultValue?: BillingPeriod;
+  onValueChange: (period: BillingPeriod) => void;
+  size?: React.ComponentProps<typeof ButtonsSwitchList>["size"];
+}
+
+const CHIP_SIZE_FOR_SWITCH: Record<
+  "xs" | "sm" | "md",
+  React.ComponentProps<typeof Chip>["size"]
+> = {
+  xs: "mini",
+  sm: "xs",
+  md: "sm",
+};
+
+export function BillingPeriodSwitch({
+  defaultValue = "monthly",
+  onValueChange,
+  size,
+}: BillingPeriodSwitchProps) {
+  const chipSize =
+    size && size in CHIP_SIZE_FOR_SWITCH
+      ? CHIP_SIZE_FOR_SWITCH[size as keyof typeof CHIP_SIZE_FOR_SWITCH]
+      : "xs";
+
+  return (
+    <ButtonsSwitchList
+      defaultValue={defaultValue}
+      size={size}
+      onValueChange={(value) =>
+        onValueChange(value === "yearly" ? "yearly" : "monthly")
+      }
+    >
+      <ButtonsSwitch value="monthly" label="Monthly" />
+      <ButtonsSwitch
+        value="yearly"
+        label="Yearly"
+        className="flex-row-reverse"
+        icon={<Chip size={chipSize} color="highlight" label="Save 20%" />}
+      />
+    </ButtonsSwitchList>
+  );
+}
+
+interface FreePlanCardProps {
+  onStartFree: () => void;
+}
+
+export function FreePlanCard({ onStartFree }: FreePlanCardProps) {
+  return (
+    <PlanCard
+      icon={LayerSingle}
+      seatType="free"
+      name="Free"
+      credits={FREE_SEAT_LIFETIME_AWU_CREDITS.toLocaleString()}
+      creditsLabel="credits"
+      priceLabel="One-time · never expires"
+      features={["Credits never reset", "Full access to every Dust feature"]}
+      footnote="One-time phone verification required"
+      action={
+        <Button
+          className="w-full"
+          variant="outline"
+          label="Start Free"
+          onClick={withTracking(TRACKING_AREAS.AUTH, "cp_free_start", () => {
+            onStartFree();
+          })}
+        />
+      }
+    />
+  );
+}
+
+interface PaidPlanCardsProps {
+  billingPeriod: BillingPeriod;
+  onSubscribe: (seatType: PaidPlanTier) => void;
+}
+
+export function PaidPlanCards({
+  billingPeriod,
+  onSubscribe,
+}: PaidPlanCardsProps) {
+  const isYearly = billingPeriod === "yearly";
+  const period = isYearly ? "yearly" : "monthly";
+  const proSeatCost = isYearly
+    ? CP_PRO_SEAT_COST_YEARLY
+    : CP_PRO_SEAT_COST_MONTHLY;
+  const maxSeatCost = isYearly
+    ? CP_MAX_SEAT_COST_YEARLY
+    : CP_MAX_SEAT_COST_MONTHLY;
+  const currency = useUserBillingCurrency();
+
+  // The cards are returned without a layout/grouping container so each page
+  // can decide its own wrapper (e.g. the subtle grouped wrapper only used
+  // alongside the Free plan on SelectSubscriptionPage).
+  return (
+    <>
+      <PlanCard
+        icon={LayersTwo01}
+        seatType="pro"
+        name={seatTypeDisplayName("pro")}
+        credits={PRO_SEAT_MONTHLY_AWU_CREDITS.toLocaleString()}
+        creditsLabel="credits/mo"
+        priceLabel={`${getPriceAsString({ currency, priceInCents: proSeatCost * 100 })}/seat/mo · billed ${period}`}
+        features={["Refills every month", "Full access to every Dust feature"]}
+        action={
+          <Button
+            className="w-full"
+            variant="highlight"
+            label="Subscribe to Pro"
+            onClick={withTracking(
+              TRACKING_AREAS.AUTH,
+              "cp_subscription_start",
+              () => {
+                onSubscribe("pro");
+              },
+              { seat_type: "pro", billing_period: billingPeriod }
+            )}
+          />
+        }
+      />
+      <PlanCard
+        icon={LayersThree01}
+        seatType="max"
+        name={seatTypeDisplayName("max")}
+        credits={MAX_SEAT_MONTHLY_AWU_CREDITS.toLocaleString()}
+        creditsLabel="credits/mo"
+        priceLabel={`${getPriceAsString({ currency, priceInCents: maxSeatCost * 100 })}/seat/mo · billed ${period}`}
+        features={["Refills every month", "Full access to every Dust feature"]}
+        action={
+          <Button
+            className="w-full"
+            variant="outline"
+            label="Subscribe to Max"
+            onClick={withTracking(
+              TRACKING_AREAS.AUTH,
+              "cp_subscription_start",
+              () => {
+                onSubscribe("max");
+              },
+              { seat_type: "max", billing_period: billingPeriod }
+            )}
+          />
+        }
+      />
+    </>
+  );
+}

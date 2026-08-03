@@ -9,7 +9,8 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 /**
- * Hono counterpart of `makeResolveAuthenticationHandler` from
+ * Builds the Hono app for the `resolve-*` routes. The core logic lives in
+ * `resolveAuthentication` in
  * `front/lib/api/assistant/conversation/resolve_authentication.ts`.
  * The two `resolve-*` routes only differ by the `kind` discriminant —
  * everything else (schema, error mapping) is identical, so the shared
@@ -37,15 +38,13 @@ export function makeResolveAuthenticationApp(
       });
     }
 
-    const { actionId, outcome, resumeAncestorConversations } =
-      ctx.req.valid("json");
+    const { actionId, outcome } = ctx.req.valid("json");
 
     const result = await resolveAuthentication(auth, conversation, {
       actionId,
       messageId: mId,
       outcome,
       kind,
-      resumeAncestorConversations,
     });
 
     if (result.isErr()) {

@@ -2,21 +2,17 @@ import {
   useProgrammaticUsageLimit,
   useUpdateProgrammaticUsageLimit,
 } from "@app/lib/swr/usage_settings";
-import {
-  ActionCreditCoinsIcon,
-  Icon,
-  Input,
-  Page,
-  SettingsList,
-} from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { InputWithSave, Page, SettingsList } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface UsageProgrammaticLimitCardProps {
   workspaceId: string;
+  readOnly: boolean;
 }
 
 export function UsageProgrammaticLimitCard({
   workspaceId,
+  readOnly,
 }: UsageProgrammaticLimitCardProps) {
   const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
     useProgrammaticUsageLimit({ workspaceId });
@@ -24,85 +20,61 @@ export function UsageProgrammaticLimitCard({
     workspaceId,
   });
 
-  const [limitInput, setLimitInput] = useState<string>("");
-  const [isSaving, setIsSaving] = useState(false);
+  const currentLimit = programmaticUsageLimit?.monthlyCapCredits ?? 0;
 
-  useEffect(() => {
-    if (programmaticUsageLimit?.monthlyCapCredits !== undefined) {
-      setLimitInput(
-        programmaticUsageLimit.monthlyCapCredits !== null
-          ? String(programmaticUsageLimit.monthlyCapCredits)
-          : ""
-      );
-    }
-  }, [programmaticUsageLimit]);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const handleCommitLimit = async () => {
-    const current = programmaticUsageLimit?.monthlyCapCredits ?? null;
+  const handleSaveLimit = async (newValue: string) => {
+    const trimmed = newValue.trim();
 
-    if (limitInput.trim() === "") {
-      if (current === null) {
+    // An empty value means no programmatic access: save 0 so the cap blocks
+    // access. There is no "no cap" / unlimited state.
+    if (trimmed === "") {
+      if (currentLimit === 0) {
         return;
       }
-      setIsSaving(true);
-      try {
-        const result = await doUpdateProgrammaticUsageLimit(null);
-        if (!result) {
-          setLimitInput(current !== null ? String(current) : "");
-        }
-      } finally {
-        setIsSaving(false);
-      }
+      await doUpdateProgrammaticUsageLimit(0);
       return;
     }
 
-    const parsed = Number(limitInput);
-    if (!Number.isInteger(parsed) || parsed < 0 || parsed === current) {
-      setLimitInput(current !== null ? String(current) : "");
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed === currentLimit) {
+      // The component reverts to the current value when nothing is persisted.
       return;
     }
-
-    setIsSaving(true);
-    try {
-      const result = await doUpdateProgrammaticUsageLimit(parsed);
-      if (!result) {
-        setLimitInput(current !== null ? String(current) : "");
-      }
-    } finally {
-      setIsSaving(false);
-    }
+    await doUpdateProgrammaticUsageLimit(parsed);
   };
-
-  const isInputDisabled = isSaving || isProgrammaticUsageLimitLoading;
 
   return (
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
-        <span className="heading-base text-foreground dark:text-foreground-night">
-          Programmatic usage
-        </span>
+        <span className="heading-base text-foreground">Programmatic usage</span>
       </div>
       <SettingsList>
         <SettingsList.Row
           title="Programmatic monthly limit"
-          description="Maximum credits allowed for programmatic usage per month"
+          description={
+            <>
+              Maximum credits allowed for programmatic usage per month.{" "}
+              <strong> Set to 0 to block all programmatic access. </strong>
+            </>
+          }
           action={
-            <div className="relative w-32">
-              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                <Icon visual={ActionCreditCoinsIcon} size="xs" />
-              </div>
-              <Input
-                type="text"
+            <div className="w-52">
+              <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="No limit"
-                value={limitInput}
-                onChange={(e) =>
-                  setLimitInput(e.target.value.replace(/[^\d]/g, ""))
+                placeholder="No access"
+                value={currentLimit === 0 ? "" : currentLimit.toLocaleString()}
+                unit={currentLimit === 0 && !isEditing ? undefined : "credits"}
+                normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                formatValue={(value) =>
+                  value ? Number(value).toLocaleString() : value
                 }
-                onBlur={() => void handleCommitLimit()}
-                disabled={isInputDisabled}
-                className="pl-8 text-right"
+                onSave={handleSaveLimit}
+                onFocus={() => setIsEditing(true)}
+                onBlur={() => setIsEditing(false)}
+                disabled={readOnly || isProgrammaticUsageLimitLoading}
               />
             </div>
           }

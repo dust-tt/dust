@@ -78,6 +78,14 @@ const ParamsSchema = z.object({
  *              type: array
  *              items:
  *                $ref: '#/components/schemas/Datasource'
+ *      400:
+ *        description: Bad Request. Missing or invalid parameters.
+ *      401:
+ *        description: Unauthorized. Invalid or missing authentication token.
+ *      404:
+ *        description: Table, data source or workspace not found.
+ *      500:
+ *        description: Internal Server Error.
  *  post:
  *    summary: Upsert rows
  *    description: Upsert rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.
@@ -154,6 +162,8 @@ const ParamsSchema = z.object({
  *        description: Bad Request. Missing or invalid parameters.
  *      401:
  *        description: Unauthorized. Invalid or missing authentication token.
+ *      429:
+ *        description: Too many pending table updates are queued for this table. Retry later.
  *      500:
  *        description: Internal Server Error.
  *      404:
@@ -345,6 +355,18 @@ app.post(
     });
 
     if (upsertRes.isErr()) {
+      if (upsertRes.error.code === "too_many_pending_upserts") {
+        return apiError(ctx, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "Too many pending table updates are queued for this table. " +
+              "Please retry later.",
+          },
+        });
+      }
+
       logger.error(
         {
           dataSourceId: dataSource.sId,

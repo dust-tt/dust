@@ -50,4 +50,39 @@ describe("GET /api/v1/w/:wId/spaces", () => {
       ])
     );
   });
+
+  it("filters spaces by kinds when provided", async () => {
+    const { workspace, globalGroup, key } = await createPublicApiMockRequest();
+
+    await SpaceFactory.global(workspace);
+    const regularSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(regularSpace, globalGroup);
+
+    const response = await honoApp.request(
+      `/api/v1/w/${workspace.sId}/spaces?kinds=regular`,
+      {
+        headers: { authorization: `Bearer ${key.secret}` },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    const { spaces } = await response.json();
+    expectArrayOfObjectsWithSpecificLength(spaces, 1);
+    expect(spaces).toEqual([
+      expect.objectContaining({ name: regularSpace.name, kind: "regular" }),
+    ]);
+  });
+
+  it("rejects invalid kinds", async () => {
+    const { workspace, key } = await createPublicApiMockRequest();
+
+    const response = await honoApp.request(
+      `/api/v1/w/${workspace.sId}/spaces?kinds=bogus`,
+      {
+        headers: { authorization: `Bearer ${key.secret}` },
+      }
+    );
+
+    expect(response.status).toBe(400);
+  });
 });

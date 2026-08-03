@@ -11,7 +11,12 @@ import {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Separator } from "@dust-tt/sparkle";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Separator,
+} from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 type MCPServerDetailsInfoProps = {
@@ -19,6 +24,9 @@ type MCPServerDetailsInfoProps = {
   owner: LightWorkspaceType;
   readOnly?: boolean;
   sensitivityLabelsController?: SensitivityLabelsController;
+  confirmSkillsRestrictionChange?: (
+    isRestrictedToSkills: boolean
+  ) => Promise<boolean>;
 };
 
 export function MCPServerDetailsInfo({
@@ -26,6 +34,7 @@ export function MCPServerDetailsInfo({
   owner,
   readOnly = false,
   sensitivityLabelsController,
+  confirmSkillsRestrictionChange,
 }: MCPServerDetailsInfoProps) {
   const editedAt = useMemo(() => {
     const d = new Date(0);
@@ -44,20 +53,23 @@ export function MCPServerDetailsInfo({
         <div className="heading-lg">Available Tools ({tools.length})</div>
         {tools.map((tool, index) => (
           <div key={index} className="flex flex-col gap-1 py-1">
-            <div className="heading-base text-foreground dark:text-foreground-night">
+            <div className="heading-base text-foreground">
               {asDisplayName(tool.name)}
             </div>
             {tool.description && (
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {tool.description}
-              </p>
+              <Collapsible>
+                <CollapsibleTrigger label="Description" variant="secondary" />
+                <CollapsibleContent>
+                  <p className="whitespace-pre-wrap break-words pt-1 text-sm text-muted-foreground">
+                    {tool.description}
+                  </p>
+                </CollapsibleContent>
+              </Collapsible>
             )}
           </div>
         ))}
         {tools.length === 0 && (
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            No tools available.
-          </p>
+          <p className="text-sm text-muted-foreground">No tools available.</p>
         )}
       </div>
     );
@@ -69,12 +81,15 @@ export function MCPServerDetailsInfo({
   return (
     <div className="flex flex-col gap-3">
       {mcpServerView.editedByUser && (
-        <div className="flex w-full text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="flex w-full text-sm text-muted-foreground">
           Edited by {mcpServerView.editedByUser.fullName}, {editedAt}
         </div>
       )}
       <Separator />
-      <MCPServerViewForm mcpServerView={mcpServerView} />
+      <MCPServerViewForm
+        mcpServerView={mcpServerView}
+        confirmSkillsRestrictionChange={confirmSkillsRestrictionChange}
+      />
       <Separator />
       {mcpServerView.server.authorization && (
         <MCPServerSettings

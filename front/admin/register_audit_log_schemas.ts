@@ -28,6 +28,17 @@ type CreateAuditLogSchemaOptions = Parameters<
 
 const SCHEMAS_DIR = path.join(__dirname, "audit_log_schemas");
 
+// The version map consumed by `createAuditLogEvent` to send the latest schema
+// version with each emitted event. Lives next to the audit lib that reads it.
+const VERSION_MAP_PATH = path.join(
+  __dirname,
+  "..",
+  "lib",
+  "api",
+  "audit",
+  "schema_versions.json"
+);
+
 const metadataSchema = z.record(
   z.string(),
   z.union([z.string(), z.boolean(), z.number()])
@@ -70,6 +81,44 @@ function getChangedSchemaFiles(): Set<string> {
   }
 
   return new Set(diff.split("\n").map((f) => path.basename(f)));
+}
+
+const versionMapValidator = z.record(z.string(), z.number());
+
+// Reads the committed version map so partial runs (`--changed` or specific
+// actions) merge into it instead of dropping versions for untouched actions.
+async function readExistingVersionMap(): Promise<Record<string, number>> {
+  let content: string;
+  try {
+    content = await fs.readFile(VERSION_MAP_PATH, "utf-8");
+  } catch {
+    // No map yet (first bootstrap run) — start from empty.
+    return {};
+  }
+
+  const result = versionMapValidator.safeParse(JSON.parse(content));
+  if (!result.success) {
+    throw new Error(
+      `Invalid version map at ${VERSION_MAP_PATH}: ${result.error.issues
+        .map((i) => i.message)
+        .join(", ")}`
+    );
+  }
+  return result.data;
+}
+
+// Merges the freshly registered versions into the existing map and writes it
+// back with stable (sorted) key ordering for clean diffs.
+async function writeVersionMap(
+  existing: Record<string, number>,
+  registered: Record<string, number>
+): Promise<void> {
+  const merged = { ...existing, ...registered };
+  const sorted: Record<string, number> = {};
+  for (const action of Object.keys(merged).sort()) {
+    sorted[action] = merged[action];
+  }
+  await fs.writeFile(VERSION_MAP_PATH, JSON.stringify(sorted, null, 2) + "\n");
 }
 
 async function loadSchemas(
@@ -144,11 +193,13 @@ async function main() {
   console.log(`Registering ${schemas.length} schema(s)\n`);
   let success = 0;
   let failed = 0;
+  const registeredVersions: Record<string, number> = {};
 
   for (const schema of schemas) {
     const { action } = schema;
     try {
       const result = await workos.auditLogs.createSchema(schema);
+      registeredVersions[action] = result.version;
       console.log(`  OK  ${action} (v${result.version})`);
       success++;
     } catch (error: unknown) {
@@ -160,6 +211,15 @@ async function main() {
   console.log(
     `\nDone: ${success} registered, ${failed} failed, ${schemas.length} total`
   );
+
+  // Persist the latest versions so emitted events send the right schema
+  // version. Merge into the existing map so partial runs don't drop versions
+  // for actions that weren't part of this run.
+  if (success > 0) {
+    const existing = await readExistingVersionMap();
+    await writeVersionMap(existing, registeredVersions);
+    console.log(`\nWrote version map to ${VERSION_MAP_PATH}`);
+  }
 
   if (failed > 0) {
     process.exit(1);

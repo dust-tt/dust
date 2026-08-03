@@ -2,12 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  ChatBubbleBottomCenterTextIcon,
+  MessageCircle01,
   ContentMessage,
   ContentMessageAction,
   ContentMessageInline,
-  HeartIcon,
-  InformationCircleIcon,
+  Heart,
+  InfoCircle,
 } from "../index_with_tw_base";
 
 type ContentMessageStoryProps = React.ComponentProps<typeof ContentMessage> & {
@@ -16,14 +16,30 @@ type ContentMessageStoryProps = React.ComponentProps<typeof ContentMessage> & {
 
 const ICONS = {
   none: null,
-  InformationCircleIcon: InformationCircleIcon,
-  ChatBubbleBottomCenterTextIcon: ChatBubbleBottomCenterTextIcon,
-  HeartIcon: HeartIcon,
+  InfoCircle: InfoCircle,
+  MessageCircle01: MessageCircle01,
+  Heart: Heart,
 } as const;
 
 const meta: Meta<ContentMessageStoryProps> = {
-  title: "Components/ContentMessage",
+  title: "Feedback & Status/ContentMessage",
   component: ContentMessage,
+  parameters: {
+    docs: {
+      description: {
+        component: `An inline, non-blocking message that communicates contextual information, feedback, or status without interrupting the user — an informational note, a warning, or a success confirmation. Available in multiple **variants** and **sizes**, with an optional **icon** and action; **ContentMessageInline** renders a compact single-line form.
+
+**When to use**
+- To show persistent, contextual information attached to a region of the page.
+- To explain a state ("This agent is read-only") or surface a non-urgent warning.
+
+**Guidelines**
+- Match the **variant** to the intent — \`warning\`, \`success\`, \`info\`.
+- For transient feedback after an action, use a **Notification** (toast) instead.
+- For a decision that must block the flow, use a **Dialog**.`,
+      },
+    },
+  },
   argTypes: {
     title: {
       control: "text",
@@ -92,7 +108,7 @@ export const Basic: Story = {
 export const WithIcon: Story = {
   args: {
     title: "This is a title",
-    icon: InformationCircleIcon,
+    icon: InfoCircle,
     children: "This is a message. It can be multiple lines long.",
     size: "md",
   },
@@ -104,15 +120,15 @@ export const WithList: Story = {
     variant: "primary",
     size: "md",
     children: (
-      <ul className="s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0">
-        <li className="s-break-words s-py-1 first:s-pt-0 last:s-pb-0">
-          <div className="s-whitespace-pre-wrap s-break-words s-py-1 s-font-normal first:s-pt-0 last:s-pb-0">
+      <ul className="list-disc py-2 pl-8 first:pt-0 last:pb-0">
+        <li className="break-words py-1 first:pt-0 last:pb-0">
+          <div className="whitespace-pre-wrap break-words py-1 font-normal first:pt-0 last:pb-0">
             Should search internal data as this appears to be a code-related
             question specific to the company"s codebase
           </div>
         </li>
-        <li className="s-break-words s-py-1 first:s-pt-0 last:s-pb-0">
-          <div className="s-whitespace-pre-wrap s-break-words s-py-1 s-font-normal first:s-pt-0 last:s-pb-0">
+        <li className="break-words py-1 first:pt-0 last:pb-0">
+          <div className="whitespace-pre-wrap break-words py-1 font-normal first:pt-0 last:pb-0">
             Search results show that Page.SectionHeader expects a string title,
             but code is using JSX expression with concatenation
           </div>
@@ -126,7 +142,7 @@ export const MultiParagraph: Story = {
   args: {
     title: "This is a title",
     children: (
-      <div className="s-flex s-flex-col s-gap-y-3">
+      <div className="flex flex-col gap-y-3">
         <div>This is a message. It can be multiple lines long.</div>
         <div>
           Another paragraph in the content message with a long line and some{" "}
@@ -140,7 +156,7 @@ export const MultiParagraph: Story = {
 
 export const ColorVariants: Story = {
   render: () => (
-    <div className="s-grid s-grid-cols-1 s-gap-4 sm:s-grid-cols-2 lg:s-grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {[
         "primary",
         "warning",
@@ -179,7 +195,7 @@ export const ColorVariants: Story = {
 
 export const InlineBasic: Story = {
   render: () => (
-    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+    <ContentMessageInline icon={InfoCircle} variant="info">
       This is an inline message. It can be used to display a short message.
     </ContentMessageInline>
   ),
@@ -187,7 +203,7 @@ export const InlineBasic: Story = {
 
 export const InlineWithAction: Story = {
   render: () => (
-    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+    <ContentMessageInline icon={InfoCircle} variant="info">
       This is an inline message. It can be used to display a short message.
       <ContentMessageAction variant="primary" label="Button" />
     </ContentMessageInline>
@@ -196,7 +212,7 @@ export const InlineWithAction: Story = {
 
 export const InlineWithTwoActions: Story = {
   render: () => (
-    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+    <ContentMessageInline icon={InfoCircle} variant="info">
       This is an inline message. It can be used to display a short message.
       <ContentMessageAction variant="primary" label="Button" />
       <ContentMessageAction variant="highlight" label="Button" />
@@ -206,31 +222,23 @@ export const InlineWithTwoActions: Story = {
 
 export const InlineWithTitle: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
-      <ContentMessageInline
-        title="Status"
-        icon={InformationCircleIcon}
-        variant="info"
-      >
+    <div className="flex flex-col gap-4">
+      <ContentMessageInline title="Status" icon={InfoCircle} variant="info">
         This is an inline message.
         <ContentMessageAction variant="primary" label="Button" />
       </ContentMessageInline>
-      <ContentMessageInline
-        title="Alert"
-        icon={InformationCircleIcon}
-        variant="warning"
-      />
+      <ContentMessageInline title="Alert" icon={InfoCircle} variant="warning" />
     </div>
   ),
 };
 
 export const InlineVariants: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       {["primary", "warning", "success", "highlight", "info"].map((variant) => (
         <ContentMessageInline
           key={variant}
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           variant={
             variant as
               | "primary"

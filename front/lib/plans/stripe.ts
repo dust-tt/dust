@@ -1,5 +1,7 @@
+import type { CheckoutSeatType } from "@app/lib/api/checkout/types";
 import config from "@app/lib/api/config";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
+import { CONTRACT_CREDIT_TYPE_POOL } from "@app/lib/metronome/constants";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
@@ -9,7 +11,10 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED } from "@app/lib/resources/storage/models/credit_usage_configurations";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
@@ -45,7 +50,7 @@ export function getBusinessProPlanProductId() {
     : PROD_BUSINESS_PRO_PLAN_PRODUCT_ID;
 }
 
-export function getStripeCheckoutSessionProductId(owner: WorkspaceType) {
+function getStripeCheckoutSessionProductId(owner: WorkspaceType) {
   const isBusiness = owner.metadata?.isBusiness;
   return isBusiness ? getBusinessProPlanProductId() : getProPlanProductId();
 }
@@ -57,7 +62,7 @@ export function getCreditPurchasePriceId() {
   return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
 }
 
-export function getPAYGCreditPriceId() {
+function getPAYGCreditPriceId() {
   const devPAYGPriceId = "price_1SZviPDKd2JRwZF6XHCzjgqp";
   const prodPAYGPriceId = "price_1SZvmdDKd2JRwZF64DE4tZ6c";
 
@@ -90,13 +95,14 @@ export async function getStripePricingData(
   const currencyOptions: StripePricingData["currencyOptions"] = {
     usd: { unitAmount: 0 },
     eur: { unitAmount: 0 },
+    gbp: { unitAmount: 0 },
   };
 
   for (const currency of SUPPORTED_CURRENCIES) {
     const currencyOption = price.currency_options[currency];
-    const unitAmount = Number(
-      currencyOption.unit_amount ?? currencyOption.unit_amount_decimal
-    );
+    const unitAmount = currencyOption
+      ? Number(currencyOption.unit_amount ?? currencyOption.unit_amount_decimal)
+      : 0;
     if (unitAmount) {
       currencyOptions[currency] = {
         unitAmount,
@@ -286,6 +292,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   pricePerSeatCents,
   couponCode,
   user,
+  seatType,
+  targetUserId,
 }: {
   allowedPaymentMethods?: SupportedPaymentMethod[];
   metronomePackageAlias: string;
@@ -296,6 +304,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   pricePerSeatCents?: number;
   couponCode?: string;
   user: UserType;
+  seatType?: CheckoutSeatType;
+  targetUserId?: string;
 }): Promise<{ clientSecret: string; sessionId: string }> => {
   const stripe = getStripeClient();
 
@@ -315,6 +325,12 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   if (couponCode) {
     metadata.couponCode = couponCode;
   }
+  if (seatType) {
+    metadata.seatType = seatType;
+  }
+  if (targetUserId) {
+    metadata.targetUserId = targetUserId;
+  }
 
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded",
@@ -324,12 +340,24 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
     customer_creation: "always",
     payment_method_types: allowedPaymentMethods,
     metadata,
-    billing_address_collection: "auto",
+    billing_address_collection: "required",
     tax_id_collection: {
       enabled: true,
     },
     redirect_on_completion: "if_required",
-    return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/checkout?billingPeriod=${billingPeriod}&setup_session_id={CHECKOUT_SESSION_ID}`,
+    return_url: (() => {
+      const params = new URLSearchParams({
+        billingPeriod,
+        setup_session_id: "{CHECKOUT_SESSION_ID}",
+      });
+      if (seatType) {
+        params.set("seatType", seatType);
+      }
+      if (targetUserId) {
+        params.set("targetUserId", targetUserId);
+      }
+      return `${config.getAppUrl()}/w/${owner.sId}/subscription/checkout?${params.toString()}`;
+    })(),
     consent_collection: {
       terms_of_service: "required",
     },
@@ -385,88 +413,6 @@ export async function calculateTax({
   }
 }
 
-async function makeFirstPeriodInvoiceForCustomer({
-  stripeCustomerId,
-  paymentMethodId,
-  billingPeriod,
-  pricePerSeatCents,
-  seatCount,
-  couponAmountCents,
-  setupSessionId,
-  workspaceId,
-  currency,
-  couponCode,
-}: {
-  stripeCustomerId: string;
-  paymentMethodId: string;
-  billingPeriod: string;
-  pricePerSeatCents: number;
-  seatCount: number;
-  couponAmountCents?: number;
-  setupSessionId: string;
-  workspaceId: string;
-  currency: SupportedCurrency;
-  couponCode?: string;
-}): Promise<Result<Stripe.Invoice, { error_message: string }>> {
-  const stripe = getStripeClient();
-  try {
-    const invoice = await stripe.invoices.create(
-      {
-        customer: stripeCustomerId,
-        collection_method: "charge_automatically",
-        default_payment_method: paymentMethodId,
-        currency,
-        automatic_tax: { enabled: true },
-        auto_advance: false,
-        metadata: {
-          metronome_first_period: "true",
-          setup_session_id: setupSessionId,
-          workspace_id: workspaceId,
-          ...(couponCode ? { coupon_code: couponCode } : {}),
-        },
-      },
-      { idempotencyKey: `first-period-invoice-${setupSessionId}` }
-    );
-
-    await stripe.invoiceItems.create({
-      customer: stripeCustomerId,
-      unit_amount: pricePerSeatCents,
-      quantity: seatCount,
-      currency,
-      description: `Workspace seat (${billingPeriod})`,
-      invoice: invoice.id,
-    });
-
-    if (couponCode && couponAmountCents && couponAmountCents > 0) {
-      const effectiveCouponAmountCents = Math.min(
-        pricePerSeatCents * seatCount,
-        couponAmountCents
-      );
-      await stripe.invoiceItems.create({
-        customer: stripeCustomerId,
-        amount: -effectiveCouponAmountCents,
-        currency,
-        description: `Coupon: ${couponCode}`,
-        invoice: invoice.id,
-      });
-    }
-
-    return new Ok(invoice);
-  } catch (error) {
-    logger.error(
-      {
-        stripeCustomerId,
-        stripeError: true,
-        error: normalizeError(error).message,
-      },
-      "[Stripe] Failed to create first-period invoice"
-    );
-    return new Err({
-      error_message: `Failed to create invoice: ${normalizeError(error).message}`,
-    });
-  }
-}
-
 export async function setStripeCustomerDefaultPaymentMethod({
   stripeCustomerId,
   paymentMethodId,
@@ -498,106 +444,72 @@ export async function setStripeCustomerDefaultPaymentMethod({
   }
 }
 
-export async function chargeFirstPeriodInvoice({
+/**
+ * Ensure the Stripe customer has a default payment method
+ * (`invoice_settings.default_payment_method`). A paid Stripe subscription can
+ * keep its card on the subscription without the customer having a default;
+ * Metronome bills the customer's default, so a missing one makes Metronome
+ * invoices fail. No-op when a default is already set; otherwise adopt the
+ * subscription's payment method (or, failing that, the customer's most recent
+ * card). Returns the resolved default (null when none could be found to set).
+ */
+export async function ensureStripeCustomerDefaultPaymentMethod({
   stripeCustomerId,
-  paymentMethodId,
-  billingPeriod,
-  pricePerSeatCents,
-  seatCount,
-  couponAmountCents,
-  setupSessionId,
+  stripeSubscription,
   workspaceId,
-  currency,
-  couponCode,
 }: {
   stripeCustomerId: string;
-  paymentMethodId: string;
-  billingPeriod: string;
-  pricePerSeatCents: number;
-  seatCount: number;
-  couponAmountCents?: number;
-  setupSessionId: string;
+  stripeSubscription: Stripe.Subscription;
   workspaceId: string;
-  currency: SupportedCurrency;
-  couponCode?: string;
-}): Promise<Result<void, { error_message: string }>> {
-  const invoiceResult = await makeFirstPeriodInvoiceForCustomer({
+}): Promise<
+  Result<
+    { defaultPaymentMethodId: string | null; updated: boolean },
+    { error_message: string }
+  >
+> {
+  const stripe = getStripeClient();
+  const customer = await getStripeCustomer(stripeCustomerId);
+  if (!customer) {
+    return new Err({
+      error_message: `Stripe customer not found: ${stripeCustomerId}.`,
+    });
+  }
+
+  const existing = customer.invoice_settings?.default_payment_method;
+  if (existing) {
+    return new Ok({
+      defaultPaymentMethodId: isString(existing) ? existing : existing.id,
+      updated: false,
+    });
+  }
+
+  // Adopt the subscription's payment method, else the customer's most recent card.
+  let paymentMethodId = getDefaultPaymentMethodId(stripeSubscription);
+  if (!paymentMethodId) {
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: stripeCustomerId,
+      type: "card",
+      limit: 1,
+    });
+    paymentMethodId = paymentMethods.data[0]?.id;
+  }
+  if (!paymentMethodId) {
+    logger.warn(
+      { workspaceId, stripeCustomerId },
+      "[Stripe] No payment method available to set as customer default"
+    );
+    return new Ok({ defaultPaymentMethodId: null, updated: false });
+  }
+
+  const result = await setStripeCustomerDefaultPaymentMethod({
     stripeCustomerId,
     paymentMethodId,
-    billingPeriod,
-    pricePerSeatCents,
-    seatCount,
-    couponAmountCents,
-    setupSessionId,
     workspaceId,
-    currency,
-    couponCode,
   });
-  if (invoiceResult.isErr()) {
-    logger.error(
-      {
-        workspaceId,
-        error: normalizeError(invoiceResult.error).message,
-      },
-      "[Checkout] Failed to create first-period invoice"
-    );
-    return invoiceResult;
+  if (result.isErr()) {
+    return new Err(result.error);
   }
-
-  const finalizeResult = await finalizeInvoice(invoiceResult.value);
-  if (finalizeResult.isErr()) {
-    logger.error(
-      {
-        workspaceId,
-        error: normalizeError(finalizeResult.error).message,
-        invoiceId: invoiceResult.value.id,
-      },
-      "[Checkout] Failed to finalize first-period invoice"
-    );
-    return finalizeResult;
-  }
-
-  // If invoice corresponds to a zero amount (for example with coupon applied)
-  // then it is automatically set as paid by Stripe and we do not need to pay it.
-  if (finalizeResult.value.status == "paid") {
-    return new Ok(undefined);
-  }
-
-  const stripe = getStripeClient();
-  try {
-    const payResult = await stripe.invoices.pay(finalizeResult.value.id, {
-      expand: ["payment_intent"],
-    });
-
-    const paymentIntent = payResult.payment_intent;
-    if (payResult.status !== "paid") {
-      logger.error(
-        {
-          workspaceId,
-          invoiceId: finalizeResult.value.id,
-          invoiceStatus: payResult.status,
-          paymentIntentStatus:
-            paymentIntent && !isString(paymentIntent)
-              ? paymentIntent.status
-              : paymentIntent,
-        },
-        "[Checkout] First-period invoice payment failed"
-      );
-      return new Err({ error_message: "Invoice payment failed" });
-    }
-  } catch (payError) {
-    logger.error(
-      {
-        workspaceId,
-        error: normalizeError(payError).message,
-        invoiceId: finalizeResult.value.id,
-      },
-      "[Checkout] First-period invoice payment failed"
-    );
-    return new Err({ error_message: normalizeError(payError).message });
-  }
-
-  return new Ok(undefined);
+  return new Ok({ defaultPaymentMethodId: paymentMethodId, updated: true });
 }
 
 /**
@@ -783,7 +695,7 @@ export const extendStripeSubscriptionTrial = async (
  * subscription items with prices of type "licensed" (that is, per seat).
  * https://stripe.com/docs/billing/subscriptions/upgrade-downgrade
  */
-export const updateStripeQuantityForSubscriptionItem = async (
+const updateStripeQuantityForSubscriptionItem = async (
   subscriptionItem: Stripe.SubscriptionItem,
   quantity: number
 ): Promise<void> => {
@@ -871,25 +783,6 @@ export async function cancelSubscriptionAtPeriodEnd({
 }
 
 /**
- * Cancel a subscription immediately without generating any additional invoice.
- * Pending proration items (e.g. from mid-period seat changes) are discarded.
- * Used to handle takeover to Metronome, Metronome will handle the proration items.
- */
-export async function cancelSubscriptionImmediatelyNoInvoice({
-  stripeSubscriptionId,
-}: {
-  stripeSubscriptionId: string;
-}) {
-  const stripe = getStripeClient();
-  await stripe.subscriptions.cancel(stripeSubscriptionId, {
-    invoice_now: false,
-    prorate: false,
-  });
-
-  return true;
-}
-
-/**
  * Schedule a subscription to cancel at a future timestamp. Used by the
  * switch_contract flow when migrating a Stripe-billed workspace to Metronome:
  * the Stripe sub stops at the new Metronome contract's start time, so the two
@@ -930,6 +823,245 @@ export async function clearScheduledSubscriptionCancellation({
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));
+  }
+}
+
+// Marks a Stripe subscription (via metadata) as cut short by the legacy →
+// Business yearly migration, so the `customer.subscription.deleted` webhook
+// knows to refund the unused prepaid days when it ends.
+export const YEARLY_MIGRATION_REFUND_METADATA_KEY =
+  "dust_yearly_migration_refund";
+
+export async function markSubscriptionForMigrationRefund({
+  stripeSubscriptionId,
+}: {
+  stripeSubscriptionId: string;
+}): Promise<Result<void, Error>> {
+  try {
+    const stripe = getStripeClient();
+    await stripe.subscriptions.update(stripeSubscriptionId, {
+      metadata: { [YEARLY_MIGRATION_REFUND_METADATA_KEY]: "true" },
+    });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Refund the unused prepaid time of a yearly subscription that was cut over
+ * early by the migration. Prorated on remaining days, where the paid period is
+ * taken from the invoice's yearly line item (NOT the subscription's
+ * `current_period_*`, which Stripe clamps to the cancel date):
+ *   refund = amountPaid × (paidPeriodEnd − actualEnd) / (paidPeriodEnd − paidPeriodStart)
+ *
+ * Only acts when the subscription is yearly, carries the migration-refund
+ * marker, ended before its paid period end, and its latest invoice was paid.
+ * The refund is issued against that invoice's charge and bounded by the amount
+ * paid. After refunding to the card, reverses the matching unused-time credit
+ * Stripe auto-adds to the customer balance, so the customer isn't refunded
+ * twice. Returns the refunded amount in cents (0 when nothing to refund).
+ */
+export async function refundYearlyMigrationProration({
+  stripeSubscription,
+}: {
+  stripeSubscription: Stripe.Subscription;
+}): Promise<Result<{ refundedCents: number }, Error>> {
+  try {
+    const stripe = getStripeClient();
+
+    // Only subscriptions marked by the migration are refund candidates; every
+    // other subscription.deleted returns silently.
+    if (
+      stripeSubscription.metadata?.[YEARLY_MIGRATION_REFUND_METADATA_KEY] !==
+      "true"
+    ) {
+      return new Ok({ refundedCents: 0 });
+    }
+    const isYearly = stripeSubscription.items.data.some(
+      (item) => item.price.recurring?.interval === "year"
+    );
+    if (!isYearly) {
+      logger.warn(
+        { stripeSubscriptionId: stripeSubscription.id },
+        "[Stripe] Yearly migration refund: marked sub is not yearly, skipping"
+      );
+      return new Ok({ refundedCents: 0 });
+    }
+
+    const latestInvoiceId =
+      typeof stripeSubscription.latest_invoice === "string"
+        ? stripeSubscription.latest_invoice
+        : (stripeSubscription.latest_invoice?.id ?? null);
+    if (!latestInvoiceId) {
+      logger.warn(
+        { stripeSubscriptionId: stripeSubscription.id },
+        "[Stripe] Yearly migration refund: no latest invoice, skipping"
+      );
+      return new Ok({ refundedCents: 0 });
+    }
+    const invoice = await stripe.invoices.retrieve(latestInvoiceId);
+
+    // Anchor the proration on the ACTUALLY-PAID coverage window, taken from the
+    // invoice's yearly line item(s). We can't use `subscription.current_period_*`
+    // here: once a cancellation is scheduled, Stripe clamps `current_period_end`
+    // to the cancel date, so `remaining` would read 0 and no refund would fire.
+    const yearlyLines = invoice.lines.data.filter(
+      (line) => line.price?.recurring?.interval === "year"
+    );
+    const paidPeriodStartSec =
+      yearlyLines.length > 0
+        ? Math.min(...yearlyLines.map((line) => line.period.start))
+        : stripeSubscription.current_period_start;
+    const paidPeriodEndSec =
+      yearlyLines.length > 0
+        ? Math.max(...yearlyLines.map((line) => line.period.end))
+        : stripeSubscription.current_period_end;
+
+    const actualEndSec =
+      stripeSubscription.ended_at ??
+      stripeSubscription.canceled_at ??
+      Math.floor(Date.now() / 1000);
+    const periodSec = paidPeriodEndSec - paidPeriodStartSec;
+    const remainingSec = paidPeriodEndSec - actualEndSec;
+    if (periodSec <= 0 || remainingSec <= 0) {
+      logger.info(
+        {
+          stripeSubscriptionId: stripeSubscription.id,
+          periodSec,
+          remainingSec,
+        },
+        "[Stripe] Yearly migration refund: no prepaid days remaining, skipping"
+      );
+      return new Ok({ refundedCents: 0 });
+    }
+
+    const chargeId =
+      typeof invoice.charge === "string" ? invoice.charge : invoice.charge?.id;
+    if (!chargeId) {
+      logger.warn(
+        { stripeSubscriptionId: stripeSubscription.id, invoiceId: invoice.id },
+        "[Stripe] Yearly migration refund: invoice has no charge, skipping"
+      );
+      return new Ok({ refundedCents: 0 });
+    }
+
+    // Verify the charge was actually paid (and not already fully refunded)
+    // before refunding anything.
+    const charge = await stripe.charges.retrieve(chargeId);
+    if (!charge.paid || charge.status !== "succeeded") {
+      logger.warn(
+        {
+          stripeSubscriptionId: stripeSubscription.id,
+          chargeId,
+          chargePaid: charge.paid,
+          chargeStatus: charge.status,
+        },
+        "[Stripe] Yearly migration refund: charge not paid, skipping"
+      );
+      return new Ok({ refundedCents: 0 });
+    }
+    const refundableCents = charge.amount - charge.amount_refunded;
+    const proratedCents = Math.round(
+      (charge.amount * remainingSec) / periodSec
+    );
+    const refundedCents = Math.min(refundableCents, proratedCents);
+
+    // Always log the refund attempt for a marked sub, with the computed amount.
+    logger.info(
+      {
+        stripeSubscriptionId: stripeSubscription.id,
+        chargeId,
+        chargeAmount: charge.amount,
+        alreadyRefunded: charge.amount_refunded,
+        remainingDays: Math.ceil(remainingSec / 86400),
+        proratedCents,
+        refundedCents,
+      },
+      refundedCents > 0
+        ? "[Stripe] Issuing yearly migration prorated refund"
+        : "[Stripe] Yearly migration refund: nothing left to refund, skipping"
+    );
+    if (refundedCents <= 0) {
+      return new Ok({ refundedCents: 0 });
+    }
+    await stripe.refunds.create({ charge: chargeId, amount: refundedCents });
+
+    // When the scheduled cancellation fired, Stripe credited the unused time to
+    // the customer's balance (store credit that would offset a future
+    // Metronome-pushed invoice). We've now refunded that same unused time to the
+    // card, so remove the matching credit — otherwise the customer is refunded
+    // twice. Bounded by the credit actually present, so we never push the
+    // customer into a debit if no (or a smaller) credit was created.
+    await reverseMigrationBalanceCredit({
+      stripeSubscription,
+      refundedCents,
+      currency: charge.currency,
+    });
+
+    return new Ok({ refundedCents });
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Remove up to `refundedCents` of credit from the customer's Stripe balance,
+ * used after a yearly-migration card refund to cancel out the unused-time
+ * credit Stripe auto-creates on cancellation (so the customer isn't refunded
+ * twice — once to the card, once as balance credit). No-op when the customer
+ * has no credit balance. Best-effort: logs and swallows failures so a balance
+ * hiccup never blocks the (already-issued) refund.
+ */
+async function reverseMigrationBalanceCredit({
+  stripeSubscription,
+  refundedCents,
+  currency,
+}: {
+  stripeSubscription: Stripe.Subscription;
+  refundedCents: number;
+  currency: string;
+}): Promise<void> {
+  const stripe = getStripeClient();
+  const stripeCustomerId = getCustomerId(stripeSubscription);
+  const customer = await getStripeCustomer(stripeCustomerId);
+  // A negative balance is credit owed to the customer (offsets future invoices).
+  const creditCents = customer && customer.balance < 0 ? -customer.balance : 0;
+  const reverseCents = Math.min(creditCents, refundedCents);
+  if (reverseCents <= 0) {
+    logger.info(
+      { stripeSubscriptionId: stripeSubscription.id, stripeCustomerId },
+      "[Stripe] Yearly migration refund: no balance credit to reverse"
+    );
+    return;
+  }
+  try {
+    // A positive amount debits the customer, bringing a credit balance back
+    // toward zero.
+    await stripe.customers.createBalanceTransaction(stripeCustomerId, {
+      amount: reverseCents,
+      currency,
+      description:
+        "Reversed unused-time credit: refunded to card (legacy → Business yearly migration)",
+    });
+    logger.info(
+      {
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeCustomerId,
+        reverseCents,
+      },
+      "[Stripe] Yearly migration refund: reversed unused-time balance credit"
+    );
+  } catch (err) {
+    logger.error(
+      {
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeCustomerId,
+        reverseCents,
+        err: normalizeError(err).message,
+      },
+      "[Stripe] Yearly migration refund: failed to reverse balance credit (refund already issued)"
+    );
   }
 }
 
@@ -1047,7 +1179,7 @@ export function getCustomerId(subscription: Stripe.Subscription): string {
     : subscription.customer.id;
 }
 
-export function getDefaultPaymentMethodId(
+function getDefaultPaymentMethodId(
   subscription: Stripe.Subscription
 ): string | undefined {
   return isString(subscription.default_payment_method)
@@ -1063,10 +1195,12 @@ export function isCreditPurchaseInvoice(invoice: Stripe.Invoice): boolean {
 }
 
 /**
- * Checks if a Stripe invoice is for a Metronome first-period charge.
+ * Checks if a Stripe invoice is for a Metronome subscription activation.
  */
-export function isFirstPeriodInvoice(invoice: Stripe.Invoice): boolean {
-  return invoice.metadata?.metronome_first_period === "true";
+export function isSubscriptionActivationInvoice(
+  invoice: Stripe.Invoice
+): boolean {
+  return invoice.metadata?.subscription_activation === "true";
 }
 
 /**
@@ -1074,6 +1208,15 @@ export function isFirstPeriodInvoice(invoice: Stripe.Invoice): boolean {
  */
 export function isAwuPurchaseInvoice(invoice: Stripe.Invoice): boolean {
   return invoice.metadata?.awu_purchase === "true";
+}
+
+/**
+ * Any invoice Metronome generated and pushed to Stripe — identified by the
+ * `metronome_customer_id` metadata Metronome stamps on every invoice it pushes.
+ * Scopes the line-cleaning flow to Metronome invoices only.
+ */
+export function isMetronomePushedInvoice(invoice: Stripe.Invoice): boolean {
+  return invoice.metadata?.metronome_customer_id != null;
 }
 
 /**
@@ -1493,7 +1636,12 @@ export async function finalizeInvoice(
   const stripe = getStripeClient();
 
   try {
-    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+    // Explicitly re-enable auto_advance so Stripe proceeds with its
+    // post-finalization workflow (auto-charge or auto-send), in case the
+    // invoice had it disabled (e.g. frozen while editing a Metronome draft).
+    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, {
+      auto_advance: true,
+    });
     return new Ok(finalizedInvoice);
   } catch (error) {
     logger.error(
@@ -1506,6 +1654,454 @@ export async function finalizeInvoice(
     );
     return new Err({
       error_message: `Failed to finalize invoice: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+/**
+ * Metadata flag stamped on a Metronome draft invoice once we have normalized its
+ * line items, so redeliveries / Temporal retries don't clean it twice.
+ */
+const METRONOME_INVOICE_LINES_CLEANED_FLAG = "lines_cleaned";
+
+/**
+ * Metronome represents a fully-applied commit/credit as a pair of lines on the
+ * same invoice with equal and opposite amounts: a negative line whose
+ * description is "<label> applied", and the positive usage/subscription line
+ * it offsets, whose description contains "(<label>)" (e.g. a negative
+ * "Platform Seat (Yearly) commitment: 53 seats applied" line offsetting a
+ * positive "Platform Seat (Yearly) (Platform Seat (Yearly) commitment: 53
+ * seats)" line). Neither line carries metadata identifying the pairing (there
+ * is no such thing as `metronome_commit_id` on Stripe line items — Metronome
+ * does not document or set one), so we match them by description + amount
+ * instead.
+ */
+function findCommitAppliedLineIds(
+  lines: Stripe.InvoiceLineItem[]
+): Set<string> {
+  const appliedSuffix = " applied";
+  const matchedLineIds = new Set<string>();
+
+  for (const creditLine of lines) {
+    const description = creditLine.description;
+    if (
+      creditLine.amount >= 0 ||
+      !description ||
+      !description.endsWith(appliedSuffix)
+    ) {
+      continue;
+    }
+
+    const label = description.slice(0, -appliedSuffix.length);
+    const offsetLine = lines.find(
+      (candidate) =>
+        candidate.id !== creditLine.id &&
+        !matchedLineIds.has(candidate.id) &&
+        candidate.amount === -creditLine.amount &&
+        candidate.currency === creditLine.currency &&
+        candidate.description?.includes(`(${label})`)
+    );
+
+    if (offsetLine) {
+      matchedLineIds.add(offsetLine.id);
+    }
+  }
+
+  return matchedLineIds;
+}
+
+/**
+ * Stripe accepts at most 12 decimal places on `unit_amount_decimal`.
+ */
+const STRIPE_MAX_UNIT_AMOUNT_DECIMAL_PLACES = 12;
+
+/**
+ * Round-half-up integer division for positive bigints — the bigint equivalent
+ * of Math.round(numerator / denominator), which is also how Stripe rounds
+ * recomputed line totals. Bigint `/` truncates, so rounding is expressed as
+ * floor((2a + b) / 2b).
+ */
+function divideRoundHalfUp(numerator: bigint, denominator: bigint): bigint {
+  const two = BigInt(2);
+  return (two * numerator + denominator) / (two * denominator);
+}
+
+/**
+ * Metronome pushes invoice items with `unit_amount_decimal` (Stripe's
+ * sub-cent-precision unit price), e.g. "1964.516129032258" cents for a
+ * prorated seat. Stripe renders that unit price verbatim on the
+ * customer-facing invoice, showing a long tail of decimals. Rewrites the
+ * backing invoice item to the shortest unit price — whole cents first, then
+ * increasing sub-cent decimals — that multiplies back (by the unchanged
+ * quantity) to the exact line total (`amount`, integer cents), so both the
+ * displayed quantity and the invoice total are preserved. Any precision with
+ * more than log10(quantity) sub-cent decimals reconstructs the total exactly,
+ * so a match is always found well within Stripe's 12-decimal maximum.
+ */
+async function normalizeSubCentUnitAmount(
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+  line: Stripe.InvoiceLineItem
+): Promise<void> {
+  const unitAmountDecimalCents = line.price?.unit_amount_decimal;
+  if (
+    unitAmountDecimalCents == null ||
+    Number.isInteger(Number(unitAmountDecimalCents))
+  ) {
+    return;
+  }
+
+  const invoiceItemId = isString(line.invoice_item)
+    ? line.invoice_item
+    : line.invoice_item?.id;
+
+  if (!invoiceItemId) {
+    logger.warn(
+      { stripeInvoiceId: invoice.id, lineId: line.id },
+      "[Stripe] Cannot normalize sub-cent unit price: line not backed by an invoice item"
+    );
+    return;
+  }
+
+  const quantity = line.quantity ?? 1;
+  const amountCents = line.amount;
+  if (quantity <= 0) {
+    return;
+  }
+
+  // BigInt throughout: at 12 decimal places the scaled values exceed Number's
+  // safe integer range.
+  const amountBig = BigInt(amountCents);
+  const quantityBig = BigInt(quantity);
+
+  for (
+    let decimalPlaces = 0;
+    decimalPlaces <= STRIPE_MAX_UNIT_AMOUNT_DECIMAL_PLACES;
+    decimalPlaces++
+  ) {
+    // 10^12 is well within Number's safe integer range, so the Number
+    // exponentiation is exact.
+    const scale = BigInt(10 ** decimalPlaces);
+    const scaledUnit = divideRoundHalfUp(amountBig * scale, quantityBig);
+    // Stripe recomputes the line total as round(unit price × quantity); only
+    // keep this precision if that lands back on the exact original total.
+    const reconstructed = divideRoundHalfUp(scaledUnit * quantityBig, scale);
+    if (reconstructed !== amountBig) {
+      continue;
+    }
+
+    const update: Stripe.InvoiceItemUpdateParams =
+      decimalPlaces === 0
+        ? { quantity, unit_amount: Number(scaledUnit) }
+        : {
+            quantity,
+            unit_amount_decimal: `${scaledUnit / scale}.${String(
+              scaledUnit % scale
+            ).padStart(decimalPlaces, "0")}`,
+          };
+
+    logger.info(
+      {
+        stripeInvoiceId: invoice.id,
+        lineId: line.id,
+        invoiceItemId,
+        unitAmountDecimalCents,
+        amountCents,
+        quantity,
+        update,
+      },
+      "[Stripe] Normalizing sub-cent unit price on Metronome invoice line"
+    );
+
+    await stripe.invoiceItems.update(invoiceItemId, update);
+    return;
+  }
+
+  logger.warn(
+    {
+      stripeInvoiceId: invoice.id,
+      lineId: line.id,
+      invoiceItemId,
+      unitAmountDecimalCents,
+      amountCents,
+      quantity,
+    },
+    "[Stripe] Could not shorten sub-cent unit price without changing the line total, leaving line as-is"
+  );
+}
+
+/**
+ * Removes from a Metronome-pushed Stripe draft invoice the line items that
+ * should not appear on the customer-facing invoice:
+ *
+ * 1. Negative lines.
+ * 2. Lines with a fully-applied commit or credit, matched via
+ *    `findCommitAppliedLineIds` (see its doc comment).
+ * 3. Wrong-currency lines — non-fiat lines (e.g. AWU-priced) that Metronome may
+ *    not transfer to Stripe; guard retained for safety.
+ *
+ * Lines that are kept get their unit price shortened via
+ * `normalizeSubCentUnitAmount`. Quantity and total are preserved, so the totals safety check below is unaffected.
+ *
+ * Filters 1 and 2 cancel each other out: the negative "applied" line and the
+ * positive line it offsets have equal and opposite amounts, so removing both
+ * leaves the invoice total unchanged. As a safety net against a bad match, the
+ * invoice total before and after cleaning is returned so the caller can abort
+ * finalization if it drifted.
+ */
+async function cleanMetronomeInvoiceLines(
+  stripe: Stripe,
+  invoice: Stripe.Invoice
+): Promise<{
+  totalsMatch: boolean;
+  originalTotalCents: number;
+  newTotalCents: number;
+  awuPurchaseMetadata: Record<string, string> | null;
+  purchaseOrder: string | null;
+}> {
+  const invoiceCurrency = invoice.currency;
+  const originalTotalCents = invoice.total;
+
+  // `invoice.lines` only holds the first page; iterate the list endpoint so we
+  // see every line. The Stripe SDK list result auto-paginates when iterated.
+  // We need the full set upfront (not streamed) since matching a commit's
+  // negative line to the positive line it offsets requires looking across all
+  // of the invoice's lines.
+  const lines: Stripe.InvoiceLineItem[] = [];
+  for await (const line of stripe.invoices.listLineItems(invoice.id, {
+    limit: 100,
+  })) {
+    lines.push(line);
+  }
+
+  const commitAppliedLineIds = findCommitAppliedLineIds(lines);
+
+  // AWU pool commits are stamped (via Metronome custom fields on the commit,
+  // mapped to Stripe line-item metadata by Metronome's Stripe integration
+  // config) with credit_type=pool plus the credited amount, and optionally a
+  // PO / discount. Detected here so the whole invoice can be tagged
+  // awu_purchase=true, matching the shape `isAwuPurchaseInvoice` already
+  // reads for the payment-gated self-serve path.
+  let awuPurchaseMetadata: Record<string, string> | null = null;
+  let purchaseOrder: string | null = null;
+
+  for (const line of lines) {
+    const isNegative = line.amount < 1;
+    const hasAppliedCommitOrCredit = commitAppliedLineIds.has(line.id);
+    const isWrongCurrency = line.currency !== invoiceCurrency;
+    const shouldRemove =
+      isNegative || hasAppliedCommitOrCredit || isWrongCurrency;
+
+    logger.info(
+      {
+        stripeInvoiceId: invoice.id,
+        lineId: line.id,
+        amount: line.amount,
+        currency: line.currency,
+        metadata: line.metadata,
+        isNegative,
+        hasAppliedCommitOrCredit,
+        isWrongCurrency,
+        shouldRemove,
+        line,
+      },
+      "[Stripe] Metronome invoice line item"
+    );
+
+    if (line.metadata?.credit_type === CONTRACT_CREDIT_TYPE_POOL) {
+      awuPurchaseMetadata = {
+        awu_purchase: "true",
+        awu_amount_credits: line.metadata.awu_amount ?? "",
+        ...(line.metadata.awu_discount_percent
+          ? { awu_discount_percent: line.metadata.awu_discount_percent }
+          : {}),
+      };
+    }
+
+    if (line.metadata?.purchase_order_id) {
+      purchaseOrder = line.metadata.purchase_order_id;
+    }
+
+    if (!shouldRemove) {
+      await normalizeSubCentUnitAmount(stripe, invoice, line);
+      continue;
+    }
+
+    const invoiceItemId =
+      typeof line.invoice_item === "string"
+        ? line.invoice_item
+        : line.invoice_item?.id;
+
+    if (!invoiceItemId) {
+      logger.warn(
+        { stripeInvoiceId: invoice.id, lineId: line.id },
+        "[Stripe] Cannot remove line item: not backed by an invoice item"
+      );
+      continue;
+    }
+
+    await stripe.invoiceItems.del(invoiceItemId);
+  }
+
+  const updatedInvoice = await stripe.invoices.retrieve(invoice.id);
+  const newTotalCents = updatedInvoice.total;
+
+  return {
+    totalsMatch: newTotalCents === originalTotalCents,
+    originalTotalCents,
+    newTotalCents,
+    awuPurchaseMetadata,
+    purchaseOrder,
+  };
+}
+
+/**
+ * Re-fetches a Metronome-pushed draft invoice, normalizes its line items, then
+ * finalizes it. Invoked ~1 minute after Stripe's `invoice.created` (via Temporal)
+ * so Metronome has finished writing all line items before we touch the draft.
+ *
+ * Idempotent and self-gating: re-asserts the invoice is still a Metronome draft
+ * we have not cleaned yet, so Stripe redeliveries and Temporal retries collapse to
+ * a single effective run. `auto_advance` is disabled up-front so Stripe cannot
+ * finalize the draft out from under us while we edit; we finalize explicitly at
+ * the end.
+ */
+export async function cleanAndFinalizeMetronomeDraftInvoice({
+  invoiceId,
+  workspaceId,
+}: {
+  invoiceId: string;
+  workspaceId: string;
+}): Promise<
+  Result<
+    { outcome: "cleaned" | "skipped" | "totals_mismatch" },
+    { error_message: string }
+  >
+> {
+  const stripe = getStripeClient();
+
+  try {
+    const invoice = await stripe.invoices.retrieve(invoiceId);
+
+    if (!isMetronomePushedInvoice(invoice)) {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId },
+        "[Stripe] Skipping invoice clean: not a Metronome-pushed invoice"
+      );
+      return new Ok({ outcome: "skipped" });
+    }
+
+    if (invoice.status !== "draft") {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId, status: invoice.status },
+        "[Stripe] Skipping invoice clean: invoice is no longer a draft"
+      );
+      return new Ok({ outcome: "skipped" });
+    }
+
+    if (invoice.metadata?.[METRONOME_INVOICE_LINES_CLEANED_FLAG] === "true") {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId },
+        "[Stripe] Skipping invoice clean: already cleaned"
+      );
+      return new Ok({ outcome: "skipped" });
+    }
+
+    // Freeze the draft so Stripe's auto-advance can't finalize it while we edit.
+    await stripe.invoices.update(invoiceId, { auto_advance: false });
+
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    const creditConfig = workspace
+      ? await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+          workspace.id
+        )
+      : null;
+    const autoInvoiceFinalizationEnabled =
+      creditConfig?.autoInvoiceFinalizationEnabled ??
+      DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED;
+
+    const {
+      totalsMatch,
+      originalTotalCents,
+      newTotalCents,
+      awuPurchaseMetadata,
+      purchaseOrder,
+    } = await cleanMetronomeInvoiceLines(stripe, invoice);
+
+    await stripe.invoices.update(invoiceId, {
+      metadata: {
+        ...invoice.metadata,
+        workspace_id: workspaceId,
+        ...awuPurchaseMetadata,
+        ...(purchaseOrder ? { purchase_order_id: purchaseOrder } : {}),
+        [METRONOME_INVOICE_LINES_CLEANED_FLAG]: "true",
+      },
+      // Displayed on the printed/hosted invoice, unlike `metadata`.
+      ...(purchaseOrder
+        ? {
+            custom_fields: [{ name: "Purchase Order", value: purchaseOrder }],
+          }
+        : {}),
+    });
+
+    if (!totalsMatch) {
+      // The lines_cleaned flag is already set above, so a Temporal retry
+      // would just hit the "already cleaned" early return and no-op — this
+      // needs a human, not a retry. Report Ok rather than throwing.
+      logger.error(
+        {
+          panic: true,
+          stripeInvoiceId: invoiceId,
+          workspaceId,
+          originalTotalCents,
+          newTotalCents,
+        },
+        "[Stripe] Invoice total changed after cleaning Metronome line items, leaving as draft for manual review"
+      );
+      return new Ok({ outcome: "totals_mismatch" });
+    }
+
+    if (!autoInvoiceFinalizationEnabled) {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId },
+        "[Stripe] Cleaned Metronome draft invoice (finalization disabled for workspace)"
+      );
+      return new Ok({ outcome: "cleaned" });
+    }
+
+    const finalizeResult = await finalizeInvoice(invoice);
+    if (finalizeResult.isErr()) {
+      return finalizeResult;
+    }
+
+    logger.info(
+      { stripeInvoiceId: invoiceId, workspaceId },
+      "[Stripe] Cleaned and finalized Metronome draft invoice"
+    );
+    return new Ok({ outcome: "cleaned" });
+  } catch (error) {
+    if (
+      error instanceof Stripe.errors.StripeInvalidRequestError &&
+      error.code === "resource_missing"
+    ) {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId },
+        "[Stripe] Skipping invoice clean: invoice no longer exists"
+      );
+      return new Ok({ outcome: "skipped" });
+    }
+
+    logger.error(
+      {
+        stripeInvoiceId: invoiceId,
+        workspaceId,
+        stripeError: true,
+        error: normalizeError(error).message,
+      },
+      "[Stripe] Failed to clean and finalize Metronome draft invoice"
+    );
+    return new Err({
+      error_message: `Failed to clean and finalize invoice: ${normalizeError(error).message}`,
     });
   }
 }

@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type {
   BuilderSuggestionInputType,
   BuilderSuggestionType,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";

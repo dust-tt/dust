@@ -1,34 +1,73 @@
-import { Card, type CardVariantType } from "@sparkle/components/Card";
+import { Card } from "@sparkle/components/Card";
+import {
+  checkboxIconStyles,
+  checkboxIndicatorStyles,
+  checkboxStyles,
+} from "@sparkle/components/Checkbox";
 import { Counter } from "@sparkle/components/Counter";
+import {
+  radioIndicatorStyles,
+  radioStyles,
+} from "@sparkle/components/RadioGroup";
+import { Check } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
-export interface OptionCardProps {
-  label: string;
-  description?: string | null;
+export type OptionCardSelectionIndicator = "radio" | "checkbox";
+
+interface OptionCardSharedProps {
   counterValue?: number;
   selected?: boolean;
   disabled?: boolean;
   disableHover?: boolean;
   className?: string;
-  onClick?: () => void;
   onFocusCapture?: React.FocusEventHandler<HTMLDivElement>;
   onMouseEnter?: React.MouseEventHandler<HTMLDivElement>;
 }
 
-export function OptionCard({
-  label,
-  description,
-  counterValue,
-  selected = false,
-  disabled = false,
-  disableHover = false,
-  className,
-  onClick,
-  onFocusCapture,
-  onMouseEnter,
-}: OptionCardProps) {
-  const variant: CardVariantType = selected ? "active" : "tertiary";
+interface OptionCardOptionProps extends OptionCardSharedProps {
+  type?: "option";
+  label: string;
+  description?: string | null;
+  selectionIndicator?: OptionCardSelectionIndicator;
+  onClick?: () => void;
+}
+
+interface OptionCardInputProps extends OptionCardSharedProps {
+  // Input state: a free-text "type something else" option. The field is
+  // rendered and styled by OptionCard (borderless, faint placeholder); the
+  // card keeps the same chrome and counter.
+  type: "input";
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  // Accessible name for the field (screen readers). Falls back to the
+  // placeholder so the input is never unlabeled.
+  ariaLabel?: string;
+  inputRef?: React.Ref<HTMLInputElement>;
+  name?: string;
+  id?: string;
+  onFocus?: React.FocusEventHandler<HTMLInputElement>;
+  onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+}
+
+export type OptionCardProps = OptionCardOptionProps | OptionCardInputProps;
+
+export function OptionCard(props: OptionCardProps) {
+  const {
+    counterValue,
+    selected = false,
+    disabled = false,
+    disableHover = false,
+    className,
+    onFocusCapture,
+    onMouseEnter,
+  } = props;
+
+  const isInput = props.type === "input";
+  const onClick = isInput ? undefined : props.onClick;
+  const selectionIndicator = isInput ? undefined : props.selectionIndicator;
   const isInteractive = onClick !== undefined && !disabled;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -40,41 +79,95 @@ export function OptionCard({
 
   return (
     <Card
-      variant={variant}
+      variant="tertiary"
+      size="sm"
       className={cn(
-        "s-w-full s-items-center s-gap-2 s-rounded-2xl s-text-left s-transition-colors",
-        !disabled && "s-cursor-pointer",
-        disabled && "s-pointer-events-none s-opacity-60",
-        !selected &&
-          !disableHover &&
-          "hover:s-bg-muted-background/60 dark:hover:s-bg-muted-background-night/60",
+        "w-full items-center gap-2 text-left transition-colors",
+        isInteractive && "cursor-pointer",
+        // In input mode `disabled` targets the field, not the card chrome.
+        !isInput && disabled && "pointer-events-none opacity-60",
+        // Selected state is a flat "transparency-selected" overlay (6% of the
+        // foreground); the token is dark-mode aware on its own.
+        selected && "bg-foreground/[0.06] hover:bg-foreground/[0.06]",
+        !selected && !disableHover && "hover:bg-muted-background/60",
         className
       )}
       onClick={disabled ? undefined : onClick}
       onKeyDown={isInteractive ? handleKeyDown : undefined}
       onFocusCapture={onFocusCapture}
       onMouseEnter={onMouseEnter}
-      tabIndex={disabled ? -1 : isInteractive ? 0 : undefined}
+      tabIndex={
+        isInput ? undefined : disabled ? -1 : isInteractive ? 0 : undefined
+      }
       aria-pressed={isInteractive ? selected : undefined}
     >
       {counterValue !== undefined && (
         <Counter
           value={counterValue}
-          size="sm"
-          variant="ghost"
-          className="s-shrink-0 s-bg-border-dark dark:s-bg-border-dark-night"
+          size="xs"
+          variant="outline"
+          className="shrink-0"
         />
       )}
-      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-        <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
-          {label}
-        </span>
-        {description && (
-          <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {description}
-          </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {props.type === "input" ? (
+          <input
+            ref={props.inputRef}
+            type="text"
+            id={props.id}
+            name={props.name}
+            value={props.value}
+            placeholder={props.placeholder}
+            aria-label={props.ariaLabel ?? props.placeholder}
+            disabled={disabled}
+            onChange={(e) => props.onChange(e.target.value)}
+            onFocus={props.onFocus}
+            onBlur={props.onBlur}
+            onKeyDown={props.onKeyDown}
+            className={cn(
+              "w-full border-0 bg-transparent p-0 shadow-none outline-none",
+              // No blue focus ring on the field; focus is shown by the card's
+              // greyscale border (focus-within) instead.
+              "focus:ring-0 focus-visible:ring-0 focus-visible:outline-none",
+              "copy-sm text-foreground placeholder:text-faint",
+              "disabled:cursor-not-allowed"
+            )}
+          />
+        ) : (
+          <>
+            <span className="text-sm font-medium tracking-[-0.28px] text-foreground">
+              {props.label}
+            </span>
+            {props.description && (
+              <span className="text-xs text-muted-foreground">
+                {props.description}
+              </span>
+            )}
+          </>
         )}
       </div>
+      {selectionIndicator === "radio" && (
+        <div
+          aria-hidden="true"
+          className={cn(radioStyles(), "pointer-events-none shrink-0")}
+        >
+          {selected && <div className={radioIndicatorStyles()} />}
+        </div>
+      )}
+      {selectionIndicator === "checkbox" && (
+        <div
+          aria-hidden="true"
+          data-state={selected ? "checked" : "unchecked"}
+          className={cn(checkboxStyles(), "pointer-events-none shrink-0")}
+        >
+          <div
+            data-state={selected ? "checked" : "unchecked"}
+            className={checkboxIndicatorStyles()}
+          >
+            <Check className={checkboxIconStyles({ state: "checked" })} />
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

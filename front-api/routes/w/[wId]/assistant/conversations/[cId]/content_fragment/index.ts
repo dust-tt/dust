@@ -1,6 +1,7 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/internal/assistant";
+import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/assistant";
+import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -20,6 +21,74 @@ export type PostContentFragmentResponseBody = {
 // Mounted at /api/w/:wId/assistant/conversations/:cId/content_fragment.
 const app = workspaceApp();
 
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/content_fragment:
+ *   post:
+ *     summary: Create a content fragment
+ *     description: Post a new content fragment to an existing conversation.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - content
+ *               - contentType
+ *               - context
+ *             properties:
+ *               title:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               contentType:
+ *                 type: string
+ *                 description: MIME type of the content
+ *               url:
+ *                 type: string
+ *                 nullable: true
+ *               context:
+ *                 type: object
+ *                 properties:
+ *                   profilePictureUrl:
+ *                     type: string
+ *                     nullable: true
+ *               fileId:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Successfully created content fragment
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 contentFragment:
+ *                   $ref: '#/components/schemas/PrivateContentFragment'
+ *       401:
+ *         description: Unauthorized
+ */
+
 app.post(
   "/",
   validate("param", ParamsSchema),
@@ -29,13 +98,14 @@ app.post(
     const user = auth.getNonNullableUser();
     const { cId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(auth, cId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversation = await ConversationResource.fetchById(auth, cId);
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      );
     }
 
-    const conversation = conversationRes.value;
     const contentFragmentPayload = ctx.req.valid("json");
 
     const baseContext = {
@@ -46,7 +116,7 @@ app.post(
 
     const contentFragmentRes = await postNewContentFragment(
       auth,
-      conversation,
+      conversation.toJSON(),
       contentFragmentPayload,
       {
         ...baseContext,

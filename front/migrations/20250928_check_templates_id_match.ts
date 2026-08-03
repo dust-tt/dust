@@ -10,7 +10,7 @@ import type { Logger } from "@app/logger/logger";
 import type {
   AssistantTemplateListType,
   FetchAssistantTemplatesResponse,
-} from "@app/pages/api/templates";
+} from "@app/lib/resources/template_resource";
 import { makeScript } from "@app/scripts/helpers";
 
 async function computeTemplateIdMatches({

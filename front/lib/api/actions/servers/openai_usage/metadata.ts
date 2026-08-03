@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
-  get_completions_usage: {
+export const OPENAI_USAGE_TOOLS_METADATA = [
+  {
+    name: "get_completions_usage",
     description:
       "Get OpenAI completions usage data from the Usage API. Returns token usage, model requests, and other metrics.",
     schema: {
@@ -74,8 +72,11 @@ export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
       running: "Getting completions usage",
       done: "Get completions usage",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_organization_costs: {
+  {
+    name: "get_organization_costs",
     description:
       "Get OpenAI organization cost data from the Costs API. Returns detailed cost breakdown by line items.",
     schema: {
@@ -120,26 +121,20 @@ export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
       running: "Getting organization costs",
       done: "Get organization costs",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const OPENAI_USAGE_SERVER = {
   serverInfo: {
     name: "openai_usage",
     version: "1.0.0",
-    description: "Track API consumption and costs.",
+    description:
+      "Track OpenAI API consumption (token usage, model requests) and organization costs by project, API key, user, and model.",
     authorization: null,
     icon: "OpenaiLogo",
     documentationUrl: null,
-    instructions: null,
   },
-  tools: Object.values(OPENAI_USAGE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-  })),
-  tools_stakes: Object.fromEntries(
-    Object.values(OPENAI_USAGE_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
+  tools: OPENAI_USAGE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
