@@ -1,11 +1,7 @@
 import { getPokeUserConfigBucket } from "@app/lib/file_storage";
-import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import logger from "@app/logger/logger";
 import { type PokeRole, PokeRoleSchema } from "@app/types/poke/roles";
 import { isDevelopment } from "@app/types/shared/env";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
 export type { PokeRole } from "@app/types/poke/roles";
@@ -15,184 +11,82 @@ export const RolesConfigSchema = z.record(
   z.string().email(),
   z.array(PokeRoleSchema)
 );
-
 export type RolesConfig = z.infer<typeof RolesConfigSchema>;
 
 export const POKE_ROLES_FILE = "poke-roles.json";
-
-let cachedRoles: RolesConfig | null = null;
-let cachedGeneration: number | null = null;
-let developmentRoles: RolesConfig = {};
-let developmentGeneration = 0;
-
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const ALL_ROLES: PokeRole[] = PokeRoleSchema.options;
 
-export type RoleWriteError =
-  | { type: "conflict"; message: string }
-  | { type: "storage_error"; message: string }
-  | { type: "validation_error"; message: string };
+let cachedRoles: RolesConfig | null = null;
+let cacheExpiresAtMs = 0;
+let developmentRoles: RolesConfig = {};
 
 export function normalizeEmail(email: string): string {
   return email.toLowerCase().trim();
 }
 
-export function normalizeRolesConfig(config: RolesConfig): RolesConfig {
-  const normalized: RolesConfig = {};
-
-  const entries: [string, PokeRole[]][] = Object.entries(config);
-  for (const [email, roles] of entries) {
-    const normalizedKey = normalizeEmail(email);
-    if (normalizedKey in normalized) {
-      logger.warn(
-        { original: email, normalizedKey },
-        "Email normalization merged duplicate keys in roles config"
-      );
-      const existing = normalized[normalizedKey] ?? [];
-      const merged = [...new Set([...existing, ...roles])];
-      normalized[normalizedKey] = merged;
-    } else {
-      normalized[normalizedKey] = roles;
-    }
-  }
-
-  return normalized;
-}
-
-function shouldUseDevelopmentRolesStore(): boolean {
-  return isDevelopment() && !process.env.DUST_POKE_USER_CONFIG_BUCKET;
-}
-
-function cloneRolesConfig(config: RolesConfig): RolesConfig {
+function normalizeRolesConfig(config: RolesConfig): RolesConfig {
   return Object.fromEntries(
-    Object.entries(config).map(([email, roles]) => [email, [...roles]])
+    Object.entries(config).map(([email, roles]) => [
+      normalizeEmail(email),
+      [...new Set(roles)],
+    ])
   );
 }
 
-export function invalidateRolesCache(): void {
+function shouldUseDevelopmentStore(): boolean {
+  return isDevelopment() && !process.env.DUST_POKE_USER_CONFIG_BUCKET;
+}
+
+async function readRoles(): Promise<RolesConfig> {
+  if (shouldUseDevelopmentStore()) {
+    return structuredClone(developmentRoles);
+  }
+
+  const content = await getPokeUserConfigBucket({
+    useServiceAccount: false,
+  }).fetchFileContent(POKE_ROLES_FILE);
+  const parsed: unknown = JSON.parse(content);
+  return normalizeRolesConfig(RolesConfigSchema.parse(parsed));
+}
+
+/** Fresh read used by the permissions editor. */
+export async function loadRolesForEditing(): Promise<RolesConfig> {
+  return readRoles();
+}
+
+/** Validates and overwrites the current JSON object. Bucket versioning is the rollback mechanism. */
+export async function writeRoles(config: RolesConfig): Promise<void> {
+  const normalized = normalizeRolesConfig(RolesConfigSchema.parse(config));
+
+  if (shouldUseDevelopmentStore()) {
+    developmentRoles = structuredClone(normalized);
+  } else {
+    await getPokeUserConfigBucket({
+      useServiceAccount: false,
+    }).uploadRawContentToBucket({
+      content: JSON.stringify(normalized, null, 2),
+      contentType: "application/json",
+      filePath: POKE_ROLES_FILE,
+    });
+  }
+
   cachedRoles = null;
-  cachedGeneration = null;
-  logger.info("Poke roles cache invalidated");
+  cacheExpiresAtMs = 0;
 }
 
-export async function loadRolesWithGeneration(): Promise<{
-  roles: RolesConfig;
-  generation: number;
-}> {
-  if (shouldUseDevelopmentRolesStore()) {
-    const roles = cloneRolesConfig(developmentRoles);
-    cachedRoles = roles;
-    cachedGeneration = developmentGeneration;
-    return { roles, generation: developmentGeneration };
-  }
-
-  const bucket = getPokeUserConfigBucket({ useServiceAccount: false });
-  const gcsFile = bucket.file(POKE_ROLES_FILE);
-
-  const [content] = await gcsFile.download();
-  const [metadata] = await gcsFile.getMetadata();
-
-  const parsed: unknown = JSON.parse(content.toString());
-  const result = RolesConfigSchema.safeParse(parsed);
-
-  if (!result.success) {
-    throw new Error(`Invalid poke roles config: ${result.error.message}`);
-  }
-
-  const generation = Number(metadata.generation ?? 0);
-  const normalized = normalizeRolesConfig(result.data);
-
-  cachedRoles = normalized;
-  cachedGeneration = generation;
-
-  return { roles: normalized, generation };
-}
-
-export async function loadRolesForAuth(): Promise<RolesConfig> {
-  if (shouldUseDevelopmentRolesStore()) {
-    const { roles } = await loadRolesWithGeneration();
-    return roles;
-  }
-
-  const bucket = getPokeUserConfigBucket({ useServiceAccount: false });
-  const gcsFile = bucket.file(POKE_ROLES_FILE);
-
-  const [metadata] = await gcsFile.getMetadata();
-  const currentGeneration = Number(metadata.generation ?? 0);
-
-  if (
-    cachedRoles &&
-    cachedGeneration !== null &&
-    cachedGeneration === currentGeneration
-  ) {
+async function loadRolesForAuth(): Promise<RolesConfig> {
+  if (cachedRoles && Date.now() < cacheExpiresAtMs) {
     return cachedRoles;
   }
 
-  const { roles } = await loadRolesWithGeneration();
-  return roles;
-}
-
-export async function writeRoles(
-  config: RolesConfig,
-  generation: number
-): Promise<Result<void, RoleWriteError>> {
-  const validation = RolesConfigSchema.safeParse(config);
-  if (!validation.success) {
-    return new Err({
-      type: "validation_error",
-      message: `Invalid roles config: ${validation.error.message}`,
-    });
-  }
-
-  const normalizedConfig = normalizeRolesConfig(validation.data);
-
-  if (shouldUseDevelopmentRolesStore()) {
-    if (generation !== developmentGeneration) {
-      return new Err({
-        type: "conflict",
-        message: "Concurrent modification detected in development roles.",
-      });
-    }
-
-    developmentRoles = cloneRolesConfig(normalizedConfig);
-    developmentGeneration += 1;
-    cachedRoles = cloneRolesConfig(developmentRoles);
-    cachedGeneration = developmentGeneration;
-    return new Ok(undefined);
-  }
-
-  const serialized = JSON.stringify(normalizedConfig, null, 2);
-
   try {
-    const bucket = getPokeUserConfigBucket({ useServiceAccount: false });
-    await bucket.uploadRawContentToBucketWithPrecondition(
-      {
-        content: serialized,
-        contentType: "application/json",
-        filePath: POKE_ROLES_FILE,
-      },
-      {
-        resumable: false,
-        preconditionOpts: { ifGenerationMatch: generation },
-      }
-    );
-
-    invalidateRolesCache();
-    return new Ok(undefined);
+    cachedRoles = await readRoles();
+    cacheExpiresAtMs = Date.now() + CACHE_TTL_MS;
+    return cachedRoles;
   } catch (err) {
-    const error = normalizeError(err);
-
-    if (isGCSPreconditionFailedError(err)) {
-      return new Err({
-        type: "conflict",
-        message: `Concurrent modification detected: ${error.message}`,
-      });
-    }
-
-    logger.error({ err: error }, "Failed to write poke roles to GCS");
-    return new Err({
-      type: "storage_error",
-      message: `Failed to write roles: ${error.message}`,
-    });
+    logger.error({ err }, "Failed to load poke roles from GCS");
+    return cachedRoles ?? {};
   }
 }
 

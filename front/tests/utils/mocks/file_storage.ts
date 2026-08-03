@@ -41,16 +41,12 @@ class FileStorageMock {
   private _saveShouldFail: (filePath: string) => boolean = () => false;
   private _metadataForPath: (
     filePath: string
-  ) => Record<string, string> | null = () => null;
+  ) => { contentType: string; size: string } | null = () => null;
   private _contentForPath: (filePath: string) => string | null = () => null;
   private _sortedFileVersions: (filePath: string) => MockFileVersion[] | null =
     () => null;
   private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
     false;
-  private _preconditionFails: (
-    filePath: string,
-    generation?: number
-  ) => boolean = () => false;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
@@ -86,7 +82,7 @@ class FileStorageMock {
    * via `reset()`.
    */
   setFileMetadata(
-    fn: (filePath: string) => Record<string, string> | null
+    fn: (filePath: string) => { contentType: string; size: string } | null
   ): void {
     this._metadataForPath = fn;
   }
@@ -116,17 +112,6 @@ class FileStorageMock {
    */
   setCopyFileFails(predicate: (src: string, dest: string) => boolean): void {
     this._copyFileShouldFail = predicate;
-  }
-
-  /**
-   * Makes `uploadRawContentToBucketWithPrecondition` reject with a 412
-   * precondition-failed error for matching paths/generations.
-   * Defaults to never failing. Reset between tests via `reset()`.
-   */
-  setPreconditionFails(
-    predicate: (filePath: string, generation?: number) => boolean
-  ): void {
-    this._preconditionFails = predicate;
   }
 
   /**
@@ -162,7 +147,6 @@ class FileStorageMock {
     this._contentForPath = () => null;
     this._sortedFileVersions = () => null;
     this._copyFileShouldFail = () => false;
-    this._preconditionFails = () => false;
   }
 
   /**
@@ -284,29 +268,6 @@ class FileStorageMock {
       uploadSmallRawContentToBucketAsNewFile: vi
         .fn()
         .mockResolvedValue(undefined),
-      uploadRawContentToBucketWithPrecondition: vi.fn(
-        (
-          args: { content: string; contentType: string; filePath: string },
-          saveOptions?: {
-            resumable?: boolean;
-            preconditionOpts?: { ifGenerationMatch?: number };
-          }
-        ) => {
-          const generation = saveOptions?.preconditionOpts?.ifGenerationMatch;
-          if (this._preconditionFails(args.filePath, generation)) {
-            return Promise.reject(
-              Object.assign(new Error("Precondition failed"), { code: 412 })
-            );
-          }
-          this._objectStore.set(args.filePath, args.content);
-          this._saveFileCalls.push({
-            filePath: args.filePath,
-            content: args.content,
-            contentType: args.contentType,
-          });
-          return Promise.resolve(undefined);
-        }
-      ),
       fetchFileContent: vi.fn((filePath: string) => {
         const stored = this._objectStore.get(filePath);
         if (stored !== undefined) {

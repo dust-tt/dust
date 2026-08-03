@@ -1,22 +1,15 @@
 import config from "@app/lib/api/config";
-import type {
-  PartialFailureState,
-  PokeGetSuperusers,
-  SuperuserMutationError,
-  SuperuserMutationResult,
-} from "@app/lib/api/poke/superusers";
+import type { PokeGetSuperusers } from "@app/lib/api/poke/superusers";
 import {
-  grantSuperuser,
   listSuperuserMembers,
-  repairSuperuserDrift,
-  revokeSuperuser,
-  updateSuperuserRoles,
+  SuperuserAdminError,
+  setDustSuperUser,
+  setPokeRoles,
 } from "@app/lib/api/poke/superusers";
 import { Authenticator } from "@app/lib/auth";
 import { hasPokeRole, PokeRoleSchema } from "@app/lib/poke/roles";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { auditLog } from "@app/logger/logger";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { PokeCtx } from "@front-api/middlewares/ctx";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -25,49 +18,14 @@ import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import { z } from "zod";
 
-// ---------------------------------------------------------------------------
-// Zod schemas for mutation request bodies
-// ---------------------------------------------------------------------------
-
-const GrantBodySchema = z.object({
-  roles: z.array(PokeRoleSchema).min(1),
-  generation: z.number(),
+const SetRolesBodySchema = z.object({
+  email: z.string().email(),
+  roles: z.array(PokeRoleSchema).min(1).nullable(),
 });
+const SetSuperuserBodySchema = z.object({ isDustSuperUser: z.boolean() });
 
-const RevokeBodySchema = z.object({
-  generation: z.number(),
-});
-
-const UpdateRolesBodySchema = z.object({
-  roles: z.array(PokeRoleSchema).min(1),
-  generation: z.number(),
-});
-
-const RepairBodySchema = z.object({
-  generation: z.number(),
-  roles: z.array(PokeRoleSchema).min(1).optional(),
-});
-
-// ---------------------------------------------------------------------------
-// Response types
-// ---------------------------------------------------------------------------
-
-interface SuperuserMutationResponse {
-  result: SuperuserMutationResult;
-}
-
-interface SuperuserPartialFailureResponse {
-  result: null;
-  partialFailure: PartialFailureState;
-}
-
-// ---------------------------------------------------------------------------
-// Shared helpers
-// ---------------------------------------------------------------------------
-
-function adminCheck(ctx: Context<PokeCtx>) {
-  const pokeRoles = ctx.get("pokeRoles");
-  if (!hasPokeRole(pokeRoles, ["admin"])) {
+function requireAdmin(ctx: Context<PokeCtx>) {
+  if (!hasPokeRole(ctx.get("pokeRoles"), ["admin"])) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
@@ -79,445 +37,115 @@ function adminCheck(ctx: Context<PokeCtx>) {
   return null;
 }
 
-async function resolveAuth(ctx: Context<PokeCtx>) {
-  const wId = config.getProductionDustWorkspaceId();
-  if (!wId) {
-    return {
-      auth: null,
-      error: apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Production Dust workspace ID is not configured.",
-        },
-      }),
-    };
+async function getAuth(ctx: Context<PokeCtx>) {
+  const workspaceId = config.getProductionDustWorkspaceId();
+  if (!workspaceId) {
+    throw new Error("Production Dust workspace ID is not configured.");
   }
-
-  const session = ctx.get("session");
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
-  return { auth, error: null };
+  return Authenticator.fromSuperUserSession(ctx.get("session"), workspaceId);
 }
 
-type SuperuserAuditAction =
-  | "superuser.granted"
-  | "superuser.revoked"
-  | "superuser.roles_updated"
-  | "superuser.drift_repaired";
-
-interface EmitSuperuserAuditEventArgs {
-  auth: Authenticator;
-  action: SuperuserAuditAction;
-  target: { sId: string; name: string };
-  previousState: SuperuserMutationResult["previousState"];
-  currentState: SuperuserMutationResult["newState"];
-  outcome: "success" | "partial_failure";
-  rolesWritten: boolean;
-  dbUpdated: boolean;
-  currentDriftState: string;
-  remediation: string;
-}
-
-function emitSuperuserAuditEvent({
-  auth,
-  action,
-  target,
-  previousState,
-  currentState,
-  outcome,
-  rolesWritten,
-  dbUpdated,
-  currentDriftState,
-  remediation,
-}: EmitSuperuserAuditEventArgs): void {
-  auditLog(
-    {
-      author: auth.getNonNullableUser().toJSON(),
-      action,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      targetUserId: target.sId,
-      targetUserName: target.name,
-      previousRoles: previousState.pokeRoles,
-      newRoles: currentState.pokeRoles,
-      previousIsDustSuperUser: previousState.isDustSuperUser,
-      newIsDustSuperUser: currentState.isDustSuperUser,
-      region: config.getRegion() ?? "unknown",
-      outcome,
-      rolesWritten,
-      dbUpdated,
-      currentDriftState,
-      remediation,
+function mutationError(ctx: Context<PokeCtx>, error: unknown) {
+  if (error instanceof SuperuserAdminError) {
+    return apiError(ctx, {
+      status_code: error.type === "not_found" ? 404 : 400,
+      api_error: {
+        type:
+          error.type === "not_found"
+            ? "user_not_found"
+            : "invalid_request_error",
+        message: error.message,
+      },
+    });
+  }
+  return apiError(ctx, {
+    status_code: 500,
+    api_error: {
+      type: "internal_server_error",
+      message: normalizeError(error).message,
     },
-    "[Security] Poke superuser permissions changed"
-  );
+  });
 }
 
-function mapMutationError(
-  ctx: Context<PokeCtx>,
-  error: SuperuserMutationError
-) {
-  switch (error.type) {
-    case "not_found":
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "user_not_found",
-          message: error.message,
-        },
-      });
-    case "not_active_member":
-    case "already_superuser":
-    case "not_superuser":
-    case "last_admin":
-    case "self_removal":
-    case "no_drift":
-    case "invalid_request_error":
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: error.message,
-        },
-      });
-    case "conflict":
-      return apiError(ctx, {
-        status_code: 409,
-        api_error: {
-          type: "invalid_request_error",
-          message: error.message,
-        },
-      });
-    case "storage_error":
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: error.message,
-        },
-      });
-    case "partial_failure":
-      return ctx.json(
-        {
-          result: null,
-          partialFailure: error.partialFailure,
-        } satisfies SuperuserPartialFailureResponse,
-        500
-      );
-    default:
-      assertNever(error);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// App
-// ---------------------------------------------------------------------------
-
-// Mounted at /api/poke/superusers. pokeAuth is applied by the parent poke sub-app.
 const app = pokeApp();
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeGetSuperusers> => {
-  const denied = adminCheck(ctx);
+  const denied = requireAdmin(ctx);
   if (denied) {
     return denied;
   }
-
-  const { auth, error } = await resolveAuth(ctx);
-  if (!auth) {
-    return error;
-  }
-
-  const result = await listSuperuserMembers(auth);
-  return ctx.json(result);
+  return ctx.json(await listSuperuserMembers(await getAuth(ctx)));
 });
 
-// ---------------------------------------------------------------------------
-// POST /:userSId/grant — Grant superuser access
-// ---------------------------------------------------------------------------
-
-/** @ignoreswagger */
-app.post(
-  "/:userSId/grant",
-  validate("json", GrantBodySchema),
-  async (
-    ctx
-  ): HandlerResult<
-    SuperuserMutationResponse | SuperuserPartialFailureResponse
-  > => {
-    const denied = adminCheck(ctx);
-    if (denied) {
-      return denied;
-    }
-
-    const { auth, error } = await resolveAuth(ctx);
-    if (!auth) {
-      return error;
-    }
-
-    const user = await UserResource.fetchById(ctx.req.param("userSId"));
-    if (!user) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "user_not_found",
-          message: "User not found.",
-        },
-      });
-    }
-
-    const { roles, generation } = ctx.req.valid("json");
-
-    const result = await grantSuperuser(auth, user.email, roles, generation);
-    if (result.isErr()) {
-      if (result.error.type === "partial_failure") {
-        const partialFailure = result.error.partialFailure;
-        emitSuperuserAuditEvent({
-          auth,
-          action: "superuser.granted",
-          target: { sId: user.sId, name: user.fullName() },
-          previousState: partialFailure.previousState,
-          currentState: partialFailure.currentState,
-          outcome: "partial_failure",
-          rolesWritten: partialFailure.rolesWritten,
-          dbUpdated: partialFailure.dbUpdated,
-          currentDriftState: partialFailure.currentDriftState,
-          remediation: partialFailure.remediation,
-        });
-      }
-      return mapMutationError(ctx, result.error);
-    }
-
-    emitSuperuserAuditEvent({
-      auth,
-      action: "superuser.granted",
-      target: {
-        sId: result.value.targetSId,
-        name: result.value.targetName,
-      },
-      previousState: result.value.previousState,
-      currentState: result.value.newState,
-      outcome: "success",
-      rolesWritten: true,
-      dbUpdated: true,
-      currentDriftState: "ok",
-      remediation: "",
-    });
-
-    return ctx.json({ result: result.value });
-  }
-);
-
-// ---------------------------------------------------------------------------
-// POST /:userSId/revoke — Revoke superuser access
-// ---------------------------------------------------------------------------
-
-/** @ignoreswagger */
-app.post(
-  "/:userSId/revoke",
-  validate("json", RevokeBodySchema),
-  async (
-    ctx
-  ): HandlerResult<
-    SuperuserMutationResponse | SuperuserPartialFailureResponse
-  > => {
-    const denied = adminCheck(ctx);
-    if (denied) {
-      return denied;
-    }
-
-    const { auth, error } = await resolveAuth(ctx);
-    if (!auth) {
-      return error;
-    }
-
-    const user = await UserResource.fetchById(ctx.req.param("userSId"));
-    if (!user) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "user_not_found",
-          message: "User not found.",
-        },
-      });
-    }
-
-    const { generation } = ctx.req.valid("json");
-
-    const result = await revokeSuperuser(auth, user.email, generation);
-    if (result.isErr()) {
-      if (result.error.type === "partial_failure") {
-        const partialFailure = result.error.partialFailure;
-        emitSuperuserAuditEvent({
-          auth,
-          action: "superuser.revoked",
-          target: { sId: user.sId, name: user.fullName() },
-          previousState: partialFailure.previousState,
-          currentState: partialFailure.currentState,
-          outcome: "partial_failure",
-          rolesWritten: partialFailure.rolesWritten,
-          dbUpdated: partialFailure.dbUpdated,
-          currentDriftState: partialFailure.currentDriftState,
-          remediation: partialFailure.remediation,
-        });
-      }
-      return mapMutationError(ctx, result.error);
-    }
-
-    emitSuperuserAuditEvent({
-      auth,
-      action: "superuser.revoked",
-      target: {
-        sId: result.value.targetSId,
-        name: result.value.targetName,
-      },
-      previousState: result.value.previousState,
-      currentState: result.value.newState,
-      outcome: "success",
-      rolesWritten: true,
-      dbUpdated: result.value.previousState.isDustSuperUser,
-      currentDriftState: "none",
-      remediation: "",
-    });
-
-    return ctx.json({ result: result.value });
-  }
-);
-
-// ---------------------------------------------------------------------------
-// PATCH /:userSId/roles — Update superuser roles
-// ---------------------------------------------------------------------------
-
-/** @ignoreswagger */
+/** Add, update, or remove an email entry in poke-roles.json. @ignoreswagger */
 app.patch(
-  "/:userSId/roles",
-  validate("json", UpdateRolesBodySchema),
-  async (
-    ctx
-  ): HandlerResult<
-    SuperuserMutationResponse | SuperuserPartialFailureResponse
-  > => {
-    const denied = adminCheck(ctx);
+  "/roles",
+  validate("json", SetRolesBodySchema),
+  async (ctx): HandlerResult<{ success: true }> => {
+    const denied = requireAdmin(ctx);
     if (denied) {
       return denied;
     }
+    const auth = await getAuth(ctx);
+    const { email, roles } = ctx.req.valid("json");
 
-    const { auth, error } = await resolveAuth(ctx);
-    if (!auth) {
-      return error;
-    }
-
-    const user = await UserResource.fetchById(ctx.req.param("userSId"));
-    if (!user) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "user_not_found",
-          message: "User not found.",
+    try {
+      const result = await setPokeRoles(auth, email, roles);
+      auditLog(
+        {
+          author: auth.getNonNullableUser().toJSON(),
+          action: roles === null ? "poke_roles.removed" : "poke_roles.updated",
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          targetEmail: result.email,
+          previousRoles: result.previousRoles,
+          newRoles: result.newRoles,
+          region: config.getRegion() ?? "unknown",
         },
-      });
+        "[Security] Poke roles changed"
+      );
+      return ctx.json({ success: true });
+    } catch (error) {
+      return mutationError(ctx, error);
     }
-
-    const { roles, generation } = ctx.req.valid("json");
-
-    const result = await updateSuperuserRoles(
-      auth,
-      user.email,
-      roles,
-      generation
-    );
-    if (result.isErr()) {
-      return mapMutationError(ctx, result.error);
-    }
-
-    emitSuperuserAuditEvent({
-      auth,
-      action: "superuser.roles_updated",
-      target: {
-        sId: result.value.targetSId,
-        name: result.value.targetName,
-      },
-      previousState: result.value.previousState,
-      currentState: result.value.newState,
-      outcome: "success",
-      rolesWritten: true,
-      dbUpdated: false,
-      currentDriftState: "ok",
-      remediation: "",
-    });
-
-    return ctx.json({ result: result.value });
   }
 );
 
-// ---------------------------------------------------------------------------
-// POST /:userSId/repair — Repair drift between DB and GCS
-// ---------------------------------------------------------------------------
-
-/** @ignoreswagger */
-app.post(
-  "/:userSId/repair",
-  validate("json", RepairBodySchema),
-  async (
-    ctx
-  ): HandlerResult<
-    SuperuserMutationResponse | SuperuserPartialFailureResponse
-  > => {
-    const denied = adminCheck(ctx);
+/** Toggle the database isDustSuperUser flag. @ignoreswagger */
+app.patch(
+  "/:userSId/superuser",
+  validate("json", SetSuperuserBodySchema),
+  async (ctx): HandlerResult<{ success: true }> => {
+    const denied = requireAdmin(ctx);
     if (denied) {
       return denied;
     }
+    const auth = await getAuth(ctx);
+    const { isDustSuperUser } = ctx.req.valid("json");
 
-    const { auth, error } = await resolveAuth(ctx);
-    if (!auth) {
-      return error;
-    }
-
-    const user = await UserResource.fetchById(ctx.req.param("userSId"));
-    if (!user) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "user_not_found",
-          message: "User not found.",
+    try {
+      const result = await setDustSuperUser(
+        auth,
+        ctx.req.param("userSId"),
+        isDustSuperUser
+      );
+      auditLog(
+        {
+          author: auth.getNonNullableUser().toJSON(),
+          action: "dust_superuser.toggled",
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          targetUserId: result.userSId,
+          targetEmail: result.email,
+          previousValue: result.previousValue,
+          newValue: result.newValue,
+          region: config.getRegion() ?? "unknown",
         },
-      });
+        "[Security] Dust superuser flag changed"
+      );
+      return ctx.json({ success: true });
+    } catch (error) {
+      return mutationError(ctx, error);
     }
-
-    const { generation, roles } = ctx.req.valid("json");
-
-    const result = await repairSuperuserDrift(
-      auth,
-      user.email,
-      generation,
-      roles
-    );
-    if (result.isErr()) {
-      return mapMutationError(ctx, result.error);
-    }
-
-    const prev = result.value.previousState;
-    const driftState =
-      prev.isDustSuperUser && prev.pokeRoles.length === 0
-        ? "db_only"
-        : "roles_only";
-
-    emitSuperuserAuditEvent({
-      auth,
-      action: "superuser.drift_repaired",
-      target: {
-        sId: result.value.targetSId,
-        name: result.value.targetName,
-      },
-      previousState: result.value.previousState,
-      currentState: result.value.newState,
-      outcome: "success",
-      rolesWritten: driftState === "db_only",
-      dbUpdated: driftState === "roles_only",
-      currentDriftState: "ok",
-      remediation: "",
-    });
-
-    return ctx.json({ result: result.value });
   }
 );
 
