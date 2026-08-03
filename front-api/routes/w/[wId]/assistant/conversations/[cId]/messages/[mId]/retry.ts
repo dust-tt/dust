@@ -1,7 +1,7 @@
 import { retryAgentMessage } from "@app/lib/api/assistant/conversation";
-import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
+import { retryBlockedActionsAndResumeAncestors } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
+import { isNonBlockingRetryError } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
-import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -103,8 +103,6 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const conversation = conversationResource.toJSON();
-
   const renderRes = await batchRenderMessages(
     auth,
     conversationResource,
@@ -135,32 +133,24 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   // If the query parameter `blocked_only` is true, we retry only the blocked
   // actions.
   if (ctx.req.query("blocked_only") === "true") {
-    const retryBlockedActionsRes = await retryBlockedActions(
+    const retryBlockedActionsRes = await retryBlockedActionsAndResumeAncestors(
       auth,
-      conversation,
+      conversationResource,
       { messageId }
     );
 
     if (retryBlockedActionsRes.isErr()) {
       const { error } = retryBlockedActionsRes;
 
-      if (
-        error instanceof DustError &&
-        error.code === "agent_loop_already_running"
-      ) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: error.message,
-          },
-        });
+      // Nothing left to retry: the client's view is stale, not broken.
+      if (isNonBlockingRetryError(error)) {
+        return ctx.json({ message });
       }
 
       return apiError(ctx, {
         status_code: 500,
         api_error: {
-          type: "invalid_request_error",
+          type: "internal_server_error",
           message: "Failed to retry blocked actions.",
         },
       });
