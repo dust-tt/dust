@@ -224,4 +224,19 @@ describe("computeAgentMessageCredits", () => {
       })
     ).toBeNull();
   });
+
+  it("costs 0 for the Activation Pod nudge, LLM and tools alike", () => {
+    const credits = computeAgentMessageCredits({
+      runUsages: [usage({ costMicroUsd: 8500 })], // would be 1 intelligence credit
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "succeeded",
+        },
+      ], // would be 3 tool credits
+      contextOrigin: "system_activation",
+    });
+    expect(credits).toBe(0);
+  });
 });
