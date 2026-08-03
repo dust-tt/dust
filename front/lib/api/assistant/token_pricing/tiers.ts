@@ -345,6 +345,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "accounts/fireworks/models/deepseek-v4-pro": {
     none: "balanced",
   },
+  "accounts/fireworks/models/deepseek-v4-flash-0731": {
+    none: "cost_efficient",
+    light: "cost_efficient",
+    medium: "cost_efficient",
+    high: "cost_efficient",
+  },
   "accounts/fireworks/models/kimi-k2-instruct-0905": {
     light: "balanced",
   },

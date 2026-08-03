@@ -90,6 +90,7 @@ export type KnownModelLLMId =
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
+  | "accounts/fireworks/models/deepseek-v4-flash-0731" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
