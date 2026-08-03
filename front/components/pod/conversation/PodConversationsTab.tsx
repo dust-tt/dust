@@ -15,7 +15,9 @@ import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations"
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
+import { getSpaceIcon } from "@app/lib/spaces";
 import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
+import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type { GetSpaceResponseBody } from "@app/types/api/spaces";
@@ -34,9 +36,11 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  CheckDouble,
   Chip,
   cn,
   EmptyCTA,
+  Icon,
   ListGroup,
   ListItemSection,
   LoadingBlock,
@@ -151,7 +155,7 @@ export function PodConversationsTab({
     limit: 10,
     initialSearchText: "",
   });
-
+  const isWidthConstrained = useIsWidthConstrained();
   const conversationsByDate: Record<GroupLabel, PodConversationListItemType[]> =
     useMemo(() => {
       return conversations.length
@@ -175,9 +179,10 @@ export function PodConversationsTab({
   );
 
   const [greeting, setGreeting] = useState<string>("");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: force re-render when podInfo.name changes
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
-  }, [user.firstName]);
+  }, [user.firstName, podInfo.name]);
 
   const isFilteredEmpty = !isConversationsLoading && !isPodEmpty && !hasHistory;
   const isSingleMemberPod = podInfo.members.length === 1;
@@ -199,14 +204,15 @@ export function PodConversationsTab({
             <div className="flex w-full justify-center">
               <ActivationNextSteps owner={owner} podId={podInfo.sId} />
             </div>
-            <div className="flex w-full items-center justify-center gap-2">
+            <div className="flex w-full items-center gap-2">
+              <Icon visual={getSpaceIcon(podInfo)} />
               <h2
                 className={cn(
                   "heading-2xl text-foreground",
                   podInfo.archivedAt && "text-muted-foreground"
                 )}
               >
-                {greeting}
+                {podInfo.name} - {greeting}
               </h2>
               {podInfo.archivedAt && (
                 <Chip size="xs" color="warning" label="Archived" />
@@ -227,7 +233,7 @@ export function PodConversationsTab({
                 draftKey={`space-${podInfo.sId}-new-conversation`}
                 space={podInfo}
                 disableAutoFocus={false}
-                placeholder={`Get work done in ${podInfo.name}`}
+                placeholder={`Get work done...`}
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
                 defaultSkills={defaultSkills}
@@ -262,61 +268,12 @@ export function PodConversationsTab({
             /* Space conversations section */
             <div className="w-full">
               <div className="flex flex-col gap-3">
-                <div className="my-3 flex min-w-0 flex-row gap-2 px-3">
-                  <div className="min-w-0 flex-1">
-                    <SearchInputWithPopover
-                      name="conversation-search"
-                      value={searchText}
-                      onChange={setSearchText}
-                      placeholder={`Search in ${podInfo.name}`}
-                      open={isSearchPopoverOpen && searchText.trim().length > 0}
-                      onOpenChange={setIsSearchPopoverOpen}
-                      items={searchResults}
-                      isLoading={isSearching}
-                      noResults={
-                        searchText.trim().length > 0 && !isSearching
-                          ? isSearchError
-                            ? "Failed to search conversations. Please try again."
-                            : "No conversations found."
-                          : ""
-                      }
-                      displayItemCount={true}
-                      renderItem={(conversation, selected) => {
-                        const conversationLabel =
-                          getConversationDisplayTitle(conversation);
-                        const time = moment(conversation.updated).fromNow();
-
-                        return (
-                          <div
-                            className={cn(
-                              "cursor-pointer px-3 py-2 hover:bg-primary-50",
-                              selected && "bg-primary-100"
-                            )}
-                            onClick={() => navigateToConversation(conversation)}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="min-w-0 flex-1 truncate">
-                                <div className="text-sm font-medium text-foreground">
-                                  {conversationLabel}
-                                </div>
-                              </div>
-                              <div className="shrink-0 text-xs text-muted-foreground">
-                                {time}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }}
-                      onItemSelect={navigateToConversation}
-                    />
-                  </div>
-                </div>
                 <div className="flex flex-row items-center justify-between gap-3">
                   {!isSingleMemberPod && (
                     <ButtonsSwitchList
                       key={conversationFilter}
                       defaultValue={conversationFilter}
-                      size="xs"
+                      size={isWidthConstrained ? "xs" : "sm"}
                     >
                       <ButtonsSwitch
                         value="with_me"
@@ -338,10 +295,56 @@ export function PodConversationsTab({
                       />
                     </ButtonsSwitchList>
                   )}
+                  <SearchInputWithPopover
+                    name="conversation-search"
+                    value={searchText}
+                    onChange={setSearchText}
+                    placeholder={`Search...`}
+                    open={isSearchPopoverOpen && searchText.trim().length > 0}
+                    onOpenChange={setIsSearchPopoverOpen}
+                    items={searchResults}
+                    isLoading={isSearching}
+                    noResults={
+                      searchText.trim().length > 0 && !isSearching
+                        ? isSearchError
+                          ? "Failed to search conversations. Please try again."
+                          : "No conversations found."
+                        : ""
+                    }
+                    displayItemCount={true}
+                    renderItem={(conversation, selected) => {
+                      const conversationLabel =
+                        getConversationDisplayTitle(conversation);
+                      const time = moment(conversation.updated).fromNow();
+
+                      return (
+                        <div
+                          className={cn(
+                            "cursor-pointer px-3 py-2 hover:bg-primary-50",
+                            selected && "bg-primary-100"
+                          )}
+                          onClick={() => navigateToConversation(conversation)}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1 truncate">
+                              <div className="text-sm font-medium text-foreground">
+                                {conversationLabel}
+                              </div>
+                            </div>
+                            <div className="shrink-0 text-xs text-muted-foreground">
+                              {time}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }}
+                    onItemSelect={navigateToConversation}
+                  />
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
-                    label="Mark all as read"
+                    icon={CheckDouble}
+                    label={isWidthConstrained ? undefined : "Mark all as read"}
                     className="shrink-0"
                     onClick={() => markAllAsRead(unreadConversationIds)}
                     isLoading={isMarkingAllAsRead}
@@ -378,7 +381,7 @@ export function PodConversationsTab({
                       return (
                         <div key={dateLabel}>
                           <ListItemSection>{dateLabel}</ListItemSection>
-                          <ListGroup className="border-b-0">
+                          <ListGroup className="border-b-0 border-t-0">
                             {dateConversations
                               .toSorted((a, b) => b.updated - a.updated)
                               .map((conversation) => (

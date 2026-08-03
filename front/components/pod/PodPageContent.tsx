@@ -23,7 +23,7 @@ import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { TabsContent } from "@dust-tt/sparkle";
+import { NavTabPillContent } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 type PodInfo = NonNullable<ReturnType<typeof useSpaceInfo>["spaceInfo"]>;
@@ -173,7 +173,7 @@ export function PodPageContent({
 
   return (
     <>
-      <TabsContent value="conversations">
+      <NavTabPillContent value="conversations">
         <PodConversationsTab
           owner={owner}
           user={user}
@@ -189,26 +189,26 @@ export function PodPageContent({
           onSubmit={handleConversationCreation}
           onNavigateToTasks={() => onTabChange("tasks")}
         />
-      </TabsContent>
-      <TabsContent value="tasks">
+      </NavTabPillContent>
+      <NavTabPillContent value="tasks">
         <PodTasksTab
           owner={owner}
           podInfo={podInfo}
           taskOwnerFilter={podUiPreferences.tasksOwnerFilter}
           onTaskOwnerFilterChange={handleTaskOwnerFilterChange}
         />
-      </TabsContent>
-      <TabsContent value="files">
+      </NavTabPillContent>
+      <NavTabPillContent value="files">
         <PodFilesTab owner={owner} pod={podInfo} />
-      </TabsContent>
-      <TabsContent value="settings">
+      </NavTabPillContent>
+      <NavTabPillContent value="settings">
         <PodSettingsTab
           key={podInfo.sId}
           owner={owner}
           pod={podInfo}
           onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
         />
-      </TabsContent>
+      </NavTabPillContent>
       <ManageUsersPanel
         isOpen={isInvitePanelOpen}
         setIsOpen={setIsInvitePanelOpen}
