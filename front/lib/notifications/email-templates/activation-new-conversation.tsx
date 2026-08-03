@@ -22,26 +22,26 @@ type ActivationNewConversationEmailTemplateProps = z.infer<
 
 const HOW_IT_WORKS_STEPS = [
   {
-    title: "Dust suggests",
-    sub: "One idea at a time, drawn from how you actually work. Never a list.",
+    title: "Dust spots an opportunity",
+    sub: "A useful idea based on the work you already do.",
     emoji: "✨",
     bg: "#EEF2FF",
   },
   {
-    title: "You say yes",
-    sub: "In the chat, in your own words. Nothing runs without your ok.",
+    title: "You choose what to build",
+    sub: "Review the idea in the chat and decide if it is right for you.",
     emoji: "💬",
     bg: "#F5F3FF",
   },
   {
-    title: "It runs for you",
-    sub: "On a schedule you pick. You don't do anything.",
+    title: "Dust runs it for you",
+    sub: "Set it up once, then let it run.",
     emoji: "📅",
     bg: "#E9F7FF",
   },
   {
-    title: "Results land in your workspace",
-    sub: "Each finished recommendation becomes an easy to find conversation.",
+    title: "The result comes back to your workspace",
+    sub: "Each completed run becomes a conversation you can find and revisit.",
     emoji: "📥",
     bg: "#ECFDF5",
   },
@@ -72,7 +72,6 @@ const ActivationNewConversationEmailTemplate = ({
         <br />
         The place where Dust works for you.
       </p>
-      {/* this message will be replaced/improved with the help of the marketing team */}
       <p
         style={{
           fontSize: "14px",
@@ -81,9 +80,9 @@ const ActivationNewConversationEmailTemplate = ({
           lineHeight: "1.6",
         }}
       >
-        Your conversations, files, and anything you approve to run on its own
-        all live here, so nothing you set up is ever lost or hidden. This page
-        fills up with things you say yes to, one at a time.
+        Dust looks at how you work and suggests new ways to be more productive.
+        You choose what to set up, and everything you approve stays here, ready
+        to run when you need it.
       </p>
 
       <table

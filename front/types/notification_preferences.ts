@@ -29,7 +29,7 @@ export const NOTIFICATION_PREFERENCES_DELAYS: Record<
   NotificationPreferencesDelay,
   NotificationDelayAmountConfig
 > = {
-  "5_minutes": { amount: 0.5, unit: "minutes" },
+  "5_minutes": { amount: 5, unit: "minutes" },
   "15_minutes": { amount: 15, unit: "minutes" },
   "30_minutes": { amount: 30, unit: "minutes" },
   "1_hour": { amount: 1, unit: "hours" },
