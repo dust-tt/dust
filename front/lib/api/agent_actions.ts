@@ -151,7 +151,7 @@ export async function getToolsUsage(
   const { clause, params } = await buildVisibilityFilter(auth, visibility);
 
   // biome-ignore lint/plugin/noRawSql: Read-only analytics query on replica.
-  const rowsPromise = replicaDb.query<MCPServerUsageRow>(
+  const rows = await replicaDb.query<MCPServerUsageRow>(
     `
     SELECT
       msv."internalMCPServerId",
@@ -169,10 +169,7 @@ export async function getToolsUsage(
     `,
     { replacements: params, type: QueryTypes.SELECT }
   );
-  const [rows, skillsByMCPServer] = await Promise.all([
-    rowsPromise,
-    fetchSkillsByMCPServer(auth, visibility),
-  ]);
+  const skillsByMCPServer = await fetchSkillsByMCPServer(auth, visibility);
 
   const result: MCPServersUsage = {};
   for (const row of rows) {
