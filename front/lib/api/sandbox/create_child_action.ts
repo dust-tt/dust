@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/mcp_actions";
 import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
@@ -92,6 +93,16 @@ export async function createSandboxChildAction(
   );
   if (!parentAction) {
     return new Err(new Error("Parent action not found."));
+  }
+
+  // A `dsbx` process can outlive its bash tool call. Serving it would set this finished
+  // action's status back to blocked, leaving two steps blocked on one message.
+  if (isToolExecutionStatusFinal(parentAction.status)) {
+    return new Err(
+      new Error(
+        `Parent action already completed with status ${parentAction.status}.`
+      )
+    );
   }
 
   const agentMessageRes = await conversationResource.getMessageById(

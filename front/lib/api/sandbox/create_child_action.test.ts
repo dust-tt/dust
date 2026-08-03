@@ -408,6 +408,39 @@ describe("createSandboxChildAction", () => {
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
   });
 
+  it("rejects calls from a `dsbx` process that outlived its parent bash action", async () => {
+    await setToolPermission("medium");
+
+    // The bash call returned, but its in-sandbox process issues one more `/call`.
+    const parentAction = await AgentMCPActionResource.fetchById(
+      auth,
+      parentActionId
+    );
+    if (!parentAction) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    await parentAction.updateStatus("succeeded");
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the orphaned child call to fail.");
+    }
+    expect(result.error.message).toBe(
+      "Parent action already completed with status succeeded."
+    );
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+    expect(vi.mocked(updateResourceAndPublishEvent)).not.toHaveBeenCalled();
+
+    // The parent must keep its final status: no resurrection.
+    const reloadedParent = await AgentMCPActionResource.fetchById(
+      auth,
+      parentActionId
+    );
+    expect(reloadedParent?.status).toBe("succeeded");
+  });
+
   it("defaults to high stake and blocks when the tool has no configured permission", async () => {
     const result = await callChildTool();
 
