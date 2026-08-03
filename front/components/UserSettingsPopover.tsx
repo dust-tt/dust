@@ -880,6 +880,17 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
           </div>
 
           {enabledValue && (
+            <ContentMessageInline
+              variant="info"
+              icon={InfoCircle}
+              className="rounded-2xl p-4"
+            >
+              The content of your saved memory may appear in responses sent to
+              Slack and other external integrations.
+            </ContentMessageInline>
+          )}
+
+          {enabledValue && (
             <div className="flex flex-col gap-2">
               <span className="heading-base text-foreground">About you</span>
               <MarkdownEditor
