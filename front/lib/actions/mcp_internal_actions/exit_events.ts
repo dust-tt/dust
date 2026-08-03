@@ -41,7 +41,6 @@ function getRelaunchArgs(runContext: AgentLoopRunContext) {
   return {
     agentMessageId: runContext.agentMessage.sId,
     agentMessageVersion: runContext.agentMessage.version,
-    conversationBranchId: runContext.agentMessage.branchId,
     conversationId: runContext.conversation.sId,
     conversationTitle: runContext.conversation.title,
     userMessageId: runContext.userMessage.sId,
