@@ -6,9 +6,6 @@ import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
-/**
- * Get the skill_management MCP server.
- */
 export function getSkillManagementServer(
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
   conversation: ConversationWithoutContentType,
