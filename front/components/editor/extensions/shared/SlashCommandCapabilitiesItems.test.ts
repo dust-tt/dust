@@ -127,13 +127,54 @@ describe("searchCapabilityIndex ranking", () => {
   it("ranks earlier substring matches first", () => {
     const result = searchCapabilityIndex({
       items: [
-        { id: "ztestlonger", sortName: "ztestlonger" },
-        { id: "longtest", sortName: "longtest" },
+        { id: "later", sortName: "create detailed guide" },
+        { id: "earlier", sortName: "create guide" },
       ],
-      query: "test",
+      query: "guide",
     });
 
-    expect(result.map((item) => item.id)).toEqual(["ztestlonger", "longtest"]);
+    expect(result.map((item) => item.id)).toEqual(["earlier", "later"]);
+  });
+
+  it("normalizes query whitespace and casing before ranking", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        { id: "prefix", sortName: "guide builder" },
+        { id: "exact", sortName: "guide" },
+      ],
+      query: "  GUIDE  ",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["exact", "prefix"]);
+  });
+
+  it("ranks matches before applying the result limit", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "fuzzy",
+          sortName: "generate useful insights for data export",
+        },
+        { id: "substring", sortName: "create guide" },
+        { id: "prefix", sortName: "guide builder" },
+        { id: "exact", sortName: "guide" },
+      ],
+      limit: 2,
+      query: "guide",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["exact", "prefix"]);
+  });
+
+  it("does not mutate the search index", () => {
+    const items = [
+      { id: "substring", sortName: "create guide" },
+      { id: "exact", sortName: "guide" },
+    ];
+
+    searchCapabilityIndex({ items, query: "guide" });
+
+    expect(items.map((item) => item.id)).toEqual(["substring", "exact"]);
   });
 
   it("ranks title prefix matches above other fuzzy title matches", () => {
