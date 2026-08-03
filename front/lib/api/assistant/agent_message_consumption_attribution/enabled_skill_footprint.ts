@@ -7,6 +7,7 @@ import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assi
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const EMPTY_INPUT_SCHEMA: JSONSchema = {
@@ -20,10 +21,7 @@ function enabledSkillIdsFromAction(
 ): string[] {
   return [
     ...new Set(
-      (action.output ?? []).flatMap((outputBlock) => {
-        const skillId = getEnableSkillIdFromOutputBlock(outputBlock);
-        return skillId ? [skillId] : [];
-      })
+      removeNulls((action.output ?? []).map(getEnableSkillIdFromOutputBlock))
     ),
   ];
 }
