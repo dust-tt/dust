@@ -1,9 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   resolveTriggerSpaceId,
   TriggerResource,
 } from "@app/lib/resources/trigger_resource";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -165,6 +167,16 @@ export async function createActivationTrigger(
   }
 
   return new Ok({ triggerId: triggerRes.value.sId });
+}
+
+// True when `trigger` is the activation trigger provisioned for `pod`, as
+// opposed to a trigger the user created in the same pod.
+export async function isActivationTrigger(
+  auth: Authenticator,
+  { pod, trigger }: { pod: SpaceResource; trigger: TriggerType }
+): Promise<boolean> {
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, pod);
+  return activationPod?.triggerId === trigger.id;
 }
 
 // Fires the activation trigger for a single pod by emitting an internal webhook

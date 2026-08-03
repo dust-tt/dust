@@ -2,7 +2,10 @@ import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { USAGE_ORIGINS_CLASSIFICATION } from "@app/lib/api/programmatic_usage/common";
 import { TOOL_COST_CATEGORY_AWU_WEIGHTS } from "@app/lib/metronome/events";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import {
+  ACTIVATION_NUDGE_ORIGIN,
+  AGENT_MESSAGE_STATUSES_TO_TRACK,
+} from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -18,7 +21,10 @@ import type { estypes } from "@elastic/elasticsearch";
 
 const FRAME_SERVER_NAME = "interactive_content";
 const RUN_AGENT_SERVER_NAME = "run_agent";
-const TRIGGERED_ORIGIN: UserMessageOrigin = "triggered";
+const NON_ORGANIC_ORIGINS: UserMessageOrigin[] = [
+  "triggered",
+  ACTIVATION_NUDGE_ORIGIN,
+];
 
 // Programmatic origins are dropped from the query entirely
 const PROGRAMMATIC_ORIGINS: UserMessageOrigin[] = (
@@ -28,7 +34,7 @@ const PROGRAMMATIC_ORIGINS: UserMessageOrigin[] = (
 ).filter((origin) => USAGE_ORIGINS_CLASSIFICATION[origin] === "programmatic");
 
 // Origins that make a day count as a daily active user day: human-initiated
-// organic ("user") origins, with `triggered` deliberately EXCLUDED.
+// organic ("user") origins, with the non-organic ones deliberately EXCLUDED.
 const DAU_ORIGINS: UserMessageOrigin[] = (
   Object.keys(
     USAGE_ORIGINS_CLASSIFICATION
@@ -36,7 +42,7 @@ const DAU_ORIGINS: UserMessageOrigin[] = (
 ).filter(
   (origin) =>
     USAGE_ORIGINS_CLASSIFICATION[origin] === "user" &&
-    origin !== TRIGGERED_ORIGIN
+    !NON_ORGANIC_ORIGINS.includes(origin)
 );
 
 // Hard cap on users per call. The composite page size is sized so that the

@@ -146,6 +146,7 @@ export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
   "project_kickoff",
   "reinforced_skill_notification",
   "wakeup",
+  ACTIVATION_NUDGE_ORIGIN,
 ];
 
 /**

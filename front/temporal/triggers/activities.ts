@@ -1,3 +1,4 @@
+import { isActivationTrigger } from "@app/lib/api/activation/trigger";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -21,7 +22,11 @@ import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import {
+  ACTIVATION_NUDGE_ORIGIN,
+  type ConversationWithoutContentType,
+  type UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -32,6 +37,24 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 class TriggerNonRetryableError extends Error {}
+
+async function bootstrapMessageOrigin({
+  auth,
+  trigger,
+  pod,
+}: {
+  auth: Authenticator;
+  trigger: TriggerType;
+  pod: SpaceResource | null;
+}): Promise<UserMessageOrigin> {
+  if (pod && (await isActivationTrigger(auth, { pod, trigger }))) {
+    return ACTIVATION_NUDGE_ORIGIN;
+  }
+
+  return trigger.kind === "webhook" && trigger.executionMode === "programmatic"
+    ? "triggered_programmatic"
+    : "triggered";
+}
 
 async function createConversationForAgentConfiguration({
   auth,
@@ -49,8 +72,9 @@ async function createConversationForAgentConfiguration({
   Result<ConversationWithoutContentType, APIErrorWithContentfulStatusCode>
 > {
   let spaceModelId: ModelId | null = null;
+  let pod: SpaceResource | null = null;
   if (trigger.spaceId) {
-    const pod = await SpaceResource.fetchById(auth, trigger.spaceId);
+    pod = await SpaceResource.fetchById(auth, trigger.spaceId);
     if (pod && pod.isProject() && (pod.isOpen() || pod.isMember(auth))) {
       spaceModelId = pod.id;
     } else {
@@ -74,10 +98,7 @@ async function createConversationForAgentConfiguration({
     fullName: auth.getNonNullableUser().fullName(),
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
-    origin:
-      trigger.kind === "webhook" && trigger.executionMode === "programmatic"
-        ? ("triggered_programmatic" as const)
-        : ("triggered" as const),
+    origin: await bootstrapMessageOrigin({ auth, trigger, pod }),
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,
   };
 
