@@ -1313,22 +1313,14 @@ function AgentMessageContent({
           : m
       );
 
-      // Retry on the event's conversationId, which may be coming from a subagent.
-      if (conversationAndMessage.conversationId !== conversationId) {
-        await retryHandler({
-          blockedOnly: true,
-          conversationId: conversationAndMessage.conversationId,
-          messageId: conversationAndMessage.messageId,
-        });
-      }
-      // Retry on the main conversation.
+      // May be a subagent's conversation; the backend walks up to wake its caller.
       await retryHandler({
-        conversationId,
         blockedOnly: true,
-        messageId: sId,
+        conversationId: conversationAndMessage.conversationId,
+        messageId: conversationAndMessage.messageId,
       });
     },
-    [conversationId, methods.data, retryHandler, sId]
+    [methods.data, retryHandler, sId]
   );
 
   // References logic.
