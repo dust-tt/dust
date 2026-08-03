@@ -8,6 +8,7 @@ import { AttachmentCitation } from "@app/components/assistant/conversation/attac
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { CreditCostSubmenu } from "@app/components/assistant/conversation/CreditCostSubmenu";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -264,6 +265,7 @@ export function AgentMessage({
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
   const { hasFeature } = useFeatureFlags();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
+  const hasConsumptionDetails = hasFeature("conversation_consumption_details");
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -982,7 +984,22 @@ export function AgentMessage({
           <DropdownMenuContent align="end">
             {(creditCostItem || isCreditCostLoading) && (
               <>
-                {creditCostItem ? (
+                {hasConsumptionDetails ? (
+                  <CreditCostSubmenu
+                    credits={
+                      refreshedAgentMessage?.costCredits ??
+                      agentMessage.costCredits
+                    }
+                    subAgentCredits={
+                      refreshedAgentMessage?.subAgentCostCredits ??
+                      agentMessage.subAgentCostCredits
+                    }
+                    conversationId={conversationId}
+                    messageId={agentMessage.sId}
+                    workspaceId={owner.sId}
+                    isCostLoading={isCreditCostLoading}
+                  />
+                ) : creditCostItem ? (
                   <DropdownMenuItem {...creditCostItem} />
                 ) : (
                   <DropdownMenuItem

@@ -1150,6 +1150,19 @@ export function getStaticToolDisplayLabelsFromFunctionCallName(
   return null;
 }
 
+export function getToolAggregateDisplayLabel({
+  functionCallName,
+  toolName,
+}: {
+  functionCallName: string;
+  toolName: string;
+}): string {
+  return (
+    getStaticToolDisplayLabelsFromFunctionCallName(functionCallName)?.done ??
+    asDisplayName(toolName)
+  );
+}
+
 export function getToolCallDisplayLabel(
   functionCallName: string,
   context: "running" | "done" = "done"

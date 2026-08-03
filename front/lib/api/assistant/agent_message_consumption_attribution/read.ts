@@ -1,5 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import { getActionOneLineLabel } from "@app/lib/api/assistant/action_one_line_label";
+import { getToolAggregateDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -153,7 +153,7 @@ function buildToolDetails({
     }
 
     groupedTools.set(identity, {
-      label: getActionOneLineLabel(serialized),
+      label: getToolAggregateDisplayLabel(serialized),
       internalMCPServerName: serialized.internalMCPServerName,
       toolName: serialized.toolName,
       callCount: 1,
