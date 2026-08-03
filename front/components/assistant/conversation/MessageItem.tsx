@@ -240,11 +240,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return messageUser;
     }, [isAgentMessage, parentMessageId, messageUser, methods.data]);
 
-    // Hide legacy conversation-branch messages (feature removed; main thread only).
-    if (data.branchId && !isConversationForkNotice(data)) {
-      return null;
-    }
-
     const topMargin = getMessageTopMargin({
       data,
       prevData,

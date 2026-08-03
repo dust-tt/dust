@@ -33,7 +33,6 @@ describe("launchStoreAgentMessageConsumptionAttributionWorkflow", () => {
       agentMessageVersion: 0,
       conversationId: "conversation_test",
       conversationTitle: null,
-      conversationBranchId: null,
       userMessageId: "user_message_test",
       userMessageVersion: 0,
     };

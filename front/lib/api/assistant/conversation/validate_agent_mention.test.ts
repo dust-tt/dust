@@ -252,7 +252,6 @@ describe("validateAgentMention", () => {
       (m) => m.agentMessageId !== null
     );
     expect(agentChildren.length).toBe(1);
-    expect(agentChildren[0].branchId).toBeNull();
 
     expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
     expect(publishMessageEventsOnMessagePostOrEdit).toHaveBeenCalled();

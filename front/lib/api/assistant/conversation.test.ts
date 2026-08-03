@@ -244,7 +244,6 @@ describe("retryAgentMessage", () => {
           userMessageId: userMessage!.sId,
           userMessageVersion: userMessage!.version,
           userMessageOrigin: userMessage!.context.origin,
-          conversationBranchId: null,
         },
         startStep: 0,
       });
@@ -4163,7 +4162,6 @@ describe("isConversationEventAllowedForAuth", () => {
       created: Date.now(),
       messageId: "msg-1",
       message: {
-        branchId: null,
         contentFragments: [],
       } as unknown as UserMessageNewEvent["message"],
     };
@@ -4177,7 +4175,7 @@ describe("isConversationEventAllowedForAuth", () => {
       created: Date.now(),
       configurationId: "config-1",
       messageId: "msg-1",
-      message: { branchId: null } as AgentMessageType,
+      message: {} as AgentMessageType,
     };
     const result = await isConversationEventAllowedForAuth(auth, { event });
     expect(result).toBe(true);

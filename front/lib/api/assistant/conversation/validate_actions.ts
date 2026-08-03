@@ -228,7 +228,6 @@ export async function validateAction(
       agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        conversationBranchId: null,
         conversationId,
         conversationTitle,
         userMessageId,
@@ -270,7 +269,6 @@ export async function validateAction(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,

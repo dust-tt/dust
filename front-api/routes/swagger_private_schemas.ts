@@ -242,9 +242,6 @@
  *             visibility:
  *               type: string
  *               enum: [unlisted, deleted, test]
- *             branchId:
- *               type: string
- *               nullable: true
  *             content:
  *               type: array
  *               description: Array of message arrays (versions/retries)
@@ -706,9 +703,6 @@
  *           type: integer
  *         rank:
  *           type: integer
- *         branchId:
- *           type: string
- *           nullable: true
  *         sourceConversationId:
  *           type: string
  *           nullable: true

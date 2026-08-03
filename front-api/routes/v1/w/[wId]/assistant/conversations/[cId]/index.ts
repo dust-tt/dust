@@ -167,7 +167,6 @@ app.get(
       cId,
       false,
       null,
-      null,
       messagePagination
     );
 

@@ -37,7 +37,6 @@ export function registerConversationsGetMessagesTool(server: McpServer) {
         conversationId,
         false,
         null,
-        null,
         {
           limit: GET_CONVERSATION_MESSAGES_PAGE_SIZE,
           lastRank: lastValue ?? null,

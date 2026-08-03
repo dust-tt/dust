@@ -19,7 +19,6 @@ async function findUserMessageForRetry(
     {
       agentMessageId: string;
       agentMessageVersion: number;
-      branchId: string | null;
       lastStep: number;
       userMessageId: string;
       userMessageVersion: number;
@@ -36,14 +35,7 @@ async function findUserMessageForRetry(
       sId: messageId,
       workspaceId,
     },
-    attributes: [
-      "agentMessageId",
-      "parentId",
-      "version",
-      "sId",
-      "branchId",
-      "workspaceId",
-    ],
+    attributes: ["agentMessageId", "parentId", "version", "sId", "workspaceId"],
   });
 
   if (!agentMessage || !agentMessage.parentId || !agentMessage.agentMessageId) {
@@ -101,7 +93,6 @@ async function findUserMessageForRetry(
   return new Ok({
     agentMessageId: agentMessage.sId,
     agentMessageVersion: agentMessage.version,
-    branchId: agentMessage.getBranchId(),
     lastStep: blockedActions[blockedActions.length - 1].stepContent.step,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
@@ -148,7 +139,6 @@ export async function retryBlockedActions(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
     },

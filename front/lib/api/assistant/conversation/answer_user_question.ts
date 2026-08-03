@@ -141,7 +141,6 @@ export async function registerUserAnswer(
       agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        conversationBranchId: null,
         conversationId,
         conversationTitle,
         userMessageId,
@@ -174,7 +173,6 @@ export async function registerUserAnswer(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,

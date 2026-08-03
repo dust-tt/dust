@@ -5137,8 +5137,7 @@ describe("Space Handling", () => {
 
     async function createPendingUserMessage(
       conversationModelId: number,
-      rank: number,
-      branchId: number | null = null
+      rank: number
     ) {
       const user = auth.getNonNullableUser();
       const userMessageRow = await UserMessageModel.create({
@@ -5163,11 +5162,10 @@ describe("Space Handling", () => {
         userMessageId: userMessageRow.id,
         workspaceId: workspace.id,
         visibility: "pending",
-        branchId,
       });
     }
 
-    it("returns pending messages with null branchId when conversation has no branch", async () => {
+    it("returns pending messages", async () => {
       const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId

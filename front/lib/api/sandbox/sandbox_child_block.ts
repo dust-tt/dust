@@ -78,7 +78,6 @@ export async function pauseSandboxBashForBlockedChild(
 interface AgentLoopRelaunchArgs {
   agentMessageId: string;
   agentMessageVersion: number;
-  conversationBranchId: string | null;
   conversationId: string;
   conversationTitle: string | null;
   userMessageId: string;

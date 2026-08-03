@@ -168,7 +168,6 @@ export async function resolveAuthentication(
       agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        conversationBranchId: null,
         conversationId,
         conversationTitle,
         userMessageId,
@@ -200,7 +199,6 @@ export async function resolveAuthentication(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,

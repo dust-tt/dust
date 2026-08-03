@@ -45,7 +45,7 @@ import {
   type ConversationForDataSourceSyncType,
   // biome-ignore lint/plugin/enforceClientTypesInPublicApi: useful to convert for sync
 } from "@dust-tt/client";
-import { Op, type WhereOptions } from "sequelize";
+import type { WhereOptions } from "sequelize";
 
 // Helper type to map viewType to the correct message type
 type MessageTypeForView<V extends "light" | "full"> = V extends "light"
@@ -58,7 +58,6 @@ export const getConversation = async (
   auth: Authenticator,
   conversationId: string,
   includeDeleted: boolean = false,
-  _branchId: string | null = null,
   lastInteractionsToFetchToolOutputContentFor: number | null = null,
   messagePagination?: { limit: number; lastRank: number | null }
 ) =>
@@ -75,7 +74,6 @@ export const getLightConversation = async (
   auth: Authenticator,
   conversationId: string,
   includeDeleted: boolean = false,
-  _branchId: string | null = null,
   lastInteractionsToFetchToolOutputContentFor: number | null = null,
   messagePagination?: { limit: number; lastRank: number | null }
 ) =>
@@ -166,7 +164,6 @@ async function _getConversation<V extends "light" | "full">(
   const where: WhereOptions<MessageModel> = {
     conversationId: conversation.id,
     workspaceId: owner.id,
-    branchId: { [Op.is]: null },
   };
 
   let messages: MessageModel[];
@@ -363,7 +360,6 @@ async function _getConversation<V extends "light" | "full">(
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
-      branchId: null,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
       ...(forkingData && { forkingData }),
     };
@@ -442,7 +438,6 @@ async function _getConversation<V extends "light" | "full">(
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
-      branchId: null,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
       ...(forkingData && { forkingData }),
     };

@@ -49,7 +49,6 @@ export async function getReactionTargetMessageType(
       sId: messageId,
       conversationId: conversation.id,
       workspaceId: owner.id,
-      branchId: null,
     },
     include: [
       {
@@ -119,7 +118,6 @@ export async function publishReactionUpdate(
       sId: messageId,
       conversationId: conversation.id,
       workspaceId: owner.id,
-      branchId: null,
     },
     include: [
       { model: UserMessageModel, as: "userMessage", required: false },

@@ -204,7 +204,6 @@ export async function failCompactionMessage(
     auth,
     conversationId,
     false,
-    null,
     PREVIOUS_INTERACTIONS_TO_PRESERVE + 1
   );
   if (targetConversationRes.isErr()) {
@@ -299,7 +298,6 @@ export async function runCompaction(
     auth,
     conversationId,
     false,
-    null,
     PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
   );
   if (targetConversationRes.isErr()) {
@@ -335,7 +333,6 @@ export async function runCompaction(
       auth,
       sourceConversation.conversationId,
       false,
-      null,
       PREVIOUS_INTERACTIONS_TO_PRESERVE + 1
     );
     if (sourceConversationRes.isErr()) {

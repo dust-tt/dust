@@ -186,7 +186,6 @@ export type UserMessageType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
-  branchId: string | null;
   user: UserType | null;
   mentions: MentionType[];
   richMentions: RichMentionWithStatus[];
@@ -307,7 +306,6 @@ export type BaseAgentMessageType = {
   sId: string;
   version: number;
   rank: number;
-  branchId: string | null;
   created: number;
   completedTs: number | null;
   parentMessageId: string;
@@ -449,7 +447,6 @@ export type CompactionMessageType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
-  branchId: string | null;
   sourceConversationId?: string | null;
   status: CompactionMessageStatus; // Lifecycle: created → succeeded | failed.
   content: string | null; // null while status is "created".
@@ -584,7 +581,6 @@ export type ConversationForkingDataType = {
 export type ConversationWithoutContentType = ConversationListItemType & {
   id: ModelId;
   depth: number;
-  branchId: string | null;
   forkingData?: ConversationForkingDataType;
 };
 
