@@ -41,7 +41,7 @@ export const ZendeskTicketSchema = z
     organization_id: z.number().nullable().optional(),
     created_at: z.string(),
     updated_at: z.string(),
-    tags: z.array(z.string()),
+    tags: z.array(z.string()).optional(),
     custom_fields: z
       .array(
         z.object({

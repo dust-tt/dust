@@ -364,7 +364,7 @@ export async function syncTicket({
       timestampMs: updatedAtDate.getTime(),
       tags: [
         ...tags,
-        ...filterCustomTags(ticket.tags, logger),
+        ...filterCustomTags(ticket.tags ?? [], logger),
         ...customFieldTags,
       ],
       parents,

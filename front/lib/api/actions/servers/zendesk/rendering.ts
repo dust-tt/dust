@@ -45,7 +45,7 @@ export function renderTicket(
     lines.push(`Organization ID: ${ticket.organization_id}`);
   }
 
-  if (ticket.tags.length > 0) {
+  if (ticket.tags && ticket.tags.length > 0) {
     lines.push(`Tags: ${ticket.tags.join(", ")}`);
   }
 
