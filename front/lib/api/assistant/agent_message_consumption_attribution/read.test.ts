@@ -207,6 +207,31 @@ describe("getAgentMessageConsumption", () => {
     ]);
   });
 
+  it("assigns an unattributed billed residual to agent work", async () => {
+    const { auth, conversation, runUsageModelId, agentMessage } =
+      await setupMessage();
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: modelRecords(runUsageModelId),
+      pendingToolItems: [],
+    });
+
+    const consumption = await getAgentMessageConsumption(auth, {
+      conversation,
+      agentMessageId: agentMessage.sId,
+    });
+
+    expect(consumption?.details).toMatchObject({
+      grossAttributedCredits: BILLED_CREDITS,
+      estimatedCacheSavingsCredits: 0,
+      agentWorkCredits: BILLED_CREDITS,
+      tools: [],
+    });
+  });
+
   it("withholds details when the active rows do not cover every current run bucket", async () => {
     const { auth, conversation, runUsageModelId, agentMessage } =
       await setupMessage();

@@ -20,6 +20,57 @@ function creditsFromMicroCredits(microCredits: number): number {
   return microCredits / MICRO_CREDITS_PER_CREDIT;
 }
 
+/**
+ * Reconciles stable attribution estimates with the exact billed total without changing stored
+ * rows. Any shortfall is assigned to agent work because it cannot be safely attributed to a tool.
+ */
+function buildConsumptionTotals({
+  items,
+  billedCredits,
+}: {
+  items: AgentMessageConsumptionItemResource[];
+  billedCredits: number | null;
+}): {
+  grossAttributedCredits: number;
+  agentWorkCredits: number;
+  estimatedCacheSavingsCredits: number | null;
+} {
+  const storedGrossAttributedCreditAmountMicro = items.reduce(
+    (total, item) => total + item.grossAttributedCreditAmountMicro,
+    0
+  );
+  const storedAgentWorkCreditAmountMicro = items.reduce(
+    (total, item) =>
+      item.itemType === "tool"
+        ? total
+        : total + item.grossAttributedCreditAmountMicro,
+    0
+  );
+  const billedCreditAmountMicro =
+    billedCredits === null ? null : billedCredits * MICRO_CREDITS_PER_CREDIT;
+  const unattributedBilledCreditAmountMicro =
+    billedCreditAmountMicro === null
+      ? 0
+      : Math.max(
+          billedCreditAmountMicro - storedGrossAttributedCreditAmountMicro,
+          0
+        );
+  const grossAttributedCredits = creditsFromMicroCredits(
+    storedGrossAttributedCreditAmountMicro + unattributedBilledCreditAmountMicro
+  );
+
+  return {
+    grossAttributedCredits,
+    agentWorkCredits: creditsFromMicroCredits(
+      storedAgentWorkCreditAmountMicro + unattributedBilledCreditAmountMicro
+    ),
+    estimatedCacheSavingsCredits:
+      billedCredits === null
+        ? null
+        : Math.max(grossAttributedCredits - billedCredits, 0),
+  };
+}
+
 /** Ensures every provider-reported model bucket has a row for the active attribution version. */
 function hasCompleteModelAttribution(
   items: AgentMessageConsumptionItemResource[],
@@ -241,25 +292,14 @@ export async function getAgentMessageConsumption(
     return unavailableResponse;
   }
 
-  const grossAttributedCredits = creditsFromMicroCredits(
-    facts.items.reduce(
-      (total, item) => total + item.grossAttributedCreditAmountMicro,
-      0
-    )
-  );
-  const agentWorkCredits = creditsFromMicroCredits(
-    facts.items.reduce(
-      (total, item) =>
-        item.itemType === "tool"
-          ? total
-          : total + item.grossAttributedCreditAmountMicro,
-      0
-    )
-  );
-  const estimatedCacheSavingsCredits =
-    facts.billedCredits === null
-      ? null
-      : Math.max(grossAttributedCredits - facts.billedCredits, 0);
+  const {
+    grossAttributedCredits,
+    agentWorkCredits,
+    estimatedCacheSavingsCredits,
+  } = buildConsumptionTotals({
+    items: facts.items,
+    billedCredits: facts.billedCredits,
+  });
 
   return {
     billedCredits: facts.billedCredits,
