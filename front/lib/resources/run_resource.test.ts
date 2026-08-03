@@ -95,3 +95,41 @@ describe("RunResource.setUsageTypeForRuns", () => {
     expect(usages[0]?.usageType).toBe("free");
   });
 });
+
+describe("RunResource.setRunKeyForDustRunIds", () => {
+  it("tags untagged runs, skips already-tagged rows, and overwrites a different key", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const dustRunId = generateRandomModelSId();
+    await RunResource.makeNew({
+      appId: null,
+      dustRunId,
+      runType: "agent_loop",
+      useWorkspaceCredentials: false,
+      workspaceId: workspace.id,
+    });
+
+    await RunResource.setRunKeyForDustRunIds(auth, {
+      dustRunIds: [dustRunId],
+      runKey: "key-a",
+    });
+    const tagged = await RunResource.fetchByDustRunId(auth, { dustRunId });
+    expect(tagged?.runKey).toBe("key-a");
+
+    // Re-tagging with the same key must not rewrite the row. The sleep keeps
+    // millisecond-precision updatedAt from masking a rewrite.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await RunResource.setRunKeyForDustRunIds(auth, {
+      dustRunIds: [dustRunId],
+      runKey: "key-a",
+    });
+    const retagged = await RunResource.fetchByDustRunId(auth, { dustRunId });
+    expect(retagged?.updatedAt.getTime()).toBe(tagged?.updatedAt.getTime());
+
+    await RunResource.setRunKeyForDustRunIds(auth, {
+      dustRunIds: [dustRunId],
+      runKey: "key-b",
+    });
+    const overwritten = await RunResource.fetchByDustRunId(auth, { dustRunId });
+    expect(overwritten?.runKey).toBe("key-b");
+  });
+});
