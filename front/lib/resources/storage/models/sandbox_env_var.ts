@@ -90,6 +90,15 @@ SandboxEnvVarModel.init(
         where: { spaceId: { [Op.ne]: null } },
         concurrently: true,
       },
+      // Workspace scrub deletes by bare workspaceId, which neither partial
+      // above can serve (the predicate implies neither spaceId condition).
+      // Keeps the workspace FK indexed once the legacy full unique on
+      // (workspaceId, name) is dropped post-deploy (BACK13).
+      {
+        name: "sandbox_env_vars_workspace_id_idx",
+        fields: ["workspaceId"],
+        concurrently: true,
+      },
       // User FKs are SET NULL on user deletion — without these indexes,
       // scrubbing a user would scan the table (BACK13).
       { fields: ["createdByUserId"], concurrently: true },
