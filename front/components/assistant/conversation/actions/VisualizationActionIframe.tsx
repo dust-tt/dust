@@ -309,7 +309,12 @@ function SandboxFunctionBlockedAction({
       blockedActionCard = (
         <SandboxFunctionPersonalAuthCard
           key={eventId}
-          events={blockedActions.map((a) => a.event).filter(isPersonalAuth)}
+          events={blockedActions
+            .map((a) => a.event)
+            .filter(
+              (e): e is SandboxFunctionToolPersonalAuthRequiredEvent =>
+                e.type === "tool_personal_auth_required"
+            )}
           viewer={viewer}
           onResolved={onResolved}
         />
@@ -327,12 +332,6 @@ function SandboxFunctionBlockedAction({
       </div>
     </div>
   );
-}
-
-function isPersonalAuth(
-  event: SandboxFunctionBlockingEvent
-): event is SandboxFunctionToolPersonalAuthRequiredEvent {
-  return event.type === "tool_personal_auth_required";
 }
 
 // The blocked actions the next card presents: the oldest one, plus everything waiting on the same
