@@ -7,6 +7,7 @@ import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import * as activities from "./activities";
 import { QUEUE_NAME } from "./config";
@@ -22,6 +23,18 @@ export async function runAgentTriggerWorker() {
       workerName: "agent_schedule",
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
+    bundlerOptions: {
+      // `workflows.ts` imports a value from `@app/types/assistant/triggers`, so
+      // runtime bundling has to resolve the tsconfig aliases. Without this the
+      // bundle fails and the worker never polls, which silently strands every
+      // trigger execution in development.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
+    },
     activities,
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
