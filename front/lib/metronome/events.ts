@@ -96,7 +96,13 @@ export function getToolBillingInfo(
 // Origins whose entire conversation is free (platform-assistive, not
 // user-requested output).
 export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
-  new Set<UserMessageOrigin>(["agent_sidekick"]);
+  new Set<UserMessageOrigin>([
+    "agent_sidekick",
+    // Only the Activation Pod nudge ever carries this origin: it is server-only,
+    // and the nudge has no author so it can neither be edited nor retried. User
+    // replies come back as `web` and bill normally.
+    "system_activation",
+  ]);
 
 export function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
   if (origin == null) {
