@@ -1,5 +1,6 @@
 import {
   getStaticToolDisplayLabelsFromFunctionCallName,
+  getToolAggregateDisplayLabel,
   getToolDisplayLabels,
   getToolNameFromFunctionCallName,
 } from "@app/lib/actions/tool_display_labels";
@@ -241,5 +242,25 @@ describe("getStaticToolDisplayLabelsFromFunctionCallName", () => {
       running: "Retrieving GitHub pull request",
       done: "Retrieve GitHub pull request",
     });
+  });
+});
+
+describe("getToolAggregateDisplayLabel", () => {
+  it("uses the generic label instead of one execution's inputs", () => {
+    expect(
+      getToolAggregateDisplayLabel({
+        functionCallName: "web_search_&_browse__websearch",
+        toolName: "websearch",
+      })
+    ).toBe("Web search");
+  });
+
+  it("humanizes the tool name when no static label exists", () => {
+    expect(
+      getToolAggregateDisplayLabel({
+        functionCallName: "custom_server__prepare_report",
+        toolName: "prepare_report",
+      })
+    ).toBe("Prepare Report");
   });
 });
