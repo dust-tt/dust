@@ -1,5 +1,195 @@
-import { compareForFuzzySort } from "@app/lib/utils";
-import { expect, test } from "vitest";
+import {
+  compareForAutocompleteSort,
+  compareForFuzzySort,
+  subFilter,
+} from "@app/lib/utils";
+import { describe, expect, test } from "vitest";
+
+const AUTOCOMPLETE_SKILL_NAMES = [
+  "Guide",
+  "Guide Builder",
+  "Guideline Toolkit",
+  "Create Guide",
+  "Product Guides",
+  "Generate Useful Insights for Data Export",
+  "Guiding Workshop",
+  "Automation Designer",
+];
+
+function filterAndSortAutocompleteSkills(query: string): string[] {
+  const normalizedQuery = query.toLowerCase();
+
+  return AUTOCOMPLETE_SKILL_NAMES.filter((name) =>
+    subFilter(normalizedQuery, name.toLowerCase())
+  ).toSorted((a, b) => compareForAutocompleteSort(query, a, b));
+}
+
+describe("compareForAutocompleteSort", () => {
+  test.each([
+    {
+      behavior:
+        "ranks exact, prefix, substring, and fuzzy matches in that order",
+      query: "guide",
+      expected: [
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Create Guide",
+        "Product Guides",
+        "Generate Useful Insights for Data Export",
+      ],
+    },
+    {
+      behavior: "sorts matches alphabetically within the prefix tier",
+      query: "guid",
+      expected: [
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Guiding Workshop",
+        "Create Guide",
+        "Product Guides",
+        "Generate Useful Insights for Data Export",
+      ],
+    },
+    {
+      behavior: "ranks a title prefix above fuzzy title matches",
+      query: "gen",
+      expected: [
+        "Generate Useful Insights for Data Export",
+        "Guideline Toolkit",
+      ],
+    },
+    {
+      behavior: "sorts fuzzy-only matches alphabetically instead of by spread",
+      query: "gde",
+      expected: [
+        "Create Guide",
+        "Generate Useful Insights for Data Export",
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Product Guides",
+      ],
+    },
+    {
+      behavior: "matches a query case-insensitively",
+      query: "GUIDE",
+      expected: [
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Create Guide",
+        "Product Guides",
+        "Generate Useful Insights for Data Export",
+      ],
+    },
+    {
+      behavior: "returns the single matching prefix without unrelated skills",
+      query: "create",
+      expected: ["Create Guide"],
+    },
+    {
+      behavior: "returns an empty list when no skill matches",
+      query: "zzz",
+      expected: [],
+    },
+    {
+      behavior: "sorts every skill alphabetically when the query is empty",
+      query: "",
+      expected: [
+        "Automation Designer",
+        "Create Guide",
+        "Generate Useful Insights for Data Export",
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Guiding Workshop",
+        "Product Guides",
+      ],
+    },
+  ])("$behavior for '$query'", ({ query, expected }) => {
+    expect(filterAndSortAutocompleteSkills(query)).toEqual(expected);
+  });
+
+  test.each([
+    {
+      behavior: "an exact match ranks above a longer prefix match",
+      query: "guide",
+      betterMatch: "Guide",
+      worseMatch: "Guide Builder",
+    },
+    {
+      behavior:
+        "a prefix match ranks above a substring match even when it is later alphabetically",
+      query: "guide",
+      betterMatch: "Guide Builder",
+      worseMatch: "Create Guide",
+    },
+    {
+      behavior:
+        "a substring match ranks above a fuzzy match even when it is later alphabetically",
+      query: "guide",
+      betterMatch: "Product Guides",
+      worseMatch: "Generate Useful Insights for Data Export",
+    },
+    {
+      behavior:
+        "a fuzzy match ranks above a non-match even when it is later alphabetically",
+      query: "guide",
+      betterMatch: "Generate Useful Insights for Data Export",
+      worseMatch: "Automation Designer",
+    },
+    {
+      behavior: "two prefix matches are ordered alphabetically",
+      query: "guid",
+      betterMatch: "Guide Builder",
+      worseMatch: "Guideline Toolkit",
+    },
+    {
+      behavior: "two substring matches are ordered alphabetically",
+      query: "guide",
+      betterMatch: "Create Guide",
+      worseMatch: "Product Guides",
+    },
+    {
+      behavior: "two fuzzy matches are ordered alphabetically",
+      query: "guide",
+      betterMatch: "Generate Useful Insights for Data Export",
+      worseMatch: "Great User Interface Design Example",
+    },
+    {
+      behavior: "two non-matches are ordered alphabetically",
+      query: "guide",
+      betterMatch: "Automation Designer",
+      worseMatch: "Workflow Runner",
+    },
+    {
+      behavior: "a multi-word prefix ranks above the same substring",
+      query: "guide b",
+      betterMatch: "Guide Builder",
+      worseMatch: "Create Guide Builder",
+    },
+  ])("$behavior", ({ query, betterMatch, worseMatch }) => {
+    expect(
+      [worseMatch, betterMatch].toSorted((a, b) =>
+        compareForAutocompleteSort(query, a, b)
+      )
+    ).toEqual([betterMatch, worseMatch]);
+  });
+
+  test("treats candidates that differ only by case as equally relevant", () => {
+    expect(compareForAutocompleteSort("guide", "Guide", "GUIDE")).toBe(0);
+  });
+
+  test("ranks matching candidates before non-matches in an unfiltered list", () => {
+    expect(
+      ["Automation Designer", "Create Guide", "Guide"].toSorted((a, b) =>
+        compareForAutocompleteSort("guide", a, b)
+      )
+    ).toEqual(["Guide", "Create Guide", "Automation Designer"]);
+  });
+});
 
 test("compareForFuzzySort should correctly compare strings", () => {
   const dataLessThan = [

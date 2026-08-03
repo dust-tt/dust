@@ -216,6 +216,43 @@ export function subFilter(a: string, b: string) {
   return subFilterLastIndex(a, b) > -1;
 }
 
+function getAutocompleteMatchRank(query: string, candidate: string): number {
+  if (candidate === query) {
+    return 0;
+  }
+  if (candidate.startsWith(query)) {
+    return 1;
+  }
+  if (candidate.includes(query)) {
+    return 2;
+  }
+  if (subFilter(query, candidate)) {
+    return 3;
+  }
+  return 4;
+}
+
+/**
+ * Compares two strings for predictable autocomplete relevance.
+ * Exact matches rank first, followed by prefixes, substrings, and fuzzy matches.
+ * Candidates within the same tier are sorted alphabetically.
+ */
+export function compareForAutocompleteSort(
+  query: string,
+  a: string,
+  b: string
+) {
+  const normalizedQuery = query.toLowerCase();
+  const normalizedA = a.toLowerCase();
+  const normalizedB = b.toLowerCase();
+
+  const rankComparison =
+    getAutocompleteMatchRank(normalizedQuery, normalizedA) -
+    getAutocompleteMatchRank(normalizedQuery, normalizedB);
+
+  return rankComparison || normalizedA.localeCompare(normalizedB);
+}
+
 /**
  * Compares two strings for fuzzy relevance against a query.
  * First sort by substring, then by spread of subfilter, then exact match.

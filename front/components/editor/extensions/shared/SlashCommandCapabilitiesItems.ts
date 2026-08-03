@@ -6,7 +6,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import { compareForAutocompleteSort, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import React from "react";
 
@@ -62,12 +62,10 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
     }
 
     if (a.titleMatches) {
-      return (
-        compareForFuzzySort(
-          normalizedQuery,
-          a.item.sortName,
-          b.item.sortName
-        ) || a.item.sortName.localeCompare(b.item.sortName)
+      return compareForAutocompleteSort(
+        normalizedQuery,
+        a.item.sortName,
+        b.item.sortName
       );
     }
 

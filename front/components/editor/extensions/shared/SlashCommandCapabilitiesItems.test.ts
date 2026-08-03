@@ -124,16 +124,28 @@ describe("searchCapabilityIndex ranking", () => {
     expect(result.map((item) => item.id)).toEqual(["a", "z"]);
   });
 
-  it("breaks fuzzy ties alphabetically when a query is provided", () => {
+  it("sorts non-prefix substring matches alphabetically", () => {
     const result = searchCapabilityIndex({
       items: [
-        { id: "testlonger", sortName: "testlonger" },
+        { id: "ztestlonger", sortName: "ztestlonger" },
         { id: "longtest", sortName: "longtest" },
       ],
       query: "test",
     });
 
-    expect(result.map((item) => item.id)).toEqual(["longtest", "testlonger"]);
+    expect(result.map((item) => item.id)).toEqual(["longtest", "ztestlonger"]);
+  });
+
+  it("ranks title prefix matches above other fuzzy title matches", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        { id: "contains", sortName: "create guide" },
+        { id: "prefix", sortName: "guide builder" },
+      ],
+      query: "guide",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["prefix", "contains"]);
   });
 
   it("ranks title matches above description-only matches", () => {
