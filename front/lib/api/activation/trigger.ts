@@ -12,7 +12,11 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { processWebhookRequest } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { UserMessageContext } from "@app/types/assistant/conversation";
+import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -175,11 +179,8 @@ export async function createActivationTrigger(
     webhookSourceViewId: podView.id,
     executionPerDayLimitOverride: 10,
     executionMode: "fair_use",
-    // TODO(activation): "user" is not strictly accurate since the trigger is
-    // provisioned on the user's behalf rather than by them. This is temporary:
-    // once the consent path lands (see above) the trigger is genuinely
-    // user-owned, making "user" correct.
-    origin: "user",
+    // Dust provisions this trigger on the user's behalf; they did not create it.
+    origin: "system",
     spaceId: spaceIdRes.value,
   });
 
@@ -240,6 +241,56 @@ export async function listActivationPodsByUser(
 
   return byUser;
 }
+
+/**
+ * The nudge that opens an Activation Pod conversation is posted by Dust on the
+ * user's behalf, so it must not look like they wrote it: the agent's identity in
+ * the context, and no author on the message row (the caller derives
+ * `doNotAssociateUser` from the origin this sets). Returns the context unchanged
+ * for every other trigger.
+ *
+ * `email` has to stay null: `postUserMessage` resolves an author from the
+ * context email when the message has none, which would hand the nudge back to
+ * the user.
+ */
+export async function applyActivationNudgeAuthorship(
+  auth: Authenticator,
+  {
+    trigger,
+    agentConfiguration,
+    context,
+  }: {
+    trigger: TriggerType;
+    agentConfiguration: AgentConfigurationType;
+    context: UserMessageContext;
+  }
+): Promise<UserMessageContext> {
+  // A nudge trigger is a webhook trigger scoped to its pod, so anything else
+  // cannot be one and needs no lookup.
+  if (trigger.kind !== "webhook" || !trigger.spaceId) {
+    return context;
+  }
+
+  // `ActivationPod.triggerId` is written only by provisioning, which makes it
+  // the server-owned fact identifying a firing as a nudge.
+  const activationPod = await ActivationPodResource.fetchByTriggerModelId(
+    auth,
+    trigger.id
+  );
+  if (!activationPod) {
+    return context;
+  }
+
+  return {
+    ...context,
+    username: agentConfiguration.name,
+    fullName: agentConfiguration.name,
+    email: null,
+    profilePictureUrl: agentConfiguration.pictureUrl,
+    origin: ACTIVATION_NUDGE_ORIGIN,
+  };
+}
+
 // Fires the activation trigger for a single pod by emitting an internal webhook
 // event. Returns the sId of the pod's activation trigger, if the event matched
 // it (a pod has at most one activation trigger, via `activationTriggerFilter`).
