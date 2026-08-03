@@ -1,23 +1,22 @@
+import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
-import { useSearchMembers } from "@app/lib/swr/memberships";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { editorUserSchema } from "@app/types/editors";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import {
-  Avatar,
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Plus,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
+import { Button, Plus } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMemo } from "react";
+import { useController, useForm } from "react-hook-form";
+import { z } from "zod";
+
+const editorsFormSchema = z.object({
+  editors: z.array(editorUserSchema),
+});
+
+type EditorsFormData = z.infer<typeof editorsFormSchema>;
 
 type AgentEditorsTabProps = {
   owner: WorkspaceType;
@@ -30,15 +29,6 @@ export function AgentEditorsTab({
   user,
   agentConfiguration,
 }: AgentEditorsTabProps) {
-  const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [addedEditors, setAddedEditors] = useState<
-    SearchMemberWithWorkspaceType[]
-  >([]);
-  const [removedEditorIds, setRemovedEditorIds] = useState<Set<string>>(
-    new Set()
-  );
   const updateEditors = useUpdateEditors({
     owner,
     agentConfigurationId: agentConfiguration.sId,
@@ -47,168 +37,100 @@ export function AgentEditorsTab({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
-  const { members: workspaceMembers, isLoading: areWorkspaceMembersLoading } =
-    useSearchMembers({
-      workspaceId: owner.sId,
-      searchTerm: searchText,
-      pageIndex: 0,
-      pageSize: 25,
-      disabled: !isEditorPickerOpen,
-    });
 
   const canManageEditors = agentConfiguration.canEdit || isAdmin(owner);
+  const formValues = useMemo<EditorsFormData>(() => ({ editors }), [editors]);
+  const form = useForm<EditorsFormData>({
+    defaultValues: { editors: [] },
+    values: formValues,
+    resetOptions: { keepDirtyValues: true },
+    resolver: zodResolver(editorsFormSchema),
+  });
+  const { field: editorsField } = useController({
+    control: form.control,
+    name: "editors",
+  });
+  const selectedEditors = editorsField.value;
   const persistedEditorIds = new Set(editors.map((editor) => editor.sId));
-  const addedEditorIds = new Set(addedEditors.map((editor) => editor.sId));
-  const visibleEditors = [
-    ...editors.filter((editor) => !removedEditorIds.has(editor.sId)),
-    ...addedEditors.filter((editor) => !persistedEditorIds.has(editor.sId)),
-  ];
-  const visibleEditorIds = new Set(visibleEditors.map((editor) => editor.sId));
-  const addEditorIds = addedEditors
-    .map((editor) => editor.sId)
-    .filter((editorId) => !persistedEditorIds.has(editorId));
-  const removeEditorIds = Array.from(removedEditorIds).filter((editorId) =>
-    persistedEditorIds.has(editorId)
-  );
-  const hasChanges = addEditorIds.length > 0 || removeEditorIds.length > 0;
+  const hasChanges =
+    editors.length !== selectedEditors.length ||
+    selectedEditors.some((editor) => !persistedEditorIds.has(editor.sId));
 
   const onRemoveMember = (user: SearchMemberWithWorkspaceType) => {
-    if (!canManageEditors || isSaving) {
+    if (!canManageEditors || form.formState.isSubmitting) {
       return;
     }
 
-    if (addedEditorIds.has(user.sId)) {
-      setAddedEditors((current) =>
-        current.filter((editor) => editor.sId !== user.sId)
-      );
-      return;
-    }
-
-    setRemovedEditorIds((current) => new Set(current).add(user.sId));
+    editorsField.onChange(
+      selectedEditors.filter((editor) => editor.sId !== user.sId)
+    );
   };
 
   const onAddEditor = (editor: SearchMemberWithWorkspaceType) => {
-    if (isSaving || visibleEditorIds.has(editor.sId)) {
+    if (
+      form.formState.isSubmitting ||
+      selectedEditors.some((selected) => selected.sId === editor.sId)
+    ) {
       return;
     }
 
-    if (persistedEditorIds.has(editor.sId)) {
-      setRemovedEditorIds((current) => {
-        const next = new Set(current);
-        next.delete(editor.sId);
-        return next;
-      });
+    editorsField.onChange([...selectedEditors, editor]);
+  };
+
+  const onSave = form.handleSubmit(async ({ editors: nextEditors }) => {
+    if (!hasChanges) {
       return;
     }
 
-    setAddedEditors((current) => [...current, editor]);
-  };
-
-  const resetChanges = () => {
-    setAddedEditors([]);
-    setRemovedEditorIds(new Set());
-  };
-
-  const onSave = async () => {
-    if (!hasChanges || isSaving) {
-      return;
+    const nextEditorIds = new Set(nextEditors.map((editor) => editor.sId));
+    const didUpdate = await updateEditors({
+      addEditorIds: nextEditors
+        .filter((editor) => !persistedEditorIds.has(editor.sId))
+        .map((editor) => editor.sId),
+      removeEditorIds: editors
+        .filter((editor) => !nextEditorIds.has(editor.sId))
+        .map((editor) => editor.sId),
+    });
+    if (didUpdate) {
+      form.reset({ editors: nextEditors });
     }
-
-    setIsSaving(true);
-    try {
-      const didUpdate = await updateEditors({
-        addEditorIds,
-        removeEditorIds,
-      });
-      if (didUpdate) {
-        resetChanges();
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  });
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Editors</h3>
         {canManageEditors && (
-          <DropdownMenu
-            open={isEditorPickerOpen}
-            onOpenChange={(open) => {
-              setIsEditorPickerOpen(open);
-              if (!open) {
-                setSearchText("");
-              }
-            }}
-          >
-            <DropdownMenuTrigger asChild>
+          <AddEditorDropdown
+            owner={owner}
+            editors={selectedEditors}
+            onAddEditor={onAddEditor}
+            trigger={
               <Button
                 variant="outline"
                 size="sm"
                 icon={Plus}
                 label="Add editors"
-                disabled={isEditorsLoading || isEditorsError || isSaving}
+                disabled={
+                  isEditorsLoading ||
+                  isEditorsError ||
+                  form.formState.isSubmitting
+                }
                 type="button"
               />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-80"
-              align="end"
-              dropdownHeaders={
-                <>
-                  <DropdownMenuSearchbar
-                    name="search-editors"
-                    placeholder="Search members"
-                    value={searchText}
-                    onChange={setSearchText}
-                  />
-                  <DropdownMenuSeparator />
-                </>
-              }
-            >
-              {areWorkspaceMembersLoading ? (
-                <div className="flex h-24 items-center justify-center">
-                  <Spinner size="sm" />
-                </div>
-              ) : workspaceMembers.length > 0 ? (
-                workspaceMembers.map((member) => (
-                  <DropdownMenuItem
-                    key={member.sId}
-                    label={member.fullName}
-                    description={member.email}
-                    icon={() => (
-                      <Avatar
-                        name={member.fullName}
-                        visual={member.image ?? undefined}
-                        size="sm"
-                        isRounded
-                      />
-                    )}
-                    truncateText
-                    disabled={visibleEditorIds.has(member.sId) || isSaving}
-                    onClick={() => onAddEditor(member)}
-                    onSelect={(event) => event.preventDefault()}
-                  />
-                ))
-              ) : (
-                <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                  No members found
-                </div>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            }
+          />
         )}
       </div>
       <MembersList
         currentUser={user}
         membersData={{
-          members: visibleEditors.map((user) => ({
+          members: selectedEditors.map((user) => ({
             ...user,
             workspace: owner,
           })),
           isLoading: isEditorsLoading,
-          totalMembersCount: visibleEditors.length,
+          totalMembersCount: selectedEditors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
         }}
         showColumns={canManageEditors ? ["name", "remove"] : ["name"]}
@@ -221,16 +143,16 @@ export function AgentEditorsTab({
             variant="outline"
             size="sm"
             label="Cancel"
-            disabled={!hasChanges || isSaving}
-            onClick={resetChanges}
+            disabled={!hasChanges || form.formState.isSubmitting}
+            onClick={() => form.reset(formValues)}
             type="button"
           />
           <Button
             variant="highlight"
             size="sm"
             label="Save"
-            disabled={!hasChanges || isSaving}
-            isLoading={isSaving}
+            disabled={!hasChanges || form.formState.isSubmitting}
+            isLoading={form.formState.isSubmitting}
             onClick={onSave}
             type="button"
           />
