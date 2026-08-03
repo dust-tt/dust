@@ -73,23 +73,9 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <MembersList
-        currentUser={user}
-        membersData={{
-          members: editors.map((user) => ({
-            ...user,
-            workspace: owner,
-          })),
-          isLoading: isEditorsLoading,
-          totalMembersCount: editors.length,
-          mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
-        }}
-        showColumns={skill.canAdministrate ? ["name", "remove"] : ["name"]}
-        onRemoveMemberClick={onRemoveMember}
-        onRowClick={function noRefCheck() {}}
-      />
-      {skill.canAdministrate && (
-        <div>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Editors</h3>
+        {skill.canAdministrate && (
           <DropdownMenu
             open={isEditorPickerOpen}
             onOpenChange={(open) => {
@@ -104,7 +90,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
                 variant="outline"
                 size="sm"
                 icon={Plus}
-                label="Add editors"
+                label="Add editor"
                 disabled={isEditorsLoading || isEditorsError}
                 isLoading={isAddingEditor}
                 type="button"
@@ -112,7 +98,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               className="w-80"
-              align="start"
+              align="end"
               dropdownHeaders={
                 <>
                   <DropdownMenuSearchbar
@@ -155,8 +141,23 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      )}
+        )}
+      </div>
+      <MembersList
+        currentUser={user}
+        membersData={{
+          members: editors.map((user) => ({
+            ...user,
+            workspace: owner,
+          })),
+          isLoading: isEditorsLoading,
+          totalMembersCount: editors.length,
+          mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
+        }}
+        showColumns={skill.canAdministrate ? ["name", "remove"] : ["name"]}
+        onRemoveMemberClick={onRemoveMember}
+        onRowClick={function noRefCheck() {}}
+      />
     </div>
   );
 }
