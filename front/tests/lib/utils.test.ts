@@ -8,12 +8,23 @@ import { describe, expect, test } from "vitest";
 const AUTOCOMPLETE_SKILL_NAMES = [
   "Guide",
   "Guide Builder",
+  "Guide Analytics",
+  "Guidebook Publisher",
   "Guideline Toolkit",
+  "Guided Tour",
   "Create Guide",
+  "Draft A Guide",
   "Product Guides",
+  "Team Guide Catalog",
   "Generate Useful Insights for Data Export",
+  "Great User Interface Design Example",
+  "Gather Updates Into Detailed Email",
+  "Guidance Planner",
   "Guiding Workshop",
   "Automation Designer",
+  "Workflow Runner",
+  "Knowledge Organizer",
+  "Audit Checklist",
 ];
 
 function filterAndSortAutocompleteSkills(query: string): string[] {
@@ -32,23 +43,39 @@ describe("compareForAutocompleteSort", () => {
       query: "guide",
       expected: [
         "Guide",
+        "Guided Tour",
         "Guide Builder",
+        "Guide Analytics",
         "Guideline Toolkit",
+        "Guidebook Publisher",
+        "Team Guide Catalog",
         "Create Guide",
+        "Draft A Guide",
         "Product Guides",
+        "Guidance Planner",
+        "Gather Updates Into Detailed Email",
+        "Great User Interface Design Example",
         "Generate Useful Insights for Data Export",
       ],
     },
     {
-      behavior: "sorts matches alphabetically within the prefix tier",
+      behavior: "prioritizes shorter matches within the prefix tier",
       query: "guid",
       expected: [
         "Guide",
+        "Guided Tour",
         "Guide Builder",
-        "Guideline Toolkit",
+        "Guide Analytics",
+        "Guidance Planner",
         "Guiding Workshop",
+        "Guideline Toolkit",
+        "Guidebook Publisher",
+        "Team Guide Catalog",
         "Create Guide",
+        "Draft A Guide",
         "Product Guides",
+        "Gather Updates Into Detailed Email",
+        "Great User Interface Design Example",
         "Generate Useful Insights for Data Export",
       ],
     },
@@ -57,19 +84,32 @@ describe("compareForAutocompleteSort", () => {
       query: "gen",
       expected: [
         "Generate Useful Insights for Data Export",
+        "Guide Analytics",
+        "Guidance Planner",
         "Guideline Toolkit",
+        "Knowledge Organizer",
+        "Gather Updates Into Detailed Email",
+        "Great User Interface Design Example",
       ],
     },
     {
-      behavior: "sorts fuzzy-only matches alphabetically instead of by spread",
+      behavior: "sorts fuzzy-only matches by length instead of by spread",
       query: "gde",
       expected: [
-        "Create Guide",
-        "Generate Useful Insights for Data Export",
         "Guide",
+        "Guided Tour",
+        "Create Guide",
+        "Draft A Guide",
         "Guide Builder",
-        "Guideline Toolkit",
         "Product Guides",
+        "Guide Analytics",
+        "Guidance Planner",
+        "Guideline Toolkit",
+        "Team Guide Catalog",
+        "Guidebook Publisher",
+        "Gather Updates Into Detailed Email",
+        "Great User Interface Design Example",
+        "Generate Useful Insights for Data Export",
       ],
     },
     {
@@ -77,10 +117,18 @@ describe("compareForAutocompleteSort", () => {
       query: "GUIDE",
       expected: [
         "Guide",
+        "Guided Tour",
         "Guide Builder",
+        "Guide Analytics",
         "Guideline Toolkit",
+        "Guidebook Publisher",
+        "Team Guide Catalog",
         "Create Guide",
+        "Draft A Guide",
         "Product Guides",
+        "Guidance Planner",
+        "Gather Updates Into Detailed Email",
+        "Great User Interface Design Example",
         "Generate Useful Insights for Data Export",
       ],
     },
@@ -98,14 +146,25 @@ describe("compareForAutocompleteSort", () => {
       behavior: "sorts every skill alphabetically when the query is empty",
       query: "",
       expected: [
+        "Audit Checklist",
         "Automation Designer",
         "Create Guide",
+        "Draft A Guide",
+        "Gather Updates Into Detailed Email",
         "Generate Useful Insights for Data Export",
+        "Great User Interface Design Example",
+        "Guidance Planner",
         "Guide",
+        "Guide Analytics",
         "Guide Builder",
+        "Guidebook Publisher",
+        "Guided Tour",
         "Guideline Toolkit",
         "Guiding Workshop",
+        "Knowledge Organizer",
         "Product Guides",
+        "Team Guide Catalog",
+        "Workflow Runner",
       ],
     },
   ])("$behavior for '$query'", ({ query, expected }) => {
@@ -141,22 +200,31 @@ describe("compareForAutocompleteSort", () => {
       worseMatch: "Automation Designer",
     },
     {
-      behavior: "two prefix matches are ordered alphabetically",
+      behavior:
+        "a shorter prefix match ranks first even when it is later alphabetically",
       query: "guid",
-      betterMatch: "Guide Builder",
-      worseMatch: "Guideline Toolkit",
+      betterMatch: "Guiding Lab",
+      worseMatch: "Guide Automation",
     },
     {
-      behavior: "two substring matches are ordered alphabetically",
-      query: "guide",
-      betterMatch: "Create Guide",
-      worseMatch: "Product Guides",
+      behavior:
+        "equally positioned and equally short prefix matches are ordered alphabetically",
+      query: "guid",
+      betterMatch: "Guide Alpha",
+      worseMatch: "Guide Bravo",
     },
     {
-      behavior: "two fuzzy matches are ordered alphabetically",
+      behavior:
+        "equally positioned and equally short substring matches are ordered alphabetically",
       query: "guide",
-      betterMatch: "Generate Useful Insights for Data Export",
-      worseMatch: "Great User Interface Design Example",
+      betterMatch: "Create Guide A",
+      worseMatch: "Create Guide B",
+    },
+    {
+      behavior: "equally short fuzzy matches are ordered alphabetically",
+      query: "gde",
+      betterMatch: "Great Data Export",
+      worseMatch: "Green Data Engine",
     },
     {
       behavior: "two non-matches are ordered alphabetically",
@@ -170,6 +238,46 @@ describe("compareForAutocompleteSort", () => {
       betterMatch: "Guide Builder",
       worseMatch: "Create Guide Builder",
     },
+    {
+      behavior:
+        "an earlier substring ranks first even when it is longer and later alphabetically",
+      query: "guide",
+      betterMatch: "Use Guide Reference",
+      worseMatch: "A Very Long Guide",
+    },
+    {
+      behavior:
+        "a shorter substring ranks first when both matches start at the same position",
+      query: "guide",
+      betterMatch: "Zoo Guide",
+      worseMatch: "Any Guide Reference",
+    },
+    {
+      behavior:
+        "a substring match beats a much shorter fuzzy candidate because match tier wins first",
+      query: "guide",
+      betterMatch: "Create A Comprehensive Guide",
+      worseMatch: "G-u-i-d-e",
+    },
+    {
+      behavior:
+        "the first occurrence determines position when a candidate contains the query twice",
+      query: "guide",
+      betterMatch: "Use Guide Then Guide",
+      worseMatch: "Build A Detailed Guide",
+    },
+    {
+      behavior: "a prefix followed by punctuation still ranks as a prefix",
+      query: "guide-",
+      betterMatch: "Guide-Builder",
+      worseMatch: "Create Guide-Builder",
+    },
+    {
+      behavior: "Unicode casing is normalized when assigning match tiers",
+      query: "ÉTUDE",
+      betterMatch: "Étude",
+      worseMatch: "Étude Builder",
+    },
   ])("$behavior", ({ query, betterMatch, worseMatch }) => {
     expect(
       [worseMatch, betterMatch].toSorted((a, b) =>
@@ -178,8 +286,20 @@ describe("compareForAutocompleteSort", () => {
     ).toEqual([betterMatch, worseMatch]);
   });
 
-  test("treats candidates that differ only by case as equally relevant", () => {
-    expect(compareForAutocompleteSort("guide", "Guide", "GUIDE")).toBe(0);
+  test("uses original casing as the final alphabetical tie-breaker", () => {
+    const comparison = compareForAutocompleteSort("guide", "Guide", "GUIDE");
+    const reverseComparison = compareForAutocompleteSort(
+      "guide",
+      "GUIDE",
+      "Guide"
+    );
+
+    expect(comparison).not.toBe(0);
+    expect(Math.sign(comparison)).toBe(-Math.sign(reverseComparison));
+  });
+
+  test("returns a tie for identical candidates", () => {
+    expect(compareForAutocompleteSort("guide", "Guide", "Guide")).toBe(0);
   });
 
   test("ranks matching candidates before non-matches in an unfiltered list", () => {
