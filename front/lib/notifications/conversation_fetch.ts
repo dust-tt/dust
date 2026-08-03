@@ -100,10 +100,6 @@ export async function fetchLightMessageBySId(
   }
 
   const message = messageRes.value;
-  // Match getLightConversation: only main-branch messages.
-  if (message.getBranchId()) {
-    return new Err(new ConversationError("message_not_found"));
-  }
 
   const withIncludes = await resource.fetchMessagesByModelIds(auth, [
     message.id,

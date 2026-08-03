@@ -79,7 +79,6 @@ export type ConversationCaching =
 async function getConversationForAgentLoop(
   auth: Authenticator,
   conversationId: string,
-  _conversationBranchId: string | null,
   // These params are only used for cache key uniqueness.
   _workspaceId: string,
   _unicitySuffix: string
@@ -89,7 +88,6 @@ async function getConversationForAgentLoop(
     auth,
     conversationId,
     false,
-    null,
     PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
   );
   if (res.isErr()) {
@@ -101,13 +99,8 @@ async function getConversationForAgentLoop(
 function getCachedGetConversation(ttlMs: number) {
   return cacheWithRedis(
     getConversationForAgentLoop,
-    (
-      _auth,
-      conversationId,
-      _conversationBranchId,
-      workspaceId,
-      unicitySuffix
-    ) => `${workspaceId}:${conversationId}:${unicitySuffix}`,
+    (_auth, conversationId, workspaceId, unicitySuffix) =>
+      `${workspaceId}:${conversationId}:${unicitySuffix}`,
     {
       ttlMs,
       useDistributedLock: true,
@@ -120,7 +113,6 @@ export type AgentLoopArgs = {
   agentMessageVersion: number;
   conversationId: string;
   conversationTitle: string | null;
-  conversationBranchId: string | null;
 
   // Note that the original user message may not be the same as the parent message as agent might mention other agents.
   userMessageId: string;
@@ -209,7 +201,6 @@ export async function getAgentLoopDataWithAuth(
       conversation = await cachedGetConversation(
         auth,
         conversationId,
-        null,
         auth.getNonNullableWorkspace().sId,
         caching.unicitySuffix
       );
@@ -239,7 +230,6 @@ export async function getAgentLoopDataWithAuth(
       auth,
       conversationId,
       false,
-      null,
       PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
     );
 

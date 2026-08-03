@@ -16,7 +16,6 @@ export function createPlaceholderUserMessage({
   mentions,
   user,
   rank,
-  branchId,
   contentFragments,
   requestedModel,
 }: {
@@ -24,7 +23,6 @@ export function createPlaceholderUserMessage({
   mentions: RichMention[];
   user: UserType;
   rank: number;
-  branchId: string | null;
   contentFragments?: ContentFragmentsType;
   requestedModel?: ModelSelectionType | null;
 }): UserMessageType & { contentFragments: ContentFragmentType[] } {
@@ -47,7 +45,6 @@ export function createPlaceholderUserMessage({
     sId: `placeholder-user-message-${createdAt.toString()}`,
     version: 0,
     rank,
-    branchId,
     context: {
       email,
       fullName,
@@ -78,7 +75,6 @@ export function createPlaceholderUserMessage({
             visibility: "visible" as const,
             version: 0,
             rank,
-            branchId,
             sourceUrl: null,
             contentType: cf.contentType,
             context: {
@@ -124,7 +120,6 @@ export function createPlaceholderUserMessage({
             visibility: "visible" as const,
             version: 0,
             rank,
-            branchId,
             sourceUrl: null,
 
             context: {
@@ -146,18 +141,15 @@ export function createPlaceholderAgentMessage({
   userMessage,
   mention,
   rank,
-  branchId,
 }: {
   userMessage: UserMessageType;
   mention: RichMention & { pictureUrl: string };
   rank: number;
-  branchId: string | null;
 }): AgentMessageWithStreaming {
   const createdAt = new Date().getTime();
   return {
     sId: `placeholder-agent-message-${createdAt.toString()}`,
     rank,
-    branchId,
     type: "agent_message",
     version: 0,
     created: createdAt,

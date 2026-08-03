@@ -70,7 +70,6 @@ export async function getNextConversationMessageRank(
       where: {
         workspaceId: owner.id,
         conversationId: conversation.id,
-        branchId: null,
       },
       transaction,
     })) ?? -1) + 1

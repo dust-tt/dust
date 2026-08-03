@@ -130,7 +130,6 @@ async function runAnalytics(
       agentMessageVersion: 0,
       conversationId: conversationSId,
       conversationTitle: null,
-      conversationBranchId: null,
       userMessageId,
       userMessageVersion: 0,
     },

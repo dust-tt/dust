@@ -88,7 +88,6 @@ export type ConversationForkNotice = {
   sId: string;
   created: number;
   rank: number;
-  branchId: null;
   visibility: "visible";
   sourceMessageId: string;
   childConversationId: string;
@@ -147,17 +146,17 @@ export type VirtuosoMessageListContext = {
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 };
 
-export const areSameRankAndBranch = (
+export const areSameRank = (
   a: VirtuosoMessage,
   b: VirtuosoMessage
 ): boolean => {
-  return a.rank === b.rank && a.branchId === b.branchId;
+  return a.rank === b.rank;
 };
 
-export const getPredicateForRankAndBranch = (
+export const getPredicateForRank = (
   m: VirtuosoMessage
 ): ((m: VirtuosoMessage) => boolean) => {
-  return (m2: VirtuosoMessage) => areSameRankAndBranch(m, m2);
+  return (m2: VirtuosoMessage) => areSameRank(m, m2);
 };
 
 export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {

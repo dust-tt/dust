@@ -298,7 +298,6 @@ export async function createSandboxChildAction(
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
-      conversationBranchId: null,
       userMessageId: userMessageInfo.userMessageId,
       userMessageVersion: userMessageInfo.userMessageVersion,
       userMessageOrigin: userMessageInfo.userMessageOrigin,

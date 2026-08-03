@@ -7,7 +7,6 @@ import {
   DANGEROUSLY_UNBOUNDED_TEXT,
   DataTypes,
   literal,
-  Op,
 } from "@app/lib/resources/storage/data_types";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -823,7 +822,6 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare visibility: CreationOptional<MessageVisibility>;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
-  declare branchId: number | null;
 
   declare parentId: ForeignKey<MessageModel["id"]> | null;
   declare userMessageId: ForeignKey<UserMessageModel["id"]> | null;
@@ -838,10 +836,6 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare reactions?: NonAttribute<MessageReactionModel[]>;
 
   declare conversation?: NonAttribute<ConversationModel>;
-
-  getBranchId(): string | null {
-    return null;
-  }
 }
 
 MessageModel.init(
@@ -874,11 +868,6 @@ MessageModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    branchId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      defaultValue: null,
-    },
   },
   {
     modelName: "message",
@@ -888,45 +877,11 @@ MessageModel.init(
         unique: true,
         fields: ["sId"],
       },
-      // Index when the branchId criteria is not set in queries.
-      // No uniqueness constraint as uniqueness is enforced by the branchId null/not null indexes below.
-      {
-        fields: ["workspaceId", "conversationId", "rank", "version"],
-        name: "messages_workspace_id_conversation_id_rank_version",
-        concurrently: true,
-      },
-      // We need two separate indexes for the different cases of branchId being null or not.
-      // Because a null value is not considered distinct in an unique index.
+      // Unique index for rank and version.
       {
         unique: true,
         fields: ["workspaceId", "conversationId", "rank", "version"],
-        where: {
-          branchId: {
-            [Op.is]: null,
-          },
-        },
-        name: "messages_workspace_id_conversation_id_rank_version_branch_null",
-        concurrently: true,
-      },
-      {
-        unique: true,
-        fields: [
-          "workspaceId",
-          "conversationId",
-          "rank",
-          "version",
-          "branchId",
-        ],
-        where: {
-          branchId: {
-            [Op.ne]: null,
-          },
-        },
-        name: "messages_workspace_id_conversation_id_rank_version_branch_id",
-        concurrently: true,
-      },
-      {
-        fields: ["branchId"],
+        name: "messages_workspace_id_conversation_id_rank_version_unique",
         concurrently: true,
       },
       {

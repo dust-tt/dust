@@ -86,7 +86,6 @@ describe("renderAllMessages", () => {
             visibility: msg.visibility,
             version: 1,
             rank: idx * 2,
-            branchId: null,
             user: null,
             mentions: [],
             richMentions: [],
@@ -115,7 +114,6 @@ describe("renderAllMessages", () => {
             sId: `agent_msg_${idx}`,
             version: 1,
             rank: idx * 2 + 1,
-            branchId: null,
             completedTs: null,
             parentMessageId: `user_msg_${idx}`,
             parentAgentMessageId: null,
@@ -155,7 +153,6 @@ describe("renderAllMessages", () => {
           visibility: msg.visibility,
           version: 1,
           rank: idx * 2 + 1,
-          branchId: null,
           status: msg.status,
           content: msg.content,
         } satisfies CompactionMessageType,
@@ -183,7 +180,6 @@ describe("renderAllMessages", () => {
       content: content as ConversationType["content"],
       triggerId: null,
       metadata: {},
-      branchId: null,
       isRunningAgentLoop: false,
     } as ConversationType;
   }

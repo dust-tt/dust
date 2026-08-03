@@ -1,3 +1,4 @@
+/* Commented out as this migration is no longer needed.
 import { destroyConversationMessages } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
@@ -49,3 +50,4 @@ makeScript({}, async ({ execute }, logger) => {
 
   logger.info({ execute }, "Completed delete branch messages");
 });
+*/
