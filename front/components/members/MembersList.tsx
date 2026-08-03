@@ -132,14 +132,10 @@ const memberColumns = [
     header: "",
     cell: (info: Info) => (
       <DataTable.CellContent>
-        {info.row.original.isCurrentUser ? (
-          <></>
-        ) : (
-          <IconButton
-            icon={XClose}
-            onClick={info.row.original.onRemoveMemberClick}
-          />
-        )}
+        <IconButton
+          icon={XClose}
+          onClick={info.row.original.onRemoveMemberClick}
+        />
       </DataTable.CellContent>
     ),
     meta: {
