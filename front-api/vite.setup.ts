@@ -4,6 +4,14 @@ import { vi } from "vitest";
 
 import "../front/vite.setup.ts";
 
+// Front-api tests exercise server behavior and do not enable browser development mode.
+vi.mock("@app/components/dev/devModeConstants", () => {
+  return {
+    DEV_MODE_ACTIVE: false,
+    DEV_MODE_STORAGE_KEY: "dust_dev_mode",
+  };
+});
+
 vi.mock("@app/lib/api/config", async (importOriginal) => {
   const { createAppConfigMock } = await import(
     "@app/tests/utils/mocks/app_config"

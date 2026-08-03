@@ -6940,6 +6940,141 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption": {
+      "get": {
+        "summary": "Get an agent message credit attribution",
+        "description": "Returns the exact billed credits and, when available, an estimated cache-naive attribution grouped into agent work and tools.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Credit attribution for the agent message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "billedCredits",
+                    "details"
+                  ],
+                  "properties": {
+                    "billedCredits": {
+                      "type": "number",
+                      "nullable": true,
+                      "description": "Authoritative credits billed for this agent message."
+                    },
+                    "details": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "Cache-naive estimated attribution. Null when the active attribution version is unavailable or incomplete.",
+                      "required": [
+                        "attributionVersion",
+                        "grossAttributedCredits",
+                        "estimatedCacheSavingsCredits",
+                        "agentWorkCredits",
+                        "tools"
+                      ],
+                      "properties": {
+                        "attributionVersion": {
+                          "type": "integer"
+                        },
+                        "grossAttributedCredits": {
+                          "type": "number"
+                        },
+                        "estimatedCacheSavingsCredits": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "agentWorkCredits": {
+                          "type": "number"
+                        },
+                        "tools": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "label",
+                              "internalMCPServerName",
+                              "toolName",
+                              "callCount",
+                              "grossAttributedCredits",
+                              "directCredits",
+                              "pending"
+                            ],
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "internalMCPServerName": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "toolName": {
+                                "type": "string"
+                              },
+                              "callCount": {
+                                "type": "integer"
+                              },
+                              "grossAttributedCredits": {
+                                "type": "number"
+                              },
+                              "directCredits": {
+                                "type": "number"
+                              },
+                              "pending": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The workspace does not have access to consumption details"
+          },
+          "404": {
+            "description": "Conversation or agent message not found"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit": {
       "post": {
         "summary": "Edit a message",
