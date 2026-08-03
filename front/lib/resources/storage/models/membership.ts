@@ -27,6 +27,11 @@ export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   // `spend_threshold_reached` alert (threshold = override + seat allowance)
   // is derived from this value and remains the enforcement mechanism.
   declare poolCapOverrideAwuCredits: number | null;
+  // When the override should auto-revert to the seat-type default (see the
+  // `spend_limit_expiration` Temporal sweep). NULL means it never expires.
+  // Meaningless — and ignored by enforcement — when
+  // `poolCapOverrideAwuCredits` is null.
+  declare poolCapOverrideExpiresAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare user: NonAttribute<UserModel>;
@@ -79,6 +84,11 @@ MembershipModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    poolCapOverrideExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "membership",
@@ -98,6 +108,14 @@ MembershipModel.init(
       {
         fields: ["workspaceId", "firstUsedAt"],
         where: { firstUsedAt: { [Op.ne]: null } },
+        concurrently: true,
+      },
+      // Partial index backing the expiration sweep's cross-workspace lookup
+      // (see `getWorkspacesWithExpiredPoolCapOverride`).
+      {
+        fields: ["poolCapOverrideExpiresAt"],
+        where: { poolCapOverrideExpiresAt: { [Op.ne]: null } },
+        name: "memberships_pool_cap_override_expires_at",
         concurrently: true,
       },
     ],
