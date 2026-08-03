@@ -34,20 +34,13 @@ import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
 
-export type SkillResponseType = GetSkillResponseBody["skill"];
-export type SkillWithRelationsResponseType =
-  GetSkillWithRelationsResponseBody["skill"];
-export type SkillListItemResponseType = GetSkillsResponseBody["skills"][number];
-export type SkillListItemWithRelationsResponseType =
-  GetSkillsWithRelationsResponseBody["skills"][number];
-
 export function useSkill(options: {
   workspaceId: string;
   skillId: string | null;
   withRelations: true;
   disabled?: boolean;
 }): {
-  skill: SkillWithRelationsResponseType | null;
+  skill: GetSkillWithRelationsResponseBody["skill"] | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
@@ -58,7 +51,7 @@ export function useSkill(options: {
   withRelations?: false;
   disabled?: boolean;
 }): {
-  skill: SkillResponseType | null;
+  skill: GetSkillResponseBody["skill"] | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
@@ -74,7 +67,10 @@ export function useSkill({
   withRelations?: boolean;
   disabled?: boolean;
 }): {
-  skill: SkillResponseType | SkillWithRelationsResponseType | null;
+  skill:
+    | GetSkillResponseBody["skill"]
+    | GetSkillWithRelationsResponseBody["skill"]
+    | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
@@ -121,7 +117,7 @@ export function useSkills({
   bypassEditorVisibility?: boolean;
   swrOptions?: SWRConfiguration;
 }): {
-  skills: SkillListItemResponseType[];
+  skills: GetSkillsResponseBody["skills"];
   isSkillsError: boolean;
   isSkillsLoading: boolean;
   mutateSkills: () => void;
@@ -156,7 +152,8 @@ export function useSkills({
   );
 
   return {
-    skills: data?.skills ?? emptyArray<SkillListItemResponseType>(),
+    skills:
+      data?.skills ?? emptyArray<GetSkillsResponseBody["skills"][number]>(),
     isSkillsError: !!error,
     isSkillsLoading: isLoading,
     mutateSkills: mutate,

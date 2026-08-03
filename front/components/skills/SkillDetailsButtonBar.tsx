@@ -1,7 +1,7 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
-import type { SkillListItemWithRelationsResponseType } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -16,12 +16,12 @@ import {
 import { useState } from "react";
 
 interface SkillDetailsButtonBarProps {
-  skill: SkillListItemWithRelationsResponseType;
+  skill: GetSkillsWithRelationsResponseBody["skills"][number];
   owner: WorkspaceType;
   onClose: () => void;
   replaceOnEdit?: boolean;
   onFavoriteChange?: (
-    skill: SkillListItemWithRelationsResponseType,
+    skill: GetSkillsWithRelationsResponseBody["skills"][number],
     isFavorite: boolean
   ) => void;
 }

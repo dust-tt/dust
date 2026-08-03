@@ -37,12 +37,12 @@ import {
 import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
-  type SkillListItemWithRelationsResponseType,
   useSkillsWithRelations,
   useUpdateSkillFavorite,
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
@@ -73,8 +73,9 @@ export function ManageSkillsPage() {
   const { hasPermission } = useWorkspacePermissions();
   const { hasFeature } = useFeatureFlags();
   const hasSkillFavorites = hasFeature("skill_favorites");
-  const [optimisticSelectedSkill, setOptimisticSelectedSkill] =
-    useState<SkillListItemWithRelationsResponseType | null>(null);
+  const [optimisticSelectedSkill, setOptimisticSelectedSkill] = useState<
+    GetSkillsWithRelationsResponseBody["skills"][number] | null
+  >(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
@@ -164,7 +165,7 @@ export function ManageSkillsPage() {
   );
 
   const skillsByTab = useMemo<
-    Record<SkillManagerTabType, SkillListItemWithRelationsResponseType[]>
+    Record<SkillManagerTabType, GetSkillsWithRelationsResponseBody["skills"]>
   >(() => {
     const searchLower = skillSearch.toLowerCase();
     const editableByMeSkills = sortedActiveSkills.filter((s) =>
@@ -200,7 +201,7 @@ export function ManageSkillsPage() {
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
   const handleSkillSelect = useCallback(
-    (skill: SkillListItemWithRelationsResponseType | null) => {
+    (skill: GetSkillsWithRelationsResponseBody["skills"][number] | null) => {
       setOptimisticSelectedSkill(skill);
       setSkillIdParam(skill?.sId);
     },
@@ -250,7 +251,7 @@ export function ManageSkillsPage() {
 
   const handleFavoriteChange = useCallback(
     async (
-      skill: SkillListItemWithRelationsResponseType,
+      skill: GetSkillsWithRelationsResponseBody["skills"][number],
       isFavorite: boolean
     ) => {
       const didUpdate = await updateSkillFavorite(skill, isFavorite);
@@ -266,7 +267,10 @@ export function ManageSkillsPage() {
   );
 
   const handleFavoriteChangeClick = useCallback(
-    (skill: SkillListItemWithRelationsResponseType, isFavorite: boolean) => {
+    (
+      skill: GetSkillsWithRelationsResponseBody["skills"][number],
+      isFavorite: boolean
+    ) => {
       void handleFavoriteChange(skill, isFavorite);
     },
     [handleFavoriteChange]
