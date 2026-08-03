@@ -125,7 +125,10 @@ import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
-import { withTransaction } from "@app/lib/utils/sql_utils";
+import {
+  withRetriedTransaction,
+  withTransaction,
+} from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -827,140 +830,142 @@ export async function postUserMessage(
     : null;
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
-  const { userMessage, agentMessages } = await withTransaction(async (t) => {
-    // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
-    // this transaction, otherwise this other query will be competing for a connection in the database
-    // connection pool, resulting in a deadlock.
-    await getConversationRankVersionLock(auth, conversation, t);
+  const { userMessage, agentMessages } = await withRetriedTransaction(
+    async (t) => {
+      // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
+      // this transaction, otherwise this other query will be competing for a connection in the database
+      // connection pool, resulting in a deadlock.
+      await getConversationRankVersionLock(auth, conversation, t);
 
-    // We clear the hasError flag of a conversation when posting a new user message.
-    if (conversation.hasError) {
-      await ConversationResource.clearHasError(
-        auth,
-        {
-          conversation,
-        },
-        t
-      );
-    }
-
-    let nextMessageRank = await getNextConversationMessageRank(auth, {
-      conversation,
-      transaction: t,
-    });
-
-    // Enrich context with auth data for analytics tracking. When an attribution
-    // key is set (internal system-key calls like run_agent forward the original
-    // caller's key name), attribute usage to it instead of the request's own key;
-    // this drives api_key_name in usage analytics without affecting authorization.
-    const enrichedContext: UserMessageContext = {
-      ...context,
-      apiKeyId: auth.attributionKeyModelId() ?? auth.key()?.id ?? null,
-      authMethod: auth.authMethod(),
-    };
-
-    // Re-read the agent message status inside the critical section of the advisory lock. Between
-    // the initial check and acquiring the lock, the agent loop may have finalized — if so, clear
-    // runningAgentMessage so we fall through to the normal flow.
-    if (runningAgentMessage) {
-      const agentMessageRow = await AgentMessageModel.findOne({
-        where: {
-          id: runningAgentMessage.agentMessageId,
-          workspaceId: owner.id,
-        },
-        transaction: t,
-      });
-
-      if (agentMessageRow?.status !== "created") {
-        runningAgentMessage = undefined;
+      // We clear the hasError flag of a conversation when posting a new user message.
+      if (conversation.hasError) {
+        await ConversationResource.clearHasError(
+          auth,
+          {
+            conversation,
+          },
+          t
+        );
       }
-    }
 
-    // We set the visibility of the user message to "pending" if steering is enabled, we have a
-    // running agent message and there are agent mentions in the user messsage. If we are handing
-    // over we don't attempt steering as the intent is to start a new agentic loop and stop the
-    // parent one ASAP.
-    const visibility: MessageVisibility =
-      runningAgentMessage && explicitAgentMentions.length > 0 && !isHandover
-        ? "pending"
-        : "visible";
-
-    // Return the user message without mentions.
-    // This way typescript forces us to create the mentions after the user message is created.
-    const userMessageWithoutMentions = await createUserMessage(auth, {
-      conversation,
-      content,
-      metadata: {
-        type: "create",
-        user: messageUser,
-        rank: nextMessageRank++,
-        context: enrichedContext,
-        agenticMessageData,
-        visibility,
-        requestedModel: modelSelection ?? null,
-      },
-      transaction: t,
-    });
-
-    const richMentions = await createUserMentions(auth, {
-      resolvedMentions: resolvedUserMentions,
-      message: userMessageWithoutMentions,
-      conversation,
-      transaction: t,
-    });
-
-    await ConversationResource.markAsUpdated(auth, { conversation, t });
-
-    if (!doNotAssociateUser) {
-      // Mark the conversation as read for the current user.
-      await ConversationResource.markAsReadForAuthUser(auth, {
+      let nextMessageRank = await getNextConversationMessageRank(auth, {
         conversation,
         transaction: t,
       });
-    }
 
-    if (visibility === "pending") {
-      // Pending path: agent is still running, and we have agent mentions, create a pending user
-      // message without an agent message.
-      const userMessage = {
-        ...userMessageWithoutMentions,
-        richMentions,
-        mentions: richMentions.map(toMentionType),
+      // Enrich context with auth data for analytics tracking. When an attribution
+      // key is set (internal system-key calls like run_agent forward the original
+      // caller's key name), attribute usage to it instead of the request's own key;
+      // this drives api_key_name in usage analytics without affecting authorization.
+      const enrichedContext: UserMessageContext = {
+        ...context,
+        apiKeyId: auth.attributionKeyModelId() ?? auth.key()?.id ?? null,
+        authMethod: auth.authMethod(),
       };
 
-      return { userMessage, agentMessages: [] };
-    } else {
-      // Normal path: create agent messages for all mentioned agents, and associate them with the
-      // user message.
-      const { agentMessages, richMentions: agentRichMentions } =
-        await createAgentMessages(auth, {
-          conversation,
-          metadata: {
-            type: "create",
-            agentConfiguration: mentionedAgentConfiguration,
-            skipToolsValidation,
-            nextMessageRank,
-            userMessage: userMessageWithoutMentions,
-            modelResolution,
-            isRestrictedBySpaceUsage: mentionedAgentRestricted,
+      // Re-read the agent message status inside the critical section of the advisory lock. Between
+      // the initial check and acquiring the lock, the agent loop may have finalized — if so, clear
+      // runningAgentMessage so we fall through to the normal flow.
+      if (runningAgentMessage) {
+        const agentMessageRow = await AgentMessageModel.findOne({
+          where: {
+            id: runningAgentMessage.agentMessageId,
+            workspaceId: owner.id,
           },
           transaction: t,
         });
 
-      richMentions.push(...agentRichMentions);
+        if (agentMessageRow?.status !== "created") {
+          runningAgentMessage = undefined;
+        }
+      }
 
-      const userMessage = {
-        ...userMessageWithoutMentions,
-        richMentions: richMentions,
-        mentions: richMentions.map(toMentionType),
-      };
+      // We set the visibility of the user message to "pending" if steering is enabled, we have a
+      // running agent message and there are agent mentions in the user messsage. If we are handing
+      // over we don't attempt steering as the intent is to start a new agentic loop and stop the
+      // parent one ASAP.
+      const visibility: MessageVisibility =
+        runningAgentMessage && explicitAgentMentions.length > 0 && !isHandover
+          ? "pending"
+          : "visible";
 
-      return {
-        userMessage,
-        agentMessages,
-      };
+      // Return the user message without mentions.
+      // This way typescript forces us to create the mentions after the user message is created.
+      const userMessageWithoutMentions = await createUserMessage(auth, {
+        conversation,
+        content,
+        metadata: {
+          type: "create",
+          user: messageUser,
+          rank: nextMessageRank++,
+          context: enrichedContext,
+          agenticMessageData,
+          visibility,
+          requestedModel: modelSelection ?? null,
+        },
+        transaction: t,
+      });
+
+      const richMentions = await createUserMentions(auth, {
+        resolvedMentions: resolvedUserMentions,
+        message: userMessageWithoutMentions,
+        conversation,
+        transaction: t,
+      });
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+      if (!doNotAssociateUser) {
+        // Mark the conversation as read for the current user.
+        await ConversationResource.markAsReadForAuthUser(auth, {
+          conversation,
+          transaction: t,
+        });
+      }
+
+      if (visibility === "pending") {
+        // Pending path: agent is still running, and we have agent mentions, create a pending user
+        // message without an agent message.
+        const userMessage = {
+          ...userMessageWithoutMentions,
+          richMentions,
+          mentions: richMentions.map(toMentionType),
+        };
+
+        return { userMessage, agentMessages: [] };
+      } else {
+        // Normal path: create agent messages for all mentioned agents, and associate them with the
+        // user message.
+        const { agentMessages, richMentions: agentRichMentions } =
+          await createAgentMessages(auth, {
+            conversation,
+            metadata: {
+              type: "create",
+              agentConfiguration: mentionedAgentConfiguration,
+              skipToolsValidation,
+              nextMessageRank,
+              userMessage: userMessageWithoutMentions,
+              modelResolution,
+              isRestrictedBySpaceUsage: mentionedAgentRestricted,
+            },
+            transaction: t,
+          });
+
+        richMentions.push(...agentRichMentions);
+
+        const userMessage = {
+          ...userMessageWithoutMentions,
+          richMentions: richMentions,
+          mentions: richMentions.map(toMentionType),
+        };
+
+        return {
+          userMessage,
+          agentMessages,
+        };
+      }
     }
-  });
+  );
 
   // If a user is mentioned, we want to make sure the conversation has a title.
   // This ensures that mentioned users receive a notification with a conversation title.
@@ -1237,7 +1242,7 @@ export async function editUserMessage(
 
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
-    const result = await withTransaction(async (t) => {
+    const result = await withRetriedTransaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
       // connection pool, resulting in a deadlock.
@@ -1812,7 +1817,7 @@ export async function retryAgentMessage(
     agentMessage: AgentMessageType;
   } | null = null;
   try {
-    agentMessageResult = await withTransaction(async (t) => {
+    agentMessageResult = await withRetriedTransaction(async (t) => {
       await getConversationRankVersionLock(auth, conversation, t);
 
       // We clear the hasError flag of a conversation when retrying an agent message.
@@ -1991,7 +1996,7 @@ export async function postNewContentFragment(
           });
 
         if (!alreadyPresent) {
-          await withTransaction(async (t) => {
+          await withRetriedTransaction(async (t) => {
             await getConversationRankVersionLock(auth, conversation, t);
 
             const nextMessageRank = await getNextConversationMessageRank(auth, {
@@ -2058,61 +2063,63 @@ export async function postNewContentFragment(
     }
   }
 
-  const { contentFragment, messageRow } = await withTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
+  const { contentFragment, messageRow } = await withRetriedTransaction(
+    async (t) => {
+      await getConversationRankVersionLock(auth, conversation, t);
 
-    const fullBlob = {
-      ...cfBlobRes.value,
-      userId: auth.user()?.id,
-      userContextProfilePictureUrl: context?.profilePictureUrl,
-      userContextEmail: context?.email,
-      userContextFullName: context?.fullName,
-      userContextUsername: context?.username,
-      conversationId: conversation.id,
-      workspaceId: owner.id,
-    };
-
-    const contentFragment = await (() => {
-      if (supersededContentFragmentId) {
-        return ContentFragmentResource.makeNewVersion(
-          supersededContentFragmentId,
-          fullBlob,
-          t
-        );
-      } else {
-        return ContentFragmentResource.makeNew(fullBlob, t);
-      }
-    })();
-
-    const nextMessageRank = await getNextConversationMessageRank(auth, {
-      conversation,
-      transaction: t,
-    });
-    const messageRow = await MessageModel.create(
-      {
-        sId: messageId,
-        rank: nextMessageRank,
+      const fullBlob = {
+        ...cfBlobRes.value,
+        userId: auth.user()?.id,
+        userContextProfilePictureUrl: context?.profilePictureUrl,
+        userContextEmail: context?.email,
+        userContextFullName: context?.fullName,
+        userContextUsername: context?.username,
         conversationId: conversation.id,
-        contentFragmentId: contentFragment.id,
         workspaceId: owner.id,
-      },
-      {
-        transaction: t,
-      }
-    );
+      };
 
-    if (isContentFragmentInputWithContentNode(cf)) {
-      await updateConversationRequirements(auth, {
-        contentFragmentDatasourceViewIds: [cf.nodeDataSourceViewId],
+      const contentFragment = await (() => {
+        if (supersededContentFragmentId) {
+          return ContentFragmentResource.makeNewVersion(
+            supersededContentFragmentId,
+            fullBlob,
+            t
+          );
+        } else {
+          return ContentFragmentResource.makeNew(fullBlob, t);
+        }
+      })();
+
+      const nextMessageRank = await getNextConversationMessageRank(auth, {
         conversation,
-        t,
+        transaction: t,
       });
+      const messageRow = await MessageModel.create(
+        {
+          sId: messageId,
+          rank: nextMessageRank,
+          conversationId: conversation.id,
+          contentFragmentId: contentFragment.id,
+          workspaceId: owner.id,
+        },
+        {
+          transaction: t,
+        }
+      );
+
+      if (isContentFragmentInputWithContentNode(cf)) {
+        await updateConversationRequirements(auth, {
+          contentFragmentDatasourceViewIds: [cf.nodeDataSourceViewId],
+          conversation,
+          t,
+        });
+      }
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+      return { contentFragment, messageRow };
     }
-
-    await ConversationResource.markAsUpdated(auth, { conversation, t });
-
-    return { contentFragment, messageRow };
-  });
+  );
 
   const render = await contentFragment.renderFromMessage(auth, {
     conversationId: conversation.sId,
@@ -2187,7 +2194,7 @@ export async function softDeleteUserMessageAndReplies(
   }
 
   const cascadedAgentMessages: AgentMessageType[] = [];
-  const userMessage = await withTransaction(async (t) => {
+  const userMessage = await withRetriedTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     const relatedContentFragments = await fetchPrecedingContentFragments(auth, {
@@ -2325,7 +2332,7 @@ export async function softDeleteAgentMessage(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  const { agentMessages } = await withTransaction(async (t) => {
+  const { agentMessages } = await withRetriedTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     return createAgentMessages(auth, {
@@ -3194,7 +3201,7 @@ export async function updateAgentMessageWithFinalStatus(
     agentMessage: newAgentMessage,
     deniedActions,
     skippedTransition,
-  } = await withTransaction(async (t) => {
+  } = await withRetriedTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     // Only transition from "created": finalization is single-shot. A late terminal event from an

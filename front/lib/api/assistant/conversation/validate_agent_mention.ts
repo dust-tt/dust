@@ -16,7 +16,7 @@ import { publishMessageEventsOnMessagePostOrEdit } from "@app/lib/api/assistant/
 import type { Authenticator } from "@app/lib/auth";
 import { MentionModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
+import { withRetriedTransaction } from "@app/lib/utils/sql_utils";
 import { auditLog } from "@app/logger/logger";
 import type {
   AgentMessageType,
@@ -239,7 +239,7 @@ export async function validateAgentMention(
   let updatedRichMentions: RichMentionWithStatus[];
 
   try {
-    const created = await withTransaction(async (t) => {
+    const created = await withRetriedTransaction(async (t) => {
       await getConversationRankVersionLock(auth, conversation, t);
 
       const mentionModels = await MentionModel.findAll({
