@@ -2,7 +2,10 @@ import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
-import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import {
+  AgentMCPActionModel,
+  AgentMCPActionOutputItemModel,
+} from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -16,6 +19,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 export class AgentMCPActionFactory {
   // Monotonic counter: step content indexes only need to be unique within an agent message.
@@ -34,6 +38,7 @@ export class AgentMCPActionFactory {
       status = "blocked_validation_required",
       step = 1,
       dustRunId = null,
+      output = [],
     }: {
       workspace: WorkspaceType;
       conversationModelId: ModelId;
@@ -41,6 +46,7 @@ export class AgentMCPActionFactory {
       status?: ToolExecutionStatus;
       step?: number;
       dustRunId?: string | null;
+      output?: CallToolResult["content"];
     }
   ): Promise<{
     action: AgentMCPActionResource;
@@ -118,6 +124,18 @@ export class AgentMCPActionFactory {
       agentMCPActionId: action.id,
       stepContentId: stepContent.id,
     });
+
+    if (output.length > 0) {
+      await AgentMCPActionOutputItemModel.bulkCreate(
+        output.map((content) => ({
+          workspaceId: workspace.id,
+          agentMCPActionId: action.id,
+          content,
+          contentGcsPath: null,
+          citations: null,
+        }))
+      );
+    }
 
     const actionResource = await AgentMCPActionResource.fetchById(
       auth,

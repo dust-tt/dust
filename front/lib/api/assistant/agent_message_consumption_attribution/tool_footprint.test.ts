@@ -73,7 +73,7 @@ describe("toolCallFootprintTexts", () => {
   });
 
   it("renders a denied action as the rejection notice, ignoring any output", () => {
-    const { resultText } = toolCallFootprintTexts(
+    const { inputText } = toolCallFootprintTexts(
       footprintInput(
         makeAction({
           status: "denied",
@@ -82,31 +82,31 @@ describe("toolCallFootprintTexts", () => {
       )
     );
 
-    expect(resultText).toBe(
+    expect(inputText).toBe(
       "The user rejected or skipped this specific action execution. Using this action is hence forbidden for this message."
     );
   });
 
   it("renders an action awaiting validation as the validation notice", () => {
-    const { resultText } = toolCallFootprintTexts(
+    const { inputText } = toolCallFootprintTexts(
       footprintInput(makeAction({ status: "blocked_validation_required" }))
     );
 
-    expect(resultText).toBe(
+    expect(inputText).toBe(
       "The user must manually validate this action before it can be executed."
     );
   });
 
   it("renders an empty output as the no-output notice", () => {
-    const { resultText } = toolCallFootprintTexts(
+    const { inputText } = toolCallFootprintTexts(
       footprintInput(makeAction({ status: "succeeded", output: [] }))
     );
 
-    expect(resultText).toBe("Successfully executed action, no output.");
+    expect(inputText).toBe("Successfully executed action, no output.");
   });
 
   it("joins text output items with newlines", () => {
-    const { resultText } = toolCallFootprintTexts(
+    const { inputText } = toolCallFootprintTexts(
       footprintInput(
         makeAction({
           status: "succeeded",
@@ -118,11 +118,11 @@ describe("toolCallFootprintTexts", () => {
       )
     );
 
-    expect(resultText).toBe("first\nsecond");
+    expect(inputText).toBe("first\nsecond");
   });
 
   it("serializes non-text output as JSON with the mime type stripped", () => {
-    const { resultText } = toolCallFootprintTexts(
+    const { inputText } = toolCallFootprintTexts(
       footprintInput(
         makeAction({
           status: "succeeded",
@@ -136,7 +136,7 @@ describe("toolCallFootprintTexts", () => {
       )
     );
 
-    expect(resultText).toBe(JSON.stringify([{ uri: "u", text: "body" }]));
+    expect(inputText).toBe(JSON.stringify([{ uri: "u", text: "body" }]));
   });
 });
 
@@ -188,11 +188,11 @@ describe("measureToolCallFootprints", () => {
       toolCalls,
     });
 
-    // Calls and results are tokenized as two homogeneous lists, each in input order.
+    // Calls and inputs are tokenized as two homogeneous lists, each in input order.
     const [callTexts] = vi.mocked(tokenCountForTexts).mock.calls[0];
-    const [resultTexts] = vi.mocked(tokenCountForTexts).mock.calls[1];
+    const [inputTexts] = vi.mocked(tokenCountForTexts).mock.calls[1];
     expect(callTexts).toEqual(["a\n{}", "b\n{}"]);
-    expect(resultTexts).toEqual([
+    expect(inputTexts).toEqual([
       "Successfully executed action, no output.",
       "result-of-b",
     ]);
@@ -200,12 +200,11 @@ describe("measureToolCallFootprints", () => {
     expect(res.isOk() && res.value).toEqual([
       {
         callOutputTokensCount: "a\n{}".length,
-        resultInputTokensCount: "Successfully executed action, no output."
-          .length,
+        inputTokensCount: "Successfully executed action, no output.".length,
       },
       {
         callOutputTokensCount: "b\n{}".length,
-        resultInputTokensCount: "result-of-b".length,
+        inputTokensCount: "result-of-b".length,
       },
     ]);
   });
