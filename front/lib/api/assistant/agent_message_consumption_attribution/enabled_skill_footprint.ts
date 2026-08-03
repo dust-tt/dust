@@ -7,9 +7,10 @@ import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assi
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-const EMPTY_INPUT_SCHEMA = {
-  type: "object" as const,
+const EMPTY_INPUT_SCHEMA: JSONSchema = {
+  type: "object",
   properties: {},
   required: [],
 };
