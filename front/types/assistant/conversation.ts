@@ -87,13 +87,19 @@ export type LightMessageType =
  *
  */
 
-// Origins set explicitly by front-end clients (web app, extension, etc.).
-export type ClientMessageOrigin =
-  | "web"
-  | "project_kickoff"
-  | "extension"
-  | "agent_sidekick"
-  | "reinforced_skill_notification";
+// Origins set explicitly by front-end clients (web app, extension, etc.). This
+// is the allow-list the internal message endpoints validate against (see
+// `types/api/assistant.ts`), so anything absent here cannot be claimed by a
+// client.
+export const CLIENT_MESSAGE_ORIGINS = [
+  "web",
+  "project_kickoff",
+  "extension",
+  "agent_sidekick",
+  "reinforced_skill_notification",
+] as const;
+
+export type ClientMessageOrigin = (typeof CLIENT_MESSAGE_ORIGINS)[number];
 
 export type UserMessageOrigin =
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
