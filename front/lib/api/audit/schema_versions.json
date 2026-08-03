@@ -86,7 +86,6 @@
   "space.permissions_updated": 6,
   "sso.connection_deleted": 3,
   "subscription.changed": 1,
-  "tool.approval_decided": 1,
   "tool.approval_requested": 1,
   "tool.approval_resolved": 1,
   "tool.executed": 4,

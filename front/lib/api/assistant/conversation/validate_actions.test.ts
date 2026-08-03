@@ -1091,7 +1091,7 @@ describe("validateAction", () => {
   }
 
   function getAuditLogEventCalls(
-    action: "tool.approval_decided" | "tool.approval_requested"
+    action: "tool.approval_resolved" | "tool.approval_requested"
   ) {
     return vi
       .mocked(emitAuditLogEvent)
@@ -1107,7 +1107,7 @@ describe("validateAction", () => {
   }
 
   async function waitForAuditLogEventCalls(
-    action: "tool.approval_decided" | "tool.approval_requested"
+    action: "tool.approval_resolved" | "tool.approval_requested"
   ) {
     for (let i = 0; i < 20; i++) {
       const calls = getAuditLogEventCalls(action);
@@ -1246,7 +1246,7 @@ describe("validateAction", () => {
           tool_name: "test_tool",
           mcp_server_name: "test_server",
           conversation_id: conversation.sId,
-          message_id: agentMessageMessage.sId,
+          agent_message_id: agentMessageMessage.sId,
           request_status: "active",
           accessed_data_source_ids: "",
         },
@@ -1297,12 +1297,12 @@ describe("validateAction", () => {
 
       expect(v0Request?.metadata).toMatchObject({
         action_id: v0Action.sId,
-        message_id: v0AgentMessage.agentMessageMessage.sId,
+        agent_message_id: v0AgentMessage.agentMessageMessage.sId,
         request_status: "active",
       });
       expect(v1Request?.metadata).toMatchObject({
         action_id: v1Action.sId,
-        message_id: v1AgentMessage.agentMessageMessage.sId,
+        agent_message_id: v1AgentMessage.agentMessageMessage.sId,
         request_status: "retry",
       });
       expect(v0Action.sId).not.toBe(v1Action.sId);
@@ -1359,7 +1359,7 @@ describe("validateAction", () => {
         "tool.approval_requested"
       );
       const decidedEvents = await waitForAuditLogEventCalls(
-        "tool.approval_decided"
+        "tool.approval_resolved"
       );
       const executedEvents = getExecutedAuditLogEventCalls();
 
@@ -1382,7 +1382,7 @@ describe("validateAction", () => {
           action_id: action.sId,
           execution_id: action.sId,
           conversation_id: conversation.sId,
-          message_id: agentMessageMessage.sId,
+          agent_message_id: agentMessageMessage.sId,
           accessed_data_source_ids: "dsv_test",
         },
       });
@@ -1638,11 +1638,11 @@ describe("validateAction", () => {
 
       const user = auth.getNonNullableUser();
       const decidedEvents = await waitForAuditLogEventCalls(
-        "tool.approval_decided"
+        "tool.approval_resolved"
       );
       expect(decidedEvents).toHaveLength(1);
       expect(decidedEvents[0]).toMatchObject({
-        action: "tool.approval_decided",
+        action: "tool.approval_resolved",
         targets: [
           { type: "workspace", id: workspace.sId },
           { type: "agent", id: agentConfig.sId, name: "Test Agent" },
@@ -1653,7 +1653,7 @@ describe("validateAction", () => {
           tool_name: "test_tool",
           mcp_server_name: "test_server",
           conversation_id: conversation.sId,
-          message_id: agentMessageMessage.sId,
+          agent_message_id: agentMessageMessage.sId,
           decision: "approved",
           request_status: "active",
           deciding_user_id: user.sId,
@@ -2071,11 +2071,11 @@ describe("validateAction", () => {
 
       const user = auth.getNonNullableUser();
       const decidedEvents = await waitForAuditLogEventCalls(
-        "tool.approval_decided"
+        "tool.approval_resolved"
       );
       expect(decidedEvents).toHaveLength(1);
       expect(decidedEvents[0]).toMatchObject({
-        action: "tool.approval_decided",
+        action: "tool.approval_resolved",
         context: { location: "internal" },
         targets: [
           { type: "workspace", id: workspace.sId },
@@ -2087,7 +2087,7 @@ describe("validateAction", () => {
           tool_name: "test_tool",
           mcp_server_name: "test_server",
           conversation_id: conversation.sId,
-          message_id: agentMessageMessage.sId,
+          agent_message_id: agentMessageMessage.sId,
           decision: "rejected",
           request_status: "active",
           deciding_user_id: user.sId,
@@ -2113,7 +2113,7 @@ describe("validateAction", () => {
       await action.reload();
       expect(action.status).toBe("denied");
       expect(
-        getAuditLogEventCalls("tool.approval_decided").filter(
+        getAuditLogEventCalls("tool.approval_resolved").filter(
           (event) => event.metadata?.action_id === actionId
         )
       ).toHaveLength(1);
@@ -2176,16 +2176,16 @@ describe("validateAction", () => {
       expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
 
       const staleDecisions = await waitForAuditLogEventCalls(
-        "tool.approval_decided"
+        "tool.approval_resolved"
       );
       expect(staleDecisions).toHaveLength(1);
       expect(staleDecisions[0]).toMatchObject({
-        action: "tool.approval_decided",
+        action: "tool.approval_resolved",
         metadata: {
           action_id: staleAction.actionId,
           decision: "approved",
           request_status: "stale",
-          message_id: v0AgentMessage.agentMessageMessage.sId,
+          agent_message_id: v0AgentMessage.agentMessageMessage.sId,
         },
       });
 

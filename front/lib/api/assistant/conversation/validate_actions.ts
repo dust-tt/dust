@@ -79,7 +79,7 @@ function extractAccessedDataSourceIds(
   return dataSources.map(extractDataSourceId).filter(isString).join(",");
 }
 
-async function emitToolApprovalDecidedAuditEvent({
+async function emitToolApprovalResolvedAuditEvent({
   action,
   approvalState,
   auth,
@@ -101,7 +101,7 @@ async function emitToolApprovalDecidedAuditEvent({
 
     const auditEvent = emitAuditLogEvent({
       auth,
-      action: "tool.approval_decided",
+      action: "tool.approval_resolved",
       targets: [
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("agent", {
@@ -119,7 +119,8 @@ async function emitToolApprovalDecidedAuditEvent({
         tool_name: String(action.toolConfiguration.originalName),
         mcp_server_name: String(action.toolConfiguration.mcpServerName),
         conversation_id: String(conversationId),
-        message_id: String(messageId),
+        agent_message_id: String(messageId),
+        stake_level: String(action.toolConfiguration.permission),
         decision: getAuditLogDecision(approvalState),
         request_status: requestStatus,
         deciding_user_id: user?.sId ?? "unknown",
@@ -230,7 +231,7 @@ export async function validateAction(
 
   // Stale approval links must not relaunch an already terminated agent message.
   if (!(await action.canAgentMessageResume(auth))) {
-    void emitToolApprovalDecidedAuditEvent({
+    void emitToolApprovalResolvedAuditEvent({
       action,
       approvalState,
       auth,
@@ -300,7 +301,7 @@ export async function validateAction(
     return new Ok(undefined);
   }
 
-  void emitToolApprovalDecidedAuditEvent({
+  void emitToolApprovalResolvedAuditEvent({
     action,
     approvalState,
     auth,

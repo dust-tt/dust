@@ -142,7 +142,6 @@ export function emitToolExecutedAuditEvent({
         : "internal",
       mcp_server_name: action.toolConfiguration.mcpServerName,
       conversation_id: conversation.sId,
-      message_id: messageId,
       agent_message_id: messageId,
       ...(conversation.triggerId ? { trigger_id: conversation.triggerId } : {}),
       initiating_user_id: auth.user()?.sId ?? "unknown",
