@@ -102,8 +102,6 @@ export async function getCreditPurchaseLimits(
   }
 
   // Pro paying: flat $1000 per billing cycle.
-  const cycleMaxMicroUsd = MAX_PRO_CREDIT_TOTAL_MICRO_USD;
-
   const alreadyPurchased =
     await CreditResource.sumCommittedCreditsPurchasedInPeriod(
       auth,
@@ -113,7 +111,10 @@ export async function getCreditPurchaseLimits(
 
   return {
     canPurchase: true,
-    maxAmountMicroUsd: Math.max(0, cycleMaxMicroUsd - alreadyPurchased),
+    maxAmountMicroUsd: Math.max(
+      0,
+      MAX_PRO_CREDIT_TOTAL_MICRO_USD - alreadyPurchased
+    ),
   };
 }
 
