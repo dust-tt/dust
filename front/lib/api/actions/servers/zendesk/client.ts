@@ -90,6 +90,7 @@ class ZendeskClient {
 
   private async request<T extends z.Schema>(
     endpoint: string,
+    schemaName: string,
     schema: T,
     {
       method,
@@ -133,13 +134,14 @@ class ZendeskClient {
       logger.error(
         {
           endpoint,
+          schemaName,
           error: parseResult.error.message,
         },
         "[Zendesk] Invalid API response format"
       );
       return new Err(
         new Error(
-          `Invalid Zendesk API response format: ${parseResult.error.message}`
+          `Invalid Zendesk API response format for ${schemaName}: ${parseResult.error.message}`
         )
       );
     }
@@ -150,6 +152,7 @@ class ZendeskClient {
   async getTicket(ticketId: number): Promise<Result<ZendeskTicket, Error>> {
     const result = await this.request(
       `tickets/${ticketId}`,
+      "ZendeskTicketResponseSchema",
       ZendeskTicketResponseSchema
     );
 
@@ -165,6 +168,7 @@ class ZendeskClient {
   ): Promise<Result<ZendeskTicketMetrics, Error>> {
     const result = await this.request(
       `tickets/${ticketId}/metrics`,
+      "ZendeskTicketMetricsResponseSchema",
       ZendeskTicketMetricsResponseSchema
     );
 
@@ -194,6 +198,7 @@ class ZendeskClient {
 
     const result = await this.request(
       `search.json?${params.toString()}`,
+      "ZendeskSearchResponseSchema",
       ZendeskSearchResponseSchema
     );
 
@@ -210,6 +215,7 @@ class ZendeskClient {
   ): Promise<Result<ZendeskTicket, Error>> {
     const result = await this.request(
       `tickets/${ticketId}`,
+      "ZendeskTicketResponseSchema",
       ZendeskTicketResponseSchema,
       {
         method: "PUT",
@@ -237,6 +243,7 @@ class ZendeskClient {
   ): Promise<Result<ZendeskTicket, Error>> {
     const result = await this.request(
       `tickets/${ticketId}`,
+      "ZendeskTicketResponseSchema",
       ZendeskTicketResponseSchema,
       {
         method: "PUT",
@@ -268,6 +275,7 @@ class ZendeskClient {
     const idsParam = fieldIds.join(",");
     const result = await this.request(
       `ticket_fields/show_many?ids=${idsParam}`,
+      "ZendeskTicketFieldsResponseSchema",
       ZendeskTicketFieldsResponseSchema
     );
 
@@ -285,6 +293,7 @@ class ZendeskClient {
   } = {}): Promise<Result<ZendeskTicketField[], Error>> {
     const result = await this.request(
       `ticket_fields.json`,
+      "ZendeskTicketFieldsResponseSchema",
       ZendeskTicketFieldsResponseSchema
     );
 
@@ -307,6 +316,7 @@ class ZendeskClient {
     }
     const result = await this.request(
       `tickets/${ticketId}/comments?${params.toString()}`,
+      "ZendeskTicketCommentsResponseSchema",
       ZendeskTicketCommentsResponseSchema
     );
 
@@ -323,6 +333,7 @@ class ZendeskClient {
   ): Promise<Result<string[], Error>> {
     const result = await this.request(
       `tickets/${ticketId}/tags`,
+      "ZendeskTagsResponseSchema",
       ZendeskTagsResponseSchema,
       { method: "PUT", body: { tags } } // PUT = additive
     );
@@ -340,6 +351,7 @@ class ZendeskClient {
   ): Promise<Result<string[], Error>> {
     const result = await this.request(
       `tickets/${ticketId}/tags`,
+      "ZendeskTagsResponseSchema",
       ZendeskTagsResponseSchema,
       { method: "POST", body: { tags } } // POST = full replacement
     );
@@ -412,6 +424,7 @@ class ZendeskClient {
       const idsParam = chunk.join(",");
       const result = await this.request(
         `users/show_many?ids=${idsParam}`,
+        "ZendeskUsersResponseSchema",
         ZendeskUsersResponseSchema
       );
 
