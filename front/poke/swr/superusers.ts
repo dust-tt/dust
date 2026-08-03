@@ -106,9 +106,9 @@ export function useSuperusersAdmin() {
         { email, roles },
         roles === null ? "Poke access removed" : "Poke roles updated"
       ),
-    setDustSuperUser: (userSId: string, isDustSuperUser: boolean) =>
+    setDustSuperUser: (userId: string, isDustSuperUser: boolean) =>
       request(
-        `/api/poke/superusers/${encodeURIComponent(userSId)}/superuser`,
+        `/api/poke/superusers/${encodeURIComponent(userId)}/superuser`,
         { isDustSuperUser },
         "Dust superuser flag updated"
       ),

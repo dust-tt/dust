@@ -8,7 +8,7 @@ import {
 } from "@app/types/poke/roles";
 import { Button, Chip, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const ROLE_OPTIONS = PokeRoleSchema.options;
 
@@ -24,26 +24,43 @@ export function SuperusersPage() {
     setDustSuperUser,
   } = useSuperusersAdmin();
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+
+  async function runMutation(action: () => Promise<unknown>) {
+    if (busyRef.current) {
+      return;
+    }
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
 
   async function updateRoles(member: SuperuserMemberInfo, role: PokeRole) {
     const roles = member.pokeRoles.includes(role)
       ? member.pokeRoles.filter((candidate) => candidate !== role)
       : [...member.pokeRoles, role];
-    setBusy(true);
-    await setRoles(member.email, roles);
-    setBusy(false);
+    await runMutation(() => setRoles(member.email, roles));
   }
 
   async function removeRoles(email: string) {
+    if (busyRef.current) {
+      return;
+    }
     if (!window.confirm(`Remove ${email} from poke-roles.json?`)) {
       return;
     }
-    setBusy(true);
-    await setRoles(email, null);
-    setBusy(false);
+    await runMutation(() => setRoles(email, null));
   }
 
   async function toggleSuperuser(member: SuperuserMemberInfo) {
+    if (busyRef.current) {
+      return;
+    }
     const nextValue = !member.isDustSuperUser;
     if (
       !window.confirm(
@@ -52,9 +69,7 @@ export function SuperusersPage() {
     ) {
       return;
     }
-    setBusy(true);
-    await setDustSuperUser(member.sId, nextValue);
-    setBusy(false);
+    await runMutation(() => setDustSuperUser(member.sId, nextValue));
   }
 
   const columns: ColumnDef<SuperuserMemberInfo>[] = [

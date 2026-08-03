@@ -7,10 +7,15 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({
-  productionWorkspaceId: undefined as string | undefined,
-  auditLog: vi.fn(),
-}));
+const state = vi.hoisted(
+  (): {
+    productionWorkspaceId: string | undefined;
+    auditLog: ReturnType<typeof vi.fn>;
+  } => ({
+    productionWorkspaceId: undefined,
+    auditLog: vi.fn(),
+  })
+);
 
 vi.mock("@app/lib/api/config", async (importOriginal) => {
   const { createAppConfigMock } = await import(
