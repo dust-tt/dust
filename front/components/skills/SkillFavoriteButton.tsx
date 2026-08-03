@@ -30,11 +30,6 @@ export function SkillFavoriteButton({
       variant={variant}
       icon={isFavorite ? StarFilled : Star01}
       tooltip={`${nextIsFavorite ? "Favorite" : "Unfavorite"} ${skill.name}`}
-      className={
-        isFavorite
-          ? "text-warning dark:text-warning-night hover:text-warning dark:hover:text-warning-night"
-          : undefined
-      }
       onClick={(event: MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
         onFavoriteChange(nextIsFavorite);
