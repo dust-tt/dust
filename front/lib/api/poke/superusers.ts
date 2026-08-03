@@ -4,17 +4,12 @@ import { writeRoles } from "@app/lib/poke/roles";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import {
-  normalizeEmail,
-  type PokeGetSuperusers,
-  type PokeRole,
-} from "@app/types/poke/roles";
+import { normalizeEmail, type PokeRole } from "@app/types/poke/roles";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
-export type SuperuserMutationError = {
-  type: "not_found" | "not_active_member";
-  message: string;
-};
+export type SuperuserMutationError =
+  | { type: "not_found"; message: string }
+  | { type: "not_active_member"; message: string };
 
 async function isActiveWorkspaceMember(
   auth: Authenticator,
@@ -30,9 +25,7 @@ async function isActiveWorkspaceMember(
   return membership !== null;
 }
 
-export async function listSuperuserMembers(
-  auth: Authenticator
-): Promise<PokeGetSuperusers["members"]> {
+export async function listSuperuserMembers(auth: Authenticator) {
   const workspace = renderLightWorkspaceType({
     workspace: auth.getNonNullableWorkspace(),
   });

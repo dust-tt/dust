@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { getRegionUrl, useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import type {
   OrphanedPokeRoleEntry,
   PokeGetSuperusers,
@@ -11,7 +12,6 @@ import type {
 import { normalizeEmail } from "@app/types/poke/roles";
 import type { RegionType } from "@app/types/region";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { Fetcher } from "swr";
 import useSWR from "swr";
 
 function apiUrl(region: RegionType, path: string) {
@@ -55,13 +55,13 @@ export function useSuperusersAdmin() {
   const { regionInfo } = useRegionContext();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const eu = useSWR(
+  const eu = useSWR<PokeGetSuperusers>(
     apiUrl("europe-west1", "/api/poke/superusers"),
-    fetcher as Fetcher<PokeGetSuperusers>
+    fetcher
   );
-  const us = useSWR(
+  const us = useSWR<PokeGetSuperusers>(
     apiUrl("us-central1", "/api/poke/superusers"),
-    fetcher as Fetcher<PokeGetSuperusers>
+    fetcher
   );
   const [current, other] =
     regionInfo.name === "europe-west1" ? [eu, us] : [us, eu];
@@ -74,10 +74,15 @@ export function useSuperusersAdmin() {
         body: JSON.stringify(body),
       });
       if (!response.ok) {
-        const error = await response.json().catch(() => null);
-        throw new Error(
-          error?.error?.message ?? `Request failed (${response.status}).`
-        );
+        const responseBody: unknown = await response.json().catch(() => null);
+        sendNotification({
+          title: "Update failed",
+          description: isAPIErrorResponse(responseBody)
+            ? responseBody.error.message
+            : `Request failed (${response.status}).`,
+          type: "error",
+        });
+        return false;
       }
       sendNotification({ title: successTitle, type: "success" });
       await Promise.all([eu.mutate(), us.mutate()]);
