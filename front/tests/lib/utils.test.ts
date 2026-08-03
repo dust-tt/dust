@@ -6,14 +6,14 @@ import {
 import { describe, expect, test } from "vitest";
 
 const AUTOCOMPLETE_SKILL_NAMES = [
-  "Frame",
-  "Frame Renderer",
-  "Framework Builder",
-  "Create Frame",
-  "Aesthetic Dust Frames",
-  "Fast Response Assistant Media Exporter",
-  "Framing Workshop",
-  "Presentation Designer",
+  "Guide",
+  "Guide Builder",
+  "Guideline Toolkit",
+  "Create Guide",
+  "Product Guides",
+  "Generate Useful Insights for Data Export",
+  "Guiding Workshop",
+  "Automation Designer",
 ];
 
 function filterAndSortAutocompleteSkills(query: string): string[] {
@@ -29,71 +29,65 @@ describe("compareForAutocompleteSort", () => {
     {
       behavior:
         "ranks exact, prefix, substring, and fuzzy matches in that order",
-      query: "frame",
+      query: "guide",
       expected: [
-        "Frame",
-        "Frame Renderer",
-        "Framework Builder",
-        "Aesthetic Dust Frames",
-        "Create Frame",
-        "Fast Response Assistant Media Exporter",
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Create Guide",
+        "Product Guides",
+        "Generate Useful Insights for Data Export",
       ],
     },
     {
       behavior: "sorts matches alphabetically within the prefix tier",
-      query: "fram",
+      query: "guid",
       expected: [
-        "Frame",
-        "Frame Renderer",
-        "Framework Builder",
-        "Framing Workshop",
-        "Aesthetic Dust Frames",
-        "Create Frame",
-        "Fast Response Assistant Media Exporter",
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Guiding Workshop",
+        "Create Guide",
+        "Product Guides",
+        "Generate Useful Insights for Data Export",
       ],
     },
     {
       behavior: "ranks a title prefix above fuzzy title matches",
-      query: "fa",
+      query: "gen",
       expected: [
-        "Fast Response Assistant Media Exporter",
-        "Aesthetic Dust Frames",
-        "Create Frame",
-        "Frame",
-        "Frame Renderer",
-        "Framework Builder",
-        "Framing Workshop",
+        "Generate Useful Insights for Data Export",
+        "Guideline Toolkit",
       ],
     },
     {
       behavior: "sorts fuzzy-only matches alphabetically instead of by spread",
-      query: "frm",
+      query: "gde",
       expected: [
-        "Aesthetic Dust Frames",
-        "Create Frame",
-        "Fast Response Assistant Media Exporter",
-        "Frame",
-        "Frame Renderer",
-        "Framework Builder",
-        "Framing Workshop",
+        "Create Guide",
+        "Generate Useful Insights for Data Export",
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Product Guides",
       ],
     },
     {
       behavior: "matches a query case-insensitively",
-      query: "FRAME",
+      query: "GUIDE",
       expected: [
-        "Frame",
-        "Frame Renderer",
-        "Framework Builder",
-        "Aesthetic Dust Frames",
-        "Create Frame",
-        "Fast Response Assistant Media Exporter",
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Create Guide",
+        "Product Guides",
+        "Generate Useful Insights for Data Export",
       ],
     },
     {
       behavior: "returns the single matching prefix without unrelated skills",
       query: "create",
-      expected: ["Create Frame"],
+      expected: ["Create Guide"],
     },
     {
       behavior: "returns an empty list when no skill matches",
@@ -104,14 +98,14 @@ describe("compareForAutocompleteSort", () => {
       behavior: "sorts every skill alphabetically when the query is empty",
       query: "",
       expected: [
-        "Aesthetic Dust Frames",
-        "Create Frame",
-        "Fast Response Assistant Media Exporter",
-        "Frame",
-        "Frame Renderer",
-        "Framework Builder",
-        "Framing Workshop",
-        "Presentation Designer",
+        "Automation Designer",
+        "Create Guide",
+        "Generate Useful Insights for Data Export",
+        "Guide",
+        "Guide Builder",
+        "Guideline Toolkit",
+        "Guiding Workshop",
+        "Product Guides",
       ],
     },
   ])("$behavior for '$query'", ({ query, expected }) => {
@@ -120,10 +114,10 @@ describe("compareForAutocompleteSort", () => {
 
   test("ranks matching candidates before non-matches in an unfiltered list", () => {
     expect(
-      ["Presentation Designer", "Create Frame", "Frame"].toSorted((a, b) =>
-        compareForAutocompleteSort("frame", a, b)
+      ["Automation Designer", "Create Guide", "Guide"].toSorted((a, b) =>
+        compareForAutocompleteSort("guide", a, b)
       )
-    ).toEqual(["Frame", "Create Frame", "Presentation Designer"]);
+    ).toEqual(["Guide", "Create Guide", "Automation Designer"]);
   });
 });
 

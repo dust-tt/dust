@@ -139,10 +139,10 @@ describe("searchCapabilityIndex ranking", () => {
   it("ranks title prefix matches above other fuzzy title matches", () => {
     const result = searchCapabilityIndex({
       items: [
-        { id: "contains", sortName: "create frame" },
-        { id: "prefix", sortName: "frame renderer" },
+        { id: "contains", sortName: "create guide" },
+        { id: "prefix", sortName: "guide builder" },
       ],
-      query: "frame",
+      query: "guide",
     });
 
     expect(result.map((item) => item.id)).toEqual(["prefix", "contains"]);
