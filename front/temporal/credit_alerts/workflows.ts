@@ -8,7 +8,7 @@ const { sendCreditAlertEmailActivity } = proxyActivities<typeof activities>({
 const { getWorkspacesWithExpiredPoolCapOverrideActivity } = proxyActivities<
   typeof activities
 >({
-  startToCloseTimeout: "1 minute",
+  startToCloseTimeout: "2 minutes",
 });
 
 const { expireWorkspacePoolCapOverridesActivity } = proxyActivities<

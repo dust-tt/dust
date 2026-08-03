@@ -80,7 +80,7 @@ export async function getWorkspacesWithExpiredPoolCapOverrideActivity(): Promise
   string[]
 > {
   const workspaceModelIds =
-    await MembershipResource.dangerouslyGetWorkspaceModelIdsWithExpiredPoolCapOverride(
+    await MembershipResource.dangerouslyGetWorkspaceModelIdsWithExpiredMembershipPoolCapOverride(
       new Date()
     );
   const workspaces = await WorkspaceResource.fetchByModelIds(workspaceModelIds);

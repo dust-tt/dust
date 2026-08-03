@@ -1634,7 +1634,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
    * only call this from Temporal admin jobs or poke plugins, never from an
    * API route.
    */
-  static async dangerouslyGetWorkspaceModelIdsWithExpiredPoolCapOverride(
+  static async dangerouslyGetWorkspaceModelIdsWithExpiredMembershipPoolCapOverride(
     now: Date
   ): Promise<ModelId[]> {
     const rows = await this.model.findAll({
@@ -1659,7 +1659,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   /**
    * Active memberships within `auth`'s workspace whose pool cap override has
    * expired as of `now`. Scoped counterpart to
-   * `dangerouslyGetWorkspaceModelIdsWithExpiredPoolCapOverride`, called once
+   * `dangerouslyGetWorkspaceModelIdsWithExpiredMembershipPoolCapOverride`, called once
    * per affected workspace by the expiration sweep.
    */
   static async listActiveWithExpiredPoolCapOverride({
