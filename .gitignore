@@ -48,6 +48,3 @@ thoughts/*
 # Sandbox provider build scratch dirs
 /front/lib/api/sandbox/providers/sandbox-build-*/
 
-# Personal local-only dev scripts, not meant to be version-controlled
-/front/scripts/local/
-
