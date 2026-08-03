@@ -10,7 +10,10 @@ vi.mock(
 );
 
 import { createConversation } from "@app/lib/api/assistant/conversation";
-import { resumeAncestorConversations } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
+import {
+  resumeAncestorConversations,
+  retryBlockedActionsAndResumeAncestors,
+} from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -180,5 +183,67 @@ describe("resumeAncestorConversations", () => {
     });
 
     expect(retryBlockedActions).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("retryBlockedActionsAndResumeAncestors", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+  });
+
+  it("wakes the caller after retrying a sub-agent's blocked actions", async () => {
+    const parent = await createAgenticConversation(auth, workspace);
+    const child = await createAgenticConversation(auth, workspace, {
+      agenticParentMessageId: parent.agentMessageId,
+    });
+
+    vi.mocked(retryBlockedActions).mockResolvedValue(new Ok(undefined));
+
+    const res = await retryBlockedActionsAndResumeAncestors(
+      auth,
+      child.conversation,
+      { messageId: child.agentMessageId }
+    );
+
+    expect(res.isOk()).toBe(true);
+    // Once for the child, once for the parked caller.
+    expect(retryBlockedActions).toHaveBeenCalledTimes(2);
+    expect(retryBlockedActions).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({ sId: child.conversation.sId }),
+      expect.objectContaining({ messageId: child.agentMessageId })
+    );
+    expect(retryBlockedActions).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({ sId: parent.conversation.sId }),
+      expect.objectContaining({ messageId: parent.agentMessageId })
+    );
+  });
+
+  it("does not walk ancestors when the retry itself failed", async () => {
+    const parent = await createAgenticConversation(auth, workspace);
+    const child = await createAgenticConversation(auth, workspace, {
+      agenticParentMessageId: parent.agentMessageId,
+    });
+
+    vi.mocked(retryBlockedActions).mockResolvedValue(
+      new Err(new DustError("no_blocked_actions", "No blocked actions found"))
+    );
+
+    const res = await retryBlockedActionsAndResumeAncestors(
+      auth,
+      child.conversation,
+      { messageId: child.agentMessageId }
+    );
+
+    expect(res.isErr()).toBe(true);
+    expect(retryBlockedActions).toHaveBeenCalledTimes(1);
   });
 });

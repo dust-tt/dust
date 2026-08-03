@@ -4,8 +4,10 @@ import {
   retryBlockedActions,
 } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
 
 /**
  * Walk up the agentic-parent chain from a freshly resumed agent message and
@@ -80,4 +82,29 @@ export async function resumeAncestorConversations(
       agentMessageId: parentAgentMessage.sId,
     };
   }
+}
+
+/**
+ * Retry blocked actions, then wake the callers — as every other resolution surface does.
+ * Relaunching a sub-agent's loop alone leaves its caller parked forever.
+ *
+ * Lives here, not in `retryBlockedActions`: the walk calls that and must not re-enter itself.
+ */
+export async function retryBlockedActionsAndResumeAncestors(
+  auth: Authenticator,
+  conversation: ConversationResource,
+  { messageId }: { messageId: string }
+): Promise<Result<void, Error | DustError>> {
+  const retryRes = await retryBlockedActions(auth, conversation.toJSON(), {
+    messageId,
+  });
+  if (retryRes.isErr()) {
+    return retryRes;
+  }
+
+  await resumeAncestorConversations(auth, conversation, {
+    agentMessageId: messageId,
+  });
+
+  return retryRes;
 }
