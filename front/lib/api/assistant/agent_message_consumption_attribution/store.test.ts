@@ -200,6 +200,173 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
   });
 
+  it("writes a blocked tool as a pending row, carving its output but withholding the charge", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+
+    // The default factory status is "blocked_validation_required": the loop paused for approval and
+    // attribution runs while the tool has not executed yet.
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      dustRunId: run.dustRunId,
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+
+    // The tool row is pending: the emitted call output is known and carved, but the result footprint
+    // and the direct charge wait for the action to settle.
+    const toolItem = items.find((item) => item.itemType === "tool");
+    expect(toolItem).toMatchObject({
+      itemType: "tool",
+      agentMCPActionId: action.id,
+      outputTokensCount: TOKENS_PER_FOOTPRINT,
+      inputTokensCount: null,
+      directCreditAmountMicro: null,
+      completedAt: null,
+    });
+    expect(toolItem?.grossAttributedCreditAmountMicro).toBeGreaterThan(0);
+
+    // The carve still applies while pending: the assistant output bucket is net of the emitted call.
+    const outputItem = items.find((item) => item.itemType === "output");
+    expect(
+      (outputItem?.outputTokensCount ?? 0) + (toolItem?.outputTokensCount ?? 0)
+    ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
+  });
+
+  it("completes the pending tool row in place once the blocked action is approved", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      dustRunId: run.dustRunId,
+    });
+
+    // First finalize, while the tool is still blocked: a pending row is written.
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    // The user approves, the tool executes and succeeds, then the loop finalizes again.
+    await AgentMCPActionFactory.setStatus(auth, {
+      action,
+      status: "succeeded",
+    });
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const toolItems = (
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      )
+    ).filter((item) => item.itemType === "tool");
+
+    // The blocked pending row was completed in place, not duplicated: still one tool row, now
+    // carrying the result footprint and the direct charge.
+    expect(toolItems).toHaveLength(1);
+    expect(toolItems[0]).toMatchObject({
+      agentMCPActionId: action.id,
+      outputTokensCount: TOKENS_PER_FOOTPRINT,
+      inputTokensCount: TOKENS_PER_FOOTPRINT,
+      completedAt: expect.any(Date),
+    });
+    expect(toolItems[0].directCreditAmountMicro).toBeGreaterThanOrEqual(0);
+  });
+
+  it("keeps a completed tool single and stable across a redundant re-finalize", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      dustRunId: run.dustRunId,
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+    await AgentMCPActionFactory.setStatus(auth, {
+      action,
+      status: "succeeded",
+    });
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    // A redundant finalize (e.g. a Temporal retry) re-upserts the same values. It must not duplicate
+    // the row or change the attributed evidence, and the row stays completed.
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const toolItems = (
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      )
+    ).filter((item) => item.itemType === "tool");
+
+    expect(toolItems).toHaveLength(1);
+    expect(toolItems[0]).toMatchObject({
+      agentMCPActionId: action.id,
+      outputTokensCount: TOKENS_PER_FOOTPRINT,
+      inputTokensCount: TOKENS_PER_FOOTPRINT,
+      completedAt: expect.any(Date),
+    });
+  });
+
   it("writes nothing when the message has no runs", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
 
