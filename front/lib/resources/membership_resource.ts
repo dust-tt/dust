@@ -1646,7 +1646,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       raw: true,
       // WORKSPACE_ISOLATION_BYPASS: hourly sweep across every workspace to
       // find which ones have a membership whose pool cap override just
-      // expired (see front/temporal/spend_limit_expiration/client.ts).
+      // expired (see front/temporal/credit_alerts/client.ts).
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });

@@ -5,6 +5,18 @@ const { sendCreditAlertEmailActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
 
+const { getWorkspacesWithExpiredPoolCapOverrideActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "1 minute",
+});
+
+const { expireWorkspacePoolCapOverridesActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "5 minutes",
+});
+
 export interface CreditAlertWorkflowArgs {
   workspaceId: string;
   totalInitialMicroUsd: number;
@@ -21,4 +33,14 @@ export async function creditAlertWorkflow({
     totalInitialMicroUsd,
     totalConsumedMicroUsd,
   });
+}
+
+export async function expirePoolCapOverridesWorkflow(): Promise<void> {
+  const workspaceIds = await getWorkspacesWithExpiredPoolCapOverrideActivity();
+
+  await Promise.all(
+    workspaceIds.map((workspaceId) =>
+      expireWorkspacePoolCapOverridesActivity(workspaceId)
+    )
+  );
 }

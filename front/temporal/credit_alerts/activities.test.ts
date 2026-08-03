@@ -1,6 +1,9 @@
 import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { expirePoolCapOverridesActivity } from "@app/temporal/spend_limit_expiration/activities";
+import {
+  expireWorkspacePoolCapOverridesActivity,
+  getWorkspacesWithExpiredPoolCapOverrideActivity,
+} from "@app/temporal/credit_alerts/activities";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -27,8 +30,8 @@ beforeEach(() => {
   );
 });
 
-describe("expirePoolCapOverridesActivity", () => {
-  it("reverts an expired override and leaves an unexpired one untouched, across workspaces", async () => {
+describe("getWorkspacesWithExpiredPoolCapOverrideActivity", () => {
+  it("returns only workspaces with an expired override, not ones with an active one", async () => {
     const expiredWorkspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: "cust_expired_xxx",
     });
@@ -57,7 +60,52 @@ describe("expirePoolCapOverridesActivity", () => {
       poolCapOverrideExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
     });
 
-    await expirePoolCapOverridesActivity();
+    const workspaceIds =
+      await getWorkspacesWithExpiredPoolCapOverrideActivity();
+
+    expect(workspaceIds).toContain(expiredWorkspace.sId);
+    expect(workspaceIds).not.toContain(activeWorkspace.sId);
+  });
+
+  it("returns an empty list when nothing has expired", async () => {
+    const workspaceIds =
+      await getWorkspacesWithExpiredPoolCapOverrideActivity();
+
+    expect(workspaceIds).toEqual([]);
+  });
+});
+
+describe("expireWorkspacePoolCapOverridesActivity", () => {
+  it("reverts an expired override in the given workspace and leaves other workspaces untouched", async () => {
+    const expiredWorkspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: "cust_expired_xxx",
+    });
+    const expiredUser = await UserFactory.basic();
+    const expiredMembership = await MembershipFactory.associate(
+      expiredWorkspace,
+      expiredUser,
+      { role: "user" }
+    );
+    await expiredMembership.updatePoolCapOverride({
+      poolCapOverrideAwuCredits: 500,
+      poolCapOverrideExpiresAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+
+    const activeWorkspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: "cust_active_xxx",
+    });
+    const activeUser = await UserFactory.basic();
+    const activeMembership = await MembershipFactory.associate(
+      activeWorkspace,
+      activeUser,
+      { role: "user" }
+    );
+    await activeMembership.updatePoolCapOverride({
+      poolCapOverrideAwuCredits: 900,
+      poolCapOverrideExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    await expireWorkspacePoolCapOverridesActivity(expiredWorkspace.sId);
 
     const revertedMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -84,8 +132,12 @@ describe("expirePoolCapOverridesActivity", () => {
     );
   });
 
-  it("is a no-op when nothing has expired", async () => {
-    await expirePoolCapOverridesActivity();
+  it("is a no-op when nothing has expired in the given workspace", async () => {
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: "cust_noop_xxx",
+    });
+
+    await expireWorkspacePoolCapOverridesActivity(workspace.sId);
 
     expect(spendLimits.clearMetronomePerUserCapAlert).not.toHaveBeenCalled();
   });
