@@ -368,7 +368,7 @@ export function useUpdateSkillFavorite({
 
   const updateSkillFavorite = useCallback(
     async (
-      skill: Pick<SkillWithoutInstructionsAndToolsType, "name" | "sId">,
+      skill: SkillWithoutInstructionsAndToolsType,
       isFavorite: boolean
     ) => {
       try {
