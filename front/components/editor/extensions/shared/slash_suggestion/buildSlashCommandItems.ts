@@ -55,6 +55,7 @@ export function buildCapabilitySlashCommandItems<
         .filter((skill) => skill.sId !== excludeSkillId)
         .filter((skill) => skillFilter?.(skill) ?? true)
         .map((skill) => ({
+          isFavorite: skill.isFavorite ?? false,
           kind: "skill" as const,
           normalizedDescription: skill.userFacingDescription?.toLowerCase(),
           skill,

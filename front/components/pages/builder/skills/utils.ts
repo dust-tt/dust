@@ -67,7 +67,7 @@ function getSkillSearchString(
 export function sortSkillsByName(
   skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
 ) {
-  return [...skills].sort((a, b) => a.name.localeCompare(b.name));
+  return skills.toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 export function filterByAvailability(

@@ -8,10 +8,10 @@ import {
   isDustProvidedSkill,
 } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
+import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type {
   SkillRelations,
   SkillType,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
@@ -35,8 +35,12 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
 type SkillDetailsProps = {
-  skill: SkillWithoutInstructionsAndToolsWithRelationsType | null;
+  skill: GetSkillsWithRelationsResponseBody["skills"][number] | null;
   onClose: () => void;
+  onFavoriteChange?: (
+    skill: GetSkillsWithRelationsResponseBody["skills"][number],
+    isFavorite: boolean
+  ) => void;
   owner: WorkspaceType;
   user: UserType;
   replaceOnEdit?: boolean;
@@ -45,6 +49,7 @@ type SkillDetailsProps = {
 export function SkillDetailsSheet({
   skill,
   onClose,
+  onFavoriteChange,
   user,
   owner,
   replaceOnEdit,
@@ -71,6 +76,7 @@ export function SkillDetailsSheet({
                 owner={owner}
                 onClose={onClose}
                 replaceOnEdit={replaceOnEdit}
+                onFavoriteChange={onFavoriteChange}
               />
             </SheetHeader>
             <SheetContainer className="pb-4">
@@ -147,10 +153,14 @@ function SkillDetailsSheetContent({
 }
 
 type DescriptionSectionProps = {
-  skill: SkillWithoutInstructionsAndToolsWithRelationsType;
+  skill: GetSkillsWithRelationsResponseBody["skills"][number];
   owner: WorkspaceType;
   onClose: () => void;
   replaceOnEdit?: boolean;
+  onFavoriteChange?: (
+    skill: GetSkillsWithRelationsResponseBody["skills"][number],
+    isFavorite: boolean
+  ) => void;
 };
 
 const DescriptionSection = ({
@@ -158,6 +168,7 @@ const DescriptionSection = ({
   owner,
   onClose,
   replaceOnEdit,
+  onFavoriteChange,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const { editedByUser } = skill.relations;
@@ -196,6 +207,7 @@ const DescriptionSection = ({
           skill={skill}
           onClose={onClose}
           replaceOnEdit={replaceOnEdit}
+          onFavoriteChange={onFavoriteChange}
         />
       )}
 

@@ -5,11 +5,11 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillAvailability,
   SkillUsageType,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
@@ -221,10 +221,10 @@ const getTableColumns = ({
 };
 
 type SkillsTableProps = {
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
+  skills: GetSkillsWithRelationsResponseBody["skills"];
   owner: LightWorkspaceType;
   onSkillClick: (
-    skill: SkillWithoutInstructionsAndToolsWithRelationsType
+    skill: GetSkillsWithRelationsResponseBody["skills"][number]
   ) => void;
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
@@ -245,8 +245,9 @@ export function SkillsTable({
 }: SkillsTableProps) {
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
-  const [skillToArchive, setSkillToArchive] =
-    useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
+  const [skillToArchive, setSkillToArchive] = useState<
+    GetSkillsWithRelationsResponseBody["skills"][number] | null
+  >(null);
 
   const isSelectionEnabled = rowSelection !== undefined;
 
@@ -323,7 +324,7 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [skills, onSkillClick, onUsedBySkillClick, owner.sId, isSelectionEnabled]
+    [skills, onSkillClick, owner.sId, isSelectionEnabled]
   );
 
   if (rows.length === 0) {

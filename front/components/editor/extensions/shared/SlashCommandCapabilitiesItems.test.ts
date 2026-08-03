@@ -124,6 +124,18 @@ describe("searchCapabilityIndex ranking", () => {
     expect(result.map((item) => item.id)).toEqual(["a", "z"]);
   });
 
+  it("ranks favorite capabilities first when no query is provided", () => {
+    const result = searchCapabilityIndex({
+      query: "",
+      items: [
+        { id: "a", sortName: "asana" },
+        { id: "z", isFavorite: true, sortName: "zendesk" },
+      ],
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["z", "a"]);
+  });
+
   it("ranks earlier substring matches first", () => {
     const result = searchCapabilityIndex({
       items: [
@@ -207,6 +219,25 @@ describe("searchCapabilityIndex ranking", () => {
     });
 
     expect(result.map((item) => item.id)).toEqual(["title-match", "desc-only"]);
+  });
+
+  it("ranks favorites first within the same query match class", () => {
+    const result = searchCapabilityIndex({
+      query: "docs",
+      items: [
+        {
+          id: "non-favorite",
+          sortName: "docs assistant",
+        },
+        {
+          id: "favorite",
+          sortName: "docs writer",
+          isFavorite: true,
+        },
+      ],
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["favorite", "non-favorite"]);
   });
 });
 
