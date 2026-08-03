@@ -42,7 +42,7 @@
     --font-serif: Arvo, ui-serif, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
       "Liberation Mono", "Courier New", monospace;
-    --radius: 0.5rem;
+    --radius: 0.575rem;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
@@ -93,7 +93,7 @@
     --font-serif: Arvo, ui-serif, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
       "Liberation Mono", "Courier New", monospace;
-    --radius: 0.5rem;
+    --radius: 0.575rem;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
