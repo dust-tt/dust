@@ -37,7 +37,8 @@ async function getVisibleAgentIds(auth: Authenticator): Promise<ModelId[]> {
 }
 
 /**
- * Builds the visibility WHERE clause and query replacements.
+ * Builds the visibility WHERE clause and query replacements depending on
+ * whether the caller is an admin or a regular user.
  */
 async function buildVisibilityFilter(auth: Authenticator): Promise<{
   clause: string;
@@ -131,13 +132,18 @@ async function fetchSkillsByMCPServer(
 export async function getToolsUsage(
   auth: Authenticator
 ): Promise<MCPServersUsage> {
-  const owner = auth.getNonNullableWorkspace();
+  const owner = auth.workspace();
+
+  if (!owner || !auth.isUser()) {
+    return {};
+  }
 
   if (DISABLE_QUERIES) {
     return {};
   }
 
   const replicaDb = getFrontReplicaDbConnection();
+
   const { clause, params } = await buildVisibilityFilter(auth);
 
   // biome-ignore lint/plugin/noRawSql: Read-only analytics query on replica.
