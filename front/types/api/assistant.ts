@@ -1,6 +1,7 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import { z } from "zod";
+import { CLIENT_MESSAGE_ORIGINS } from "../assistant/conversation";
 import { ModelSelectionSchema } from "../assistant/models/types";
 import type { SupportedNonImageContentType } from "../files";
 import { getSupportedNonImageMimeTypes } from "../files";
@@ -14,13 +15,10 @@ const UserMentionSchema = z.object({
   userId: z.string(),
 });
 
-const UserMessageOriginSchema = z.enum([
-  "web",
-  "agent_sidekick",
-  "project_kickoff",
-  "extension",
-  "reinforced_skill_notification",
-]);
+// Clients may only claim a client origin: server-set origins (triggered,
+// reinforcement, ...) drive analytics and billing behavior and must never come
+// from a request body.
+const UserMessageOriginSchema = z.enum(CLIENT_MESSAGE_ORIGINS);
 
 const MessageBaseSchema = z.object({
   content: z.string(),
