@@ -11,6 +11,7 @@ import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillAvailability,
   SkillUsageType,
+  SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
@@ -32,6 +33,7 @@ import type {
 import { useMemo, useState } from "react";
 
 type RowData = {
+  skill: SkillWithoutInstructionsAndToolsType;
   sId: string;
   name: string;
   icon: string | null;
@@ -83,7 +85,7 @@ const nameColumn = {
             <SkillFavoriteButton
               size="icon-xs"
               isFavorite={info.row.original.isFavorite}
-              skill={{ name: info.getValue() }}
+              skill={info.row.original.skill}
               onFavoriteChange={info.row.original.onFavoriteChange}
             />
           )}
@@ -286,6 +288,7 @@ export function SkillsTable({
   const rows: RowData[] = useMemo(
     () =>
       skills.map((skill) => ({
+        skill,
         sId: skill.sId,
         name: skill.name,
         icon: skill.icon,

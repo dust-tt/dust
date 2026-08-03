@@ -5,7 +5,7 @@ import type { MouseEvent } from "react";
 type SkillFavoriteButtonProps = {
   isFavorite: boolean;
   onFavoriteChange: (isFavorite: boolean) => void;
-  skill: Pick<SkillWithoutInstructionsAndToolsType, "name">;
+  skill: SkillWithoutInstructionsAndToolsType;
   size?: "icon" | "icon-xs";
 };
 
