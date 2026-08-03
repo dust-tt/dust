@@ -125,6 +125,10 @@ export const routes: RouteObject[] = [
             path: "data_sources/:dsId/view",
             element: <DataSourceViewPage />,
           },
+          {
+            path: "connectors/:connectorId",
+            element: <ConnectorRedirectPage />,
+          },
           { path: "groups/:groupId", element: <GroupPage /> },
           { path: "files/:sId", element: <FramePage /> },
           { path: "skills/:sId", element: <SkillDetailsPage /> },
