@@ -12,17 +12,41 @@ import type {
   PatchUpgradeRequestResponseBody,
   UpgradeRequestResolution,
 } from "@app/types/api/credits/upgrade_requests";
+import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Fetcher } from "swr";
+
+// The History tab's decision filter — restricts to a single resolution
+// outcome. Undefined/omitted returns every resolved request (approved and
+// denied).
+export type UpgradeRequestDecisionFilter = Exclude<
+  MembershipUpgradeRequestStatus,
+  "pending"
+>;
 
 function upgradeRequestsUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/credits/upgrade-requests`;
 }
 
-// CSV download link for the resolved-requests
-export function upgradeRequestsHistoryCsvUrl(workspaceId: string): string {
-  return `${upgradeRequestsUrl(workspaceId)}?format=csv`;
+// CSV download link for the resolved-requests History tab — consumed by
+// useDownloadCsv rather than SWR. Mirrors the History tab's current decision
+// filter and search term so the export matches what's on screen.
+export function upgradeRequestsHistoryCsvUrl(
+  workspaceId: string,
+  {
+    decision,
+    search,
+  }: { decision?: UpgradeRequestDecisionFilter; search?: string } = {}
+): string {
+  const searchParams = new URLSearchParams({ format: "csv" });
+  if (decision) {
+    searchParams.set("decision", decision);
+  }
+  if (search && search.trim().length > 0) {
+    searchParams.set("search", search.trim());
+  }
+  return `${upgradeRequestsUrl(workspaceId)}?${searchParams.toString()}`;
 }
 
 function usageStatusUrl(workspaceId: string): string {
@@ -104,24 +128,48 @@ export function useUpgradeRequests({
 export const UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
 
 // Admin-only: resolved (approved/denied) upgrade requests, for the History
-// tab. Disabled until that tab is visible.
+// tab. Disabled until that tab is visible. `searchTerm` mirrors the Members
+// tab's search bar (debounced 300ms, same as `useMembersUsage`) and
+// `decision` mirrors its seat-type/group filters.
 export function useUpgradeRequestsHistory({
   workspaceId,
   pageIndex,
+  searchTerm = "",
+  decision,
   disabled,
 }: {
   workspaceId: string;
   pageIndex: number;
+  searchTerm?: string;
+  decision?: UpgradeRequestDecisionFilter;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const upgradeRequestsHistoryFetcher: Fetcher<GetUpgradeRequestsResponseBody> =
     fetcher;
 
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
+    return () => clearTimeout(id);
+  }, [searchTerm]);
+
   const offset = pageIndex * UPGRADE_REQUESTS_HISTORY_PAGE_SIZE;
 
+  const searchParams = new URLSearchParams({
+    status: "resolved",
+    offset: offset.toString(),
+  });
+  if (decision) {
+    searchParams.set("decision", decision);
+  }
+  if (debouncedSearchTerm.trim().length > 0) {
+    searchParams.set("search", debouncedSearchTerm.trim());
+  }
+
   const { data, error, mutate } = useSWRWithDefaults(
-    `${upgradeRequestsUrl(workspaceId)}?status=resolved&offset=${offset}`,
+    `${upgradeRequestsUrl(workspaceId)}?${searchParams.toString()}`,
     upgradeRequestsHistoryFetcher,
     { disabled, keepPreviousData: true }
   );
