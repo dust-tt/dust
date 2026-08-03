@@ -256,6 +256,7 @@ export async function createUserMessage(
     context,
     agenticMessageData: agenticMessageData ?? undefined,
     rank: m.rank,
+    branchId: null,
     reactions: [],
     requestedModel,
   };
@@ -593,6 +594,7 @@ export const createAgentMessages = async (
             error: null,
             configuration,
             rank: messageRow.rank,
+            branchId: null,
             skipToolsValidation: agentMessageRow.skipToolsValidation,
             contents: [],
             parsedContents: {},
@@ -746,6 +748,7 @@ export async function createCompactionMessage(
     visibility: messageRow.visibility,
     version: messageRow.version,
     rank: messageRow.rank,
+    branchId: null,
     status: "created",
     content: null,
     ...(sourceConversationId ? { sourceConversationId } : {}),

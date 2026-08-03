@@ -10489,6 +10489,11 @@
           "rank": {
             "type": "integer"
           },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
+          },
           "user": {
             "type": "object",
             "nullable": true,
@@ -10581,6 +10586,11 @@
           },
           "rank": {
             "type": "integer"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "parentMessageId": {
             "type": "string"
@@ -10745,6 +10755,11 @@
           },
           "rank": {
             "type": "integer"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "parentMessageId": {
             "type": "string"
@@ -11127,6 +11142,11 @@
           },
           "rank": {
             "type": "integer"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "sourceConversationId": {
             "type": "string",

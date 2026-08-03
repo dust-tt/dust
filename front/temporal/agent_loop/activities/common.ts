@@ -597,6 +597,7 @@ export async function notifyWorkflowError(
     type: "agent_message",
     visibility: messageRow.visibility,
     version: messageRow.version,
+    branchId: null,
 
     status: messageRow.agentMessage.status,
     actions: [],

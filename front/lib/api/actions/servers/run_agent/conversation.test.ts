@@ -56,6 +56,7 @@ function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
     visibility: "visible",
     version: 0,
     rank: 0,
+    branchId: null,
     user: null,
     mentions: [],
     richMentions: [],

@@ -26,6 +26,7 @@ import { z } from "zod";
 
 import actions from "./actions";
 import attachments from "./attachments";
+import branches from "./branches";
 import cancel from "./cancel";
 import compactions from "./compactions";
 import contentFragment from "./content_fragment";
@@ -424,6 +425,7 @@ app.patch(
 
 app.route("/actions", actions);
 app.route("/attachments", attachments);
+app.route("/branches", branches);
 app.route("/cancel", cancel);
 app.route("/compactions", compactions);
 app.route("/content_fragment", contentFragment);

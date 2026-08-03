@@ -45,6 +45,7 @@ export function createPlaceholderUserMessage({
     sId: `placeholder-user-message-${createdAt.toString()}`,
     version: 0,
     rank,
+    branchId: null,
     context: {
       email,
       fullName,
@@ -150,6 +151,7 @@ export function createPlaceholderAgentMessage({
   return {
     sId: `placeholder-agent-message-${createdAt.toString()}`,
     rank,
+    branchId: null,
     type: "agent_message",
     version: 0,
     created: createdAt,

@@ -63,6 +63,7 @@ function createMockUserMessage(rank: number): UserMessageType {
     visibility: "visible",
     version: 0,
     rank,
+    branchId: null,
     user: null,
     mentions: [],
     richMentions: [],
