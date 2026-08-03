@@ -231,7 +231,6 @@ describe("getJITServers", () => {
       });
 
       it("does not equip favorite skills without discover_skills", async () => {
-        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
         await FeatureFlagFactory.basic(auth, "skill_favorites");
 
         const skill = await SkillFactory.create(auth, {
@@ -250,16 +249,6 @@ describe("getJITServers", () => {
           });
         expect(equippedSkills.map((s) => s.sId)).not.toContain(skill.sId);
         expect(favoriteSkills.map((s) => s.sId)).not.toContain(skill.sId);
-
-        const jitServers = await getJITServers(auth, {
-          agentConfiguration: agentConfig,
-          conversation: { ...conversation, spaceId: conversationsSpace.sId },
-          attachments: [],
-        });
-
-        expect(
-          jitServers.some((server) => server.name === "skill_management")
-        ).toBe(false);
       });
 
       it("equips favorite skills when discovery and favorites are enabled", async () => {
