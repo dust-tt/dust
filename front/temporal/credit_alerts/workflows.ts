@@ -1,5 +1,9 @@
 import type * as activities from "@app/temporal/credit_alerts/activities";
-import { proxyActivities } from "@temporalio/workflow";
+import {
+  executeChild,
+  proxyActivities,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 const { sendCreditAlertEmailActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
@@ -14,7 +18,10 @@ const { getWorkspacesWithExpiredPoolCapOverrideActivity } = proxyActivities<
 const { expireWorkspacePoolCapOverridesActivity } = proxyActivities<
   typeof activities
 >({
-  startToCloseTimeout: "5 minutes",
+  startToCloseTimeout: "2 minutes",
+  // Safe to let the next hourly tick pick a workspace back up, so fail fast
+  // instead of retrying indefinitely.
+  retry: { maximumAttempts: 2 },
 });
 
 export interface CreditAlertWorkflowArgs {
@@ -37,10 +44,20 @@ export async function creditAlertWorkflow({
 
 export async function expirePoolCapOverridesWorkflow(): Promise<void> {
   const workspaceIds = await getWorkspacesWithExpiredPoolCapOverrideActivity();
+  const { workflowId } = workflowInfo();
 
   await Promise.all(
     workspaceIds.map((workspaceId) =>
-      expireWorkspacePoolCapOverridesActivity(workspaceId)
+      executeChild(expireWorkspacePoolCapOverridesWorkflow, {
+        workflowId: `${workflowId}/workspace-${workspaceId}`,
+        args: [workspaceId],
+      })
     )
   );
+}
+
+export async function expireWorkspacePoolCapOverridesWorkflow(
+  workspaceId: string
+): Promise<void> {
+  await expireWorkspacePoolCapOverridesActivity(workspaceId);
 }
