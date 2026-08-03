@@ -112,6 +112,76 @@ describe("compareForAutocompleteSort", () => {
     expect(filterAndSortAutocompleteSkills(query)).toEqual(expected);
   });
 
+  test.each([
+    {
+      behavior: "an exact match ranks above a longer prefix match",
+      query: "guide",
+      betterMatch: "Guide",
+      worseMatch: "Guide Builder",
+    },
+    {
+      behavior:
+        "a prefix match ranks above a substring match even when it is later alphabetically",
+      query: "guide",
+      betterMatch: "Guide Builder",
+      worseMatch: "Create Guide",
+    },
+    {
+      behavior:
+        "a substring match ranks above a fuzzy match even when it is later alphabetically",
+      query: "guide",
+      betterMatch: "Product Guides",
+      worseMatch: "Generate Useful Insights for Data Export",
+    },
+    {
+      behavior:
+        "a fuzzy match ranks above a non-match even when it is later alphabetically",
+      query: "guide",
+      betterMatch: "Generate Useful Insights for Data Export",
+      worseMatch: "Automation Designer",
+    },
+    {
+      behavior: "two prefix matches are ordered alphabetically",
+      query: "guid",
+      betterMatch: "Guide Builder",
+      worseMatch: "Guideline Toolkit",
+    },
+    {
+      behavior: "two substring matches are ordered alphabetically",
+      query: "guide",
+      betterMatch: "Create Guide",
+      worseMatch: "Product Guides",
+    },
+    {
+      behavior: "two fuzzy matches are ordered alphabetically",
+      query: "guide",
+      betterMatch: "Generate Useful Insights for Data Export",
+      worseMatch: "Great User Interface Design Example",
+    },
+    {
+      behavior: "two non-matches are ordered alphabetically",
+      query: "guide",
+      betterMatch: "Automation Designer",
+      worseMatch: "Workflow Runner",
+    },
+    {
+      behavior: "a multi-word prefix ranks above the same substring",
+      query: "guide b",
+      betterMatch: "Guide Builder",
+      worseMatch: "Create Guide Builder",
+    },
+  ])("$behavior", ({ query, betterMatch, worseMatch }) => {
+    expect(
+      [worseMatch, betterMatch].toSorted((a, b) =>
+        compareForAutocompleteSort(query, a, b)
+      )
+    ).toEqual([betterMatch, worseMatch]);
+  });
+
+  test("treats candidates that differ only by case as equally relevant", () => {
+    expect(compareForAutocompleteSort("guide", "Guide", "GUIDE")).toBe(0);
+  });
+
   test("ranks matching candidates before non-matches in an unfiltered list", () => {
     expect(
       ["Automation Designer", "Create Guide", "Guide"].toSorted((a, b) =>
