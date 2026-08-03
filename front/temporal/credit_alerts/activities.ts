@@ -79,11 +79,14 @@ export async function sendCreditAlertEmailActivity({
 export async function getWorkspacesWithExpiredPoolCapOverrideActivity(): Promise<
   string[]
 > {
-  const workspaces =
-    await MembershipResource.dangerouslyGetWorkspacesWithExpiredPoolCapOverride(
+  const workspaceModelIds =
+    await MembershipResource.dangerouslyGetWorkspaceModelIdsWithExpiredPoolCapOverride(
       new Date()
     );
-  return workspaces.map((workspace) => workspace.sId);
+  const workspaces = await WorkspaceResource.fetchByModelIds(workspaceModelIds);
+  return workspaces
+    .sort((a, b) => a.id - b.id)
+    .map((workspace) => workspace.sId);
 }
 
 /**

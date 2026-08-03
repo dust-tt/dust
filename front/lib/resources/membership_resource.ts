@@ -1624,18 +1624,19 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Workspaces (sorted by id ascending) that have at least one active
-   * membership whose pool cap override has expired. Global, cross-workspace
-   * lookup for the expiration sweep, then per-workspace scoped work from the
-   * caller (see `listActiveWithExpiredPoolCapOverride`).
+   * Model ids of workspaces that have at least one active membership whose
+   * pool cap override has expired. Global, cross-workspace lookup for the
+   * expiration sweep; callers resolve these into `WorkspaceResource`s
+   * themselves, then do per-workspace scoped work (see
+   * `listActiveWithExpiredPoolCapOverride`).
    *
    * `dangerously`-prefixed: bypasses per-workspace scoping on purpose, so
    * only call this from Temporal admin jobs or poke plugins, never from an
    * API route.
    */
-  static async dangerouslyGetWorkspacesWithExpiredPoolCapOverride(
+  static async dangerouslyGetWorkspaceModelIdsWithExpiredPoolCapOverride(
     now: Date
-  ): Promise<WorkspaceResource[]> {
+  ): Promise<ModelId[]> {
     const rows = await this.model.findAll({
       attributes: [[fn("DISTINCT", col("workspaceId")), "workspaceId"]],
       where: {
@@ -1643,6 +1644,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         poolCapOverrideAwuCredits: { [Op.ne]: null },
         endAt: null,
       },
+      order: [["workspaceId", "ASC"]],
       raw: true,
       // WORKSPACE_ISOLATION_BYPASS: hourly sweep across every workspace to
       // find which ones have a membership whose pool cap override just
@@ -1651,17 +1653,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    const workspaces = await WorkspaceResource.fetchByModelIds(
-      rows.map((row) => row.workspaceId)
-    );
-    return workspaces.sort((a, b) => a.id - b.id);
+    return rows.map((row) => row.workspaceId);
   }
 
   /**
    * Active memberships within `auth`'s workspace whose pool cap override has
    * expired as of `now`. Scoped counterpart to
-   * `dangerouslyGetWorkspacesWithExpiredPoolCapOverride`, called once per
-   * affected workspace by the expiration sweep.
+   * `dangerouslyGetWorkspaceModelIdsWithExpiredPoolCapOverride`, called once
+   * per affected workspace by the expiration sweep.
    */
   static async listActiveWithExpiredPoolCapOverride({
     auth,
