@@ -1,62 +1,105 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PokeGetSuperusers } from "@app/lib/api/poke/superusers";
+import { getRegionUrl, useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
-import type { PokeRole } from "@app/types/poke/roles";
+import type {
+  OrphanedPokeRoleEntry,
+  PokeGetSuperusers,
+  PokeRole,
+  SuperuserMemberInfo,
+} from "@app/types/poke/roles";
+import { normalizeEmail } from "@app/types/poke/roles";
+import type { RegionType } from "@app/types/region";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { useCallback } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
+import type { Fetcher } from "swr";
 import useSWR from "swr";
 
-export function usePokeSuperusers() {
-  const { fetcher } = useFetcher();
-  const { data, error, mutate } = useSWR(
-    "/api/poke/superusers",
-    fetcher as Fetcher<PokeGetSuperusers>
-  );
-
-  return {
-    members: data?.members ?? emptyArray(),
-    orphanedRoleEntries: data?.orphanedRoleEntries ?? emptyArray(),
-    isLoading: !error && !data,
-    error,
-    mutate,
-  };
+function apiUrl(region: RegionType, path: string) {
+  return `${getRegionUrl(region)}${path}`;
 }
 
-export function useSuperuserMutations(mutate: KeyedMutator<PokeGetSuperusers>) {
-  const sendNotification = useSendNotification();
+export function enrichMembers(
+  snapshot: PokeGetSuperusers | undefined
+): SuperuserMemberInfo[] {
+  if (!snapshot) {
+    return [];
+  }
+  return snapshot.members.map((member) => {
+    const email = normalizeEmail(member.email);
+    return {
+      ...member,
+      hasPokeRoleEntry: email in snapshot.roleEntries,
+      pokeRoles: snapshot.roleEntries[email] ?? [],
+    };
+  });
+}
 
-  const request = useCallback(
-    async (url: string, body: unknown, successTitle: string) => {
-      try {
-        const response = await clientFetch(url, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!response.ok) {
-          const error = await response.json().catch(() => null);
-          throw new Error(
-            error?.error?.message ?? `Request failed (${response.status}).`
-          );
-        }
-        sendNotification({ title: successTitle, type: "success" });
-        await mutate();
-        return true;
-      } catch (error) {
-        sendNotification({
-          title: "Update failed",
-          description: normalizeError(error).message,
-          type: "error",
-        });
-        return false;
-      }
-    },
-    [mutate, sendNotification]
+export function getCrossRegionOrphans(
+  current: PokeGetSuperusers | undefined,
+  other: PokeGetSuperusers | undefined
+): OrphanedPokeRoleEntry[] {
+  if (!current || !other) {
+    return [];
+  }
+  const activeEmails = new Set(
+    [...current.members, ...other.members].map(({ email }) =>
+      normalizeEmail(email)
+    )
   );
+  return Object.entries(current.roleEntries)
+    .filter(([email]) => !activeEmails.has(email))
+    .map(([email, pokeRoles]) => ({ email, pokeRoles }));
+}
+
+export function useSuperusersAdmin() {
+  const { regionInfo } = useRegionContext();
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+  const eu = useSWR(
+    apiUrl("europe-west1", "/api/poke/superusers"),
+    fetcher as Fetcher<PokeGetSuperusers>
+  );
+  const us = useSWR(
+    apiUrl("us-central1", "/api/poke/superusers"),
+    fetcher as Fetcher<PokeGetSuperusers>
+  );
+  const [current, other] =
+    regionInfo.name === "europe-west1" ? [eu, us] : [us, eu];
+
+  async function request(path: string, body: unknown, successTitle: string) {
+    try {
+      const response = await clientFetch(apiUrl(regionInfo.name, path), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        throw new Error(
+          error?.error?.message ?? `Request failed (${response.status}).`
+        );
+      }
+      sendNotification({ title: successTitle, type: "success" });
+      await Promise.all([eu.mutate(), us.mutate()]);
+      return true;
+    } catch (error) {
+      sendNotification({
+        title: "Update failed",
+        description: normalizeError(error).message,
+        type: "error",
+      });
+      return false;
+    }
+  }
 
   return {
+    members: current.data
+      ? enrichMembers(current.data)
+      : emptyArray<SuperuserMemberInfo>(),
+    orphanedRoleEntries: getCrossRegionOrphans(current.data, other.data),
+    isLoading: !current.error && !current.data,
+    error: current.error,
+    auditUnavailable: Boolean(eu.error || us.error),
     setRoles: (email: string, roles: PokeRole[] | null) =>
       request(
         "/api/poke/superusers/roles",

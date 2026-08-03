@@ -153,7 +153,7 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
     {
       error: {
         type: "internal_server_error",
-        message: `Unhandled internal server error: ${error.message}`,
+        message: "An unexpected internal error occurred.",
       },
     },
     500

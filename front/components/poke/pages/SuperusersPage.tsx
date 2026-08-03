@@ -1,75 +1,37 @@
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { SuperuserMemberInfo } from "@app/lib/api/poke/superusers";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import { useSuperusersAdmin } from "@app/poke/swr/superusers";
 import {
-  usePokeSuperusers,
-  useSuperuserMutations,
-} from "@app/poke/swr/superusers";
-import { type PokeRole, PokeRoleSchema } from "@app/types/poke/roles";
+  type PokeRole,
+  PokeRoleSchema,
+  type SuperuserMemberInfo,
+} from "@app/types/poke/roles";
 import { Button, Chip, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
 const ROLE_OPTIONS = PokeRoleSchema.options;
 
-function RoleSelector({
-  roles,
-  onChange,
-}: {
-  roles: PokeRole[];
-  onChange: (roles: PokeRole[]) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-3 py-1">
-      {ROLE_OPTIONS.map((role) => (
-        <label key={role} className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={roles.includes(role)}
-            onChange={() =>
-              onChange(
-                roles.includes(role)
-                  ? roles.filter((candidate) => candidate !== role)
-                  : [...roles, role]
-              )
-            }
-          />
-          {role}
-        </label>
-      ))}
-    </div>
-  );
-}
-
 export function SuperusersPage() {
   usePokePageMetadata({ name: "Superusers" });
-  const { members, orphanedRoleEntries, isLoading, error, mutate } =
-    usePokeSuperusers();
-  const { setRoles, setDustSuperUser } = useSuperuserMutations(mutate);
-  const [editingEmail, setEditingEmail] = useState<string | null>(null);
-  const [selectedRoles, setSelectedRoles] = useState<PokeRole[]>([]);
+  const {
+    members,
+    orphanedRoleEntries,
+    isLoading,
+    error,
+    auditUnavailable,
+    setRoles,
+    setDustSuperUser,
+  } = useSuperusersAdmin();
   const [busy, setBusy] = useState(false);
 
-  function edit(member: SuperuserMemberInfo) {
-    setEditingEmail(member.email);
-    setSelectedRoles(member.pokeRoles);
-  }
-
-  function cancelEdit() {
-    setEditingEmail(null);
-    setSelectedRoles([]);
-  }
-
-  async function saveRoles(email: string) {
-    if (selectedRoles.length === 0) {
-      return;
-    }
+  async function updateRoles(member: SuperuserMemberInfo, role: PokeRole) {
+    const roles = member.pokeRoles.includes(role)
+      ? member.pokeRoles.filter((candidate) => candidate !== role)
+      : [...member.pokeRoles, role];
     setBusy(true);
-    const success = await setRoles(email, selectedRoles);
+    await setRoles(member.email, roles);
     setBusy(false);
-    if (success) {
-      cancelEdit();
-    }
   }
 
   async function removeRoles(email: string) {
@@ -77,11 +39,8 @@ export function SuperusersPage() {
       return;
     }
     setBusy(true);
-    const success = await setRoles(email, null);
+    await setRoles(email, null);
     setBusy(false);
-    if (success) {
-      cancelEdit();
-    }
   }
 
   async function toggleSuperuser(member: SuperuserMemberInfo) {
@@ -116,80 +75,49 @@ export function SuperusersPage() {
     {
       accessorKey: "pokeRoles",
       header: "Poke roles",
-      cell: ({ row }) => {
-        const member = row.original;
-        if (editingEmail === member.email) {
-          return (
-            <div className="space-y-2">
-              <RoleSelector roles={selectedRoles} onChange={setSelectedRoles} />
-              <div className="flex gap-1">
-                <Button
-                  size="xs"
-                  variant="primary"
-                  label="Save"
-                  disabled={busy || selectedRoles.length === 0}
-                  onClick={() => void saveRoles(member.email)}
-                />
-                <Button
-                  size="xs"
-                  variant="outline"
-                  label="Cancel"
-                  disabled={busy}
-                  onClick={cancelEdit}
-                />
-              </div>
-            </div>
-          );
-        }
-        if (!member.hasPokeRoleEntry) {
-          return <span className="text-muted-foreground">not in JSON</span>;
-        }
-        return (
-          <div className="flex flex-wrap gap-1">
-            {member.pokeRoles.map((role) => (
-              <Chip key={role} color="info" size="xs" label={role} />
-            ))}
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-3 py-1">
+          {ROLE_OPTIONS.map((role) => (
+            <label key={role} className="flex items-center gap-1 text-sm">
+              <input
+                type="checkbox"
+                checked={row.original.pokeRoles.includes(role)}
+                disabled={busy}
+                onChange={() => void updateRoles(row.original, role)}
+              />
+              {role}
+            </label>
+          ))}
+        </div>
+      ),
     },
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => {
-        const member = row.original;
-        return (
-          <div className="flex flex-wrap gap-1">
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-1">
+          {row.original.hasPokeRoleEntry && (
             <Button
               size="xs"
-              variant="outline"
-              label={member.hasPokeRoleEntry ? "Edit roles" : "Add to Poke"}
-              disabled={busy || editingEmail !== null}
-              onClick={() => edit(member)}
-            />
-            {member.hasPokeRoleEntry && (
-              <Button
-                size="xs"
-                variant="warning"
-                label="Remove from Poke"
-                disabled={busy}
-                onClick={() => void removeRoles(member.email)}
-              />
-            )}
-            <Button
-              size="xs"
-              variant="outline"
-              label={
-                member.isDustSuperUser
-                  ? "Disable Dust superuser"
-                  : "Enable Dust superuser"
-              }
+              variant="warning"
+              label="Remove from Poke"
               disabled={busy}
-              onClick={() => void toggleSuperuser(member)}
+              onClick={() => void removeRoles(row.original.email)}
             />
-          </div>
-        );
-      },
+          )}
+          <Button
+            size="xs"
+            variant="outline"
+            label={
+              row.original.isDustSuperUser
+                ? "Disable Dust superuser"
+                : "Enable Dust superuser"
+            }
+            disabled={busy}
+            onClick={() => void toggleSuperuser(row.original)}
+          />
+        </div>
+      ),
     },
   ];
 
@@ -211,14 +139,19 @@ export function SuperusersPage() {
         pageSize={25}
       />
 
+      {auditUnavailable && (
+        <p className="text-sm text-warning-500">
+          Cross-region membership audit and orphan removal are unavailable.
+        </p>
+      )}
+
       {orphanedRoleEntries.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-base font-semibold">
-            Entries outside the workspace
+            Entries outside both Dust workspaces
           </h2>
           <p className="text-sm text-muted-foreground">
-            These JSON entries do not match an active member of the Dust
-            workspace.
+            These JSON entries do not match an active member in either region.
           </p>
           {orphanedRoleEntries.map((entry) => (
             <div

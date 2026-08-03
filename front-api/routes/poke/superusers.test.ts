@@ -1,153 +1,199 @@
-import type { Authenticator } from "@app/lib/auth";
-import { Hono } from "hono";
+import { loadRolesForEditing, writeRoles } from "@app/lib/poke/roles";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockList = vi.fn();
-const mockSetRoles = vi.fn();
-const mockSetDustSuperUser = vi.fn();
-const mockAuditLog = vi.fn();
-
-vi.mock("@app/lib/api/poke/superusers", () => ({
-  listSuperuserMembers: (...args: unknown[]) => mockList(...args),
-  setPokeRoles: (...args: unknown[]) => mockSetRoles(...args),
-  setDustSuperUser: (...args: unknown[]) => mockSetDustSuperUser(...args),
-  SuperuserAdminError: class SuperuserAdminError extends Error {},
+const state = vi.hoisted(() => ({
+  productionWorkspaceId: undefined as string | undefined,
+  auditLog: vi.fn(),
 }));
-
-const fakeAuth = {
-  getNonNullableWorkspace: () => ({ sId: "ws-1", name: "Dust" }),
-  getNonNullableUser: () => ({
-    email: "admin@dust.tt",
-    toJSON: () => ({ sId: "admin-1", email: "admin@dust.tt" }),
-  }),
-} as unknown as Authenticator;
 
 vi.mock("@app/lib/api/config", async (importOriginal) => {
   const { createAppConfigMock } = await import(
     "@app/tests/utils/mocks/app_config"
   );
   return createAppConfigMock(importOriginal, {
-    getProductionDustWorkspaceId: () => "ws-1",
+    getProductionDustWorkspaceId: () => state.productionWorkspaceId,
     getRegion: () => "us-central1",
   });
 });
 
-vi.mock("@app/lib/auth", () => ({
-  Authenticator: {
-    fromSuperUserSession: vi.fn(async () => fakeAuth),
-  },
-}));
-
-let isAdmin = true;
-vi.mock("@app/lib/poke/roles", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@app/lib/poke/roles")>();
-  return { ...actual, hasPokeRole: () => isAdmin };
+vi.mock("@app/types/shared/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/types/shared/env")>();
+  return { ...actual, isDevelopment: () => false };
 });
 
-vi.mock("@app/logger/logger", () => ({
-  default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-  auditLog: (...args: unknown[]) => mockAuditLog(...args),
-}));
+vi.mock("@app/logger/logger", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/logger/logger")>();
+  return { ...actual, auditLog: state.auditLog };
+});
 
-async function buildApp() {
-  const { default: routes } = await import("./superusers");
-  const app = new Hono();
-  app.use("*", async (ctx, next) => {
-    ctx.set("pokeRoles" as never, ["admin"] as never);
-    ctx.set("session" as never, {} as never);
-    await next();
-  });
-  app.route("/", routes);
-  return app;
+async function authenticateAdmin() {
+  const request = await createPrivateApiMockRequest({ isSuperUser: true });
+  state.productionWorkspaceId = request.workspace.sId;
+  await writeRoles({ [request.user.email]: ["admin"] });
+  return request;
 }
 
 describe("poke superuser routes", () => {
-  let app: Hono;
-
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    isAdmin = true;
-    app = await buildApp();
+  beforeEach(() => {
+    state.productionWorkspaceId = undefined;
+    state.auditLog.mockClear();
+    fileStorageMock.reset();
   });
 
-  it("lists workspace members and orphaned JSON entries", async () => {
-    mockList.mockResolvedValue({ members: [], orphanedRoleEntries: [] });
+  it("lists active regional members and the shared roles JSON", async () => {
+    const { workspace, user: admin } = await authenticateAdmin();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    await writeRoles({
+      [admin.email]: ["admin"],
+      [member.email]: ["support"],
+      "former@dust.tt": ["talent"],
+    });
 
-    const response = await app.request("/");
+    const response = await honoApp.request("/api/poke/superusers");
+    const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      members: [],
-      orphanedRoleEntries: [],
+    expect(body.members).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          email: member.email,
+          isDustSuperUser: false,
+        }),
+      ])
+    );
+    expect(body.roleEntries).toEqual({
+      [admin.email.toLowerCase()]: ["admin"],
+      [member.email.toLowerCase()]: ["support"],
+      "former@dust.tt": ["talent"],
     });
   });
 
-  it("updates a JSON role entry and records an internal audit log", async () => {
-    mockSetRoles.mockResolvedValue({
-      email: "user@dust.tt",
-      previousRoles: ["support"],
-      newRoles: ["admin"],
-    });
+  it("updates roles for an active member and audits the change", async () => {
+    const { workspace } = await authenticateAdmin();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
 
-    const response = await app.request("/roles", {
+    const response = await honoApp.request("/api/poke/superusers/roles", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "user@dust.tt", roles: ["admin"] }),
+      body: JSON.stringify({ email: member.email, roles: ["support"] }),
     });
 
     expect(response.status).toBe(200);
-    expect(mockSetRoles).toHaveBeenCalledWith(fakeAuth, "user@dust.tt", [
-      "admin",
-    ]);
-    expect(mockAuditLog).toHaveBeenCalledWith(
+    expect(state.auditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "poke_roles.updated",
-        targetEmail: "user@dust.tt",
-        previousRoles: ["support"],
-        newRoles: ["admin"],
+        targetEmail: member.email.toLowerCase(),
+        newRoles: ["support"],
       }),
       "[Security] Poke roles changed"
     );
   });
 
-  it("toggles isDustSuperUser and records an internal audit log", async () => {
-    mockSetDustSuperUser.mockResolvedValue({
-      email: "user@dust.tt",
-      userSId: "user-1",
-      previousValue: false,
-      newValue: true,
+  it("keeps an empty role entry and only removes it for null", async () => {
+    const { workspace, user: admin } = await authenticateAdmin();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    await writeRoles({
+      [admin.email]: ["admin"],
+      [member.email]: ["support"],
     });
 
-    const response = await app.request("/user-1/superuser", {
+    const emptyResponse = await honoApp.request("/api/poke/superusers/roles", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isDustSuperUser: true }),
+      body: JSON.stringify({ email: member.email, roles: [] }),
     });
 
+    expect(emptyResponse.status).toBe(200);
+    expect(await loadRolesForEditing()).toHaveProperty(
+      member.email.toLowerCase(),
+      []
+    );
+
+    const removeResponse = await honoApp.request("/api/poke/superusers/roles", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: member.email, roles: null }),
+    });
+
+    expect(removeResponse.status).toBe(200);
+    expect(await loadRolesForEditing()).not.toHaveProperty(
+      member.email.toLowerCase()
+    );
+  });
+
+  it("toggles isDustSuperUser for an active member", async () => {
+    const { workspace } = await authenticateAdmin();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+
+    const response = await honoApp.request(
+      `/api/poke/superusers/${member.sId}/superuser`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isDustSuperUser: true }),
+      }
+    );
+    const updatedMember = await UserResource.fetchById(member.sId);
+
     expect(response.status).toBe(200);
-    expect(mockSetDustSuperUser).toHaveBeenCalledWith(fakeAuth, "user-1", true);
-    expect(mockAuditLog).toHaveBeenCalledWith(
+    expect(updatedMember?.isDustSuperUser).toBe(true);
+    expect(state.auditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "dust_superuser.toggled",
-        previousValue: false,
+        targetUserId: member.sId,
         newValue: true,
       }),
       "[Security] Dust superuser flag changed"
     );
   });
 
-  it.each([
-    ["GET", "/", undefined],
-    ["PATCH", "/roles", { email: "user@dust.tt", roles: ["admin"] }],
-    ["PATCH", "/user-1/superuser", { isDustSuperUser: true }],
-  ])("rejects non-admins: %s %s", async (method, path, body) => {
-    isAdmin = false;
-    const response = await app.request(path, {
-      method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+  it("requires a fresh admin role from the JSON file", async () => {
+    const { user } = await authenticateAdmin();
+    await writeRoles({ [user.email]: ["support"] });
+
+    const response = await honoApp.request("/api/poke/superusers");
 
     expect(response.status).toBe(403);
+  });
+
+  it("does not grant roles to someone outside the regional workspace", async () => {
+    await authenticateAdmin();
+    const outsider = await UserFactory.basic();
+
+    const response = await honoApp.request("/api/poke/superusers/roles", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: outsider.email, roles: ["support"] }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(state.auditLog).not.toHaveBeenCalled();
+  });
+
+  it("does not toggle someone outside the regional workspace", async () => {
+    await authenticateAdmin();
+    const outsider = await UserFactory.basic();
+
+    const response = await honoApp.request(
+      `/api/poke/superusers/${outsider.sId}/superuser`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isDustSuperUser: true }),
+      }
+    );
+
+    expect(response.status).toBe(400);
+    expect(state.auditLog).not.toHaveBeenCalled();
   });
 });
