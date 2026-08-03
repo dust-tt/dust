@@ -129,7 +129,17 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
-  | "reinforcement";
+  | "reinforcement"
+  // Opening message of an Activation Pod nudge, authored by the system on the
+  // user's behalf. Server-only: it is not in `CLIENT_MESSAGE_ORIGINS` and
+  // `isUserMessageContextValid` rejects it on /v1/ for anything but a
+  // Dust-internal system key. It keeps nudges out of analytics and prices them
+  // as free usage (`FREE_ORIGINS`), which holds only because nothing else can
+  // ever carry it: the nudge has no author, so it can be neither edited nor
+  // retried, and user replies come back as `web`.
+  | "system_activation";
+
+export const ACTIVATION_NUDGE_ORIGIN = "system_activation" as const;
 
 export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
   "onboarding_conversation",

@@ -508,6 +508,7 @@ export function isUserMessageContextValid(
     case "project_kickoff":
     case "reinforced_skill_notification":
     case "reinforcement":
+    case "system_activation":
     case "web":
       return false;
     default:

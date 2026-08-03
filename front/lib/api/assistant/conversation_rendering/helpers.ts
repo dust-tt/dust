@@ -482,6 +482,8 @@ export function renderUserMessage(
         )}`
       );
     }
+  } else if (m.context.origin === "system_activation") {
+    metadataItems.push("- Source: Activation Pod nudge");
   } else if (m.context.origin) {
     metadataItems.push(`- Source: ${m.context.origin}`);
     if (m.context.origin === "slack") {
