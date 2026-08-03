@@ -130,7 +130,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
           totalMembersCount: selectedEditors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
         }}
-        showColumns={skill.canAdministrate ? ["name", "remove"] : ["name"]}
+        showColumns={["name", "remove"]}
         onRemoveMemberClick={onRemoveMember}
         onRowClick={function noRefCheck() {}}
       />
