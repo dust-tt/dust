@@ -17,22 +17,22 @@ type ApprovalToolConfiguration = Pick<
   | "toolServerId"
 >;
 
-export async function makeMCPApproveExecutionEventBase(
+type ApprovalEventArgs = {
+  toolConfiguration: ApprovalToolConfiguration;
+  inputs: Record<string, unknown>;
+  approvalLabelInputs?: Record<string, unknown>;
+  approvalSubjectName: string;
+};
+
+export async function prepareMCPApprovalEvent(
   auth: Authenticator,
   {
-    actionId,
     toolConfiguration,
     inputs,
     approvalLabelInputs = inputs,
     approvalSubjectName,
-  }: {
-    actionId: string;
-    toolConfiguration: ApprovalToolConfiguration;
-    inputs: Record<string, unknown>;
-    approvalLabelInputs?: Record<string, unknown>;
-    approvalSubjectName: string;
-  }
-): Promise<MCPApproveExecutionEventBase> {
+  }: ApprovalEventArgs
+): Promise<(actionId: string) => MCPApproveExecutionEventBase> {
   const argumentsRequiringApproval =
     toolConfiguration.argumentsRequiringApproval ?? [];
   const approvalArgsLabel = await getApprovalArgsLabel({
@@ -46,7 +46,7 @@ export async function makeMCPApproveExecutionEventBase(
     argumentsRequiringApproval,
   });
 
-  return {
+  return (actionId) => ({
     type: "tool_approve_execution",
     actionId,
     created: Date.now(),
@@ -64,5 +64,13 @@ export async function makeMCPApproveExecutionEventBase(
     },
     argumentsRequiringApproval,
     approvalArgsLabel,
-  };
+  });
+}
+
+export async function makeMCPApproveExecutionEventBase(
+  auth: Authenticator,
+  { actionId, ...args }: ApprovalEventArgs & { actionId: string }
+): Promise<MCPApproveExecutionEventBase> {
+  const makeEvent = await prepareMCPApprovalEvent(auth, args);
+  return makeEvent(actionId);
 }

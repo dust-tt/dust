@@ -7,6 +7,21 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { md5 } from "@app/types/shared/utils/encryption";
 import type { Transaction } from "sequelize";
 
+async function takeConversationLock(
+  conversationId: number,
+  transaction: Transaction
+): Promise<number> {
+  // Get a lock using the unique lock key (number within PostgreSQL's BigInt range).
+  const hash = md5(`conversation_message_rank_version_${conversationId}`);
+  const lockKey = parseInt(hash, 16) % 9999999999;
+  // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+  await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+    transaction,
+    replacements: { key: lockKey },
+  });
+  return lockKey;
+}
+
 /**
  * To avoid deadlocks when using Postgresql advisory locks, please make sure to not issue any other
  * SQL query outside of the transaction `t` that is holding the lock.
@@ -19,14 +34,7 @@ export async function getConversationRankVersionLock(
   t: Transaction
 ) {
   const startMs = performance.now();
-  // Get a lock using the unique lock key (number withing postgresql BigInt range).
-  const hash = md5(`conversation_message_rank_version_${conversation.id}`);
-  const lockKey = parseInt(hash, 16) % 9999999999;
-  // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
-  await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
-    transaction: t,
-    replacements: { key: lockKey },
-  });
+  const lockKey = await takeConversationLock(conversation.id, t);
 
   const acquiredAtMs = performance.now();
 
@@ -51,6 +59,13 @@ export async function getConversationRankVersionLock(
       "[ASSISTANT_TRACE] Advisory lock released"
     );
   });
+}
+
+export async function getConversationLockById(
+  conversationId: number,
+  transaction: Transaction
+): Promise<void> {
+  await takeConversationLock(conversationId, transaction);
 }
 
 export async function getNextConversationMessageRank(

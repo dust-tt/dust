@@ -20,6 +20,7 @@ const {
   mockLoggerInfo,
   mockLoggerWarn,
   mockFetchActionById,
+  mockHasBlockedSandboxChildren,
 } = vi.hoisted(() => ({
   mockAddOwnerPolicyDomain: vi.fn(),
   mockReadNewDenyLogEntries: vi.fn(),
@@ -35,6 +36,7 @@ const {
   mockLoggerInfo: vi.fn(),
   mockLoggerWarn: vi.fn(),
   mockFetchActionById: vi.fn(),
+  mockHasBlockedSandboxChildren: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/config", () => ({
@@ -89,6 +91,7 @@ vi.mock("@app/lib/api/sandbox/image", async (importOriginal) => {
 vi.mock("@app/lib/resources/agent_mcp_action_resource", () => ({
   AgentMCPActionResource: {
     fetchById: mockFetchActionById,
+    hasBlockedSandboxChildren: mockHasBlockedSandboxChildren,
   },
 }));
 
@@ -224,6 +227,7 @@ describe("runSandboxBashTool", () => {
     mockRevokeExecToken.mockResolvedValue(undefined);
     // Default: no parent action found on refetch ⇒ not paused, normal path.
     mockFetchActionById.mockResolvedValue(null);
+    mockHasBlockedSandboxChildren.mockResolvedValue(true);
   });
 
   function makeExtra() {
@@ -630,6 +634,34 @@ describe("runSandboxBashTool", () => {
         status: "running",
         updateStepContext: vi.fn(),
       });
+
+      const result = await runSandboxBashTool(
+        { command: "echo ok", description: "Run command" },
+        makeExtra()
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      expect(result.value[0]).toMatchObject({ type: "text" });
+    });
+
+    it("returns the completed exec result after a pre-deploy child resolves", async () => {
+      const sandbox = {
+        providerId: "provider-id",
+        sId: "sandbox-id",
+        exec: vi
+          .fn()
+          .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ok", stderr: "" })),
+      };
+      mockEnsureSandboxReady.mockResolvedValue(
+        new Ok({ sandbox, freshlyCreated: false })
+      );
+      mockFetchActionById.mockResolvedValue({
+        status: "blocked_child_action_input_required",
+      });
+      mockHasBlockedSandboxChildren.mockResolvedValue(false);
 
       const result = await runSandboxBashTool(
         { command: "echo ok", description: "Run command" },

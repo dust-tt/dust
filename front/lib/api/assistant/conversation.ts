@@ -3076,16 +3076,11 @@ export async function updateAgentMessageWithFinalStatus(
     agentMessage,
     status,
     error,
-    dangerouslyBypassSameStepCheck = false,
   }: {
     conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageType;
     status: Exclude<AgentMessageStatus, "created">;
     error?: ToolErrorEvent["error"];
-    // Force finalization even if the message is in an anomalous state (e.g. blocked actions
-    // spanning multiple steps). Used by the unstick-conversation poke plugin to rescue genuinely
-    // stuck conversations. Leave false everywhere else so invariant violations surface as errors.
-    dangerouslyBypassSameStepCheck?: boolean;
   }
 ): Promise<{
   completedTs: number;
@@ -3166,10 +3161,9 @@ export async function updateAgentMessageWithFinalStatus(
     }
 
     const deniedActions = UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)
-      ? await AgentMCPActionResource.denyBlockedActionsForAgentMessage(auth, {
+      ? await AgentMCPActionResource.denyPendingActionsForMessage(auth, {
           agentMessageId: agentMessage.agentMessageId,
           transaction: t,
-          dangerouslyBypassSameStepCheck,
         })
       : [];
 

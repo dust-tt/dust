@@ -93,6 +93,7 @@ app.post(
 
     const result = await createSandboxChildAction(auth, {
       parentActionId: claims.actionId,
+      execId: claims.execId,
       agentId: claims.aId,
       agentVersion: claims.aV,
       conversationId: claims.cId,

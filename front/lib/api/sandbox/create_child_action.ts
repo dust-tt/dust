@@ -5,27 +5,36 @@ import {
 } from "@app/lib/actions/mcp_actions";
 import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
-import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
+import { prepareMCPApprovalEvent } from "@app/lib/actions/tool_approval_events";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { clearBlockedActionEffects } from "@app/lib/api/assistant/conversation/blocked_actions";
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
+import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
-import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
+import { pauseReservedSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  isAgentMessageType,
+} from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Transaction } from "sequelize";
 
 type CreateSandboxChildActionResult = {
   actionId: string;
@@ -37,6 +46,111 @@ type CreateSandboxChildActionResult = {
   pauseSandbox?: () => Promise<void>;
 };
 
+async function rollbackSandboxApproval(
+  auth: Authenticator,
+  {
+    actionId,
+    parentActionId,
+    transaction,
+  }: {
+    actionId: string;
+    parentActionId: string;
+    transaction: Transaction;
+  }
+): Promise<void> {
+  const action = await AgentMCPActionResource.fetchById(
+    auth,
+    actionId,
+    transaction
+  );
+  if (action?.status === "blocked_validation_required") {
+    await action.updateStatusFromExpected(auth, {
+      status: "denied",
+      expectedStatus: "blocked_validation_required",
+      transaction,
+    });
+  }
+
+  const parent = await AgentMCPActionResource.fetchById(
+    auth,
+    parentActionId,
+    transaction
+  );
+  if (
+    parent?.status === "blocked_child_action_input_required" &&
+    !(await AgentMCPActionResource.hasBlockedSandboxChildren(auth, {
+      parentAction: parent,
+      transaction,
+    }))
+  ) {
+    await parent.updateStatusFromExpected(auth, {
+      status: "running",
+      expectedStatus: "blocked_child_action_input_required",
+      transaction,
+    });
+  }
+}
+
+async function publishSandboxApproval(
+  auth: Authenticator,
+  {
+    action,
+    conversation,
+    event,
+    parentActionId,
+    step,
+  }: {
+    action: AgentMCPActionResource;
+    conversation: ConversationWithoutContentType;
+    event: AgentLoopMCPApproveExecutionEvent;
+    parentActionId: string;
+    step: number;
+  }
+): Promise<void> {
+  const publishRes = await withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
+
+    const freshAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId,
+      transaction
+    );
+    const parentAction = await AgentMCPActionResource.fetchById(
+      auth,
+      parentActionId,
+      transaction
+    );
+    if (
+      freshAction?.status !== "blocked_validation_required" ||
+      parentAction?.status !== "blocked_child_action_input_required" ||
+      !(await freshAction.canAgentMessageResume(auth, transaction))
+    ) {
+      throw new Error("Agent message can no longer run sandbox child actions.");
+    }
+
+    try {
+      await publishConversationRelatedEvent({
+        conversationId: conversation.sId,
+        event,
+        step,
+      });
+      return new Ok(undefined);
+    } catch (err) {
+      // Redis may expose an event before reporting failure. Deny the referenced child before
+      // releasing the lifecycle lock so an approval request cannot resolve it in between.
+      await rollbackSandboxApproval(auth, {
+        actionId: action.sId,
+        parentActionId,
+        transaction,
+      });
+      return new Err(normalizeError(err));
+    }
+  });
+  if (publishRes.isErr()) {
+    throw publishRes.error;
+  }
+}
+
 /**
  * Creates a sandbox child MCP action — the result of an LLM running inside a
  * `sandbox` MCP tool invoking another MCP tool through the public sandbox API.
@@ -45,6 +159,7 @@ export async function createSandboxChildAction(
   auth: Authenticator,
   {
     parentActionId,
+    execId,
     agentId,
     agentVersion,
     conversationId,
@@ -54,6 +169,7 @@ export async function createSandboxChildAction(
     rawInputs,
   }: {
     parentActionId: string;
+    execId: string;
     agentId: string;
     agentVersion: number;
     conversationId: string;
@@ -84,14 +200,6 @@ export async function createSandboxChildAction(
 
   if (!conversationResource) {
     return new Err(new Error("Conversation not found."));
-  }
-
-  const parentAction = await AgentMCPActionResource.fetchById(
-    auth,
-    parentActionId
-  );
-  if (!parentAction) {
-    return new Err(new Error("Parent action not found."));
   }
 
   const agentMessageRes = await conversationResource.getMessageById(
@@ -223,49 +331,204 @@ export async function createSandboxChildAction(
     },
   });
 
-  // Auto-allowed child actions are launched right after creation: persist them as
-  // "running" directly (like sandbox function actions) instead of rewriting the row at
-  // execution start.
-  const persistedStatus =
-    status === "ready_allowed_implicitly" ? "running" : status;
+  // Approval labels may resolve file or project resources, so prepare them before taking the
+  // conversation lock. The returned factory adds the action ID after the child row is created.
+  const makeApprovalEvent =
+    status === "blocked_validation_required"
+      ? await prepareMCPApprovalEvent(auth, {
+          toolConfiguration: fullToolConfiguration,
+          inputs: rawInputs,
+          approvalSubjectName: agentConfiguration.name,
+        })
+      : null;
+  const creationRes = await (async () => {
+    try {
+      return await withTransaction(async (transaction) => {
+        // Terminal message updates use the same lock. This prevents a delayed sandbox request from
+        // creating a child after cancellation while still letting terminal cleanup see any child
+        // committed immediately before it.
+        await getConversationRankVersionLock(auth, conversation, transaction);
 
-  const action = await createMCPAction(auth, {
-    actionConfiguration: fullToolConfiguration,
-    agentMessage,
-    augmentedInputs: rawInputs,
-    conversation,
-    status: persistedStatus,
-    stepContent: parentAction.stepContent,
-    stepContext: {
-      ...parentAction.stepContext,
-      resumeState: null,
-      sandboxChildActionInfo: { parentActionId: parentAction.sId },
-    },
-  });
+        const parentAction = await AgentMCPActionResource.fetchById(
+          auth,
+          parentActionId,
+          transaction
+        );
+        if (!parentAction) {
+          return new Err(new Error("Parent action not found."));
+        }
+        if (parentAction.agentMessageId !== agentMessage.agentMessageId) {
+          return new Err(
+            new Error("Parent action does not belong to the agent message.")
+          );
+        }
+        if (
+          parentAction.status !== "running" &&
+          parentAction.status !== "blocked_child_action_input_required"
+        ) {
+          return new Err(
+            new Error("Parent sandbox action is no longer running.")
+          );
+        }
+        if (!(await parentAction.canAgentMessageResume(auth, transaction))) {
+          return new Err(
+            new Error("Agent message can no longer run sandbox child actions.")
+          );
+        }
 
-  if (status === "blocked_validation_required") {
-    const approvalRequirementEvent: AgentLoopMCPApproveExecutionEvent = {
-      ...(await makeMCPApproveExecutionEventBase(auth, {
-        actionId: action.sId,
-        toolConfiguration: fullToolConfiguration,
-        inputs: rawInputs,
-        approvalSubjectName: agentConfiguration.name,
-      })),
+        let shouldPauseSandbox = false;
+        if (makeApprovalEvent && parentAction.status === "running") {
+          const [updatedCount] = await parentAction.updateStatusFromExpected(
+            auth,
+            {
+              status: "blocked_child_action_input_required",
+              expectedStatus: "running",
+              transaction,
+            }
+          );
+          if (updatedCount === 0) {
+            return new Err(
+              new Error("Parent sandbox action is no longer running.")
+            );
+          }
+          shouldPauseSandbox = true;
+        }
+
+        const action = await createMCPAction(auth, {
+          actionConfiguration: fullToolConfiguration,
+          agentMessage,
+          augmentedInputs: rawInputs,
+          conversation,
+          // Sandbox children stay ready until reserveSandboxChildRun claims them under the
+          // conversation lock. Persisting them as running would let duplicate workflows execute.
+          status,
+          stepContent: parentAction.stepContent,
+          stepContext: {
+            ...parentAction.stepContext,
+            resumeState: null,
+            sandboxChildActionInfo: {
+              parentActionId: parentAction.sId,
+              execId,
+            },
+          },
+          transaction,
+        });
+
+        if (makeApprovalEvent) {
+          await ConversationResource.markAsActionRequired(auth, {
+            conversation,
+            transaction,
+          });
+        }
+
+        return new Ok({ action, parentAction, shouldPauseSandbox });
+      });
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  })();
+  if (creationRes.isErr()) {
+    return creationRes;
+  }
+
+  const { action, parentAction, shouldPauseSandbox } = creationRes.value;
+
+  if (makeApprovalEvent) {
+    const event: AgentLoopMCPApproveExecutionEvent = {
+      ...makeApprovalEvent(action.sId),
       configurationId: fullToolConfiguration.sId,
       conversationId: conversation.sId,
       messageId: agentMessage.sId,
       isLastBlockingEventForStep: true,
     };
+    try {
+      // Publish only after the child commits. Holding the lifecycle lock keeps terminal cleanup
+      // ordered with publication while ensuring consumers can already fetch the referenced row.
+      await publishSandboxApproval(auth, {
+        action,
+        conversation,
+        event,
+        parentActionId,
+        step: parentAction.stepContent.step,
+      });
+    } catch (err) {
+      try {
+        // Retry compensation in case its first attempt failed before the publication transaction
+        // committed. The updates are idempotent.
+        await withTransaction(async (transaction) => {
+          await getConversationRankVersionLock(auth, conversation, transaction);
+          await rollbackSandboxApproval(auth, {
+            actionId: action.sId,
+            parentActionId,
+            transaction,
+          });
+        });
+      } catch (cleanupError) {
+        logger.error(
+          {
+            err: cleanupError,
+            actionId: action.sId,
+            conversationId: conversation.sId,
+          },
+          "Failed to clean up a sandbox approval event"
+        );
+      }
+      try {
+        // Redis cleanup is independent from DB compensation: a partially published prompt must be
+        // removed even if the fallback transaction failed.
+        await clearBlockedActionEffects(auth, {
+          actionIds: [action.sId],
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+        });
+      } catch (cleanupError) {
+        logger.error(
+          {
+            err: cleanupError,
+            actionId: action.sId,
+            conversationId: conversation.sId,
+          },
+          "Failed to remove a sandbox approval event"
+        );
+      }
+      return new Err(normalizeError(err));
+    }
+  }
 
-    await updateResourceAndPublishEvent(auth, {
-      event: approvalRequirementEvent,
-      agentMessage,
-      conversation,
-      step: parentAction.stepContent.step,
+  const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
+    messageId: agentMessage.sId,
+  });
+  const agentLoopArgs = {
+    agentMessageId: agentMessage.sId,
+    agentMessageVersion: agentMessage.version,
+    conversationId: conversation.sId,
+    conversationTitle: conversation.title,
+    userMessageId: userMessageInfo.userMessageId,
+    userMessageVersion: userMessageInfo.userMessageVersion,
+    userMessageOrigin: userMessageInfo.userMessageOrigin,
+    initialStartTime: Date.now(),
+  };
+
+  // The lock above prevents creation after terminalization. Re-check before external side effects
+  // to cover terminalization immediately after the transaction committed.
+  if (!(await action.canAgentMessageResume(auth))) {
+    await action.updateStatusFromExpected(auth, {
+      status: "denied",
+      expectedStatus: action.status,
     });
+    if (status === "blocked_validation_required") {
+      await clearBlockedActionEffects(auth, {
+        actionIds: [action.sId],
+        conversationId: conversation.sId,
+        messageId: agentMessage.sId,
+      });
+    }
+    return new Err(
+      new Error("Agent message can no longer run sandbox child actions.")
+    );
+  }
 
-    await ConversationResource.markAsActionRequired(auth, { conversation });
-
+  if (status === "blocked_validation_required") {
     if (!conversation.actionRequired) {
       notifyManualActionRequired(auth, {
         conversationId: conversation.sId,
@@ -274,7 +537,7 @@ export async function createSandboxChildAction(
     }
 
     // Hand the sandbox pause back to the caller instead of pausing here.
-    // `pauseSandboxBashForBlockedChild` freezes the whole sandbox via
+    // `pauseReservedSandboxBash` freezes the whole sandbox via
     // `betaPause` — including the `dsbx` client still blocked on this `/call`
     // request. Pausing before the response is flushed would mean `dsbx` never
     // receives `actionId`, so it could never poll for the result. The caller
@@ -283,26 +546,22 @@ export async function createSandboxChildAction(
     // wait-and-collect wake-up flow.
     return new Ok({
       actionId: action.sId,
-      pauseSandbox: () =>
-        pauseSandboxBashForBlockedChild(auth, action, conversation),
+      pauseSandbox: shouldPauseSandbox
+        ? () =>
+            pauseReservedSandboxBash(auth, action, conversation, agentLoopArgs)
+        : () => Promise.resolve(),
     });
   }
 
-  const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
-    messageId: agentMessage.sId,
-  });
+  if (parentAction.status === "blocked_child_action_input_required") {
+    // The parent resume scans all non-final actions from its step and will launch this child.
+    return new Ok({
+      actionId: action.sId,
+    });
+  }
 
   await launchSandboxChildToolWorkflow(auth, {
-    agentLoopArgs: {
-      agentMessageId: agentMessage.sId,
-      agentMessageVersion: agentMessage.version,
-      conversationId: conversation.sId,
-      conversationTitle: conversation.title,
-      userMessageId: userMessageInfo.userMessageId,
-      userMessageVersion: userMessageInfo.userMessageVersion,
-      userMessageOrigin: userMessageInfo.userMessageOrigin,
-      initialStartTime: Date.now(),
-    },
+    agentLoopArgs,
     action,
     step: parentAction.stepContent.step,
   });

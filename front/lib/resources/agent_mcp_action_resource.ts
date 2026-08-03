@@ -23,6 +23,7 @@ import type {
 import {
   isFileAuthorizationInfo,
   isSandboxChildActionInfo,
+  isSandboxResumeState,
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -98,6 +99,18 @@ type ConversationGeneratedFileType = ActionGeneratedDBFileType & {
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
+const SYNC_OUTPUT_ROWS_CONCURRENCY = 16;
+
+const DENIABLE_PENDING_STATUSES = [
+  "ready_allowed_explicitly",
+  "ready_allowed_implicitly",
+  ...TOOL_EXECUTION_BLOCKED_STATUSES,
+] as const satisfies readonly ToolExecutionStatus[];
+
+export type ActionOutputRows = {
+  rows: AgentMCPActionOutputItemModel[];
+  outputItems: ToolOutputItemType[];
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -264,18 +277,55 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async fetchById(
     auth: Authenticator,
-    sId: string
+    sId: string,
+    transaction?: Transaction
   ): Promise<AgentMCPActionResource | null> {
     const modelId = getResourceIdFromSId(sId);
     if (!modelId) {
       return null;
     }
 
-    const [action] = await AgentMCPActionResource.fetchByModelIds(auth, [
+    return AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
       modelId,
-    ]);
+      transaction
+    );
+  }
 
-    return action;
+  static async fetchBlockedActionIds({
+    actionIds,
+    workspaceModelId,
+    transaction,
+  }: {
+    actionIds: string[];
+    workspaceModelId: ModelId;
+    transaction?: Transaction;
+  }): Promise<Set<string>> {
+    if (actionIds.length === 0) {
+      return new Set();
+    }
+
+    const actionModelIds = actionIds.map((actionId) => {
+      const actionModelId = getResourceIdFromSId(actionId);
+      assert(actionModelId, "Agent MCP action ID is invalid.");
+      return actionModelId;
+    });
+    const blockedActions = await AgentMCPActionModel.findAll({
+      attributes: ["id", "workspaceId"],
+      where: {
+        workspaceId: workspaceModelId,
+        // Action IDs are primary keys, so this remains an indexed point lookup as the batch grows.
+        id: { [Op.in]: actionModelIds },
+        status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+      },
+      transaction,
+    });
+
+    return new Set(
+      blockedActions.map(({ id, workspaceId }) =>
+        AgentMCPActionResource.modelIdToSId({ id, workspaceId })
+      )
+    );
   }
 
   static async fetchByModelIds(
@@ -289,6 +339,103 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         },
       },
     });
+  }
+
+  static async hasBlockedSandboxActions(
+    auth: Authenticator,
+    {
+      conversationId,
+      transaction,
+    }: {
+      conversationId: ModelId;
+      transaction: Transaction;
+    }
+  ): Promise<boolean> {
+    // This lifecycle-only query is infrequent and uses the workspace/conversation index before
+    // narrowing to resumable messages.
+    const agentMessages = await AgentMessageModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId,
+        status: "created",
+      },
+      transaction,
+    });
+    if (agentMessages.length === 0) {
+      return false;
+    }
+
+    const actions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId: {
+            [Op.in]: agentMessages.map((message) => message.id),
+          },
+          status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+        },
+      },
+      transaction
+    );
+    return actions.some(
+      (action) =>
+        isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo) ||
+        isSandboxResumeState(action.stepContext.resumeState)
+    );
+  }
+
+  static async hasBlockedSandboxChildren(
+    auth: Authenticator,
+    {
+      parentAction,
+      transaction,
+    }: {
+      parentAction: AgentMCPActionResource;
+      transaction?: Transaction;
+    }
+  ): Promise<boolean> {
+    const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId: parentAction.agentMessageId,
+      transaction,
+      skipSameStepCheck: true,
+    });
+    return blockedActions.some(
+      (action) =>
+        action.stepContext.sandboxChildActionInfo?.parentActionId ===
+        parentAction.sId
+    );
+  }
+
+  static async listReadySandboxChildren(
+    auth: Authenticator,
+    {
+      parentAction,
+      transaction,
+    }: {
+      parentAction: AgentMCPActionResource;
+      transaction: Transaction;
+    }
+  ): Promise<AgentMCPActionResource[]> {
+    // The message/status index narrows this to runnable actions before the JSON parent filter.
+    const readyActions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId: parentAction.agentMessageId,
+          status: {
+            [Op.in]: ["ready_allowed_explicitly", "ready_allowed_implicitly"],
+          },
+        },
+      },
+      transaction
+    );
+
+    return readyActions.filter(
+      (action) =>
+        action.stepContext.sandboxChildActionInfo?.parentActionId ===
+        parentAction.sId
+    );
   }
 
   static async listBlockedActionsForConversation(
@@ -900,21 +1047,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   /**
    * A message should never have blocked actions from more than one step, and resume paths rely
-   * on that to resume the agent loop from a single, unambiguous step. By default this enforces the
-   * invariant and throws on a violation, surfacing the bug. `dangerouslyBypassSameStepCheck` (used
-   * by the unstick-conversation poke plugin) skips the check so a genuinely stuck conversation can
-   * still be finalized.
+   * on that to resume the agent loop from a single, unambiguous step. Terminal cleanup and anomaly
+   * detection can skip the check because they do not choose a step to resume from.
    */
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
     {
       agentMessageId,
       transaction,
-      dangerouslyBypassSameStepCheck = false,
+      skipSameStepCheck = false,
     }: {
       agentMessageId: ModelId;
       transaction?: Transaction;
-      dangerouslyBypassSameStepCheck?: boolean;
+      skipSameStepCheck?: boolean;
     }
   ): Promise<AgentMCPActionResource[]> {
     const actions = await this.baseFetch(
@@ -934,7 +1079,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return [];
     }
 
-    if (!dangerouslyBypassSameStepCheck) {
+    if (!skipSameStepCheck) {
       const steps = actions.map((a) => a.stepContent.step);
       const uniqueSteps = [...new Set(steps)];
       assert(
@@ -946,36 +1091,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions;
   }
 
-  /**
-   * Denies all still-blocked actions of an agent message. Must run inside the same
-   * transaction as the message's terminal status update so that "message terminal" and
-   * "blocked actions denied" commit atomically. Guarded on blocked statuses so a concurrent
-   * approval that already transitioned the action is not clobbered. Returns the actions
-   * actually denied, with their pre-deny resources.
-   *
-   * `dangerouslyBypassSameStepCheck` is forwarded to listBlockedActionsForAgentMessage: leave it
-   * false to enforce the single-step invariant; the unstick-conversation poke plugin passes true to
-   * finalize an anomalous, genuinely stuck conversation instead of throwing.
-   */
-  static async denyBlockedActionsForAgentMessage(
+  private static async denyActions(
     auth: Authenticator,
-    {
-      agentMessageId,
-      transaction,
-      dangerouslyBypassSameStepCheck = false,
-    }: {
-      agentMessageId: ModelId;
-      transaction: Transaction;
-      dangerouslyBypassSameStepCheck?: boolean;
-    }
+    actions: AgentMCPActionResource[],
+    transaction: Transaction
   ): Promise<AgentMCPActionResource[]> {
-    const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
-      agentMessageId,
-      transaction,
-      dangerouslyBypassSameStepCheck,
-    });
-
-    if (blockedActions.length === 0) {
+    if (actions.length === 0) {
       return [];
     }
 
@@ -983,12 +1104,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { status: "denied" },
       {
         where: {
-          // Scoping by agentMessageId lets the (workspaceId, agentMessageId, status) index
-          // drive the update; the id list keeps it restricted to the rows fetched above.
-          agentMessageId,
-          id: { [Op.in]: blockedActions.map((a) => a.id) },
+          id: { [Op.in]: actions.map((a) => a.id) },
           workspaceId: auth.getNonNullableWorkspace().id,
-          status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+          status: { [Op.in]: DENIABLE_PENDING_STATUSES },
         },
         returning: true,
         transaction,
@@ -997,7 +1115,82 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const deniedActionIds = new Set(affectedRows.map((a) => a.id));
 
-    return blockedActions.filter((a) => deniedActionIds.has(a.id));
+    return actions.filter((a) => deniedActionIds.has(a.id));
+  }
+
+  /**
+   * Denies actions that cannot start or resume after an agent message terminates: all blocked
+   * actions, plus not-yet-started sandbox children and resumed sandbox parents. Must run in the
+   * message finalization transaction so a workflow can atomically reserve an action before
+   * termination, or observe it as denied afterward.
+   */
+  static async denyPendingActionsForMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      transaction,
+    }: {
+      agentMessageId: ModelId;
+      transaction: Transaction;
+    }
+  ): Promise<AgentMCPActionResource[]> {
+    // The (workspaceId, agentMessageId, status) index narrows the candidate rows before the
+    // sandbox-child check, avoiding a scan over the message's completed actions.
+    const pendingActions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId,
+          status: { [Op.in]: DENIABLE_PENDING_STATUSES },
+        },
+      },
+      transaction
+    );
+
+    const deniableActions = pendingActions.filter(
+      (action) =>
+        isToolExecutionStatusBlocked(action.status) ||
+        isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo) ||
+        isSandboxResumeState(action.stepContext.resumeState)
+    );
+
+    return this.denyActions(auth, deniableActions, transaction);
+  }
+
+  /**
+   * Denies children that have not started when their parent bash finishes. Child insertion and
+   * parent completion use the same conversation lock, so the child is either rejected after the
+   * parent finishes or committed early enough to be denied here.
+   */
+  static async denyPendingSandboxChildren(
+    auth: Authenticator,
+    {
+      parentAction,
+      transaction,
+    }: {
+      parentAction: AgentMCPActionResource;
+      transaction: Transaction;
+    }
+  ): Promise<AgentMCPActionResource[]> {
+    // The (workspaceId, agentMessageId, status) index narrows this to unfinished actions of the
+    // parent's message; the JSON parent link is then checked on that small result set.
+    const pendingActions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId: parentAction.agentMessageId,
+          status: { [Op.in]: DENIABLE_PENDING_STATUSES },
+        },
+      },
+      transaction
+    );
+    const children = pendingActions.filter(
+      (action) =>
+        action.stepContext.sandboxChildActionInfo?.parentActionId ===
+        parentAction.sId
+    );
+
+    return this.denyActions(auth, children, transaction);
   }
 
   /**
@@ -1005,13 +1198,17 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * (approving, denying, answering, retrying) is only allowed while the message can resume:
    * otherwise it would relaunch an agent loop that was already terminated.
    */
-  async canAgentMessageResume(auth: Authenticator): Promise<boolean> {
+  async canAgentMessageResume(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<boolean> {
     const agentMessage = await AgentMessageModel.findOne({
       attributes: ["status"],
       where: {
         id: this.agentMessageId,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      transaction,
     });
 
     return (
@@ -1080,17 +1277,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     try {
       await warmGcsContentCache(
         auth,
-        removeNulls(
-          outputItems.map((item) =>
-            item.contentGcsPath
-              ? {
-                  itemId: item.id,
-                  gcsPath: item.contentGcsPath,
-                  content: item.content,
-                }
-              : null
-          )
-        )
+        outputItems.map((item) => {
+          assert(item.contentGcsPath, "GCS path not found for output item.");
+          return {
+            itemId: item.id,
+            gcsPath: item.contentGcsPath,
+            content: item.content,
+          };
+        })
       );
     } catch (err) {
       // Cache warming is best-effort and must not turn a successful persistence into a retry.
@@ -1100,7 +1294,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       );
     }
 
-    // Return the stored contents in the generic tool output item shape.
     return new Ok(
       removeNulls(
         outputItems.map((item) =>
@@ -1115,6 +1308,114 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         )
       )
     );
+  }
+
+  async createOutputRows(
+    contents: Array<{
+      content: CallToolResult["content"][number];
+      fileId?: ModelId;
+    }>,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<ActionOutputRows> {
+    const rows = await AgentMCPActionOutputItemModel.bulkCreate(
+      contents.map((c) => {
+        const { generatedFilePath, generatedFileContentType } =
+          isToolGeneratedFilePath(c.content)
+            ? {
+                generatedFilePath: c.content.resource.path,
+                generatedFileContentType: c.content.resource.contentType,
+              }
+            : { generatedFilePath: null, generatedFileContentType: null };
+
+        return {
+          agentMCPActionId: this.id,
+          // Write content to DB (kept during migration period to ease rollback).
+          content: c.content,
+          citations: getCitationsFromToolOutput([c.content]),
+          fileId: c.fileId,
+          workspaceId: this.workspaceId,
+          generatedFilePath,
+          generatedFileContentType,
+        };
+      }),
+      { transaction }
+    );
+
+    return {
+      rows,
+      outputItems: removeNulls(
+        rows.map((item) =>
+          item.content
+            ? {
+                content: item.content,
+                fileId: item.fileId ?? null,
+                file: item.file ?? null,
+                workspaceId: item.workspaceId,
+              }
+            : null
+        )
+      ),
+    };
+  }
+
+  async syncOutputRowsToGcs(
+    auth: Authenticator,
+    rows: AgentMCPActionOutputItemModel[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<void, Error>> {
+    const gcsResult = await batchWriteContentsToGcs(
+      auth,
+      this,
+      rows.map((item) => item.content)
+    );
+
+    if (gcsResult.isErr()) {
+      return gcsResult;
+    }
+
+    const rowsWithPaths = rows.map((item, index) => {
+      const gcsPath = gcsResult.value[index];
+      assert(gcsPath, "GCS path not found for output item.");
+      return { item, gcsPath };
+    });
+
+    try {
+      await concurrentExecutor(
+        rowsWithPaths,
+        async ({ item, gcsPath }) => {
+          await AgentMCPActionOutputItemModel.update(
+            { contentGcsPath: gcsPath },
+            {
+              where: { id: item.id, workspaceId: this.workspaceId },
+              transaction,
+            }
+          );
+          item.contentGcsPath = gcsPath;
+        },
+        { concurrency: SYNC_OUTPUT_ROWS_CONCURRENCY }
+      );
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+
+    try {
+      await warmGcsContentCache(
+        auth,
+        rowsWithPaths.map(({ item, gcsPath }) => ({
+          itemId: item.id,
+          gcsPath,
+          content: item.content,
+        }))
+      );
+    } catch (err) {
+      // Cache warming is best-effort and must not turn a successful persistence into a retry.
+      logger.warn(
+        { err: normalizeError(err), actionId: this.sId },
+        "Failed to warm MCP output content cache"
+      );
+    }
+
+    return new Ok(undefined);
   }
 
   static async fetchOutputItemsByActionIds(
@@ -1517,9 +1818,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     {
       status,
       expectedStatus,
+      transaction,
     }: {
       status: ToolExecutionStatus;
       expectedStatus: ToolExecutionStatus;
+      transaction?: Transaction;
     }
   ): Promise<[affectedCount: number]> {
     return AgentMCPActionModel.update(
@@ -1530,6 +1833,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           status: expectedStatus,
         },
+        transaction,
       }
     );
   }
@@ -1587,12 +1891,53 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  async updateStepContext(
-    stepContext: StepContext
+  async markFinalFromExpected(
+    auth: Authenticator,
+    {
+      executionDurationMs,
+      expectedStatus,
+      status,
+      transaction,
+    }: {
+      executionDurationMs: number;
+      expectedStatus: ToolExecutionStatus;
+      status: "errored" | "succeeded";
+      transaction: Transaction;
+    }
   ): Promise<[affectedCount: number]> {
-    return this.update({
-      stepContext,
-    });
+    const [affectedCount, affectedRows] = await AgentMCPActionModel.update(
+      {
+        status,
+        executionDurationMs: Math.round(executionDurationMs),
+      },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: expectedStatus,
+        },
+        returning: true,
+        transaction,
+      }
+    );
+
+    if (affectedRows[0]) {
+      Object.assign(this, affectedRows[0].get());
+    }
+
+    return [affectedCount];
+  }
+
+  async updateStepContext(
+    stepContext: StepContext,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    return this.update(
+      {
+        stepContext,
+      },
+      transaction
+    );
   }
 
   static async deleteByAgentMessageId(

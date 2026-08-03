@@ -163,7 +163,11 @@ export function useResolveAuthentication({
         sendNotification({
           type: "error",
           title: `Failed to complete ${label}`,
-          description: `The tool could not resume after ${label}. Please try again.`,
+          description:
+            isAPIErrorResponse(error) &&
+            error.error.type === "invalid_request_error"
+              ? error.error.message
+              : `The tool could not resume after ${label}. Please try again.`,
         });
         return { success: false };
       } finally {
@@ -192,6 +196,7 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
       try {
         const request = getValidateActionRequest(owner.sId, validation);
         if (!request) {
+          onError("Failed to assess action approval. Please try again.");
           return { success: false };
         }
         await fetcher(request.url, {
@@ -207,7 +212,12 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
         if (isAlreadyResolvedError(error)) {
           return { success: true };
         }
-        onError("Failed to assess action approval. Please try again.");
+        onError(
+          isAPIErrorResponse(error) &&
+            error.error.type === "invalid_request_error"
+            ? error.error.message
+            : "Failed to assess action approval. Please try again."
+        );
         return { success: false };
       } finally {
         setIsValidating(false);

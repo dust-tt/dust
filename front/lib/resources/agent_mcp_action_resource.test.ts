@@ -132,6 +132,36 @@ describe("listBlockedActionsForConversation", () => {
     expect(result).toEqual([]);
   });
 
+  it("fetches blocked action IDs in one workspace batch", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      status: "created",
+      agentConfigurationId: agentConfig.sId,
+      agentConfigurationVersion: agentConfig.version,
+      skipToolsValidation: false,
+    });
+    const { action: blockedAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    const { action: succeededAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+      status: "succeeded",
+    });
+
+    const blockedActionIds = await AgentMCPActionResource.fetchBlockedActionIds(
+      {
+        actionIds: [blockedAction.sId, succeededAction.sId],
+        workspaceModelId: workspace.id,
+      }
+    );
+
+    expect(blockedActionIds).toEqual(new Set([blockedAction.sId]));
+  });
+
   it("should return blocked actions for conversation", async () => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",

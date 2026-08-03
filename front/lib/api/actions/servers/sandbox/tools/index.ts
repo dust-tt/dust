@@ -399,15 +399,19 @@ export async function runSandboxBashTool(
   // `pauseSandboxBashForBlockedChild`, which atomically flips this bash
   // action's status from `running` → `blocked_child_action_input_required`
   // and calls `betaPause`. We observe the result here by refetching the
-  // parent action. The execId is persisted by the generic
-  // `tool_blocked_awaiting_input` exit_events path, which reads `state`
-  // off the resource we return below.
+  // parent action. The pause path persists execId before freezing the
+  // sandbox; the generic `tool_blocked_awaiting_input` exit path below
+  // confirms the same state when it processes this resource.
   const freshParent = await AgentMCPActionResource.fetchById(
     auth,
     sandboxAction.sId
   );
   const wasPaused =
-    freshParent !== null && isToolExecutionStatusBlocked(freshParent.status);
+    freshParent !== null &&
+    isToolExecutionStatusBlocked(freshParent.status) &&
+    (await AgentMCPActionResource.hasBlockedSandboxChildren(auth, {
+      parentAction: freshParent,
+    }));
 
   if (!wasPaused) {
     const durationMs = performance.now() - startMs;

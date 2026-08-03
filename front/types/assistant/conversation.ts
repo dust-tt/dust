@@ -262,6 +262,7 @@ export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
 // ends the loop in place, so resolving a leftover approval would relaunch a direction the loop
 // already stopped (and that steering, if any, has since superseded via a newly promoted message).
 export const UNRESUMABLE_AGENT_MESSAGE_STATUSES: AgentMessageStatus[] = [
+  "succeeded",
   "failed",
   "cancelled",
   "interrupted",

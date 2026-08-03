@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
+  prepareToolResults,
   processToolNotification,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
@@ -19,8 +20,17 @@ import type {
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolContext, ToolOutputItemType } from "@app/lib/actions/types";
-import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxChildActionInfo,
+} from "@app/lib/actions/types";
+import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
+import {
+  canStoreSandboxOutput,
+  finishSandboxBash,
+  persistSandboxBashOutput,
+} from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -28,6 +38,19 @@ import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agen
 import { removeNulls } from "@app/types/shared/utils/general";
 import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
+
+function makeSandboxPausedEvent(
+  runContext: Extract<ToolContext["runContext"], { contextType: "agent_loop" }>
+): ToolPausedEvent {
+  return {
+    type: "tool_paused",
+    created: Date.now(),
+    actionId: runContext.action.sId,
+    configurationId: runContext.agentConfiguration.sId,
+    conversationId: runContext.conversation.sId,
+    messageId: runContext.agentMessage.sId,
+  };
+}
 
 /**
  * Runs a tool with streaming for the given tool context.
@@ -81,11 +104,26 @@ export async function* runToolWithStreaming(
           invocationId: runContext.invocation.sId,
         }),
   });
+  const isSandboxBash =
+    isAgentLoopRunContext(runContext) &&
+    runContext.action.metadata.internalMCPServerName === SANDBOX_TOOL_NAME &&
+    runContext.action.toolConfiguration.originalName === "bash";
 
   // Sandbox function actions and auto-allowed agent-loop actions are created in running
   // status; only approved or resumed actions still carry a pre-run status to transition.
-  if (isAgentLoopRunContext(runContext) && status !== "running") {
-    await runContext.action.updateStatus("running");
+  if (isAgentLoopRunContext(runContext)) {
+    if (
+      isSandboxChildActionInfo(
+        runContext.action.stepContext.sandboxChildActionInfo
+      )
+    ) {
+      assert(
+        runContext.action.status === "running",
+        "Sandbox child must be reserved before execution."
+      );
+    } else if (status !== "running") {
+      await runContext.action.updateStatus("running");
+    }
   }
   const startDate = performance.now();
 
@@ -110,12 +148,113 @@ export async function* runToolWithStreaming(
   // as content.
   if (toolCallResult.isError) {
     const endDate = performance.now();
+    if (isSandboxBash) {
+      const { completed } = await finishSandboxBash(auth, {
+        action: runContext.action,
+        conversation: runContext.conversation,
+        executionDurationMs: endDate - startDate,
+        messageId: runContext.agentMessage.sId,
+        outputs: toolCallResult.content.map((content) => ({ content })),
+        status: "errored",
+      });
+      if (!completed) {
+        yield makeSandboxPausedEvent(runContext);
+        return;
+      }
+      yield {
+        type: "tool_success",
+        created: Date.now(),
+        output: toolCallResult.content,
+        generatedFiles: [],
+      };
+      return;
+    }
     yield await handleMCPActionError(auth, {
       action,
       status,
       errorContent: toolCallResult.content,
       executionDurationMs: endDate - startDate,
     });
+    return;
+  }
+
+  const processingOptions = {
+    intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
+    heartbeatFn: () => {
+      heartbeat();
+      localLogger.info("MCP tool result processing heartbeat");
+    },
+  };
+
+  if (isSandboxBash) {
+    // File handling can create durable FileResources and legitimately take up to five minutes.
+    // Reject an orphaned workflow before that work, then re-check ownership when committing the
+    // authoritative output rows below.
+    if (
+      !(await canStoreSandboxOutput(
+        auth,
+        runContext.action,
+        runContext.conversation
+      ))
+    ) {
+      yield makeSandboxPausedEvent(runContext);
+      return;
+    }
+
+    const { preparedOutputItems, generatedFiles } = await withPeriodicHeartbeat(
+      () =>
+        prepareToolResults(auth, {
+          localLogger,
+          toolCallResultContent: toolCallResult.content,
+          toolContext,
+        }),
+      processingOptions
+    );
+    const agentPauseEvents = await getExitOrPauseEvents(auth, {
+      outputItems: preparedOutputItems,
+      toolContext,
+    });
+
+    if (agentPauseEvents.length > 0) {
+      const outputItems = await persistSandboxBashOutput(auth, {
+        action: runContext.action,
+        conversation: runContext.conversation,
+        outputs: preparedOutputItems,
+      });
+      if (!outputItems) {
+        yield makeSandboxPausedEvent(runContext);
+        return;
+      }
+      for (const event of agentPauseEvents) {
+        yield event;
+      }
+      return;
+    }
+
+    const endDate = performance.now();
+    const { completed, outputItems } = await finishSandboxBash(auth, {
+      action: runContext.action,
+      conversation: runContext.conversation,
+      executionDurationMs: endDate - startDate,
+      messageId: runContext.agentMessage.sId,
+      outputs: preparedOutputItems,
+      status: "succeeded",
+    });
+    if (!completed) {
+      yield makeSandboxPausedEvent(runContext);
+      return;
+    }
+
+    yield {
+      type: "tool_success",
+      created: Date.now(),
+      output: removeNulls(
+        [...intermediateOutputItems, ...outputItems].map(
+          hideFileFromActionOutput
+        )
+      ),
+      generatedFiles,
+    };
     return;
   }
 
@@ -128,13 +267,7 @@ export async function* runToolWithStreaming(
         toolCallResultContent: toolCallResult.content,
         toolContext,
       }),
-    {
-      intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-      heartbeatFn: () => {
-        heartbeat();
-        localLogger.info("MCP tool result processing heartbeat");
-      },
-    }
+    processingOptions
   );
 
   // Parse the output resources to check if we find special events that require the agent loop to pause.

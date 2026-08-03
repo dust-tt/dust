@@ -2328,7 +2328,7 @@
             }
           },
           "400": {
-            "description": "Invalid request body"
+            "description": "Invalid request or action state"
           },
           "404": {
             "description": "Conversation, message, or workspace not found"

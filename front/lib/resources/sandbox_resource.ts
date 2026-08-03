@@ -769,11 +769,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   static async pauseForApproval(
     auth: Authenticator,
     owner: SandboxLifecycleOwner,
-    opts: { beforeSleep?: SandboxPreSleepCheck } = {}
+    opts: {
+      beforeSleep?: SandboxPreSleepCheck;
+      shouldPause?: () => Promise<boolean>;
+    } = {}
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
       const sandbox = await owner.fetchSandbox();
       if (!sandbox || sandbox.status !== "running") {
+        return new Ok(undefined);
+      }
+      if (opts.shouldPause && !(await opts.shouldPause())) {
         return new Ok(undefined);
       }
 
@@ -836,11 +842,15 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async dangerouslySleepIfPendingApproval(
     auth: Authenticator,
-    owner: SandboxLifecycleOwner
+    owner: SandboxLifecycleOwner,
+    opts: { shouldSleep?: () => Promise<boolean> } = {}
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(owner.lockKey, async () => {
       const sandbox = await owner.fetchSandbox();
       if (!sandbox || sandbox.status !== "pending_approval") {
+        return new Ok(undefined);
+      }
+      if (opts.shouldSleep && !(await opts.shouldSleep())) {
         return new Ok(undefined);
       }
 

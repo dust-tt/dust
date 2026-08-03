@@ -11,12 +11,12 @@ vi.mock(import("@app/temporal/agent_loop/client"), async (importOriginal) => {
 
 // The blocked path publishes the approval event to Redis; keep it out of tests.
 vi.mock(
-  import("@app/temporal/agent_loop/activities/common"),
+  import("@app/lib/api/assistant/streaming/events"),
   async (importOriginal) => {
     const mod = await importOriginal();
     return {
       ...mod,
-      updateResourceAndPublishEvent: vi.fn().mockResolvedValue(undefined),
+      publishConversationRelatedEvent: vi.fn().mockResolvedValue(undefined),
     };
   }
 );
@@ -27,6 +27,7 @@ import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -35,7 +36,6 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
@@ -53,6 +53,7 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 
 const TOOL_NAME = "tool";
+const EXEC_ID = "0123456789abcdef";
 
 describe("createSandboxChildAction", () => {
   let workspace: WorkspaceType;
@@ -178,6 +179,7 @@ describe("createSandboxChildAction", () => {
   ) {
     return createSandboxChildAction(auth, {
       parentActionId,
+      execId: EXEC_ID,
       agentId: agentConfig.sId,
       agentVersion: agentConfig.version,
       conversationId: conversation.sId,
@@ -226,27 +228,55 @@ describe("createSandboxChildAction", () => {
     }
     expect(result.value.pauseSandbox).toBeDefined();
 
+    const parent = await AgentMCPActionResource.fetchById(auth, parentActionId);
+    expect(parent?.status).toBe("blocked_child_action_input_required");
+
     const child = await AgentMCPActionResource.fetchById(
       auth,
       result.value.actionId
     );
     expect(child?.status).toBe("blocked_validation_required");
+    expect(child?.stepContext.sandboxChildActionInfo).toEqual({
+      parentActionId,
+      execId: EXEC_ID,
+    });
     expect(child?.toolConfiguration.permission).toBe("medium");
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
-    expect(vi.mocked(updateResourceAndPublishEvent)).toHaveBeenCalledWith(
-      auth,
+    expect(vi.mocked(publishConversationRelatedEvent)).toHaveBeenCalledWith(
       expect.objectContaining({
+        conversationId: conversation.sId,
         event: expect.objectContaining({
           type: "tool_approve_execution",
           actionId: child?.sId,
           inputs: { objectName: "Contact" },
           stake: "medium",
-          metadata: expect.objectContaining({
-            toolName: TOOL_NAME,
-          }),
+          metadata: expect.objectContaining({ toolName: TOOL_NAME }),
         }),
       })
     );
+  });
+
+  it("compensates the blocked child when approval publication fails", async () => {
+    await setToolPermission("medium");
+    vi.mocked(publishConversationRelatedEvent).mockRejectedValueOnce(
+      new Error("Redis unavailable")
+    );
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    const parent = await AgentMCPActionResource.fetchById(auth, parentActionId);
+    expect(parent?.status).toBe("running");
+    const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+      agentMessage.agentMessageId,
+    ]);
+    const child = actions.find(
+      (action) =>
+        action.stepContext.sandboxChildActionInfo?.parentActionId ===
+        parentActionId
+    );
+    expect(child?.status).toBe("denied");
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
   });
 
   it("auto-approves medium-stake tools when a direct-call approval exists", async () => {
@@ -272,7 +302,7 @@ describe("createSandboxChildAction", () => {
       auth,
       result.value.actionId
     );
-    expect(child?.status).toBe("running");
+    expect(child?.status).toBe("ready_allowed_implicitly");
     // The child configuration must carry the same function-call name as direct
     // calls so approval checks and recordings share one key.
     expect(child?.toolConfiguration.name).toBe(directCallToolName);
@@ -294,7 +324,7 @@ describe("createSandboxChildAction", () => {
       auth,
       result.value.actionId
     );
-    expect(child?.status).toBe("running");
+    expect(child?.status).toBe("ready_allowed_implicitly");
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
   });
 
@@ -319,6 +349,67 @@ describe("createSandboxChildAction", () => {
     }
     expect(result.value.pauseSandbox).toBeUndefined();
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
+  });
+
+  it("defers a ready child while its parent is blocked", async () => {
+    await setToolPermission("never_ask");
+    const parent = await AgentMCPActionResource.fetchById(auth, parentActionId);
+    if (!parent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    await parent.updateStatus("blocked_child_action_input_required");
+
+    const result = await callChildTool();
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    const child = await AgentMCPActionResource.fetchById(
+      auth,
+      result.value.actionId
+    );
+    expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+  });
+
+  it("rejects child calls after the parent action finished", async () => {
+    const parent = await AgentMCPActionResource.fetchById(auth, parentActionId);
+    if (!parent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    await parent.updateStatus("succeeded");
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the child call to fail.");
+    }
+    expect(result.error.message).toBe(
+      "Parent sandbox action is no longer running."
+    );
+    expect(vi.mocked(publishConversationRelatedEvent)).not.toHaveBeenCalled();
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+  });
+
+  it("rejects child calls after the agent message was cancelled", async () => {
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "cancelled",
+    });
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the child call to fail.");
+    }
+    expect(result.error.message).toBe(
+      "Agent message can no longer run sandbox child actions."
+    );
+    expect(vi.mocked(publishConversationRelatedEvent)).not.toHaveBeenCalled();
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
   });
 
   it("keys approvals on the space-disambiguated name when same-named servers are attached", async () => {
@@ -389,7 +480,7 @@ describe("createSandboxChildAction", () => {
       auth,
       result.value.actionId
     );
-    expect(child?.status).toBe("running");
+    expect(child?.status).toBe("ready_allowed_implicitly");
     expect(child?.toolConfiguration.name).toBe(disambiguatedKey);
   });
 

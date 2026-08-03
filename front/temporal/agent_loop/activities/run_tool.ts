@@ -1,18 +1,23 @@
 import { isAgentLoopToolEvent } from "@app/lib/actions/mcp";
 import type { ToolContext } from "@app/lib/actions/types";
-import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import {
+  isSandboxChildActionInfo,
+  isSandboxResumeState,
+} from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
+import {
+  reserveSandboxChildRun,
+  reserveSandboxParentRun,
+} from "@app/lib/api/sandbox/sandbox_child_block";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getShutdownSignal } from "@app/lib/shutdown_signal";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -39,6 +44,7 @@ import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
+const INITIAL_ACTIVITY_ATTEMPT = 1;
 
 // Extracts sIds of accessed datasources/tables from tool augmentedInputs.
 // Dust-internal MCP servers receive { uri } objects whose last path segment is
@@ -177,6 +183,35 @@ export async function runToolActivity(
     userMessage,
   } = runAgentDataRes.value;
 
+  let actionToRun: AgentMCPActionResource | null = action;
+  if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+    actionToRun = await reserveSandboxChildRun(
+      auth,
+      action,
+      originalConversation,
+      { isRetry: Context.current().info.attempt > INITIAL_ACTIVITY_ATTEMPT }
+    );
+  } else if (isSandboxResumeState(action.stepContext.resumeState)) {
+    actionToRun = await reserveSandboxParentRun(
+      auth,
+      action,
+      originalConversation,
+      Context.current().info.workflowExecution.runId
+    );
+  }
+  if (!actionToRun) {
+    logger.info(
+      {
+        actionId,
+        conversationId: runAgentArgs.conversationId,
+        agentMessageId: runAgentArgs.agentMessageId,
+        workspaceId: authType.workspaceId,
+      },
+      "Skipping sandbox action that can no longer run"
+    );
+    return { deferredEvents };
+  }
+
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
     sliceConversationForAgentMessage(originalConversation, {
       agentMessageId: originalAgentMessage.sId,
@@ -191,22 +226,23 @@ export async function runToolActivity(
     });
 
   return startActiveObservation(
-    `${action.toolConfiguration.mcpServerName}/${action.toolConfiguration.name}`,
+    `${actionToRun.toolConfiguration.mcpServerName}/${actionToRun.toolConfiguration.name}`,
     () => {
       updateActiveObservation(
         {
           input: {
             actionId,
-            toolName: action.toolConfiguration.name,
-            mcpServerName: action.toolConfiguration.mcpServerName,
+            toolName: actionToRun.toolConfiguration.name,
+            mcpServerName: actionToRun.toolConfiguration.mcpServerName,
           },
         },
         { asType: "tool" }
       );
 
       return executeToolStreaming(auth, {
-        action,
+        action: actionToRun,
         agentConfiguration,
+        authType,
         model,
         agentMessage,
         conversation,
@@ -225,6 +261,7 @@ async function executeToolStreaming(
   {
     action,
     agentConfiguration,
+    authType,
     model: modelInfo,
     agentMessage,
     conversation,
@@ -235,6 +272,7 @@ async function executeToolStreaming(
   }: {
     action: AgentMCPActionResource;
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    authType: AuthenticatorType;
     model: AgentLoopExecutionData["modelInfo"];
     agentMessage: AgentLoopExecutionData["agentMessage"];
     conversation: AgentLoopExecutionData["conversation"];
@@ -435,23 +473,14 @@ async function executeToolStreaming(
           context: {
             agentMessageId: agentMessage.sId,
             agentMessageRowId: agentMessage.agentMessageId,
+            authType,
             conversationId: conversation.sId,
+            originActionId: action.sId,
             step,
             workspaceId: conversation.owner.id,
           },
           shouldPauseAgentLoop: true,
         });
-
-        await ConversationResource.markAsActionRequired(auth, {
-          conversation,
-        });
-
-        if (!conversation.actionRequired) {
-          notifyManualActionRequired(auth, {
-            conversationId: conversation.sId,
-            actionId: action.sId,
-          });
-        }
 
         return { deferredEvents };
 

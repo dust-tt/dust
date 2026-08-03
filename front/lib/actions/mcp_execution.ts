@@ -33,6 +33,7 @@ import {
   extensionsForContentType,
   isSupportedFileContentType,
 } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
@@ -43,6 +44,20 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { extname } from "path";
 import type { Logger } from "pino";
+
+type ToolResultArgs = {
+  localLogger: Logger;
+  toolCallResultContent: CallToolResult["content"];
+  toolContext: ToolContext;
+};
+
+export type PreparedToolResults = {
+  preparedOutputItems: Array<{
+    content: CallToolResult["content"][number];
+    fileId?: ModelId;
+  }>;
+  generatedFiles: ActionGeneratedFileType[];
+};
 
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
@@ -179,21 +194,10 @@ export async function processToolNotification(
  * sandbox function invocation.
  * Returns the processed content and generated files.
  */
-export async function processToolResults(
+export async function prepareToolResults(
   auth: Authenticator,
-  {
-    localLogger,
-    toolCallResultContent,
-    toolContext,
-  }: {
-    localLogger: Logger;
-    toolCallResultContent: CallToolResult["content"];
-    toolContext: ToolContext;
-  }
-): Promise<{
-  outputItems: ToolOutputItemType[];
-  generatedFiles: ActionGeneratedFileType[];
-}> {
+  { localLogger, toolCallResultContent, toolContext }: ToolResultArgs
+): Promise<PreparedToolResults> {
   const { runContext } = toolContext;
   assert(runContext, "processToolResults requires a tool run context.");
   const { toolConfiguration } = runContext;
@@ -499,22 +503,52 @@ export async function processToolResults(
     })
   );
 
-  // Persist the processed contents on the run context's action: per-item rows for agent loop
-  // actions, a single output object for sandbox function actions.
-  const outputRes = await runContext.action.createOutputItems(
-    auth,
-    cleanContent.map((c) => ({
+  return {
+    preparedOutputItems: cleanContent.map((c) => ({
       content: sanitizeStringsDeep(c.content),
       fileId: c.file?.id,
-    }))
-  );
+    })),
+    generatedFiles,
+  };
+}
 
-  // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
+export async function persistToolResults(
+  auth: Authenticator,
+  {
+    preparedOutputItems,
+    toolContext,
+  }: Pick<PreparedToolResults, "preparedOutputItems"> & {
+    toolContext: ToolContext;
+  }
+): Promise<ToolOutputItemType[]> {
+  const { runContext } = toolContext;
+  assert(runContext, "persistToolResults requires a tool run context.");
+  const outputRes = await runContext.action.createOutputItems(
+    auth,
+    preparedOutputItems
+  );
   if (outputRes.isErr()) {
     throw outputRes.error;
   }
+  return outputRes.value;
+}
 
-  return { outputItems: outputRes.value, generatedFiles };
+export async function processToolResults(
+  auth: Authenticator,
+  args: ToolResultArgs
+): Promise<{
+  outputItems: ToolOutputItemType[];
+  generatedFiles: ActionGeneratedFileType[];
+}> {
+  const { preparedOutputItems, generatedFiles } = await prepareToolResults(
+    auth,
+    args
+  );
+  const outputItems = await persistToolResults(auth, {
+    preparedOutputItems,
+    toolContext: args.toolContext,
+  });
+  return { outputItems, generatedFiles };
 }
 
 /**

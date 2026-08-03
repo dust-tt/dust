@@ -36,6 +36,7 @@ export function isFileAuthorizationInfo(
 
 const SandboxChildActionInfoSchema = z.object({
   parentActionId: z.string(),
+  execId: z.string().optional(),
 });
 
 export type SandboxChildActionInfo = z.infer<
@@ -100,6 +101,7 @@ export function isUserQuestionResumeState(
 
 const SandboxResumeStateSchema = z.object({
   execId: z.string(),
+  runId: z.string().optional(),
 });
 
 type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;

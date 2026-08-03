@@ -65,6 +65,14 @@ app.post(
               message: result.error.message,
             },
           });
+        case "invalid_request_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: result.error.message,
+            },
+          });
         case "action_not_found":
           return apiError(ctx, {
             status_code: 404,

@@ -1,5 +1,10 @@
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { isBlockedActionEvent } from "@app/lib/actions/mcp";
+import {
+  isSandboxChildActionInfo,
+  isSandboxResumeState,
+} from "@app/lib/actions/types";
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import {
   buildAuditLogTarget,
@@ -7,18 +12,121 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Transaction } from "sequelize";
 
 export type GetBlockedActionsResponseType = {
   blockedActions: AgentLoopBlockedToolExecution[];
 };
+
+export async function validateBlockedSteps(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  transaction: Transaction
+): Promise<Result<void, DustError>> {
+  // Scoped by agentMessageId and blocked statuses, using the
+  // (workspaceId, agentMessageId, status) index.
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId: action.agentMessageId,
+      skipSameStepCheck: true,
+      transaction,
+    });
+  const blockedSteps = new Set(
+    blockedActions.map((blockedAction) => blockedAction.stepContent.step)
+  );
+  if (blockedSteps.size <= 1) {
+    return new Ok(undefined);
+  }
+
+  logger.warn(
+    {
+      actionId: action.sId,
+      blockedSteps: [...blockedSteps],
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    },
+    "Refusing to resume actions blocked across multiple steps"
+  );
+  return new Err(
+    new DustError(
+      "invalid_request_error",
+      "This generation cannot resume because its pending actions belong to different steps. " +
+        "Cancel it and retry."
+    )
+  );
+}
+
+export async function releaseSandboxIfUnused(
+  auth: Authenticator,
+  {
+    conversation,
+    messageId,
+  }: {
+    conversation: ConversationWithoutContentType;
+    messageId: string;
+  }
+): Promise<void> {
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationResource) {
+    logger.warn(
+      {
+        conversationId: conversation.sId,
+        messageId,
+      },
+      "Conversation not found while releasing sandbox approval"
+    );
+    return;
+  }
+
+  const sleepResult =
+    await ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
+      auth,
+      conversationResource,
+      {
+        shouldSleep: () =>
+          withTransaction(async (transaction) => {
+            // Lifecycle cleanup and sandbox pausing both take these locks in this order.
+            await getConversationRankVersionLock(
+              auth,
+              conversation,
+              transaction
+            );
+            return !(await AgentMCPActionResource.hasBlockedSandboxActions(
+              auth,
+              {
+                conversationId: conversation.id,
+                transaction,
+              }
+            ));
+          }),
+      }
+    );
+  if (sleepResult.isErr()) {
+    logger.error(
+      {
+        err: sleepResult.error,
+        conversationId: conversation.sId,
+        messageId,
+      },
+      "Failed to release sandbox approval"
+    );
+  }
+}
 
 /**
  * Cleans up the blocked actions of an agent message that reached a terminal status
@@ -54,15 +162,25 @@ export async function cleanupDeniedBlockedActions(
       "Denied blocked actions of terminated agent message"
     );
 
-    // Remove the pending blocked-action events (approval requests, auth requests, user
-    // questions) from the message channel so live clients stop surfacing prompts for them.
-    const deniedActionIds = new Set(deniedActions.map((a) => a.sId));
-    await getRedisHybridManager().removeEvent((event) => {
-      const payload = JSON.parse(event.message["payload"]);
-      return (
-        isBlockedActionEvent(payload) && deniedActionIds.has(payload.actionId)
-      );
-    }, getMessageChannelId(agentMessage.sId));
+    await clearBlockedActionEffects(auth, {
+      actionIds: deniedActions.map((a) => a.sId),
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+    });
+
+    if (
+      deniedActions.some(
+        (action) =>
+          isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo) ||
+          isSandboxResumeState(action.stepContext.resumeState)
+      )
+    ) {
+      await releaseSandboxIfUnused(auth, {
+        conversation,
+        messageId: agentMessage.sId,
+      });
+    }
+    return;
   }
 
   // Always re-check the flag, even when no blocked action remains: a partial previous run may
@@ -70,6 +188,32 @@ export async function cleanupDeniedBlockedActions(
   await clearActionRequiredIfNoBlockedActions(auth, {
     conversationId: conversation.sId,
   });
+}
+
+export async function clearBlockedActionEffects(
+  auth: Authenticator,
+  {
+    actionIds,
+    conversationId,
+    messageId,
+  }: {
+    actionIds: string[];
+    conversationId: string;
+    messageId: string;
+  }
+): Promise<void> {
+  if (actionIds.length > 0) {
+    // Remove pending approval/auth/question events so live clients stop surfacing resolved prompts.
+    const deniedActionIds = new Set(actionIds);
+    await getRedisHybridManager().removeEvent((event) => {
+      const payload = JSON.parse(event.message["payload"]);
+      return (
+        isBlockedActionEvent(payload) && deniedActionIds.has(payload.actionId)
+      );
+    }, getMessageChannelId(messageId));
+  }
+
+  await clearActionRequiredIfNoBlockedActions(auth, { conversationId });
 }
 
 /**

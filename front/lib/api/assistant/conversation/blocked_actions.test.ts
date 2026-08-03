@@ -1,10 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Redis hybrid manager to prevent it from removing events
-const { emitAuditLogEventDirectMock, removeEventMock } = vi.hoisted(() => ({
-  emitAuditLogEventDirectMock: vi.fn().mockResolvedValue(undefined),
-  removeEventMock: vi.fn().mockResolvedValue(undefined),
-}));
+const {
+  emitAuditLogEventDirectMock,
+  removeEventMock,
+  sleepSandboxChecks,
+  sleepSandboxMock,
+} = vi.hoisted(() => {
+  const sleepSandboxChecks: boolean[] = [];
+  return {
+    emitAuditLogEventDirectMock: vi.fn().mockResolvedValue(undefined),
+    removeEventMock: vi.fn().mockResolvedValue(undefined),
+    sleepSandboxChecks,
+    sleepSandboxMock: vi.fn(
+      async (
+        _auth: unknown,
+        _conversation: unknown,
+        opts?: { shouldSleep?: () => Promise<boolean> }
+      ) => {
+        if (opts?.shouldSleep) {
+          sleepSandboxChecks.push(await opts.shouldSleep());
+        }
+        return { isErr: () => false };
+      }
+    ),
+  };
+});
 vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
   getRedisHybridManager: vi.fn().mockReturnValue({
     removeEvent: removeEventMock,
@@ -19,6 +40,11 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
     emitAuditLogEventDirect: emitAuditLogEventDirectMock,
   };
 });
+vi.mock("@app/lib/resources/conversation_sandbox_adapter", () => ({
+  ConversationSandboxAdapter: {
+    dangerouslySleepSandboxIfPendingApproval: sleepSandboxMock,
+  },
+}));
 
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import {
@@ -42,6 +68,7 @@ describe("blocked actions resolution", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    sleepSandboxChecks.length = 0;
 
     const setup = await createResourceTest({});
     workspace = setup.workspace;
@@ -254,6 +281,93 @@ describe("blocked actions resolution", () => {
       expect(emitAuditLogEventDirectMock).not.toHaveBeenCalled();
     });
 
+    it("denies a sandbox child that was ready but had not started", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+          status: "ready_allowed_implicitly",
+        });
+      await action.updateStepContext({
+        ...action.stepContext,
+        sandboxChildActionInfo: { parentActionId: "parent_action" },
+      });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "cancelled",
+      });
+
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
+      expect(sleepSandboxMock).toHaveBeenCalledOnce();
+      expect(sleepSandboxChecks).toEqual([true]);
+    });
+
+    it("keeps the sandbox paused while another child still needs approval", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+          status: "ready_allowed_implicitly",
+        });
+      await action.updateStepContext({
+        ...action.stepContext,
+        sandboxChildActionInfo: { parentActionId: "parent_action" },
+      });
+
+      const { agentMessageRowId: otherAgentMessageRowId } =
+        await createAgentMessageAtRank(3);
+      const { action: otherAction } = await AgentMCPActionFactory.create(auth, {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: otherAgentMessageRowId,
+      });
+      await otherAction.updateStepContext({
+        ...otherAction.stepContext,
+        sandboxChildActionInfo: { parentActionId: "other_parent" },
+      });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "cancelled",
+      });
+
+      expect(sleepSandboxMock).toHaveBeenCalledOnce();
+      expect(sleepSandboxChecks).toEqual([false]);
+    });
+
+    it("denies a resumed sandbox parent that had not restarted", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+          status: "ready_allowed_explicitly",
+        });
+      await action.updateStepContext({
+        ...action.stepContext,
+        resumeState: { execId: "0123456789abcdef" },
+      });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "cancelled",
+      });
+
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
+      expect(sleepSandboxMock).toHaveBeenCalledOnce();
+    });
+
     it("emits approval audit events only for actions actually denied", async () => {
       const { agentMessage, action: deniedAction } =
         await AgentMCPActionFactory.createWithAgentMessage(auth, {
@@ -312,17 +426,16 @@ describe("blocked actions resolution", () => {
       return { agentMessage, step1Action, step3Action };
     }
 
-    it("force-denies blocked actions spanning several steps (unstick)", async () => {
-      // Anomalous multi-step blocked state: force finalization (as the unstick-conversation plugin
-      // does) must deny them all instead of throwing.
+    it("denies blocked actions spanning several steps", async () => {
+      // Terminal cleanup does not resume the loop from a step, so it can safely deny every action
+      // in an anomalous multi-step state.
       const { agentMessage, step1Action, step3Action } =
         await setupMultiStepBlockedMessage();
 
       await updateAgentMessageWithFinalStatus(auth, {
         conversation,
         agentMessage,
-        status: "failed",
-        dangerouslyBypassSameStepCheck: true,
+        status: "cancelled",
       });
 
       const reloadedStep1 = await AgentMCPActionResource.fetchById(
@@ -336,18 +449,6 @@ describe("blocked actions resolution", () => {
       expect(reloadedStep1?.status).toBe("denied");
       expect(reloadedStep3?.status).toBe("denied");
       expect(await getActionRequired()).toBe(false);
-    });
-
-    it("throws on multi-step blocked actions by default (invariant enforced)", async () => {
-      const { agentMessage } = await setupMultiStepBlockedMessage();
-
-      await expect(
-        updateAgentMessageWithFinalStatus(auth, {
-          conversation,
-          agentMessage,
-          status: "failed",
-        })
-      ).rejects.toThrow("All blocked actions must be from the same step");
     });
 
     it("commits the deny with the terminal status update", async () => {
@@ -417,6 +518,29 @@ describe("blocked actions resolution", () => {
   });
 
   describe("updateAgentMessageWithFinalStatus", () => {
+    it("denies blocked actions when the message succeeds", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+        });
+
+      await ConversationResource.markAsActionRequired(auth, { conversation });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "succeeded",
+      });
+
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
+      expect(await getActionRequired()).toBe(false);
+    });
+
     it("denies blocked actions when the message is interrupted", async () => {
       const { agentMessage, action } =
         await AgentMCPActionFactory.createWithAgentMessage(auth, {

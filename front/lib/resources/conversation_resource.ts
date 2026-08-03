@@ -2630,7 +2630,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async markAsActionRequired(
     auth: Authenticator,
-    { conversation }: { conversation: ConversationWithoutContentType }
+    {
+      conversation,
+      transaction,
+    }: {
+      conversation: ConversationWithoutContentType;
+      transaction?: Transaction;
+    }
   ) {
     const user = auth.user();
     if (!user) {
@@ -2649,6 +2655,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           userId: user.id,
           actionRequired: { [Op.ne]: true },
         },
+        transaction,
       }
     );
 
@@ -2842,7 +2849,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async getActionRequiredAndLastReadAtForUser(
     auth: Authenticator,
-    id: number
+    id: number,
+    transaction?: Transaction
   ) {
     if (!auth.user()) {
       return {
@@ -2858,6 +2866,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           userId: auth.getNonNullableUser().id,
         },
+        transaction,
       }),
       UserConversationReadsModel.findOne({
         where: {
@@ -2865,6 +2874,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           userId: auth.getNonNullableUser().id,
         },
+        transaction,
       }),
     ]);
 
