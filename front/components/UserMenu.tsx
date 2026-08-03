@@ -24,12 +24,7 @@ import { isAgentMention } from "@app/types/assistant/mentions";
 import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import {
-  isOnlyAdmin,
-  isOnlyBuilder,
-  isOnlyManager,
-  isOnlyUser,
-} from "@app/types/user";
+import { isOnlyAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
@@ -52,7 +47,6 @@ import {
   FirefoxLogo,
   Heart,
   Icon,
-  Lightbulb04,
   LogOut01,
   MessageChatCircle,
   MessagePlusCircle,
@@ -166,7 +160,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
     typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
 
   const forceRoleUpdate = useMemo(
-    () => async (role: "user" | "builder" | "admin" | "manager") => {
+    () => async (role: "user" | "admin" | "manager") => {
       const result = await forceUserRole(user, owner, role, featureFlags);
       if (result.isOk()) {
         sendNotification({
@@ -434,13 +428,6 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                         label="Become Manager"
                         onClick={() => forceRoleUpdate("manager")}
                         icon={Star01}
-                      />
-                    )}
-                    {!isOnlyBuilder(owner) && (
-                      <DropdownMenuItem
-                        label="Become Builder"
-                        onClick={() => forceRoleUpdate("builder")}
-                        icon={Lightbulb04}
                       />
                     )}
                     {!isOnlyUser(owner) && (
