@@ -1,7 +1,6 @@
-import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import type {
-  SearchMemberType,
-  SearchMemberWithWorkspaceType,
+import {
+  MemberSelectionTable,
+  type SearchMemberWithWorkspaceType,
 } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import {
@@ -20,7 +19,11 @@ type AgentEditorsTabProps = {
 };
 
 export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
-  const [isManageEditorsOpen, setIsManageEditorsOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedEditorIds, setSelectedEditorIds] = useState<Set<string>>(
+    new Set()
+  );
   const updateEditors = useUpdateSkillEditors({
     owner,
     skillId: skill.sId,
@@ -33,28 +36,71 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
   const isCurrentUserEditor =
     editors.findIndex((u) => u.sId === user.sId) !== -1;
 
+  const currentEditorIds = new Set(editors.map((editor) => editor.sId));
+  const addEditorIds = Array.from(selectedEditorIds).filter(
+    (editorId) => !currentEditorIds.has(editorId)
+  );
+  const removeEditorIds = Array.from(currentEditorIds).filter(
+    (editorId) => !selectedEditorIds.has(editorId)
+  );
+  const hasEditorChanges =
+    addEditorIds.length > 0 || removeEditorIds.length > 0;
+
   const onRemoveMember = async (user: SearchMemberWithWorkspaceType) => {
     if (isCurrentUserEditor) {
       await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
     }
   };
 
-  const onEditorsChange = async (newEditors: SearchMemberType[]) => {
-    const currentEditorIds = new Set(editors.map((editor) => editor.sId));
-    const newEditorIds = new Set(newEditors.map((editor) => editor.sId));
-    const addEditorIds = Array.from(newEditorIds).filter(
-      (editorId) => !currentEditorIds.has(editorId)
-    );
-    const removeEditorIds = Array.from(currentEditorIds).filter(
-      (editorId) => !newEditorIds.has(editorId)
-    );
-
-    if (addEditorIds.length === 0 && removeEditorIds.length === 0) {
+  const onSaveEditors = async () => {
+    if (!hasEditorChanges || isSaving) {
       return;
     }
 
-    await updateEditors({ addEditorIds, removeEditorIds });
+    setIsSaving(true);
+    try {
+      const didUpdate = await updateEditors({ addEditorIds, removeEditorIds });
+      if (didUpdate) {
+        setIsEditing(false);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (skill.canAdministrate && isEditing) {
+    return (
+      <div className="flex flex-col gap-4">
+        <MemberSelectionTable
+          owner={owner}
+          selectedMemberIds={selectedEditorIds}
+          onSelectionChange={(editorIds) => {
+            setSelectedEditorIds(editorIds);
+          }}
+          initialMembers={editors}
+        />
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            label="Cancel"
+            disabled={isSaving}
+            onClick={() => setIsEditing(false)}
+            type="button"
+          />
+          <Button
+            variant="highlight"
+            size="sm"
+            label="Save"
+            disabled={!hasEditorChanges || isSaving}
+            isLoading={isSaving}
+            onClick={onSaveEditors}
+            type="button"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,16 +112,13 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
             icon={Users01}
             label="Manage editors"
             disabled={isEditorsLoading || isEditorsError}
-            onClick={() => setIsManageEditorsOpen(true)}
+            onClick={() => {
+              setSelectedEditorIds(
+                new Set(editors.map((editor) => editor.sId))
+              );
+              setIsEditing(true);
+            }}
             type="button"
-          />
-          <ManageUsersPanel
-            isOpen={isManageEditorsOpen}
-            setIsOpen={setIsManageEditorsOpen}
-            owner={owner}
-            mode="editors-only"
-            editors={editors}
-            onEditorsChange={onEditorsChange}
           />
         </div>
       )}
