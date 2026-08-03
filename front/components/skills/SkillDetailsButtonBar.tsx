@@ -55,6 +55,7 @@ export function SkillDetailsButtonBar({
           <SkillFavoriteButton
             isFavorite={skill.isFavorite ?? false}
             skill={skill}
+            variant="outline"
             onFavoriteChange={(isFavorite) =>
               onFavoriteChange(skill, isFavorite)
             }
