@@ -17,7 +17,7 @@ describe("getToolsUsage", () => {
       process.env.FRONT_DATABASE_URI;
   });
 
-  it("aggregates all active usage", async () => {
+  it("aggregates usage with the caller's visibility", async () => {
     const testContext = await createResourceTest({ role: "admin" });
     const server = await RemoteMCPServerFactory.create(testContext.workspace);
     const firstView = await MCPServerViewFactory.create(
@@ -71,6 +71,18 @@ describe("getToolsUsage", () => {
       mcpServerViews: [firstView],
     });
 
+    const adminUsage = await getToolsUsage(testContext.authenticator);
+
+    expect(adminUsage[server.sId]?.count).toBe(4);
+    expect(adminUsage[server.sId]?.agents.map((agent) => agent.sId)).toEqual([
+      hiddenAgent.sId,
+      visibleAgent.sId,
+    ]);
+    expect(adminUsage[server.sId]?.skills.map((skill) => skill.sId)).toEqual([
+      publishedSkill.sId,
+      unpublishedSkill.sId,
+    ]);
+
     const user = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, user, {
       role: "builder",
@@ -82,14 +94,12 @@ describe("getToolsUsage", () => {
 
     const memberUsage = await getToolsUsage(auth);
 
-    expect(memberUsage[server.sId]?.count).toBe(4);
+    expect(memberUsage[server.sId]?.count).toBe(2);
     expect(memberUsage[server.sId]?.agents.map((agent) => agent.sId)).toEqual([
-      hiddenAgent.sId,
       visibleAgent.sId,
     ]);
     expect(memberUsage[server.sId]?.skills.map((skill) => skill.sId)).toEqual([
       publishedSkill.sId,
-      unpublishedSkill.sId,
     ]);
   });
 });
