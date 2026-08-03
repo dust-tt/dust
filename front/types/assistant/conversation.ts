@@ -192,6 +192,11 @@ export type UserMessageType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
+  // Legacy: branches were removed, this is always null. The browser extension ships on its own
+  // release cycle and versions still in the wild compare `message.branchId` against `undefined`,
+  // treating every message as pending branch approval when the field is missing. Keep emitting it
+  // until those extension versions have cycled out.
+  branchId: null;
   user: UserType | null;
   mentions: MentionType[];
   richMentions: RichMentionWithStatus[];
@@ -312,6 +317,8 @@ export type BaseAgentMessageType = {
   sId: string;
   version: number;
   rank: number;
+  // Legacy: see the note on `UserMessageType.branchId`.
+  branchId: null;
   created: number;
   completedTs: number | null;
   parentMessageId: string;
@@ -453,6 +460,8 @@ export type CompactionMessageType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
+  // Legacy: see the note on `UserMessageType.branchId`.
+  branchId: null;
   sourceConversationId?: string | null;
   status: CompactionMessageStatus; // Lifecycle: created → succeeded | failed.
   content: string | null; // null while status is "created".

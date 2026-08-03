@@ -280,6 +280,10 @@
  *           type: integer
  *         rank:
  *           type: integer
+ *         branchId:
+ *           type: string
+ *           nullable: true
+ *           description: Legacy, always null. Branches were removed.
  *         user:
  *           type: object
  *           nullable: true
@@ -342,6 +346,10 @@
  *           type: integer
  *         rank:
  *           type: integer
+ *         branchId:
+ *           type: string
+ *           nullable: true
+ *           description: Legacy, always null. Branches were removed.
  *         parentMessageId:
  *           type: string
  *         parentAgentMessageId:
@@ -450,6 +458,10 @@
  *           type: integer
  *         rank:
  *           type: integer
+ *         branchId:
+ *           type: string
+ *           nullable: true
+ *           description: Legacy, always null. Branches were removed.
  *         parentMessageId:
  *           type: string
  *         parentAgentMessageId:
@@ -703,6 +715,10 @@
  *           type: integer
  *         rank:
  *           type: integer
+ *         branchId:
+ *           type: string
+ *           nullable: true
+ *           description: Legacy, always null. Branches were removed.
  *         sourceConversationId:
  *           type: string
  *           nullable: true

@@ -95,6 +95,7 @@ function makeLightAgentMessage(
     sId: "msg_123",
     version: 0,
     rank: 0,
+    branchId: null,
     created: Date.now(),
     completedTs: null,
     parentMessageId: "parent_msg_123",
