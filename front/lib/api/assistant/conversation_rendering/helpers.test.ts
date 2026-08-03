@@ -247,11 +247,9 @@ Pass \`skillName\` exactly as written between backticks above, character for cha
         {
           type: "text",
           text: `<dust_system>
-The following skills were set as favorites by the user and are available for use with the skill_management__enable_skill tool:
+The following skills were set as favorites by the user and are also available for use with the skill_management__enable_skill tool:
 
 - \`favorite-skill\`: Use my favorite skill.
-
-Pass \`skillName\` exactly as written between backticks above, character for character: same case, same spacing, same punctuation, same prefixes and suffixes. Copy the name rather than retyping it, and do not adjust it to match how other skills in the list are named. Names are matched exactly, so a modified name will not be found.
 </dust_system>`,
         },
       ],

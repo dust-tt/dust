@@ -86,9 +86,8 @@ export function renderFavoriteSkillsUserMessage(
 
   return renderSkillMessage(
     `<dust_system>\n` +
-      `The following skills were set as favorites by the user and are available for use with the ${enableSkillToolName} tool:\n\n` +
-      `${renderSkillList(favoriteSkills)}\n\n` +
-      `${EXACT_SKILL_NAME_INSTRUCTION}\n` +
+      `The following skills were set as favorites by the user and are also available for use with the ${enableSkillToolName} tool:\n\n` +
+      `${renderSkillList(favoriteSkills)}\n` +
       `</dust_system>`,
     "user"
   );
