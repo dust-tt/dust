@@ -64,7 +64,7 @@ export function SubscriptionPlanCards({
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {/* Pro card */}
-      <div className="flex flex-col rounded-[20px] border border-border p-5">
+      <div className="flex flex-col rounded-2xl border border-border p-5">
         <div className="mb-4">
           <h3 className="text-lg font-medium text-foreground">
             {isBusiness ? "Enterprise (Seat-based)" : "Pro"}
@@ -109,7 +109,7 @@ export function SubscriptionPlanCards({
       </div>
 
       {/* Enterprise card */}
-      <div className="flex flex-col rounded-[20px] border border-border p-5">
+      <div className="flex flex-col rounded-2xl border border-border p-5">
         <div className="mb-4">
           <h3 className="text-lg font-medium text-foreground">Enterprise</h3>
           <div className="mt-1 flex items-baseline gap-2">

@@ -135,7 +135,7 @@ function ColorTokenRow({
           flexShrink: 0,
           background: "transparent",
           border: "1px solid transparent",
-          borderRadius: 3,
+          borderRadius: 4,
           padding: "1px 4px",
           outline: "none",
         }}

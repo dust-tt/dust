@@ -41,7 +41,7 @@ const fieldVariants = cva(
       size: {
         xs: "h-6 rounded-lg text-xs",
         sm: "h-8 rounded-xl text-sm tracking-[-0.28px]",
-        md: "h-10 rounded-[15px] text-sm tracking-[-0.28px]",
+        md: "h-10 rounded-2xl text-sm tracking-[-0.28px]",
       },
       state: {
         default: cn(

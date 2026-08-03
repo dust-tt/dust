@@ -138,9 +138,9 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        xs: "h-6 gap-1.5 px-2 text-sm font-medium leading-4 tracking-[-0.28px] rounded-[9px]",
+        xs: "h-6 gap-1.5 rounded-lg px-2 text-sm font-medium leading-4 tracking-[-0.28px]",
         sm: "h-8 gap-1.5 px-3 text-sm font-medium tracking-[-0.28px] rounded-xl",
-        md: "h-10 gap-1.5 px-4 text-base font-medium tracking-[-0.32px] rounded-[15px]",
+        md: "h-10 gap-1.5 rounded-xl px-4 text-base font-medium tracking-[-0.32px]",
       },
       isIconOnly: {
         true: "",
