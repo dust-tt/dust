@@ -408,10 +408,10 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       const csv = await csvResponse.text();
       const [header, row] = csv.trim().split("\n");
       expect(header).toBe(
-        "requesterName,requesterEmail,status,reason,requestedAt,resolvedAt,resolvedBy,grantedCredits,grantedUnlimitedSpend,grantedSeatType,grantedExpiryKind"
+        "requesterName,requesterEmail,requestedAt,granted,until,reason,status,resolvedAt,resolvedBy"
       );
       expect(row).toContain(member.email);
-      expect(row).toContain("denied");
+      expect(row).toContain("Denied");
     });
 
     it("returns 403 when caller is a user", async () => {

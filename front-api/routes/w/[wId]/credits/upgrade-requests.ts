@@ -115,7 +115,10 @@ app.get(
     const { requests, total } =
       status === "resolved"
         ? await listResolvedUpgradeRequests(auth, { offset })
-        : { requests: await listPendingUpgradeRequests(auth), total: undefined };
+        : {
+            requests: await listPendingUpgradeRequests(auth),
+            total: undefined,
+          };
 
     if (format === "csv") {
       ctx.header("Content-Type", "text/csv");
