@@ -140,6 +140,82 @@ async function destroyConversationDataSource(
   }
 }
 
+export async function destroyConversationMessages(
+  auth: Authenticator,
+  messages: MessageModel[]
+) {
+  const owner = auth.getNonNullableWorkspace();
+
+  // To preserve the DB, we delete messages in batches.
+  const messagesChunks = chunk(messages, DESTROY_MESSAGE_BATCH);
+  for (const messagesChunk of messagesChunks) {
+    const messageIds = messagesChunk.map((m) => m.id);
+    const userMessageIds = removeNulls(
+      messagesChunk.map((m) => m.userMessageId)
+    );
+    const agentMessageIds = removeNulls(
+      messagesChunk.map((m) => m.agentMessageId)
+    );
+    const compactionMessageIds = removeNulls(
+      messagesChunk.map((m) => m.compactionMessageId)
+    );
+    const contentFragmentIds = removeNulls(
+      messagesChunk.map((m) => m.contentFragmentId)
+    );
+
+    await AgentMessageConsumptionItemResource.deleteByAgentMessageModelIds(
+      auth,
+      {
+        agentMessageModelIds: agentMessageIds,
+      }
+    );
+
+    await destroyActionsRelatedResources(auth, agentMessageIds);
+
+    await UserMessageModel.destroy({
+      where: {
+        id: userMessageIds,
+        workspaceId: owner.id,
+      },
+    });
+    await AgentStepContentResource.deleteByAgentMessageIds(auth, {
+      agentMessageIds,
+    });
+    await AgentMessageFeedbackModel.destroy({
+      where: {
+        agentMessageId: agentMessageIds,
+        workspaceId: owner.id,
+      },
+    });
+
+    const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentMessageId: agentMessageIds,
+    };
+    await AgentMessageSkillModel.destroy({
+      where: whereAgentMessageSkill,
+    });
+
+    await AgentMessageModel.destroy({
+      where: {
+        id: agentMessageIds,
+        workspaceId: owner.id,
+      },
+    });
+
+    await destroyContentFragments(auth, contentFragmentIds);
+
+    await CompactionMessageModel.destroy({
+      where: {
+        id: compactionMessageIds,
+        workspaceId: owner.id,
+      },
+    });
+
+    await destroyMessageRelatedResources(auth, messageIds);
+  }
+}
+
 // This belongs to the ConversationResource. The authenticator is expected to have access to the
 // groups involved in the conversation.
 export async function destroyConversation(
@@ -197,74 +273,7 @@ export async function destroyConversation(
       },
     });
 
-    // To preserve the DB, we delete messages in batches.
-    const messagesChunks = chunk(messages, DESTROY_MESSAGE_BATCH);
-    for (const messagesChunk of messagesChunks) {
-      const messageIds = messagesChunk.map((m) => m.id);
-      const userMessageIds = removeNulls(
-        messagesChunk.map((m) => m.userMessageId)
-      );
-      const agentMessageIds = removeNulls(
-        messagesChunk.map((m) => m.agentMessageId)
-      );
-      const compactionMessageIds = removeNulls(
-        messagesChunk.map((m) => m.compactionMessageId)
-      );
-      const contentFragmentIds = removeNulls(
-        messagesChunk.map((m) => m.contentFragmentId)
-      );
-
-      await AgentMessageConsumptionItemResource.deleteByAgentMessageModelIds(
-        auth,
-        {
-          agentMessageModelIds: agentMessageIds,
-        }
-      );
-
-      await destroyActionsRelatedResources(auth, agentMessageIds);
-
-      await UserMessageModel.destroy({
-        where: {
-          id: userMessageIds,
-          workspaceId: owner.id,
-        },
-      });
-      await AgentStepContentResource.deleteByAgentMessageIds(auth, {
-        agentMessageIds,
-      });
-      await AgentMessageFeedbackModel.destroy({
-        where: {
-          agentMessageId: agentMessageIds,
-          workspaceId: owner.id,
-        },
-      });
-
-      const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        agentMessageId: agentMessageIds,
-      };
-      await AgentMessageSkillModel.destroy({
-        where: whereAgentMessageSkill,
-      });
-
-      await AgentMessageModel.destroy({
-        where: {
-          id: agentMessageIds,
-          workspaceId: owner.id,
-        },
-      });
-
-      await destroyContentFragments(auth, contentFragmentIds);
-
-      await CompactionMessageModel.destroy({
-        where: {
-          id: compactionMessageIds,
-          workspaceId: owner.id,
-        },
-      });
-
-      await destroyMessageRelatedResources(auth, messageIds);
-    }
+    await destroyConversationMessages(auth, messages);
 
     await destroyConversationDataSource(auth, {
       conversation: conversation.toJSON(),
