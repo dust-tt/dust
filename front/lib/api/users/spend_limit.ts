@@ -5,6 +5,7 @@ import {
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
+  emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import {
   getEffectiveSpendCapAwuCreditsForUser,
@@ -347,6 +348,126 @@ export async function setUserSpendLimit(
   });
 
   return new Ok({ limit });
+}
+
+/**
+ * Revert an expired pool cap override back to the seat-type default. Called
+ * by the expiration sweep (`@app/temporal/spend_limit_expiration`) — never by
+ * an admin action, hence the system-actored, dedicated audit event rather
+ * than reusing `setUserSpendLimit`'s `member.spend_limit_updated`. A no-op
+ * (idempotent `Ok`) if the override was already cleared or never expires,
+ * e.g. an admin manually reverted it before the sweep ran.
+ */
+export async function expireUserSpendLimitOverride(
+  auth: Authenticator,
+  {
+    user,
+    membership,
+    workspace,
+  }: {
+    user: UserResource;
+    membership: MembershipResource;
+    workspace: WorkspaceResource;
+  }
+): Promise<
+  Result<
+    { reverted: boolean; previousAwuCredits: number | null },
+    UserSpendLimitError
+  >
+> {
+  if (!workspace.metronomeCustomerId) {
+    return new Err(
+      new UserSpendLimitError(
+        "workspace_not_metronome_billed",
+        "Workspace is not on Metronome billing."
+      )
+    );
+  }
+
+  if (membership.poolCapOverrideAwuCredits === null) {
+    return new Ok({ reverted: false, previousAwuCredits: null });
+  }
+
+  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
+
+  await membership.updatePoolCapOverride({
+    poolCapOverrideAwuCredits: null,
+    poolCapOverrideExpiresAt: null,
+  });
+
+  const clearResult = await clearMetronomePerUserCapAlert({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    workspaceId: workspace.sId,
+    userId: user.sId,
+  });
+  if (clearResult.isErr()) {
+    // The DB override is already cleared above, so this membership no
+    // longer matches `listActiveWithExpiredPoolCapOverride` and the sweep
+    // will never retry it — Metronome is left enforcing a cap that no
+    // longer exists in the DB until someone manually clears it there.
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        previousAwuCredits,
+        err: clearResult.error,
+      },
+      "[SpendLimitExpiration] Failed to clear per-user cap alert after DB revert; Metronome now out of sync with DB and will not be retried automatically, manual Metronome intervention required"
+    );
+    return new Err(
+      new UserSpendLimitError("metronome_error", clearResult.error.message)
+    );
+  }
+  const clearWarningResult = await clearMetronomePerUserWarningAlert({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    workspaceId: workspace.sId,
+    userId: user.sId,
+  });
+  if (clearWarningResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        err: clearWarningResult.error,
+      },
+      "[SpendLimitExpiration] Failed to clear warning alert; continuing"
+    );
+  }
+
+  const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
+  if (metronomeContractId) {
+    await reconcileUser({
+      auth,
+      workspace,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      userId: user.sId,
+      execute: true,
+    }).catch((err) => {
+      logger.warn(
+        { workspaceId: workspace.sId, userId: user.sId, err },
+        "[SpendLimitExpiration] reconcileUser after expiry failed; webhook will reconcile"
+      );
+    });
+  }
+
+  void emitAuditLogEventDirect({
+    workspace: auth.getNonNullableWorkspace(),
+    action: "membership.pool_cap_override_expired",
+    actor: { type: "system", id: "spend-limit-expiration", name: "Dust" },
+    targets: [
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("user", {
+        sId: user.sId,
+        name: user.fullName() ?? "unknown",
+      }),
+    ],
+    context: { location: "internal" },
+    metadata: {
+      previous_awu_credits: String(previousAwuCredits),
+    },
+  });
+
+  return new Ok({ reverted: true, previousAwuCredits });
 }
 
 // Fixed-window bounds for the current Metronome contract billing cycle (the

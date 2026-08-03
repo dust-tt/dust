@@ -41,7 +41,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { col, fn, Op } from "sequelize";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -1621,6 +1621,65 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       transaction
     );
+  }
+
+  /**
+   * Workspaces (sorted by id ascending) that have at least one active
+   * membership whose pool cap override has expired. Global, cross-workspace
+   * lookup for the expiration sweep, then per-workspace scoped work from the
+   * caller (see `listActiveWithExpiredPoolCapOverride`).
+   *
+   * `dangerously`-prefixed: bypasses per-workspace scoping on purpose, so
+   * only call this from Temporal admin jobs or poke plugins, never from an
+   * API route.
+   */
+  static async dangerouslyGetWorkspacesWithExpiredPoolCapOverride(
+    now: Date
+  ): Promise<WorkspaceResource[]> {
+    const rows = await this.model.findAll({
+      attributes: [[fn("DISTINCT", col("workspaceId")), "workspaceId"]],
+      where: {
+        poolCapOverrideExpiresAt: { [Op.lte]: now },
+        poolCapOverrideAwuCredits: { [Op.ne]: null },
+        endAt: null,
+      },
+      raw: true,
+      // WORKSPACE_ISOLATION_BYPASS: hourly sweep across every workspace to
+      // find which ones have a membership whose pool cap override just
+      // expired (see front/temporal/spend_limit_expiration/client.ts).
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    const workspaces = await WorkspaceResource.fetchByModelIds(
+      rows.map((row) => row.workspaceId)
+    );
+    return workspaces.sort((a, b) => a.id - b.id);
+  }
+
+  /**
+   * Active memberships within `auth`'s workspace whose pool cap override has
+   * expired as of `now`. Scoped counterpart to
+   * `dangerouslyGetWorkspacesWithExpiredPoolCapOverride`, called once per
+   * affected workspace by the expiration sweep.
+   */
+  static async listActiveWithExpiredPoolCapOverride({
+    auth,
+    now,
+  }: {
+    auth: Authenticator;
+    now: Date;
+  }): Promise<MembershipResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    const rows = await MembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        endAt: null,
+        poolCapOverrideAwuCredits: { [Op.ne]: null },
+        poolCapOverrideExpiresAt: { [Op.lte]: now },
+      },
+    });
+    return rows.map((row) => new this(this.model, row.get()));
   }
 
   /**

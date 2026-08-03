@@ -27,6 +27,7 @@ import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
 import { runSandboxFunctionsWorker } from "@app/temporal/sandbox_functions/worker";
 import { runSandboxReaperWorker } from "@app/temporal/sandbox_reaper/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
+import { runSpendLimitExpirationWorker } from "@app/temporal/spend_limit_expiration/worker";
 import { runAgentTriggerWorker } from "@app/temporal/triggers/worker";
 import { runAgentTriggerWebhookWorker } from "@app/temporal/triggers_garbage_collect/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
@@ -64,6 +65,7 @@ export type WorkerName =
   | "sandbox_reaper"
   | "remote_tools_sync"
   | "scrub_workspace_queue"
+  | "spend_limit_expiration"
   | "update_workspace_usage"
   | "upsert_queue"
   | "upsert_table_queue"
@@ -98,6 +100,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   sandbox_reaper: runSandboxReaperWorker,
   remote_tools_sync: runRemoteToolsSyncWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
+  spend_limit_expiration: runSpendLimitExpirationWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
   upsert_table_queue: runUpsertTableQueueWorker,

@@ -1,0 +1,14 @@
+{
+  "action": "membership.pool_cap_override_expired",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "previous_awu_credits": "string"
+  }
+}
