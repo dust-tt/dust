@@ -38,6 +38,10 @@ export function getEnabledSkillInstructions(
 }
 
 function renderSkillList(skills: SkillResource[]): string {
+  // Names are rendered as code literals rather than bold text: `skillName` is matched exactly, and
+  // a literal is copied verbatim far more reliably than prose. Workspaces tend to develop their own
+  // naming conventions, and models otherwise regenerate names to fit the pattern they infer from
+  // the list instead of copying them, which never resolves.
   return skills
     .map(
       ({ name, agentFacingDescription }) =>
@@ -46,10 +50,6 @@ function renderSkillList(skills: SkillResource[]): string {
     .join("\n");
 }
 
-// Names are rendered as code literals rather than bold text: `skillName` is matched exactly, and
-// a literal is copied verbatim far more reliably than prose. Workspaces tend to develop their own
-// naming conventions, and models otherwise regenerate names to fit the pattern they infer from
-// the list instead of copying them, which never resolves.
 const EXACT_SKILL_NAME_INSTRUCTION =
   `Pass \`skillName\` exactly as written between backticks above, character for character: ` +
   `same case, same spacing, same punctuation, same prefixes and suffixes. Copy the name ` +
