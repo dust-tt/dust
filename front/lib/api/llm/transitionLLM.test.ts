@@ -175,6 +175,58 @@ describe("withMessageCacheBreakpoints", () => {
     expect(cacheOf(result[1])).toBeUndefined();
   });
 
+  it("preserves the full message shape and places cache breakpoints around favorite skills", () => {
+    const conversation: ModelMessageTypeMultiActionsWithoutContentFragment[] = [
+      equippedSkillsMessage,
+      {
+        role: "user",
+        name: "user",
+        content: [{ type: "text", text: "favorite skills" }],
+      },
+      {
+        role: "assistant",
+        name: "agent",
+        contents: [{ type: "text_content", value: "hello" }],
+      },
+      {
+        role: "user",
+        name: "user",
+        content: [{ type: "text", text: "latest turn" }],
+      },
+    ];
+
+    const result = withMessageCacheBreakpoints(
+      conversation.flatMap(toBaseMessages),
+      conversation[0],
+      { explicitTailBreakpoint: true }
+    );
+
+    expect(result).toEqual([
+      {
+        role: "user",
+        type: "text",
+        content: { value: "equipped skills" },
+        cache: "short",
+      },
+      {
+        role: "user",
+        type: "text",
+        content: { value: "favorite skills" },
+      },
+      {
+        role: "assistant",
+        type: "text",
+        content: { value: "hello" },
+      },
+      {
+        role: "user",
+        type: "text",
+        content: { value: "latest turn" },
+        cache: "short",
+      },
+    ]);
+  });
+
   it("does not cache favorite skills when there is no shared equipped prefix", () => {
     const favoriteSkillsMessage: ModelMessageTypeMultiActionsWithoutContentFragment =
       {
