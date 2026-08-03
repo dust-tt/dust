@@ -16,6 +16,7 @@ import {
   createUserMentions,
   resolveUserMentions,
 } from "@app/lib/api/assistant/conversation/mentions";
+import type { DeletedAgentMessageSource } from "@app/lib/api/assistant/conversation/messages";
 import {
   attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
@@ -184,6 +185,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 import type { IncomingHttpHeaders } from "http";
 import { col } from "sequelize";
 
@@ -2130,6 +2132,77 @@ export async function postNewContentFragment(
 }
 
 /**
+ * Describe the agent replies to cascade a delete onto, without rendering them.
+ *
+ * The placeholders `createAgentMessages` writes carry no content, no actions and no mentions, so
+ * everything it needs is either on the rows themselves (rank, version, skipToolsValidation) or
+ * derivable from the user message being deleted (both parent ids). Only the agent configurations
+ * need a query, and one batched fetch covers every reply.
+ */
+async function buildDeletedAgentMessageSources(
+  auth: Authenticator,
+  {
+    parentUserMessage,
+    rows,
+  }: {
+    parentUserMessage: UserMessageType;
+    rows: MessageModel[];
+  }
+): Promise<DeletedAgentMessageSource[]> {
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const agentIds = [
+    ...new Set(
+      removeNulls(rows.map((m) => m.agentMessage?.agentConfigurationId))
+    ),
+  ];
+
+  const configurations = await getAgentConfigurations(auth, {
+    agentIds,
+    variant: "extra_light",
+    // Same reason as the message renderer: these agents produced messages of a conversation the
+    // user can already access, and we still have to name them even if the user has since lost
+    // access to the space hosting them.
+    dangerouslySkipPermissionFiltering: true,
+  });
+  const configurationsById = new Map(configurations.map((c) => [c.sId, c]));
+
+  // The replies being deleted are answers to `parentUserMessage`, so its own handover origin is
+  // what the renderer would have resolved as their parent agent message.
+  const parentAgentMessageId =
+    parentUserMessage.agenticMessageData?.type === "agent_handover"
+      ? parentUserMessage.agenticMessageData.originMessageId
+      : null;
+
+  return rows.map((row) => {
+    const { agentMessage } = row;
+    assert(
+      agentMessage,
+      `Message ${row.sId} was selected as an agent reply but carries no agent message.`
+    );
+
+    const configuration = configurationsById.get(
+      agentMessage.agentConfigurationId
+    );
+    assert(
+      configuration,
+      `Agent configuration ${agentMessage.agentConfigurationId} not found for message ${row.sId}.`
+    );
+
+    return {
+      configuration,
+      parentAgentMessageId,
+      parentMessageId: parentUserMessage.sId,
+      rank: row.rank,
+      skipToolsValidation: agentMessage.skipToolsValidation,
+      version: row.version,
+    };
+  });
+}
+
+/**
  * Soft-delete a user message and the agent replies that followed it.
  *
  * Both deletions are represented as new v+1 `messages` rows with `visibility: "deleted"` rather
@@ -2167,86 +2240,85 @@ export async function softDeleteUserMessageAndReplies(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  // Known small race: this snapshot is taken before the rank lock below. A concurrent retry/edit
-  // that takes the lock first and writes a v+1 at the same rank could cause the cascade insert to
-  // hit the (rank, version) unique constraint.
-  const orphanAgentMessageModels =
-    await conversationResource.getConsecutiveAgentReplyModelsAfterRank(auth, {
-      afterRank: message.rank,
-    });
+  // Replies that came after the message: they get a v+1 "deleted" placeholder of their own. Both
+  // the snapshot and the writes live inside the transaction so a retry re-reads the ranks it
+  // conflicted on. The `deleted` visibility check has to stay inside too: a concurrent delete that
+  // commits first makes these rows already-deleted, and cascading again would collide on
+  // (rank, version).
+  const { userMessage, cascadedAgentMessages, runningOrphanIds } =
+    await withRetriedTransaction(async (t) => {
+      const orphansToCascade = (
+        await conversationResource.getConsecutiveAgentReplyModelsAfterRank(
+          auth,
+          { afterRank: message.rank, transaction: t }
+        )
+      ).filter((m) => m.visibility !== "deleted");
 
-  const orphanModelsToCascade = orphanAgentMessageModels.filter(
-    (m) => m.visibility !== "deleted"
-  );
+      const orphanSources = await buildDeletedAgentMessageSources(auth, {
+        parentUserMessage: message,
+        rows: orphansToCascade,
+      });
 
-  let orphanAgentMessages: AgentMessageType[] = [];
-  if (orphanModelsToCascade.length > 0) {
-    const orphanRenderRes = await batchRenderMessages(
-      auth,
-      conversationResource,
-      orphanModelsToCascade,
-      "full"
-    );
-    if (orphanRenderRes.isErr()) {
-      throw new Error("Failed to render agent replies to cascade on delete");
-    }
-    orphanAgentMessages = orphanRenderRes.value.filter(isAgentMessageType);
-  }
-
-  const cascadedAgentMessages: AgentMessageType[] = [];
-  const userMessage = await withRetriedTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
-
-    const relatedContentFragments = await fetchPrecedingContentFragments(auth, {
-      conversationResource,
-      targetRank: message.rank,
-      transaction: t,
-    });
-
-    const userMessage = await createUserMessage(auth, {
-      conversation,
-      content: "deleted",
-      metadata: {
-        type: "delete",
-        message,
-      },
-      transaction: t,
-    });
-
-    if (relatedContentFragments.length > 0) {
-      await MessageModel.update(
+      const relatedContentFragments = await fetchPrecedingContentFragments(
+        auth,
         {
-          visibility: "deleted",
-          contentFragmentId: col("contentFragmentId"),
-        },
-        {
-          where: {
-            workspaceId: owner.id,
-            conversationId: conversation.id,
-            id: relatedContentFragments.map((cf) => cf.id),
-          },
+          conversationResource,
+          targetRank: message.rank,
           transaction: t,
         }
       );
-    }
 
-    for (const orphan of orphanAgentMessages) {
-      const { agentMessages } = await createAgentMessages(auth, {
+      const userMessage = await createUserMessage(auth, {
         conversation,
+        content: "deleted",
         metadata: {
           type: "delete",
-          agentMessage: orphan,
-          parentId: message.id,
+          message,
         },
         transaction: t,
       });
-      cascadedAgentMessages.push(...agentMessages);
-    }
 
-    await ConversationResource.markAsUpdated(auth, { conversation, t });
+      if (relatedContentFragments.length > 0) {
+        await MessageModel.update(
+          {
+            visibility: "deleted",
+            contentFragmentId: col("contentFragmentId"),
+          },
+          {
+            where: {
+              workspaceId: owner.id,
+              conversationId: conversation.id,
+              id: relatedContentFragments.map((cf) => cf.id),
+            },
+            transaction: t,
+          }
+        );
+      }
 
-    return userMessage;
-  });
+      const cascadedAgentMessages: AgentMessageType[] = [];
+      for (const orphan of orphanSources) {
+        const { agentMessages } = await createAgentMessages(auth, {
+          conversation,
+          metadata: {
+            type: "delete",
+            agentMessage: orphan,
+            parentId: message.id,
+          },
+          transaction: t,
+        });
+        cascadedAgentMessages.push(...agentMessages);
+      }
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+      return {
+        userMessage,
+        cascadedAgentMessages,
+        runningOrphanIds: orphansToCascade
+          .filter((m) => m.agentMessage?.status === "created")
+          .map((m) => m.sId),
+      };
+    });
 
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
@@ -2261,12 +2333,9 @@ export async function softDeleteUserMessageAndReplies(
   // Signal any still-running agent loops to stop. Orphans with status "created" have a live
   // Temporal workflow that would otherwise keep streaming to a deleted message. The gracefully-
   // stopped event also lets the client flip the message status and hide the Stop button.
-  const runningOrphans = orphanAgentMessages.filter(
-    (m) => m.status === "created"
-  );
-  if (runningOrphans.length > 0) {
+  if (runningOrphanIds.length > 0) {
     await gracefullyStopAgentLoop(auth, {
-      messageIds: runningOrphans.map((m) => m.sId),
+      messageIds: runningOrphanIds,
       conversationId: conversation.sId,
     });
   }

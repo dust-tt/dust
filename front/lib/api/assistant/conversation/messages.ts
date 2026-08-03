@@ -328,6 +328,21 @@ export async function resolveModelForMentionedAgent(
   });
 }
 
+/**
+ * What the delete path needs off the agent message being deleted. The v+1 placeholder it writes is
+ * empty by construction (no content, no actions, no mentions), so callers do not have to render the
+ * deleted message to satisfy this. `AgentMessageType` structurally satisfies it, so callers that
+ * already hold a rendered message can keep passing it as-is.
+ */
+export interface DeletedAgentMessageSource {
+  configuration: LightAgentConfigurationType;
+  parentAgentMessageId: string | null;
+  parentMessageId: string;
+  rank: number;
+  skipToolsValidation: boolean;
+  version: number;
+}
+
 export const createAgentMessages = async (
   auth: Authenticator,
   {
@@ -345,7 +360,7 @@ export const createAgentMessages = async (
         }
       | {
           type: "delete";
-          agentMessage: AgentMessageType;
+          agentMessage: DeletedAgentMessageSource;
           parentId: number;
         }
       | {
