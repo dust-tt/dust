@@ -1,15 +1,24 @@
-import {
-  MemberSelectionTable,
-  type SearchMemberWithWorkspaceType,
-} from "@app/components/members/MemberSelectionTable";
+import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import {
   useSkillEditors,
   useUpdateSkillEditors,
 } from "@app/lib/swr/skill_editors";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { Button, Users01 } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Plus,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 type AgentEditorsTabProps = {
@@ -19,11 +28,9 @@ type AgentEditorsTabProps = {
 };
 
 export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedEditorIds, setSelectedEditorIds] = useState<Set<string>>(
-    new Set()
-  );
+  const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
+  const [isAddingEditor, setIsAddingEditor] = useState(false);
+  const [searchText, setSearchText] = useState("");
   const updateEditors = useUpdateSkillEditors({
     owner,
     skillId: skill.sId,
@@ -32,96 +39,40 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
     owner,
     skillId: skill.sId,
   });
+  const { members: workspaceMembers, isLoading: areWorkspaceMembersLoading } =
+    useSearchMembers({
+      workspaceId: owner.sId,
+      searchTerm: searchText,
+      pageIndex: 0,
+      pageSize: 25,
+      disabled: !isEditorPickerOpen,
+    });
 
-  const isCurrentUserEditor =
-    editors.findIndex((u) => u.sId === user.sId) !== -1;
-
-  const currentEditorIds = new Set(editors.map((editor) => editor.sId));
-  const addEditorIds = Array.from(selectedEditorIds).filter(
-    (editorId) => !currentEditorIds.has(editorId)
-  );
-  const removeEditorIds = Array.from(currentEditorIds).filter(
-    (editorId) => !selectedEditorIds.has(editorId)
-  );
-  const hasEditorChanges =
-    addEditorIds.length > 0 || removeEditorIds.length > 0;
+  const editorIds = new Set(editors.map((editor) => editor.sId));
 
   const onRemoveMember = async (user: SearchMemberWithWorkspaceType) => {
-    if (isCurrentUserEditor) {
+    if (skill.canAdministrate) {
       await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
     }
   };
 
-  const onSaveEditors = async () => {
-    if (!hasEditorChanges || isSaving) {
+  const onAddEditor = async (editorId: string) => {
+    if (isAddingEditor || editorIds.has(editorId)) {
       return;
     }
 
-    setIsSaving(true);
+    setIsEditorPickerOpen(false);
+    setSearchText("");
+    setIsAddingEditor(true);
     try {
-      const didUpdate = await updateEditors({ addEditorIds, removeEditorIds });
-      if (didUpdate) {
-        setIsEditing(false);
-      }
+      await updateEditors({ addEditorIds: [editorId], removeEditorIds: [] });
     } finally {
-      setIsSaving(false);
+      setIsAddingEditor(false);
     }
   };
 
-  if (skill.canAdministrate && isEditing) {
-    return (
-      <div className="flex flex-col gap-4">
-        <MemberSelectionTable
-          owner={owner}
-          selectedMemberIds={selectedEditorIds}
-          onSelectionChange={(editorIds) => {
-            setSelectedEditorIds(editorIds);
-          }}
-          initialMembers={editors}
-        />
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            label="Cancel"
-            disabled={isSaving}
-            onClick={() => setIsEditing(false)}
-            type="button"
-          />
-          <Button
-            variant="highlight"
-            size="sm"
-            label="Save"
-            disabled={!hasEditorChanges || isSaving}
-            isLoading={isSaving}
-            onClick={onSaveEditors}
-            type="button"
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      {skill.canAdministrate && (
-        <div>
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Users01}
-            label="Manage editors"
-            disabled={isEditorsLoading || isEditorsError}
-            onClick={() => {
-              setSelectedEditorIds(
-                new Set(editors.map((editor) => editor.sId))
-              );
-              setIsEditing(true);
-            }}
-            type="button"
-          />
-        </div>
-      )}
       <MembersList
         currentUser={user}
         membersData={{
@@ -133,10 +84,79 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
           totalMembersCount: editors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
         }}
-        showColumns={isCurrentUserEditor ? ["name", "remove"] : ["name"]}
+        showColumns={skill.canAdministrate ? ["name", "remove"] : ["name"]}
         onRemoveMemberClick={onRemoveMember}
         onRowClick={function noRefCheck() {}}
       />
+      {skill.canAdministrate && (
+        <div>
+          <DropdownMenu
+            open={isEditorPickerOpen}
+            onOpenChange={(open) => {
+              setIsEditorPickerOpen(open);
+              if (!open) {
+                setSearchText("");
+              }
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={Plus}
+                label="Add editors"
+                disabled={isEditorsLoading || isEditorsError}
+                isLoading={isAddingEditor}
+                type="button"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-80"
+              align="start"
+              dropdownHeaders={
+                <>
+                  <DropdownMenuSearchbar
+                    name="search-editors"
+                    placeholder="Search members"
+                    value={searchText}
+                    onChange={setSearchText}
+                  />
+                  <DropdownMenuSeparator />
+                </>
+              }
+            >
+              {areWorkspaceMembersLoading ? (
+                <div className="flex h-24 items-center justify-center">
+                  <Spinner size="sm" />
+                </div>
+              ) : workspaceMembers.length > 0 ? (
+                workspaceMembers.map((member) => (
+                  <DropdownMenuItem
+                    key={member.sId}
+                    label={member.fullName}
+                    description={member.email}
+                    icon={() => (
+                      <Avatar
+                        name={member.fullName}
+                        visual={member.image ?? undefined}
+                        size="sm"
+                        isRounded
+                      />
+                    )}
+                    truncateText
+                    disabled={editorIds.has(member.sId)}
+                    onClick={() => void onAddEditor(member.sId)}
+                  />
+                ))
+              ) : (
+                <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                  No members found
+                </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
     </div>
   );
 }
