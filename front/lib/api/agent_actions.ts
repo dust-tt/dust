@@ -24,8 +24,6 @@ interface MCPServerUsageRow {
   pictureUrls: string[];
 }
 
-type UsageVisibility = "all" | "accessible";
-
 /**
  * Returns the list of agent IDs visible to the current user (used for
  * non-admin visibility filtering).
@@ -41,16 +39,13 @@ async function getVisibleAgentIds(auth: Authenticator): Promise<ModelId[]> {
 /**
  * Builds the visibility WHERE clause and query replacements.
  */
-async function buildVisibilityFilter(
-  auth: Authenticator,
-  visibility: UsageVisibility
-): Promise<{
+async function buildVisibilityFilter(auth: Authenticator): Promise<{
   clause: string;
   params: Record<string, unknown>;
 }> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  if (visibility === "all") {
+  if (auth.isAdmin()) {
     return {
       clause: `ac."status" = 'active' AND ac."workspaceId" = :workspace_id`,
       params: { workspace_id: workspaceId },
@@ -96,26 +91,22 @@ function rowToUsageEntry(
 }
 
 async function fetchSkillsByMCPServer(
-  auth: Authenticator,
-  visibility: UsageVisibility
+  auth: Authenticator
 ): Promise<Map<string, UsedBySkillType[]>> {
-  const skills = await SkillResource.listByWorkspace(auth, {
+  const workspaceSkills = await SkillResource.listByWorkspace(auth, {
     status: "active",
     withInstructions: false,
     withTools: true,
     withFileAttachments: false,
   });
+  const skills = auth.isAdmin()
+    ? workspaceSkills
+    : workspaceSkills.filter(
+        (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+      );
 
   const skillsByMCPServer = new Map<string, UsedBySkillType[]>();
   for (const skill of skills) {
-    if (
-      visibility === "accessible" &&
-      skill.availability === "editors" &&
-      !skill.canWrite(auth)
-    ) {
-      continue;
-    }
-
     const usedBySkill: UsedBySkillType = {
       sId: skill.sId,
       name: skill.name,
@@ -146,9 +137,8 @@ export async function getToolsUsage(
     return {};
   }
 
-  const visibility: UsageVisibility = auth.isAdmin() ? "all" : "accessible";
   const replicaDb = getFrontReplicaDbConnection();
-  const { clause, params } = await buildVisibilityFilter(auth, visibility);
+  const { clause, params } = await buildVisibilityFilter(auth);
 
   // biome-ignore lint/plugin/noRawSql: Read-only analytics query on replica.
   const rows = await replicaDb.query<MCPServerUsageRow>(
@@ -169,7 +159,7 @@ export async function getToolsUsage(
     `,
     { replacements: params, type: QueryTypes.SELECT }
   );
-  const skillsByMCPServer = await fetchSkillsByMCPServer(auth, visibility);
+  const skillsByMCPServer = await fetchSkillsByMCPServer(auth);
 
   const result: MCPServersUsage = {};
   for (const row of rows) {
