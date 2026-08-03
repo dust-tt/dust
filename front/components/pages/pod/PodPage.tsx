@@ -10,15 +10,16 @@ import {
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { classNames } from "@app/lib/utils";
 import {
   CheckCircle,
   Folder,
   MessageChatSquare,
+  NavTabPill,
+  NavTabPillList,
+  NavTabPillTrigger,
   Settings01,
   Spinner,
-  Tabs,
-  TabsList,
-  TabsTrigger,
 } from "@dust-tt/sparkle";
 
 export function PodPage() {
@@ -44,7 +45,7 @@ export function PodPage() {
       defaultValue: DEFAULT_POD_UI_PREFERENCES,
     });
 
-  const compactPodTabs = useIsMobile();
+  const isMobile = useIsMobile();
 
   const { currentTab, handleTabChange } = usePodTabs({
     podId,
@@ -76,38 +77,32 @@ export function PodPage() {
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
-      <Tabs
+      <NavTabPill
+        className="pt-2"
+        defaultValue="conversations"
         value={currentTab}
         onValueChange={(value) => handleTabChange(value as PodTab)}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden pt-2"
       >
-        <div className="flex shrink-0 items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6">
-          <TabsList border={false}>
-            <TabsTrigger
-              value="conversations"
-              label={compactPodTabs ? undefined : "Conversations"}
-              tooltip={compactPodTabs ? "Conversations" : undefined}
-              icon={MessageChatSquare}
-            />
-            <TabsTrigger
-              value="tasks"
-              label={compactPodTabs ? undefined : "Tasks"}
-              tooltip={compactPodTabs ? "Tasks" : undefined}
-              icon={CheckCircle}
-            />
-            <TabsTrigger
-              value="files"
-              label={compactPodTabs ? undefined : "Files"}
-              tooltip={compactPodTabs ? "Files" : undefined}
-              icon={Folder}
-            />
-            <TabsTrigger
-              value="settings"
-              label={compactPodTabs ? undefined : "Settings"}
-              tooltip={compactPodTabs ? "Settings" : undefined}
-              icon={Settings01}
-            />
-          </TabsList>
+        <div
+          className={classNames(
+            "flex shrink-0 items-center justify-between border-b border-separator pb-2 px-2",
+            isMobile && "pl-12"
+          )}
+        >
+          <NavTabPillList>
+            <NavTabPillTrigger value="conversations" icon={MessageChatSquare}>
+              Conversations
+            </NavTabPillTrigger>
+            <NavTabPillTrigger value="tasks" icon={CheckCircle}>
+              Tasks
+            </NavTabPillTrigger>
+            <NavTabPillTrigger value="files" icon={Folder}>
+              Files
+            </NavTabPillTrigger>
+            <NavTabPillTrigger value="settings" icon={Settings01}>
+              Settings
+            </NavTabPillTrigger>
+          </NavTabPillList>
 
           {podInfo.kind === "project" &&
             (podInfo.isMember || !podInfo.isRestricted) && (
@@ -130,7 +125,7 @@ export function PodPage() {
           setPodUiPreferences={setPodUiPreferences}
           mutatePodInfo={mutatePodInfo}
         />
-      </Tabs>
+      </NavTabPill>
     </div>
   );
 }

@@ -30,7 +30,7 @@ export function PodTaskScopeFilter() {
   return (
     <div className="flex items-center gap-2">
       <ButtonsSwitchList
-        size="xs"
+        size={isMobile ? "xs" : "sm"}
         defaultValue={taskOwnerFilter.peopleScope}
         onValueChange={(value) => {
           if (isPodTaskPeopleScope(value)) {
