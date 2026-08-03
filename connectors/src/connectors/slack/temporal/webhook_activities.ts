@@ -16,7 +16,8 @@ import {
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
-import type { SlackWebhookEventPayload } from "@connectors/connectors/slack/temporal/workflows";
+import type { SlackWebhookEventPayload } from "@connectors/connectors/slack/temporal/webhook_event";
+import { SlackWebhookEventPayloadSchema } from "@connectors/connectors/slack/temporal/webhook_event";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getDustAPI } from "@connectors/lib/api/dust_api";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -27,14 +28,21 @@ import mainLogger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, normalizeError } from "@connectors/types";
-import { removeNulls } from "@dust-tt/client";
+import { assertNever, removeNulls } from "@dust-tt/client";
 import { Op } from "sequelize";
+import { fromError } from "zod-validation-error";
 
 interface SyncTarget {
   connector: ConnectorResource;
   slackConfiguration: SlackConfigurationResource;
 }
+
+type PayloadOfType<T extends SlackWebhookEventPayload["type"]> = Extract<
+  SlackWebhookEventPayload,
+  { type: T }
+>;
 
 /**
  * Resolves the connectors that may sync a channel: the channel must be
@@ -165,104 +173,84 @@ async function applyChannelRename(
 }
 
 /**
- * Syncs a message posted in a channel or a group. A target that fails is
- * logged and dropped: Slack has already been answered, and the other targets
- * still have to run.
+ * Renames a channel on every connector that syncs it.
  */
-async function syncChannelMessage(
-  event: SlackWebhookEventPayload,
+async function renameChannel(
+  { channelId, channelName }: PayloadOfType<"channel_renamed">,
   slackConfigurations: SlackConfigurationResource[],
   logger: Logger
 ) {
-  const { channelId, threadTs } = event;
-  if (!channelId) {
-    logger.info("Ignoring channel message without a channel");
-    return;
-  }
-
-  const channelName =
-    event.subtype === "channel_name" ? event.channelName : undefined;
-  // A deleted message carries its own timestamp: we re-sync the thread it
-  // belonged to, or the week it was posted in.
-  const messageTs =
-    event.subtype === "message_deleted" ? event.deletedTs : event.ts;
-
-  if (event.subtype === "channel_name" && !channelName) {
-    logger.info(
-      { slackChannelId: channelId },
-      "Ignoring channel_name event without a new name"
-    );
-    return;
-  }
-  if (!channelName && !threadTs && !messageTs) {
-    logger.info(
-      { slackChannelId: channelId },
-      "Ignoring message event without 'thread_ts' or message 'ts'"
-    );
-    return;
-  }
-
   const targets = await listSyncableConnectors(
     slackConfigurations,
     channelId,
     logger
   );
 
+  for (const target of targets) {
+    await applyChannelRename(target, { channelId, channelName });
+    logger.info(
+      {
+        connectorId: target.connector.id,
+        slackChannelId: channelId,
+        newName: channelName,
+      },
+      "Successfully processed Slack channel rename"
+    );
+  }
+}
+
+/**
+ * Syncs a message posted in a channel or a group: the thread it belongs to, or
+ * the week it was posted in.
+ */
+async function syncChannelMessage(
+  {
+    channelId,
+    messageTs,
+    threadTs,
+  }: { channelId: string; messageTs: string; threadTs?: string },
+  slackConfigurations: SlackConfigurationResource[],
+  logger: Logger
+) {
+  const targets = await listSyncableConnectors(
+    slackConfigurations,
+    channelId,
+    logger
+  );
+
+  // A message that belongs to a thread re-syncs the whole thread, a standalone
+  // one re-syncs the week it was posted in.
+  const launchSync = (connectorId: ModelId) =>
+    threadTs
+      ? launchSlackSyncOneThreadWorkflow(connectorId, channelId, threadTs)
+      : launchSlackSyncOneMessageWorkflow(connectorId, channelId, messageTs);
+
   // A target that fails does not stop the others, but it does fail the
   // activity: dropping the event would mean never syncing that thread.
-  const errors: Error[] = [];
+  const errors = removeNulls(
+    await concurrentExecutor(
+      targets,
+      async ({ connector }) => {
+        const res = await launchSync(connector.id);
+        if (res.isErr()) {
+          logger.error(
+            {
+              err: res.error,
+              connectorId: connector.id,
+              slackChannelId: channelId,
+              messageTs,
+              threadTs,
+            },
+            "Failed to launch Slack sync"
+          );
+          return res.error;
+        }
 
-  for (const target of targets) {
-    const { connector } = target;
-
-    if (channelName) {
-      await applyChannelRename(target, { channelId, channelName });
-      logger.info(
-        {
-          connectorId: connector.id,
-          slackChannelId: channelId,
-          newName: channelName,
-        },
-        "Successfully processed Slack channel rename"
-      );
-    } else if (threadTs) {
-      const res = await launchSlackSyncOneThreadWorkflow(
-        connector.id,
-        channelId,
-        threadTs
-      );
-      if (res.isErr()) {
-        logger.error(
-          {
-            err: res.error,
-            connectorId: connector.id,
-            slackChannelId: channelId,
-            threadTs,
-          },
-          "Failed to launch Slack thread sync"
-        );
-        errors.push(res.error);
-      }
-    } else if (messageTs) {
-      const res = await launchSlackSyncOneMessageWorkflow(
-        connector.id,
-        channelId,
-        messageTs
-      );
-      if (res.isErr()) {
-        logger.error(
-          {
-            err: res.error,
-            connectorId: connector.id,
-            slackChannelId: channelId,
-            messageTs,
-          },
-          "Failed to launch Slack messages sync"
-        );
-        errors.push(res.error);
-      }
-    }
-  }
+        return null;
+      },
+      { concurrency: 4 }
+    )
+  );
 
   if (errors.length > 0) {
     throw new Error(
@@ -273,19 +261,14 @@ async function syncChannelMessage(
 }
 
 async function handleAppMention(
-  event: SlackWebhookEventPayload,
+  { channelId, ts }: PayloadOfType<"app_mention">,
   teamId: string,
   logger: Logger
 ) {
-  if (!event.channelId || !event.ts) {
-    logger.info("Ignoring app_mention without a channel or a timestamp");
-    return;
-  }
-
   await handleDeprecatedChatBot({
     logger,
-    slackChannel: event.channelId,
-    slackMessageTs: event.ts,
+    slackChannel: channelId,
+    slackMessageTs: ts,
     slackTeamId: teamId,
   });
 }
@@ -323,22 +306,10 @@ async function resolveActiveBot(teamId: string, logger: Logger) {
 }
 
 async function handleDirectMessage(
-  event: SlackWebhookEventPayload,
+  { channelId, ts, userId }: PayloadOfType<"direct_message">,
   teamId: string,
   logger: Logger
 ) {
-  if (
-    event.subtype === "message_changed" ||
-    event.subtype === "message_deleted"
-  ) {
-    // Ignore message_changed and message_deleted events in private messages.
-    return;
-  }
-  if (!event.channelId || !event.ts) {
-    logger.info("Ignoring direct message without a channel or a timestamp");
-    return;
-  }
-
   const bot = await resolveActiveBot(teamId, logger);
   if (!bot) {
     logger.info(
@@ -347,31 +318,26 @@ async function handleDirectMessage(
     return;
   }
 
-  if (event.userId === bot.botUserId) {
+  if (userId === bot.botUserId) {
     // Message sent from the bot itself.
     return;
   }
 
   await handleDeprecatedChatBot({
     logger,
-    slackChannel: event.channelId,
-    slackMessageTs: event.ts,
+    slackChannel: channelId,
+    slackMessageTs: ts,
     slackTeamId: teamId,
   });
 }
 
 async function joinCreatedChannel(
-  event: SlackWebhookEventPayload,
+  { channelId, contextTeamId }: PayloadOfType<"channel_created">,
   logger: Logger
 ) {
-  if (!event.channelId || !event.contextTeamId) {
-    logger.info("Ignoring channel_created event without a channel");
-    return;
-  }
-
   const res = await onChannelCreation({
-    channelId: event.channelId,
-    contextTeamId: event.contextTeamId,
+    channelId,
+    contextTeamId,
     logger,
     provider: "slack",
   });
@@ -381,16 +347,10 @@ async function joinCreatedChannel(
 }
 
 async function announceBotJoinedPrivateChannel(
-  event: SlackWebhookEventPayload,
+  { channelId, userId }: PayloadOfType<"member_joined_channel">,
   teamId: string,
   logger: Logger
 ) {
-  const { channelId } = event;
-  if (!channelId) {
-    logger.info("Ignoring member_joined_channel event without a channel");
-    return;
-  }
-
   const bot = await resolveActiveBot(teamId, logger);
   if (!bot) {
     logger.info(
@@ -400,7 +360,7 @@ async function announceBotJoinedPrivateChannel(
   }
 
   // If the bot is not the one joining the channel, ignore.
-  if (event.userId !== bot.botUserId) {
+  if (userId !== bot.botUserId) {
     return;
   }
 
@@ -434,20 +394,24 @@ async function garbageCollectChannels(
   slackConfigurations: SlackConfigurationResource[],
   logger: Logger
 ) {
-  const errors: Error[] = [];
+  const errors = removeNulls(
+    await concurrentExecutor(
+      slackConfigurations,
+      async ({ connectorId }) => {
+        const res = await launchSlackGarbageCollectWorkflow(connectorId);
+        if (res.isErr()) {
+          logger.error(
+            { err: res.error, connectorId },
+            "Failed to launch Slack garbage collection"
+          );
+          return res.error;
+        }
 
-  for (const slackConfiguration of slackConfigurations) {
-    const res = await launchSlackGarbageCollectWorkflow(
-      slackConfiguration.connectorId
-    );
-    if (res.isErr()) {
-      logger.error(
-        { err: res.error, connectorId: slackConfiguration.connectorId },
-        "Failed to launch Slack garbage collection"
-      );
-      errors.push(res.error);
-    }
-  }
+        return null;
+      },
+      { concurrency: 4 }
+    )
+  );
 
   if (errors.length > 0) {
     throw new Error(
@@ -467,16 +431,35 @@ async function dispatchEvent(
     case "app_mention":
       return handleAppMention(event, teamId, logger);
 
-    case "message":
-      // Slack routes direct messages and channel messages through the same
-      // event type.
-      if (event.channelType === "im") {
-        return handleDirectMessage(event, teamId, logger);
-      }
-      if (event.channelType === "channel" || event.channelType === "group") {
-        return syncChannelMessage(event, slackConfigurations, logger);
-      }
-      return;
+    case "direct_message":
+      return handleDirectMessage(event, teamId, logger);
+
+    case "channel_message":
+      return syncChannelMessage(
+        {
+          channelId: event.channelId,
+          messageTs: event.ts,
+          threadTs: event.threadTs,
+        },
+        slackConfigurations,
+        logger
+      );
+
+    // A deleted message carries its own timestamp: we re-sync the thread it
+    // belonged to, or the week it was posted in.
+    case "channel_message_deleted":
+      return syncChannelMessage(
+        {
+          channelId: event.channelId,
+          messageTs: event.deletedTs,
+          threadTs: event.threadTs,
+        },
+        slackConfigurations,
+        logger
+      );
+
+    case "channel_renamed":
+      return renameChannel(event, slackConfigurations, logger);
 
     case "channel_created":
       return joinCreatedChannel(event, logger);
@@ -488,17 +471,8 @@ async function dispatchEvent(
     case "channel_deleted":
       return garbageCollectChannels(slackConfigurations, logger);
 
-    // The rename itself comes as a `message` event with the `channel_name`
-    // subtype, handled above.
-    case "channel_rename":
-      return;
-
     default:
-      logger.info(
-        { eventType: event.type },
-        "Webhook event type not supported"
-      );
-      return;
+      assertNever(event);
   }
 }
 
@@ -534,6 +508,17 @@ export async function processSlackWebhookEventActivity({
     `event_type:${event.type}`,
   ]);
 
+  // The payload was built by a webhook that may be running an older deploy, so
+  // it is validated once here rather than field by field in the handlers.
+  const payload = SlackWebhookEventPayloadSchema.safeParse(event);
+  if (!payload.success) {
+    logger.error(
+      { err: fromError(payload.error) },
+      "Dropping Slack webhook event: unexpected payload"
+    );
+    return;
+  }
+
   const slackConfigurations = await SlackConfigurationResource.listForTeamId(
     teamId,
     "slack"
@@ -546,7 +531,7 @@ export async function processSlackWebhookEventActivity({
   }
 
   try {
-    await dispatchEvent(event, teamId, slackConfigurations, logger);
+    await dispatchEvent(payload.data, teamId, slackConfigurations, logger);
   } catch (e) {
     logger.error(
       { err: normalizeError(e) },

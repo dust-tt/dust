@@ -1,4 +1,5 @@
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
+import type { SlackWebhookEventPayload } from "@connectors/connectors/slack/temporal/webhook_event";
 import type { ModelId } from "@connectors/types";
 import {
   allHandlersFinished,
@@ -20,29 +21,6 @@ const JOIN_CHANNEL_USE_CASES = [
   "set-permission",
 ] as const;
 export type JoinChannelUseCaseType = (typeof JOIN_CHANNEL_USE_CASES)[number];
-
-/**
- * Projection of a Slack webhook event, built by the webhook handler and carried
- * to `slackWebhookEventWorkflow`. Only the fields the handlers read are kept:
- * message text, blocks and attachments never leave the webhook.
- */
-export interface SlackWebhookEventPayload {
-  type: string;
-  subtype?: "message_changed" | "message_deleted" | "channel_name";
-  channelType?: "channel" | "group" | "im" | "mpim";
-  // Always an id: `channel_created` carries an object that the webhook handler
-  // flattens.
-  channelId?: string;
-  // New channel name, on the `channel_name` message subtype.
-  channelName?: string;
-  // Team the channel belongs to, on `channel_created`. Differs from the webhook
-  // team id on shared channels.
-  contextTeamId?: string;
-  userId?: string;
-  ts?: string;
-  threadTs?: string;
-  deletedTs?: string;
-}
 
 // Dynamic activity creation with fresh routing evaluation (enables retry queue switching).
 function getSlackActivities() {
