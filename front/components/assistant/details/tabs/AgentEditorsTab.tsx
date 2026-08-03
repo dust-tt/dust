@@ -31,8 +31,14 @@ export function AgentEditorsTab({
   agentConfiguration,
 }: AgentEditorsTabProps) {
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
-  const [isAddingEditor, setIsAddingEditor] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [addedEditors, setAddedEditors] = useState<
+    SearchMemberWithWorkspaceType[]
+  >([]);
+  const [removedEditorIds, setRemovedEditorIds] = useState<Set<string>>(
+    new Set()
+  );
   const updateEditors = useUpdateEditors({
     owner,
     agentConfigurationId: agentConfiguration.sId,
@@ -51,26 +57,74 @@ export function AgentEditorsTab({
     });
 
   const canManageEditors = agentConfiguration.canEdit || isAdmin(owner);
-  const editorIds = new Set(editors.map((editor) => editor.sId));
+  const persistedEditorIds = new Set(editors.map((editor) => editor.sId));
+  const addedEditorIds = new Set(addedEditors.map((editor) => editor.sId));
+  const visibleEditors = [
+    ...editors.filter((editor) => !removedEditorIds.has(editor.sId)),
+    ...addedEditors.filter((editor) => !persistedEditorIds.has(editor.sId)),
+  ];
+  const visibleEditorIds = new Set(visibleEditors.map((editor) => editor.sId));
+  const addEditorIds = addedEditors
+    .map((editor) => editor.sId)
+    .filter((editorId) => !persistedEditorIds.has(editorId));
+  const removeEditorIds = Array.from(removedEditorIds).filter((editorId) =>
+    persistedEditorIds.has(editorId)
+  );
+  const hasChanges = addEditorIds.length > 0 || removeEditorIds.length > 0;
 
-  const onRemoveMember = async (user: SearchMemberWithWorkspaceType) => {
-    if (canManageEditors) {
-      await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
-    }
-  };
-
-  const onAddEditor = async (editorId: string) => {
-    if (isAddingEditor || editorIds.has(editorId)) {
+  const onRemoveMember = (user: SearchMemberWithWorkspaceType) => {
+    if (!canManageEditors || isSaving) {
       return;
     }
 
-    setIsEditorPickerOpen(false);
-    setSearchText("");
-    setIsAddingEditor(true);
+    if (addedEditorIds.has(user.sId)) {
+      setAddedEditors((current) =>
+        current.filter((editor) => editor.sId !== user.sId)
+      );
+      return;
+    }
+
+    setRemovedEditorIds((current) => new Set(current).add(user.sId));
+  };
+
+  const onAddEditor = (editor: SearchMemberWithWorkspaceType) => {
+    if (isSaving || visibleEditorIds.has(editor.sId)) {
+      return;
+    }
+
+    if (persistedEditorIds.has(editor.sId)) {
+      setRemovedEditorIds((current) => {
+        const next = new Set(current);
+        next.delete(editor.sId);
+        return next;
+      });
+      return;
+    }
+
+    setAddedEditors((current) => [...current, editor]);
+  };
+
+  const resetChanges = () => {
+    setAddedEditors([]);
+    setRemovedEditorIds(new Set());
+  };
+
+  const onSave = async () => {
+    if (!hasChanges || isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      await updateEditors({ addEditorIds: [editorId], removeEditorIds: [] });
+      const didUpdate = await updateEditors({
+        addEditorIds,
+        removeEditorIds,
+      });
+      if (didUpdate) {
+        resetChanges();
+      }
     } finally {
-      setIsAddingEditor(false);
+      setIsSaving(false);
     }
   };
 
@@ -93,9 +147,8 @@ export function AgentEditorsTab({
                 variant="outline"
                 size="sm"
                 icon={Plus}
-                label="Add editor"
-                disabled={isEditorsLoading || isEditorsError}
-                isLoading={isAddingEditor}
+                label="Add editors"
+                disabled={isEditorsLoading || isEditorsError || isSaving}
                 type="button"
               />
             </DropdownMenuTrigger>
@@ -133,8 +186,9 @@ export function AgentEditorsTab({
                       />
                     )}
                     truncateText
-                    disabled={editorIds.has(member.sId)}
-                    onClick={() => void onAddEditor(member.sId)}
+                    disabled={visibleEditorIds.has(member.sId) || isSaving}
+                    onClick={() => onAddEditor(member)}
+                    onSelect={(event) => event.preventDefault()}
                   />
                 ))
               ) : (
@@ -149,18 +203,39 @@ export function AgentEditorsTab({
       <MembersList
         currentUser={user}
         membersData={{
-          members: editors.map((user) => ({
+          members: visibleEditors.map((user) => ({
             ...user,
             workspace: owner,
           })),
           isLoading: isEditorsLoading,
-          totalMembersCount: editors.length,
+          totalMembersCount: visibleEditors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
         }}
         showColumns={canManageEditors ? ["name", "remove"] : ["name"]}
         onRemoveMemberClick={onRemoveMember}
         onRowClick={function noRefCheck() {}}
       />
+      {canManageEditors && (
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            label="Cancel"
+            disabled={!hasChanges || isSaving}
+            onClick={resetChanges}
+            type="button"
+          />
+          <Button
+            variant="highlight"
+            size="sm"
+            label="Save"
+            disabled={!hasChanges || isSaving}
+            isLoading={isSaving}
+            onClick={onSave}
+            type="button"
+          />
+        </div>
+      )}
     </div>
   );
 }
