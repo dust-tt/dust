@@ -90,6 +90,7 @@ describe("PATCH/DELETE /api/w/:wId/sandbox/env-vars/:id", () => {
 
     const survivor = await SandboxEnvVarResource.fetchById(
       auth,
+      { kind: "pod", pod },
       sandboxEnvVarId
     );
     expect(survivor).not.toBeNull();

@@ -509,6 +509,32 @@ describe("SandboxEnvVarResource pod scope", () => {
     );
     expect(podList.map((envVar) => envVar.toJSON().spaceId)).toEqual([pod.sId]);
 
+    // Cross-scope sIds are unreachable — fetchById filters on the scope.
+    if (workspaceResult.isErr() || podResult.isErr()) {
+      throw new Error("Setup failed.");
+    }
+    expect(
+      await SandboxEnvVarResource.fetchById(
+        authenticator,
+        podScope(pod),
+        workspaceResult.value.sId
+      )
+    ).toBeNull();
+    expect(
+      await SandboxEnvVarResource.fetchById(
+        authenticator,
+        wsScope(authenticator),
+        podResult.value.sId
+      )
+    ).toBeNull();
+    expect(
+      await SandboxEnvVarResource.fetchById(
+        authenticator,
+        podScope(otherPod),
+        podResult.value.sId
+      )
+    ).toBeNull();
+
     const podEnv = await SandboxEnvVarResource.loadEnv(
       authenticator,
       podScope(pod),
@@ -597,6 +623,7 @@ describe("SandboxEnvVarResource pod scope", () => {
 
     const fetched = await SandboxEnvVarResource.fetchById(
       authenticator,
+      podScope(pod),
       createResult.value.sId
     );
     expect(fetched?.kind).toBe("https_secret");

@@ -156,8 +156,8 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     return scope.kind === "pod" ? MAX_VARS_PER_POD : MAX_VARS_PER_WORKSPACE;
   }
 
-  // Whether this row belongs to the given scope. Routes must check this
-  // after fetchById before mutating through a scope.
+  // Whether this row belongs to the given scope. Fetches are scope-filtered
+  // (see `scopeWhere`); this backs the mutation-time assertion below.
   belongsToScope(scope: SandboxEnvVarScope): boolean {
     return scope.kind === "pod"
       ? this.spaceId === scope.pod.id
@@ -251,11 +251,12 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     return rows[0] ?? null;
   }
 
-  // Fetches by sId within the workspace, regardless of scope — the row
-  // carries its own scope. Callers mutating through a scope must verify
-  // `belongsToScope` first.
+  // Fetches by sId within the given scope. Cross-scope sIds resolve to null,
+  // which routes surface as 404s — the table also holds rows from other
+  // scopes, and they must stay unreachable through a mismatched scope.
   static async fetchById(
     auth: Authenticator,
+    scope: SandboxEnvVarScope,
     sId: string
   ): Promise<SandboxEnvVarResource | null> {
     if (!isResourceSId("sandbox_env_var", sId)) {
@@ -266,15 +267,8 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
       return null;
     }
 
-    const row = await this.model.findOne({
-      where: {
-        id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      include: USER_JOIN_INCLUDES,
-    });
-
-    return row ? this.fromRow(row) : null;
+    const rows = await this.baseFetch(auth, scope, { id });
+    return rows[0] ?? null;
   }
 
   // ── Mutations ──────────────────────────────────────────────────────────
@@ -733,7 +727,7 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
   }
 
   // No scope parameter on purpose: deletion never touches the encryption
-  // key, and routes verify `belongsToScope` before mutating (see fetchById).
+  // key, and rows only reach callers through scope-filtered fetches.
   async delete(
     auth: Authenticator,
     {

@@ -44,10 +44,9 @@ app.patch(
       kind: "workspace" as const,
       workspace: auth.getNonNullableWorkspace(),
     };
-    const envVar = await SandboxEnvVarResource.fetchById(auth, id);
-    // The table also holds pod-scoped rows — this workspace route must not
-    // read or mutate them (they are encrypted under a different scope key).
-    if (!envVar || !envVar.belongsToScope(scope)) {
+    // Scope-filtered: pod-scoped rows in the table resolve to null here.
+    const envVar = await SandboxEnvVarResource.fetchById(auth, scope, id);
+    if (!envVar) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -128,16 +127,13 @@ app.delete(
     const auth = ctx.get("auth");
     const { id } = ctx.req.valid("param");
 
-    const envVar = await SandboxEnvVarResource.fetchById(auth, id);
-    // The table also holds pod-scoped rows — this workspace route must not
-    // read or mutate them.
-    if (
-      !envVar ||
-      !envVar.belongsToScope({
-        kind: "workspace",
-        workspace: auth.getNonNullableWorkspace(),
-      })
-    ) {
+    // Scope-filtered: pod-scoped rows in the table resolve to null here.
+    const envVar = await SandboxEnvVarResource.fetchById(
+      auth,
+      { kind: "workspace", workspace: auth.getNonNullableWorkspace() },
+      id
+    );
+    if (!envVar) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
