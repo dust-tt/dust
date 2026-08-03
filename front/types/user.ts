@@ -338,15 +338,6 @@ export function isOnlyUser(
   return owner.role === "user";
 }
 
-export function isOnlyBuilder(
-  owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "builder" } {
-  if (!owner) {
-    return false;
-  }
-  return owner.role === "builder";
-}
-
 export function isOnlyAdmin(
   owner: WorkspaceType | null
 ): owner is WorkspaceType & { role: "admin" } {
