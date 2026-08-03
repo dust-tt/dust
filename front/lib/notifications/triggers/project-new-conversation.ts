@@ -272,7 +272,12 @@ export async function notifyActivationConversationAgentReplied(
   }
 
   const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
-  if (activationPod === null) {
+  // Only the conversation created by the pod's own activation nudge trigger gets the notification
+  if (
+    activationPod === null ||
+    activationPod.triggerId === null ||
+    conversationResource.triggerId !== activationPod.triggerId
+  ) {
     return;
   }
 
