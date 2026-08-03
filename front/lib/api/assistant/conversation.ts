@@ -158,6 +158,7 @@ import {
   ConversationError,
   isAgentMessageType,
   isPodConversation,
+  isSystemAuthoredUserMessage,
   isUserMessageType,
   UNRESUMABLE_AGENT_MESSAGE_STATUSES,
 } from "@app/types/assistant/conversation";
@@ -1083,6 +1084,20 @@ function canAccessAgent(
 
 class UserMessageError extends Error {}
 
+// A system-authored message has no author to be, so nobody passes this. Testing
+// that first also stops an API key, which has no `auth.user()` either, from
+// matching null against null.
+function isUserMessageAuthor(
+  auth: Authenticator,
+  message: UserMessageType
+): boolean {
+  if (isSystemAuthoredUserMessage(message)) {
+    return false;
+  }
+
+  return auth.user()?.id === message.user?.id;
+}
+
 /**
  * This method creates a new user message version. If a new message contains agent mentions, it will create new agent messages,
  * only when there are no agent messages after the edited user message.
@@ -1121,7 +1136,7 @@ export async function editUserMessage(
     });
   }
 
-  if (auth.user()?.id !== message.user?.id) {
+  if (!isUserMessageAuthor(auth, message)) {
     return new Err({
       status_code: 403,
       api_error: {
@@ -1749,6 +1764,18 @@ export async function retryAgentMessage(
       api_error: {
         type: "invalid_request_error",
         message: "Could not find the parent user message for this retry.",
+      },
+    });
+  }
+
+  // Retrying would replay the parent's server-set origin, which can carry free
+  // usage.
+  if (isSystemAuthoredUserMessage(parentUserMessage)) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "The answer to a message posted by Dust cannot be retried.",
       },
     });
   }

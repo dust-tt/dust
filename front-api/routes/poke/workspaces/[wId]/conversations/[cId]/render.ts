@@ -199,6 +199,7 @@ app.post(
         agentConfiguration,
         conversation,
         agentMessage: placeholderAgentMessage,
+        userMessage,
         clientSideActionConfigurations: clientSideMCPActionConfigurations,
       },
       { jitServers, skillServers, systemSkillServers }

@@ -239,6 +239,18 @@ export function isUserMessageTypeWithContentFragments(
   return arg.type === "user_message" && "contentFragments" in arg;
 }
 
+/**
+ * A user message with no author was posted by Dust on someone's behalf rather
+ * than written by them, which only server code can do (`postUserMessage`'s
+ * `doNotAssociateUser`). Such a message is nobody's to edit, its answer nobody's
+ * to retry, and it never runs on anyone's personal tool credentials.
+ */
+export function isSystemAuthoredUserMessage(
+  message: Pick<UserMessageType, "user">
+): boolean {
+  return message.user === null;
+}
+
 export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
   return HIDDEN_MESSAGE_ORIGINS.includes(origin);
 }

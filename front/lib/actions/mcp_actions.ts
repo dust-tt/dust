@@ -97,6 +97,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
+import { isSystemAuthoredUserMessage } from "@app/types/assistant/conversation";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -1075,9 +1076,26 @@ export async function tryListMCPTools(
     preFetchedViews.map((view) => [view.sId, view])
   );
 
+  // An admin scoping a server to `personal_actions` decided it runs on each
+  // person's own credentials. A message nobody wrote (posted by Dust on the
+  // user's behalf) has no person to run as, so those servers are left out of the
+  // tool list entirely: running them on the workspace connection instead would
+  // quietly override that decision.
+  const listableActionsWithOrigin = isSystemAuthoredUserMessage(
+    agentLoopListToolsContext.userMessage
+  )
+    ? mcpServerActionsWithOrigin.filter(({ action }) => {
+        if (!isServerSideMCPServerConfiguration(action)) {
+          return true;
+        }
+        const view = preFetchedMcpServerViews.get(action.mcpServerViewId);
+        return view?.oAuthUseCase !== "personal_actions";
+      })
+    : mcpServerActionsWithOrigin;
+
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
-    mcpServerActionsWithOrigin,
+    listableActionsWithOrigin,
     async ({ action, isFromSkillServer }) => {
       let connectionParams: MCPConnectionParams;
       if (isServerSideMCPServerConfiguration(action)) {

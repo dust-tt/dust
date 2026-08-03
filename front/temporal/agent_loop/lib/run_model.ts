@@ -531,6 +531,7 @@ export async function runModel(
             agentConfiguration,
             conversation,
             agentMessage,
+            userMessage,
             clientSideActionConfigurations: clientSideMCPActionConfigurations,
           },
           { jitServers, skillServers, systemSkillServers }

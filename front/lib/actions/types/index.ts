@@ -185,6 +185,10 @@ export type AgentLoopListToolsContext = {
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
+  // Needed at listing time to know whether a person wrote the message this run
+  // answers: servers an admin scoped to personal credentials are not listed for
+  // a message nobody wrote (see `tryListMCPTools`).
+  userMessage: UserMessageType;
 };
 
 // Context available to tool handlers at execution time: tools only ever run on a connection
