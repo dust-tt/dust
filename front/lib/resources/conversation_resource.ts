@@ -1906,22 +1906,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       lastValue: null,
     };
 
-    const participationMap = await this.fetchParticipationMapForUser(
-      auth,
-      restrictToConversationModelIds
-    );
-    let conversationIds = Array.from(participationMap.keys());
-
-    if (conversationIds.length === 0) {
-      return emptyResult;
-    }
-
     const orderDirection = pagination.orderDirection ?? "desc";
 
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
-      id: { [Op.in]: conversationIds },
       spaceId: { [Op.is]: null },
       visibility: { [Op.eq]: "unlisted" },
+      ...(restrictToConversationModelIds
+        ? { id: { [Op.in]: restrictToConversationModelIds } }
+        : {}),
       ...extraWhereClause,
     };
 
@@ -1944,11 +1936,28 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // space references, ACLs), which corrupts the +1 sentinel: one dropped row
     // makes a full window look like the last page. Scan the raw window first
     // and derive hasMore and the cursor from the scan, not the filtered rows.
+    // Join on participations instead of an `id IN (...)` list: heavy users can
+    // have thousands of participations, which made the statement itself huge.
+    // The user has at most one participant row per conversation (unique index),
+    // so the join cannot duplicate rows and `subQuery: false` is safe with the
+    // limit.
     const rawRows = await ConversationModel.findAll({
       where: { ...whereClause, workspaceId: auth.getNonNullableWorkspace().id },
+      include: [
+        {
+          model: ConversationParticipantModel,
+          required: true,
+          attributes: [],
+          where: {
+            userId: auth.getNonNullableUser().id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+        },
+      ],
       order,
       limit: fetchLimit,
       attributes: ["id", "updatedAt"],
+      subQuery: false,
     });
 
     if (rawRows.length === 0) {
@@ -1968,12 +1977,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const resultConversations = conversations.slice(0, pagination.limit);
 
-    resultConversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
-      if (participation) {
-        c.userParticipation = participation;
-      }
-    });
+    if (resultConversations.length > 0) {
+      const participationMap = await this.fetchParticipationMapForUser(
+        auth,
+        resultConversations.map((c) => c.id)
+      );
+
+      resultConversations.forEach((c) => {
+        const participation = participationMap.get(c.id);
+        if (participation) {
+          c.userParticipation = participation;
+        }
+      });
+    }
 
     await this.enrichWithReadState(auth, resultConversations);
 
