@@ -16,6 +16,7 @@ interface OpenOptions {
   warmCommand?: string | undefined;
   noAttach?: boolean | undefined;
   initialCommand?: string | undefined;
+  initialInput?: string | undefined;
   compact?: boolean | undefined;
   unifiedLogs?: boolean | undefined;
 }
@@ -45,6 +46,7 @@ export async function openCommand(
     envShPath,
     warmCommand: options.warmCommand,
     initialCommand: options.initialCommand,
+    initialInput: options.initialInput,
     compact: options.compact,
     unifiedLogs: options.unifiedLogs,
   };
