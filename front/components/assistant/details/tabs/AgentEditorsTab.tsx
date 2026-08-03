@@ -76,23 +76,9 @@ export function AgentEditorsTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <MembersList
-        currentUser={user}
-        membersData={{
-          members: editors.map((user) => ({
-            ...user,
-            workspace: owner,
-          })),
-          isLoading: isEditorsLoading,
-          totalMembersCount: editors.length,
-          mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
-        }}
-        showColumns={canManageEditors ? ["name", "remove"] : ["name"]}
-        onRemoveMemberClick={onRemoveMember}
-        onRowClick={function noRefCheck() {}}
-      />
-      {canManageEditors && (
-        <div>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Editors</h3>
+        {canManageEditors && (
           <DropdownMenu
             open={isEditorPickerOpen}
             onOpenChange={(open) => {
@@ -107,7 +93,7 @@ export function AgentEditorsTab({
                 variant="outline"
                 size="sm"
                 icon={Plus}
-                label="Add editors"
+                label="Add editor"
                 disabled={isEditorsLoading || isEditorsError}
                 isLoading={isAddingEditor}
                 type="button"
@@ -115,7 +101,7 @@ export function AgentEditorsTab({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               className="w-80"
-              align="start"
+              align="end"
               dropdownHeaders={
                 <>
                   <DropdownMenuSearchbar
@@ -158,8 +144,23 @@ export function AgentEditorsTab({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      )}
+        )}
+      </div>
+      <MembersList
+        currentUser={user}
+        membersData={{
+          members: editors.map((user) => ({
+            ...user,
+            workspace: owner,
+          })),
+          isLoading: isEditorsLoading,
+          totalMembersCount: editors.length,
+          mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
+        }}
+        showColumns={canManageEditors ? ["name", "remove"] : ["name"]}
+        onRemoveMemberClick={onRemoveMember}
+        onRowClick={function noRefCheck() {}}
+      />
     </div>
   );
 }
