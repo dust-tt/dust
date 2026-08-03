@@ -8,7 +8,7 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import { renderAvailableSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -145,6 +145,7 @@ app.post(
       enabledSkills,
       systemSkills,
       equippedSkills,
+      favoriteSkills,
       hasSelectedSpacesOutsideAgentScope,
     } = await SkillResource.listForAgentLoop(auth, {
       agentConfiguration,
@@ -235,7 +236,8 @@ app.post(
     });
     const prompt = systemPromptToText(promptSections);
     const leadingMessages = removeNulls([
-      renderEquippedSkillsUserMessage(equippedSkills),
+      renderAvailableSkillsUserMessage(equippedSkills, "system"),
+      renderAvailableSkillsUserMessage(favoriteSkills, "user"),
     ]);
 
     const specifications = availableActions.map((t) =>
