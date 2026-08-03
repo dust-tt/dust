@@ -331,12 +331,6 @@ export async function createSandboxChildAction(
     },
   });
 
-  // Auto-allowed child actions are launched right after creation: persist them as
-  // "running" directly (like sandbox function actions) instead of rewriting the row at
-  // execution start.
-  const persistedStatus =
-    status === "ready_allowed_implicitly" ? "running" : status;
-
   // Approval labels may resolve file or project resources, so prepare them before taking the
   // conversation lock. The returned factory adds the action ID after the child row is created.
   const makeApprovalEvent =
@@ -405,7 +399,9 @@ export async function createSandboxChildAction(
           agentMessage,
           augmentedInputs: rawInputs,
           conversation,
-          status: persistedStatus,
+          // Sandbox children stay ready until reserveSandboxChildRun claims them under the
+          // conversation lock. Persisting them as running would let duplicate workflows execute.
+          status,
           stepContent: parentAction.stepContent,
           stepContext: {
             ...parentAction.stepContext,

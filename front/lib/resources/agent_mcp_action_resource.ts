@@ -1226,17 +1226,88 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     contents: Array<{
       content: CallToolResult["content"][number];
       fileId?: ModelId;
-    }>,
-    { transaction }: { transaction?: Transaction } = {}
+    }>
   ): Promise<Result<ToolOutputItemType[], Error>> {
-    const outputRows = await this.createOutputRows(contents, { transaction });
-    const syncResult = await this.syncOutputRowsToGcs(auth, outputRows.rows, {
-      transaction,
-    });
-    if (syncResult.isErr()) {
-      return syncResult;
+    // Write GCS first: the helper retries and cleans up partial batches, and DB insertion only
+    // starts once every object has been persisted.
+    const gcsResult = await batchWriteContentsToGcs(
+      auth,
+      this,
+      contents.map(({ content }) => content)
+    );
+
+    if (gcsResult.isErr()) {
+      return new Err(gcsResult.error);
     }
-    return new Ok(outputRows.outputItems);
+
+    let outputItems: AgentMCPActionOutputItemModel[];
+    try {
+      outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
+        contents.map((c, index) => {
+          const contentGcsPath = gcsResult.value[index];
+          assert(contentGcsPath, "GCS path not found for output item.");
+
+          const { generatedFilePath, generatedFileContentType } =
+            isToolGeneratedFilePath(c.content)
+              ? {
+                  generatedFilePath: c.content.resource.path,
+                  generatedFileContentType: c.content.resource.contentType,
+                }
+              : { generatedFilePath: null, generatedFileContentType: null };
+
+          return {
+            agentMCPActionId: this.id,
+            // Write content to DB (kept during migration period to ease rollback).
+            content: c.content,
+            contentGcsPath,
+            citations: getCitationsFromToolOutput([c.content]),
+            fileId: c.fileId,
+            workspaceId: this.workspaceId,
+            generatedFilePath,
+            generatedFileContentType,
+          };
+        })
+      );
+    } catch (err) {
+      // A DB error can be ambiguous after commit, so keep the GCS objects rather than risk
+      // deleting content referenced by committed rows. Action-prefix cleanup removes orphans.
+      return new Err(normalizeError(err));
+    }
+
+    try {
+      await warmGcsContentCache(
+        auth,
+        outputItems.map((item) => {
+          assert(item.contentGcsPath, "GCS path not found for output item.");
+          return {
+            itemId: item.id,
+            gcsPath: item.contentGcsPath,
+            content: item.content,
+          };
+        })
+      );
+    } catch (err) {
+      // Cache warming is best-effort and must not turn a successful persistence into a retry.
+      logger.warn(
+        { err: normalizeError(err), actionId: this.sId },
+        "Failed to warm MCP output content cache"
+      );
+    }
+
+    return new Ok(
+      removeNulls(
+        outputItems.map((item) =>
+          item.content
+            ? {
+                content: item.content,
+                fileId: item.fileId ?? null,
+                file: item.file ?? null,
+                workspaceId: item.workspaceId,
+              }
+            : null
+        )
+      )
+    );
   }
 
   async createOutputRows(
