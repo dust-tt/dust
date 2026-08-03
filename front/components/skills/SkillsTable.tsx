@@ -29,7 +29,7 @@ import type {
   Row,
   RowSelectionState,
 } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 type RowData = {
   sId: string;
@@ -263,10 +263,6 @@ export function SkillsTable({
   setRowSelection,
 }: SkillsTableProps) {
   const router = useAppRouter();
-  const routerRef = useRef(router);
-  useEffect(() => {
-    routerRef.current = router;
-  }, [router]);
   const { pagination, setPagination } = usePaginationFromUrl({});
   const [skillToArchive, setSkillToArchive] = useState<
     GetSkillsWithRelationsResponseBody["skills"][number] | null
@@ -286,7 +282,7 @@ export function SkillsTable({
     [onAgentClick, onUsedBySkillClick, isSelectionEnabled]
   );
 
-  // Keep row object identity stable for DataTable pagination: useAppRouter is not stable.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
       skills.map((skill) => ({
@@ -322,7 +318,7 @@ export function SkillsTable({
                   disabled: !skill.canAdministrate,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
-                    void routerRef.current.push(
+                    void router.push(
                       getSkillBuilderRoute(owner.sId, skill.sId)
                     );
                   },
@@ -351,6 +347,7 @@ export function SkillsTable({
               ].filter((item) => !item.disabled)
             : [],
       })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
     [
       skills,
       onSkillClick,
