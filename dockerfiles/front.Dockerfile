@@ -16,7 +16,8 @@ COPY front/package.json ./front/
 COPY front-spa/package.json ./front-spa/
 COPY front-api/package.json ./front-api/
 
-RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci -w sdks/js -w sparkle -w front -w front-spa -w front-api
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm,sharing=locked \
+  npm ci --prefer-offline --no-audit --no-fund -w sdks/js -w sparkle -w front -w front-spa -w front-api
 
 # Build SDK
 WORKDIR /app/sdks/js
@@ -37,7 +38,7 @@ WORKDIR /app/front
 COPY /front .
 
 # Generate custom models TypeScript from JSON config (downloaded by CI)
-RUN npx tsx scripts/fetch-custom-models.ts
+RUN npm run generate:custom-models
 
 # Remove test files (shared optimization)
 RUN find . -name "*.test.ts" -delete
@@ -47,7 +48,7 @@ RUN find . -name "*.test.tsx" -delete
 COPY /scripts/db /app/scripts/db
 
 # Compile migration script so all runtime images have dist/migrate.js without needing TypeScript sources
-RUN npx esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/migrate.js --sourcemap
+RUN npm run build:migrate
 
 # Copy front-api source (server.ts, app.ts, routes/, middleware/)
 WORKDIR /app/front-api
