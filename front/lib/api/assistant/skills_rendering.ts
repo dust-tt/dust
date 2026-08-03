@@ -38,7 +38,7 @@ export function getEnabledSkillInstructions(
 }
 
 export function renderAvailableSkillsUserMessage(
-  skills: Pick<SkillResource, "name" | "agentFacingDescription">[],
+  skills: SkillResource[],
   name: "system" | "user"
 ): UserMessageTypeModel | null {
   if (skills.length === 0) {
