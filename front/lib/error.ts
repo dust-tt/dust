@@ -46,6 +46,7 @@ export type DustErrorCode =
   | "action_not_found"
   | "action_not_blocked"
   | "mcp_access_token_error"
+  | "oauth_service_unreachable"
   // Triggers errors
   | "webhook_source_not_found"
   // Space errors

@@ -1007,12 +1007,9 @@ export async function runMCPDiagnostics(
               admin_reason:
                 connType === "workspace"
                   ? getMCPServerAdminAuthenticationReason(
-                      new DustError(
-                        connectionRes.error.code === "connection_not_found"
-                          ? "connection_not_found"
-                          : "mcp_access_token_error",
-                        connectionRes.error.message
-                      )
+                      connectionRes.error.code === "connection_not_found"
+                        ? "connection_not_found"
+                        : "mcp_access_token_error"
                     )
                   : undefined,
             },

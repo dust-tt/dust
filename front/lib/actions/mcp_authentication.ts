@@ -29,7 +29,11 @@ export async function getConnectionForMCPServer(
       access_token_expiry: number | null;
       scrubbed_raw_json: unknown;
     },
-    DustError<"mcp_access_token_error" | "connection_not_found">
+    DustError<
+      | "mcp_access_token_error"
+      | "connection_not_found"
+      | "oauth_service_unreachable"
+    >
   >
 > {
   const localLogger = logger.child({
@@ -76,6 +80,17 @@ export async function getConnectionForMCPServer(
       { error: tokenResult.error },
       "Failed to get access token for MCP server"
     );
+    // Failing to reach the OAuth service is not a credential problem: the connection is there and
+    // its token may well be valid. Kept distinct from `mcp_access_token_error` so callers surface
+    // a retryable failure instead of asking the user to authenticate again, which cannot help.
+    if (tokenResult.error.code === "unexpected_network_error") {
+      return new Err(
+        new DustError(
+          "oauth_service_unreachable",
+          "Could not reach the authentication service"
+        )
+      );
+    }
     return new Err(
       new DustError(
         "mcp_access_token_error",
@@ -172,8 +187,10 @@ export class MCPServerRateLimitedError extends Error {
   }
 }
 
+// `oauth_service_unreachable` is deliberately absent: it is not an authentication problem, so
+// callers must handle it before deciding what the admin should do.
 export function getMCPServerAdminAuthenticationReason(
-  error: DustError<"mcp_access_token_error" | "connection_not_found">
+  code: "mcp_access_token_error" | "connection_not_found"
 ): MCPServerAdminAuthenticationReason {
-  return error.code === "connection_not_found" ? "setup" : "reconnect";
+  return code === "connection_not_found" ? "setup" : "reconnect";
 }

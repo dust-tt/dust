@@ -311,6 +311,19 @@ async function resolveRemoteServerOAuthToken(
 
   // Connection failed — return the appropriate error.
   const { provider, scope } = authorization;
+  const { code } = c.error;
+
+  // An unreachable OAuth service says nothing about the connection: it exists, and no amount of
+  // authenticating fixes the network. Surface it as a plain failure so the caller reports a
+  // retryable error instead of prompting for authentication.
+  if (code === "oauth_service_unreachable") {
+    return new Err(
+      new Error(
+        "Could not reach the authentication service to retrieve the credentials for this " +
+          "tool. Please try again."
+      )
+    );
+  }
 
   switch (connectionType) {
     case "personal": {
@@ -347,7 +360,7 @@ async function resolveRemoteServerOAuthToken(
           mcpServerId,
           provider,
           scope,
-          getMCPServerAdminAuthenticationReason(c.error)
+          getMCPServerAdminAuthenticationReason(code)
         )
       );
     default:
@@ -498,6 +511,19 @@ export async function connectToMCPServer(
                   "Internal server workspace authentication failed"
                 );
 
+                // An unreachable OAuth service says nothing about the connection: it exists, and
+                // no amount of authenticating fixes the network. Surface it as a plain connection
+                // failure so the caller reports a retryable tool error instead of prompting the
+                // user (or, for personal tools, pausing the run waiting on them).
+                if (c.error.code === "oauth_service_unreachable") {
+                  return new Err(
+                    new Error(
+                      "Could not reach the authentication service to retrieve the credentials " +
+                        "for this tool. Please try again."
+                    )
+                  );
+                }
+
                 // Use the admin-configured scope restriction if set, otherwise
                 // fall back to the full scope from server metadata.
                 const scope =
@@ -539,7 +565,7 @@ export async function connectToMCPServer(
                       params.mcpServerId,
                       serverInfo.authorization.provider,
                       scope,
-                      getMCPServerAdminAuthenticationReason(c.error)
+                      getMCPServerAdminAuthenticationReason(c.error.code)
                     )
                   );
                 } else {
