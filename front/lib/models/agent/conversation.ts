@@ -117,6 +117,14 @@ ConversationModel.init(
         fields: ["workspaceId", "createdAt"],
         name: "conversations_workspace_id_created_at_idx",
       },
+      // Serves fetchPrivateConversationsPaginated: lets the planner walk
+      // private conversations in updatedAt order and stop at the page size.
+      {
+        fields: ["workspaceId", "updatedAt"],
+        name: "conversations_private_paginated_list_idx",
+        where: { spaceId: null, visibility: "unlisted" },
+        concurrently: true,
+      },
     ],
     sequelize: frontSequelize,
   }
