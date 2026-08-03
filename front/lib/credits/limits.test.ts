@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import * as common from "@app/lib/credits/common";
 import { getCustomerPaymentStatus } from "@app/lib/credits/free";
 import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
@@ -46,7 +45,6 @@ function makeSubscription(
 
 describe("getCreditPurchaseLimits", () => {
   let auth: Authenticator;
-  let countEligibleUsersSpy: MockInstance;
   let sumCommittedCreditsSpy: MockInstance;
   let fetchProgrammaticConfigSpy: MockInstance;
   let listPendingCommittedSpy: MockInstance;
@@ -58,10 +56,6 @@ describe("getCreditPurchaseLimits", () => {
 
     const { authenticator } = await createResourceTest({ role: "admin" });
     auth = authenticator;
-
-    countEligibleUsersSpy = vi
-      .spyOn(common, "countEligibleUsersForCredits")
-      .mockResolvedValue(10);
 
     sumCommittedCreditsSpy = vi
       .spyOn(CreditResource, "sumCommittedCreditsPurchasedInPeriod")
@@ -78,7 +72,6 @@ describe("getCreditPurchaseLimits", () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    countEligibleUsersSpy.mockRestore();
     sumCommittedCreditsSpy.mockRestore();
     fetchProgrammaticConfigSpy.mockRestore();
     listPendingCommittedSpy.mockRestore();
@@ -232,9 +225,7 @@ describe("getCreditPurchaseLimits", () => {
       vi.mocked(getCustomerPaymentStatus).mockResolvedValue("paying");
     });
 
-    it("should calculate limit based on user count ($50/user)", async () => {
-      countEligibleUsersSpy.mockResolvedValue(10);
-
+    it("should allow a flat $1000 per billing cycle", async () => {
       const result = await getCreditPurchaseLimits(auth, {
         type: "stripe-subscription",
         stripeSubscription: makeSubscription(),
@@ -242,82 +233,11 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 500_000_000, // 10 users * $50 = $500 in microUsd
+        maxAmountMicroUsd: 1_000_000_000, // Flat $1000
       });
     });
 
-    it("should cap at $1000 for large teams", async () => {
-      countEligibleUsersSpy.mockResolvedValue(100);
-
-      const result = await getCreditPurchaseLimits(auth, {
-        type: "stripe-subscription",
-        stripeSubscription: makeSubscription(),
-      });
-
-      expect(result).toEqual({
-        canPurchase: true,
-        maxAmountMicroUsd: 1_000_000_000, // Capped at $1000
-      });
-    });
-
-    it("should allow $50 for single user", async () => {
-      countEligibleUsersSpy.mockResolvedValue(1);
-
-      const result = await getCreditPurchaseLimits(auth, {
-        type: "stripe-subscription",
-        stripeSubscription: makeSubscription(),
-      });
-
-      expect(result).toEqual({
-        canPurchase: true,
-        maxAmountMicroUsd: 50_000_000, // 1 user * $50 in microUsd
-      });
-    });
-
-    it("should allow $250 for 5 users", async () => {
-      countEligibleUsersSpy.mockResolvedValue(5);
-
-      const result = await getCreditPurchaseLimits(auth, {
-        type: "stripe-subscription",
-        stripeSubscription: makeSubscription(),
-      });
-
-      expect(result).toEqual({
-        canPurchase: true,
-        maxAmountMicroUsd: 250_000_000, // 5 users * $50 = $250 in microUsd
-      });
-    });
-
-    it("should cap exactly at $1000 for 20 users", async () => {
-      countEligibleUsersSpy.mockResolvedValue(20);
-
-      const result = await getCreditPurchaseLimits(auth, {
-        type: "stripe-subscription",
-        stripeSubscription: makeSubscription(),
-      });
-
-      expect(result).toEqual({
-        canPurchase: true,
-        maxAmountMicroUsd: 1_000_000_000, // 20 users * $50 = $1000 (exactly at cap)
-      });
-    });
-
-    it("should cap at $1000 for more than 20 users", async () => {
-      countEligibleUsersSpy.mockResolvedValue(25);
-
-      const result = await getCreditPurchaseLimits(auth, {
-        type: "stripe-subscription",
-        stripeSubscription: makeSubscription(),
-      });
-
-      expect(result).toEqual({
-        canPurchase: true,
-        maxAmountMicroUsd: 1_000_000_000, // Capped at $1000
-      });
-    });
-
-    it("should subtract already purchased credits from per-user limit", async () => {
-      countEligibleUsersSpy.mockResolvedValue(10); // $500 limit
+    it("should subtract already purchased credits from the limit", async () => {
       sumCommittedCreditsSpy.mockResolvedValue(200_000_000); // $200 already purchased
 
       const result = await getCreditPurchaseLimits(auth, {
@@ -327,13 +247,12 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 300_000_000, // $500 - $200 = $300
+        maxAmountMicroUsd: 800_000_000, // $1000 - $200 = $800
       });
     });
 
-    it("should return 0 if per-user limit is exhausted", async () => {
-      countEligibleUsersSpy.mockResolvedValue(5); // $250 limit
-      sumCommittedCreditsSpy.mockResolvedValue(250_000_000); // $250 already purchased
+    it("should return 0 if the limit is exhausted", async () => {
+      sumCommittedCreditsSpy.mockResolvedValue(1_000_000_000); // $1000 already purchased
 
       const result = await getCreditPurchaseLimits(auth, {
         type: "stripe-subscription",

@@ -1,6 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
-import { countEligibleUsersForCredits } from "@app/lib/credits/common";
 import { getCustomerPaymentStatus } from "@app/lib/credits/free";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
@@ -9,9 +8,7 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import type { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type Stripe from "stripe";
 
-// $50 per user per month for Pro subscriptions.
-const MAX_PRO_CREDIT_PER_USER_MICRO_USD = 50_000_000;
-// $1000 absolute cap for Pro subscriptions.
+// $1000 flat cap per billing cycle for Pro subscriptions.
 const MAX_PRO_CREDIT_TOTAL_MICRO_USD = 1_000_000_000;
 // $1000 minimum cap for Enterprise subscriptions.
 const MIN_ENTERPRISE_CREDIT_MICRO_USD = 1_000_000_000;
@@ -36,7 +33,7 @@ type CreditPurchaseLimitsContext =
  * Rules:
  * - Pro in trial: cannot purchase credits (Stripe-billed only)
  * - Pro with payment issues: cannot purchase credits (Stripe-billed only)
- * - Pro paying: $50/user/month, capped at $1000 per billing cycle
+ * - Pro paying: flat $1000 per billing cycle
  * - Enterprise: max($1000, half of pay-as-you-go cap) per billing cycle
  *
  * Metronome-only workspaces skip the trial / payment-issue checks (no Stripe
@@ -104,14 +101,7 @@ export async function getCreditPurchaseLimits(
     return { canPurchase: false, reason: "pending_payment" };
   }
 
-  // Pro paying: $50/user/month, capped at $1000 per billing cycle.
-  const workspace = auth.getNonNullableWorkspace();
-  const userCount = await countEligibleUsersForCredits(workspace);
-  const cycleMaxMicroUsd = Math.min(
-    userCount * MAX_PRO_CREDIT_PER_USER_MICRO_USD,
-    MAX_PRO_CREDIT_TOTAL_MICRO_USD
-  );
-
+  // Pro paying: flat $1000 per billing cycle.
   const alreadyPurchased =
     await CreditResource.sumCommittedCreditsPurchasedInPeriod(
       auth,
@@ -121,7 +111,10 @@ export async function getCreditPurchaseLimits(
 
   return {
     canPurchase: true,
-    maxAmountMicroUsd: Math.max(0, cycleMaxMicroUsd - alreadyPurchased),
+    maxAmountMicroUsd: Math.max(
+      0,
+      MAX_PRO_CREDIT_TOTAL_MICRO_USD - alreadyPurchased
+    ),
   };
 }
 
