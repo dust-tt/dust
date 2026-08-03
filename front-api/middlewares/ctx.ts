@@ -4,6 +4,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { PokeRole } from "@app/lib/poke/roles";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createHono } from "@front-api/lib/hono";
@@ -30,6 +31,12 @@ export type PokeCtx = SessionCtx & {
 export type PokeProjectCtx = PokeCtx & {
   Variables: {
     space: SpaceResource;
+  };
+};
+
+export type PokePodFunctionCtx = PokeProjectCtx & {
+  Variables: {
+    podFunction: SandboxFunctionResource;
   };
 };
 
@@ -77,6 +84,7 @@ export const sessionApp = () => createHono<SessionCtx>();
 export const workspaceApp = () => createHono<WorkspaceAwareCtx>();
 export const pokeApp = () => createHono<PokeCtx>();
 export const pokeProjectApp = () => createHono<PokeProjectCtx>();
+export const pokePodFunctionApp = () => createHono<PokePodFunctionCtx>();
 export const publicApiApp = () => createHono<PublicApiCtx>();
 export const sandboxApp = () => createHono<SandboxCtx>();
 export const skillApp = () => createHono<SkillCtx>();
