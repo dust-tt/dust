@@ -18,7 +18,11 @@ export function parsePodConfigurationURI(
 ): Result<PodConfigInfo, Error> {
   const match = uri.match(POD_CONFIGURATION_URI_PATTERN);
   if (!match) {
-    return new Err(new Error(`Invalid URI for a pod configuration: ${uri}`));
+    return new Err(
+      new Error(
+        `Invalid URI for a pod configuration: ${uri} (expected format: pod://dust/w/<workspaceId>/pods/<podId>, where both segments are opaque IDs, never names)`
+      )
+    );
   }
 
   const [, workspaceId, podId] = match;

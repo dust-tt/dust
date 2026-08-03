@@ -993,6 +993,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "list all members and editors in this pod",
     expected: "pod_manager.list_members",
+    maxRank: 2,
   },
   {
     query: "attach this company data folder to the pod context",
