@@ -256,6 +256,11 @@ export async function notifyActivationConversationAgentReplied(
     return;
   }
 
+  // Skip sub-conversations
+  if (conversationResource.depth > 0) {
+    return;
+  }
+
   const conversation = conversationResource.toJSON();
   if (!isPodConversation(conversation)) {
     return;
