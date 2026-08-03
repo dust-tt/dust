@@ -1,5 +1,131 @@
-import { compareForFuzzySort } from "@app/lib/utils";
-import { expect, test } from "vitest";
+import {
+  compareForAutocompleteSort,
+  compareForFuzzySort,
+  subFilter,
+} from "@app/lib/utils";
+import { describe, expect, test } from "vitest";
+
+const AUTOCOMPLETE_SKILL_NAMES = [
+  "Frame",
+  "Frame Renderer",
+  "Framework Builder",
+  "Create Frame",
+  "Aesthetic Dust Frames",
+  "Fast Response Assistant Media Exporter",
+  "Framing Workshop",
+  "Presentation Designer",
+];
+
+function filterAndSortAutocompleteSkills(query: string): string[] {
+  const normalizedQuery = query.toLowerCase();
+
+  return AUTOCOMPLETE_SKILL_NAMES.filter((name) =>
+    subFilter(normalizedQuery, name.toLowerCase())
+  ).toSorted((a, b) => compareForAutocompleteSort(query, a, b));
+}
+
+describe("compareForAutocompleteSort", () => {
+  test.each([
+    {
+      behavior:
+        "ranks exact, prefix, substring, and fuzzy matches in that order",
+      query: "frame",
+      expected: [
+        "Frame",
+        "Frame Renderer",
+        "Framework Builder",
+        "Aesthetic Dust Frames",
+        "Create Frame",
+        "Fast Response Assistant Media Exporter",
+      ],
+    },
+    {
+      behavior: "sorts matches alphabetically within the prefix tier",
+      query: "fram",
+      expected: [
+        "Frame",
+        "Frame Renderer",
+        "Framework Builder",
+        "Framing Workshop",
+        "Aesthetic Dust Frames",
+        "Create Frame",
+        "Fast Response Assistant Media Exporter",
+      ],
+    },
+    {
+      behavior: "ranks a title prefix above fuzzy title matches",
+      query: "fa",
+      expected: [
+        "Fast Response Assistant Media Exporter",
+        "Aesthetic Dust Frames",
+        "Create Frame",
+        "Frame",
+        "Frame Renderer",
+        "Framework Builder",
+        "Framing Workshop",
+      ],
+    },
+    {
+      behavior: "sorts fuzzy-only matches alphabetically instead of by spread",
+      query: "frm",
+      expected: [
+        "Aesthetic Dust Frames",
+        "Create Frame",
+        "Fast Response Assistant Media Exporter",
+        "Frame",
+        "Frame Renderer",
+        "Framework Builder",
+        "Framing Workshop",
+      ],
+    },
+    {
+      behavior: "matches a query case-insensitively",
+      query: "FRAME",
+      expected: [
+        "Frame",
+        "Frame Renderer",
+        "Framework Builder",
+        "Aesthetic Dust Frames",
+        "Create Frame",
+        "Fast Response Assistant Media Exporter",
+      ],
+    },
+    {
+      behavior: "returns the single matching prefix without unrelated skills",
+      query: "create",
+      expected: ["Create Frame"],
+    },
+    {
+      behavior: "returns an empty list when no skill matches",
+      query: "zzz",
+      expected: [],
+    },
+    {
+      behavior: "sorts every skill alphabetically when the query is empty",
+      query: "",
+      expected: [
+        "Aesthetic Dust Frames",
+        "Create Frame",
+        "Fast Response Assistant Media Exporter",
+        "Frame",
+        "Frame Renderer",
+        "Framework Builder",
+        "Framing Workshop",
+        "Presentation Designer",
+      ],
+    },
+  ])("$behavior for '$query'", ({ query, expected }) => {
+    expect(filterAndSortAutocompleteSkills(query)).toEqual(expected);
+  });
+
+  test("ranks matching candidates before non-matches in an unfiltered list", () => {
+    expect(
+      ["Presentation Designer", "Create Frame", "Frame"].toSorted((a, b) =>
+        compareForAutocompleteSort("frame", a, b)
+      )
+    ).toEqual(["Frame", "Create Frame", "Presentation Designer"]);
+  });
+});
 
 test("compareForFuzzySort should correctly compare strings", () => {
   const dataLessThan = [

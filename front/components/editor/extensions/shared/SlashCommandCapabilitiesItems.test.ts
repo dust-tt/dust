@@ -124,7 +124,7 @@ describe("searchCapabilityIndex ranking", () => {
     expect(result.map((item) => item.id)).toEqual(["a", "z"]);
   });
 
-  it("breaks non-prefix fuzzy ties alphabetically", () => {
+  it("sorts non-prefix substring matches alphabetically", () => {
     const result = searchCapabilityIndex({
       items: [
         { id: "ztestlonger", sortName: "ztestlonger" },
