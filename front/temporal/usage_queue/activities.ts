@@ -1,4 +1,4 @@
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { reconcileApiKey } from "@app/lib/api/metronome/reconcile_credit_state";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import {
@@ -359,16 +359,16 @@ export async function emitMetronomeUsageEventsActivity(
   });
   const runUsages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
-  // Get MCP actions — filter to this execution's steps if startStep is available,
-  // and only include actions with a final status (succeeded/errored/denied).
-  // Actions with blocked/transient status haven't been executed yet and shouldn't be billed.
+  // Get MCP actions, filtered to this execution's steps if startStep is available, and to the
+  // actions that reached the tool. The Metronome rate card prices every tool_use_v3 event it
+  // receives, so an unbillable call has to be dropped here rather than flagged on the event.
   const allMcpActions = await AgentMCPActionResource.listByAgentMessageIds(
     auth,
     [agentMessage.id]
   );
   const mcpActions = allMcpActions.filter((a) => {
     const json = a.toJSON();
-    if (!isToolExecutionStatusFinal(json.status)) {
+    if (!isToolExecutionStatusBillable(json.status)) {
       return false;
     }
     if (

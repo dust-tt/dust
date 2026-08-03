@@ -125,8 +125,13 @@ describe("toolAwuFromActions", () => {
           {
             toolName: "websearch",
             internalMCPServerName: "web_search_&_browse",
+            status: "succeeded",
           }, // basic = 1
-          { toolName: "semantic_search", internalMCPServerName: "search" }, // advanced = 3
+          {
+            toolName: "semantic_search",
+            internalMCPServerName: "search",
+            status: "succeeded",
+          }, // advanced = 3
         ],
         TEST_CONTEXT_ORIGIN
       )
@@ -136,7 +141,13 @@ describe("toolAwuFromActions", () => {
   it("treats unknown / external servers as advanced (3)", () => {
     expect(
       toolAwuFromActions(
-        [{ toolName: "custom_tool", internalMCPServerName: null }],
+        [
+          {
+            toolName: "custom_tool",
+            internalMCPServerName: null,
+            status: "succeeded",
+          },
+        ],
         TEST_CONTEXT_ORIGIN
       )
     ).toBe(3);
@@ -146,13 +157,70 @@ describe("toolAwuFromActions", () => {
     // agent_memory has toolCategory "basic" + freeUsage true — contributes 0.
     expect(
       toolAwuFromActions(
-        [{ toolName: "retrieve", internalMCPServerName: "agent_memory" }],
+        [
+          {
+            toolName: "retrieve",
+            internalMCPServerName: "agent_memory",
+            status: "succeeded",
+          },
+        ],
         TEST_CONTEXT_ORIGIN
       )
     ).toBe(0);
     expect(
       toolAwuFromActions(
-        [{ toolName: "record_entries", internalMCPServerName: "agent_memory" }],
+        [
+          {
+            toolName: "record_entries",
+            internalMCPServerName: "agent_memory",
+            status: "succeeded",
+          },
+        ],
+        TEST_CONTEXT_ORIGIN
+      )
+    ).toBe(0);
+  });
+
+  it("charges for a tool that ran and failed on its own terms", () => {
+    expect(
+      toolAwuFromActions(
+        [
+          {
+            toolName: "semantic_search",
+            internalMCPServerName: "search",
+            status: "errored",
+          },
+        ],
+        TEST_CONTEXT_ORIGIN
+      )
+    ).toBe(3);
+  });
+
+  it("does not charge for a denied tool, which never reached the tool", () => {
+    expect(
+      toolAwuFromActions(
+        [
+          {
+            toolName: "semantic_search",
+            internalMCPServerName: "search",
+            status: "denied",
+          },
+        ],
+        TEST_CONTEXT_ORIGIN
+      )
+    ).toBe(0);
+  });
+
+  it("does not charge for a tool still awaiting approval", () => {
+    expect(
+      toolAwuFromActions(
+        [
+          {
+            toolName: "semantic_search",
+            internalMCPServerName: "search",
+            status: "blocked_validation_required",
+          },
+        ],
         TEST_CONTEXT_ORIGIN
       )
     ).toBe(0);
@@ -175,7 +243,7 @@ describe("computeAgentMessageCredits", () => {
     expect(credits).toBe(4);
   });
 
-  it("ignores non-final actions", () => {
+  it("ignores actions that have not run yet", () => {
     const credits = computeAgentMessageCredits({
       runUsages: [],
       actions: [
@@ -188,6 +256,36 @@ describe("computeAgentMessageCredits", () => {
       contextOrigin: TEST_CONTEXT_ORIGIN,
     });
     expect(credits).toBeNull();
+  });
+
+  it("ignores denied actions, which the user rejected before they ran", () => {
+    const credits = computeAgentMessageCredits({
+      runUsages: [],
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "denied",
+        },
+      ],
+      contextOrigin: TEST_CONTEXT_ORIGIN,
+    });
+    expect(credits).toBeNull();
+  });
+
+  it("bills the intelligence spent emitting a call the user then denied", () => {
+    const credits = computeAgentMessageCredits({
+      runUsages: [usage({ costMicroUsd: 8500 })], // 1 intelligence credit
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "denied",
+        },
+      ], // no tool credits
+      contextOrigin: TEST_CONTEXT_ORIGIN,
+    });
+    expect(credits).toBe(1);
   });
 
   it("returns null when there is no billable usage", () => {

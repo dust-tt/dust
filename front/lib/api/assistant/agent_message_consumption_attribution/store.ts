@@ -232,11 +232,14 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
         return;
       }
 
+      // Zero for a denied call, which billing does not charge. Its emitted output tokens stay
+      // attributed here.
       const directCreditAmountMicro = Math.round(
         toolAwuFromAction(
           {
             toolName: enrichedAction.toolName,
             internalMCPServerName: enrichedAction.internalMCPServerName,
+            status: action.status,
           },
           triggeringUserMessageOrigin
         ) * CREDIT_AMOUNT_MICRO_PER_CREDIT

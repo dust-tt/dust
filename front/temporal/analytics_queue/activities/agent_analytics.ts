@@ -6,7 +6,6 @@ import {
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
@@ -447,9 +446,11 @@ async function collectToolUsageFromMessage(
     const toolName =
       actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
       actionResource.functionCallName;
-    const cost_awu = isToolExecutionStatusFinal(actionResource.status)
-      ? toolAwuFromAction({ toolName, internalMCPServerName }, contextOrigin)
-      : 0;
+    // Same pricing gate as the billing pipeline, so this snapshot matches what was emitted.
+    const cost_awu = toolAwuFromAction(
+      { toolName, internalMCPServerName, status: actionResource.status },
+      contextOrigin
+    );
 
     return {
       step_index: actionResource.stepContent.step,

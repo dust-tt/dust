@@ -53,6 +53,27 @@ export function isToolExecutionStatusFinal(
   );
 }
 
+// The final statuses the tool actually ran under. `denied` is final but never executed: the user
+// rejected the approval, declined the authentication, or ended the message while the call sat
+// blocked. Charges are per invocation, so none of those are charged, while the model tokens spent
+// emitting the call are still billed as intelligence through the run usage. `errored` stays
+// billable, since the tool was invoked and failed on its own terms.
+const TOOL_EXECUTION_BILLABLE_STATUSES = [
+  "succeeded",
+  "errored",
+] as const satisfies readonly ToolExecutionFinalStatus[];
+
+type ToolExecutionBillableStatus =
+  (typeof TOOL_EXECUTION_BILLABLE_STATUSES)[number];
+
+export function isToolExecutionStatusBillable(
+  state: ToolExecutionStatus
+): state is ToolExecutionBillableStatus {
+  return TOOL_EXECUTION_BILLABLE_STATUSES.includes(
+    state as ToolExecutionBillableStatus
+  );
+}
+
 export function isToolExecutionStatusBlocked(
   state: ToolExecutionStatus
 ): state is ToolExecutionBlockedStatus {

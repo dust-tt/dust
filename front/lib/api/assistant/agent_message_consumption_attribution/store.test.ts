@@ -190,7 +190,8 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       inputTokensCount: TOKENS_PER_FOOTPRINT,
     });
     expect(toolItem?.grossAttributedCreditAmountMicro).toBeGreaterThan(0);
-    expect(toolItem?.directCreditAmountMicro).toBeGreaterThanOrEqual(0);
+    // The tool ran, so it carries the per-invocation charge of its cost category.
+    expect(toolItem?.directCreditAmountMicro).toBeGreaterThan(0);
 
     // The tokens the model spent emitting the tool call are carved out of the assistant output
     // bucket, so the two together still sum to the completion tokens net of reasoning.
@@ -254,6 +255,62 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
   });
 
+  it("completes the pending tool row with no charge once the blocked action is denied", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      dustRunId: run.dustRunId,
+    });
+
+    // First finalize, while the tool is still blocked: a pending row is written.
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    // The user rejects the approval, so the tool never runs, then the loop finalizes again.
+    await AgentMCPActionFactory.setStatus(auth, {
+      action,
+      status: "denied",
+    });
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const toolItems = (
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      )
+    ).filter((item) => item.itemType === "tool");
+
+    // The row settles with no per-invocation charge. What stays attributed is the output the
+    // model spent emitting the call.
+    expect(toolItems).toHaveLength(1);
+    expect(toolItems[0]).toMatchObject({
+      agentMCPActionId: action.id,
+      outputTokensCount: TOKENS_PER_FOOTPRINT,
+      directCreditAmountMicro: 0,
+      completedAt: expect.any(Date),
+    });
+    expect(toolItems[0].grossAttributedCreditAmountMicro).toBeGreaterThan(0);
+  });
+
   it("completes the pending tool row in place once the blocked action is approved", async () => {
     const {
       auth,
@@ -307,7 +364,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       inputTokensCount: TOKENS_PER_FOOTPRINT,
       completedAt: expect.any(Date),
     });
-    expect(toolItems[0].directCreditAmountMicro).toBeGreaterThanOrEqual(0);
+    expect(toolItems[0].directCreditAmountMicro).toBeGreaterThan(0);
   });
 
   it("keeps a completed tool single and stable across a redundant re-finalize", async () => {
