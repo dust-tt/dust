@@ -1,5 +1,4 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAppRouter } from "@app/lib/platform";
@@ -11,7 +10,6 @@ import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillAvailability,
   SkillUsageType,
-  SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
@@ -33,7 +31,6 @@ import type {
 import { useMemo, useState } from "react";
 
 type RowData = {
-  skill: SkillWithoutInstructionsAndToolsType;
   sId: string;
   name: string;
   icon: string | null;
@@ -44,10 +41,7 @@ type RowData = {
   usage: SkillUsageType;
   updatedAt: number | null;
   createdAt: number | null;
-  isFavorite: boolean;
-  canToggleFavorite: boolean;
   onClick: () => void;
-  onFavoriteChange: (isFavorite: boolean) => void;
   menuItems: MenuItem[];
 };
 
@@ -81,14 +75,6 @@ const nameColumn = {
     return (
       <DataTable.CellContent>
         <div className="flex flex-row items-center gap-2 py-3">
-          {info.row.original.canToggleFavorite && (
-            <SkillFavoriteButton
-              size="icon-xs"
-              isFavorite={info.row.original.isFavorite}
-              skill={info.row.original.skill}
-              onFavoriteChange={info.row.original.onFavoriteChange}
-            />
-          )}
           <div>
             <SkillAvatar />
           </div>
@@ -237,16 +223,11 @@ const getTableColumns = ({
 type SkillsTableProps = {
   skills: GetSkillsWithRelationsResponseBody["skills"];
   owner: LightWorkspaceType;
-  showFavoriteControls: boolean;
   onSkillClick: (
     skill: GetSkillsWithRelationsResponseBody["skills"][number]
   ) => void;
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
-  onFavoriteChange: (
-    skill: GetSkillsWithRelationsResponseBody["skills"][number],
-    isFavorite: boolean
-  ) => void;
   canMakeSkillAutoDiscoverable?: boolean;
   rowSelection?: RowSelectionState;
   setRowSelection?: (selection: RowSelectionState) => void;
@@ -255,11 +236,9 @@ type SkillsTableProps = {
 export function SkillsTable({
   skills,
   owner,
-  showFavoriteControls,
   onSkillClick,
   onAgentClick,
   onUsedBySkillClick,
-  onFavoriteChange,
   canMakeSkillAutoDiscoverable = false,
   rowSelection,
   setRowSelection,
@@ -288,7 +267,6 @@ export function SkillsTable({
   const rows: RowData[] = useMemo(
     () =>
       skills.map((skill) => ({
-        skill,
         sId: skill.sId,
         name: skill.name,
         icon: skill.icon,
@@ -299,8 +277,6 @@ export function SkillsTable({
         usage: skill.relations.usage,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
-        isFavorite: skill.isFavorite ?? false,
-        canToggleFavorite: showFavoriteControls && skill.status === "active",
         onClick: () => {
           // During batch edition the DataTable itself toggles the row selection on
           // click; don't open the details panel on top of it.
@@ -308,9 +284,6 @@ export function SkillsTable({
             return;
           }
           onSkillClick(skill);
-        },
-        onFavoriteChange: (isFavorite: boolean) => {
-          onFavoriteChange(skill, isFavorite);
         },
         menuItems:
           skill.status !== "archived"
@@ -351,14 +324,7 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [
-      skills,
-      onSkillClick,
-      onFavoriteChange,
-      owner.sId,
-      showFavoriteControls,
-      isSelectionEnabled,
-    ]
+    [skills, onSkillClick, owner.sId, isSelectionEnabled]
   );
 
   if (rows.length === 0) {

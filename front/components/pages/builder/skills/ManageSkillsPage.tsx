@@ -266,16 +266,6 @@ export function ManageSkillsPage() {
     [updateSkillFavorite]
   );
 
-  const handleFavoriteChangeClick = useCallback(
-    (
-      skill: GetSkillsWithRelationsResponseBody["skills"][number],
-      isFavorite: boolean
-    ) => {
-      void handleFavoriteChange(skill, isFavorite);
-    },
-    [handleFavoriteChange]
-  );
-
   const knownSkillsById = useMemo(
     () =>
       new Map(
@@ -510,11 +500,9 @@ export function ManageSkillsPage() {
                 <SkillsTable
                   owner={owner}
                   skills={skillsByTab[activeTab]}
-                  showFavoriteControls={hasSkillFavorites}
                   onSkillClick={handleSkillSelect}
                   onAgentClick={setAgentId}
                   onUsedBySkillClick={handleUsedBySkillSelect}
-                  onFavoriteChange={handleFavoriteChangeClick}
                   canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
                   {...(isBatchEditionAvailable && isBatchEditing
                     ? { rowSelection, setRowSelection }
