@@ -62,11 +62,11 @@ export async function createOrUpdateSpendLimitExpirationSchedule(): Promise<
     await client.schedule.create(scheduleOptions);
     logger.info("Created new spend limit expiration schedule.");
     return new Ok(undefined);
-  } catch (error) {
+  } catch (err) {
     logger.error(
-      { error },
+      { err },
       "Failed to create new spend limit expiration schedule."
     );
-    return new Err(normalizeError(error));
+    return new Err(normalizeError(err));
   }
 }
