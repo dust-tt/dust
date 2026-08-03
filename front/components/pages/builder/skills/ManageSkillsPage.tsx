@@ -73,7 +73,7 @@ export function ManageSkillsPage() {
   const { hasPermission } = useWorkspacePermissions();
   const { hasFeature } = useFeatureFlags();
   const hasSkillFavorites = hasFeature("skill_favorites");
-  const [optimisticSelectedSkill, setOptimisticSelectedSkill] = useState<
+  const [selectedSkillOverride, setSelectedSkillOverride] = useState<
     GetSkillsWithRelationsResponseBody["skills"][number] | null
   >(null);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -202,7 +202,7 @@ export function ManageSkillsPage() {
 
   const handleSkillSelect = useCallback(
     (skill: GetSkillsWithRelationsResponseBody["skills"][number] | null) => {
-      setOptimisticSelectedSkill(skill);
+      setSelectedSkillOverride(skill);
       setSkillIdParam(skill?.sId);
     },
     [setSkillIdParam]
@@ -256,7 +256,7 @@ export function ManageSkillsPage() {
     ) => {
       const didUpdate = await updateSkillFavorite(skill, isFavorite);
       if (didUpdate) {
-        setOptimisticSelectedSkill((currentSkill) =>
+        setSelectedSkillOverride((currentSkill) =>
           currentSkill?.sId === skill.sId
             ? { ...currentSkill, isFavorite }
             : currentSkill
@@ -291,12 +291,12 @@ export function ManageSkillsPage() {
       return null;
     }
 
-    if (optimisticSelectedSkill?.sId === skillIdParam) {
-      return optimisticSelectedSkill;
+    if (selectedSkillOverride?.sId === skillIdParam) {
+      return selectedSkillOverride;
     }
 
     return knownSkillsById.get(skillIdParam) ?? null;
-  }, [skillIdParam, knownSkillsById, optimisticSelectedSkill]);
+  }, [skillIdParam, knownSkillsById, selectedSkillOverride]);
 
   const handleUsedBySkillSelect = useCallback(
     (skillId: string) => {
@@ -304,7 +304,7 @@ export function ManageSkillsPage() {
       if (skill) {
         handleSkillSelect(skill);
       } else {
-        setOptimisticSelectedSkill(null);
+        setSelectedSkillOverride(null);
         setSkillIdParam(skillId);
       }
     },
