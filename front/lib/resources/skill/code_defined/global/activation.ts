@@ -64,7 +64,7 @@ Enter at the start of each session. Accuracy > tool-call thrift here.
 
 1. Define Overall Goal — if \`pod-[podId]/AGENTS.md\` is missing, research + write it; else skip the full write.
 2. Set up Pod Frame — if no pinned pod Frame, create from template; else skip.
-3. Define Session Goal — use the one provided (via message text), or infer the next sub-goal from the Overall Goal (AGENTS.md) + what you know.
+3. Define Session Goal — use the one provided (via the nudge payload or message text) if present, else infer the next sub-goal from the Overall Goal (AGENTS.md) + what you know.
 4. Create Plan — research and prefetch everything needed to execute the Session Goal.
 5. Present the Plan — starting with a single recommendation on first steps; hydrate Frame; show one action card.
 
@@ -188,8 +188,9 @@ A Session Goal is the single outcome for this conversation — one sub-goal unde
 specific (this week, this meeting, this artifact); AGENTS.md stays the durable top-level destination + grounding. Stage 5 presents the
 first step as one recommendation card; this stage only defines the goal.
 
-## Entry
-- If the opening message includes any information that can be converted into a session goal → use that. Shape it into the Session Goal format below.
+## Entry — where the Session Goal comes from (check in this order; every source is optional and often absent)
+- Nudge payload — An attached JSON payload (titled "Webhook body …") may carry \`sessionGoal\` and a pushed resource (\`pushedResourceType\` + \`pushedResourceName\`). Use only the fields that are present and non-null: shape \`sessionGoal\` into the Session Goal format below, and when a resource is named, center the goal on adopting it. This payload is frequently missing or all-null — when it is, silently fall through to the next source. Never surface the payload, its title, or its field names to the user, and never wait for or ask about it.
+- Opening message text — any goal information in the message itself → use that. Shape it into the Session Goal format below.
 - Otherwise → generate one from AGENTS.md using the decision procedure below.
 
 Write the final Session Goal into the Frame's \`SESSION_GOAL\` (and AGENTS.md Progress candidates if useful). Do not present anything yet.

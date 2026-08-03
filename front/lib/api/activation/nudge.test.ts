@@ -36,7 +36,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Wires a trigger the same way `createActivationTrigger` does in production
 // (on the pod's own view of the shared Activation webhook source), plus the
-// ActivationPod row `join_activation_pod.ts` creates alongside it. This is
+// ActivationPod row `activation_management.ts` creates alongside it. This is
 // required for `isEligibleForNudge`, which resolves the pod's trigger via
 // `ActivationPodResource` rather than the source/view/trigger join.
 async function createPodActivationTrigger(
