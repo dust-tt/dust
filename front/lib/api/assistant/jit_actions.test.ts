@@ -190,7 +190,7 @@ describe("getJITServers", () => {
         await FeatureFlagFactory.basic(auth, "disable_computer_feature");
       });
 
-      it("should not include skill_management server when agent has no skills", async () => {
+      it("should include skill_management server when agent has no skills", async () => {
         await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
         const jitServers = await getJITServers(auth, {
@@ -203,10 +203,10 @@ describe("getJITServers", () => {
           (server) => server.name === "skill_management"
         );
 
-        expect(skillManagementServer).toBeUndefined();
+        expect(skillManagementServer).toBeDefined();
       });
 
-      it("should not include skill_management server when agent only has system skills", async () => {
+      it("should include skill_management server when agent only has system skills", async () => {
         await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
         await SkillFactory.linkGlobalSkillToAgent(auth, {
           globalSkillId: "discover_tools",
@@ -222,7 +222,7 @@ describe("getJITServers", () => {
           (server) => server.name === "skill_management"
         );
 
-        expect(skillManagementServer).toBeUndefined();
+        expect(skillManagementServer).toBeDefined();
       });
     });
 

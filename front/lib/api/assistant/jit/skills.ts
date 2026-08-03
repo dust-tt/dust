@@ -1,31 +1,19 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Get the skill_management MCP server if the agent has skills that can be enabled.
+ * Get the skill_management MCP server.
  */
-export async function getSkillManagementServer(
-  auth: Authenticator,
+export function getSkillManagementServer(
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
   conversation: ConversationWithoutContentType,
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
-): Promise<ServerSideMCPServerConfigurationType | null> {
-  const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
-    agentConfiguration,
-    conversation,
-  });
-
-  if (equippedSkills.length === 0) {
-    return null;
-  }
-
+): ServerSideMCPServerConfigurationType | null {
   const skillManagementView = autoInternalViews.get("skill_management") ?? null;
 
   if (!skillManagementView) {
