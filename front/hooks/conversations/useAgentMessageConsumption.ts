@@ -24,7 +24,7 @@ export function useAgentMessageConsumption({
 
   return {
     consumption: data,
-    isConsumptionLoading: isLoading || isValidating,
+    isConsumptionLoading: !disabled && (isLoading || isValidating),
     mutateConsumption: mutate,
   };
 }
