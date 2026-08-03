@@ -40,13 +40,13 @@ describe("compareForAutocompleteSort", () => {
       ],
     },
     {
-      behavior: "sorts matches alphabetically within the prefix tier",
+      behavior: "prioritizes shorter matches within the prefix tier",
       query: "guid",
       expected: [
         "Guide",
         "Guide Builder",
-        "Guideline Toolkit",
         "Guiding Workshop",
+        "Guideline Toolkit",
         "Create Guide",
         "Product Guides",
         "Generate Useful Insights for Data Export",
@@ -61,15 +61,15 @@ describe("compareForAutocompleteSort", () => {
       ],
     },
     {
-      behavior: "sorts fuzzy-only matches alphabetically instead of by spread",
+      behavior: "sorts fuzzy-only matches by length instead of by spread",
       query: "gde",
       expected: [
-        "Create Guide",
-        "Generate Useful Insights for Data Export",
         "Guide",
+        "Create Guide",
         "Guide Builder",
-        "Guideline Toolkit",
         "Product Guides",
+        "Guideline Toolkit",
+        "Generate Useful Insights for Data Export",
       ],
     },
     {
@@ -141,22 +141,31 @@ describe("compareForAutocompleteSort", () => {
       worseMatch: "Automation Designer",
     },
     {
-      behavior: "two prefix matches are ordered alphabetically",
+      behavior:
+        "a shorter prefix match ranks first even when it is later alphabetically",
       query: "guid",
-      betterMatch: "Guide Builder",
-      worseMatch: "Guideline Toolkit",
+      betterMatch: "Guiding Lab",
+      worseMatch: "Guide Automation",
     },
     {
-      behavior: "two substring matches are ordered alphabetically",
-      query: "guide",
-      betterMatch: "Create Guide",
-      worseMatch: "Product Guides",
+      behavior:
+        "equally positioned and equally short prefix matches are ordered alphabetically",
+      query: "guid",
+      betterMatch: "Guide Alpha",
+      worseMatch: "Guide Bravo",
     },
     {
-      behavior: "two fuzzy matches are ordered alphabetically",
+      behavior:
+        "equally positioned and equally short substring matches are ordered alphabetically",
       query: "guide",
-      betterMatch: "Generate Useful Insights for Data Export",
-      worseMatch: "Great User Interface Design Example",
+      betterMatch: "Create Guide A",
+      worseMatch: "Create Guide B",
+    },
+    {
+      behavior: "equally short fuzzy matches are ordered alphabetically",
+      query: "gde",
+      betterMatch: "Great Data Export",
+      worseMatch: "Green Data Engine",
     },
     {
       behavior: "two non-matches are ordered alphabetically",
@@ -170,6 +179,20 @@ describe("compareForAutocompleteSort", () => {
       betterMatch: "Guide Builder",
       worseMatch: "Create Guide Builder",
     },
+    {
+      behavior:
+        "an earlier substring ranks first even when it is longer and later alphabetically",
+      query: "guide",
+      betterMatch: "Use Guide Reference",
+      worseMatch: "A Very Long Guide",
+    },
+    {
+      behavior:
+        "a shorter substring ranks first when both matches start at the same position",
+      query: "guide",
+      betterMatch: "Zoo Guide",
+      worseMatch: "Any Guide Reference",
+    },
   ])("$behavior", ({ query, betterMatch, worseMatch }) => {
     expect(
       [worseMatch, betterMatch].toSorted((a, b) =>
@@ -178,8 +201,16 @@ describe("compareForAutocompleteSort", () => {
     ).toEqual([betterMatch, worseMatch]);
   });
 
-  test("treats candidates that differ only by case as equally relevant", () => {
-    expect(compareForAutocompleteSort("guide", "Guide", "GUIDE")).toBe(0);
+  test("uses original casing as the final alphabetical tie-breaker", () => {
+    const comparison = compareForAutocompleteSort("guide", "Guide", "GUIDE");
+    const reverseComparison = compareForAutocompleteSort(
+      "guide",
+      "GUIDE",
+      "Guide"
+    );
+
+    expect(comparison).not.toBe(0);
+    expect(Math.sign(comparison)).toBe(-Math.sign(reverseComparison));
   });
 
   test("ranks matching candidates before non-matches in an unfiltered list", () => {

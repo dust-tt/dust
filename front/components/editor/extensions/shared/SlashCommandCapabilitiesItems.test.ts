@@ -124,7 +124,7 @@ describe("searchCapabilityIndex ranking", () => {
     expect(result.map((item) => item.id)).toEqual(["a", "z"]);
   });
 
-  it("sorts non-prefix substring matches alphabetically", () => {
+  it("ranks earlier substring matches first", () => {
     const result = searchCapabilityIndex({
       items: [
         { id: "ztestlonger", sortName: "ztestlonger" },
@@ -133,7 +133,7 @@ describe("searchCapabilityIndex ranking", () => {
       query: "test",
     });
 
-    expect(result.map((item) => item.id)).toEqual(["longtest", "ztestlonger"]);
+    expect(result.map((item) => item.id)).toEqual(["ztestlonger", "longtest"]);
   });
 
   it("ranks title prefix matches above other fuzzy title matches", () => {
