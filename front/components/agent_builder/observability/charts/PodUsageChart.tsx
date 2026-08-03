@@ -1,5 +1,6 @@
 import {
   CHART_HEIGHT,
+  OTHER_LABEL,
   UNKNOWN_LABEL,
 } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
@@ -14,6 +15,10 @@ import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 const NO_POD_KEY = "__no_pod__";
 const NO_POD_LABEL = "No pod";
+
+// Pods beyond this count are grouped under a single "Others" slice to keep the
+// donut and legend readable on workspaces with many pods.
+const MAX_PODS_DISPLAYED = 20;
 
 type PodChartDatum = {
   key: string;
@@ -51,14 +56,51 @@ export function PodUsageChart({
 
   const total = podUsage.total;
 
-  const data: PodChartDatum[] = podUsage.buckets.map((bucket) => ({
-    key: bucket.podId ?? NO_POD_KEY,
-    label: bucket.name ?? NO_POD_LABEL,
-    count: bucket.count,
-    percent: total > 0 ? Math.round((bucket.count / total) * 100) : 0,
-  }));
+  const toPercent = (count: number) =>
+    total > 0 ? Math.round((count / total) * 100) : 0;
 
-  const podKeys = data.filter((d) => d.key !== NO_POD_KEY).map((d) => d.label);
+  // Buckets come sorted by count descending, with the no-pod bucket last.
+  const podBuckets = podUsage.buckets.filter((b) => b.podId !== null);
+  const noPodBucket = podUsage.buckets.find((b) => b.podId === null);
+
+  const topPods: PodChartDatum[] = podBuckets
+    .slice(0, MAX_PODS_DISPLAYED)
+    .map((bucket) => ({
+      key: bucket.podId ?? NO_POD_KEY,
+      label: bucket.name ?? NO_POD_LABEL,
+      count: bucket.count,
+      percent: toPercent(bucket.count),
+    }));
+
+  const othersCount = podBuckets
+    .slice(MAX_PODS_DISPLAYED)
+    .reduce((acc, bucket) => acc + bucket.count, 0);
+
+  const data: PodChartDatum[] = [
+    ...topPods,
+    ...(othersCount > 0
+      ? [
+          {
+            key: OTHER_LABEL.key,
+            label: OTHER_LABEL.label,
+            count: othersCount,
+            percent: toPercent(othersCount),
+          },
+        ]
+      : []),
+    ...(noPodBucket
+      ? [
+          {
+            key: NO_POD_KEY,
+            label: NO_POD_LABEL,
+            count: noPodBucket.count,
+            percent: toPercent(noPodBucket.count),
+          },
+        ]
+      : []),
+  ];
+
+  const podKeys = topPods.map((d) => d.label);
 
   const getPodColor = (datum: PodChartDatum) =>
     datum.key === NO_POD_KEY
