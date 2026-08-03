@@ -62,6 +62,12 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
     }
 
     if (a.titleMatches) {
+      const aIsPrefixMatch = a.item.sortName.startsWith(normalizedQuery);
+      const bIsPrefixMatch = b.item.sortName.startsWith(normalizedQuery);
+      if (aIsPrefixMatch !== bIsPrefixMatch) {
+        return aIsPrefixMatch ? -1 : 1;
+      }
+
       return (
         compareForFuzzySort(
           normalizedQuery,
