@@ -247,6 +247,7 @@ export class ConversationFactory {
     rank = 0,
     agenticMessageType,
     agenticOriginMessageId,
+    authorless = false,
   }: {
     auth: Authenticator;
     workspace: WorkspaceType;
@@ -254,11 +255,13 @@ export class ConversationFactory {
     content: string;
     origin?: UserMessageOrigin;
     rank?: number;
+    // Posted by Dust on the user's behalf, so no author on the row.
+    authorless?: boolean;
     agenticMessageType?: "run_agent" | "agent_handover";
     agenticOriginMessageId?: string;
   }): Promise<{ messageRow: MessageModel; userMessage: UserMessageType }> {
     const userMessageRow = await UserMessageModel.create({
-      userId: auth.getNonNullableUser().id,
+      userId: authorless ? null : auth.getNonNullableUser().id,
       conversationId: conversation.id,
       workspaceId: workspace.id,
       content,
@@ -290,7 +293,7 @@ export class ConversationFactory {
       visibility: messageRow.visibility,
       version: 0,
       branchId: null,
-      user: auth.getNonNullableUser().toJSON(),
+      user: authorless ? null : auth.getNonNullableUser().toJSON(),
       mentions: [],
       richMentions: [],
       content: userMessageRow.content,

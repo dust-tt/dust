@@ -183,6 +183,7 @@ async function listAvailableTools(
       agentConfiguration,
       conversation,
       agentMessage,
+      userMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
     {
