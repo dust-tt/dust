@@ -262,7 +262,9 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         targetUser,
         { role: "user" }
       );
-      await membership.updatePoolCapOverride(2500);
+      await membership.updatePoolCapOverride({
+        poolCapOverrideAwuCredits: 2500,
+      });
 
       await createPrivateApiMockRequest({
         method: "GET",
@@ -291,7 +293,9 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         targetUser,
         { role: "user" }
       );
-      await membership.updatePoolCapOverride(1200);
+      await membership.updatePoolCapOverride({
+        poolCapOverrideAwuCredits: 1200,
+      });
 
       await createPrivateApiMockRequest({
         method: "PUT",

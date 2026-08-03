@@ -217,9 +217,10 @@ export async function setUserSpendLimit(
   // Persist the admin's intent first: the membership is the source of truth,
   // the Metronome alerts below are derived enforcement (a failed sync can be
   // retried and re-derives from this value).
-  await membership.updatePoolCapOverride(
-    limit.kind === "limited" ? limit.awuCredits : null
-  );
+  await membership.updatePoolCapOverride({
+    poolCapOverrideAwuCredits:
+      limit.kind === "limited" ? limit.awuCredits : null,
+  });
 
   switch (limit.kind) {
     case "unlimited": {
