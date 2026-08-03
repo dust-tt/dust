@@ -65,7 +65,10 @@ import type {
 } from "@app/types/assistant/analytics";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import {
+  ACTIVATION_NUDGE_ORIGIN,
+  AGENT_MESSAGE_STATUSES_TO_TRACK,
+} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { sha256 } from "@app/types/shared/utils/encryption";
 import type { WhereOptions } from "sequelize";
@@ -144,6 +147,14 @@ export async function storeAgentAnalyticsActivity(
 
   if (!userUserMessageRow) {
     throw new Error("User message not found");
+  }
+
+  // Activation Pod nudges are sent by us, not asked for by the user: they must
+  // not show up anywhere in analytics, not even as a 0-credit row (this drops
+  // them from the credits tables, per-agent usage, and the DAU signal the
+  // activation evaluator itself reads).
+  if (userUserMessageRow.userContextOrigin === ACTIVATION_NUDGE_ORIGIN) {
+    return;
   }
 
   await storeAgentAnalytics(auth, {
