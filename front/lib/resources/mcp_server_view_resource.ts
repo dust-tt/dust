@@ -32,6 +32,7 @@ import type {
   MCPServerType,
   MCPServerViewLightType,
   MCPServerViewType,
+  MCPToolType,
 } from "@app/lib/api/mcp";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -1323,6 +1324,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       default:
         assertNever(this.serverType);
     }
+  }
+
+  /**
+   * Returns the persisted tool definitions exposed by this server view. Remote views must have
+   * been fetched with the cached tools heavy attribute.
+   */
+  getServerTools(): readonly MCPToolType[] {
+    return this.serverType === "remote"
+      ? this.getRemoteMCPServerResource().getCachedTools()
+      : this.getInternalMCPServerResource().toJSON().tools;
   }
 
   /**

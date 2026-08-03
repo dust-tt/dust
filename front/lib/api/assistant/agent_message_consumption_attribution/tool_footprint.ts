@@ -1,3 +1,4 @@
+import { getEnabledSkillInputTextByActionId } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { renderToolResultForModelAsText } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,24 +10,24 @@ import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * The two texts an MCP action contributes to the model's token budget: the tool call the model
- * emitted (output side) and the result's renderable footprint (input side). The result is priced by
- * the input it would occupy if carried into a later prompt, which it may never be (the message can
- * end, or the tool can be denied, before any following turn). Per-tool attribution prices both
- * footprints, so V1 measures them.
+ * emitted on the output side and the model input created by the execution. Most tools only create a
+ * renderable result. Enabling a skill also creates an instruction message and tool definitions.
  */
 export interface ToolFootprintTexts {
   callText: string;
-  resultText: string;
+  /** Model input created by the execution, not parameters passed into the tool. */
+  inputText: string;
 }
 
 /**
  * The measured footprint of one MCP action, aligned by position with the input actions. Named after
- * the model budget each side consumes: the emitted call counts as output, and the result counts as
- * the input it would occupy if carried into a later prompt, which it may never be.
+ * the model budget each side consumes. The emitted call counts as output, and everything the
+ * execution adds to later model requests counts as input.
  */
 export interface ToolFootprintMeasurement {
   callOutputTokensCount: number;
-  resultInputTokensCount: number;
+  /** Tokens added to model input by the execution, not tokens in the tool arguments. */
+  inputTokensCount: number;
 }
 
 /**
@@ -39,22 +40,25 @@ export interface ToolCallFootprintInput {
   functionCallArguments: string;
 }
 
-export function toolCallFootprintTexts({
-  action,
-  functionCallArguments,
-}: ToolCallFootprintInput): ToolFootprintTexts {
+export function toolCallFootprintTexts(
+  { action, functionCallArguments }: ToolCallFootprintInput,
+  additionalInputText?: string
+): ToolFootprintTexts {
   return {
     // The tool call as the model emitted it: its name plus the arguments it generated.
     callText: `${action.functionCallName}\n${functionCallArguments}`,
-    // The result's model-rendered text, shared with conversation rendering so the estimate tracks
-    // what would be sent. Image content is not counted here because it uses separate tile pricing.
-    resultText: renderToolResultForModelAsText(action),
+    // Tool input means the model input created by this execution. Most tools contribute only their
+    // rendered result. Enabling a skill also adds its instructions and tool definitions to later
+    // requests, so those consequences belong to the same tool row.
+    inputText: [renderToolResultForModelAsText(action), additionalInputText]
+      .filter((text): text is string => text !== undefined)
+      .join("\n"),
   };
 }
 
 /**
- * Measures, for each action, how many tokens the model spent emitting the tool call and how many the
- * returned result would occupy if carried into a later prompt. Results stay aligned with `toolCalls`.
+ * Measures, for each action, how many tokens the model spent emitting the tool call and how many
+ * input tokens the execution contributes. Results stay aligned with `toolCalls`.
  *
  * Uses the exact tokenizer of the run's model through core, the same path conversation rendering
  * uses to size messages, so the counts closely match provider tokenization rather than a heuristic.
@@ -84,17 +88,28 @@ export async function measureToolCallFootprints(
     skipEmbeddingApiKeyRequirement: true,
   });
 
-  // Tokenize the calls and the results as two homogeneous lists rather than one interleaved list, so
-  // each count maps back to its call by plain index, with no call-vs-result position juggling.
-  const footprints = toolCalls.map(toolCallFootprintTexts);
-  const [callCountsRes, resultCountsRes] = await Promise.all([
+  const enabledSkillInputTextByActionId =
+    await getEnabledSkillInputTextByActionId(
+      auth,
+      toolCalls.map(({ action }) => action)
+    );
+
+  // Tokenize the calls and inputs as two homogeneous lists so each count maps back to its call by
+  // plain index, with no call-vs-input position juggling.
+  const footprints = toolCalls.map((toolCall) =>
+    toolCallFootprintTexts(
+      toolCall,
+      enabledSkillInputTextByActionId.get(toolCall.action.sId)
+    )
+  );
+  const [callCountsRes, inputCountsRes] = await Promise.all([
     tokenCountForTexts(
       footprints.map((footprint) => footprint.callText),
       model,
       credentials
     ),
     tokenCountForTexts(
-      footprints.map((footprint) => footprint.resultText),
+      footprints.map((footprint) => footprint.inputText),
       model,
       credentials
     ),
@@ -102,17 +117,17 @@ export async function measureToolCallFootprints(
   if (callCountsRes.isErr()) {
     return callCountsRes;
   }
-  if (resultCountsRes.isErr()) {
-    return resultCountsRes;
+  if (inputCountsRes.isErr()) {
+    return inputCountsRes;
   }
 
   const callCounts = callCountsRes.value;
-  const resultCounts = resultCountsRes.value;
+  const inputCounts = inputCountsRes.value;
 
   return new Ok(
     footprints.map((_, index) => ({
       callOutputTokensCount: callCounts[index],
-      resultInputTokensCount: resultCounts[index],
+      inputTokensCount: inputCounts[index],
     }))
   );
 }

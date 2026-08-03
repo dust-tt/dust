@@ -248,7 +248,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
       const toolAttribution = buildToolAttribution({
         usage,
         toolCall,
-        inputTokensCount: footprint.resultInputTokensCount,
+        inputTokensCount: footprint.inputTokensCount,
         directCreditAmountMicro,
       });
 

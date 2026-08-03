@@ -291,7 +291,7 @@ export type AgentActionRunningEvents =
   | AgentLoopMCPApproveExecutionEvent
   | AgentLoopToolNotificationEvent;
 
-const MAX_DESCRIPTION_LENGTH = 1024;
+export const MAX_TOOL_DESCRIPTION_LENGTH = 1024;
 
 /**
  * Builds a tool specification for the given MCP action configuration.
@@ -310,7 +310,8 @@ export function buildToolSpecification(
   return {
     name: actionConfiguration.name,
     description:
-      actionConfiguration.description?.slice(0, MAX_DESCRIPTION_LENGTH) ?? "",
+      actionConfiguration.description?.slice(0, MAX_TOOL_DESCRIPTION_LENGTH) ??
+      "",
     inputSchema,
     ...(actionConfiguration.eager ? { eager: true } : {}),
   };

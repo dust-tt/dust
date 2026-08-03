@@ -1,14 +1,18 @@
+import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -24,12 +28,16 @@ const INPUT_TOKENS_COUNT = 100;
 const OUTPUT_TOKENS_COUNT = 20;
 const REASONING_TOKENS_COUNT = 5;
 
-// Every tokenized footprint counts as this many tokens, so tool-call output and result-input
+// Every tokenized footprint counts as this many tokens, so tool-call output and tool input
 // footprints are deterministic in the assertions below.
 const TOKENS_PER_FOOTPRINT = 2;
 
 async function setupSettledMessageWithUsage() {
-  const { authenticator: auth, workspace } = await createResourceTest({});
+  const {
+    authenticator: auth,
+    globalSpace,
+    workspace,
+  } = await createResourceTest({ role: "admin" });
 
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     auth,
@@ -54,6 +62,7 @@ async function setupSettledMessageWithUsage() {
 
   return {
     auth,
+    globalSpace,
     workspace,
     conversation,
     run,
@@ -199,6 +208,81 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(
       (outputItem?.outputTokensCount ?? 0) + (toolItem?.outputTokensCount ?? 0)
     ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
+  });
+
+  it("attributes enabled skill instructions and tool definitions to the tool input", async () => {
+    const {
+      auth,
+      globalSpace,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+
+    const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+      auth,
+      {
+        name: "common_utilities",
+        useCase: null,
+      }
+    );
+    const mcpServerView = await MCPServerViewFactory.create(
+      workspace,
+      internalServer.id,
+      globalSpace
+    );
+    const skill = await SkillFactory.create(auth, {
+      instructions: "Follow the enabled skill instructions.",
+      mcpServerViews: [mcpServerView],
+      name: "Measured Skill",
+    });
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "succeeded",
+      dustRunId: run.dustRunId,
+      output: [
+        makeEnableSkillResultOutput({
+          skillId: skill.sId,
+          text: `Skill "${skill.name}" has been enabled.`,
+        }),
+      ],
+    });
+
+    // Character counts let this assertion verify the exact combined text handed to tokenization.
+    vi.mocked(tokenCountForTexts).mockImplementation(
+      async (texts) => new Ok(texts.map((text) => text.length))
+    );
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const [, inputTokenizationCall] = vi.mocked(tokenCountForTexts).mock.calls;
+    const [inputTexts] = inputTokenizationCall;
+    expect(inputTexts).toHaveLength(1);
+    expect(inputTexts[0]).toContain(
+      "<dust_system>\n<Measured Skill>\nFollow the enabled skill instructions."
+    );
+    expect(inputTexts[0]).toContain(
+      '"name":"common_utilities__set_conversation_title"'
+    );
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    const toolItem = items.find((item) => item.itemType === "tool");
+    expect(toolItem?.inputTokensCount).toBe(inputTexts[0].length);
   });
 
   it("writes a blocked tool as a pending row, carving its output but withholding the charge", async () => {
