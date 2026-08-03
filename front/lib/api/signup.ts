@@ -19,16 +19,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
-
-// The `builder` role is deprecated: it can only be granted through the `dust-builders` provisioning
-// group, never through invitations. Any pending or legacy `builder` invitation resolves to a
-// regular `user` membership when accepted.
-function membershipRoleForInvitation(
-  initialRole: ActiveRoleType
-): ActiveRoleType {
-  return initialRole === "builder" ? "user" : initialRole;
-}
+import type { LightWorkspaceType } from "@app/types/user";
+import { toAssignableRole } from "@app/types/user";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as all the
 // checks (decoding the JWT) have been run before. Simply create the membership if it does not
@@ -94,7 +86,7 @@ export async function handleMembershipInvite({
     const updateRes = await updateMembershipRoleAndTrack({
       user,
       workspace: lightWorkspace,
-      newRole: membershipRoleForInvitation(membershipInvite.initialRole),
+      newRole: toAssignableRole(membershipInvite.initialRole),
       allowTerminated: true,
       author: "no-author",
     });
@@ -113,7 +105,7 @@ export async function handleMembershipInvite({
     await createAndTrackMembership({
       workspace: lightWorkspace,
       user,
-      role: membershipRoleForInvitation(membershipInvite.initialRole),
+      role: toAssignableRole(membershipInvite.initialRole),
       origin: "invited",
       requestedSeatType: membershipInvite.seatType,
     });
@@ -170,7 +162,7 @@ export async function handleEnterpriseSignUpFlow(
     await createAndTrackMembership({
       workspace: lightWorkspace,
       user,
-      role: membershipRoleForInvitation(
+      role: toAssignableRole(
         pendingMembershipInvitation?.initialRole ?? "user"
       ),
       origin: pendingMembershipInvitation ? "invited" : "auto-joined",
