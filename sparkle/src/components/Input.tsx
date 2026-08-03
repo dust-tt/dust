@@ -100,14 +100,17 @@ const labelVariants = cva("pb-0.5 font-medium text-foreground", {
 });
 
 // Full-height muted box flanking the field for a unit/currency (prefix/suffix).
+// Sized with a min-width rather than a fixed width so short content (`$`, `%`)
+// stays compact while longer content (`credits/month`) can still grow the box
+// instead of overflowing it.
 const slotBoxVariants = cva(
   cn("flex h-full shrink-0 items-center justify-center", "bg-muted"),
   {
     variants: {
       size: {
-        xs: "w-6",
-        sm: "w-8",
-        md: "w-10",
+        xs: "min-w-6 px-1.5",
+        sm: "min-w-8 px-2",
+        md: "min-w-10 px-2.5",
       },
     },
     defaultVariants: {

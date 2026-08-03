@@ -6,6 +6,7 @@ import {
 import {
   SPEND_LIMIT_EXPIRY_KINDS,
   type SpendLimitExpiryKind,
+  type UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
 import {
   assertNever,
@@ -128,7 +129,13 @@ export function EditSpendLimitModal({
       case "limited":
         setKind("override");
         setCreditsInput(String(spendLimit.awuCredits));
-        setExpiryMode(spendLimit.expiresAt ? "one_day" : "never");
+        setExpiryMode(
+          spendLimit.expiresAt === null
+            ? "never"
+            : spendLimit.expiresAt === spendLimit.nextCreditResetAt
+              ? "next_credit_reset"
+              : "one_day"
+        );
         break;
       case "unlimited":
         setKind(forceOverride ? "override" : "default");
@@ -191,9 +198,7 @@ export function EditSpendLimitModal({
     setIsSaving(true);
     onSavingChange?.(displayedMember.sId, true);
     try {
-      let limit:
-        | { kind: "unlimited" }
-        | { kind: "limited"; awuCredits: number; expiresAt: number | null };
+      let limit: UserSpendLimit;
       switch (kind) {
         case "default":
           limit = { kind: "unlimited" };
