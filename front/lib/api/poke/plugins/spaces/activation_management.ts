@@ -389,9 +389,16 @@ export const activationManagementPlugin = createPlugin({
         type: "text",
         label: "[Optional] User context",
         description:
-          "Background Dust keeps in mind for these users across every " +
-          "nudge. Written to the Pod AGENTS.md file. If not provided, the agent will automatically research the user. " +
-          "If provided, it is strongly recommended to include the user's job responsibilities and/or an onboarding playbook.",
+          "Background about the user that Dust keeps in mind across every nudge — " +
+          "job title, team, responsibilities, current projects. " +
+          "If not provided, the agent will automatically research the user.",
+      },
+      activationPlaybook: {
+        type: "text",
+        label: "[Optional] Activation playbook",
+        description:
+          "Step-by-step playbook or onboarding instructions for activating this user on Dust. " +
+          "Appended to User context in the Pod AGENTS.md file.",
       },
       podName: {
         type: "string",
@@ -464,6 +471,7 @@ export const activationManagementPlugin = createPlugin({
       sessionGoal,
       pushedResource,
       userContext,
+      activationPlaybook,
       podName,
       forceRecreate,
     }
@@ -624,11 +632,15 @@ export const activationManagementPlugin = createPlugin({
       }
 
       const otherUsers = users.filter((u) => u.sId !== user.sId);
+      const combinedUserContext = [userContext, activationPlaybook]
+        .map((s) => s?.trim())
+        .filter(Boolean)
+        .join("\n\n");
       const provisionResult = await provisionTrainingPod(auth, adminAuth, {
         creator: user,
         otherUsers,
         podNameOverride,
-        userContext: userContext ?? "",
+        userContext: combinedUserContext,
       });
       if (provisionResult.isErr()) {
         outcomes.push({

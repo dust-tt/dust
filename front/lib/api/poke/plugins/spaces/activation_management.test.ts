@@ -106,6 +106,7 @@ describe("activationManagementPlugin.execute", () => {
       sessionGoal: "",
       pushedResource: [],
       userContext: "",
+      activationPlaybook: "",
       podName: "",
       forceRecreate: false,
     });
@@ -128,6 +129,7 @@ describe("activationManagementPlugin.execute", () => {
       sessionGoal: "",
       pushedResource: [],
       userContext: "",
+      activationPlaybook: "",
       podName: "",
       forceRecreate: false,
     });
