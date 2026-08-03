@@ -33,6 +33,7 @@ type RowData = {
   status: "Active" | "Unregistered";
   groups: string[];
   isCurrentUser: boolean;
+  canRemove: boolean;
   onClick: () => void;
   onRemoveMemberClick?: () => void;
   origin?: MembershipOriginType;
@@ -63,14 +64,18 @@ function getTableRows({
   onClick,
   onRemoveMemberClick,
   currentUserId,
+  allowRemoveAnyMember,
 }: {
   allUsers: SearchMemberWithWorkspaceType[];
   onClick: (user: SearchMemberWithWorkspaceType) => void;
   onRemoveMemberClick?: (user: SearchMemberWithWorkspaceType) => void;
   currentUserId: string;
+  allowRemoveAnyMember: boolean;
 }): RowData[] {
   return allUsers.map((user) => {
     const fullUser = isFullUserType(user);
+    const isCurrentUser = user.sId === currentUserId;
+    const origin = fullUser ? user.origin : undefined;
     return {
       icon: user.image ?? "",
       name: user.fullName,
@@ -79,10 +84,12 @@ function getTableRows({
       role: user.workspace.role ?? "none",
       status: fullUser && user.lastLoginAt === null ? "Unregistered" : "Active",
       groups: user.workspace.groups ?? [],
-      isCurrentUser: user.sId === currentUserId,
+      isCurrentUser,
+      canRemove:
+        allowRemoveAnyMember || (!isCurrentUser && origin !== "provisioned"),
       onClick: () => onClick(user),
       onRemoveMemberClick: () => onRemoveMemberClick?.(user),
-      origin: fullUser ? user.origin : undefined,
+      origin,
     };
   });
 }
@@ -132,10 +139,12 @@ const memberColumns = [
     header: "",
     cell: (info: Info) => (
       <DataTable.CellContent>
-        <IconButton
-          icon={XClose}
-          onClick={info.row.original.onRemoveMemberClick}
-        />
+        {info.row.original.canRemove && (
+          <IconButton
+            icon={XClose}
+            onClick={info.row.original.onRemoveMemberClick}
+          />
+        )}
       </DataTable.CellContent>
     ),
     meta: {
@@ -168,6 +177,7 @@ const memberColumns = [
 ];
 
 interface MembersListProps {
+  allowRemoveAnyMember?: boolean;
   currentUser: UserType | null;
   membersData: MembersData;
   onRowClick: (user: SearchMemberWithWorkspaceType) => void;
@@ -178,6 +188,7 @@ interface MembersListProps {
 }
 
 export function MembersList({
+  allowRemoveAnyMember = false,
   currentUser,
   membersData,
   onRowClick,
@@ -202,8 +213,15 @@ export function MembersList({
       onClick: onRowClick,
       onRemoveMemberClick,
       currentUserId: currentUser?.sId ?? "current-user-not-loaded",
+      allowRemoveAnyMember,
     });
-  }, [members, onRowClick, onRemoveMemberClick, currentUser?.sId]);
+  }, [
+    members,
+    onRowClick,
+    onRemoveMemberClick,
+    currentUser?.sId,
+    allowRemoveAnyMember,
+  ]);
 
   return (
     <>
