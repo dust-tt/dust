@@ -88,6 +88,7 @@ export function MCPToolValidationRequired({
     <ToolValidationCard
       validationRequest={blockedAction}
       triggeringUser={triggeringUser}
+      currentUser={user}
       owner={owner}
       conversationId={conversationId}
       errorMessage={errorMessage}
