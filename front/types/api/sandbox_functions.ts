@@ -4,6 +4,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 import type { APIErrorType } from "@app/types/error";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = [
   "created",
@@ -48,6 +49,61 @@ export type SandboxFunctionInvocationType = {
   functionId: string;
   status: SandboxFunctionInvocationStatus;
   createdAt: string;
+};
+
+// Pod-wide run summary of a function, shown to every pod member. Statuses, timestamps and counts
+// only: the invocation payloads stay behind the per-viewer reads.
+export type PodFunctionActivityType = {
+  lastRunAt: string | null;
+  lastRunStatus: SandboxFunctionInvocationStatus | null;
+  runCountLastWeek: number;
+};
+
+// A pod function as its pod members see it: what it does and what it takes, never its code.
+export type PodFunctionType = {
+  sId: string;
+  slug: string;
+  description: string;
+  author: string | null;
+  createdAt: string;
+  updatedAt: string;
+  userIdentity: SandboxFunctionUserIdentityPolicy;
+  inputSchema: JSONSchema;
+  outputSchema: JSONSchema;
+  activity: PodFunctionActivityType;
+};
+
+// The error of a function's most recent failed run, when the viewer is allowed to see that run.
+// Never carries the run's input or result.
+export type PodFunctionFailureType = {
+  code: string;
+  message: string;
+  status?: number;
+  occurredAt: string;
+  origin: SandboxFunctionInvocationOrigin | null;
+};
+
+// A published frame of the pod that calls a function.
+export type PodFrameReferenceType = {
+  fileId: string;
+  fileName: string;
+};
+
+export type PodFunctionFrameUsageType = {
+  functionId: string;
+  frames: PodFrameReferenceType[];
+};
+
+export type GetPodFunctionsResponseBody = {
+  functions: PodFunctionType[];
+};
+
+export type GetPodFunctionFrameUsageResponseBody = {
+  usage: PodFunctionFrameUsageType[];
+};
+
+export type GetPodFunctionLastFailureResponseBody = {
+  failure: PodFunctionFailureType | null;
 };
 
 export const SANDBOX_FUNCTION_RUNNER_ERROR_CODES = [

@@ -733,6 +733,12 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
 export type InteractiveContentFileContentType =
   keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
 
+// Derived from the formats map so a new interactive content type is picked up by queries that
+// filter on it, rather than silently missing from them.
+export const INTERACTIVE_CONTENT_FILE_CONTENT_TYPES = Object.keys(
+  INTERACTIVE_CONTENT_FILE_FORMATS
+) as InteractiveContentFileContentType[];
+
 const SANDBOX_FUNCTION_FILE_FORMATS = {
   [sandboxFunctionContentType]: {
     cat: "code",

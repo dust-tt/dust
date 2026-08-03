@@ -25,6 +25,8 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  PodFunctionActivityType,
+  PodFunctionType,
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
@@ -437,6 +439,26 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       body,
       origin,
     });
+  }
+
+  // What a pod member sees: what the function does and what it takes, plus how it has been
+  // running lately. Never its source.
+  toJSON(
+    author: UserResource | null,
+    activity: PodFunctionActivityType
+  ): PodFunctionType {
+    return {
+      sId: this.sId,
+      slug: this.slug,
+      description: this.description,
+      author: author ? author.fullName() : null,
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
+      userIdentity: this.userIdentity ?? "optional",
+      inputSchema: this.inputSchema,
+      outputSchema: this.outputSchema,
+      activity,
+    };
   }
 
   toPokeJSON(author: UserResource | null): PokePodFunction {

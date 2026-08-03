@@ -1,13 +1,18 @@
 import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
 import { PodPageContent } from "@app/components/pod/PodPageContent";
 import { useActivePodId } from "@app/hooks/useActivePodId";
+import { usePodFunctions } from "@app/hooks/usePodFunctions";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import {
   DEFAULT_POD_UI_PREFERENCES,
   type PodTab,
   usePodTabs,
 } from "@app/hooks/useSpaceProjectTabs";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -19,12 +24,14 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Zap,
 } from "@dust-tt/sparkle";
 
 export function PodPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
   const podId = useActivePodId();
+  const { hasFeature } = useFeatureFlags();
 
   const {
     spaceInfo: podInfo,
@@ -52,6 +59,24 @@ export function PodPage() {
     setPodUiPreferences,
   });
 
+  // The Functions tab only exists once the pod has a function, so it costs nothing in the pods
+  // that never get one. Same SWR key as the tab body, so this is one request, not two.
+  const { podFunctions, isPodFunctionsLoading } = usePodFunctions({
+    workspaceId: owner.sId,
+    podId,
+    disabled: !hasFeature("sandbox_functions"),
+  });
+  const hasPodFunctions = podFunctions.length > 0;
+
+  // A pod can lose its last function while someone has the tab selected, which would strand them
+  // on a tab with no trigger. Falling back at render rather than rewriting the stored preference
+  // keeps the choice: if the pod gets a function again, the tab comes back selected. Waits for
+  // the list to resolve so the tab does not flicker on every load.
+  const effectiveTab =
+    currentTab === "functions" && !isPodFunctionsLoading && !hasPodFunctions
+      ? "conversations"
+      : currentTab;
+
   if (isPodsInfoLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center mt-8">
@@ -77,7 +102,7 @@ export function PodPage() {
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
       <Tabs
-        value={currentTab}
+        value={effectiveTab}
         onValueChange={(value) => handleTabChange(value as PodTab)}
         className="flex min-h-0 flex-1 flex-col overflow-hidden pt-2"
       >
@@ -101,6 +126,14 @@ export function PodPage() {
               tooltip={compactPodTabs ? "Files" : undefined}
               icon={Folder}
             />
+            {hasPodFunctions && (
+              <TabsTrigger
+                value="functions"
+                label={compactPodTabs ? undefined : "Functions"}
+                tooltip={compactPodTabs ? "Functions" : undefined}
+                icon={Zap}
+              />
+            )}
             <TabsTrigger
               value="settings"
               label={compactPodTabs ? undefined : "Settings"}

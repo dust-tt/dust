@@ -43,6 +43,8 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import type {
+  PodFunctionActivityType,
+  PodFunctionFailureType,
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionCallError,
   SandboxFunctionInvocationContext,
@@ -58,6 +60,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
+import { literal, Op } from "sequelize";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -767,6 +770,122 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
   }
 
+  /**
+   * The most recent failed invocation the caller is allowed to read, or null when the function has
+   * never failed for them. Viewer-scoped like every other user-facing read: a pod member sees
+   * their own runs, a pod administrator sees all of them.
+   */
+  static async fetchLastFailure(
+    auth: Authenticator,
+    { sandboxFunction }: { sandboxFunction: SandboxFunctionResource }
+  ): Promise<SandboxFunctionInvocationResource | null> {
+    const [invocation] = await this.baseFetch(
+      auth,
+      { sandboxFunction },
+      {
+        where: { status: "errored" },
+        order: [
+          ["createdAt", "DESC"],
+          ["id", "DESC"],
+        ],
+        limit: 1,
+      }
+    );
+
+    return invocation ?? null;
+  }
+
+  /**
+   * Pod-wide run summary of each function, keyed by function model id.
+   *
+   * Deliberately NOT viewer-scoped: every pod member sees the same activity, so a function that
+   * an agent runs nightly for someone else does not read as "never run". That is safe because the
+   * summary is built from `status` and `createdAt` alone — it never loads a GCS blob, so no
+   * invocation input or result can reach a caller through it. Keep it that way: anything that
+   * needs a payload belongs on the viewer-scoped reads above.
+   *
+   * Two queries, both on the `sandboxFunctionId` index: a windowed count, and the latest run per
+   * function.
+   */
+  static async activityForSandboxFunctions(
+    auth: Authenticator,
+    {
+      sandboxFunctions,
+      countSince,
+    }: {
+      sandboxFunctions: SandboxFunctionResource[];
+      countSince: Date;
+    }
+  ): Promise<Map<ModelId, PodFunctionActivityType>> {
+    const activity = new Map<ModelId, PodFunctionActivityType>();
+    if (sandboxFunctions.length === 0) {
+      return activity;
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const sandboxFunctionIds = sandboxFunctions.map(({ id }) => id);
+
+    // Counted in memory rather than grouped in SQL to keep the result typed, as in
+    // `SandboxFunctionMCPActionResource.countByInvocationModelIds`. Bounded by the pod's
+    // invocations over the window, and an invocation spins up a sandbox, so pods produce tens to
+    // hundreds of these a week, not millions.
+    const recentRuns = await this.model.findAll({
+      attributes: ["sandboxFunctionId"],
+      where: {
+        workspaceId,
+        sandboxFunctionId: sandboxFunctionIds,
+        createdAt: { [Op.gte]: countSince },
+      },
+    });
+
+    const runCounts = new Map<ModelId, number>();
+    for (const { sandboxFunctionId } of recentRuns) {
+      runCounts.set(
+        sandboxFunctionId,
+        (runCounts.get(sandboxFunctionId) ?? 0) + 1
+      );
+    }
+
+    // `DISTINCT ON` keeps the first row of each `sandboxFunctionId` group under the ORDER BY
+    // below, i.e. exactly one row per function: its newest invocation, at any age. Aliasing the
+    // literal back to `sandboxFunctionId` keeps the returned instances typed by the model.
+    const lastRuns = await this.model.findAll({
+      attributes: [
+        [
+          literal('DISTINCT ON ("sandboxFunctionId") "sandboxFunctionId"'),
+          "sandboxFunctionId",
+        ],
+        "status",
+        "createdAt",
+      ],
+      where: {
+        workspaceId,
+        sandboxFunctionId: sandboxFunctionIds,
+      },
+      order: [
+        literal('"sandboxFunctionId" ASC'),
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+    });
+
+    const lastRunByFunctionId = new Map(
+      lastRuns.map((run) => [run.sandboxFunctionId, run])
+    );
+
+    for (const sandboxFunctionId of sandboxFunctionIds) {
+      const lastRun = lastRunByFunctionId.get(sandboxFunctionId) ?? null;
+
+      activity.set(sandboxFunctionId, {
+        lastRunAt: lastRun ? lastRun.createdAt.toISOString() : null,
+        lastRunStatus: lastRun ? lastRun.status : null,
+        runCountLastWeek: runCounts.get(sandboxFunctionId) ?? 0,
+      });
+    }
+
+    return activity;
+  }
+
   // Newest-first page of listing rows, no GCS read. See `SandboxFunctionInvocationRow`.
   static async listRows(
     auth: Authenticator,
@@ -911,6 +1030,23 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       result: this.result,
       error: this.error ?? null,
       mcpActions,
+    };
+  }
+
+  // The failure a pod member is shown for a broken function: why it failed, never what it was
+  // called with. Null when this invocation did not record an error.
+  toFailureJSON(): PodFunctionFailureType | null {
+    const { error } = this;
+    if (!error) {
+      return null;
+    }
+
+    return {
+      code: error.code,
+      message: error.message,
+      status: error.status,
+      occurredAt: this.updatedAt.toISOString(),
+      origin: this.origin,
     };
   }
 

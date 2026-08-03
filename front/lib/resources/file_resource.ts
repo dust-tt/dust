@@ -83,6 +83,7 @@ import {
   ALL_FILE_FORMATS,
   frameContentType,
   frameSlideshowContentType,
+  INTERACTIVE_CONTENT_FILE_CONTENT_TYPES,
   isConversationFileUseCase,
   isInteractiveContentType,
   isSandboxFunctionContentType,
@@ -411,6 +412,34 @@ export class FileResource extends BaseResource<FileModel> {
     const files = await this.model.findAll({
       where: whereClause,
       order: [["createdAt", "DESC"]],
+    });
+
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
+  /**
+   * Frames produced inside the given conversations. The conversation id lives in the
+   * `useCaseMetadata` JSONB rather than a column, so this narrows on the indexed
+   * (workspaceId, useCase, status) prefix first and filters the JSONB inside that range.
+   */
+  static async listFramesByConversations(
+    auth: Authenticator,
+    { conversationIds }: { conversationIds: string[] }
+  ): Promise<FileResource[]> {
+    if (conversationIds.length === 0) {
+      return [];
+    }
+
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        useCase: "conversation",
+        status: "ready",
+        contentType: { [Op.in]: INTERACTIVE_CONTENT_FILE_CONTENT_TYPES },
+        useCaseMetadata: {
+          conversationId: { [Op.in]: conversationIds },
+        },
+      },
     });
 
     return files.map((f) => new this(this.model, f.get()));

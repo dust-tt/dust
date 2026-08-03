@@ -2,6 +2,7 @@ import type { TaskOwnerFilter } from "@app/components/assistant/conversation/spa
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
+import { PodFunctionsTab } from "@app/components/pod/functions/PodFunctionsTab";
 import { PodSettingsTab } from "@app/components/pod/settings/PodSettingsTab";
 import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
 import {
@@ -200,6 +201,9 @@ export function PodPageContent({
       </TabsContent>
       <TabsContent value="files">
         <PodFilesTab owner={owner} pod={podInfo} />
+      </TabsContent>
+      <TabsContent value="functions">
+        <PodFunctionsTab owner={owner} pod={podInfo} />
       </TabsContent>
       <TabsContent value="settings">
         <PodSettingsTab
