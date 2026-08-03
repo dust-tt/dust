@@ -2,6 +2,7 @@ import { isBlockedActionEvent } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustErrorCode } from "@app/lib/error";
 import { DustError } from "@app/lib/error";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -9,6 +10,20 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+// "Nothing to resume", not "resuming failed". Callers must treat these as no-ops.
+const NON_BLOCKING_RETRY_ERROR_CODES: DustErrorCode[] = [
+  "agent_loop_already_running",
+  "agent_message_not_resumable",
+  "no_blocked_actions",
+];
+
+export function isNonBlockingRetryError(err: Error): boolean {
+  return (
+    err instanceof DustError &&
+    NON_BLOCKING_RETRY_ERROR_CODES.includes(err.code)
+  );
+}
 
 async function findUserMessageForRetry(
   auth: Authenticator,

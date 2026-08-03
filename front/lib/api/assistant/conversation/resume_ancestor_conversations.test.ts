@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/assistant/conversation/retry_blocked_actions", () => ({
-  retryBlockedActions: vi.fn(),
-}));
+// Mock `retryBlockedActions` only; `isNonBlockingRetryError` must stay real.
+vi.mock(
+  import("@app/lib/api/assistant/conversation/retry_blocked_actions"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    retryBlockedActions: vi.fn(),
+  })
+);
 
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { resumeAncestorConversations } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
