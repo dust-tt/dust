@@ -103,13 +103,29 @@ app.post(
     });
 
     if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: result.error.message,
+      logger.error(
+        {
+          err: result.error,
+          conversationId: claims.cId,
+          agentMessageId: claims.mId,
+          parentActionId: claims.actionId,
+          serverViewId,
+          toolName,
         },
-      });
+        "Failed to create sandbox child action"
+      );
+
+      return apiError(
+        ctx,
+        {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: result.error.message,
+          },
+        },
+        result.error
+      );
     }
 
     const { actionId, pauseSandbox } = result.value;

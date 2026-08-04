@@ -178,7 +178,7 @@ export async function createSandboxChildAction(
 
   if (!serverSideConfig) {
     return new Err(
-      new Error("Tool is not available to this agent or conversation.")
+      new Error("Server is not available to this agent or conversation.")
     );
   }
 
@@ -199,9 +199,7 @@ export async function createSandboxChildAction(
   const [toolConfiguration] = toolConfigurationsRes.value;
 
   if (!toolConfiguration) {
-    return new Err(
-      new Error("Tool is not available to this agent or conversation.")
-    );
+    return new Err(new Error("Tool is disabled on this server."));
   }
 
   // User tool approvals ("low"/"medium" stakes) are keyed on the prefixed
