@@ -84,10 +84,7 @@ const issuedColumn: ColumnDef<RowData, string> = {
 
 // The pool-cap override or seat upgrade this request actually resulted in, if
 // any (only set when approved through the linked "Set credit amount"/"Allow
-// unlimited spend"/"Upgrade to max plan" flows — see
-// `MembershipUpgradeRequestResource.recordGrant`/`recordSeatUpgrade`). A
-// denied request, or an approved one resolved some other way, has nothing to
-// show here.
+// unlimited spend"/"Upgrade to max plan" flows.
 const grantedColumn: ColumnDef<RowData, string> = {
   id: "granted" as const,
   header: "Granted",
@@ -149,10 +146,8 @@ const grantedColumn: ColumnDef<RowData, string> = {
   },
 };
 
-// When the grant reverts, if ever. Seat upgrades and unlimited-spend grants
-// never auto-revert (there's no expiry mechanism for either), so they always
-// read "Forever" here — only a credit-amount grant can carry the admin's
-// actual 1-day/next-refresh/forever choice.
+// When the grant reverts, if ever. only a credit-amount grant
+// can carry the admin's duration choice.
 const untilColumn: ColumnDef<RowData, string> = {
   id: "until" as const,
   header: "For",
@@ -192,10 +187,6 @@ const untilColumn: ColumnDef<RowData, string> = {
   },
 };
 
-// Compact by default (2 lines). DataTable.Cell forces a fixed row height and
-// single-line truncation on every cell, so a clamped span can never grow in
-// place inside a row — the full reason opens in a popover instead, which
-// renders in a portal outside the table's layout.
 function ReasonCell({ reason }: { reason: string | null }) {
   if (!reason) {
     return (

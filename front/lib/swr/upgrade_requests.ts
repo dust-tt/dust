@@ -99,8 +99,7 @@ export function useUpgradeRequests({
 export const UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
 
 // Admin-only: resolved (approved/denied) upgrade requests, for the History
-// tab. Disabled until that tab is visible — unlike the pending list, it has
-// no badge to keep fresh in the background.
+// tab. Disabled until that tab is visible.
 export function useUpgradeRequestsHistory({
   workspaceId,
   pageIndex,
