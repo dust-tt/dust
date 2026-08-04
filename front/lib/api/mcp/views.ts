@@ -103,28 +103,27 @@ export async function updateNameAndDescriptionForMCPServerViews(
   // Check for name conflicts in the system space (which contains all tools).
   // Names are set on the system view and propagate to all spaces, so checking
   // the system space is sufficient.
-  if (name) {
-    const systemView = views.find((v) => v.space.kind === "system");
-    if (systemView) {
-      const systemViews = await MCPServerViewResource.listBySpace(
-        auth,
-        systemView.space
-      );
-      const hasConflict = systemViews.some((v) => {
-        if (v.mcpServerId === mcpServerId) {
-          return false;
-        }
-        return (v.name ?? v.getServerDisplayMetadata().name) === name;
-      });
-
-      if (hasConflict) {
-        return new Err(
-          new DustError(
-            "name_conflict",
-            `An existing tool is already using the name "${name}".`
-          )
-        );
+  const systemView = views.find((v) => v.space.kind === "system");
+  if (systemView) {
+    const effectiveName = name ?? systemView.getServerDisplayMetadata().name;
+    const systemViews = await MCPServerViewResource.listBySpace(
+      auth,
+      systemView.space
+    );
+    const hasConflict = systemViews.some((v) => {
+      if (v.mcpServerId === mcpServerId) {
+        return false;
       }
+      return (v.name ?? v.getServerDisplayMetadata().name) === effectiveName;
+    });
+
+    if (hasConflict) {
+      return new Err(
+        new DustError(
+          "name_conflict",
+          `An existing tool is already using the name "${effectiveName}".`
+        )
+      );
     }
   }
 

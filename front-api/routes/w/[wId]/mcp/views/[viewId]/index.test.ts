@@ -336,4 +336,38 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     expect(data.serverView.name).toBeNull();
     expect(data.serverView.description).toBeNull();
   });
+
+  it("should reject resetting to a default name used by another server", async () => {
+    const { workspace, auth } = await setup("admin");
+
+    const server1 = await RemoteMCPServerFactory.create(workspace, {
+      name: "shared-default-name",
+    });
+    await RemoteMCPServerFactory.create(workspace, {
+      name: "shared-default-name",
+    });
+
+    const systemView1 =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server1.sId
+      );
+    expect(systemView1).toBeDefined();
+
+    const renameResponse = await patchView(workspace.sId, systemView1!.sId, {
+      name: "custom-name",
+      description: "updated",
+    });
+    expect(renameResponse.status).toBe(200);
+
+    const response = await patchView(workspace.sId, systemView1!.sId, {
+      name: null,
+      description: null,
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toContain("shared-default-name");
+  });
 });

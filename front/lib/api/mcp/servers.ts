@@ -163,11 +163,9 @@ export async function createRemoteMCPServer(
     );
   }
 
-  if (includeGlobal) {
-    const conflict = await checkNameConflictInGlobalSpace(auth, name);
-    if (conflict.isErr()) {
-      return conflict;
-    }
+  const conflict = await checkNameConflictInSystemSpace(auth, name);
+  if (conflict.isErr()) {
+    return conflict;
   }
 
   const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
@@ -278,14 +276,12 @@ export async function createInternalMCPServer(
   // Use viewName for the conflict check when provided (multi-instance),
   // otherwise fall back to the internal server name.
   const nameForConflictCheck = viewName ?? name;
-  if (includeGlobal) {
-    const conflict = await checkNameConflictInGlobalSpace(
-      auth,
-      nameForConflictCheck
-    );
-    if (conflict.isErr()) {
-      return conflict;
-    }
+  const conflict = await checkNameConflictInSystemSpace(
+    auth,
+    nameForConflictCheck
+  );
+  if (conflict.isErr()) {
+    return conflict;
   }
 
   const newInternalMCPServer = await InternalMCPServerInMemoryResource.makeNew(
@@ -358,16 +354,16 @@ export async function createInternalMCPServer(
   return new Ok(newInternalMCPServer.toJSON());
 }
 
-async function checkNameConflictInGlobalSpace(
+async function checkNameConflictInSystemSpace(
   auth: Authenticator,
   name: string
 ): Promise<Result<void, Error>> {
-  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
   const { hasConflict } =
     await MCPServerViewResource.hasNameConflictInSpaceByName(
       auth,
       name,
-      globalSpace
+      systemSpace
     );
   if (hasConflict) {
     return new Err(

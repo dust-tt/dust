@@ -5,7 +5,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -190,6 +189,7 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
       name: "agent_memory" as InternalMCPServerNameType,
       serverType: "internal",
       includeGlobal: true,
+      viewName: "agent_memory_2",
     });
 
     expect(response.status).toBe(201);
@@ -252,34 +252,26 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
 });
 
 describe("POST /api/w/:wId/mcp/ — name conflict", () => {
-  it("returns 400 when creating a remote server with includeGlobal and name conflicts in global space", async () => {
+  it("returns 400 when a server with the same name already exists in the system space", async () => {
     const { workspace, auth } = await setup();
 
-    const existingServer = await RemoteMCPServerFactory.create(workspace, {
+    await RemoteMCPServerFactory.create(workspace, {
       name: "Test Server",
       url: "https://existing.example.com",
-    });
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const systemView =
-      await MCPServerViewResource.getMCPServerViewForSystemSpace(
-        auth,
-        existingServer.sId
-      );
-    expect(systemView).not.toBeNull();
-    await MCPServerViewResource.create(auth, {
-      systemView: systemView!,
-      space: globalSpace,
     });
 
     const response = await postMcp(workspace, {
       serverType: "remote",
       url: "https://new-server.example.com",
-      includeGlobal: true,
+      includeGlobal: false,
     });
 
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error.message).toContain("Test Server");
+    expect(await MCPServerViewResource.listForSystemSpace(auth)).toHaveLength(
+      1
+    );
   });
 
   it("succeeds when creating a remote server with includeGlobal and no name conflict", async () => {
