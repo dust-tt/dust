@@ -78,11 +78,10 @@ export function ViewSpaceViewTable({ sandbox, space }: ViewSpaceTableProps) {
                   </PokeTableRow>
                   <PokeTableRow>
                     <PokeTableHead>Sandbox Connect</PokeTableHead>
-                    {/* The full `e2b sandbox connect` command is too wide for
-                        the Overview, so show the sandbox id and copy the
-                        command. */}
+                    {/* The `e2b sandbox connect` command is too wide for the
+                        Overview; the copy button is what matters here. */}
                     <PokeTableCellWithCopy
-                      label={sandbox.providerId}
+                      label="Copy command"
                       textToCopy={makeSandboxConnectCommand(sandbox)}
                     />
                   </PokeTableRow>
