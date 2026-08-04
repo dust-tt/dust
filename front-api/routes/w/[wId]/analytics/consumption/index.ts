@@ -1,5 +1,6 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import overview from "./overview";
+import timeseries from "./timeseries";
 
 // Mounted at /api/w/:wId/analytics/consumption — the endpoints backed by the
 // consumption index (`front.agent_message_consumption_analytics`), one document
@@ -8,5 +9,6 @@ import overview from "./overview";
 const app = workspaceApp();
 
 app.route("/overview", overview);
+app.route("/timeseries", timeseries);
 
 export default app;
