@@ -278,8 +278,7 @@ export async function setGroupSpendLimit(
     poolCapAwuCredits,
   });
   if (syncResult.isErr()) {
-    // Metronome sync failed, so the DB and Metronome would otherwise be left
-    // out of sync until someone retries — put the DB value back.
+    // Metronome sync failed, restore DB values.
     await group.updatePoolCap(auth, previousPoolCapAwuCredits);
     logger.error(
       {
