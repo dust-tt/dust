@@ -4,6 +4,7 @@ import {
   generationSettingsSchema,
 } from "@app/components/shared/tools_picker/types";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
+import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import { TRIGGER_STATUSES } from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
@@ -107,6 +108,9 @@ const skillsSchema = z.object({
   name: z.string(),
   description: z.string(),
   icon: z.string().nullable(),
+  availability: z.enum(SKILL_AVAILABILITIES),
+  // Whether the current user is an editor of the skill.
+  canWrite: z.boolean(),
 });
 
 // Additional space IDs selected by the user for global skills
