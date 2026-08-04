@@ -775,7 +775,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
-  | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
