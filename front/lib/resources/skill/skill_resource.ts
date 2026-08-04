@@ -1221,15 +1221,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       : { customSkillId: this.id };
   }
 
-  static async listFavoritesForCurrentUser(
+  private static async listFavoritesForCurrentUser(
     auth: Authenticator,
     {
       agentLoopData,
       effectiveSpaceIds,
     }: {
-      agentLoopData?: AgentLoopExecutionData;
-      effectiveSpaceIds?: string[];
-    } = {}
+      agentLoopData: AgentLoopExecutionData | undefined;
+      effectiveSpaceIds: string[];
+    }
   ): Promise<SkillResource[]> {
     const user = auth.user();
     if (!user) {
