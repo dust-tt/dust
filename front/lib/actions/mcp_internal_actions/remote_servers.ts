@@ -2228,6 +2228,82 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10029,
+    name: "Modjo",
+    description:
+      "Modjo tools to read and analyze your sales calls, deals, accounts, contacts, transcripts, and conversation intelligence data.",
+    url: "https://api.mcp.modjo.ai/v1/mcp",
+    icon: "ModjoLogo",
+    documentationUrl: "https://help.modjo.ai/articles/15459539",
+    connectionInstructions:
+      "Modjo uses OAuth. You will be prompted to sign in with your Modjo account; access respects the call, deal, and account permissions configured in Modjo.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_accounts: "never_ask",
+      get_deals: "never_ask",
+      get_calls: "never_ask",
+      get_contacts: "never_ask",
+      get_users: "never_ask",
+      get_emails: "never_ask",
+      semantic_search_activities: "never_ask",
+      get_transcript: "never_ask",
+      ask_anything_on_call: "never_ask",
+      ask_anything_on_deal: "never_ask",
+      ask_anything_on_account: "never_ask",
+      get_agents: "never_ask",
+    },
+    toolDisplayLabels: {
+      get_accounts: {
+        running: "Searching accounts on Modjo",
+        done: "Searched accounts on Modjo",
+      },
+      get_deals: {
+        running: "Searching deals on Modjo",
+        done: "Searched deals on Modjo",
+      },
+      get_calls: {
+        running: "Searching calls on Modjo",
+        done: "Searched calls on Modjo",
+      },
+      get_contacts: {
+        running: "Searching contacts on Modjo",
+        done: "Searched contacts on Modjo",
+      },
+      get_users: {
+        running: "Searching users on Modjo",
+        done: "Searched users on Modjo",
+      },
+      get_emails: {
+        running: "Fetching emails from Modjo",
+        done: "Fetched emails from Modjo",
+      },
+      semantic_search_activities: {
+        running: "Searching activities on Modjo",
+        done: "Searched activities on Modjo",
+      },
+      get_transcript: {
+        running: "Fetching transcript from Modjo",
+        done: "Fetched transcript from Modjo",
+      },
+      ask_anything_on_call: {
+        running: "Analyzing call on Modjo",
+        done: "Analyzed call on Modjo",
+      },
+      ask_anything_on_deal: {
+        running: "Analyzing deal on Modjo",
+        done: "Analyzed deal on Modjo",
+      },
+      ask_anything_on_account: {
+        running: "Analyzing account on Modjo",
+        done: "Analyzed account on Modjo",
+      },
+      get_agents: {
+        running: "Listing agents on Modjo",
+        done: "Listed agents on Modjo",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

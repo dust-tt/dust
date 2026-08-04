@@ -60,6 +60,7 @@ export const MCPInternalActionIconSchema = z.enum([
   "MicrosoftOutlookLogo",
   "MicrosoftTeamsLogo",
   "MiroLogo",
+  "ModjoLogo",
   "MondayLogo",
   "NaptaLogo",
   "NetSuiteLogo",
