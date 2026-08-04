@@ -4,7 +4,6 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -189,13 +188,9 @@ app.get(
       withTools: false,
       withFileAttachments: false,
     });
-    const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
-    let favoriteSkillIds = new Set<string>();
-    if (hasSkillFavorites) {
-      const favoriteSkills =
-        await SkillResource.listFavoritesForCurrentUser(auth);
-      favoriteSkillIds = new Set(favoriteSkills.map((skill) => skill.sId));
-    }
+    const favoriteSkills =
+      await SkillResource.listFavoritesForCurrentUser(auth);
+    const favoriteSkillIds = new Set(favoriteSkills.map((skill) => skill.sId));
 
     const canCreateSkill = await auth.hasWorkspacePermission("create", "skill");
 
@@ -231,9 +226,6 @@ app.get(
       );
 
       const skillsWithRelations = skills.map((sc) => {
-        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
-          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
-          : {};
         const {
           instructions,
           instructionsHtml,
@@ -270,7 +262,7 @@ app.get(
               }
             ),
           },
-          ...favoriteState,
+          isFavorite: favoriteSkillIds.has(sc.sId),
         } satisfies GetSkillsWithRelationsResponseBody["skills"][number];
       });
 
@@ -279,9 +271,6 @@ app.get(
 
     return ctx.json({
       skills: skills.map((sc) => {
-        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
-          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
-          : {};
         const {
           instructions,
           instructionsHtml,
@@ -291,7 +280,7 @@ app.get(
 
         return {
           ...skillWithoutInstructionsAndTools,
-          ...favoriteState,
+          isFavorite: favoriteSkillIds.has(sc.sId),
         } satisfies GetSkillsResponseBody["skills"][number];
       }),
     });
