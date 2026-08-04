@@ -2,12 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  MessageCircle01,
   ContentMessage,
   ContentMessageAction,
-  ContentMessageInline,
   Heart,
   InfoCircle,
+  MessageCircle01,
 } from "../index_with_tw_base";
 
 type ContentMessageStoryProps = React.ComponentProps<typeof ContentMessage> & {
@@ -27,14 +26,14 @@ const meta: Meta<ContentMessageStoryProps> = {
   parameters: {
     docs: {
       description: {
-        component: `An inline, non-blocking message that communicates contextual information, feedback, or status without interrupting the user — an informational note, a warning, or a success confirmation. Available in multiple **variants** and **sizes**, with an optional **icon** and action; **ContentMessageInline** renders a compact single-line form.
+        component: `An inline, non-blocking message that communicates contextual information, feedback, or status without interrupting the user — an informational note, a warning, or a success confirmation. Available in multiple **variants** and **sizes**, with an optional **icon** and action.
 
 **When to use**
 - To show persistent, contextual information attached to a region of the page.
 - To explain a state ("This agent is read-only") or surface a non-urgent warning.
 
 **Guidelines**
-- Match the **variant** to the intent — \`warning\`, \`success\`, \`info\`.
+- Match the **variant** to the intent — \`error\`, \`warning\`, \`success\`, \`info\`, \`gray\`.
 - For transient feedback after an action, use a **Notification** (toast) instead.
 - For a decision that must block the flow, use a **Dialog**.`,
       },
@@ -47,26 +46,15 @@ const meta: Meta<ContentMessageStoryProps> = {
     },
     children: {
       control: "text",
-      description: "Content of the message",
+      description: "Body content of the message",
     },
     variant: {
-      options: [
-        "primary",
-        "warning",
-        "success",
-        "highlight",
-        "info",
-        "green",
-        "blue",
-        "rose",
-        "golden",
-        "outline",
-      ],
+      options: ["error", "success", "info", "warning", "gray"],
       control: { type: "select" },
-      description: "Visual style variant",
+      description: "Color variant",
     },
     size: {
-      options: ["sm", "md", "lg"],
+      options: ["sm", "xs"],
       control: { type: "select" },
       description: "Size of the message",
     },
@@ -78,7 +66,7 @@ const meta: Meta<ContentMessageStoryProps> = {
     },
     showAction: {
       control: "boolean",
-      description: "Show a right-aligned action button",
+      description: "Show a bottom action button",
     },
   },
 };
@@ -99,8 +87,9 @@ export const Basic: Story = {
   ),
   args: {
     title: "This is a title",
-    children: "This is a message. It can be multiple lines long.",
-    size: "md",
+    children: "You can ask the assistant to perform actions before answering.",
+    size: "sm",
+    variant: "info",
     showAction: false,
   },
 };
@@ -109,153 +98,135 @@ export const WithIcon: Story = {
   args: {
     title: "This is a title",
     icon: InfoCircle,
-    children: "This is a message. It can be multiple lines long.",
-    size: "md",
+    children: "You can ask the assistant to perform actions before answering.",
+    size: "sm",
+    variant: "info",
   },
 };
 
-export const WithList: Story = {
-  args: {
-    title: "Agent Thoughts",
-    variant: "primary",
-    size: "md",
-    children: (
-      <ul className="list-disc py-2 pl-8 first:pt-0 last:pb-0">
-        <li className="break-words py-1 first:pt-0 last:pb-0">
-          <div className="whitespace-pre-wrap break-words py-1 font-normal first:pt-0 last:pb-0">
-            Should search internal data as this appears to be a code-related
-            question specific to the company"s codebase
-          </div>
-        </li>
-        <li className="break-words py-1 first:pt-0 last:pb-0">
-          <div className="whitespace-pre-wrap break-words py-1 font-normal first:pt-0 last:pb-0">
-            Search results show that Page.SectionHeader expects a string title,
-            but code is using JSX expression with concatenation
-          </div>
-        </li>
-      </ul>
-    ),
-  },
+export const NoTitle: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <ContentMessage icon={InfoCircle} variant="info" size="sm">
+        You can ask the assistant to perform actions before answering, like
+        searching in your data sources.
+      </ContentMessage>
+      <ContentMessage icon={InfoCircle} variant="info" size="xs">
+        You can ask the assistant to perform actions before answering, like
+        searching in your data sources.
+      </ContentMessage>
+    </div>
+  ),
 };
 
-export const MultiParagraph: Story = {
-  args: {
-    title: "This is a title",
-    children: (
-      <div className="flex flex-col gap-y-3">
-        <div>This is a message. It can be multiple lines long.</div>
-        <div>
-          Another paragraph in the content message with a long line and some{" "}
-          <strong>strong text</strong>.
-        </div>
-      </div>
-    ),
-    size: "md",
-  },
+export const WithAction: Story = {
+  render: () => (
+    <ContentMessage
+      title="This is a title"
+      icon={InfoCircle}
+      variant="info"
+      size="sm"
+      action={<ContentMessageAction variant="primary" label="Learn more" />}
+    >
+      You can ask the assistant to perform actions before answering, like
+      searching in your data sources.
+    </ContentMessage>
+  ),
+};
+
+export const SizeComparison: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <ContentMessage title="Small (sm)" icon={InfoCircle} variant="info" size="sm">
+        You can ask the assistant to perform actions before answering, like
+        searching in your data sources, or use a custom action you have built
+        for your specific needs.
+      </ContentMessage>
+      <ContentMessage title="Extra Small (xs)" icon={InfoCircle} variant="info" size="xs">
+        You can ask the assistant to perform actions before answering, like
+        searching in your data sources, or use a custom action you have built
+        for your specific needs.
+      </ContentMessage>
+    </div>
+  ),
 };
 
 export const ColorVariants: Story = {
   render: () => (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {[
-        "primary",
-        "warning",
-        "success",
-        "highlight",
-        "info",
-        "green",
-        "blue",
-        "rose",
-        "golden",
-      ].map((variant) => (
-        <ContentMessage
-          key={variant}
-          title={`${variant.charAt(0).toUpperCase() + variant.slice(1)} Variant`}
-          variant={
-            variant as
-              | "primary"
-              | "warning"
-              | "success"
-              | "highlight"
-              | "info"
-              | "green"
-              | "blue"
-              | "rose"
-              | "golden"
-          }
-          size="md"
-        >
-          This is a {variant} variant message. It shows how the component looks
-          with this color scheme.
-        </ContentMessage>
-      ))}
+    <div className="flex flex-col gap-4">
+      {(["error", "success", "info", "warning", "gray"] as const).map(
+        (variant) => (
+          <ContentMessage
+            key={variant}
+            title={`${variant.charAt(0).toUpperCase() + variant.slice(1)} variant`}
+            icon={InfoCircle}
+            variant={variant}
+            size="sm"
+          >
+            You can ask the assistant to perform actions before answering, like
+            searching in your data sources, or use a custom action you have
+            built for your specific needs.
+          </ContentMessage>
+        )
+      )}
     </div>
   ),
 };
 
-export const InlineBasic: Story = {
+export const ColorVariantsXs: Story = {
   render: () => (
-    <ContentMessageInline icon={InfoCircle} variant="info">
-      This is an inline message. It can be used to display a short message.
-    </ContentMessageInline>
-  ),
-};
-
-export const InlineWithAction: Story = {
-  render: () => (
-    <ContentMessageInline icon={InfoCircle} variant="info">
-      This is an inline message. It can be used to display a short message.
-      <ContentMessageAction variant="primary" label="Button" />
-    </ContentMessageInline>
-  ),
-};
-
-export const InlineWithTwoActions: Story = {
-  render: () => (
-    <ContentMessageInline icon={InfoCircle} variant="info">
-      This is an inline message. It can be used to display a short message.
-      <ContentMessageAction variant="primary" label="Button" />
-      <ContentMessageAction variant="highlight" label="Button" />
-    </ContentMessageInline>
-  ),
-};
-
-export const InlineWithTitle: Story = {
-  render: () => (
-    <div className="flex flex-col gap-4">
-      <ContentMessageInline title="Status" icon={InfoCircle} variant="info">
-        This is an inline message.
-        <ContentMessageAction variant="primary" label="Button" />
-      </ContentMessageInline>
-      <ContentMessageInline title="Alert" icon={InfoCircle} variant="warning" />
+    <div className="flex flex-col gap-3">
+      {(["error", "success", "info", "warning", "gray"] as const).map(
+        (variant) => (
+          <ContentMessage
+            key={variant}
+            title={`${variant.charAt(0).toUpperCase() + variant.slice(1)} variant`}
+            icon={InfoCircle}
+            variant={variant}
+            size="xs"
+          >
+            You can ask the assistant to perform actions before answering, like
+            searching in your data sources, or use a custom action you have
+            built for your specific needs.
+          </ContentMessage>
+        )
+      )}
     </div>
   ),
 };
 
-export const InlineVariants: Story = {
+export const NoTitleColorVariants: Story = {
+  render: () => (
+    <div className="flex flex-col gap-3">
+      {(["error", "success", "info", "warning", "gray"] as const).map(
+        (variant) => (
+          <ContentMessage key={variant} icon={InfoCircle} variant={variant} size="sm">
+            {`${variant.charAt(0).toUpperCase() + variant.slice(1)}: You can ask the assistant to perform actions before answering.`}
+          </ContentMessage>
+        )
+      )}
+    </div>
+  ),
+};
+
+export const WithBottomAction: Story = {
   render: () => (
     <div className="flex flex-col gap-4">
-      {["primary", "warning", "success", "highlight", "info"].map((variant) => (
-        <ContentMessageInline
-          key={variant}
-          icon={InfoCircle}
-          variant={
-            variant as
-              | "primary"
-              | "warning"
-              | "success"
-              | "highlight"
-              | "info"
-              | "green"
-              | "blue"
-              | "rose"
-              | "golden"
-          }
-        >
-          {variant.charAt(0).toUpperCase() + variant.slice(1)} inline message
-          <ContentMessageAction variant="primary" label="Action" />
-        </ContentMessageInline>
-      ))}
+      {(["error", "success", "info", "warning", "gray"] as const).map(
+        (variant) => (
+          <ContentMessage
+            key={variant}
+            title={`${variant.charAt(0).toUpperCase() + variant.slice(1)} with action`}
+            icon={InfoCircle}
+            variant={variant}
+            size="sm"
+            action={<ContentMessageAction variant="primary" label="Learn more" />}
+          >
+            You can ask the assistant to perform actions before answering, like
+            searching in your data sources.
+          </ContentMessage>
+        )
+      )}
     </div>
   ),
 };

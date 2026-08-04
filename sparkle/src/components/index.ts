@@ -66,7 +66,7 @@ export {
 export {
   ContentMessage,
   ContentMessageAction,
-  ContentMessageInline,
+  CONTENT_MESSAGE_VARIANTS,
 } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
 export type {

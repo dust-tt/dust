@@ -119,10 +119,10 @@ export function SearchInputWithPopoverScrollableExample() {
       onSelectAll={() => console.log("select all")}
       contentMessage={{
         title: "You can add a custom message here",
-        variant: "green",
+        variant: "success",
         icon: InfoCircle,
         className: "w-full",
-        size: "lg",
+        size: "sm",
       }}
       displayItemCount={true}
       totalItems={100}
