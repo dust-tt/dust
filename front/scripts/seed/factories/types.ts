@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -37,6 +38,8 @@ export interface SkillAsset {
   userFacingDescription: string;
   instructions: string;
   instructionsHtml: string;
+  // Defaults to DEFAULT_SKILL_AVAILABILITY ("editors", i.e. unpublished).
+  availability?: SkillAvailability;
 }
 
 export interface SkillSuggestionAsset {
