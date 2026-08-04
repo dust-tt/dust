@@ -97,6 +97,7 @@ type SubNavigationAdminId =
   | "dev_secrets"
   | "sandbox"
   | "analytics"
+  | "analytics_consumption"
   | "credits_usage"
   | "usage"
   | "self_improving_skills";
@@ -108,6 +109,7 @@ const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   workspace_branding: ["/w/[wId]/brand"],
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
+  analytics_consumption: ["/w/[wId]/analytics/consumption"],
   subscription: ["/w/[wId]/subscription"],
   billing: ["/w/[wId]/billing"],
   api_keys: ["/w/[wId]/developers/api-keys"],
@@ -225,6 +227,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/subscription",
           "/w/[wId]/billing",
           "/w/[wId]/analytics",
+          "/w/[wId]/analytics/consumption",
           "/w/[wId]/actions",
           "/w/[wId]/developers/credits-usage",
           "/w/[wId]/developers/providers",
@@ -343,6 +346,20 @@ export const subNavigationAdmin = ({
         current: isCurrent("analytics"),
         disabled: !hasManagerRole,
       },
+      // Sits alongside the current Analytics entry while the consumption-backed
+      // dashboard is brought to parity; it replaces it at cut-over.
+      ...(featureFlags.includes("enable_analytics_consumption")
+        ? [
+            {
+              id: "analytics_consumption" as const,
+              label: "Analytics (new)",
+              icon: BarChart01,
+              href: `/w/${owner.sId}/analytics/consumption`,
+              current: isCurrent("analytics_consumption"),
+              disabled: !hasManagerRole,
+            },
+          ]
+        : []),
       isCreditPricedPlan(subscription.plan)
         ? {
             id: "billing",
