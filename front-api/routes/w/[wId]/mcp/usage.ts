@@ -27,6 +27,7 @@ app.get(
     const auth = ctx.get("auth");
     const { withSkills } = ctx.req.valid("query");
 
+    // TODO(2024-08-04 aubin): Remove the withSkills compatibility path once legacy frontend traffic has drained.
     if (withSkills === "true") {
       const usage = await getToolsUsage(auth, { withSkills: true });
       return ctx.json({ usage });
