@@ -18,7 +18,7 @@ interface ProjectPageProps {
 export function ProjectPage({ details }: ProjectPageProps) {
   const owner = useWorkspace();
 
-  const { members, metadata, space } = details;
+  const { members, metadata, sandbox, space } = details;
 
   return (
     <>
@@ -34,7 +34,7 @@ export function ProjectPage({ details }: ProjectPageProps) {
         </p>
       )}
       <div className="flex flex-row gap-x-6">
-        <ViewSpaceViewTable space={space} />
+        <ViewSpaceViewTable sandbox={sandbox} space={space} />
         <div className="mt-4 flex grow flex-col">
           {Object.entries(members).map(([groupName, groupMembers]) => (
             <MembersDataTable

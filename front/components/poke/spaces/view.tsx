@@ -6,14 +6,16 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { makeSandboxConnectCommand } from "@app/lib/poke/sandbox";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeSpaceType } from "@app/types/poke";
+import type { PokeSandboxType, PokeSpaceType } from "@app/types/poke";
 
 interface ViewSpaceTableProps {
+  sandbox: PokeSandboxType | null;
   space: PokeSpaceType;
 }
 
-export function ViewSpaceViewTable({ space }: ViewSpaceTableProps) {
+export function ViewSpaceViewTable({ sandbox, space }: ViewSpaceTableProps) {
   return (
     <div className="flex flex-col space-y-8">
       <div className="flex justify-between gap-3">
@@ -67,6 +69,23 @@ export function ViewSpaceViewTable({ space }: ViewSpaceTableProps) {
                       .join(", ")}
                   </PokeTableCell>
                 </PokeTableRow>
+              )}
+              {sandbox && (
+                <>
+                  <PokeTableRow>
+                    <PokeTableHead>Sandbox Status</PokeTableHead>
+                    <PokeTableCell>{sandbox.status}</PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableHead>Sandbox Connect</PokeTableHead>
+                    {/* The `e2b sandbox connect` command is too wide for the
+                        Overview; the copy button is what matters here. */}
+                    <PokeTableCellWithCopy
+                      label="Copy command"
+                      textToCopy={makeSandboxConnectCommand(sandbox)}
+                    />
+                  </PokeTableRow>
+                </>
               )}
               <PokeTableRow>
                 <PokeTableHead>Created At</PokeTableHead>

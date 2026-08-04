@@ -4,6 +4,7 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { makeSandboxConnectCommand } from "@app/lib/poke/sandbox";
 import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
@@ -915,6 +916,7 @@ export function ConversationPage() {
   }>(null);
   const [showRenderControls, setShowRenderControls] = useState(false);
   const [isCopiedJSON, copyJSON] = useCopyToClipboard();
+  const [isCopiedSandboxCommand, copySandboxCommand] = useCopyToClipboard();
 
   const { copyTestCase, isLoading: isTestCaseLoading } =
     useCopyReinforcementTestCase({ owner, conversationId });
@@ -977,8 +979,16 @@ export function ConversationPage() {
     );
   }
 
-  const { conversationDataSourceId, langfuseUiBaseUrl, temporalWorkspace } =
-    conversationConfig;
+  const {
+    conversationDataSourceId,
+    langfuseUiBaseUrl,
+    sandbox,
+    temporalWorkspace,
+  } = conversationConfig;
+
+  const sandboxConnect = sandbox
+    ? { command: makeSandboxConnectCommand(sandbox), status: sandbox.status }
+    : null;
 
   const allMessages = conversation?.content.flat() ?? [];
   const pendingUserCount = allMessages.filter(
@@ -1048,6 +1058,23 @@ export function ConversationPage() {
                 variant="primary"
                 size="xs"
                 target="_blank"
+              />
+              <Button
+                label={isCopiedSandboxCommand ? "Copied" : "Sandbox Cmd"}
+                variant="primary"
+                size="xs"
+                icon={isCopiedSandboxCommand ? ClipboardCheck : Clipboard}
+                disabled={!sandboxConnect}
+                tooltip={
+                  sandboxConnect
+                    ? `${sandboxConnect.command} (${sandboxConnect.status})`
+                    : "No sandbox for this conversation"
+                }
+                onClick={() => {
+                  if (sandboxConnect) {
+                    void copySandboxCommand(sandboxConnect.command);
+                  }
+                }}
               />
               <Button
                 href={`/poke/${owner.sId}/data_sources/${conversationDataSourceId}`}

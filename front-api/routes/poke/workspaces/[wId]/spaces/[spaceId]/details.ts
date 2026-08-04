@@ -1,6 +1,7 @@
 import type { PokeGetSpaceDetails } from "@app/lib/api/poke/spaces";
 import { getMembers } from "@app/lib/api/workspace";
 import { spaceToPokeJSON } from "@app/lib/poke/utils";
+import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
@@ -59,9 +60,14 @@ app.get(
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : null;
 
+    const sandbox = space.isProject()
+      ? await PodSandboxAdapter.fetchSandbox(auth, space)
+      : null;
+
     return ctx.json({
       members,
       metadata: metadata ? metadata.toJSON() : null,
+      sandbox: sandbox ? sandbox.toPokeJSON() : null,
       space: await spaceToPokeJSON(auth, space),
     });
   }
