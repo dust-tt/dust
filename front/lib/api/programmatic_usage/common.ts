@@ -28,7 +28,6 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   teams: "user",
   transcript: "user",
   triggered_programmatic: "programmatic",
-  triggered_webhook: "user",
   triggered: "user",
   wakeup: "user",
   web: "user",

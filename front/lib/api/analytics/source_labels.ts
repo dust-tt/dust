@@ -27,7 +27,6 @@ export const SOURCE_ORIGIN_LABELS: Record<AnalyticsVisibleOrigin, string> = {
   transcript: "Transcript",
   triggered: "Trigger",
   triggered_programmatic: "Trigger",
-  triggered_webhook: "Trigger",
   wakeup: "Wake-up",
   onboarding_conversation: "Onboarding",
   agent_sidekick: "Sidekick",

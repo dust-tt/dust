@@ -63,9 +63,6 @@ describe("getTaskQueueForUserMessageOrigin", () => {
       SCHEDULES_QUEUE_NAME
     );
     expect(
-      await getTaskQueueForUserMessageOrigin(auth, "triggered_webhook")
-    ).toBe(BATCH_QUEUE_NAME);
-    expect(
       await getTaskQueueForUserMessageOrigin(auth, "triggered_programmatic")
     ).toBe(BATCH_QUEUE_NAME);
     expect(await getTaskQueueForUserMessageOrigin(auth, "reinforcement")).toBe(

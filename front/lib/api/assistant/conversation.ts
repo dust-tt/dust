@@ -503,7 +503,6 @@ export function isUserMessageContextValid(
     case "transcript":
     case "triggered":
     case "triggered_programmatic":
-    case "triggered_webhook":
     case "wakeup":
     case "onboarding_conversation":
     case "agent_sidekick":

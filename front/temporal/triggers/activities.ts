@@ -25,7 +25,6 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationWithoutContentType,
   UserMessageContext,
-  UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
@@ -38,18 +37,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 class TriggerNonRetryableError extends Error {}
-
-// The origin drives the agent loop QoS queue: schedule triggers and webhook triggers must stay
-// distinguishable once persisted.
-function getTriggerMessageOrigin(trigger: TriggerType): UserMessageOrigin {
-  if (trigger.kind !== "webhook") {
-    return "triggered";
-  }
-
-  return trigger.executionMode === "programmatic"
-    ? "triggered_programmatic"
-    : "triggered_webhook";
-}
 
 async function createConversationForAgentConfiguration({
   auth,
@@ -92,7 +79,8 @@ async function createConversationForAgentConfiguration({
     fullName: auth.getNonNullableUser().fullName(),
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
-    origin: getTriggerMessageOrigin(trigger),
+    // All webhook triggers count as programmatic, fair_use execution mode included.
+    origin: trigger.kind === "webhook" ? "triggered_programmatic" : "triggered",
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,
   };
 

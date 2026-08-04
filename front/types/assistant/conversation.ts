@@ -120,7 +120,6 @@ export type UserMessageOrigin =
   | "teams"
   | "transcript"
   | "triggered_programmatic"
-  | "triggered_webhook"
   | "triggered"
   | "wakeup"
   | "zapier"

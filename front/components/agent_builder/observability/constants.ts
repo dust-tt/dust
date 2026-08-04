@@ -188,10 +188,6 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: SOURCE_ORIGIN_LABELS.triggered_programmatic,
     color: buildColorClass("orange", 300),
   },
-  triggered_webhook: {
-    label: SOURCE_ORIGIN_LABELS.triggered_webhook,
-    color: buildColorClass("orange", 500),
-  },
   wakeup: {
     label: SOURCE_ORIGIN_LABELS.wakeup,
     color: buildColorClass("violet", 700),
