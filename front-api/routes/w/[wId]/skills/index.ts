@@ -221,7 +221,7 @@ app.get(
       if (withMessageCount) {
         messageCountMap = await SkillResource.batchFetchMessageCounts(
           auth,
-          skills
+          skills.filter((skill) => !skill.isSystemSkill)
         );
       }
       const editorsMap = await SkillResource.batchListEditors(auth, skills);
@@ -262,7 +262,11 @@ app.get(
         return {
           ...skillWithoutInstructionsAndTools,
           ...(messageCountMap
-            ? { messageCount: messageCountMap.get(sc.sId) ?? 0 }
+            ? {
+                messageCount: sc.isSystemSkill
+                  ? null
+                  : (messageCountMap.get(sc.sId) ?? 0),
+              }
             : {}),
           relations: {
             usage: usageWithSkills,

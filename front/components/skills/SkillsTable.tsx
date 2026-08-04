@@ -39,7 +39,7 @@ type RowData = {
   availability: SkillAvailability;
   editors: UserType[] | null;
   usage: SkillUsageType;
-  messageCount: number;
+  messageCount: number | null;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
@@ -164,15 +164,24 @@ const usedByColumn = (
   },
 });
 
-const usageColumn: ColumnDef<RowData, number> = {
+const usageColumn: ColumnDef<RowData, number | null> = {
   header: "Usage",
   accessorKey: "messageCount",
-  cell: (info: CellContext<RowData, number>) => (
-    <DataTable.BasicCellContent
-      className="font-mono"
-      label={info.getValue().toLocaleString()}
-    />
-  ),
+  cell: (info: CellContext<RowData, number | null>) => {
+    const messageCount = info.getValue();
+
+    return (
+      <DataTable.BasicCellContent
+        className="font-mono"
+        label={messageCount === null ? "—" : messageCount.toLocaleString()}
+        tooltip={
+          messageCount === null
+            ? "System skills are always active, so message usage does not apply."
+            : undefined
+        }
+      />
+    );
+  },
   meta: {
     className: "hidden @sm:w-20 @sm:table-cell",
     tooltip: "All-time messages",
@@ -293,7 +302,7 @@ export function SkillsTable({
         availability: skill.availability,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
-        messageCount: skill.messageCount ?? 0,
+        messageCount: skill.messageCount === undefined ? 0 : skill.messageCount,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {
