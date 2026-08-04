@@ -26,10 +26,13 @@ app.get(
   > => {
     const auth = ctx.get("auth");
     const { withSkills } = ctx.req.valid("query");
-    const usage =
-      withSkills === "true"
-        ? await getToolsUsage(auth, { withSkills: true })
-        : await getToolsUsage(auth);
+
+    if (withSkills === "true") {
+      const usage = await getToolsUsage(auth, { withSkills: true });
+      return ctx.json({ usage });
+    }
+
+    const usage = await getToolsUsage(auth);
     return ctx.json({ usage });
   }
 );
