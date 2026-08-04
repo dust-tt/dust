@@ -2,6 +2,7 @@ import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import type { ResolveUpgradeRequestError } from "@app/lib/api/credits/upgrade_requests";
 import {
   createUpgradeRequest,
+  listAllResolvedUpgradeRequests,
   listPendingUpgradeRequests,
   listResolvedUpgradeRequests,
   resolveUpgradeRequest,
@@ -112,15 +113,15 @@ app.get(
     const auth = ctx.get("auth");
     const { status, offset, format } = ctx.req.valid("query");
 
-    const { requests, total } =
-      status === "resolved"
-        ? await listResolvedUpgradeRequests(auth, { offset })
-        : {
-            requests: await listPendingUpgradeRequests(auth),
-            total: undefined,
-          };
-
     if (format === "csv") {
+      // Unlike the paginated JSON response, the CSV export always covers the
+      // full history — `listAllResolvedUpgradeRequests` pages through the
+      // table internally rather than being capped at one page.
+      const requests =
+        status === "resolved"
+          ? await listAllResolvedUpgradeRequests(auth)
+          : await listPendingUpgradeRequests(auth);
+
       ctx.header("Content-Type", "text/csv");
       ctx.header(
         "Content-Disposition",
@@ -130,6 +131,14 @@ app.get(
       );
       return ctx.body(upgradeRequestsToCsv(requests));
     }
+
+    const { requests, total } =
+      status === "resolved"
+        ? await listResolvedUpgradeRequests(auth, { offset })
+        : {
+            requests: await listPendingUpgradeRequests(auth),
+            total: undefined,
+          };
 
     const body: GetUpgradeRequestsResponseBody = { requests, total };
     return ctx.json(body);
