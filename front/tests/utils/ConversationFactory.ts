@@ -96,6 +96,8 @@ export class ConversationFactory {
       requestedSpaceIds,
       spaceId,
       visibility = "unlisted",
+      depth,
+      triggerId,
       t,
     }: {
       agentConfigurationId: string;
@@ -104,6 +106,8 @@ export class ConversationFactory {
       requestedSpaceIds?: ModelId[];
       spaceId?: ModelId;
       visibility?: ConversationVisibility;
+      depth?: number;
+      triggerId?: ModelId | null;
       t?: Transaction;
     }
   ): Promise<ConversationType> {
@@ -113,6 +117,8 @@ export class ConversationFactory {
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
       visibility,
+      depth,
+      triggerId,
       spaceId: spaceId ?? null,
     });
 

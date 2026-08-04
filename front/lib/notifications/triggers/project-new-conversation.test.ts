@@ -1,19 +1,40 @@
 import { Authenticator } from "@app/lib/auth";
-import { filterMembersByNotifyCondition } from "@app/lib/notifications/triggers/project-new-conversation";
+import { getNovuClient } from "@app/lib/notifications";
+import {
+  filterMembersByNotifyCondition,
+  notifyActivationConversationAgentReplied,
+} from "@app/lib/notifications/triggers/project-new-conversation";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   DEFAULT_NOTIFICATION_CONDITION,
   type NotificationCondition,
 } from "@app/types/notification_preferences";
 import type { LightWorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+// Mock Novu client so tests can assert whether the activation email was triggered.
+vi.mock(import("@app/lib/notifications"), async (importOriginal) => {
+  const mod = await importOriginal();
+  return {
+    ...mod,
+    getNovuClient: vi.fn().mockResolvedValue({
+      triggerBulk: vi.fn().mockResolvedValue({ result: [] }),
+    }),
+  };
+});
 
 describe("filterMembersByNotifyCondition", () => {
   let workspace: LightWorkspaceType;
@@ -262,5 +283,83 @@ describe("filterMembersByNotifyCondition", () => {
         [user1.sId, user2.sId].sort()
       );
     });
+  });
+});
+
+describe("notifyActivationConversationAgentReplied", () => {
+  let auth: Authenticator;
+  let user: UserResource;
+  let pod: SpaceResource;
+  let agent: LightAgentConfigurationType;
+  let activationTrigger: TriggerResource;
+
+  beforeEach(async () => {
+    const result = await createResourceTest({ role: "user" });
+    user = result.user;
+    auth = result.authenticator;
+
+    pod = await SpaceFactory.project(result.workspace, user.id);
+
+    agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "ActivationAgent",
+      description: "Test",
+    });
+
+    activationTrigger = await TriggerFactory.webhook(auth, {
+      agentConfigurationId: agent.sId,
+      spaceId: pod.id,
+    });
+    await ActivationPodResource.makeNew(auth, {
+      pod,
+      user,
+      trigger: activationTrigger,
+    });
+
+    vi.mocked(getNovuClient).mockClear();
+  });
+
+  test("triggers the activation email for the pod's nudge-created conversation", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+      spaceId: pod.id,
+      triggerId: activationTrigger.id,
+    });
+
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(vi.mocked(getNovuClient)).toHaveBeenCalled();
+  });
+
+  test("does not trigger the activation email for a nested sub-conversation", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+      spaceId: pod.id,
+      depth: 1,
+      triggerId: activationTrigger.id,
+    });
+
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+  });
+
+  test("does not trigger the activation email for a conversation the user starts", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+      spaceId: pod.id,
+    });
+
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
   });
 });

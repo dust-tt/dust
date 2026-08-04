@@ -1240,6 +1240,9 @@ export function createProjectManagerTools(
         // Get origin and timezone from the current conversation
         let origin: UserMessageOrigin = "web";
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        // Sub-conversations created on behalf of an agent are nested one level below their parent
+        let parentConversationDepth = 0;
+        let originMessageId: string | null = null;
 
         if (isAgentLoopRunContext(toolContext?.runContext)) {
           const userMessage = toolContext.runContext.conversation.content
@@ -1249,6 +1252,8 @@ export function createProjectManagerTools(
             origin = userMessage.context.origin ?? origin;
             timezone = userMessage.context.timezone ?? timezone;
           }
+          parentConversationDepth = toolContext.runContext.conversation.depth;
+          originMessageId = toolContext.runContext.agentMessage.sId;
         }
         if (isSandboxFunctionRunContext(toolContext?.runContext)) {
           timezone =
@@ -1283,10 +1288,12 @@ export function createProjectManagerTools(
           mentions = [{ configurationId: matchedAgentId }];
         }
 
-        // Create conversation in the project space
+        // Create conversation in the project space, nested under the parent so it
+        // stays hidden from the pod's conversation list and notifications.
         const conversationResource = await createConversation(auth, {
           title: params.title,
           visibility: "unlisted",
+          depth: parentConversationDepth + 1,
           spaceId: pod.id,
         });
 
@@ -1308,6 +1315,14 @@ export function createProjectManagerTools(
             selectedMCPServerViewIds: [],
             lastTriggerRunAt: null,
           },
+          ...(originMessageId
+            ? {
+                agenticMessageData: {
+                  type: "run_agent",
+                  originMessageId,
+                },
+              }
+            : {}),
           skipToolsValidation: false,
           doNotAssociateUser: true,
           skipDustAutoMention: true,
