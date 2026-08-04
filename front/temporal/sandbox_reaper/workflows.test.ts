@@ -1,0 +1,113 @@
+import type {
+  ReaperCursor,
+  ReaperPhase,
+  ReapSandboxPhaseActivityResult,
+} from "@app/temporal/sandbox_reaper/activities";
+import { BATCH_SIZE } from "@app/temporal/sandbox_reaper/config";
+import { sandboxReaperWorkflow } from "@app/temporal/sandbox_reaper/workflows";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockLogWarn, mockPatched, mockReapSandboxPhaseActivity } = vi.hoisted(
+  () => ({
+    mockLogWarn: vi.fn(),
+    mockPatched: vi.fn(),
+    mockReapSandboxPhaseActivity: vi.fn(),
+  })
+);
+
+vi.mock("@temporalio/workflow", () => ({
+  log: { warn: mockLogWarn },
+  patched: mockPatched,
+  proxyActivities: () => ({
+    reapSandboxPhaseActivity: mockReapSandboxPhaseActivity,
+  }),
+}));
+
+function makeResult(
+  nextCursor: ReaperCursor | null
+): ReapSandboxPhaseActivityResult {
+  return {
+    failedCount: 0,
+    nextCursor,
+    processedCount: nextCursor ? BATCH_SIZE : 0,
+    skippedCount: 0,
+    succeededCount: nextCursor ? BATCH_SIZE : 0,
+  };
+}
+
+describe("sandboxReaperWorkflow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPatched.mockReturnValue(true);
+    mockReapSandboxPhaseActivity.mockResolvedValue(makeResult(null));
+  });
+
+  it("rechecks capacity work between maintenance batches", async () => {
+    const maintenanceCursor: ReaperCursor = {
+      sandboxModelId: 10,
+      timestampMs: 1_000,
+    };
+    const runningCursor: ReaperCursor = {
+      sandboxModelId: 20,
+      timestampMs: 2_000,
+    };
+    let runningCalls = 0;
+    let killRequestedSleepingCalls = 0;
+
+    mockReapSandboxPhaseActivity.mockImplementation(
+      async ({
+        phase,
+      }: {
+        cursor: ReaperCursor | null;
+        phase: ReaperPhase;
+      }) => {
+        if (phase === "running") {
+          runningCalls += 1;
+          return makeResult(runningCalls === 3 ? runningCursor : null);
+        }
+        if (phase === "kill_requested_sleeping") {
+          killRequestedSleepingCalls += 1;
+          return makeResult(
+            killRequestedSleepingCalls === 1 ? maintenanceCursor : null
+          );
+        }
+        return makeResult(null);
+      }
+    );
+
+    await sandboxReaperWorkflow();
+
+    const capacityAndMaintenanceCalls = mockReapSandboxPhaseActivity.mock.calls
+      .map(([input]) => input)
+      .filter(
+        ({ phase }) =>
+          phase === "running" || phase === "kill_requested_sleeping"
+      );
+    expect(capacityAndMaintenanceCalls).toEqual([
+      { cursor: null, phase: "running" },
+      { cursor: null, phase: "running" },
+      { cursor: null, phase: "kill_requested_sleeping" },
+      { cursor: null, phase: "running" },
+      { cursor: runningCursor, phase: "running" },
+      { cursor: maintenanceCursor, phase: "kill_requested_sleeping" },
+      { cursor: null, phase: "running" },
+      { cursor: null, phase: "running" },
+    ]);
+  });
+
+  it("keeps the legacy phase loop for in-flight workflows", async () => {
+    mockPatched.mockReturnValue(false);
+
+    await sandboxReaperWorkflow();
+
+    expect(
+      mockReapSandboxPhaseActivity.mock.calls.map(([input]) => input)
+    ).toEqual([
+      { cursor: null, phase: "kill_requested" },
+      { cursor: null, phase: "running" },
+      { cursor: null, phase: "pending_approval" },
+      { cursor: null, phase: "kill_requested_sleeping" },
+      { cursor: null, phase: "sleeping" },
+    ]);
+  });
+});
