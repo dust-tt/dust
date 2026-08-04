@@ -1,8 +1,9 @@
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useMentionValidation } from "@app/lib/swr/mentions";
+import { useUserMemory } from "@app/lib/swr/user";
 import type {
   ConversationWithoutContentType,
   RichMentionWithStatus,
@@ -13,6 +14,7 @@ import {
   ActionCardBlock,
   Avatar,
   Button,
+  InfoCircle,
   MessageChatSquare,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -44,6 +46,12 @@ export function MentionValidationRequired({
   message,
 }: MentionValidationRequiredProps) {
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const hasUserMemory = hasFeature("user_memory");
+  const { isMemoryEnabled } = useUserMemory({
+    owner,
+    disabled: !hasUserMemory,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { validateMention } = useMentionValidation({
@@ -139,6 +147,24 @@ export function MentionValidationRequired({
       assertNever(status);
   }
 
+  // Inviting someone to a conversation or adding them to a Pod shows the
+  // conversation to other people, so we warn the inviter (if they have memory)
+  // before they confirm
+  const showMemoryWarning =
+    hasUserMemory &&
+    isMemoryEnabled &&
+    (status === "pending_conversation_access" ||
+      status === "pending_project_membership");
+
+  const memoryWarning = showMemoryWarning ? (
+    <span className="mt-2 flex items-start gap-1.5 text-muted-foreground">
+      <InfoCircle className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>
+        The content of your personal memory may be disclosed to invited users.
+      </span>
+    </span>
+  ) : null;
+
   let approveLabel: string;
   switch (status) {
     case "agent_restricted_by_space_usage":
@@ -166,7 +192,12 @@ export function MentionValidationRequired({
       <ActionCardBlock
         title={title}
         visual={visual}
-        description={description}
+        description={
+          <>
+            {description}
+            {memoryWarning}
+          </>
+        }
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             <Button
