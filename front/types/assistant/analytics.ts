@@ -91,6 +91,90 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   workspace_id: string;
 }
 
+/**
+ * Types for consumption documents stored in Elasticsearch. One document per unit
+ * of credit consumption attributed to an agent message (an LLM call for one step,
+ * or a single tool call), as opposed to AgentMessageAnalyticsData which holds
+ * one aggregated document per message.
+ */
+
+// The 5 item types of the agent_message_consumption_items table collapse to 2
+// here: the model token buckets (system, input, output, reasoning) become one
+// "llm" document whose buckets are carried by `tokens` and `gross_credit_micro`.
+export type AgentMessageConsumptionAnalyticsType = "llm" | "tool";
+
+export interface AgentMessageConsumptionAnalyticsAgent {
+  id: string;
+  version: string;
+  tag_ids: string[];
+  // Agent that started the run; equals `id` for a top-level agent.
+  root_agent_id: string;
+  // 0 for a top-level agent, incremented once per level of sub-agent nesting.
+  depth: number;
+}
+
+export interface AgentMessageConsumptionAnalyticsUser {
+  id: string;
+}
+
+export interface AgentMessageConsumptionAnalyticsTool {
+  name: string;
+  server_name: string;
+  action_id: string;
+  // Skills that made this tool available to the agent.
+  enabled_by_skill_ids: string[];
+}
+
+export interface AgentMessageConsumptionAnalyticsTokens {
+  system: number;
+  input: number;
+  // Tool documents only: tokens the tool result adds to the conversation. Cannot
+  // be summed with `input`, which counts the tokens the LLM consumed itself.
+  result_footprint: number | null;
+  output: number;
+  reasoning: number;
+}
+
+export interface AgentMessageConsumptionAnalyticsGrossCreditMicro {
+  system: number;
+  input: number;
+  // Tool documents only, see AgentMessageConsumptionAnalyticsTokens.result_footprint.
+  result_footprint: number | null;
+  output: number;
+  reasoning: number;
+  direct: number;
+  total: number;
+}
+
+export interface AgentMessageConsumptionAnalyticsData
+  extends ElasticsearchBaseDocument {
+  agent: AgentMessageConsumptionAnalyticsAgent;
+  agent_message_id: string;
+  api_key_name: string | null;
+  // Version of the attribution logic that produced this document.
+  attribution_version: number;
+  // Idempotency key.
+  consumption_key: string;
+  consumption_type: AgentMessageConsumptionAnalyticsType;
+  conversation_id: string;
+  credit_micro: number;
+  execution_time_ms: number | null;
+  gross_credit_micro: AgentMessageConsumptionAnalyticsGrossCreditMicro;
+  is_billed: boolean;
+  message_version: string;
+  model: AgentMessageAnalyticsModel | null;
+  run_usage_id: string;
+  source: string;
+  space_id: string | null;
+  status: string;
+  step_index: number;
+  timestamp: string; // ISO date string.
+  tokens: AgentMessageConsumptionAnalyticsTokens;
+  tool: AgentMessageConsumptionAnalyticsTool | null;
+  user: AgentMessageConsumptionAnalyticsUser | null;
+  workspace_id: string;
+}
+
 export interface AgentRetrievalOutputAnalyticsData
   extends ElasticsearchBaseDocument {
   message_id: string;
