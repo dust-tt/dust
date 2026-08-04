@@ -20,9 +20,7 @@ export const wakePodSandboxPlugin = createPlugin({
   manifest: {
     id: "wake-pod-sandbox",
     name: "Wake Sandbox",
-    description:
-      "Resume this pod's sleeping sandbox so it can be connected to with " +
-      "`e2b sandbox connect`.",
+    description: "Resume this pod's sleeping sandbox.",
     resourceTypes: ["spaces"],
     args: {},
     requiredRoles: ["support"],

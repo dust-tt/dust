@@ -21,9 +21,7 @@ export const wakeConversationSandboxPlugin = createPlugin({
   manifest: {
     id: "wake-conversation-sandbox",
     name: "Wake Sandbox",
-    description:
-      "Resume this conversation's sleeping sandbox so it can be connected to with " +
-      "`e2b sandbox connect`.",
+    description: "Resume this conversation's sleeping sandbox.",
     resourceTypes: ["conversations"],
     args: {},
     requiredRoles: ["support"],
