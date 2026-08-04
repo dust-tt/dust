@@ -85,10 +85,12 @@ export function createNotionVerificationMiddleware(
       // Parse body as JSON for routes to access the object.
       req.body = JSON.parse(stringBody);
 
-      // Skip signature verification for the initial verification_token request, since
-      // that is what gives us the signing secret in the first place. This applies to
-      // both private client integrations and standard Dust integrations.
       if (req.body.verification_token) {
+        if (useClientCredentials && !req.params.registrationToken) {
+          throw new ReceiverAuthenticityError(
+            "Notion signing secret registration requires a registration token."
+          );
+        }
         return next();
       }
 
