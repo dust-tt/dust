@@ -1219,10 +1219,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listFavoritesForCurrentUser(
     auth: Authenticator,
-    {
-      agentLoopData,
-      effectiveSpaceIds,
-    }: SkillFetchContext & { effectiveSpaceIds: string[] }
+    { ...context }: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
     const user = auth.user();
     if (!user) {
@@ -1243,8 +1240,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return this.fetchByIds(auth, favorites.skillIds, {
-      agentLoopData,
-      effectiveSpaceIds,
+      ...context,
       onlyActive: true,
     });
   }
