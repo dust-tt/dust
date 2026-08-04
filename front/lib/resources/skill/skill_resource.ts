@@ -95,7 +95,11 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isNumber, removeNulls } from "@app/types/shared/utils/general";
+import {
+  isNumber,
+  isString,
+  removeNulls,
+} from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
@@ -109,7 +113,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { col, fn, Op } from "sequelize";
+import { Op } from "sequelize";
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
@@ -2599,12 +2603,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
     const globalSkillIds = removeNulls(skills.map((skill) => skill.globalSId));
 
-    const rows = await AgentMessageSkillModel.findAll({
-      attributes: [
-        "customSkillId",
-        "globalSkillId",
-        [fn("COUNT", fn("DISTINCT", col("agentMessageId"))), "messageCount"],
-      ],
+    const counts = await AgentMessageSkillModel.count({
+      attributes: ["customSkillId", "globalSkillId"],
+      // Finalization activities can retry after the snapshot insert succeeds.
+      distinct: true,
+      col: "agentMessageId",
       where: {
         workspaceId: workspace.id,
         [Op.or]: removeNulls([
@@ -2624,16 +2627,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     const result = new Map<string, number>();
-    for (const row of rows) {
-      const skillId =
-        row.customSkillId !== null
-          ? customSkillIdByModelId.get(row.customSkillId)
-          : (row.globalSkillId ?? undefined);
-      const messageCount = row.get("messageCount");
-
-      assert(isNumber(messageCount), "Expected message count to be a number");
+    for (const row of counts) {
+      let skillId: string | undefined;
+      if (isNumber(row.customSkillId)) {
+        skillId = customSkillIdByModelId.get(row.customSkillId);
+      } else if (isString(row.globalSkillId)) {
+        skillId = row.globalSkillId;
+      }
       if (skillId) {
-        result.set(skillId, messageCount);
+        result.set(skillId, row.count);
       }
     }
 
