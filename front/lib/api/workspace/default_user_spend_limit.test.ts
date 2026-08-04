@@ -289,7 +289,7 @@ describe("setDefaultUserSpendLimit", () => {
     expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
   });
 
-  it("surfaces upsert failures as metronome_error and skips audit", async () => {
+  it("surfaces upsert failures as metronome_error, skips audit, and deletes the newly created config row", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -308,5 +308,36 @@ describe("setDefaultUserSpendLimit", () => {
       expect(result.error.type).toBe("metronome_error");
     }
     expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
+    // No config existed before the call, so the failed sync must not leave
+    // a stale row behind.
+    expect(
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth)
+    ).toBeNull();
+  });
+
+  it("reverts an existing config row back to its previous value when the upsert fails", async () => {
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: METRONOME_CUSTOMER_ID,
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      defaultPoolCapAwuCredits: 10_000,
+    });
+    vi.mocked(
+      defaultUserCapAlert.upsertMetronomeDefaultUserCapAlertForSeatType
+    ).mockResolvedValue(new Err(new Error("metronome down")));
+
+    const result = await setDefaultUserSpendLimit(auth, {
+      awuCredits: 25_000,
+      auditContext: AUDIT_CONTEXT,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
+    const reloaded =
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+    expect(reloaded?.defaultPoolCapAwuCredits).toBe(10_000);
   });
 });

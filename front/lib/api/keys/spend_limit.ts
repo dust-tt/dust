@@ -137,6 +137,7 @@ export async function setApiKeySpendLimit(
   );
 
   // Persist the admin's intent first (source of truth), then derive the alert.
+  const previousMonthlyCapAwuCredits = key.monthlyCapAwuCredits;
   await key.updateMonthlyCapAwuCredits(
     limit.kind === "limited" ? limit.awuCredits : null
   );
@@ -149,13 +150,17 @@ export async function setApiKeySpendLimit(
         keyName: key.name,
       });
       if (clearResult.isErr()) {
+        // Metronome sync failed, so the DB and Metronome would otherwise be
+        // left out of sync until someone retries — put the DB value back.
+        await key.updateMonthlyCapAwuCredits(previousMonthlyCapAwuCredits);
         logger.error(
           {
             workspaceId: workspace.sId,
             keyName: key.name,
+            previousMonthlyCapAwuCredits,
             err: clearResult.error,
           },
-          "[Metronome ApiKeyCap] set(unlimited): failed to clear cap alert"
+          "[Metronome ApiKeyCap] set(unlimited): failed to clear cap alert; reverted DB cap"
         );
         return new Err(
           new ApiKeySpendLimitError(
@@ -174,14 +179,18 @@ export async function setApiKeySpendLimit(
         awuCredits: limit.awuCredits,
       });
       if (upsertResult.isErr()) {
+        // Metronome sync failed, so the DB and Metronome would otherwise be
+        // left out of sync until someone retries — put the DB value back.
+        await key.updateMonthlyCapAwuCredits(previousMonthlyCapAwuCredits);
         logger.error(
           {
             workspaceId: workspace.sId,
             keyName: key.name,
             awuCredits: limit.awuCredits,
+            previousMonthlyCapAwuCredits,
             err: upsertResult.error,
           },
-          "[Metronome ApiKeyCap] set(limited): failed to upsert cap alert"
+          "[Metronome ApiKeyCap] set(limited): failed to upsert cap alert; reverted DB cap"
         );
         return new Err(
           new ApiKeySpendLimitError(

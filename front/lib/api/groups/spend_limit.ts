@@ -260,6 +260,7 @@ export async function setGroupSpendLimit(
   }
 
   const poolCapAwuCredits = limit.kind === "limited" ? limit.awuCredits : null;
+  const previousPoolCapAwuCredits = group.poolCapAwuCredits;
 
   // Persist the admin's intent first: the group column is the source of truth,
   // the Metronome alerts below are derived enforcement (a failed sync can be
@@ -277,6 +278,18 @@ export async function setGroupSpendLimit(
     poolCapAwuCredits,
   });
   if (syncResult.isErr()) {
+    // Metronome sync failed, so the DB and Metronome would otherwise be left
+    // out of sync until someone retries — put the DB value back.
+    await group.updatePoolCap(auth, previousPoolCapAwuCredits);
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        groupId: group.sId,
+        previousPoolCapAwuCredits,
+        err: syncResult.error,
+      },
+      "[GroupSpendLimit] set: failed to sync cap alerts; reverted DB pool cap"
+    );
     return new Err(syncResult.error);
   }
 

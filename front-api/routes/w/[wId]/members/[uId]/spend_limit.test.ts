@@ -6,7 +6,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -374,6 +374,88 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
           workspace,
         });
       expect(updatedMembership?.poolCapOverrideAwuCredits).toBe(1500);
+    });
+
+    it("reverts the DB override when the Metronome cap alert upsert fails", async () => {
+      vi.mocked(spendLimits.upsertMetronomePerUserCapAlert).mockResolvedValue(
+        new Err(new Error("Metronome unavailable"))
+      );
+
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      const membership = await MembershipFactory.associate(
+        workspace,
+        targetUser,
+        { role: "user" }
+      );
+      await membership.updatePoolCapOverride({
+        poolCapOverrideAwuCredits: 900,
+      });
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "admin",
+        workspace,
+      });
+
+      const response = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "limited", awuCredits: 1500 }),
+        }
+      );
+
+      expect(response.status).toBe(502);
+
+      const updatedMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: targetUser,
+          workspace,
+        });
+      expect(updatedMembership?.poolCapOverrideAwuCredits).toBe(900);
+    });
+
+    it("reverts the DB override when the Metronome cap alert clear fails", async () => {
+      vi.mocked(spendLimits.clearMetronomePerUserCapAlert).mockResolvedValue(
+        new Err(new Error("Metronome unavailable"))
+      );
+
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      const membership = await MembershipFactory.associate(
+        workspace,
+        targetUser,
+        { role: "user" }
+      );
+      await membership.updatePoolCapOverride({
+        poolCapOverrideAwuCredits: 900,
+      });
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "admin",
+        workspace,
+      });
+
+      const response = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "unlimited" }),
+        }
+      );
+
+      expect(response.status).toBe(502);
+
+      const updatedMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: targetUser,
+          workspace,
+        });
+      expect(updatedMembership?.poolCapOverrideAwuCredits).toBe(900);
     });
   });
 });

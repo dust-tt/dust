@@ -297,21 +297,51 @@ export async function setDefaultUserSpendLimit(
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
   const previousAwuCredits = existingConfig?.defaultPoolCapAwuCredits ?? 0;
 
+  let createdConfig: CreditUsageConfigurationResource | null = null;
   if (existingConfig) {
     await existingConfig.updateConfiguration(auth, {
       defaultPoolCapAwuCredits: poolAwuCredits,
     });
   } else {
-    await CreditUsageConfigurationResource.makeNew(auth, {
+    const makeNewResult = await CreditUsageConfigurationResource.makeNew(auth, {
       defaultDiscountPercent: 0,
       usageCapCredits: null,
       defaultPoolCapAwuCredits: poolAwuCredits,
     });
+    if (makeNewResult.isErr()) {
+      return new Err(
+        new DefaultUserSpendLimitError(
+          "metronome_error",
+          makeNewResult.error.message
+        )
+      );
+    }
+    createdConfig = makeNewResult.value;
   }
 
   // Sync per-seat-type Metronome alerts from the newly persisted value.
   const syncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
   if (syncResult.isErr()) {
+    // Metronome sync failed, so the DB and Metronome would otherwise be left
+    // out of sync until someone retries — put the DB value back. There was no
+    // row before this call, so undo by deleting the one just created rather
+    // than leaving a stale `defaultPoolCapAwuCredits: 0` row behind.
+    if (existingConfig) {
+      await existingConfig.updateConfiguration(auth, {
+        defaultPoolCapAwuCredits: previousAwuCredits,
+      });
+    } else {
+      await createdConfig?.delete(auth);
+    }
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        previousAwuCredits,
+        err: syncResult.error,
+      },
+      "[DefaultUserSpendLimit] set: failed to sync cap alerts; reverted DB pool cap"
+    );
     return new Err(syncResult.error);
   }
 
