@@ -75,6 +75,9 @@
         }
       }
     },
+    "trigger_id": {
+      "type": "keyword"
+    },
     "source": {
       "type": "keyword"
     },

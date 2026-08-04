@@ -180,6 +180,7 @@ export interface AgentMessageConsumptionAnalyticsData
   step_index: number;
   tokens: AgentMessageConsumptionAnalyticsTokens;
   tool: AgentMessageConsumptionAnalyticsTool | null;
+  trigger_id: string | null;
   user: AgentMessageConsumptionAnalyticsUser | null;
   workspace_id: string;
 }
