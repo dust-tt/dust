@@ -2,9 +2,8 @@ import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import type { ResolveUpgradeRequestError } from "@app/lib/api/credits/upgrade_requests";
 import {
   createUpgradeRequest,
-  listAllResolvedUpgradeRequests,
-  listPendingUpgradeRequests,
-  listResolvedUpgradeRequests,
+  listAllUpgradeRequests,
+  listUpgradeRequests,
   resolveUpgradeRequest,
 } from "@app/lib/api/credits/upgrade_requests";
 import { upgradeRequestsToCsv } from "@app/lib/api/credits/upgrade_requests_export";
@@ -44,6 +43,7 @@ const ResolveBodySchema = z.discriminatedUnion("status", [
   }),
 ]);
 
+// `decision` and `search` only apply to the "resolved" history view.
 const ListUpgradeRequestsQuerySchema = z.object({
   status: z.union([z.literal("pending"), z.literal("resolved")]).optional(),
   offset: z.coerce.number().int().min(0).catch(0),
@@ -111,11 +111,13 @@ app.get(
   async (ctx) => {
     const auth = ctx.get("auth");
     const { status, offset, decision, search, format } = ctx.req.valid("query");
+    const resolvedStatus = status ?? "pending";
 
     if (format === "csv") {
       // CSV export is only wired to the resolved-requests History tab; it
       // always covers the full history matching the current filters.
-      const requests = await listAllResolvedUpgradeRequests(auth, {
+      const requests = await listAllUpgradeRequests(auth, {
+        status: "resolved",
         decision,
         search,
       });
@@ -128,13 +130,12 @@ app.get(
       return ctx.body(upgradeRequestsToCsv(requests));
     }
 
-    const { requests, total } =
-      status === "resolved"
-        ? await listResolvedUpgradeRequests(auth, { offset, decision, search })
-        : {
-            requests: await listPendingUpgradeRequests(auth),
-            total: undefined,
-          };
+    const { requests, total } = await listUpgradeRequests(auth, {
+      status: resolvedStatus,
+      offset,
+      decision,
+      search,
+    });
 
     const body: GetUpgradeRequestsResponseBody = { requests, total };
     return ctx.json(body);

@@ -6,8 +6,8 @@ import type {
 
 export type GetUpgradeRequestsResponseBody = {
   requests: MembershipUpgradeRequestType[];
-  // Total resolved-request count, for the history view's pagination. Absent
-  // for the (unpaginated) pending-requests list.
+  // Total count matching the current filter, for pagination — populated for
+  // both the pending queue and the resolved history view.
   total?: number;
 };
 

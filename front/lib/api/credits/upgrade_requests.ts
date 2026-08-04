@@ -237,17 +237,11 @@ export async function getUpgradeRequestAvailabilityForUser(
   };
 }
 
-// Admin-only: list pending upgrade requests for the workspace.
-export async function listPendingUpgradeRequests(
-  auth: Authenticator
-): Promise<MembershipUpgradeRequestType[]> {
-  const requests =
-    await MembershipUpgradeRequestResource.listPendingByWorkspace(auth);
-  return requests.map((r) => r.toJSON());
-}
-
-// Admin-only: resolved requests, for the history view, paginated.
-export const RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
+// Admin-only: paginated upgrade requests for the workspace — either the
+// pending queue or the resolved history view, both offset-paginated at the
+// same page size. `decision` only applies to `status: "resolved"` (pending
+// requests have no decision yet).
+export const UPGRADE_REQUESTS_PAGE_SIZE = 100;
 
 // The requester isn't joined in SQL so a name/email search
 // resolves matching users via the user search index first, then restricts the
@@ -270,13 +264,15 @@ async function resolveSearchUserModelIds(
   return userModelIds.length === 0 ? null : userModelIds;
 }
 
-export async function listResolvedUpgradeRequests(
+export async function listUpgradeRequests(
   auth: Authenticator,
   {
+    status,
     offset,
     decision,
     search,
   }: {
+    status: "pending" | "resolved";
     offset: number;
     decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
     search?: string;
@@ -288,8 +284,9 @@ export async function listResolvedUpgradeRequests(
   }
 
   const { requests, total } =
-    await MembershipUpgradeRequestResource.listResolvedByWorkspace(auth, {
-      limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+    await MembershipUpgradeRequestResource.listByWorkspace(auth, {
+      status,
+      limit: UPGRADE_REQUESTS_PAGE_SIZE,
       offset,
       decision,
       userModelIds,
@@ -297,16 +294,21 @@ export async function listResolvedUpgradeRequests(
   return { requests: requests.map((r) => r.toJSON()), total };
 }
 
-// Admin-only: every resolved request, paginated fetching
-export async function listAllResolvedUpgradeRequests(
+// Admin-only: every upgrade request matching the current status/decision/
+// search filters, for the pending queue's or History tab's CSV export.
+// Fetches page by page (rather than the whole table in one query) to bound
+// memory/DB load, stopping once a page comes back short of a full page.
+export async function listAllUpgradeRequests(
   auth: Authenticator,
   {
+    status,
     decision,
     search,
   }: {
+    status: "pending" | "resolved";
     decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
     search?: string;
-  } = {}
+  }
 ): Promise<MembershipUpgradeRequestType[]> {
   const userModelIds = await resolveSearchUserModelIds(auth, search);
   if (userModelIds === null) {
@@ -316,18 +318,21 @@ export async function listAllResolvedUpgradeRequests(
   const allRequests: MembershipUpgradeRequestType[] = [];
   let offset = 0;
   while (true) {
-    const { requests } =
-      await MembershipUpgradeRequestResource.listResolvedByWorkspace(auth, {
-        limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+    const { requests } = await MembershipUpgradeRequestResource.listByWorkspace(
+      auth,
+      {
+        status,
+        limit: UPGRADE_REQUESTS_PAGE_SIZE,
         offset,
         decision,
         userModelIds,
-      });
+      }
+    );
     allRequests.push(...requests.map((r) => r.toJSON()));
-    if (requests.length < RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE) {
+    if (requests.length < UPGRADE_REQUESTS_PAGE_SIZE) {
       break;
     }
-    offset += RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE;
+    offset += UPGRADE_REQUESTS_PAGE_SIZE;
   }
   return allRequests;
 }
