@@ -21,7 +21,7 @@ const { expireWorkspacePoolCapOverridesActivity } = proxyActivities<
   startToCloseTimeout: "2 minutes",
   // Safe to let the next hourly tick pick a workspace back up, so fail fast
   // instead of retrying indefinitely.
-  retry: { maximumAttempts: 2 },
+  retry: { maximumAttempts: 1 },
 });
 
 export interface CreditAlertWorkflowArgs {
