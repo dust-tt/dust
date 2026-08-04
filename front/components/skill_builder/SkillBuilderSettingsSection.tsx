@@ -113,7 +113,7 @@ export function SkillBuilderSettingsSection({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
+      <div className="space-y-1 pb-1">
         <h2 className="heading-lg font-semibold text-foreground">
           Skill settings
         </h2>
