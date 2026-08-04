@@ -218,8 +218,8 @@ export async function setUserSpendLimit(
   // Persist the admin's intent first: the membership is the source of truth,
   // the Metronome alerts below are derived enforcement (a failed sync can be
   // retried and re-derives from this value).
-  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
-  const previousExpiresAt = membership.poolCapOverrideExpiresAt;
+  const previousPoolCapOverride = membership.poolCapOverrideSnapshot;
+  const previousAwuCredits = previousPoolCapOverride.poolCapOverrideAwuCredits;
 
   await membership.updatePoolCapOverride({
     poolCapOverrideAwuCredits:
@@ -234,12 +234,8 @@ export async function setUserSpendLimit(
         userId: user.sId,
       });
       if (clearResult.isErr()) {
-        // Metronome sync failed, so the DB and Metronome would otherwise be
-        // left out of sync until someone retries — put the DB value back.
-        await membership.updatePoolCapOverride({
-          poolCapOverrideAwuCredits: previousAwuCredits,
-          poolCapOverrideExpiresAt: previousExpiresAt,
-        });
+        // Metronome sync failed, put the DB value back.
+        await membership.revertPoolCapOverride(previousPoolCapOverride);
         logger.error(
           {
             workspaceId: workspace.sId,
@@ -248,7 +244,7 @@ export async function setUserSpendLimit(
             previousAwuCredits,
             err: clearResult.error,
           },
-          "[Metronome PerUserCap] set(unlimited): failed to clear per-user cap alert; reverted DB override"
+          "[Metronome PerUserCap] failed to update metronome, overage is still active."
         );
         return new Err(
           new UserSpendLimitError("metronome_error", clearResult.error.message)
@@ -286,10 +282,7 @@ export async function setUserSpendLimit(
       if (upsertResult.isErr()) {
         // Metronome sync failed, so the DB and Metronome would otherwise be
         // left out of sync until someone retries — put the DB value back.
-        await membership.updatePoolCapOverride({
-          poolCapOverrideAwuCredits: previousAwuCredits,
-          poolCapOverrideExpiresAt: previousExpiresAt,
-        });
+        await membership.revertPoolCapOverride(previousPoolCapOverride);
         logger.error(
           {
             workspaceId: workspace.sId,
@@ -368,12 +361,8 @@ export async function setUserSpendLimit(
 }
 
 /**
- * Revert an expired pool cap override back to the seat-type default. Called
- * by the expiration sweep (`@app/temporal/spend_limit_expiration`) — never by
- * an admin action, hence the system-actored, dedicated audit event rather
- * than reusing `setUserSpendLimit`'s `member.spend_limit_updated`. A no-op
- * (idempotent `Ok`) if the override was already cleared or never expires,
- * e.g. an admin manually reverted it before the sweep ran.
+ * Revert an expired pool cap override back to the seat-type default. A no-op
+ * if the override was already cleared or never expires.
  */
 export async function expireUserSpendLimitOverride(
   auth: Authenticator,
@@ -405,8 +394,8 @@ export async function expireUserSpendLimitOverride(
     return new Ok({ reverted: false, previousAwuCredits: null });
   }
 
-  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
-  const previousExpiresAt = membership.poolCapOverrideExpiresAt;
+  const previousPoolCapOverride = membership.poolCapOverrideSnapshot;
+  const previousAwuCredits = previousPoolCapOverride.poolCapOverrideAwuCredits;
 
   await membership.updatePoolCapOverride({
     poolCapOverrideAwuCredits: null,
@@ -423,10 +412,7 @@ export async function expireUserSpendLimitOverride(
     // in place rather than leaving it cleared: keeps DB and Metronome
     // consistent, and the membership still matches
     // `listActiveWithExpiredPoolCapOverride` so the next sweep retries it.
-    await membership.updatePoolCapOverride({
-      poolCapOverrideAwuCredits: previousAwuCredits,
-      poolCapOverrideExpiresAt: previousExpiresAt,
-    });
+    await membership.revertPoolCapOverride(previousPoolCapOverride);
     logger.error(
       {
         workspaceId: workspace.sId,
@@ -449,10 +435,7 @@ export async function expireUserSpendLimitOverride(
     // Same rationale as the cap alert above: put the DB override back so the
     // sweep retries this membership (and re-clears the now-idempotent cap
     // alert) until both Metronome alerts are confirmed gone.
-    await membership.updatePoolCapOverride({
-      poolCapOverrideAwuCredits: previousAwuCredits,
-      poolCapOverrideExpiresAt: previousExpiresAt,
-    });
+    await membership.revertPoolCapOverride(previousPoolCapOverride);
     logger.error(
       {
         workspaceId: workspace.sId,
@@ -478,11 +461,6 @@ export async function expireUserSpendLimitOverride(
       metronomeCustomerId: workspace.metronomeCustomerId,
       userId: user.sId,
       execute: true,
-    }).catch((err) => {
-      logger.warn(
-        { workspaceId: workspace.sId, userId: user.sId, err },
-        "[SpendLimitExpiration] reconcileUser after expiry failed; webhook will reconcile"
-      );
     });
   }
 
@@ -500,6 +478,9 @@ export async function expireUserSpendLimitOverride(
     context: { location: "internal" },
     metadata: {
       previous_awu_credits: String(previousAwuCredits),
+      // Expiration always reverts to no override, mirroring the "unlimited"
+      // string `member.spend_limit_updated` uses for the same state.
+      new_awu_credits: "unlimited",
     },
   });
 

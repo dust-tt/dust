@@ -59,6 +59,11 @@ export type MembershipsPaginationParams = {
   limit: number;
 };
 
+export type PoolCapOverrideSnapshot = {
+  poolCapOverrideAwuCredits: number | null;
+  poolCapOverrideExpiresAt: Date | null;
+};
+
 type MembershipsWithTotal = {
   memberships: MembershipResource[];
   total: number;
@@ -1624,15 +1629,28 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
+   * Snapshot of the current pool cap override
+   */
+  get poolCapOverrideSnapshot(): PoolCapOverrideSnapshot {
+    return {
+      poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
+      poolCapOverrideExpiresAt: this.poolCapOverrideExpiresAt,
+    };
+  }
+
+  /**
+   * Restore a pool cap override from a snapshot
+   */
+  async revertPoolCapOverride(
+    snapshot: PoolCapOverrideSnapshot,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.updatePoolCapOverride(snapshot, transaction);
+  }
+
+  /**
    * Model ids of workspaces that have at least one active membership whose
-   * pool cap override has expired. Global, cross-workspace lookup for the
-   * expiration sweep; callers resolve these into `WorkspaceResource`s
-   * themselves, then do per-workspace scoped work (see
-   * `listActiveWithExpiredPoolCapOverride`).
-   *
-   * `dangerously`-prefixed: bypasses per-workspace scoping on purpose, so
-   * only call this from Temporal admin jobs or poke plugins, never from an
-   * API route.
+   * pool cap override has expired. Global, cross-workspace.
    */
   static async dangerouslyGetWorkspaceModelIdsWithExpiredMembershipPoolCapOverride(
     now: Date

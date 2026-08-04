@@ -9,6 +9,7 @@
     }
   ],
   "metadata": {
-    "previous_awu_credits": "string"
+    "previous_awu_credits": "string",
+    "new_awu_credits": "string"
   }
 }

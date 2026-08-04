@@ -71,10 +71,8 @@ export async function sendCreditAlertEmailActivity({
 
 /**
  * List the workspaces that have at least one active membership whose
- * `poolCapOverrideExpiresAt` has passed. Called once per schedule tick (see
- * `client.ts`); the workflow then fans out one activity per workspace so a
- * slow or stuck workspace can't block the others or blow the shared
- * timeout.
+ * usage upgrade expired. The workflow then fans out one child per
+ * workspace.
  */
 export async function getWorkspacesWithExpiredPoolCapOverrideActivity(): Promise<
   string[]
@@ -91,8 +89,7 @@ export async function getWorkspacesWithExpiredPoolCapOverrideActivity(): Promise
 
 /**
  * Revert every active membership's pool cap override whose
- * `poolCapOverrideExpiresAt` has passed, back to the seat-type default, for
- * a single workspace.
+ * has passed, back to the seat-type default
  */
 export async function expireWorkspacePoolCapOverridesActivity(
   workspaceId: string
@@ -125,7 +122,7 @@ export async function expireWorkspacePoolCapOverridesActivity(
 
   let failedCount = 0;
 
-  const results = await concurrentExecutor(
+  await concurrentExecutor(
     memberships,
     async (membership) => {
       const user = userByModelId.get(membership.userId);
@@ -138,7 +135,7 @@ export async function expireWorkspacePoolCapOverridesActivity(
           "[SpendLimitExpiration] User not found for expired membership override"
         );
         failedCount++;
-        return false;
+        return;
       }
       const result = await expireUserSpendLimitOverride(auth, {
         user,
@@ -146,26 +143,10 @@ export async function expireWorkspacePoolCapOverridesActivity(
         workspace,
       });
       if (result.isErr()) {
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-            userId: user.sId,
-            err: result.error,
-          },
-          "[SpendLimitExpiration] Failed to revert expired pool cap override"
-        );
         failedCount++;
-        return false;
       }
-      return result.value.reverted;
     },
     { concurrency: 4 }
-  );
-
-  const revertedCount = results.filter(Boolean).length;
-  logger.info(
-    { workspaceId: workspace.sId, revertedCount, failedCount },
-    "[SpendLimitExpiration] Completed expired pool cap override sweep for workspace"
   );
 
   // Surface the failure so the (non-retrying) child workflow fails instead of
