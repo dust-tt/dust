@@ -1,0 +1,20 @@
+engine biome(1.0)
+language js
+
+// Forbids importing from the model_constructors folder. Scope (which files this
+// applies to) is controlled by the override `includes` in biome.json, which
+// excludes model_constructors itself and front/lib/llms.
+pattern model_constructors_import() {
+    or {
+        `"@app/lib/model_constructors"`,
+        `"@app/lib/model_constructors/$_"`,
+    }
+}
+
+model_constructors_import() as $source where {
+    register_diagnostic(
+        span = $source,
+        message = "Do not import from '@app/lib/model_constructors'. LLM calls must be provider-agnostic — go through '@app/lib/llms' instead.",
+        severity = "error"
+    )
+}
