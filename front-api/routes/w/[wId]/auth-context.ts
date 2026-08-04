@@ -78,7 +78,7 @@ app.get(
       isManager: auth.isManager(),
       featureFlags,
       ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
-      vizUrl: "http://localhost:3007", // config.getVizPublicUrl(),
+      vizUrl: config.getVizPublicUrl(),
       providersHealth: auth.providersHealth(),
       workspacePermissions,
     });
