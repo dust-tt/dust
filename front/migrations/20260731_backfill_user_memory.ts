@@ -27,7 +27,7 @@ async function retrieveAllMemoriesDustMemories(
 
 function formatMemories(memories: AgentMemoryModel[]): string {
   const entries = [...memories]
-    .sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime())
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
     .map((m) => m.content.trim())
     .filter((c) => c.length > 0);
 
