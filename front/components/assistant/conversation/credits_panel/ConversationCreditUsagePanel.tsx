@@ -1,0 +1,71 @@
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
+import { ConversationCreditUsageBreakdown } from "@app/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown";
+import { useConversationConsumption } from "@app/hooks/conversations/useConversationConsumption";
+import { formatCredits } from "@app/lib/client/credits";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
+
+interface ConversationCreditUsagePanelProps {
+  conversation: ConversationWithoutContentType;
+  owner: LightWorkspaceType;
+}
+
+export function ConversationCreditUsagePanel({
+  conversation,
+  owner,
+}: ConversationCreditUsagePanelProps) {
+  const { closePanel } = useConversationSidePanelContext();
+  const { consumption, isConsumptionError, isConsumptionLoading } =
+    useConversationConsumption({
+      conversationId: conversation.sId,
+      workspaceId: owner.sId,
+    });
+
+  return (
+    <div className="flex h-panel flex-col">
+      <ConversationSidePanelHeader onClose={closePanel}>
+        <span className="text-sm font-semibold text-foreground">
+          Conversation credit usage
+        </span>
+      </ConversationSidePanelHeader>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {isConsumptionLoading && !consumption ? (
+          <div className="flex h-full items-center justify-center">
+            <Spinner />
+          </div>
+        ) : isConsumptionError ? (
+          <div className="flex h-full items-center justify-center px-5 py-4">
+            <p className="text-sm text-muted-foreground">
+              Conversation credit usage couldn’t be loaded.
+            </p>
+          </div>
+        ) : !consumption || consumption.billedCredits <= 0 ? (
+          <div className="flex h-full items-center justify-center px-5 py-4">
+            <p className="text-sm text-muted-foreground">
+              No credit usage for this conversation yet.
+            </p>
+          </div>
+        ) : consumption.details ? (
+          <ConversationCreditUsageBreakdown
+            billedCredits={consumption.billedCredits}
+            details={consumption.details}
+          />
+        ) : (
+          <div className="space-y-2 px-4 py-6">
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="text-sm text-muted-foreground">Total used</span>
+              <span className="text-lg font-semibold text-foreground">
+                {formatCredits(consumption.billedCredits)} credits
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              The detailed breakdown isn’t available for this conversation.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
