@@ -23,7 +23,7 @@ import { randomUUID } from "crypto";
 export const ACTIVATION_WEBHOOK_SOURCE_NAME = "Activation";
 const ACTIVATION_POD_ID_FIELD = "podId";
 const ACTIVATION_USER_ID_FIELD = "userId";
-const ACTIVATION_TRIGGER_CUSTOM_PROMPT = "Run the activation workflow.";
+const ACTIVATION_TRIGGER_CUSTOM_PROMPT = "Run the Dust Training workflow.";
 
 // A resource type that the activation nudge should drive the user toward
 export type ActivationNudgePushedResourceType = "skill" | "agent";

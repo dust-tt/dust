@@ -171,7 +171,7 @@ export const activationNewConversationWorkflow = workflow(
         });
 
         return {
-          subject: `[Dust] ${details.subject}`,
+          subject: `[Dust] Recommendation For You: ${details.subject}`,
           body,
         };
       },
