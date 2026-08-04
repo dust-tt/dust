@@ -145,6 +145,7 @@ export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
   "onboarding_conversation",
   "project_kickoff",
   "reinforced_skill_notification",
+  "system_activation",
   "wakeup",
 ];
 
