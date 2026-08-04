@@ -115,6 +115,7 @@ import React, {
   useState,
 } from "react";
 import { InputBarContext } from "./InputBarContext";
+import { InputBarFreshContextChip } from "./InputBarFreshContext";
 
 type KnownSlashCommand =
   | RunCommandSlashCommand<InputBarSlashCommand>
@@ -1235,8 +1236,13 @@ const InputBarContainer = ({
 
   // When an input bar refocus is requested (e.g. the "New" button was clicked, removing focus from
   // the input bar), we grab focus back.
-  const { shouldFocusInput, setShouldFocusInput, captureActions } =
-    useContext(InputBarContext);
+  const {
+    shouldFocusInput,
+    setShouldFocusInput,
+    captureActions,
+    isFreshContextEnabled,
+    setIsFreshContextEnabled,
+  } = useContext(InputBarContext);
 
   const handleSingleAgentSelect = useCallback(
     (mention: RichMention) => {
@@ -1711,6 +1717,11 @@ const InputBarContainer = ({
             }}
           >
             <div className="mb-1 flex flex-wrap items-center px-2">
+              {canUseFreshContext && isFreshContextEnabled && (
+                <InputBarFreshContextChip
+                  onRemove={() => setIsFreshContextEnabled(false)}
+                />
+              )}
               {selectedMCPServerViews.map((msv) => (
                 <React.Fragment key={msv.sId}>
                   {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}

@@ -1,8 +1,13 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import {
+  FRESH_CONTEXT_MENU_DESCRIPTION,
+  FRESH_CONTEXT_MENU_LABEL,
+} from "@app/components/assistant/conversation/input_bar/InputBarFreshContext";
+import {
   type CapabilitySearchIndexItem,
   searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   getMcpServerViewDescription,
@@ -37,10 +42,12 @@ import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
+  ClockRewind,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -169,6 +176,11 @@ interface CapabilitiesPickerProps {
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
+  // Run options are per-send modifiers rather than capabilities. They live here until the
+  // composer gains the unified "+" menu, which is where they belong.
+  canUseFreshContext?: boolean;
+  isFreshContextEnabled?: boolean;
+  onFreshContextToggle?: (isEnabled: boolean) => void;
 }
 
 export function CapabilitiesPicker({
@@ -181,6 +193,9 @@ export function CapabilitiesPicker({
   disabled = false,
   buttonSize = "xs",
   onOpenChange,
+  canUseFreshContext = false,
+  isFreshContextEnabled = false,
+  onFreshContextToggle,
 }: CapabilitiesPickerProps) {
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
@@ -444,8 +459,45 @@ export function CapabilitiesPicker({
   const hasNoVisibleItems =
     isSkillsDataReady && isToolsDataReady && capabilityPickerItems.length === 0;
 
+  // Run options answer to the same searchbar as capabilities, so they stay reachable when the
+  // list is filtered.
+  const shouldShowRunOptions =
+    canUseFreshContext &&
+    !!onFreshContextToggle &&
+    (normalizedSearchText.length === 0 ||
+      `${FRESH_CONTEXT_MENU_LABEL} ${FRESH_CONTEXT_MENU_DESCRIPTION}`
+        .toLowerCase()
+        .includes(normalizedSearchText));
+
   const shouldShowCapabilityDropdownList =
-    capabilityPickerItems.length > 0 || hasNoVisibleItems;
+    capabilityPickerItems.length > 0 ||
+    // Suppress the "nothing found" copy when the query matched a run option instead.
+    (hasNoVisibleItems && !shouldShowRunOptions);
+
+  const isSearching = normalizedSearchText.length > 0;
+
+  const runOptionsSection = (
+    <>
+      <DropdownMenuLabel label="Run options" />
+      <DropdownMenuItem
+        // Same boxed avatar and truncation as the capability rows above, so run options read as
+        // one list rather than a second visual language.
+        icon={<ResourceAvatar icon={ClockRewind} size="xs" />}
+        label={FRESH_CONTEXT_MENU_LABEL}
+        description={FRESH_CONTEXT_MENU_DESCRIPTION}
+        truncateText
+        endComponent={
+          isFreshContextEnabled ? (
+            <Chip size="xs" color="info" label="On" />
+          ) : undefined
+        }
+        onClick={() => {
+          onFreshContextToggle?.(!isFreshContextEnabled);
+          closeDropdown();
+        }}
+      />
+    </>
+  );
 
   return (
     <>
@@ -493,24 +545,39 @@ export function CapabilitiesPicker({
             <CapabilitiesPickerLoading />
           )}
 
+          {/* While searching, run options lead: capability matches are fuzzy and can push an
+              exact-match run option below the fold. With no query the list is browsed rather than
+              filtered, so capabilities keep the top. */}
+          {shouldShowRunOptions && isSearching && runOptionsSection}
+
           {shouldShowCapabilityDropdownList && (
-            <CapabilitiesPickerItemsList
-              emptyMessage={
-                normalizedSearchText.length > 0
-                  ? "No capabilities found"
-                  : "No more capabilities to select"
-              }
-              items={capabilityPickerItems}
-              onItemSelect={selectCapabilityPickerItem}
-              onSkillDetails={(skillId) => {
-                setSelectedSkillIdForDetails(skillId);
-                setIsOpen(false);
-              }}
-              onToolDetails={(serverView) => {
-                setSelectedServerViewForDetails(serverView);
-                setIsOpen(false);
-              }}
-            />
+            <>
+              {shouldShowRunOptions && isSearching && <DropdownMenuSeparator />}
+              <CapabilitiesPickerItemsList
+                emptyMessage={
+                  normalizedSearchText.length > 0
+                    ? "No capabilities found"
+                    : "No more capabilities to select"
+                }
+                items={capabilityPickerItems}
+                onItemSelect={selectCapabilityPickerItem}
+                onSkillDetails={(skillId) => {
+                  setSelectedSkillIdForDetails(skillId);
+                  setIsOpen(false);
+                }}
+                onToolDetails={(serverView) => {
+                  setSelectedServerViewForDetails(serverView);
+                  setIsOpen(false);
+                }}
+              />
+            </>
+          )}
+
+          {shouldShowRunOptions && !isSearching && (
+            <>
+              {shouldShowCapabilityDropdownList && <DropdownMenuSeparator />}
+              {runOptionsSection}
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

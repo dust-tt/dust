@@ -3,7 +3,6 @@ import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { InputBarFreshContextToggle } from "@app/components/assistant/conversation/input_bar/InputBarFreshContextToggle";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -210,6 +209,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       onOpenChange={onCapabilitiesPickerOpenChange}
       buttonSize={buttonSize}
       disabled={isInputDisabled}
+      canUseFreshContext={canUseFreshContext}
+      isFreshContextEnabled={isFreshContextEnabled}
+      onFreshContextToggle={setIsFreshContextEnabled}
     />
   );
   const attachmentButton = actions.includes("attachment") &&
@@ -269,22 +271,12 @@ export const InputBarButtons = React.memo(function InputBarButtons({
     />
   );
 
-  const freshContextButton = canUseFreshContext && (
-    <InputBarFreshContextToggle
-      buttonSize={buttonSize}
-      disabled={isInputDisabled}
-      isEnabled={isFreshContextEnabled}
-      onToggle={setIsFreshContextEnabled}
-    />
-  );
-
   return (
     <>
       {agentButton}
       {modelPickerButton}
       {!hideCapabilities && toolsButton}
       {attachmentButton}
-      {freshContextButton}
     </>
   );
 });

@@ -36,6 +36,7 @@ import {
   Avatar,
   Button,
   Clock,
+  ClockRewind,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
@@ -47,7 +48,6 @@ import {
   DropdownMenuTrigger,
   Edit04,
   Icon,
-  LayerSingle,
   Link01,
   Toolbar,
   Tooltip,
@@ -543,7 +543,7 @@ function FreshContextChip() {
       trigger={
         <Icon
           size="xs"
-          visual={LayerSingle}
+          visual={ClockRewind}
           className="h-3.5 w-3.5"
           aria-label="Fresh context"
         />
