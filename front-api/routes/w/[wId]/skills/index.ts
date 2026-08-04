@@ -128,6 +128,7 @@ app.get(
     // @deprecated viewType query param is ignored — instructions and tools
     // are never returned from the list endpoint. Use GET /skills/:sId for full details.
     const withRelations = ctx.req.query("withRelations");
+    const withMessageCount = ctx.req.query("withMessageCount") === "true";
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
@@ -216,6 +217,9 @@ app.get(
 
     if (withRelations === "true") {
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);
+      const messageCountMap = withMessageCount
+        ? await SkillResource.batchFetchMessageCounts(auth, skills)
+        : null;
       const editorsMap = await SkillResource.batchListEditors(auth, skills);
       const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
         auth,
@@ -253,6 +257,9 @@ app.get(
 
         return {
           ...skillWithoutInstructionsAndTools,
+          ...(messageCountMap
+            ? { messageCount: messageCountMap.get(sc.sId) ?? 0 }
+            : {}),
           relations: {
             usage: usageWithSkills,
             editors: editors ? editors.map((e) => e.toJSON()) : null,

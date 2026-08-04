@@ -39,6 +39,7 @@ type RowData = {
   availability: SkillAvailability;
   editors: UserType[] | null;
   usage: SkillUsageType;
+  messageCount: number;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
@@ -163,6 +164,21 @@ const usedByColumn = (
   },
 });
 
+const usageColumn: ColumnDef<RowData, number> = {
+  header: "Usage",
+  accessorKey: "messageCount",
+  cell: (info: CellContext<RowData, number>) => (
+    <DataTable.BasicCellContent
+      className="font-mono"
+      label={info.getValue().toLocaleString()}
+    />
+  ),
+  meta: {
+    className: "hidden @sm:w-16 @sm:table-cell",
+    tooltip: "All-time messages",
+  },
+};
+
 const lastEditedColumn = {
   header: "Last Edited",
   accessorKey: "updatedAt",
@@ -204,6 +220,7 @@ const getTableColumns = ({
    * - Name (always)
    * - Access (hidden on mobile)
    * - Used by (hidden on mobile)
+   * - Usage (hidden on mobile)
    * - Editors (hidden on mobile)
    * - Last Edited (hidden on mobile)
    * - Actions (always)
@@ -214,6 +231,7 @@ const getTableColumns = ({
     nameColumn,
     availabilityColumn,
     usedByColumn(onAgentClick, onUsedBySkillClick),
+    usageColumn,
     editorsColumn,
     lastEditedColumn,
     menuColumn,
@@ -275,6 +293,7 @@ export function SkillsTable({
         availability: skill.availability,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
+        messageCount: skill.messageCount ?? 0,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {

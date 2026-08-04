@@ -164,6 +164,7 @@ export function useSkillsWithRelations({
   status,
   onlyCustom,
   bypassEditorVisibility,
+  withMessageCount,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
@@ -172,6 +173,7 @@ export function useSkillsWithRelations({
   // Admin-only: bypass the editor-visibility rule and also list unpublished
   // (editors-only) skills the caller does not edit.
   bypassEditorVisibility?: boolean;
+  withMessageCount?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
@@ -185,6 +187,9 @@ export function useSkillsWithRelations({
   }
   if (bypassEditorVisibility) {
     queryParams.set("bypassEditorVisibility", "true");
+  }
+  if (withMessageCount) {
+    queryParams.set("withMessageCount", "true");
   }
 
   const { data, isLoading, mutate, mutateRegardlessOfQueryParams } =

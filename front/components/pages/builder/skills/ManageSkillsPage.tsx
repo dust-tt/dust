@@ -134,6 +134,7 @@ export function ManageSkillsPage() {
     owner,
     status: "active",
     bypassEditorVisibility: isBypassEditorVisibilityEnabled,
+    withMessageCount: true,
   });
 
   const {
@@ -144,6 +145,7 @@ export function ManageSkillsPage() {
     status: "archived",
     disabled: selectedTab !== "archived",
     bypassEditorVisibility: isBypassEditorVisibilityEnabled,
+    withMessageCount: true,
   });
 
   const {

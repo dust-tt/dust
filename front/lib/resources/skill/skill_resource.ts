@@ -95,7 +95,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isNumber, removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
@@ -109,7 +109,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { col, fn, Op } from "sequelize";
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
@@ -2575,6 +2575,66 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
       result.set(skill.sId, { count: agents.length, agents });
+    }
+
+    return result;
+  }
+
+  /**
+   * Count distinct agent messages using each skill, keyed by skill sId.
+   */
+  static async batchFetchMessageCounts(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Map<string, number>> {
+    if (skills.length === 0) {
+      return new Map();
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const customSkillIdByModelId = new Map(
+      skills
+        .filter((skill) => !skill.globalSId)
+        .map((skill) => [skill.id, skill.sId])
+    );
+    const globalSkillIds = removeNulls(skills.map((skill) => skill.globalSId));
+
+    const rows = await AgentMessageSkillModel.findAll({
+      attributes: [
+        "customSkillId",
+        "globalSkillId",
+        [fn("COUNT", fn("DISTINCT", col("agentMessageId"))), "messageCount"],
+      ],
+      where: {
+        workspaceId: workspace.id,
+        [Op.or]: removeNulls([
+          customSkillIdByModelId.size > 0
+            ? {
+                customSkillId: {
+                  [Op.in]: [...customSkillIdByModelId.keys()],
+                },
+              }
+            : null,
+          globalSkillIds.length > 0
+            ? { globalSkillId: { [Op.in]: globalSkillIds } }
+            : null,
+        ]),
+      },
+      group: ["customSkillId", "globalSkillId"],
+    });
+
+    const result = new Map<string, number>();
+    for (const row of rows) {
+      const skillId =
+        row.customSkillId !== null
+          ? customSkillIdByModelId.get(row.customSkillId)
+          : (row.globalSkillId ?? undefined);
+      const messageCount = row.get("messageCount");
+
+      assert(isNumber(messageCount), "Expected message count to be a number");
+      if (skillId) {
+        result.set(skillId, messageCount);
+      }
     }
 
     return result;

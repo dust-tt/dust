@@ -8,6 +8,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -740,6 +741,74 @@ describe("GET /api/w/:wId/skills", () => {
 });
 
 describe("GET /api/w/:wId/skills?withRelations=true", () => {
+  it("should return the number of messages using each skill", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(auth, {
+      name: "Skill Used In Messages",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    await skill.enableForAgent(auth, {
+      agentConfiguration: agent,
+      conversation,
+    });
+
+    const firstAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 0,
+        agentConfigurationId: agent.sId,
+      });
+    if (!firstAgentMessage.agentMessageId) {
+      throw new Error("Expected an agent message");
+    }
+    await SkillResource.snapshotConversationSkillsForMessage(auth, {
+      agentConfigurationId: agent.sId,
+      agentMessageId: firstAgentMessage.agentMessageId,
+      conversationId: conversation.id,
+    });
+
+    const secondAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agent.sId,
+      });
+    if (!secondAgentMessage.agentMessageId) {
+      throw new Error("Expected an agent message");
+    }
+    await SkillResource.snapshotConversationSkillsForMessage(auth, {
+      agentConfigurationId: agent.sId,
+      agentMessageId: secondAgentMessage.agentMessageId,
+      conversationId: conversation.id,
+    });
+
+    const response = await getSkills(workspace, {
+      withRelations: "true",
+      withMessageCount: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsWithRelationsResponseBody =
+      await response.json();
+    const skillResult = responseBody.skills.find(
+      (listedSkill) => listedSkill.sId === skill.sId
+    );
+
+    expect(skillResult?.messageCount).toBe(2);
+  });
+
   it("should return skills with usage when linked to agents", async () => {
     const { workspace, user } = await setupTest();
 
@@ -848,6 +917,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         usage: { count: 0, agents: [], skills: [] },
       },
     });
+    expect(skillResult).not.toHaveProperty("messageCount");
   });
 
   it("should return child skills", async () => {
