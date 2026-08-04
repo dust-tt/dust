@@ -148,12 +148,8 @@ export async function getUserSpendLimit(
 
 /**
  * Resolve the workspace's next AWU credit pool reset (the Metronome contract
- * billing-period boundary), in epoch ms. Reuses the same cached billing
- * period `isUserSpendLimitRateCapReached` derives its fixed window from, so
- * this read-only hint costs nothing extra. Null when there is no active
- * Metronome contract to derive it from, or on a Metronome outage — a
- * best-effort hint for admins choosing an override's expiry, never a value
- * the override enforcement itself depends on.
+ * billing-period boundary), in epoch ms.  Null when there is no active
+ * Metronome contract to derive it from, or on a Metronome outage.
  */
 async function resolveNextCreditResetAt(
   workspace: LightWorkspaceType
