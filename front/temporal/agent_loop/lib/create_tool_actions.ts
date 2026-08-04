@@ -255,9 +255,10 @@ async function createActionForTool(
         id: agentConfiguration.sId,
         name: agentConfiguration.name,
       },
+      // The agent is the actor, so it is deliberately not repeated as a target:
+      // pod function tool calls share this action and have no agent.
       targets: [
         buildAuditLogTarget("workspace", workspace),
-        buildAuditLogTarget("agent", agentConfiguration),
         buildAuditLogTarget("tool", {
           sId: actionConfiguration.name,
           name: actionConfiguration.originalName,
