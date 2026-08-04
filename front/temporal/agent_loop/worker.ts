@@ -51,6 +51,8 @@ const SHUTDOWN_ABORT_BUFFER_MS = 10 * 1_000;
 const SHUTDOWN_TOOL_ABORT_DELAY_MS =
   SHUTDOWN_GRACE_TIME_MS - SHUTDOWN_ABORT_BUFFER_MS;
 
+const MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS = 40;
+
 export async function runAgentLoopWorker() {
   return runAgentLoopWorkerForQueue({
     taskQueue: QUEUE_NAME,
@@ -59,45 +61,27 @@ export async function runAgentLoopWorker() {
 }
 
 export async function runAgentLoopBatchWorker() {
-  return runAgentLoopWorkerForQueue({
-    taskQueue: BATCH_QUEUE_NAME,
-    // Deliberately low: the batch queue is the load-shedding tier, backlog is the
-    // intended backpressure.
-    maxConcurrentActivityTaskExecutions: 20,
-  });
+  return runAgentLoopWorkerForQueue({ taskQueue: BATCH_QUEUE_NAME });
 }
 
 export async function runAgentLoopInteractiveWorker() {
-  return runAgentLoopWorkerForQueue({
-    taskQueue: INTERACTIVE_QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 60,
-  });
+  return runAgentLoopWorkerForQueue({ taskQueue: INTERACTIVE_QUEUE_NAME });
 }
 
 export async function runAgentLoopProgrammaticWorker() {
-  return runAgentLoopWorkerForQueue({
-    taskQueue: PROGRAMMATIC_QUEUE_NAME,
-    // Between the human-facing pools (60) and batch (20): programmatic callers tolerate
-    // queueing better than humans.
-    maxConcurrentActivityTaskExecutions: 40,
-  });
+  return runAgentLoopWorkerForQueue({ taskQueue: PROGRAMMATIC_QUEUE_NAME });
 }
 
 export async function runAgentLoopSchedulesWorker() {
-  return runAgentLoopWorkerForQueue({
-    taskQueue: SCHEDULES_QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 60,
-  });
+  return runAgentLoopWorkerForQueue({ taskQueue: SCHEDULES_QUEUE_NAME });
 }
 
 async function runAgentLoopWorkerForQueue({
   taskQueue,
-  maxConcurrentActivityTaskExecutions,
+  maxConcurrentActivityTaskExecutions = MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS,
 }: {
   taskQueue: string;
-  // Per-pod activity slots: the per-queue backpressure knob (bounds concurrent
-  // activities, and with them CPU and DB connection pressure).
-  maxConcurrentActivityTaskExecutions: number;
+  maxConcurrentActivityTaskExecutions?: number;
 }) {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
