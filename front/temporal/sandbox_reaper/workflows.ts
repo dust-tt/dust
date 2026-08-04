@@ -126,9 +126,11 @@ async function runPreemptibleReaperWorkflow(): Promise<void> {
 export async function sandboxReaperWorkflow(): Promise<void> {
   // Patch lifecycle for preemptible maintenance:
   // 1. Now: in-flight executions replay the legacy phase loop.
-  // 2. After 2026-08-18: replace patched() with deprecatePatch() and remove
-  //    runLegacyReaperWorkflow and LEGACY_REAPER_PHASES.
-  // 3. After 2026-09-01: remove deprecatePatch() and the patch marker.
+  // 2. Once every history produced without this marker has left retention and
+  //    every worker runs this version, replace patched() with deprecatePatch()
+  //    and remove runLegacyReaperWorkflow and LEGACY_REAPER_PHASES.
+  // 3. Once every live run was produced by the deprecatePatch() version,
+  //    remove deprecatePatch() and the patch marker.
   if (!patched("sandbox-reaper-preemptible-maintenance")) {
     await runLegacyReaperWorkflow();
     return;
