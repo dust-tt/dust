@@ -364,7 +364,15 @@ export async function extractGitHubTarballToGCS(
       });
 
       // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
-      await pipeline(tarballStream, gunzip(), extract);
+      // gunzip-maybe's inner zlib stream can re-emit its error (e.g. Z_BUF_ERROR on a
+      // truncated download) after pipeline() has settled and detached its listeners; an
+      // 'error' event with no listener crashes the process. This listener only absorbs
+      // those late emissions — pipeline() still rejects with the original error.
+      const gunzipStream = gunzip();
+      gunzipStream.on("error", (err) => {
+        childLogger.warn({ err }, "Gunzip stream error during tarball extraction");
+      });
+      await pipeline(tarballStream, gunzipStream, extract);
 
       // Validate content-length if provided.
       if (contentLength !== null && bytesReceived < contentLength) {
