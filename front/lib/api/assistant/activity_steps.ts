@@ -1,3 +1,4 @@
+import { getActionOneLineLabel } from "@app/lib/api/assistant/action_one_line_label";
 import {
   AgentMessageContentParser,
   getCoTDelimitersConfiguration,
@@ -14,31 +15,8 @@ import {
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
-/**
- * Compute the display label for an action (one-line summary).
- * Pure function with no browser dependencies — usable server-side and client-side.
- */
-export function getActionOneLineLabel(
-  action: AgentMCPActionWithOutputType,
-  context: "running" | "done" = "done"
-): string {
-  if (
-    action.internalMCPServerName === "sandbox" &&
-    action.toolName === "add_egress_domain" &&
-    typeof action.params?.domain === "string"
-  ) {
-    return context === "running"
-      ? `Requesting access to ${action.params.domain}`
-      : `Request access to ${action.params.domain}`;
-  }
-
-  return (
-    action.displayLabels?.[context] ??
-    (action.functionCallName ? asDisplayName(action.functionCallName) : "Tool")
-  );
-}
+export { getActionOneLineLabel } from "@app/lib/api/assistant/action_one_line_label";
 
 // Ensure at least one whitespace boundary between adjacent text fragments when
 // reconstructing content from step contents. If neither the previous fragment

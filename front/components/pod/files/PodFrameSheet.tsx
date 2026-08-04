@@ -7,6 +7,9 @@ import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
+  cn,
+  Maximize01,
+  Minimize01,
   Sheet,
   SheetClose,
   SheetContent,
@@ -15,7 +18,7 @@ import {
   Spinner,
   XClose,
 } from "@dust-tt/sparkle";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface PodFrameSheetProps {
   fileId: string | null;
@@ -44,6 +47,7 @@ export function PodFrameSheet({
 }: PodFrameSheetProps) {
   const { vizUrl } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const { fileContent } = useFileContent({
     fileId,
@@ -56,9 +60,24 @@ export function PodFrameSheet({
     owner,
   });
 
+  useEffect(() => {
+    if (!isOpen) {
+      setIsFullscreen(false);
+    }
+  }, [isOpen]);
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent size="xl">
+      <SheetContent
+        size="xl"
+        className={cn(isFullscreen && "inset-0 sm:max-w-none")}
+        onEscapeKeyDown={(e) => {
+          if (isFullscreen) {
+            e.preventDefault();
+            setIsFullscreen(false);
+          }
+        }}
+      >
         <SheetHeader hideButton>
           <div className="flex items-center gap-2">
             <SheetTitle className="flex-1 truncate">
@@ -82,6 +101,15 @@ export function PodFrameSheet({
                   framePath={framePath}
                   fileName={fileName}
                   hidden={isArchived}
+                />
+                <Button
+                  icon={isFullscreen ? Minimize01 : Maximize01}
+                  variant="ghost"
+                  size="sm"
+                  tooltip={
+                    isFullscreen ? "Exit full screen" : "Open in full screen"
+                  }
+                  onClick={() => setIsFullscreen((prev) => !prev)}
                 />
               </div>
             )}

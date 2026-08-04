@@ -164,6 +164,7 @@ const API_ERROR_TYPES = [
   "skill_not_found",
   "skill_github_repository_not_found",
   "sandbox_function_not_found",
+  "sandbox_function_invocation_not_found",
   // Projects
   "project_metadata_not_found",
   // Suggestions

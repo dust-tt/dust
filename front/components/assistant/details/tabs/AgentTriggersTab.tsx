@@ -3,7 +3,7 @@ import {
   useAgentTriggers,
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
-import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
+import { getTriggerDescription } from "@app/lib/utils/trigger_description";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -25,23 +25,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-function getTriggerDescription(trigger: TriggerType): string {
-  switch (trigger.kind) {
-    case "schedule":
-      try {
-        return `Runs ${describeScheduleConfig(trigger.configuration)}.`;
-      } catch {
-        return "";
-      }
-    case "webhook":
-      return trigger.configuration.event
-        ? `Triggered by ${trigger.configuration.event} events.`
-        : "Triggered by webhook events.";
-    default:
-      assertNever(trigger);
-  }
-}
 
 function getTriggerIcon(trigger: TriggerType) {
   switch (trigger.kind) {

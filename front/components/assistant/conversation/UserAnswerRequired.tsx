@@ -340,7 +340,7 @@ export function UserAnswerRequired({
             inputRef={customResponseInputRef}
             id={`custom-response-${blockedAction.actionId}`}
             name="custom-response"
-            placeholder="Type something else"
+            placeholder="Tell the agent what to do differently"
             value={answerDraft.customResponse}
             disabled={isSubmitting}
             onFocus={() => {

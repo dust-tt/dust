@@ -1593,3 +1593,6 @@ export async function autoReadChannelActivity(
 
   return true;
 }
+
+// Registered here so the Slack worker picks it up with the other activities.
+export { processSlackWebhookEventActivity } from "@connectors/connectors/slack/temporal/webhook_activities";

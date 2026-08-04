@@ -1,3 +1,4 @@
+import { applyActivationNudgeAuthorship } from "@app/lib/api/activation/trigger";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -21,7 +22,11 @@ import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  UserMessageContext,
+} from "@app/types/assistant/conversation";
+import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -68,7 +73,7 @@ async function createConversationForAgentConfiguration({
     spaceId: spaceModelId,
   });
 
-  const baseContext = {
+  const triggeredContext: UserMessageContext = {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
     username: auth.getNonNullableUser().username,
     fullName: auth.getNonNullableUser().fullName(),
@@ -76,10 +81,18 @@ async function createConversationForAgentConfiguration({
     profilePictureUrl: null,
     origin:
       trigger.kind === "webhook" && trigger.executionMode === "programmatic"
-        ? ("triggered_programmatic" as const)
-        : ("triggered" as const),
+        ? "triggered_programmatic"
+        : "triggered",
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,
   };
+
+  // Dust posts the Activation Pod nudge on the user's behalf, so it is authored
+  // by the system rather than by them. A no-op for every other trigger.
+  const baseContext = await applyActivationNudgeAuthorship(auth, {
+    trigger,
+    agentConfiguration,
+    context: triggeredContext,
+  });
 
   if (
     webhookRequest &&
@@ -154,6 +167,10 @@ async function createConversationForAgentConfiguration({
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: baseContext,
     skipToolsValidation: false,
+    // Leaves the nudge without an author. The run still executes under the
+    // target user's authenticator, so the agent sees exactly what they can see,
+    // and they stay a participant of the conversation.
+    doNotAssociateUser: baseContext.origin === ACTIVATION_NUDGE_ORIGIN,
   });
 
   if (messageRes.isErr()) {

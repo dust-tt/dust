@@ -1,4 +1,7 @@
-import type { PokePodFunction } from "@app/lib/api/poke/projects";
+import type {
+  PokePodFunction,
+  PokePodFunctionDetails,
+} from "@app/lib/api/poke/projects";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
@@ -444,6 +447,18 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
       author: author ? author.fullName() : null,
+    };
+  }
+
+  // The listing shape plus what only a single-function view needs: its contract and the bundle
+  // file it was published from.
+  toPokeDetailsJSON(author: UserResource | null): PokePodFunctionDetails {
+    return {
+      ...this.toPokeJSON(author),
+      fileId: this.file.sId,
+      userIdentity: this.userIdentity,
+      inputSchema: this.inputSchema,
+      outputSchema: this.outputSchema,
     };
   }
 

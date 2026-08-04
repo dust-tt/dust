@@ -1,0 +1,56 @@
+# The front image only builds these workspaces. Keeping this as an allowlist
+# prevents unrelated projects and local artifacts from entering its context.
+**
+
+!package.json
+!package-lock.json
+
+!sdks/
+!sdks/js/
+!sdks/js/**
+
+!sparkle/
+!sparkle/**
+
+!front/
+!front/**
+
+!front-spa/
+!front-spa/**
+
+!front-api/
+!front-api/**
+
+!scripts/
+!scripts/db/
+!scripts/db/**
+
+# Generated files within the included workspaces.
+**/node_modules
+**/target
+**/dist
+**/build
+**/coverage
+**/.next
+**/out
+**/.cache
+**/.vite
+**/.eslintcache
+**/storybook-static
+**/__pycache__
+**/*.pyc
+**/*.tsbuildinfo
+**/.DS_Store
+**/*.pem
+**/.env
+**/.env*.local
+**/.pnp
+**/.pnp.js
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/.pnpm-debug.log*
+**/next-env.d.ts
+
+# Static SPA assets are deployed separately and are not used by workers or front-api.
+front/public

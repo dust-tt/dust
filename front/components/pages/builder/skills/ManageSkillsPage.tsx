@@ -29,18 +29,21 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   useSkillsWithRelations,
+  useUpdateSkillFavorite,
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type {
-  SkillAvailability,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
+import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -68,8 +71,18 @@ export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
-  const [selectedSkill, setSelectedSkill] =
-    useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
+  const { hasFeature } = useFeatureFlags();
+  const hasSkillFavorites = hasFeature("skill_favorites");
+  const skillManagerTabs = useMemo(
+    () =>
+      SKILL_MANAGER_TABS.filter(
+        (tab) => tab.id !== "favorites" || hasSkillFavorites
+      ),
+    [hasSkillFavorites]
+  );
+  const [selectedSkillOverride, setSelectedSkillOverride] = useState<
+    GetSkillsWithRelationsResponseBody["skills"][number] | null
+  >(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
@@ -102,6 +115,7 @@ export function ManageSkillsPage() {
   };
 
   const doUpdateAvailability = useUpdateSkillsAvailability({ owner });
+  const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
 
   const isSearchActive = !isEmptyString(skillSearch);
 
@@ -109,12 +123,12 @@ export function ManageSkillsPage() {
     if (
       selectedTab &&
       isValidTab(selectedTab) &&
-      SKILL_MANAGER_TABS.some((t) => t.id === selectedTab)
+      skillManagerTabs.some((t) => t.id === selectedTab)
     ) {
       return selectedTab;
     }
     return "active";
-  }, [selectedTab]);
+  }, [selectedTab, skillManagerTabs]);
 
   const canBypassEditorVisibility = isAdmin;
   const isBypassEditorVisibilityEnabled =
@@ -127,6 +141,7 @@ export function ManageSkillsPage() {
     owner,
     status: "active",
     bypassEditorVisibility: isBypassEditorVisibilityEnabled,
+    withMessageCount: true,
   });
 
   const {
@@ -137,6 +152,7 @@ export function ManageSkillsPage() {
     status: "archived",
     disabled: selectedTab !== "archived",
     bypassEditorVisibility: isBypassEditorVisibilityEnabled,
+    withMessageCount: true,
   });
 
   const {
@@ -158,15 +174,14 @@ export function ManageSkillsPage() {
   );
 
   const skillsByTab = useMemo<
-    Record<
-      SkillManagerTabType,
-      SkillWithoutInstructionsAndToolsWithRelationsType[]
-    >
+    Record<SkillManagerTabType, GetSkillsWithRelationsResponseBody["skills"]>
   >(() => {
     const searchLower = skillSearch.toLowerCase();
-
     const editableByMeSkills = sortedActiveSkills.filter((s) =>
       s.relations.editors?.some((e) => e.sId === user?.sId)
+    );
+    const favoriteSkills = sortSkillsByName(
+      activeSkills.filter((s) => s.isFavorite)
     );
 
     return {
@@ -180,6 +195,11 @@ export function ManageSkillsPage() {
         searchLower,
         isSearchActive
       ),
+      favorites: filterBySearch(
+        filterByAvailability(favoriteSkills, availabilityFilter),
+        searchLower,
+        isSearchActive
+      ),
       archived: filterBySearch(
         filterByAvailability(sortedArchivedSkills, availabilityFilter),
         searchLower,
@@ -189,6 +209,7 @@ export function ManageSkillsPage() {
   }, [
     sortedActiveSkills,
     sortedArchivedSkills,
+    activeSkills,
     skillSearch,
     user,
     isSearchActive,
@@ -197,19 +218,9 @@ export function ManageSkillsPage() {
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
-  // Open skill from hash param when skills are loaded.
-  useEffect(() => {
-    if (skillIdParam && !isActiveLoading && activeSkills.length > 0) {
-      const skillFromParam = activeSkills.find((s) => s.sId === skillIdParam);
-      if (skillFromParam && selectedSkill?.sId !== skillIdParam) {
-        setSelectedSkill(skillFromParam);
-      }
-    }
-  }, [skillIdParam, activeSkills, isActiveLoading, selectedSkill?.sId]);
-
   const handleSkillSelect = useCallback(
-    (skill: SkillWithoutInstructionsAndToolsWithRelationsType | null) => {
-      setSelectedSkill(skill);
+    (skill: GetSkillsWithRelationsResponseBody["skills"][number] | null) => {
+      setSelectedSkillOverride(skill);
       setSkillIdParam(skill?.sId);
     },
     [setSkillIdParam]
@@ -256,6 +267,23 @@ export function ManageSkillsPage() {
     "skill"
   );
 
+  const handleFavoriteChange = useCallback(
+    async (
+      skill: GetSkillsWithRelationsResponseBody["skills"][number],
+      isFavorite: boolean
+    ) => {
+      const didUpdate = await updateSkillFavorite(skill, isFavorite);
+      if (didUpdate) {
+        setSelectedSkillOverride((currentSkill) =>
+          currentSkill?.sId === skill.sId
+            ? { ...currentSkill, isFavorite }
+            : currentSkill
+        );
+      }
+    },
+    [updateSkillFavorite]
+  );
+
   const knownSkillsById = useMemo(
     () =>
       new Map(
@@ -266,12 +294,25 @@ export function ManageSkillsPage() {
     [activeSkills, archivedSkills, suggestedSkills]
   );
 
+  const selectedSkill = useMemo(() => {
+    if (!skillIdParam) {
+      return null;
+    }
+
+    if (selectedSkillOverride?.sId === skillIdParam) {
+      return selectedSkillOverride;
+    }
+
+    return knownSkillsById.get(skillIdParam) ?? null;
+  }, [skillIdParam, knownSkillsById, selectedSkillOverride]);
+
   const handleUsedBySkillSelect = useCallback(
     (skillId: string) => {
       const skill = knownSkillsById.get(skillId);
       if (skill) {
         handleSkillSelect(skill);
       } else {
+        setSelectedSkillOverride(null);
         setSkillIdParam(skillId);
       }
     },
@@ -320,6 +361,7 @@ export function ManageSkillsPage() {
       <SkillDetailsSheet
         skill={selectedSkill}
         onClose={() => handleSkillSelect(null)}
+        onFavoriteChange={hasSkillFavorites ? handleFavoriteChange : undefined}
         user={user}
         owner={owner}
       />
@@ -403,7 +445,7 @@ export function ManageSkillsPage() {
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>
               <TabsList>
-                {SKILL_MANAGER_TABS.map((tab) => (
+                {skillManagerTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}

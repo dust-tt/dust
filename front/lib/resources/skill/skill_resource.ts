@@ -10,6 +10,7 @@ import {
   hasSharedMembership,
 } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -94,7 +95,11 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { removeNulls } from "@app/types/shared/utils/general";
+import {
+  isNumber,
+  isString,
+  removeNulls,
+} from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
@@ -1224,8 +1229,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     {
       agentLoopData,
+      effectiveSpaceIds,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
     } = {}
   ): Promise<SkillResource[]> {
     const user = auth.user();
@@ -1248,6 +1255,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchByIds(auth, favorites.skillIds, {
       agentLoopData,
+      effectiveSpaceIds,
       onlyActive: true,
     });
   }
@@ -1750,6 +1758,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     enabledSkills: SkillResource[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
+    favoriteSkills: SkillResource[];
   }> {
     const { agentConfiguration, conversation } = params;
     // Light type-guard to check whether we have a full AgentLoopExecutionData.
@@ -1785,11 +1794,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     let discoverableSkills: SkillResource[] = [];
+    let favoriteSkills: SkillResource[] = [];
     if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
       discoverableSkills = await this.listDiscoverable(auth, {
         agentLoopData,
         effectiveSpaceIds,
       });
+      const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
+      if (hasSkillFavorites) {
+        favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
+          agentLoopData,
+          effectiveSpaceIds,
+        });
+      }
     }
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
@@ -1862,9 +1879,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ];
     const systemSkillIds = new Set(systemSkills.map((skill) => skill.sId));
 
-    // Equipped skills are the enable-able candidates shown to the model. They
-    // come from the agent configuration, context auto-equipping, Pod defaults,
-    // and discoverable skills. System prompt skills are never enable-able.
+    // Equipped skills are the workspace-shared enable-able candidates shown to
+    // the model. User-specific favorites are returned separately so they don't
+    // invalidate the shared prompt cache prefix.
     const equippedSkillsById = new Map<string, SkillResource>();
     for (const skill of [
       ...autoEquippedSkills,
@@ -1888,6 +1905,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         .filter((s) => !systemSkillIds.has(s.sId))
         .sort(sortByName),
       equippedSkills: [...equippedSkillsById.values()].sort(sortByName),
+      favoriteSkills: favoriteSkills
+        .filter(
+          (skill) =>
+            !systemSkillIds.has(skill.sId) && !equippedSkillsById.has(skill.sId)
+        )
+        .sort(sortByName),
     };
   }
 
@@ -2560,6 +2583,64 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
       result.set(skill.sId, { count: agents.length, agents });
+    }
+
+    return result;
+  }
+
+  /**
+   * Count distinct agent messages using each skill, keyed by skill sId.
+   */
+  static async batchFetchMessageCounts(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Map<string, number>> {
+    if (skills.length === 0) {
+      return new Map();
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const customSkillIdByModelId = new Map(
+      skills
+        .filter((skill) => !skill.globalSId)
+        .map((skill) => [skill.id, skill.sId])
+    );
+    const globalSkillIds = removeNulls(skills.map((skill) => skill.globalSId));
+
+    const counts = await AgentMessageSkillModel.count({
+      attributes: ["customSkillId", "globalSkillId"],
+      // Finalization activities can retry after the snapshot insert succeeds.
+      distinct: true,
+      col: "agentMessageId",
+      where: {
+        workspaceId: workspace.id,
+        [Op.or]: removeNulls([
+          customSkillIdByModelId.size > 0
+            ? {
+                customSkillId: {
+                  [Op.in]: [...customSkillIdByModelId.keys()],
+                },
+              }
+            : null,
+          globalSkillIds.length > 0
+            ? { globalSkillId: { [Op.in]: globalSkillIds } }
+            : null,
+        ]),
+      },
+      group: ["customSkillId", "globalSkillId"],
+    });
+
+    const result = new Map<string, number>();
+    for (const row of counts) {
+      let skillId: string | undefined;
+      if (isNumber(row.customSkillId)) {
+        skillId = customSkillIdByModelId.get(row.customSkillId);
+      } else if (isString(row.globalSkillId)) {
+        skillId = row.globalSkillId;
+      }
+      if (skillId) {
+        result.set(skillId, row.count);
+      }
     }
 
     return result;

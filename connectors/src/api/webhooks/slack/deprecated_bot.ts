@@ -5,7 +5,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { removeNulls } from "@connectors/types/shared/utils/general";
 import type { WebClient } from "@slack/web-api";
-import type { Request, Response } from "express";
 import type { Logger } from "pino";
 
 async function sendSlackMessage(
@@ -40,22 +39,28 @@ async function makeSlackDeprecatedBotErrorMessage(
 ) {
   const slackClient = await getSlackClient(slackBotConnector.id);
 
-  const slackBotUserId = await getBotUserIdResponse(
+  const slackBotUserIdRes = await getBotUserIdResponse(
     slackClient,
     slackBotConnector.id
   );
+  if (slackBotUserIdRes.isErr()) {
+    throw slackBotUserIdRes.error;
+  }
 
-  return `Oops! That's the deprecated version of Dust. Mention <@${slackBotUserId}> instead!`;
+  return `Oops! That's the deprecated version of Dust. Mention <@${slackBotUserIdRes.value}> instead!`;
 }
 
-export async function handleDeprecatedChatBot(
-  req: Request,
-  res: Response,
-  logger: Logger
-) {
-  const { event, team_id: slackTeamId } = req.body;
-  const { channel: slackChannel, ts: slackMessageTs } = event;
-
+export async function handleDeprecatedChatBot({
+  logger,
+  slackChannel,
+  slackMessageTs,
+  slackTeamId,
+}: {
+  logger: Logger;
+  slackChannel: string;
+  slackMessageTs: string;
+  slackTeamId: string;
+}) {
   const localLogger = logger.child({
     action: "handleDeprecatedChatBot",
     slackChannel,
@@ -67,11 +72,10 @@ export async function handleDeprecatedChatBot(
     slackTeamId,
     "slack"
   );
-  // If there are no slack configurations, return 200.
   if (slackConfigurations.length === 0) {
     localLogger.info("No deprecated Slack configurations found.", slackTeamId);
 
-    return res.status(200).send();
+    return;
   }
 
   const connectors = removeNulls(
@@ -91,16 +95,20 @@ export async function handleDeprecatedChatBot(
     (c) => c.connectorId === slackBotConnector?.id
   );
 
-  // We need to answer 200 quickly to Slack, otherwise they will retry the HTTP request.
-  res.status(200).send();
-
   if (!deprecatedSlackConnector) {
     localLogger.info("No deprecated Slack connector found.");
     return;
   }
+  if (deprecatedSlackConnector.isPaused()) {
+    localLogger.info(
+      { connectorId: deprecatedSlackConnector.id },
+      "Deprecated Slack connector is paused."
+    );
+    return;
+  }
 
   const deprecatedSlackClient = await getSlackClient(
-    deprecatedSlackConnector?.id
+    deprecatedSlackConnector.id
   );
 
   // Case 1: Slack bot connector is not installed.

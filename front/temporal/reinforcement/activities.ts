@@ -138,7 +138,6 @@ async function reportSelfImprovingSkillsStepUsage({
     agentMessageVersion: 0,
     conversationId: reinforcementConversationId,
     conversationTitle,
-    conversationBranchId: null,
     userMessageId,
     userMessageVersion: 0,
     userMessageOrigin: "reinforcement",

@@ -444,7 +444,8 @@ export async function runSandboxBashTool(
     ]);
   }
 
-  void revokeExecToken({ sbId: sandbox.sId, execId }).catch((err) =>
+  // Awaited: leftover background processes still hold this token and can call `/call`.
+  await revokeExecToken({ sbId: sandbox.sId, execId }).catch((err) =>
     logger.error({ error: err }, "Failed to revoke exec token")
   );
 

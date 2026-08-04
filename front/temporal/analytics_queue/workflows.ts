@@ -1,10 +1,11 @@
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/analytics_queue/activities";
+import { storeAgentMessageConsumptionAttributionV2Signal } from "@app/temporal/analytics_queue/signals";
 import type {
   AgentLoopArgs,
   AgentMessageRef,
 } from "@app/types/assistant/agent_run";
-import { proxyActivities } from "@temporalio/workflow";
+import { proxyActivities, setHandler } from "@temporalio/workflow";
 
 const {
   storeAgentAnalyticsActivity,
@@ -46,6 +47,7 @@ export async function storeAgentMessageFeedbackWorkflow(
   });
 }
 
+// Kept unchanged for executions started before the V2 signal workflow was deployed.
 export async function storeAgentMessageConsumptionAttributionWorkflow(
   authType: AuthenticatorType,
   {
@@ -57,4 +59,30 @@ export async function storeAgentMessageConsumptionAttributionWorkflow(
   await storeAgentMessageConsumptionAttributionActivity(authType, {
     agentLoopArgs,
   });
+}
+
+// Durable recompute of one message's consumption breakdown. New launches use this versioned
+// workflow, while the original workflow above remains available for replay. A finalize signals this
+// on every pass. A signal received while the activity runs requests one more pass, and a signal
+// received before it runs is covered by the activity reading the latest message state from the DB.
+export async function storeAgentMessageConsumptionAttributionV2Workflow(
+  authType: AuthenticatorType,
+  {
+    agentLoopArgs,
+  }: {
+    agentLoopArgs: AgentLoopArgs;
+  }
+): Promise<void> {
+  let pendingRecompute = true;
+
+  setHandler(storeAgentMessageConsumptionAttributionV2Signal, () => {
+    pendingRecompute = true;
+  });
+
+  while (pendingRecompute) {
+    pendingRecompute = false;
+    await storeAgentMessageConsumptionAttributionActivity(authType, {
+      agentLoopArgs,
+    });
+  }
 }

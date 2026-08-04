@@ -3,6 +3,8 @@ import {
   type InternalMCPServerNameType,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -96,7 +98,13 @@ export function getToolBillingInfo(
 // Origins whose entire conversation is free (platform-assistive, not
 // user-requested output).
 export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
-  new Set<UserMessageOrigin>(["agent_sidekick"]);
+  new Set<UserMessageOrigin>([
+    "agent_sidekick",
+    // Only the Activation Pod nudge ever carries this origin: it is server-only,
+    // and the nudge has no author so it can neither be edited nor retried. User
+    // replies come back as `web` and bill normally.
+    "system_activation",
+  ]);
 
 export function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
   if (origin == null) {
@@ -217,14 +225,14 @@ export function intelligenceAwuFromRunUsagesGroupedByRunKey(
   return total;
 }
 
-// Tool (platform action) credits for a set of executed actions. Each action
-// costs a fixed number of credits depending on its credit cost category
-// (free = 0, basic = 1, advanced = 3). Callers should pass only final-status
-// actions (matching the usage_queue extraction) so this equals the billed amount.
+// Tool (platform action) credits for a set of actions. Each action costs a
+// fixed number of credits depending on its credit cost category (free = 0,
+// basic = 1, advanced = 3).
 export function toolAwuFromActions(
   actions: {
     internalMCPServerName: InternalMCPServerNameType | null;
     toolName: string;
+    status: ToolExecutionStatus;
   }[],
   contextOrigin: UserMessageOrigin | null
 ): number {
@@ -237,10 +245,15 @@ export function toolAwuFromAction(
   action: {
     toolName: string;
     internalMCPServerName: InternalMCPServerNameType | null;
+    status: ToolExecutionStatus;
   },
   contextOrigin: UserMessageOrigin | null
 ): number {
   if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+  // The single gate on billable status. Every surface that prices a tool call goes through here.
+  if (!isToolExecutionStatusBillable(action.status)) {
     return 0;
   }
   const { toolCostCategory, freeUsage } = getToolBillingInfo(
@@ -390,7 +403,7 @@ interface ToolAction {
   toolName: string;
   mcpServerId: string | null;
   internalMCPServerName: InternalMCPServerNameType | null;
-  status: string;
+  status: ToolExecutionStatus;
   executionDurationMs: number | null;
 }
 

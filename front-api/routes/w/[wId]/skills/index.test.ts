@@ -8,7 +8,9 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
@@ -19,6 +21,10 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type {
+  GetSkillsResponseBody,
+  GetSkillsWithRelationsResponseBody,
+} from "@app/types/api/skills";
 import type {
   SkillWithoutInstructionsAndToolsType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
@@ -69,6 +75,18 @@ function postSkill(workspace: { sId: string }, body: unknown) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+function favoriteSkill(workspace: { sId: string }, skillId: string) {
+  return honoApp.request(`/api/w/${workspace.sId}/skills/${skillId}/favorite`, {
+    method: "POST",
+  });
+}
+
+function unfavoriteSkill(workspace: { sId: string }, skillId: string) {
+  return honoApp.request(`/api/w/${workspace.sId}/skills/${skillId}/favorite`, {
+    method: "DELETE",
   });
 }
 
@@ -534,10 +552,9 @@ describe("GET /api/w/:wId/skills", () => {
 
     expect(response.status).toBe(200);
 
-    const skillWithoutInstructionsAndTools = (
-      await response.json()
-    ).skills.find(
-      (s: SkillWithoutInstructionsAndToolsType) => s.sId === skill.sId
+    const responseBody: GetSkillsResponseBody = await response.json();
+    const skillWithoutInstructionsAndTools = responseBody.skills.find(
+      (s) => s.sId === skill.sId
     );
 
     expect(skillWithoutInstructionsAndTools).toMatchObject({
@@ -589,9 +606,214 @@ describe("GET /api/w/:wId/skills", () => {
       fetchInstructionsSpy.mockRestore();
     }
   });
+
+  it("should not expose or mutate favorite state when the feature flag is disabled", async () => {
+    const { workspace, auth } = await setupTest();
+
+    const skill = await SkillFactory.create(auth, {
+      name: "Disabled Favorite Candidate",
+    });
+    const result = await skill.setFavorite(auth, true);
+    expect(result.isOk()).toBe(true);
+
+    const response = await getSkills(workspace);
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsResponseBody = await response.json();
+    const listedSkill = responseBody.skills.find((s) => s.sId === skill.sId);
+    expect(listedSkill).not.toHaveProperty("isFavorite");
+
+    const relationsResponse = await getSkills(workspace, {
+      withRelations: "true",
+    });
+    expect(relationsResponse.status).toBe(200);
+    const relationsResponseBody: GetSkillsWithRelationsResponseBody =
+      await relationsResponse.json();
+    const relationsSkill = relationsResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(relationsSkill).not.toHaveProperty("isFavorite");
+
+    const favoriteResponse = await favoriteSkill(workspace, skill.sId);
+    expect(favoriteResponse.status).toBe(403);
+    expect((await favoriteResponse.json()).error.type).toBe(
+      "feature_flag_not_found"
+    );
+
+    const unfavoriteResponse = await unfavoriteSkill(workspace, skill.sId);
+    expect(unfavoriteResponse.status).toBe(403);
+    expect((await unfavoriteResponse.json()).error.type).toBe(
+      "feature_flag_not_found"
+    );
+  });
+
+  it("should include favorite state for custom skills", async () => {
+    const { workspace, auth } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "skill_favorites");
+
+    const skill = await SkillFactory.create(auth, {
+      name: "Favorite Candidate",
+    });
+
+    const firstResponse = await getSkills(workspace);
+    expect(firstResponse.status).toBe(200);
+    const firstResponseBody: GetSkillsResponseBody = await firstResponse.json();
+    const firstSkill = firstResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(firstSkill?.isFavorite).toBe(false);
+
+    const favoriteResponse = await favoriteSkill(workspace, skill.sId);
+    expect(favoriteResponse.status).toBe(200);
+
+    const secondResponse = await getSkills(workspace);
+    expect(secondResponse.status).toBe(200);
+    const secondResponseBody: GetSkillsResponseBody =
+      await secondResponse.json();
+    const secondSkill = secondResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(secondSkill?.isFavorite).toBe(true);
+
+    const relationsResponse = await getSkills(workspace, {
+      withRelations: "true",
+    });
+    expect(relationsResponse.status).toBe(200);
+    const relationsResponseBody: GetSkillsWithRelationsResponseBody =
+      await relationsResponse.json();
+    const relationsSkill = relationsResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(relationsSkill?.isFavorite).toBe(true);
+
+    const unfavoriteResponse = await unfavoriteSkill(workspace, skill.sId);
+    expect(unfavoriteResponse.status).toBe(200);
+
+    const thirdResponse = await getSkills(workspace);
+    expect(thirdResponse.status).toBe(200);
+    const thirdResponseBody: GetSkillsResponseBody = await thirdResponse.json();
+    const thirdSkill = thirdResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(thirdSkill?.isFavorite).toBe(false);
+  });
+
+  it("should include favorite state for global skills", async () => {
+    const { workspace, auth } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "skill_favorites");
+
+    const favoriteResponse = await favoriteSkill(workspace, "frames");
+    expect(favoriteResponse.status).toBe(200);
+
+    const response = await getSkills(workspace);
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsResponseBody = await response.json();
+    const framesSkill = responseBody.skills.find((s) => s.sId === "frames");
+    expect(framesSkill?.isFavorite).toBe(true);
+  });
+
+  it("should not update favorite state for archived skills", async () => {
+    const { workspace, auth } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "skill_favorites");
+
+    const skill = await SkillFactory.create(auth, {
+      name: "Archived Favorite Candidate",
+      status: "archived",
+    });
+
+    const favoriteResponse = await favoriteSkill(workspace, skill.sId);
+    expect(favoriteResponse.status).toBe(400);
+    expect(await favoriteResponse.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Only active skills can update favorite state.",
+      },
+    });
+
+    const unfavoriteResponse = await unfavoriteSkill(workspace, skill.sId);
+    expect(unfavoriteResponse.status).toBe(400);
+    expect(await unfavoriteResponse.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Only active skills can update favorite state.",
+      },
+    });
+  });
 });
 
 describe("GET /api/w/:wId/skills?withRelations=true", () => {
+  it("should return the number of messages using each skill", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(auth, {
+      name: "Skill Used In Messages",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    await skill.enableForAgent(auth, {
+      agentConfiguration: agent,
+      conversation,
+    });
+
+    const firstAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 0,
+        agentConfigurationId: agent.sId,
+      });
+    if (!firstAgentMessage.agentMessageId) {
+      throw new Error("Expected an agent message");
+    }
+    await SkillResource.snapshotConversationSkillsForMessage(auth, {
+      agentConfigurationId: agent.sId,
+      agentMessageId: firstAgentMessage.agentMessageId,
+      conversationId: conversation.id,
+    });
+
+    const secondAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agent.sId,
+      });
+    if (!secondAgentMessage.agentMessageId) {
+      throw new Error("Expected an agent message");
+    }
+    await SkillResource.snapshotConversationSkillsForMessage(auth, {
+      agentConfigurationId: agent.sId,
+      agentMessageId: secondAgentMessage.agentMessageId,
+      conversationId: conversation.id,
+    });
+
+    const response = await getSkills(workspace, {
+      withRelations: "true",
+      withMessageCount: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsWithRelationsResponseBody =
+      await response.json();
+    const skillResult = responseBody.skills.find(
+      (listedSkill) => listedSkill.sId === skill.sId
+    );
+    const systemSkillResult = responseBody.skills.find(
+      (listedSkill) => listedSkill.sId === "discover_tools"
+    );
+
+    expect(skillResult?.messageCount).toBe(2);
+    expect(systemSkillResult).toBeDefined();
+    expect(systemSkillResult?.messageCount).toBeNull();
+  });
+
   it("should return skills with usage when linked to agents", async () => {
     const { workspace, user } = await setupTest();
 
@@ -700,6 +922,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         usage: { count: 0, agents: [], skills: [] },
       },
     });
+    expect(skillResult).not.toHaveProperty("messageCount");
   });
 
   it("should return child skills", async () => {

@@ -4,6 +4,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -20,7 +21,6 @@ import {
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillAvailability,
-  type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
@@ -128,6 +128,7 @@ app.get(
     // @deprecated viewType query param is ignored — instructions and tools
     // are never returned from the list endpoint. Use GET /skills/:sId for full details.
     const withRelations = ctx.req.query("withRelations");
+    const withMessageCount = ctx.req.query("withMessageCount") === "true";
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
@@ -189,6 +190,13 @@ app.get(
       withTools: false,
       withFileAttachments: false,
     });
+    const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
+    let favoriteSkillIds = new Set<string>();
+    if (hasSkillFavorites) {
+      const favoriteSkills =
+        await SkillResource.listFavoritesForCurrentUser(auth);
+      favoriteSkillIds = new Set(favoriteSkills.map((skill) => skill.sId));
+    }
 
     const canCreateSkill = await auth.hasWorkspacePermission("create", "skill");
 
@@ -209,6 +217,13 @@ app.get(
 
     if (withRelations === "true") {
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);
+      let messageCountMap: Map<string, number> | null = null;
+      if (withMessageCount) {
+        messageCountMap = await SkillResource.batchFetchMessageCounts(
+          auth,
+          skills.filter((skill) => !skill.isSystemSkill)
+        );
+      }
       const editorsMap = await SkillResource.batchListEditors(auth, skills);
       const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
         auth,
@@ -224,6 +239,9 @@ app.get(
       );
 
       const skillsWithRelations = skills.map((sc) => {
+        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
+          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
+          : {};
         const {
           instructions,
           instructionsHtml,
@@ -243,6 +261,13 @@ app.get(
 
         return {
           ...skillWithoutInstructionsAndTools,
+          ...(messageCountMap
+            ? {
+                messageCount: sc.isSystemSkill
+                  ? null
+                  : (messageCountMap.get(sc.sId) ?? 0),
+              }
+            : {}),
           relations: {
             usage: usageWithSkills,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
@@ -260,7 +285,8 @@ app.get(
               }
             ),
           },
-        } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
+          ...favoriteState,
+        } satisfies GetSkillsWithRelationsResponseBody["skills"][number];
       });
 
       return ctx.json({ skills: skillsWithRelations });
@@ -268,6 +294,9 @@ app.get(
 
     return ctx.json({
       skills: skills.map((sc) => {
+        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
+          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
+          : {};
         const {
           instructions,
           instructionsHtml,
@@ -275,7 +304,10 @@ app.get(
           ...skillWithoutInstructionsAndTools
         } = sc.toJSON(auth);
 
-        return skillWithoutInstructionsAndTools;
+        return {
+          ...skillWithoutInstructionsAndTools,
+          ...favoriteState,
+        } satisfies GetSkillsResponseBody["skills"][number];
       }),
     });
   }

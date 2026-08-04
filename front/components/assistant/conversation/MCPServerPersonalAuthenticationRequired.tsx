@@ -2,6 +2,7 @@ import type { PersonalAuthResolutionOutcome } from "@app/components/actions/bloc
 import { PersonalAuthenticationCard } from "@app/components/actions/blocked/PersonalAuthenticationCard";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -23,6 +24,7 @@ export function MCPServerPersonalAuthenticationRequired({
   provider,
   scope,
 }: MCPServerPersonalAuthenticationRequiredProps) {
+  const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
 
   const { resolveAuthentication, isResolving } = useResolveAuthentication({
@@ -52,6 +54,7 @@ export function MCPServerPersonalAuthenticationRequired({
   return (
     <PersonalAuthenticationCard
       triggeringUser={triggeringUser}
+      currentUser={user}
       mcpServerId={mcpServerId}
       owner={owner}
       provider={provider}

@@ -245,6 +245,12 @@ class FileStorageMock {
       uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
       uploadBufferToBucket: vi.fn(
         (args: { buffer: Buffer; contentType: string; filePath: string }) => {
+          if (this._saveShouldFail(args.filePath)) {
+            return Promise.reject(
+              new Error(`Simulated GCS write failure: ${args.filePath}`)
+            );
+          }
+          this._objectStore.set(args.filePath, args.buffer.toString());
           this._saveFileCalls.push({
             filePath: args.filePath,
             content: args.buffer,

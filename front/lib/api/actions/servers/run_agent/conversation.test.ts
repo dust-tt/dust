@@ -102,7 +102,6 @@ function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
     modelInteractionDurationMs: null,
     completionDurationMs: null,
     rank: 1,
-    branchId: null,
     richMentions: [],
     costCredits: null,
     requestedModel: null,

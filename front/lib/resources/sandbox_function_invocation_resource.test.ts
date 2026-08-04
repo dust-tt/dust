@@ -313,6 +313,11 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
       JSON.stringify({ version: 2, input: { message: "hello" } })
     );
+    expect(fileStorageMock.saveFileCalls).toContainEqual({
+      filePath: invocation.gcsPath,
+      content: expect.any(Buffer),
+      contentType: "application/json",
+    });
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
@@ -486,6 +491,90 @@ describe("SandboxFunctionInvocationResource", () => {
       message: "Function returned HTTP 503.",
       status: 503,
     });
+  });
+
+  it("makes succeed a compare-and-set so a second delivery is a no-op", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    const result = { commentId: "comment-1" };
+
+    expect(await invocation.succeed(result)).toBe(true);
+    expect(await invocation.succeed({ commentId: "comment-2" })).toBe(false);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("succeeded");
+    expect(refetched?.result).toEqual(result);
+    expect(fileStorageMock.getObject(invocation.gcsPath!)).toContain(
+      '"commentId":"comment-1"'
+    );
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects fail after succeed without overwriting the result", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    const result = { commentId: "comment-1" };
+
+    expect(await invocation.succeed(result)).toBe(true);
+    expect(await invocation.fail(new Error("late failure"))).toBe(false);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("succeeded");
+    expect(refetched?.result).toEqual(result);
+    expect(refetched?.error).toBeUndefined();
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects markCreatedAsErrored after succeed", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    expect(await invocation.succeed({ commentId: "comment-1" })).toBe(true);
+    expect(
+      await invocation.markCreatedAsErrored({
+        code: "invocation_failed",
+        message: "activity timed out",
+      })
+    ).toBe(false);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("succeeded");
+    expect(refetched?.result).toEqual({ commentId: "comment-1" });
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases a won succeed claim when the terminal blob write fails", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    fileStorageMock.setFileSaveFails(
+      (filePath) => filePath === invocation.gcsPath
+    );
+
+    await expect(
+      invocation.succeed({ commentId: "comment-1" })
+    ).rejects.toThrow();
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("created");
+    expect(publishSandboxFunctionInvocationEvent).not.toHaveBeenCalled();
+
+    fileStorageMock.setFileSaveFails(() => false);
+    expect(
+      await refetched!.fail(new Error("recoverable after gcs failure"))
+    ).toBe(true);
+    expect(refetched!.status).toBe("errored");
   });
 
   it("migrates a v1 blob, which recorded the message only", async () => {

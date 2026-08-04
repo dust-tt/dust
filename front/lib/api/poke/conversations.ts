@@ -3,6 +3,7 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import type { PokeSandboxType } from "@app/types/poke";
 
 export type PokeListConversationItem = ConversationWithoutContentType & {
   visibility?: ConversationVisibility;
@@ -15,6 +16,7 @@ export type PokeListConversations = {
 export type PokeGetConversationConfig = {
   conversationDataSourceId: string | null;
   langfuseUiBaseUrl: string | null;
+  sandbox: PokeSandboxType | null;
   temporalWorkspace: string;
 };
 

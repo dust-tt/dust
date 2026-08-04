@@ -266,6 +266,14 @@ endpoint handlers.
 
 The Type interface is not to be used in the backend.
 
+**Every serialized shape belongs to the Resource, not to its callers.** A Resource has a small,
+named set of ways to be serialized — `toJSON`, and audience-specific variants following the
+`to<Audience>JSON` convention already in use (`toPokeJSON`, `toLogJSON`, `toJSONForLLM`). Callers
+pick one; they do not assemble their own. Concretely, code in `lib/api/*`, handlers or components
+must not build a wire shape by reading a Resource's fields, and must not spread `toJSON()` and add
+fields to it. If a caller needs a shape that no existing method produces, add a new
+`to<Audience>JSON` on the Resource next to the others.
+
 ### [BACK16] Keep API handlers thin — business logic belongs in `lib/api/*`
 
 API handlers (under `front-api/routes/`) should be limited to:

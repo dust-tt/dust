@@ -3126,7 +3126,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "pod_manager": {
     "add_content_node": "never_ask",
     "add_message_to_conversation": "medium",
-    "create_conversation": "medium",
+    "create_conversation": "never_ask",
     "create_pod": "low",
     "edit_information": "low",
     "get_information": "never_ask",

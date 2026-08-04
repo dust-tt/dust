@@ -18,7 +18,7 @@ import { MAX_USER_MEMORY_CONTENT_LENGTH } from "@app/types/api/me/memory";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-async function openUserMemory(
+async function resolveUserMemoryFile(
   auth: Authenticator
 ): Promise<Result<{ fs: DustFileSystem; path: string }, MCPError>> {
   const user = auth.user();
@@ -40,7 +40,7 @@ async function openUserMemory(
 
 const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
   [USER_MEMORY_READ_TOOL_NAME]: async (_, { auth }) => {
-    const memoryResult = await openUserMemory(auth);
+    const memoryResult = await resolveUserMemoryFile(auth);
     if (memoryResult.isErr()) {
       return memoryResult;
     }
@@ -66,7 +66,7 @@ const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
   },
 
   [USER_MEMORY_EDIT_TOOL_NAME]: async ({ oldStr, newStr }, { auth }) => {
-    const memoryResult = await openUserMemory(auth);
+    const memoryResult = await resolveUserMemoryFile(auth);
     if (memoryResult.isErr()) {
       return memoryResult;
     }

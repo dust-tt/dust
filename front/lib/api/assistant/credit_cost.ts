@@ -1,6 +1,6 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
@@ -152,7 +152,9 @@ export function buildAgentMessageCreditsBreakdownFromAnalytics({
       toolName: action.toolName,
       internalMCPServerName: action.internalMCPServerName,
       toolCostCategory,
-      free: matched.cost_awu === 0 && isToolExecutionStatusFinal(action.status),
+      // "Free" means the tool ran and its category priced it at zero, not that it never ran.
+      free:
+        matched.cost_awu === 0 && isToolExecutionStatusBillable(action.status),
       awu: matched.cost_awu,
     });
   }
@@ -174,11 +176,13 @@ export function computeAgentMessageCredits({
   actions: CreditActionMinimalInput[];
   contextOrigin: UserMessageOrigin | null;
 }): number | null {
-  const finalActions = actions.filter((a) =>
-    isToolExecutionStatusFinal(a.status)
+  // Unbillable actions already price at 0 through toolAwuFromAction. Filtering them here settles
+  // the other question, whether the message has anything to bill at all.
+  const billableActions = actions.filter((a) =>
+    isToolExecutionStatusBillable(a.status)
   );
 
-  if (runUsages.length === 0 && finalActions.length === 0) {
+  if (runUsages.length === 0 && billableActions.length === 0) {
     return null;
   }
 
@@ -187,7 +191,7 @@ export function computeAgentMessageCredits({
   // action), so it is grouping-invariant and stays message-level.
   return (
     intelligenceAwuFromRunUsagesGroupedByRunKey(runUsages, contextOrigin) +
-    toolAwuFromActions(finalActions, contextOrigin)
+    toolAwuFromActions(billableActions, contextOrigin)
   );
 }
 

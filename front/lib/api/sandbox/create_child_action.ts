@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/mcp_actions";
 import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
@@ -94,6 +95,16 @@ export async function createSandboxChildAction(
     return new Err(new Error("Parent action not found."));
   }
 
+  // A `dsbx` process can outlive its bash tool call. Serving it would set this finished
+  // action's status back to blocked, leaving two steps blocked on one message.
+  if (isToolExecutionStatusFinal(parentAction.status)) {
+    return new Err(
+      new Error(
+        `Parent action already completed with status ${parentAction.status}.`
+      )
+    );
+  }
+
   const agentMessageRes = await conversationResource.getMessageById(
     auth,
     agentMessageId
@@ -167,7 +178,7 @@ export async function createSandboxChildAction(
 
   if (!serverSideConfig) {
     return new Err(
-      new Error("Tool is not available to this agent or conversation.")
+      new Error("Server is not available to this agent or conversation.")
     );
   }
 
@@ -188,9 +199,7 @@ export async function createSandboxChildAction(
   const [toolConfiguration] = toolConfigurationsRes.value;
 
   if (!toolConfiguration) {
-    return new Err(
-      new Error("Tool is not available to this agent or conversation.")
-    );
+    return new Err(new Error("Tool is disabled on this server."));
   }
 
   // User tool approvals ("low"/"medium" stakes) are keyed on the prefixed
@@ -298,7 +307,6 @@ export async function createSandboxChildAction(
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
-      conversationBranchId: null,
       userMessageId: userMessageInfo.userMessageId,
       userMessageVersion: userMessageInfo.userMessageVersion,
       userMessageOrigin: userMessageInfo.userMessageOrigin,

@@ -1,7 +1,12 @@
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+import type {
+  SkillUsageType,
+  UsedBySkillType,
+} from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import { QueryTypes } from "sequelize";
@@ -11,6 +16,7 @@ import { QueryTypes } from "sequelize";
 const DISABLE_QUERIES = false;
 
 export type MCPServersUsageByAgent = Record<string, AgentsUsageType>;
+export type MCPServersUsage = Record<string, SkillUsageType>;
 
 interface MCPServerUsageRow {
   internalMCPServerId: string | null;
@@ -86,14 +92,57 @@ function rowToUsageEntry(
   };
 }
 
-export async function getToolsUsage(
+async function fetchSkillsByMCPServer(
   auth: Authenticator
-): Promise<MCPServersUsageByAgent> {
+): Promise<Map<string, UsedBySkillType[]>> {
+  const workspaceSkills = await SkillResource.listByWorkspace(auth, {
+    status: "active",
+    withInstructions: false,
+    withTools: true,
+    withFileAttachments: false,
+  });
+  const skills = auth.isAdmin()
+    ? workspaceSkills
+    : workspaceSkills.filter(
+        (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+      );
+
+  const skillsByMCPServer = new Map<string, UsedBySkillType[]>();
+  for (const skill of skills) {
+    const usedBySkill: UsedBySkillType = {
+      sId: skill.sId,
+      name: skill.name,
+      icon: skill.icon,
+    };
+    for (const mcpServerId of new Set(
+      skill.mcpServerViews.map((view) => view.mcpServerId)
+    )) {
+      const usedBySkills = skillsByMCPServer.get(mcpServerId) ?? [];
+      usedBySkills.push(usedBySkill);
+      skillsByMCPServer.set(mcpServerId, usedBySkills);
+    }
+  }
+
+  for (const usedBySkills of skillsByMCPServer.values()) {
+    usedBySkills.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return skillsByMCPServer;
+}
+
+export function getToolsUsage(
+  auth: Authenticator
+): Promise<MCPServersUsageByAgent>;
+export function getToolsUsage(
+  auth: Authenticator,
+  options: { withSkills: true }
+): Promise<MCPServersUsage>;
+export async function getToolsUsage(
+  auth: Authenticator,
+  options?: { withSkills: true }
+): Promise<MCPServersUsageByAgent | MCPServersUsage> {
   const owner = auth.workspace();
 
-  // This condition is critical it checks that we can identify the workspace and that the current
-  // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
-  // be possible to access data sources without being authenticated.
   if (!owner || !auth.isUser()) {
     return {};
   }
@@ -125,11 +174,39 @@ export async function getToolsUsage(
     `,
     { replacements: params, type: QueryTypes.SELECT }
   );
-
   const result: MCPServersUsageByAgent = {};
   for (const row of rows) {
     const { key, usage } = rowToUsageEntry(row, owner.id);
     result[key] = usage;
   }
-  return result;
+
+  if (!options?.withSkills) {
+    return result;
+  }
+
+  const skillsByMCPServer = await fetchSkillsByMCPServer(auth);
+  const resultWithSkills: MCPServersUsage = {};
+  for (const [mcpServerId, usage] of Object.entries(result)) {
+    resultWithSkills[mcpServerId] = {
+      count: usage.count,
+      agents: usage.agents,
+      skills: [],
+    };
+  }
+
+  for (const [mcpServerId, skills] of skillsByMCPServer) {
+    const usage = resultWithSkills[mcpServerId];
+    if (usage) {
+      usage.skills = skills;
+      usage.count += skills.length;
+    } else {
+      resultWithSkills[mcpServerId] = {
+        count: skills.length,
+        agents: [],
+        skills,
+      };
+    }
+  }
+
+  return resultWithSkills;
 }

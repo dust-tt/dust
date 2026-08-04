@@ -6940,6 +6940,134 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption": {
+      "get": {
+        "summary": "Get an agent message credit attribution",
+        "description": "Returns exact billed credits and an additive attribution reconciled exclusively through model input rows.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Credit attribution for the agent message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "billedCredits",
+                    "details"
+                  ],
+                  "properties": {
+                    "billedCredits": {
+                      "type": "number",
+                      "nullable": true,
+                      "description": "Authoritative credits billed for this agent message."
+                    },
+                    "details": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "Additive attribution reconciled to the bill through model input rows. Null when the active attribution version is unavailable or incomplete.",
+                      "required": [
+                        "attributionVersion",
+                        "agentWorkCredits",
+                        "tools"
+                      ],
+                      "properties": {
+                        "attributionVersion": {
+                          "type": "integer"
+                        },
+                        "agentWorkCredits": {
+                          "type": "number",
+                          "description": "Agent work after assigning billing reconciliation exclusively to model input rows."
+                        },
+                        "tools": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "label",
+                              "internalMCPServerName",
+                              "toolName",
+                              "callCount",
+                              "attributedCredits",
+                              "directCredits",
+                              "pending"
+                            ],
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "internalMCPServerName": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "toolName": {
+                                "type": "string"
+                              },
+                              "callCount": {
+                                "type": "integer"
+                              },
+                              "attributedCredits": {
+                                "type": "number",
+                                "description": "Share of billed credits after input-only reconciliation."
+                              },
+                              "directCredits": {
+                                "type": "number"
+                              },
+                              "pending": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The workspace does not have access to consumption details"
+          },
+          "404": {
+            "description": "Conversation or agent message not found"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit": {
       "post": {
         "summary": "Edit a message",
@@ -10422,10 +10550,6 @@
                   "test"
                 ]
               },
-              "branchId": {
-                "type": "string",
-                "nullable": true
-              },
               "content": {
                 "type": "array",
                 "description": "Array of message arrays (versions/retries)",
@@ -10492,6 +10616,11 @@
           },
           "rank": {
             "type": "integer"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "user": {
             "type": "object",
@@ -10585,6 +10714,11 @@
           },
           "rank": {
             "type": "integer"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "parentMessageId": {
             "type": "string"
@@ -10749,6 +10883,11 @@
           },
           "rank": {
             "type": "integer"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "parentMessageId": {
             "type": "string"
@@ -11134,7 +11273,8 @@
           },
           "branchId": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "sourceConversationId": {
             "type": "string",

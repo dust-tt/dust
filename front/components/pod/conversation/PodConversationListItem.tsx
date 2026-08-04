@@ -21,7 +21,7 @@ export function PodConversationListItem({
   return (
     <>
       <ConversationListItem
-        className="border-t-0 border-b-0"
+        className="border-t-0 border-b-0 rounded-2xl hover:bg-hover"
         key={conversation.id}
         textAnimation={conversation.isRunningAgentLoop ? "streaming" : "none"}
         conversation={{
@@ -30,6 +30,7 @@ export function PodConversationListItem({
           description: stripMarkdown(conversation.description ?? ""),
           updatedAt: new Date(conversation.updated),
         }}
+        unread={conversation.unreadMessageCount > 0}
         creator={{
           fullName: conversation.creator?.name ?? "",
           portrait: conversation.creator?.visual ?? "",

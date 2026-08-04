@@ -115,6 +115,8 @@ export async function getAgentConfigurationAsYAMLConfig(
         name: json.name,
         description: json.userFacingDescription,
         icon: json.icon,
+        availability: json.availability,
+        canWrite: json.canWrite,
       };
     }),
     agentSettings: {

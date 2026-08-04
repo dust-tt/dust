@@ -63,6 +63,13 @@ export const AssignableRoleSchema = ActiveRoleSchema.refine(isAssignableRole, {
   message: "The 'builder' role can no longer be assigned.",
 });
 
+// Maps a possibly-legacy role to one that can still be assigned: `builder` resolves to a regular
+// `user`. Use this when re-submitting a role read from an existing invitation or membership (e.g.
+// resending a pending `builder` invitation), which the API would otherwise reject.
+export function toAssignableRole(role: ActiveRoleType): AssignableRoleType {
+  return role === "builder" ? "user" : role;
+}
+
 export type WorkspaceSharingPolicy =
   | "workspace_only"
   | "workspace_and_emails"
@@ -336,15 +343,6 @@ export function isOnlyUser(
     return false;
   }
   return owner.role === "user";
-}
-
-export function isOnlyBuilder(
-  owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "builder" } {
-  if (!owner) {
-    return false;
-  }
-  return owner.role === "builder";
 }
 
 export function isOnlyAdmin(

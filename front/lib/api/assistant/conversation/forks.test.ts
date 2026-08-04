@@ -72,12 +72,10 @@ async function createUserMessage(
     conversation,
     rank,
     content,
-    branchId = null,
   }: {
     conversation: ConversationWithoutContentType | ConversationResource;
     rank: number;
     content: string;
-    branchId?: ModelId | null;
   }
 ): Promise<MessageModel> {
   const workspace = auth.getNonNullableWorkspace();
@@ -102,7 +100,6 @@ async function createUserMessage(
     sId: generateRandomModelSId(),
     rank,
     conversationId: conversation.id,
-    branchId,
     parentId: null,
     userMessageId: userMessage.id,
   });
@@ -116,14 +113,12 @@ async function createAgentMessage(
     parentId,
     status,
     generatedFileId = null,
-    branchId = null,
   }: {
     conversation: ConversationWithoutContentType | ConversationResource;
     rank: number;
     parentId: ModelId;
     status: "created" | "succeeded";
     generatedFileId?: ModelId | null;
-    branchId?: ModelId | null;
   }
 ): Promise<MessageModel> {
   const workspace = auth.getNonNullableWorkspace();
@@ -143,7 +138,6 @@ async function createAgentMessage(
     sId: generateRandomModelSId(),
     rank,
     conversationId: conversation.id,
-    branchId,
     parentId,
     agentMessageId: agentMessage.id,
   });

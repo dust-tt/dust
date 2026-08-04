@@ -26,7 +26,6 @@ function createMockContentFragment(
     visibility: "visible",
     version: 0,
     rank,
-    branchId: null,
     sourceUrl: null,
     title,
     contentType: "text/plain",
@@ -89,7 +88,6 @@ function createMockAgentMessage(rank: number) {
     sId: generateRandomModelSId(),
     version: 0,
     rank,
-    branchId: null,
     created: Date.now(),
     completedTs: null,
     parentMessageId: null,
@@ -139,7 +137,6 @@ function createMockConversation(
     content,
     triggerId: null,
     metadata: {},
-    branchId: null,
     isRunningAgentLoop: false,
   };
 }

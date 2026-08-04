@@ -90,6 +90,7 @@ export type KnownModelLLMId =
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
+  | "accounts/fireworks/models/deepseek-v4-flash-0731" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
@@ -400,6 +401,7 @@ const USER_MESSAGE_ORIGINS = [
   "project_kickoff",
   "reinforced_skill_notification",
   "reinforcement",
+  "system_activation",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
@@ -773,6 +775,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
+  | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
@@ -791,6 +794,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "xai_feature"
   | "conversations_slack_notifications"
   | "collapsible_messages"
+  | "conversation_consumption_details"
   | "use_dust_keys"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
@@ -3407,6 +3411,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MicrosoftOutlookLogo"
   | "MicrosoftTeamsLogo"
   | "MiroLogo"
+  | "ModjoLogo"
   | "MondayLogo"
   | "NaptaLogo"
   | "NetSuiteLogo"

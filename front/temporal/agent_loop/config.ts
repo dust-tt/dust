@@ -1,6 +1,96 @@
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
+
 const QUEUE_VERSION = 2;
 
+// Agent loop workflows are partitioned across task queues (isolation domains) so one traffic
+// class cannot starve another. Each queue's worker deployment is sized by infra to a QoS tier
+// (replicas, cpu, memory; per-pod activity slots are hardcoded per worker):
+// - schedules (high): scheduled triggers and wake-ups, i.e. time commitments.
+// - interactive (high): humans waiting on an answer, in the product UI or in a chat platform
+//   (Slack/Teams bots, via connectors with system keys).
+// - programmatic (medium): the public API surface (integrations, automations).
+// - batch (low): webhook-fired triggers and internal batch work.
+// Queue names are decoupled from tiers so re-tiering a queue never migrates workflows.
+export type AgentLoopQueue =
+  | "schedules"
+  | "interactive"
+  | "programmatic"
+  | "batch";
+
+// The legacy queue, not a routing target: everything lands here while routing is off, keeping
+// the historical name so in-flight workflows and the existing worker deployment are
+// unaffected. Slated for removal once routing is fully rolled out.
 export const QUEUE_NAME = `agent-loop-queue-v${QUEUE_VERSION}`;
+export const SCHEDULES_QUEUE_NAME = `agent-loop-schedules-queue-v${QUEUE_VERSION}`;
+export const INTERACTIVE_QUEUE_NAME = `agent-loop-interactive-queue-v${QUEUE_VERSION}`;
+export const PROGRAMMATIC_QUEUE_NAME = `agent-loop-programmatic-queue-v${QUEUE_VERSION}`;
+export const BATCH_QUEUE_NAME = `agent-loop-batch-queue-v${QUEUE_VERSION}`;
+
+export function getQueueName(queue: AgentLoopQueue): string {
+  switch (queue) {
+    case "schedules":
+      return SCHEDULES_QUEUE_NAME;
+    case "interactive":
+      return INTERACTIVE_QUEUE_NAME;
+    case "programmatic":
+      return PROGRAMMATIC_QUEUE_NAME;
+    case "batch":
+      return BATCH_QUEUE_NAME;
+    default:
+      return assertNever(queue);
+  }
+}
+
+// The QoS policy: which queue serves each user message origin. The origin is validated
+// against the auth method when the message is posted (e.g. only system API keys can claim
+// slack/teams origins), so it is trustworthy as a routing key.
+export function getQueueForUserMessageOrigin(
+  origin: UserMessageOrigin
+): AgentLoopQueue {
+  switch (origin) {
+    case "api":
+    case "cli":
+    case "cli_programmatic":
+    case "email":
+    case "excel":
+    case "extension":
+    case "gsheet":
+    case "make":
+    case "n8n":
+    case "powerpoint":
+    case "raycast":
+    case "zapier":
+    case "zendesk":
+      return "programmatic";
+    case "agent_sidekick":
+    case "onboarding_conversation":
+    case "project_kickoff":
+    case "reinforced_skill_notification":
+    case "slack":
+    case "slack_workflow":
+    case "teams":
+    case "web":
+      return "interactive";
+    case "triggered":
+    case "wakeup":
+      return "schedules";
+    case "triggered_programmatic":
+    case "reinforcement":
+    case "system_activation":
+    case "transcript":
+      return "batch";
+    default:
+      // Origins are persisted: during a rolling deploy an older pod can read an origin value
+      // introduced by a newer one. Unknown origins degrade to batch, away from the pools
+      // serving humans.
+      assertNeverAndIgnore(origin);
+      return "batch";
+  }
+}
 
 // Max retry attempts for the runModelAndCreateActions activity.
 export const RUN_MODEL_MAX_RETRIES = 5;

@@ -87,13 +87,19 @@ export type LightMessageType =
  *
  */
 
-// Origins set explicitly by front-end clients (web app, extension, etc.).
-export type ClientMessageOrigin =
-  | "web"
-  | "project_kickoff"
-  | "extension"
-  | "agent_sidekick"
-  | "reinforced_skill_notification";
+// Origins set explicitly by front-end clients (web app, extension, etc.). This
+// is the allow-list the internal message endpoints validate against (see
+// `types/api/assistant.ts`), so anything absent here cannot be claimed by a
+// client.
+export const CLIENT_MESSAGE_ORIGINS = [
+  "web",
+  "project_kickoff",
+  "extension",
+  "agent_sidekick",
+  "reinforced_skill_notification",
+] as const;
+
+export type ClientMessageOrigin = (typeof CLIENT_MESSAGE_ORIGINS)[number];
 
 export type UserMessageOrigin =
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
@@ -123,12 +129,23 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
-  | "reinforcement";
+  | "reinforcement"
+  // Opening message of an Activation Pod nudge, authored by the system on the
+  // user's behalf. Server-only: it is not in `CLIENT_MESSAGE_ORIGINS` and
+  // `isUserMessageContextValid` rejects it on /v1/ for anything but a
+  // Dust-internal system key. It keeps nudges out of analytics and prices them
+  // as free usage (`FREE_ORIGINS`), which holds only because nothing else can
+  // ever carry it: the nudge has no author, so it can be neither edited nor
+  // retried, and user replies come back as `web`.
+  | "system_activation";
+
+export const ACTIVATION_NUDGE_ORIGIN = "system_activation" as const;
 
 export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
   "onboarding_conversation",
   "project_kickoff",
   "reinforced_skill_notification",
+  "system_activation",
   "wakeup",
 ];
 
@@ -186,7 +203,11 @@ export type UserMessageType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
-  branchId: string | null;
+  // Legacy: branches were removed, this is always null. The browser extension ships on its own
+  // release cycle and versions still in the wild compare `message.branchId` against `undefined`,
+  // treating every message as pending branch approval when the field is missing. Keep emitting it
+  // until those extension versions have cycled out.
+  branchId: null;
   user: UserType | null;
   mentions: MentionType[];
   richMentions: RichMentionWithStatus[];
@@ -217,6 +238,18 @@ export function isUserMessageTypeWithContentFragments(
   arg: MessageType | LightMessageType
 ): arg is UserMessageTypeWithContentFragments {
   return arg.type === "user_message" && "contentFragments" in arg;
+}
+
+/**
+ * A user message with no author was posted by Dust on someone's behalf rather
+ * than written by them, which only server code can do (`postUserMessage`'s
+ * `doNotAssociateUser`). Such a message is nobody's to edit, its answer nobody's
+ * to retry, and it never runs on anyone's personal tool credentials.
+ */
+export function isSystemAuthoredUserMessage(
+  message: Pick<UserMessageType, "user">
+): boolean {
+  return message.user === null;
 }
 
 export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
@@ -307,7 +340,8 @@ export type BaseAgentMessageType = {
   sId: string;
   version: number;
   rank: number;
-  branchId: string | null;
+  // Legacy: see the note on `UserMessageType.branchId`.
+  branchId: null;
   created: number;
   completedTs: number | null;
   parentMessageId: string;
@@ -449,7 +483,8 @@ export type CompactionMessageType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
-  branchId: string | null;
+  // Legacy: see the note on `UserMessageType.branchId`.
+  branchId: null;
   sourceConversationId?: string | null;
   status: CompactionMessageStatus; // Lifecycle: created → succeeded | failed.
   content: string | null; // null while status is "created".
@@ -584,7 +619,6 @@ export type ConversationForkingDataType = {
 export type ConversationWithoutContentType = ConversationListItemType & {
   id: ModelId;
   depth: number;
-  branchId: string | null;
   forkingData?: ConversationForkingDataType;
 };
 

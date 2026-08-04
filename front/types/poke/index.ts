@@ -1,6 +1,7 @@
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageCreditsBreakdown } from "@app/lib/api/assistant/credit_cost";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import type { RegionType } from "@app/types/region";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -35,6 +36,11 @@ export interface PokeItemBase {
 export type PokeSpaceType = SpaceType & {
   id: ModelId;
   groups: GroupType[];
+};
+
+export type PokeSandboxType = {
+  providerId: string;
+  status: SandboxStatus;
 };
 
 export type PokeDataSourceType = DataSourceType &

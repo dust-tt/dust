@@ -25,7 +25,6 @@ export interface ReinforcedToolActionInfo {
     agentMessageVersion: number;
     conversationId: string;
     conversationTitle: string | null;
-    conversationBranchId: string | null;
     userMessageId: string;
     userMessageVersion: number;
     initialStartTime: number;
@@ -185,7 +184,6 @@ export async function prepareReinforcedToolActions(
       agentMessageVersion: 0,
       conversationId: conversation.sId,
       conversationTitle: null,
-      conversationBranchId: null,
       userMessageId: userMessageId,
       userMessageVersion: 0,
       initialStartTime: Date.now(),

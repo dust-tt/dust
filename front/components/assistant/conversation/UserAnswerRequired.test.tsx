@@ -523,7 +523,9 @@ describe("UserAnswerRequired", () => {
 
     const keyboardContainer = getKeyboardContainer(container);
     const alphaOption = screen.getByRole("button", { name: /Alpha/i });
-    const customInput = screen.getByPlaceholderText("Type something else");
+    const customInput = screen.getByPlaceholderText(
+      "Tell the agent what to do differently"
+    );
 
     await waitFor(() => expect(keyboardContainer).toHaveFocus());
     expect(alphaOption).toHaveClass("bg-primary-100");
@@ -563,7 +565,9 @@ describe("UserAnswerRequired", () => {
     );
 
     const alphaOption = screen.getByRole("button", { name: /Alpha/i });
-    const customInput = screen.getByPlaceholderText("Type something else");
+    const customInput = screen.getByPlaceholderText(
+      "Tell the agent what to do differently"
+    );
 
     await user.click(alphaOption);
     expect(alphaOption).toHaveAttribute("data-selected", "true");
@@ -586,7 +590,9 @@ describe("UserAnswerRequired", () => {
     const keyboardContainer = getKeyboardContainer(container);
     const alphaOption = screen.getByRole("button", { name: /Alpha/i });
     const betaOption = screen.getByRole("button", { name: /Beta/i });
-    const customInput = screen.getByPlaceholderText("Type something else");
+    const customInput = screen.getByPlaceholderText(
+      "Tell the agent what to do differently"
+    );
 
     await user.click(customInput);
     expect(customInput).toHaveFocus();
@@ -643,7 +649,9 @@ describe("UserAnswerRequired", () => {
       />
     );
 
-    const customInput = screen.getByPlaceholderText("Type something else");
+    const customInput = screen.getByPlaceholderText(
+      "Tell the agent what to do differently"
+    );
 
     await user.type(customInput, "Other answer");
     await user.keyboard("{Enter}");

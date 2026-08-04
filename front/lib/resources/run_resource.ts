@@ -52,7 +52,7 @@ export interface RunUsageType {
   isBatch: boolean;
 }
 
-interface RunUsageWithRunKeyType extends RunUsageType {
+export interface RunUsageWithRunKeyType extends RunUsageType {
   runKey: string | null;
   runUsageModelId: ModelId;
   runModelId: ModelId;
@@ -210,6 +210,9 @@ export class RunResource extends BaseResource<RunModel> {
         where: {
           dustRunId: { [Op.in]: dustRunIds },
           workspaceId: auth.getNonNullableWorkspace().id,
+          // The finalize and analytics paths both tag with the same deterministic key:
+          // skip rows already tagged so repeat tagging does not rewrite identical rows.
+          [Op.or]: [{ runKey: null }, { runKey: { [Op.ne]: runKey } }],
         },
       }
     );

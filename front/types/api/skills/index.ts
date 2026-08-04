@@ -6,11 +6,16 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsType[];
+  skills: (SkillWithoutInstructionsAndToolsType & {
+    isFavorite?: boolean;
+  })[];
 };
 
 export type GetSkillsWithRelationsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
+  skills: (SkillWithoutInstructionsAndToolsWithRelationsType & {
+    isFavorite?: boolean;
+    messageCount?: number | null;
+  })[];
 };
 
 export type PostSkillResponseBody = {
@@ -28,11 +33,11 @@ export type GetReinforcementDailySpendResponseBody = {
 };
 
 export type GetSkillResponseBody = {
-  skill: SkillType;
+  skill: SkillType & { isFavorite?: boolean };
 };
 
 export type GetSkillWithRelationsResponseBody = {
-  skill: SkillWithRelationsType;
+  skill: SkillWithRelationsType & { isFavorite?: boolean };
 };
 
 export type PatchSkillResponseBody = {

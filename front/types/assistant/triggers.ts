@@ -90,7 +90,9 @@ export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
 export type WebhookRequestTriggerStatus =
   (typeof WEBHOOK_REQUEST_TRIGGER_STATUSES)[number];
 
-export type TriggerOrigin = "user" | "agent";
+// Who created the trigger: the user themselves, an agent through the schedule
+// management tool, or Dust provisioning it on the user's behalf.
+export type TriggerOrigin = "user" | "agent" | "system";
 
 const TriggerStatusSchema = z.enum(TRIGGER_STATUSES);
 
@@ -129,7 +131,7 @@ const TriggerBaseSchema = z.object({
   status: z.enum(TRIGGER_STATUSES),
   createdAt: z.number(),
   naturalLanguageDescription: z.string().nullable(),
-  origin: z.enum(["user", "agent"]),
+  origin: z.enum(["user", "agent", "system"]),
   spaceId: z.string().nullable(),
 });
 

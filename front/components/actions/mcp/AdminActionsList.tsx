@@ -4,6 +4,7 @@ import {
 } from "@app/components/actions/mcp/AddToolsDialog";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
@@ -26,6 +27,7 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { SkillUsageType } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -37,7 +39,7 @@ import { useMemo, useState } from "react";
 type RowData = {
   mcpServer: MCPServerType;
   mcpServerView?: MCPServerViewType;
-  usage: AgentsUsageType | null;
+  usage: AgentsUsageType | SkillUsageType | null;
   isConnected: boolean;
   account: string;
   spaces: SpaceType[];
@@ -111,7 +113,8 @@ export const AdminActionsList = ({
     owner,
   });
 
-  const [assistantSId, setAssistantSId] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [skillId, setSkillId] = useState<string | null>(null);
 
   const { usage } = useMCPServersUsage({
     owner,
@@ -184,7 +187,7 @@ export const AdminActionsList = ({
           );
           const spaceIds =
             mcpServerWithViews?.views.map((v) => v.spaceId) ?? [];
-          const agentsUsage =
+          const serverUsage =
             usage && mcpServerView ? usage[mcpServerView.server.sId] : null;
 
           const account =
@@ -199,7 +202,7 @@ export const AdminActionsList = ({
             mcpServerView,
             account,
             spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
-            usage: agentsUsage,
+            usage: serverUsage,
             isConnected: !!connections.find(
               (c) =>
                 c.internalMCPServerId === mcpServerWithViews.sId ||
@@ -269,18 +272,20 @@ export const AdminActionsList = ({
         },
       },
       {
-        header: "Used by",
+        id: "usedBy",
+        header: () => <div className="flex w-full justify-center">Used by</div>,
         accessorFn: (row: RowData) => row.usage?.count ?? 0,
         cell: (info) => (
-          <DataTable.CellContent>
+          <div className="flex h-12 w-full items-center justify-center">
             <UsedByButton
               usage={info.row.original.usage}
-              onItemClick={setAssistantSId}
+              onItemClick={setAgentId}
+              onSkillClick={setSkillId}
             />
-          </DataTable.CellContent>
+          </div>
         ),
         meta: {
-          className: "hidden @sm:w-5 @sm:table-cell",
+          className: "hidden px-0 @sm:w-32 @sm:table-cell",
         },
       },
       {
@@ -381,8 +386,14 @@ export const AdminActionsList = ({
       <AgentDetailsSheet
         owner={owner}
         user={user}
-        agentId={assistantSId}
-        onClose={() => setAssistantSId(null)}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
+      />
+      <SkillDetailsSheetById
+        owner={owner}
+        user={user}
+        skillId={skillId}
+        onClose={() => setSkillId(null)}
       />
       <CreateMCPServerDialog
         isOpen={isCreateOpen}

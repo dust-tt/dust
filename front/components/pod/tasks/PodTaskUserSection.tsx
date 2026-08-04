@@ -130,7 +130,7 @@ export function PodTaskUserSection({
         </Card>
       )}
       {regularTasks.length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2 ml-9">
           {regularTasks.map((task) => (
             <EditableTaskItem key={task.sId} task={task} />
           ))}

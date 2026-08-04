@@ -165,7 +165,7 @@ export function getLightAgentMessageFromAgentMessage(
     completedTs: agentMessage.completedTs,
     version: agentMessage.version,
     rank: agentMessage.rank,
-    branchId: agentMessage.branchId,
+    branchId: null,
     parentMessageId: agentMessage.parentMessageId,
     parentAgentMessageId: agentMessage.parentAgentMessageId,
     visibility: agentMessage.visibility,

@@ -27,7 +27,6 @@ import type { WorkspaceType } from "@app/types/user";
 const AGENT_LOOP_ARGS = {
   agentMessageId: "am-sid",
   agentMessageVersion: 0,
-  conversationBranchId: null,
   conversationId: "conv-sid",
   conversationTitle: null,
   userMessageId: "um-sid",
@@ -189,7 +188,6 @@ describe("resolveSandboxChildBlock", () => {
         waitForCompletion: true,
         agentLoopArgs: expect.objectContaining({
           agentMessageId: AGENT_LOOP_ARGS.agentMessageId,
-          conversationBranchId: AGENT_LOOP_ARGS.conversationBranchId,
           conversationId: AGENT_LOOP_ARGS.conversationId,
           userMessageId: AGENT_LOOP_ARGS.userMessageId,
         }),

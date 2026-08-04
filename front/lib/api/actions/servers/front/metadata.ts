@@ -17,7 +17,7 @@ export const FRONT_TOOLS_METADATA = [
         .optional()
         .default(20)
         .describe(
-          "Maximum number of conversations to return (default: 20, max: 100)"
+          "Maximum number of conversations to return (default: 20, max: 20)"
         ),
     },
     stake: "never_ask",
@@ -125,7 +125,7 @@ export const FRONT_TOOLS_METADATA = [
         .optional()
         .default(10)
         .describe(
-          "Maximum number of past conversations to return (default: 10)"
+          "Maximum number of past conversations to return (default: 10, max: 20)"
         ),
     },
     stake: "never_ask",

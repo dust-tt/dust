@@ -89,6 +89,15 @@ export function PublicFrameRenderer({
     isAuthenticatedMember,
     workspaceId
   );
+  // The shared frame has no AuthProvider, so the viewer context the blocked-action cards need is
+  // built from the workspace the viewer is a member of.
+  const viewerWorkspace = user?.workspaces.find(
+    (workspace) => workspace.sId === workspaceId
+  );
+  const viewer =
+    publicUserIdentity && user && viewerWorkspace
+      ? { owner: viewerWorkspace, user }
+      : null;
 
   if (
     isFrameLoading ||
@@ -139,6 +148,7 @@ export function PublicFrameRenderer({
             key={`viz-${fileId}`}
             canInvokeFunctions={publicUserIdentity !== undefined}
             scopedUserIdentity={publicUserIdentity}
+            viewer={viewer}
             isInDrawer
           />
         </div>

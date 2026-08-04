@@ -1805,7 +1805,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return new Ok({
       actionRequired,
-      branchId: null,
       created: conversation.createdAt.getTime(),
       depth: conversation.depth,
       hasError: conversation.hasError,
@@ -2564,7 +2563,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         spaceId: c.space?.sId ?? null,
         depth: c.depth,
         metadata: c.metadata,
-        branchId: null,
         isRunningAgentLoop: c.isRunningAgentLoop,
       };
     });
@@ -2626,7 +2624,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       spaceId: null,
       depth: c.depth,
       metadata: c.metadata,
-      branchId: null,
       isRunningAgentLoop: c.isRunningAgentLoop,
     }));
   }
@@ -3152,53 +3149,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Resolve main-thread message view filters for Sequelize and raw SQL callers.
-   * Matches the scoping used in `_getConversation` in fetch.ts.
-   */
-  private resolveMessageViewScope(
-    auth: Authenticator,
-    {
-      transaction: _transaction,
-    }: {
-      transaction?: Transaction;
-    } = {}
-  ): {
-    scopeWhere: WhereOptions<MessageModel>;
-    branchFilterSql: string;
-    sqlReplacements: Record<string, unknown>;
-  } {
-    const owner = auth.getNonNullableWorkspace();
-    return {
-      scopeWhere: {
-        conversationId: this.id,
-        workspaceId: owner.id,
-        branchId: { [Op.is]: null },
-      },
-      branchFilterSql: `"branchId" IS NULL`,
-      sqlReplacements: {},
-    };
-  }
-
-  /**
-   * Build Sequelize `where` for messages visible in a conversation view (main thread only).
-   * Matches the scoping used in `_getConversation` in fetch.ts.
-   */
-  getMessageScopeWhere(
-    auth: Authenticator,
-    {
-      transaction,
-    }: {
-      branchId?: string | null;
-      transaction?: Transaction;
-    } = {}
-  ): WhereOptions<MessageModel> {
-    const { scopeWhere } = this.resolveMessageViewScope(auth, {
-      transaction,
-    });
-    return scopeWhere;
-  }
-
-  /**
    * Returns true when the conversation view contains a user message (latest version
    * per rank) authored by someone other than `excludeUserId`.
    */
@@ -3209,15 +3159,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     }: {
       excludeUserId?: ModelId | null;
-      branchId?: string | null;
       transaction?: Transaction;
     } = {}
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
-      auth,
-      { transaction }
-    );
 
     const query = `
       SELECT EXISTS (
@@ -3234,7 +3179,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             AND m.visibility != 'deleted'
             AND m."userMessageId" IS NOT NULL
             AND um."userId" IS NOT NULL
-            AND ${branchFilterSql}
           ORDER BY m.rank ASC, m.version DESC
         ) latest
         WHERE latest."userId" IS NOT NULL
@@ -3249,7 +3193,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: owner.id,
         conversationId: this.id,
         excludeUserId: excludeUserId ?? null,
-        ...sqlReplacements,
       },
       transaction,
     });
@@ -3268,15 +3211,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     }: {
       afterRank: number;
-      branchId?: string | null;
       transaction?: Transaction;
     }
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
-      auth,
-      { transaction }
-    );
 
     const query = `
       SELECT EXISTS (
@@ -3288,7 +3226,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             AND m."conversationId" = :conversationId
             AND m.visibility != 'deleted'
             AND m.rank > :afterRank
-            AND ${branchFilterSql}
           ORDER BY m.rank ASC, m.version DESC
         ) latest
         WHERE latest."agentMessageId" IS NOT NULL
@@ -3302,7 +3239,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: owner.id,
         conversationId: this.id,
         afterRank,
-        ...sqlReplacements,
       },
       transaction,
     });
@@ -3317,17 +3253,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     }: {
       rank: number;
-      branchId?: string | null;
       transaction?: Transaction;
     }
   ): Promise<MessageModel | null> {
-    const scopeWhere = this.getMessageScopeWhere(auth, {
-      transaction,
-    });
+    const owner = auth.getNonNullableWorkspace();
 
     return MessageModel.findOne({
       where: {
-        ...scopeWhere,
+        workspaceId: owner.id,
+        conversationId: this.id,
         rank,
         visibility: { [Op.ne]: "deleted" },
       },
@@ -3353,15 +3287,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       transaction,
     }: {
-      branchId?: string | null;
       transaction?: Transaction;
     } = {}
   ): Promise<string[]> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
-      auth,
-      { transaction }
-    );
 
     const query = `
       SELECT latest."clientSideMCPServerIds"
@@ -3379,7 +3308,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           AND m."conversationId" = :conversationId
           AND m.visibility != 'deleted'
           AND m."userMessageId" IS NOT NULL
-          AND ${branchFilterSql}
         ORDER BY m.rank ASC, m.version DESC
       ) latest
       WHERE latest."userContextOrigin" != 'wakeup'
@@ -3395,7 +3323,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       replacements: {
         workspaceId: owner.id,
         conversationId: this.id,
-        ...sqlReplacements,
       },
       transaction,
     });
@@ -3415,15 +3342,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     }: {
       afterRank: number;
-      branchId?: string | null;
       transaction?: Transaction;
     }
   ): Promise<MessageModel[]> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
-      auth,
-      { transaction }
-    );
 
     const query = `
       SELECT DISTINCT ON (m.rank)
@@ -3434,7 +3356,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       WHERE m."workspaceId" = :workspaceId
         AND m."conversationId" = :conversationId
         AND m.rank > :afterRank
-        AND ${branchFilterSql}
       ORDER BY m.rank ASC, m.version DESC
     `;
 
@@ -3449,7 +3370,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: owner.id,
         conversationId: this.id,
         afterRank,
-        ...sqlReplacements,
       },
       transaction,
     });
@@ -3495,15 +3415,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       transaction,
     }: {
-      branchId?: string | null;
       transaction?: Transaction;
     } = {}
   ): Promise<RunningAgentMessageContext | null> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
-      auth,
-      { transaction }
-    );
 
     const query = `
       SELECT
@@ -3520,7 +3435,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         FROM messages m
         WHERE m."workspaceId" = :workspaceId
           AND m."conversationId" = :conversationId
-          AND ${branchFilterSql}
         ORDER BY m.rank DESC, m.version DESC
       ) latest
       INNER JOIN agent_messages am
@@ -3544,7 +3458,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       replacements: {
         workspaceId: owner.id,
         conversationId: this.id,
-        ...sqlReplacements,
       },
       transaction,
     });
@@ -3566,19 +3479,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       transaction,
     }: {
-      branchId?: string | null;
       transaction?: Transaction;
     } = {}
   ): Promise<RunningCompactionMessageContext | null> {
-    const { scopeWhere } = this.resolveMessageViewScope(auth, {
-      transaction,
-    });
-
     const owner = auth.getNonNullableWorkspace();
     const message = await MessageModel.findOne({
       attributes: ["sId", "rank"],
       where: {
-        ...scopeWhere,
+        workspaceId: owner.id,
+        conversationId: this.id,
         visibility: { [Op.ne]: "deleted" },
       },
       include: [
@@ -3616,7 +3525,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       transaction,
     }: {
-      branchId?: string | null;
       transaction?: Transaction;
     } = {}
   ): Promise<{
@@ -3636,15 +3544,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       transaction,
     }: {
-      branchId?: string | null;
       transaction?: Transaction;
     } = {}
   ): Promise<BranchCreationContext> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
-      auth,
-      { transaction }
-    );
 
     const query = `
       WITH latest AS (
@@ -3653,7 +3556,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         WHERE "workspaceId" = :workspaceId
           AND "conversationId" = :conversationId
           AND visibility != 'deleted'
-          AND ${branchFilterSql}
         ORDER BY rank ASC, version DESC
       )
       SELECT
@@ -3677,7 +3579,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       replacements: {
         workspaceId: owner.id,
         conversationId: this.id,
-        ...sqlReplacements,
       },
       transaction,
     });
@@ -3710,18 +3611,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       transaction,
     }: {
-      branchId?: string | null;
       transaction?: Transaction;
     } = {}
   ): Promise<LatestMessageSummary | null> {
-    const { scopeWhere } = this.resolveMessageViewScope(auth, {
-      transaction,
-    });
+    const owner = auth.getNonNullableWorkspace();
 
     const message = await MessageModel.findOne({
       attributes: ["sId", "rank", "compactionMessageId"],
       where: {
-        ...scopeWhere,
+        workspaceId: owner.id,
+        conversationId: this.id,
         visibility: { [Op.ne]: "deleted" },
       },
       include: [
@@ -3791,7 +3690,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: conversation.id,
         workspaceId: owner.id,
         visibility: "pending",
-        branchId: null,
       },
       include: [
         { model: UserMessageModel, as: "userMessage", required: false },
@@ -3821,7 +3719,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const where: WhereOptions<MessageModel> = {
       conversationId: conversation.id,
       workspaceId: owner.id,
-      branchId: null,
     };
 
     const message = await MessageModel.findOne({
@@ -4004,8 +3901,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (sourceMessageId) {
       where.sId = sourceMessageId;
-    } else {
-      where.branchId = { [Op.is]: null };
     }
 
     // Keep the lookup scoped to a single conversation/workspace; ordering by rank/version only
@@ -4038,14 +3933,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           sourceMessageId
             ? "The source message is missing or cannot be used for forking."
             : "The conversation has no completed agent message to fork from."
-        )
-      );
-    }
-
-    if (sourceMessage.branchId !== null) {
-      return new Err(
-        new Error(
-          "The source message is missing or cannot be used for forking."
         )
       );
     }
@@ -4131,7 +4018,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversationId: this.id,
       workspaceId: auth.getNonNullableWorkspace().id,
       contentFragmentId: { [Op.is]: null },
-      branchId: { [Op.is]: null },
     };
 
     if (lastRank !== null && lastRank !== undefined) {
@@ -4344,7 +4230,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const baseWhere: WhereOptions<MessageModel> = {
       workspaceId,
       conversationId: this.id,
-      branchId: { [Op.is]: null },
     };
 
     if (lastReadAt === null) {
@@ -4408,7 +4293,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId,
         conversationId: this.id,
-        branchId: { [Op.is]: null },
         visibility: { [Op.ne]: "deleted" },
       },
       group: ["rank"],
@@ -4747,7 +4631,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: this.id,
         workspaceId,
         agentMessageId: { [Op.ne]: null },
-        branchId: { [Op.is]: null },
       },
       include: [
         {
@@ -4770,7 +4653,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: this.id,
         workspaceId,
         contentFragmentId: { [Op.ne]: null },
-        branchId: { [Op.is]: null },
       },
       include: [
         {
@@ -5158,7 +5040,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       title: this.title,
       id: this.id,
       depth: this.depth,
-      branchId: null,
       ...(this.forkingData && { forkingData: this.forkingData }),
     };
   }

@@ -1,3 +1,4 @@
+import { getEnabledSkillInputTextByActionId } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { renderToolResultForModelAsText } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,54 +10,58 @@ import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * The two texts an MCP action contributes to the model's token budget: the tool call the model
- * emitted (output side) and the result the model then ingested (input side). Per-tool attribution
- * prices these two footprints, so V1 measures both.
+ * emitted on the output side and the model input created by the execution. Most tools only create a
+ * renderable result. Enabling a skill also creates an instruction message and tool definitions.
  */
 export interface ToolFootprintTexts {
   callText: string;
-  resultText: string;
+  /** Model input created by the execution, not parameters passed into the tool. */
+  inputText: string;
 }
 
 /**
  * The measured footprint of one MCP action, aligned by position with the input actions. Named after
- * the model budget each side consumes: the emitted call counts as output, the ingested result as
- * input.
+ * the model budget each side consumes. The emitted call counts as output, and everything the
+ * execution adds to later model requests counts as input.
  */
 export interface ToolFootprintMeasurement {
   callOutputTokensCount: number;
-  resultInputTokensCount: number;
+  /** Tokens added to model input by the execution, not tokens in the tool arguments. */
+  inputTokensCount: number;
 }
 
 /**
- * One tool call to measure: the enriched action for the result the model ingested, and the raw
- * arguments string the model emitted for the call. The arguments come straight from the resource
- * rather than the serialized action, so they exclude the inputs Dust injects afterwards.
+ * One tool call to measure: the enriched action used to render the result, and the raw arguments
+ * string the model emitted for the call. The arguments come straight from the resource rather than
+ * the serialized action, so they exclude the inputs Dust injects afterwards.
  */
 export interface ToolCallFootprintInput {
   action: AgentMCPActionWithOutputType;
   functionCallArguments: string;
 }
 
-export function toolCallFootprintTexts({
-  action,
-  functionCallArguments,
-}: ToolCallFootprintInput): ToolFootprintTexts {
+export function toolCallFootprintTexts(
+  { action, functionCallArguments }: ToolCallFootprintInput,
+  additionalInputText?: string
+): ToolFootprintTexts {
   return {
     // The tool call as the model emitted it: its name plus the arguments it generated.
     callText: `${action.functionCallName}\n${functionCallArguments}`,
-    // The exact text the model saw for the result, shared with conversation rendering so the
-    // estimate never drifts from what was actually sent. Image content is not counted here: it is
-    // priced under a separate tile-based model, out of scope for text tokenization.
-    resultText: renderToolResultForModelAsText(action),
+    // Tool input means the model input created by this execution. Most tools contribute only their
+    // rendered result. Enabling a skill also adds its instructions and tool definitions to later
+    // requests, so those consequences belong to the same tool row.
+    inputText: [renderToolResultForModelAsText(action), additionalInputText]
+      .filter((text): text is string => text !== undefined)
+      .join("\n"),
   };
 }
 
 /**
- * Measures, for each action, how many tokens the model spent emitting the tool call and how many the
- * returned result occupied in the following prompt. Results are order-aligned with `actions`.
+ * Measures, for each action, how many tokens the model spent emitting the tool call and how many
+ * input tokens the execution contributes. Results stay aligned with `toolCalls`.
  *
  * Uses the exact tokenizer of the run's model through core, the same path conversation rendering
- * uses to size messages, so the counts (_almost_) match what the provider billed rather than a heuristic.
+ * uses to size messages, so the counts closely match provider tokenization rather than a heuristic.
  */
 export async function measureToolCallFootprints(
   auth: Authenticator,
@@ -83,17 +88,28 @@ export async function measureToolCallFootprints(
     skipEmbeddingApiKeyRequirement: true,
   });
 
-  // Tokenize the calls and the results as two homogeneous lists rather than one interleaved list, so
-  // each count maps back to its call by plain index, with no call-vs-result position juggling.
-  const footprints = toolCalls.map(toolCallFootprintTexts);
-  const [callCountsRes, resultCountsRes] = await Promise.all([
+  const enabledSkillInputTextByActionId =
+    await getEnabledSkillInputTextByActionId(
+      auth,
+      toolCalls.map(({ action }) => action)
+    );
+
+  // Tokenize the calls and inputs as two homogeneous lists so each count maps back to its call by
+  // plain index, with no call-vs-input position juggling.
+  const footprints = toolCalls.map((toolCall) =>
+    toolCallFootprintTexts(
+      toolCall,
+      enabledSkillInputTextByActionId.get(toolCall.action.sId)
+    )
+  );
+  const [callCountsRes, inputCountsRes] = await Promise.all([
     tokenCountForTexts(
       footprints.map((footprint) => footprint.callText),
       model,
       credentials
     ),
     tokenCountForTexts(
-      footprints.map((footprint) => footprint.resultText),
+      footprints.map((footprint) => footprint.inputText),
       model,
       credentials
     ),
@@ -101,17 +117,17 @@ export async function measureToolCallFootprints(
   if (callCountsRes.isErr()) {
     return callCountsRes;
   }
-  if (resultCountsRes.isErr()) {
-    return resultCountsRes;
+  if (inputCountsRes.isErr()) {
+    return inputCountsRes;
   }
 
   const callCounts = callCountsRes.value;
-  const resultCounts = resultCountsRes.value;
+  const inputCounts = inputCountsRes.value;
 
   return new Ok(
     footprints.map((_, index) => ({
       callOutputTokensCount: callCounts[index],
-      resultInputTokensCount: resultCounts[index],
+      inputTokensCount: inputCounts[index],
     }))
   );
 }

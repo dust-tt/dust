@@ -1598,12 +1598,29 @@ export class MembershipResource extends BaseResource<MembershipModel> {
    * excluded) of an active membership in place. `null` clears the override,
    * letting the seat-type default apply. Callers are responsible for syncing
    * the derived Metronome alerts.
+   *
+   * `poolCapOverrideExpiresAt` schedules an automatic revert back to the
+   * seat-type default (see the `spend_limit_expiration` Temporal sweep).
+   * Meaningless — and ignored by enforcement — when
+   * `poolCapOverrideAwuCredits` is null.
    */
   async updatePoolCapOverride(
-    poolCapOverrideAwuCredits: number | null,
+    {
+      poolCapOverrideAwuCredits,
+      poolCapOverrideExpiresAt,
+    }: {
+      poolCapOverrideAwuCredits: number | null;
+      poolCapOverrideExpiresAt?: Date | null;
+    },
     transaction?: Transaction
   ): Promise<void> {
-    await this.update({ poolCapOverrideAwuCredits }, transaction);
+    await this.update(
+      {
+        poolCapOverrideAwuCredits,
+        poolCapOverrideExpiresAt: poolCapOverrideExpiresAt ?? null,
+      },
+      transaction
+    );
   }
 
   /**
@@ -1653,9 +1670,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           seatType: newSeatType,
           firstUsedAt: this.firstUsedAt,
           creditState: initialCreditStateForSeatType(newSeatType),
-          // The pool cap override survives the seat change: it's the
-          // pool-only portion, independent of the seat allowance.
+          // The pool cap override (and its expiry) survives the seat change:
+          // it's the pool-only portion, independent of the seat allowance.
           poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
+          poolCapOverrideExpiresAt: this.poolCapOverrideExpiresAt,
         },
         { transaction }
       );

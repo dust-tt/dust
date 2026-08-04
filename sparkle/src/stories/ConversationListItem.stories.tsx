@@ -41,12 +41,14 @@ const mockConversation = {
 
 export const OneOnOneWithReply: Story = {
   args: {
+    unread: true,
     conversation: mockConversation,
     time: "14:30",
   },
   render: () => (
     <ListGroup>
       <ConversationListItem
+        unread={true}
         conversation={mockConversation}
         avatar={{
           name: "Alice",
@@ -76,12 +78,14 @@ export const OneOnOneWithReply: Story = {
 
 export const GroupConversationWithReply: Story = {
   args: {
+    unread: false,
     conversation: mockConversation,
     time: "14:30",
   },
   render: () => (
     <ListGroup>
       <ConversationListItem
+        unread={false}
         conversation={mockConversation}
         creator={{
           fullName: "Bob",
@@ -138,6 +142,7 @@ const mentionAvatars = [
 
 export const WithMentions: Story = {
   args: {
+    unread: true,
     conversation: mockConversation,
     time: "14:30",
   },
@@ -145,6 +150,7 @@ export const WithMentions: Story = {
     <ListGroup>
       {/* 2 Mentions on 4 unreads (23 replies) */}
       <ConversationListItem
+        unread={true}
         conversation={{
           ...mockConversation,
           title: "All different counts",
@@ -167,6 +173,7 @@ export const WithMentions: Story = {
       />
       {/* 2 Mentions (5 replies) — mentions == unreads */}
       <ConversationListItem
+        unread={true}
         conversation={{
           ...mockConversation,
           title: "Mentions equal unreads",
@@ -189,6 +196,7 @@ export const WithMentions: Story = {
       />
       {/* 2 Mentions on 4 unreads — unreads == replies */}
       <ConversationListItem
+        unread={true}
         conversation={{
           ...mockConversation,
           title: "Unreads equal replies",
@@ -211,6 +219,7 @@ export const WithMentions: Story = {
       />
       {/* 2 Mentions — all counts equal */}
       <ConversationListItem
+        unread={true}
         conversation={{
           ...mockConversation,
           title: "All counts equal",
@@ -233,6 +242,7 @@ export const WithMentions: Story = {
       />
       {/* 1 Mention — singular */}
       <ConversationListItem
+        unread={true}
         conversation={{
           ...mockConversation,
           title: "Single mention",

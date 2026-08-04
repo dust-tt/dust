@@ -18,6 +18,7 @@ import type {
 } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { BuilderToolCard } from "@app/components/shared/tools_picker/BuilderToolCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -41,7 +42,7 @@ import {
   ShapesPlus,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useContext, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 interface SkillCardProps {
@@ -103,6 +104,7 @@ export function AgentBuilderCapabilitiesBlock({
   initialRequestedSpaceIds,
 }: AgentBuilderCapabilitiesBlockProps) {
   const sendNotification = useSendNotification();
+  const confirm = useContext(ConfirmContext);
   const { owner } = useAgentBuilderContext();
 
   const { getValues } = useFormContext<AgentBuilderFormData>();
@@ -237,6 +239,31 @@ export function AgentBuilderCapabilitiesBlock({
     [appendSkills, appendActions, sendNotification]
   );
 
+  // Unpublished (editors-only) skills are only listed to their editors: a non-editor who removes
+  // one will not find it in the capabilities picker anymore, so make the removal explicit.
+  const handleRemoveSkill = useCallback(
+    async (index: number, skill: AgentBuilderSkillsType) => {
+      if (skill.availability === "editors" && !skill.canWrite) {
+        const confirmed = await confirm({
+          title: `Remove ${skill.name}?`,
+          message:
+            "You will not be able to add this skill back because it is only " +
+            "accessible to the skill editors and you are not an editor.",
+          validateLabel: "Remove",
+          validateVariant: "warning",
+          cancelLabel: "Cancel",
+        });
+
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      removeSkill(index);
+    },
+    [confirm, removeSkill]
+  );
+
   const handleClickKnowledge = () => {
     // We don't know which action will be selected so we will create a generic MCP action.
     const action = getDefaultMCPAction();
@@ -306,7 +333,7 @@ export function AgentBuilderCapabilitiesBlock({
               <SkillCard
                 key={field.id}
                 skill={field}
-                onRemove={() => removeSkill(index)}
+                onRemove={() => void handleRemoveSkill(index, field)}
                 onClick={() => {
                   void fetchSkillWithRelations(field.sId);
                 }}

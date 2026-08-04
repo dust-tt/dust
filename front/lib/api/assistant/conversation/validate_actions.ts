@@ -169,15 +169,13 @@ export async function validateAction(
       // Resolved via the resource so the agent-message model lookup stays in
       // the resource layer (BACK3/BACK5).
       const auditAgentConfig = await action.getLightAgentConfiguration(auth);
-      if (!auditAgentConfig) {
-        return;
-      }
       void emitAuditLogEvent({
         auth,
         action: "tool.approval_resolved",
+        // The deciding user is the actor, so the agent travels in metadata: pod
+        // function tool calls share this action and have no agent.
         targets: [
           buildAuditLogTarget("workspace", owner),
-          buildAuditLogTarget("agent", auditAgentConfig),
           buildAuditLogTarget("tool", {
             sId: action.toolConfiguration.name,
             name: action.toolConfiguration.originalName,
@@ -189,6 +187,12 @@ export async function validateAction(
           tool_name: action.toolConfiguration.originalName,
           mcp_server_name: action.toolConfiguration.mcpServerName,
           stake_level: action.toolConfiguration.permission,
+          ...(auditAgentConfig
+            ? {
+                agent_id: auditAgentConfig.sId,
+                agent_name: auditAgentConfig.name,
+              }
+            : {}),
           conversation_id: conversationId,
           // The string sId of the agent message being validated (the numeric
           // DB id is `action.agentMessageId`); matches agent.executed's
@@ -228,7 +232,6 @@ export async function validateAction(
       agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        conversationBranchId: null,
         conversationId,
         conversationTitle,
         userMessageId,
@@ -270,7 +273,6 @@ export async function validateAction(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,

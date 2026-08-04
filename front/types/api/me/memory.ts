@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // User-facing limit, counted as visible characters (markdown formatting syntax
 // does not count against it).
-export const MAX_USER_MEMORY_CHARS = 2_000;
+export const MAX_USER_MEMORY_CHARS = 8_000;
 
 // Server-side cap on the raw stored markdown. Formatting syntax (**bold**,
 // headings, ...) inflates the raw length beyond the visible character count, so

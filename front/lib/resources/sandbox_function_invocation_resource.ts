@@ -3,6 +3,11 @@ import {
   getPodSandboxFunctionsMountPoint,
   podDatabaseExecEnvVars,
 } from "@app/lib/api/files/mount_path";
+import type {
+  PokePodFunctionInvocation,
+  PokePodFunctionInvocationDetails,
+  PokePodFunctionMCPAction,
+} from "@app/lib/api/poke/projects";
 import {
   generateExecId,
   generateSandboxFunctionInvocationToken,
@@ -67,7 +72,25 @@ const GCS_CONCURRENCY = 4;
 const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
 const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
 
-type SandboxFunctionInvocationReadAccess = "viewer" | "system";
+// "admin" reads every invocation of the function without resolving a workspace user: poke
+// operators are dust superusers, not members of the workspace they inspect, so "viewer" would
+// find no user and return nothing. Kept distinct from "system", which is reserved for paths that
+// already validated a server-owned invocation token.
+type SandboxFunctionInvocationReadAccess = "viewer" | "system" | "admin";
+
+// A listing row: the DB columns only, without the invocation's GCS blob. `baseFetch` always
+// hydrates the blob, and an unhydrated resource reports `input: undefined` rather than "not
+// loaded", so a listing that skipped the download could not hand back resources without breaking
+// that invariant. Callers that need a payload fetch the one invocation they care about.
+export type SandboxFunctionInvocationRow = {
+  sId: string;
+  status: SandboxFunctionInvocationStatus;
+  origin: SandboxFunctionInvocationOrigin | null;
+  userId: ModelId | null;
+  createdAt: Date;
+  updatedAt: Date;
+  mcpActionCount: number;
+};
 
 // `code` is not narrowed to `SandboxFunctionCallErrorCode`: it is forwarded from whatever
 // classified the failure (runner, API error type, front), and a code introduced by a newer deploy
@@ -78,7 +101,9 @@ const StoredCallErrorSchema = z.object({
   status: z.number().optional(),
 });
 
-type StoredSandboxFunctionCallError = z.infer<typeof StoredCallErrorSchema>;
+export type StoredSandboxFunctionCallError = z.infer<
+  typeof StoredCallErrorSchema
+>;
 
 const InvocationDataBaseSchema = z.object({
   input: z.unknown().optional(),
@@ -261,11 +286,82 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return this.data.error;
   }
 
-  async fail(error: Error | SandboxFunctionCallError): Promise<void> {
+  // WHERE-guarded compare-and-swap on status. Same pattern as
+  // SandboxFunctionMCPActionResource.updateStatusFromExpected: BaseResource.update()
+  // only keys on `id`, so the expected-status predicate goes on the model here.
+  private async casStatus({
+    from,
+    to,
+  }: {
+    from: SandboxFunctionInvocationStatus;
+    to: SandboxFunctionInvocationStatus;
+  }): Promise<boolean> {
+    const [affectedCount, rows] = await this.model.update(
+      { status: to },
+      {
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          status: from,
+        },
+        returning: true,
+      }
+    );
+    if (affectedCount === 0) {
+      return false;
+    }
+    const row = rows[0];
+    if (row) {
+      Object.assign(this, row.get());
+    }
+    return true;
+  }
+
+  // Give the claim back if terminal blob persistence fails, so a later fail()/
+  // markCreatedAsErrored() path can still record the outcome.
+  private async releaseTerminalClaim(
+    from: Exclude<SandboxFunctionInvocationStatus, "created">
+  ): Promise<void> {
+    const released = await this.casStatus({ from, to: "created" });
+    if (!released) {
+      logger.error(
+        {
+          workspaceModelId: this.workspaceId,
+          sandboxFunctionId: this.sandboxFunction.sId,
+          invocationId: this.sId,
+          fromStatus: from,
+        },
+        "Failed to release Pod function terminal claim after blob write failure"
+      );
+    }
+  }
+
+  async fail(error: Error | SandboxFunctionCallError): Promise<boolean> {
     const callError: SandboxFunctionCallError =
       error instanceof Error
         ? { code: "invocation_failed", message: error.message }
         : error;
+
+    // Only the caller that flips `created` owns the outcome. Guards the
+    // double-delivery window (worker stdout + late HTTP callback).
+    const claimed = await this.casStatus({
+      from: "created",
+      to: "errored",
+    });
+    if (!claimed) {
+      logger.warn(
+        {
+          workspaceModelId: this.workspaceId,
+          sandboxFunctionId: this.sandboxFunction.sId,
+          invocationId: this.sId,
+          attemptedStatus: "errored",
+          attemptedError: callError,
+        },
+        "Skipping terminal transition for an already-terminal Pod function invocation"
+      );
+      return false;
+    }
+
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
@@ -275,8 +371,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // record of a failure the stream classified precisely.
       error: callError,
     };
-    await this.writeDataToGcs();
-    await this.update({ status: "errored" });
+    const writeResult = await this.writeDataToGcs();
+    if (writeResult.isErr()) {
+      await this.releaseTerminalClaim("errored");
+      throw writeResult.error;
+    }
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_error",
@@ -287,17 +386,42 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       },
       { invocationId: this.sId }
     );
+    return true;
   }
 
-  async succeed(result: unknown): Promise<void> {
+  async succeed(result: unknown): Promise<boolean> {
+    const claimed = await this.casStatus({
+      from: "created",
+      to: "succeeded",
+    });
+    if (!claimed) {
+      logger.warn(
+        {
+          workspaceModelId: this.workspaceId,
+          sandboxFunctionId: this.sandboxFunction.sId,
+          invocationId: this.sId,
+          attemptedStatus: "succeeded",
+          attemptedResult: truncate(
+            JSON.stringify(result),
+            SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS
+          ),
+        },
+        "Skipping terminal transition for an already-terminal Pod function invocation"
+      );
+      return false;
+    }
+
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
       context: this.context,
       result,
     };
-    await this.writeDataToGcs();
-    await this.update({ status: "succeeded" });
+    const writeResult = await this.writeDataToGcs();
+    if (writeResult.isErr()) {
+      await this.releaseTerminalClaim("succeeded");
+      throw writeResult.error;
+    }
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_result",
@@ -308,8 +432,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       },
       { invocationId: this.sId }
     );
+    return true;
   }
-
   async execute(auth: Authenticator): Promise<Result<undefined, Error>> {
     if (this.status !== "created") {
       logger.info(
@@ -485,17 +609,17 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     this.data = migrateStoredInvocationData(storedResult.value);
   }
 
-  private async writeDataToGcs(): Promise<void> {
-    const writeResult = await withRetry(() =>
-      getPrivateUploadBucket()
-        .file(this.gcsPath)
-        .save(Buffer.from(JSON.stringify(this.data), "utf-8"), {
-          contentType: "application/json",
-        })
-    );
-    if (writeResult.isErr()) {
-      throw writeResult.error;
+  private async writeDataToGcs(): Promise<Result<undefined, Error>> {
+    try {
+      await getPrivateUploadBucket().uploadBufferToBucket({
+        buffer: Buffer.from(JSON.stringify(this.data), "utf-8"),
+        contentType: "application/json",
+        filePath: this.gcsPath,
+      });
+    } catch (err) {
+      return new Err(normalizeError(err));
     }
+    return new Ok(undefined);
   }
 
   private static async deleteDataFromGcs(gcsPaths: string[]): Promise<void> {
@@ -561,7 +685,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return resource;
     }, transaction);
 
-    await resource.writeDataToGcs();
+    const writeResult = await resource.writeDataToGcs();
+    if (writeResult.isErr()) {
+      throw writeResult.error;
+    }
     return resource;
   }
 
@@ -607,10 +734,23 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   async markCreatedAsErrored(
     error: SandboxFunctionCallError
   ): Promise<boolean> {
-    if (this.status !== "created") {
+    const claimed = await this.casStatus({
+      from: "created",
+      to: "errored",
+    });
+    if (!claimed) {
+      logger.warn(
+        {
+          workspaceModelId: this.workspaceId,
+          sandboxFunctionId: this.sandboxFunction.sId,
+          invocationId: this.sId,
+          attemptedStatus: "errored",
+          attemptedError: error,
+        },
+        "Skipping terminal transition for an already-terminal Pod function invocation"
+      );
       return false;
     }
-    await this.update({ status: "errored" });
 
     // Do not overwrite the invocation blob here. This path only records that
     // execution failed before the runner could return a structured result.
@@ -656,6 +796,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         break;
       }
       case "system":
+      case "admin":
         viewerModelId = undefined;
         break;
       default:
@@ -741,6 +882,55 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
   }
 
+  // Newest-first page of listing rows, no GCS read. See `SandboxFunctionInvocationRow`.
+  static async listRows(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+      limit,
+      statuses,
+      origins,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+      limit: number;
+      statuses?: SandboxFunctionInvocationStatus[];
+      origins?: SandboxFunctionInvocationOrigin[];
+    }
+  ): Promise<SandboxFunctionInvocationRow[]> {
+    const invocations = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sandboxFunctionId: sandboxFunction.id,
+        ...(statuses && statuses.length > 0 ? { status: statuses } : {}),
+        ...(origins && origins.length > 0 ? { origin: origins } : {}),
+      },
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      limit,
+    });
+
+    const mcpActionCounts =
+      await SandboxFunctionMCPActionResource.countByInvocationModelIds(
+        auth,
+        invocations.map((invocation) => invocation.id)
+      );
+
+    return invocations.map((invocation) => ({
+      sId: this.modelIdToSId({
+        id: invocation.id,
+        workspaceId: invocation.workspaceId,
+      }),
+      status: invocation.status,
+      origin: invocation.origin,
+      userId: invocation.userId,
+      createdAt: invocation.createdAt,
+      updatedAt: invocation.updatedAt,
+      mcpActionCount: mcpActionCounts.get(invocation.id) ?? 0,
+    }));
+  }
+
   static async deleteAllForSandboxFunction(
     sandboxFunction: SandboxFunctionResource,
     { transaction }: { transaction?: Transaction } = {}
@@ -794,6 +984,49 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  // Poke's listing shape. Static because the listing works off rows rather than resources (see
+  // `SandboxFunctionInvocationRow`), and both entry points must produce the same shape.
+  static rowToPokeJSON(
+    row: SandboxFunctionInvocationRow,
+    user: UserResource | null
+  ): PokePodFunctionInvocation {
+    return {
+      sId: row.sId,
+      status: row.status,
+      origin: row.origin,
+      user: user ? user.fullName() : null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      mcpActionCount: row.mcpActionCount,
+    };
+  }
+
+  // The listing shape plus the GCS-backed payload this resource carries once hydrated, and the
+  // MCP actions the caller resolved for it.
+  toPokeJSON(
+    user: UserResource | null,
+    mcpActions: PokePodFunctionMCPAction[]
+  ): PokePodFunctionInvocationDetails {
+    return {
+      ...SandboxFunctionInvocationResource.rowToPokeJSON(
+        {
+          sId: this.sId,
+          status: this.status,
+          origin: this.origin,
+          userId: this.userId,
+          createdAt: this.createdAt,
+          updatedAt: this.updatedAt,
+          mcpActionCount: mcpActions.length,
+        },
+        user
+      ),
+      input: this.input,
+      result: this.result,
+      error: this.error ?? null,
+      mcpActions,
+    };
   }
 
   toJSON(): SandboxFunctionInvocationType {

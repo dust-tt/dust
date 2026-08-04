@@ -2495,6 +2495,102 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("batchFetchMessageCounts", () => {
+    it("returns an empty map for empty input", async () => {
+      const messageCountMap = await SkillResource.batchFetchMessageCounts(
+        testContext.authenticator,
+        []
+      );
+
+      expect(messageCountMap.size).toBe(0);
+    });
+
+    it("counts distinct messages for custom and global skills", async () => {
+      const customSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Custom Skill With Messages",
+      });
+      const globalSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        "frames"
+      );
+      if (!globalSkill) {
+        throw new Error("Expected frames global skill to exist.");
+      }
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With Skill Messages" }
+      );
+      const conversation = await ConversationFactory.create(
+        testContext.authenticator,
+        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
+      );
+
+      await customSkill.enableForAgent(testContext.authenticator, {
+        agentConfiguration: agent,
+        conversation,
+      });
+      await globalSkill.enableForAgent(testContext.authenticator, {
+        agentConfiguration: agent,
+        conversation,
+      });
+
+      const firstMessage = await ConversationFactory.createAgentMessageWithRank(
+        {
+          workspace: testContext.workspace,
+          conversationId: conversation.id,
+          rank: 0,
+          agentConfigurationId: agent.sId,
+        }
+      );
+      const secondMessage =
+        await ConversationFactory.createAgentMessageWithRank({
+          workspace: testContext.workspace,
+          conversationId: conversation.id,
+          rank: 1,
+          agentConfigurationId: agent.sId,
+        });
+      if (!firstMessage.agentMessageId || !secondMessage.agentMessageId) {
+        throw new Error("Expected agent messages to exist.");
+      }
+
+      await SkillResource.snapshotConversationSkillsForMessage(
+        testContext.authenticator,
+        {
+          agentConfigurationId: agent.sId,
+          agentMessageId: firstMessage.agentMessageId,
+          conversationId: conversation.id,
+        }
+      );
+      // Simulate a finalization retry after the first snapshot insert succeeds.
+      await SkillResource.snapshotConversationSkillsForMessage(
+        testContext.authenticator,
+        {
+          agentConfigurationId: agent.sId,
+          agentMessageId: firstMessage.agentMessageId,
+          conversationId: conversation.id,
+        }
+      );
+      await SkillResource.snapshotConversationSkillsForMessage(
+        testContext.authenticator,
+        {
+          agentConfigurationId: agent.sId,
+          agentMessageId: secondMessage.agentMessageId,
+          conversationId: conversation.id,
+        }
+      );
+
+      const messageCountMap = await SkillResource.batchFetchMessageCounts(
+        testContext.authenticator,
+        [customSkill, globalSkill]
+      );
+
+      expect(messageCountMap.size).toBe(2);
+      expect(messageCountMap.get(customSkill.sId)).toBe(2);
+      expect(messageCountMap.get(globalSkill.sId)).toBe(2);
+    });
+  });
+
   describe("batchListEditors", () => {
     it("returns editors for skills with editor groups", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {

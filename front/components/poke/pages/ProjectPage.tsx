@@ -2,6 +2,7 @@ import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ProjectConnectorKnowledgeDataTable } from "@app/components/poke/projects/connector_knowledge/table";
+import { ProjectPodDatabaseDataTable } from "@app/components/poke/projects/pod_databases/table";
 import { ProjectPodFunctionDataTable } from "@app/components/poke/projects/pod_functions/table";
 import { ProjectTasksDataTable } from "@app/components/poke/projects/tasks/table";
 import { ViewProjectWorkflowTable } from "@app/components/poke/projects/workflow/view";
@@ -17,7 +18,7 @@ interface ProjectPageProps {
 export function ProjectPage({ details }: ProjectPageProps) {
   const owner = useWorkspace();
 
-  const { members, metadata, space } = details;
+  const { members, metadata, sandbox, space } = details;
 
   return (
     <>
@@ -33,7 +34,7 @@ export function ProjectPage({ details }: ProjectPageProps) {
         </p>
       )}
       <div className="flex flex-row gap-x-6">
-        <ViewSpaceViewTable space={space} />
+        <ViewSpaceViewTable sandbox={sandbox} space={space} />
         <div className="mt-4 flex grow flex-col">
           {Object.entries(members).map(([groupName, groupMembers]) => (
             <MembersDataTable
@@ -59,6 +60,7 @@ export function ProjectPage({ details }: ProjectPageProps) {
           <ProjectTasksDataTable owner={owner} projectId={space.sId} />
           <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
           <ProjectPodFunctionDataTable owner={owner} projectId={space.sId} />
+          <ProjectPodDatabaseDataTable owner={owner} projectId={space.sId} />
         </div>
       </div>
     </>

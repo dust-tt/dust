@@ -223,6 +223,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable collapsible messages in conversations",
     stage: "dust_only",
   },
+  conversation_consumption_details: {
+    description:
+      "Show the detailed credit attribution for agent messages in conversations",
+    stage: "dust_only",
+  },
   poke_mcp: {
     description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
@@ -235,6 +240,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   plan_mode: {
     description:
       "Enable the Plan Mode skill: agents maintain a live plan.md for genuinely multi-step tasks, with an optional human-approval checkpoint.",
+    stage: "dust_only",
+  },
+  skill_favorites: {
+    description:
+      "Enable user favorites for skills, including favorite controls and runtime skill availability.",
     stage: "dust_only",
   },
   allow_old_notion_mcp: {

@@ -278,7 +278,6 @@ export async function toPodConversationListItem(
       [Op.in]: conversations.map((conv) => conv.id),
     },
     visibility: "visible",
-    branchId: null,
     [Op.or]: [
       {
         userMessageId: {

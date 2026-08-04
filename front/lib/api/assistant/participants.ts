@@ -19,7 +19,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { formatUserFullName } from "@app/types/user";
-import { Op } from "sequelize";
 
 export type FetchConversationParticipantsResponse = {
   participants: ConversationParticipantsType;
@@ -67,7 +66,6 @@ export async function fetchConversationParticipants(
     where: {
       conversationId: conversation.id,
       workspaceId: owner.id,
-      branchId: { [Op.is]: null },
     },
     attributes: [
       [

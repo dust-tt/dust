@@ -8,15 +8,16 @@ import {
   isDustProvidedSkill,
 } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
+import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type {
   SkillRelations,
   SkillType,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
+  ContentMessageAction,
   InfoCircle,
   RefreshCw02,
   Sheet,
@@ -35,8 +36,15 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
 type SkillDetailsProps = {
-  skill: SkillWithoutInstructionsAndToolsWithRelationsType | null;
+  skill: GetSkillsWithRelationsResponseBody["skills"][number] | null;
+  open?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   onClose: () => void;
+  onFavoriteChange?: (
+    skill: GetSkillsWithRelationsResponseBody["skills"][number],
+    isFavorite: boolean
+  ) => Promise<void>;
   owner: WorkspaceType;
   user: UserType;
   replaceOnEdit?: boolean;
@@ -44,26 +52,37 @@ type SkillDetailsProps = {
 
 export function SkillDetailsSheet({
   skill,
+  open,
+  isError = false,
+  onRetry,
   onClose,
+  onFavoriteChange,
   user,
   owner,
   replaceOnEdit,
 }: SkillDetailsProps) {
+  const isOpen = open ?? skill !== null;
+
   // Fetch the full skill (with instructions/tools) for the content section,
   // since the list endpoint may not include them.
-  const { skill: fullSkill, isSkillLoading } = useSkill({
+  const {
+    skill: fullSkill,
+    isSkillLoading,
+    isSkillError: isFullSkillError,
+    mutateSkill: retryFullSkill,
+  } = useSkill({
     workspaceId: owner.sId,
     skillId: skill?.sId ?? null,
     disabled: !skill,
   });
 
   return (
-    <Sheet open={skill !== null} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent size="lg" className="pb-4">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
-        {skill && (
+        {skill ? (
           <>
             <SheetHeader>
               <DescriptionSection
@@ -71,10 +90,13 @@ export function SkillDetailsSheet({
                 owner={owner}
                 onClose={onClose}
                 replaceOnEdit={replaceOnEdit}
+                onFavoriteChange={onFavoriteChange}
               />
             </SheetHeader>
             <SheetContainer className="pb-4">
-              {isSkillLoading || !fullSkill ? (
+              {!fullSkill && isFullSkillError ? (
+                <SkillLoadError onRetry={retryFullSkill} />
+              ) : isSkillLoading || !fullSkill ? (
                 <div className="flex justify-center py-8">
                   <Spinner size="lg" />
                 </div>
@@ -87,9 +109,40 @@ export function SkillDetailsSheet({
               )}
             </SheetContainer>
           </>
-        )}
+        ) : isError ? (
+          <SkillLoadError onRetry={onRetry} />
+        ) : isOpen ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        ) : null}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function SkillLoadError({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center p-4">
+      <ContentMessage
+        title="Unable to load skill"
+        variant="warning"
+        icon={InfoCircle}
+        size="lg"
+        action={
+          onRetry ? (
+            <ContentMessageAction
+              icon={RefreshCw02}
+              label="Retry"
+              variant="warning"
+              onClick={onRetry}
+            />
+          ) : undefined
+        }
+      >
+        The skill could not be loaded. Please try again.
+      </ContentMessage>
+    </div>
   );
 }
 
@@ -147,10 +200,14 @@ function SkillDetailsSheetContent({
 }
 
 type DescriptionSectionProps = {
-  skill: SkillWithoutInstructionsAndToolsWithRelationsType;
+  skill: GetSkillsWithRelationsResponseBody["skills"][number];
   owner: WorkspaceType;
   onClose: () => void;
   replaceOnEdit?: boolean;
+  onFavoriteChange?: (
+    skill: GetSkillsWithRelationsResponseBody["skills"][number],
+    isFavorite: boolean
+  ) => Promise<void>;
 };
 
 const DescriptionSection = ({
@@ -158,6 +215,7 @@ const DescriptionSection = ({
   owner,
   onClose,
   replaceOnEdit,
+  onFavoriteChange,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const { editedByUser } = skill.relations;
@@ -196,6 +254,7 @@ const DescriptionSection = ({
           skill={skill}
           onClose={onClose}
           replaceOnEdit={replaceOnEdit}
+          onFavoriteChange={onFavoriteChange}
         />
       )}
 

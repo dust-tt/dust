@@ -160,16 +160,86 @@ describe("withMessageCacheBreakpoints", () => {
     expect(cacheOf(result[2])).toBe("short");
   });
 
-  it("skips the equipped-skills breakpoint when the first message is not the name:system block", () => {
-    const firstUserTurn: ModelMessageTypeMultiActionsWithoutContentFragment = {
-      role: "user",
-      name: "user",
-      content: [{ type: "text", text: "hi" }],
-    };
+  it("leaves a favorite skills message after the shared prefix unmarked", () => {
+    const result = withMessageCacheBreakpoints(
+      [
+        messages[0],
+        { role: "user", type: "text", content: { value: "favorite skills" } },
+        ...messages.slice(1),
+      ],
+      equippedSkillsMessage,
+      { explicitTailBreakpoint: false }
+    );
 
-    const result = withMessageCacheBreakpoints(messages, firstUserTurn, {
-      explicitTailBreakpoint: false,
-    });
+    expect(cacheOf(result[0])).toBe("short");
+    expect(cacheOf(result[1])).toBeUndefined();
+  });
+
+  it("preserves the full message shape and places cache breakpoints around favorite skills", () => {
+    const conversation: ModelMessageTypeMultiActionsWithoutContentFragment[] = [
+      equippedSkillsMessage,
+      {
+        role: "user",
+        name: "user",
+        content: [{ type: "text", text: "favorite skills" }],
+      },
+      {
+        role: "assistant",
+        name: "agent",
+        contents: [{ type: "text_content", value: "hello" }],
+      },
+      {
+        role: "user",
+        name: "user",
+        content: [{ type: "text", text: "latest turn" }],
+      },
+    ];
+
+    const result = withMessageCacheBreakpoints(
+      conversation.flatMap(toBaseMessages),
+      conversation[0],
+      { explicitTailBreakpoint: true }
+    );
+
+    expect(result).toEqual([
+      {
+        role: "user",
+        type: "text",
+        content: { value: "equipped skills" },
+        cache: "short",
+      },
+      {
+        role: "user",
+        type: "text",
+        content: { value: "favorite skills" },
+      },
+      {
+        role: "assistant",
+        type: "text",
+        content: { value: "hello" },
+      },
+      {
+        role: "user",
+        type: "text",
+        content: { value: "latest turn" },
+        cache: "short",
+      },
+    ]);
+  });
+
+  it("does not cache favorite skills when there is no shared equipped prefix", () => {
+    const favoriteSkillsMessage: ModelMessageTypeMultiActionsWithoutContentFragment =
+      {
+        role: "user",
+        name: "user",
+        content: [{ type: "text", text: "favorite skills" }],
+      };
+
+    const result = withMessageCacheBreakpoints(
+      messages,
+      favoriteSkillsMessage,
+      { explicitTailBreakpoint: false }
+    );
 
     expect(result.every((m) => cacheOf(m) === undefined)).toBe(true);
   });

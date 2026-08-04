@@ -13,6 +13,7 @@ import type {
   GetMCPServerResponseBody,
   GetMCPServersResponseBody,
   GetMCPServersUsageResponseBody,
+  GetMCPServersUsageWithSkillsResponseBody,
   GetMCPServerViewsListResponseBody,
   GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
@@ -959,9 +960,11 @@ export function useMCPServersUsage({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const configFetcher: Fetcher<GetMCPServersUsageResponseBody> = fetcher;
+  const configFetcher: Fetcher<
+    GetMCPServersUsageResponseBody | GetMCPServersUsageWithSkillsResponseBody
+  > = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/mcp/usage`,
+    `/api/w/${owner.sId}/mcp/usage?withSkills=true`,
     configFetcher,
     {
       disabled,

@@ -105,9 +105,6 @@ function emitApprovalResolvedAuditEvents(
       // configuration once.
       const auditAgentConfig =
         await deniedApprovals[0].getLightAgentConfiguration(auth);
-      if (!auditAgentConfig) {
-        return;
-      }
       const workspace = auth.getNonNullableWorkspace();
       for (const action of deniedApprovals) {
         void emitAuditLogEventDirect({
@@ -119,9 +116,10 @@ function emitApprovalResolvedAuditEvents(
             id: "agent-message-termination",
             name: "Agent message termination",
           },
+          // The agent travels in metadata: pod function tool calls share this action
+          // and have no agent.
           targets: [
             buildAuditLogTarget("workspace", workspace),
-            buildAuditLogTarget("agent", auditAgentConfig),
             buildAuditLogTarget("tool", {
               sId: action.toolConfiguration.name,
               name: action.toolConfiguration.originalName,
@@ -136,6 +134,12 @@ function emitApprovalResolvedAuditEvents(
             tool_name: action.toolConfiguration.originalName,
             mcp_server_name: action.toolConfiguration.mcpServerName,
             stake_level: action.toolConfiguration.permission,
+            ...(auditAgentConfig
+              ? {
+                  agent_id: auditAgentConfig.sId,
+                  agent_name: auditAgentConfig.name,
+                }
+              : {}),
             conversation_id: conversation.sId,
             agent_message_id: agentMessage.sId,
             action_id: action.sId,

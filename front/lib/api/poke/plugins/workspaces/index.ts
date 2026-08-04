@@ -1,3 +1,4 @@
+export * from "./activation_recommendation_history";
 export * from "./add_user_to_workos_organization";
 export * from "./apply_coupon";
 export * from "./apply_group_roles";

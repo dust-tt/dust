@@ -359,6 +359,8 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
             name: skill.name,
             description: skill.userFacingDescription,
             icon: skill.icon,
+            availability: skill.availability,
+            canWrite: skill.canWrite,
           };
           setValue("skills", [...currentSkills, newSkill], {
             shouldDirty: true,

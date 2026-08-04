@@ -216,6 +216,73 @@ export function subFilter(a: string, b: string) {
   return subFilterLastIndex(a, b) > -1;
 }
 
+interface AutocompleteMatch {
+  matchStart: number | null;
+  rank: number;
+}
+
+function getAutocompleteMatch(
+  query: string,
+  candidate: string
+): AutocompleteMatch {
+  if (candidate === query) {
+    return { matchStart: 0, rank: 0 };
+  }
+  if (candidate.startsWith(query)) {
+    return { matchStart: 0, rank: 1 };
+  }
+
+  const substringStart = candidate.indexOf(query);
+  if (substringStart !== -1) {
+    return { matchStart: substringStart, rank: 2 };
+  }
+  if (subFilter(query, candidate)) {
+    return { matchStart: null, rank: 3 };
+  }
+  return { matchStart: null, rank: 4 };
+}
+
+/**
+ * Compares two strings for predictable autocomplete relevance.
+ * Exact matches rank first, followed by prefixes, substrings, and fuzzy matches.
+ * Within the same tier, earlier and shorter matches rank first, followed by an
+ * alphabetical comparison that preserves the candidates' original casing.
+ */
+export function compareForAutocompleteSort(
+  query: string,
+  a: string,
+  b: string
+) {
+  const normalizedQuery = query.toLowerCase();
+  const normalizedA = a.toLowerCase();
+  const normalizedB = b.toLowerCase();
+
+  if (normalizedQuery.length === 0) {
+    return a.localeCompare(b);
+  }
+
+  const matchA = getAutocompleteMatch(normalizedQuery, normalizedA);
+  const matchB = getAutocompleteMatch(normalizedQuery, normalizedB);
+  const rankComparison = matchA.rank - matchB.rank;
+  if (rankComparison !== 0) {
+    return rankComparison;
+  }
+
+  if (
+    matchA.matchStart !== null &&
+    matchB.matchStart !== null &&
+    matchA.matchStart !== matchB.matchStart
+  ) {
+    return matchA.matchStart - matchB.matchStart;
+  }
+
+  if (matchA.rank < 4 && a.length !== b.length) {
+    return a.length - b.length;
+  }
+
+  return a.localeCompare(b);
+}
+
 /**
  * Compares two strings for fuzzy relevance against a query.
  * First sort by substring, then by spread of subfilter, then exact match.

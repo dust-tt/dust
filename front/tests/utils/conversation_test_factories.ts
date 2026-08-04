@@ -306,7 +306,6 @@ export function mockConversation(
     triggerId: null,
     depth: 0,
     metadata: {},
-    branchId: null,
     requestedSpaceIds: [],
     owner: {
       id: 0,

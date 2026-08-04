@@ -27,8 +27,7 @@ const WHY_THIS_POD =
 // Second-person digest of AGENTS.md (Destination + Who). Not the full file.
 const OVERALL_GOAL_HIGHLIGHTS: string[] = [
   "You're in Marketing at Acme — you live in HubSpot, Slack, and weekly stakeholder updates.",
-  "Overall goal: get you running recurring reporting and meeting prep from Dust, not by hand.",
-  "Must-hit: one real digest you keep, then one briefing before a key meeting.",
+  "Goal: get you running recurring reporting and meeting prep from Dust, not by hand.",
 ];
 
 const SESSION_GOAL =
@@ -230,7 +229,7 @@ function FullView() {
       <Reveal i={2}>
         <div className="rounded-2xl border border-indigo-200 bg-card p-5 shadow-sm dark:border-indigo-900/50">
           <Kicker>This session</Kicker>
-          <p className="mt-2 text-lg font-semibold leading-snug tracking-tight text-foreground">
+          <p className="mt-5 text-sm font-medium text-foreground">
             {SESSION_GOAL}
           </p>
           <div className="mt-5 border-t border-border pt-4">

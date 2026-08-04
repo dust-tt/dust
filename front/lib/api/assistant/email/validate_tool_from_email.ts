@@ -341,7 +341,6 @@ export async function validateActionFromEmail(
       userMessageId: parentMessage.sId,
       userMessageVersion: parentMessage.version,
       userMessageOrigin: parentMessage.userMessage.userContextOrigin,
-      conversationBranchId: null,
     },
     startStep: action.stepContent.step,
     waitForCompletion: true,

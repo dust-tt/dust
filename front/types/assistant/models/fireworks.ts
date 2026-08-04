@@ -2,6 +2,8 @@ import type { ModelConfigurationType } from "./types";
 
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
   "accounts/fireworks/models/deepseek-v3p2" as const;
+export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_ID =
+  "accounts/fireworks/models/deepseek-v4-flash-0731" as const;
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID =
   "accounts/fireworks/models/deepseek-v4-pro" as const;
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
@@ -53,6 +55,42 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": false,
   },
 };
+// Verified 2026-08-01: https://fireworks.ai/models/deepseek-ai/deepseek-v4-flash-0731
+// Native 1040k/384k, capped to 256k/64k here (see Kimi K3).
+export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "fireworks",
+    modelMaker: "deepseek",
+    modelId: FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_ID,
+    displayName: "DeepSeek V4 Flash (Fireworks)",
+    contextSize: 256_000,
+    recommendedTopK: 32,
+    recommendedExhaustiveTopK: 64,
+    largeModel: true,
+    description:
+      "DeepSeek's V4 Flash Mixture-of-Experts model (284B total / 13B active) tuned for fast, cost-efficient reasoning, coding and agentic work, with 256k context (served via Fireworks).",
+    shortDescription: "DeepSeek's V4 Flash model.",
+    isLegacy: false,
+    isLatest: true,
+    generationTokensCount: 64_000,
+    supportsVision: false,
+    // No native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
+    supportedReasoningEfforts: {
+      none: true,
+      light: true,
+      medium: true,
+      high: true,
+    },
+    defaultReasoningEffort: "light",
+    // Native thinking at `light`, so no chain-of-thought meta prompt.
+    useNativeLightReasoning: true,
+    supportsResponseFormat: true,
+    tokenizer: { type: "tiktoken", base: "o200k_base" },
+    regionalAvailability: {
+      "us-central1": true,
+      "europe-west1": false,
+    },
+  };
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "deepseek",

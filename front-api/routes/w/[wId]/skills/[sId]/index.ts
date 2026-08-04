@@ -3,6 +3,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -32,6 +33,7 @@ import uniq from "lodash/uniq";
 import { z } from "zod";
 
 import editors from "./editors";
+import favorite from "./favorite";
 import filesRoute from "./files/[fileId]/content";
 import history from "./history";
 import reinforcement from "./reinforcement";
@@ -93,6 +95,7 @@ const app = workspaceApp();
 
 // Sub-routes for this skill.
 app.route("/editors", editors);
+app.route("/favorite", favorite);
 app.route("/history", history);
 app.route("/reinforcement", reinforcement);
 app.route("/restore", restore);
@@ -117,6 +120,13 @@ app.get(
     const { skill } = loaded;
 
     const withRelations = ctx.req.query("withRelations");
+
+    const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
+    let favoriteState: { isFavorite?: boolean } = {};
+    if (hasSkillFavorites) {
+      const isFavorite = await skill.isFavoriteForCurrentUser(auth);
+      favoriteState = { isFavorite };
+    }
 
     const serializedSkill = skill.toJSON(auth);
 
@@ -153,9 +163,13 @@ app.get(
         },
       };
 
-      return ctx.json({ skill: skillWithRelations });
+      return ctx.json({
+        skill: { ...skillWithRelations, ...favoriteState },
+      } satisfies GetSkillWithRelationsResponseBody);
     }
-    return ctx.json({ skill: serializedSkill });
+    return ctx.json({
+      skill: { ...serializedSkill, ...favoriteState },
+    } satisfies GetSkillResponseBody);
   }
 );
 

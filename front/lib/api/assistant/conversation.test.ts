@@ -244,7 +244,6 @@ describe("retryAgentMessage", () => {
           userMessageId: userMessage!.sId,
           userMessageVersion: userMessage!.version,
           userMessageOrigin: userMessage!.context.origin,
-          conversationBranchId: null,
         },
         startStep: 0,
       });
@@ -617,6 +616,58 @@ describe("retryAgentMessage", () => {
       expect(result.error.api_error.message).toContain(
         "agent is no longer available"
       );
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+    expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
+  });
+
+  it("should return error when the parent user message has no author", async () => {
+    // A fresh conversation, so the authorless message is not steered into the
+    // pending path by the running agent message the factory sets up.
+    const emptyConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const emptyConversationResource = await fetchConversationResource(
+      auth,
+      emptyConversation.sId
+    );
+
+    const user = auth.getNonNullableUser().toJSON();
+    const postResult = await postUserMessage(auth, {
+      conversationResource: emptyConversationResource,
+      content: "Posted by Dust on the user's behalf",
+      mentions: [{ configurationId: agentConfig.sId }],
+      context: {
+        username: user.username,
+        timezone: "UTC",
+        fullName: user.fullName,
+        email: null,
+        profilePictureUrl: null,
+        origin: "system_activation",
+      },
+      skipToolsValidation: false,
+      skipDustAutoMention: true,
+      doNotAssociateUser: true,
+    });
+    if (postResult.isErr()) {
+      throw new Error("Failed to post the authorless message");
+    }
+    expect(postResult.value.userMessage.user).toBeNull();
+    expect(postResult.value.agentMessages).toHaveLength(1);
+
+    vi.clearAllMocks();
+
+    const result = await retryAgentMessage(auth, {
+      conversationResource: emptyConversationResource,
+      message: postResult.value.agentMessages[0],
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("workspace_auth_error");
+      expect(result.error.api_error.message).toContain("cannot be retried");
     }
     expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
@@ -3134,6 +3185,9 @@ describe("compactConversation", () => {
 describe("editUserMessage", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let globalGroup: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalGroup"];
   let conversationResource: ConversationResource;
   let agentConfig1: LightAgentConfigurationType;
   let agentConfig2: LightAgentConfigurationType;
@@ -3143,6 +3197,7 @@ describe("editUserMessage", () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
+    globalGroup = setup.globalGroup;
 
     agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 1",
@@ -3240,7 +3295,7 @@ describe("editUserMessage", () => {
     }
   });
 
-  it("should create an agent message per mention when editing with several agents", async () => {
+  it("should create a single agent message when editing with several agents", async () => {
     const mentions: MentionType[] = [
       {
         configurationId: agentConfig1.sId,
@@ -3258,17 +3313,16 @@ describe("editUserMessage", () => {
       skipToolsValidation: false,
     });
 
-    // Several agent mentions are only logged, the public API still relies on them.
+    // The edit is still accepted, only the first mentioned agent answers.
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       const { userMessage, agentMessages } = result.value;
 
-      expect(agentMessages.length).toBe(2);
+      expect(agentMessages.length).toBe(1);
 
       const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
-      expect(agentMentions.map((m) => m.id).sort()).toEqual(
-        [agentConfig1.sId, agentConfig2.sId].sort()
-      );
+      expect(agentMentions.length).toBe(1);
+      expect(agentMentions[0].id).toBe(agentMessages[0].configuration.sId);
     }
   });
 
@@ -3508,6 +3562,54 @@ describe("editUserMessage", () => {
       // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
       expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
+  });
+
+  it("should refuse to edit a message that has no author, including under API key auth", async () => {
+    const user = auth.getNonNullableUser().toJSON();
+    const postResult = await postUserMessage(auth, {
+      conversationResource,
+      content: "Posted by Dust on the user's behalf",
+      mentions: [],
+      context: {
+        username: user.username,
+        timezone: "UTC",
+        fullName: user.fullName,
+        email: null,
+        profilePictureUrl: null,
+        origin: "system_activation",
+      },
+      skipToolsValidation: false,
+      skipDustAutoMention: true,
+      doNotAssociateUser: true,
+    });
+    if (postResult.isErr()) {
+      throw new Error("Failed to post the authorless message");
+    }
+    const authorlessMessage = postResult.value.userMessage;
+    expect(authorlessMessage.user).toBeNull();
+
+    // A key has no `auth.user()` either, so the author check used to compare
+    // null against null and let this through.
+    const systemKey = await KeyFactory.system(globalGroup);
+    const { workspaceAuth: keyAuth } = await Authenticator.fromKey(
+      systemKey,
+      workspace.sId
+    );
+
+    const result = await editUserMessage(keyAuth, {
+      conversationResource,
+      message: authorlessMessage,
+      content: "Edited by an API key",
+      mentions: [],
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("workspace_auth_error");
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 });
 
@@ -4164,7 +4266,6 @@ describe("isConversationEventAllowedForAuth", () => {
       created: Date.now(),
       messageId: "msg-1",
       message: {
-        branchId: null,
         contentFragments: [],
       } as unknown as UserMessageNewEvent["message"],
     };
@@ -4178,7 +4279,7 @@ describe("isConversationEventAllowedForAuth", () => {
       created: Date.now(),
       configurationId: "config-1",
       messageId: "msg-1",
-      message: { branchId: null } as AgentMessageType,
+      message: {} as AgentMessageType,
     };
     const result = await isConversationEventAllowedForAuth(auth, { event });
     expect(result).toBe(true);

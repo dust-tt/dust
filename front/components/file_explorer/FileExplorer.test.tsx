@@ -1,6 +1,8 @@
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ComponentProps } from "react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockClientFetch = vi.fn();
@@ -34,6 +36,25 @@ function makeFile({
   };
 }
 
+type ControlledFileExplorerProps = Omit<
+  ComponentProps<typeof FileExplorer>,
+  "currentFolderPath" | "onCurrentFolderChange"
+>;
+
+// `FileExplorer` is a controlled component: folder navigation lives in the
+// parent (in the app, in the URL). Tests hold it in local state.
+function ControlledFileExplorer(props: ControlledFileExplorerProps) {
+  const [currentFolderPath, setCurrentFolderPath] = useState("");
+
+  return (
+    <FileExplorer
+      {...props}
+      currentFolderPath={currentFolderPath}
+      onCurrentFolderChange={setCurrentFolderPath}
+    />
+  );
+}
+
 describe("FileExplorer file opening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,7 +76,7 @@ describe("FileExplorer file opening", () => {
     );
 
     render(
-      <FileExplorer
+      <ControlledFileExplorer
         defaultViewMode="list"
         files={[archive]}
         getFileUrl={(path) => `/files/${path}`}
@@ -109,7 +130,7 @@ describe("FileExplorer file opening", () => {
     });
 
     render(
-      <FileExplorer
+      <ControlledFileExplorer
         defaultViewMode="list"
         files={[first, archive, second]}
         getFileUrl={(path) => `/files/${path}`}
@@ -146,7 +167,7 @@ describe("FileExplorer navigation", () => {
     });
 
     render(
-      <FileExplorer
+      <ControlledFileExplorer
         defaultViewMode="list"
         files={[nestedFile, rootFile]}
         getFileUrl={(path) => `/files/${path}`}

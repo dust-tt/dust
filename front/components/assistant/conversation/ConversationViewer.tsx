@@ -24,9 +24,9 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  areSameRankAndBranch,
+  areSameRank,
   convertLightMessageTypeToVirtuosoMessages,
-  getPredicateForRankAndBranch,
+  getPredicateForRank,
   isAgentMessageWithStreaming,
   isAtInitialStreamState,
   isCompactionMessage,
@@ -167,54 +167,6 @@ function updateAutoScrollEnabledFromLocation({
   prevLocationRef.current = { scrollHeight, bottomOffset };
 }
 
-export function getBranchedInsertIndex(
-  data: VirtuosoMessage[],
-  newMessage: VirtuosoMessage
-): number {
-  // Branches (other than the new message's branch) that already contain
-  // a message with the same rank. We want to keep *all* messages from
-  // those branches contiguous and insert after their last message.
-  const blockingBranches = new Set<string>();
-  for (const m of data) {
-    if (
-      m.rank === newMessage.rank &&
-      m.branchId !== null &&
-      m.branchId !== undefined &&
-      m.branchId !== newMessage.branchId
-    ) {
-      blockingBranches.add(m.branchId);
-    }
-  }
-
-  let insertIndex = 0;
-
-  for (let i = 0; i < data.length; i += 1) {
-    const m = data[i];
-    const branchId = m.branchId;
-
-    const isBlockingBranchMessage =
-      branchId !== null &&
-      branchId !== undefined &&
-      blockingBranches.has(branchId);
-
-    const isSameBranchPriorOrEqualRank =
-      branchId === newMessage.branchId && m.rank <= newMessage.rank;
-
-    if (isBlockingBranchMessage || isSameBranchPriorOrEqualRank) {
-      insertIndex = i + 1;
-    }
-  }
-
-  if (insertIndex > 0) {
-    return insertIndex;
-  }
-
-  // Fallback: original behavior – insert before the first message
-  // with a strictly greater rank, or append if none.
-  const rankOffset = data.findIndex((m) => m.rank > newMessage.rank);
-  return rankOffset === -1 ? data.length : rankOffset;
-}
-
 function makeConversationForkNoticeMessage(
   sourceMessage: VirtuosoMessage,
   forkedChild: ConversationForkedChildType
@@ -224,7 +176,6 @@ function makeConversationForkNoticeMessage(
     sId: `conversation-fork-notice-${forkedChild.childConversationId}`,
     created: sourceMessage.created,
     rank: sourceMessage.rank,
-    branchId: null,
     visibility: "visible",
     sourceMessageId: forkedChild.sourceMessageId,
     childConversationId: forkedChild.childConversationId,
@@ -303,7 +254,6 @@ function buildFirstMessagePlaceholders(
     input,
     mentions,
     user,
-    branchId: null,
     rank,
     contentFragments,
     requestedModel: modelSelection ?? null,
@@ -318,7 +268,6 @@ function buildFirstMessagePlaceholders(
           userMessage,
           mention,
           rank,
-          branchId: null,
         })
       );
     }
@@ -705,7 +654,7 @@ export const ConversationViewer = ({
           case "user_message_new":
             if (virtuosoMessageListRef.current) {
               const userMessage = event.message;
-              const predicate = getPredicateForRankAndBranch(userMessage);
+              const predicate = getPredicateForRank(userMessage);
 
               // Drop a leftover agent placeholder occupying this rank so it
               // cannot swallow the update. The user's own optimistic
@@ -726,7 +675,12 @@ export const ConversationViewer = ({
                 const scroll = userMessage.user?.sId !== user.sId;
 
                 const currentData = virtuosoMessageListRef.current.data.get();
-                const offset = getBranchedInsertIndex(currentData, userMessage);
+
+                // Insert before the first message with a strictly greater rank, or append if none.
+                let offset = currentData.findIndex(
+                  (m) => m.rank > userMessage.rank
+                );
+                offset = offset === -1 ? currentData.length : offset;
 
                 if (offset < currentData.length) {
                   virtuosoMessageListRef.current.data.insert(
@@ -745,7 +699,7 @@ export const ConversationViewer = ({
                 // We only update if the version is greater or equals than the existing version.
                 if (exists.version <= event.message.version) {
                   virtuosoMessageListRef.current.data.map((m) =>
-                    areSameRankAndBranch(m, userMessage) ? userMessage : m
+                    areSameRank(m, userMessage) ? userMessage : m
                   );
                 }
               } else {
@@ -833,7 +787,7 @@ export const ConversationViewer = ({
               );
 
               // Replace the message in the exist list data, or append.
-              const predicate = getPredicateForRankAndBranch(agentMessage);
+              const predicate = getPredicateForRank(agentMessage);
               const exists =
                 virtuosoMessageListRef.current.data.find(predicate);
 
@@ -868,10 +822,11 @@ export const ConversationViewer = ({
                 }
               } else {
                 const currentData = virtuosoMessageListRef.current.data.get();
-                const offset = getBranchedInsertIndex(
-                  currentData,
-                  agentMessage
+                // Insert before the first message with a strictly greater rank, or append if none.
+                let offset = currentData.findIndex(
+                  (m) => m.rank > agentMessage.rank
                 );
+                offset = offset === -1 ? currentData.length : offset;
 
                 if (offset < currentData.length) {
                   virtuosoMessageListRef.current.data.insert(
@@ -1013,16 +968,18 @@ export const ConversationViewer = ({
           case "compaction_message_new":
             if (virtuosoMessageListRef.current) {
               const compactionMessage = event.message;
-              const predicate = getPredicateForRankAndBranch(compactionMessage);
+              const predicate = getPredicateForRank(compactionMessage);
               const exists =
                 virtuosoMessageListRef.current.data.find(predicate);
 
               if (!exists) {
                 const currentData = virtuosoMessageListRef.current.data.get();
-                const offset = getBranchedInsertIndex(
-                  currentData,
-                  compactionMessage
+                // Insert before the first message with a strictly greater rank, or append if none.
+                let offset = currentData.findIndex(
+                  (m) => m.rank > compactionMessage.rank
                 );
+                offset = offset === -1 ? currentData.length : offset;
+
                 // Scroll to the bottom when the user compacts so the
                 // compaction message is in view.
                 const scrollToCompaction = () =>
@@ -1200,7 +1157,6 @@ export const ConversationViewer = ({
             input,
             mentions,
             user,
-            branchId: null, // We can't know the branch id yet, it will be set when the message is created.
             rank,
             contentFragments,
             requestedModel: modelSelection ?? null,
@@ -1234,7 +1190,6 @@ export const ConversationViewer = ({
                   userMessage: placeholderUserMsg,
                   mention,
                   rank,
-                  branchId: null, // We can't know the branch id yet, it will be set when the message is created.
                 })
               );
             }
@@ -1318,41 +1273,29 @@ export const ConversationViewer = ({
           agentMessages: agentMessagesFromBackend,
         } = result.value;
 
-        // If the message was created in a branch, we remove the placeholder user message and the placeholder agent messages from the list.
-        if (messageFromBackend.branchId) {
-          const placeHolderSids = [
-            placeholderUserMsg.sId,
-            ...placeholderAgentMessages.map((m) => m.sId),
-          ];
-          virtuosoMessageListRef.current.data.findAndDelete((m) =>
-            placeHolderSids.includes(m.sId)
-          );
-        } else {
-          // Restricted / mention-only agents: backend returns no agent message
-          // for that mention. Remove matching optimistic agent placeholders so
-          // they cannot collide on rank with later real messages.
-          const createdAgentConfigIds = new Set(
-            agentMessagesFromBackend.map((m) => m.configuration.sId)
-          );
-          virtuosoMessageListRef.current.data.findAndDelete((m) =>
-            placeholderAgentMessages.some(
-              (p) =>
-                p.sId === m.sId &&
-                !createdAgentConfigIds.has(p.configuration.sId)
-            )
-          );
+        // Restricted / mention-only agents: backend returns no agent message
+        // for that mention. Remove matching optimistic agent placeholders so
+        // they cannot collide on rank with later real messages.
+        const createdAgentConfigIds = new Set(
+          agentMessagesFromBackend.map((m) => m.configuration.sId)
+        );
+        virtuosoMessageListRef.current.data.findAndDelete((m) =>
+          placeholderAgentMessages.some(
+            (p) =>
+              p.sId === m.sId && !createdAgentConfigIds.has(p.configuration.sId)
+          )
+        );
 
-          // Replace the optimistic user row by sId (not rank): FE lastMessageRank
-          // can disagree with the DB when stale placeholders inflated the client rank.
-          virtuosoMessageListRef.current.data.map((m) =>
-            m.sId === placeholderUserMsg.sId
-              ? {
-                  ...messageFromBackend,
-                  contentFragments: contentFragmentsFromBackend,
-                }
-              : m
-          );
-        }
+        // Replace the optimistic user row by sId (not rank): FE lastMessageRank
+        // can disagree with the DB when stale placeholders inflated the client rank.
+        virtuosoMessageListRef.current.data.map((m) =>
+          m.sId === placeholderUserMsg.sId
+            ? {
+                ...messageFromBackend,
+                contentFragments: contentFragmentsFromBackend,
+              }
+            : m
+        );
 
         // When there are pending user mentions, MentionValidationRequired
         // renders below the user message — scroll to the bottom so the action
@@ -1441,7 +1384,7 @@ export const ConversationViewer = ({
       if (isConversationForkNotice(data)) {
         return `conversation-${context.conversation?.sId}-${data.sId}`;
       }
-      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}-message-branchId-${data.branchId}`;
+      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}`;
     },
     []
   );
@@ -1450,7 +1393,7 @@ export const ConversationViewer = ({
     if (isConversationForkNotice(item)) {
       return item.sId;
     }
-    return `message-rank-${item.rank}-message-branchId-${item.branchId}`;
+    return `message-rank-${item.rank}-message`;
   }, []);
 
   const feedbacksByMessageId = useMemo(() => {

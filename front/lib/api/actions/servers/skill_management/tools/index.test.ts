@@ -85,6 +85,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [skill],
+      favoriteSkills: [],
       systemSkills: [],
     });
     mockBatchFetchUsedBySkills.mockResolvedValue(new Map());
@@ -167,6 +168,23 @@ describe("skill_management enable_skill tool", () => {
     expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
   });
 
+  it("enables a favorite-only skill", async () => {
+    mockListForAgentLoop.mockResolvedValue({
+      enabledSkills: [],
+      equippedSkills: [],
+      favoriteSkills: [skill],
+      systemSkills: [],
+    });
+
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockEnableForAgent).toHaveBeenCalled();
+  });
+
   it("reports file load failures without failing the tool", async () => {
     mockLoadSkillFilesToConversation.mockResolvedValue(
       new Err(new Error("GCS copy failed"))
@@ -192,6 +210,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [skill],
       equippedSkills: [],
+      favoriteSkills: [],
       systemSkills: [],
     });
 
@@ -208,6 +227,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [],
+      favoriteSkills: [],
       systemSkills: [],
     });
 
@@ -225,6 +245,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [parentSkill],
+      favoriteSkills: [],
       systemSkills: [],
     });
     mockFetchByName.mockResolvedValue(skill);
@@ -262,6 +283,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [parentSkill],
       equippedSkills: [],
+      favoriteSkills: [],
       systemSkills: [],
     });
     mockFetchByName.mockResolvedValue(skill);
@@ -291,6 +313,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [unavailableParentSkill],
+      favoriteSkills: [],
       systemSkills: [],
     });
     mockFetchByName.mockResolvedValue(skill);
@@ -322,6 +345,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [],
+      favoriteSkills: [],
       systemSkills: [],
     });
     mockFetchByIds.mockResolvedValue([parentSkill]);
@@ -357,6 +381,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [],
+      favoriteSkills: [],
       systemSkills: [],
     });
     mockFetchByIds.mockResolvedValue([skill]);
@@ -395,6 +420,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [],
+      favoriteSkills: [],
       systemSkills: [],
     });
     mockFetchByIds.mockResolvedValue([skill]);
@@ -440,6 +466,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [],
+      favoriteSkills: [],
       systemSkills: [],
     });
     mockFetchByIds.mockResolvedValue([skill]);
@@ -478,6 +505,7 @@ describe("skill_management enable_skill tool", () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [],
+      favoriteSkills: [],
       systemSkills: [],
     });
 

@@ -6,8 +6,8 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import { compareForAutocompleteSort, subFilter } from "@app/lib/utils";
+import type { GetSkillsResponseBody } from "@app/types/api/skills";
 import React from "react";
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
@@ -17,6 +17,7 @@ export const INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION = "insert-knowledge-node";
 export const MAX_RENDERED_CAPABILITY_ITEMS = 50;
 
 export interface CapabilitySearchIndexItem {
+  isFavorite?: boolean;
   normalizedDescription?: string;
   sortGroup?: number;
   sortName: string;
@@ -53,8 +54,15 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
       return groupComparison;
     }
 
+    const aIsFavorite = a.item.isFavorite ?? false;
+    const bIsFavorite = b.item.isFavorite ?? false;
+    const favoriteComparison =
+      aIsFavorite === bIsFavorite ? 0 : aIsFavorite ? -1 : 1;
+
     if (normalizedQuery.length === 0) {
-      return a.item.sortName.localeCompare(b.item.sortName);
+      return (
+        favoriteComparison || a.item.sortName.localeCompare(b.item.sortName)
+      );
     }
 
     if (a.titleMatches !== b.titleMatches) {
@@ -63,24 +71,26 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
 
     if (a.titleMatches) {
       return (
-        compareForFuzzySort(
+        favoriteComparison ||
+        compareForAutocompleteSort(
           normalizedQuery,
           a.item.sortName,
           b.item.sortName
-        ) || a.item.sortName.localeCompare(b.item.sortName)
+        )
       );
     }
 
-    return a.item.sortName.localeCompare(b.item.sortName);
+    return favoriteComparison || a.item.sortName.localeCompare(b.item.sortName);
   });
 
   return sortedMatches.slice(0, limit).map(({ item }) => item);
 }
 
 export type SlashCommandSkillSuggestion = Pick<
-  SkillWithoutInstructionsAndToolsType,
+  GetSkillsResponseBody["skills"][number],
   | "editedBy"
   | "icon"
+  | "isFavorite"
   | "name"
   | "requestedSpaceIds"
   | "sId"
