@@ -8,6 +8,13 @@ const AnalyticsPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/AnalyticsPage"),
   "AnalyticsPage"
 );
+const AnalyticsConsumptionPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/AnalyticsConsumptionPage"
+    ),
+  "AnalyticsConsumptionPage"
+);
 const APIKeysPage = withSuspense(
   () =>
     import("@dust-tt/front/components/pages/workspace/developers/APIKeysPage"),
@@ -104,6 +111,10 @@ export const adminRoutes: RouteObject[] = [
     children: [
       { path: "members", element: <MembersPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
+      {
+        path: "analytics/consumption",
+        element: <AnalyticsConsumptionPage />,
+      },
       { path: "usage", element: <UsagePage /> },
       { path: "governance", element: <GovernancePage /> },
       // Legacy Workspace Settings page, merged into Settings & Governance.
