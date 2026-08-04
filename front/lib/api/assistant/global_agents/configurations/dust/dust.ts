@@ -342,7 +342,10 @@ function _getDustLikeGlobalAgent(
       }
     : dummyModelConfiguration;
 
-  const hasAgentMemory = agentMemoryMCPServerView !== null;
+  // Once the workspace has the `user_memory` feature flag, personal memory is
+  // owned by user_memory, so we deprecate agent_memory for the dust global agent.
+  const hasAgentMemory =
+    agentMemoryMCPServerView !== null && !featureFlags.includes("user_memory");
 
   const instructions = buildInstructions({
     hasDeepDive,
