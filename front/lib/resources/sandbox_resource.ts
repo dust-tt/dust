@@ -31,6 +31,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import type { PokeSandboxType } from "@app/types/poke";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -1257,6 +1258,15 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     return result;
+  }
+
+  // The provider id is the handle the `e2b sandbox connect` CLI takes, so Poke
+  // surfaces it to let operators attach to a live sandbox.
+  toPokeJSON(): PokeSandboxType {
+    return {
+      providerId: this.providerId,
+      status: this.status,
+    };
   }
 
   toLogJSON() {

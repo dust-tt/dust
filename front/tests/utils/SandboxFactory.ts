@@ -1,6 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import {
   SandboxModel,
@@ -61,6 +63,31 @@ export class SandboxFactory {
     );
     if (!result) {
       throw new Error("Sandbox not found after creation");
+    }
+    return result;
+  }
+
+  static async createForPod(
+    auth: Authenticator,
+    pod: SpaceResource,
+    opts?: { status?: SandboxStatus }
+  ): Promise<SandboxResource> {
+    const sandbox = await SandboxResource.makeNew(auth, {
+      providerId: `test-provider-${Date.now()}`,
+      status: opts?.status ?? "running",
+      baseImage: "dust-base",
+      version: "0.0.0-test",
+    });
+
+    await SandboxOwnerModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      spaceId: pod.id,
+      sandboxId: sandbox.id,
+    });
+
+    const result = await PodSandboxAdapter.fetchSandbox(auth, pod);
+    if (!result) {
+      throw new Error("Pod sandbox not found after creation");
     }
     return result;
   }

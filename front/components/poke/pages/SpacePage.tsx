@@ -46,7 +46,7 @@ export function SpacePage() {
     );
   }
 
-  const { members, space } = spaceDetails;
+  const { members, sandbox, space } = spaceDetails;
 
   if (spaceDetails.space.kind === "project") {
     return <ProjectPage details={spaceDetails} />;
@@ -61,7 +61,7 @@ export function SpacePage() {
         </LinkWrapper>
       </h3>
       <div className="flex flex-row gap-x-6">
-        <ViewSpaceViewTable space={space} />
+        <ViewSpaceViewTable sandbox={sandbox} space={space} />
         <div className="mt-4 flex grow flex-col">
           {Object.entries(members).map(([groupName, groupMembers]) => (
             <MembersDataTable
