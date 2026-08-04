@@ -1,6 +1,6 @@
 {
   "properties": {
-    "timestamp": {
+    "completed_at": {
       "type": "date"
     },
     "workspace_id": {

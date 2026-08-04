@@ -162,6 +162,7 @@ export interface AgentMessageConsumptionAnalyticsData
   api_key_name: string | null;
   // Version of the attribution logic that produced this document.
   attribution_version: number;
+  completed_at: string; // ISO date string.
   // Idempotency key.
   consumption_key: string;
   consumption_type: AgentMessageConsumptionAnalyticsType;
@@ -177,7 +178,6 @@ export interface AgentMessageConsumptionAnalyticsData
   space_id: string | null;
   status: string;
   step_index: number;
-  timestamp: string; // ISO date string.
   tokens: AgentMessageConsumptionAnalyticsTokens;
   tool: AgentMessageConsumptionAnalyticsTool | null;
   user: AgentMessageConsumptionAnalyticsUser | null;
