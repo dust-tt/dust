@@ -18,6 +18,7 @@ import {
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import logger from "@app/logger/logger";
 import type {
   GroupSpendLimit,
@@ -272,23 +273,25 @@ export async function setGroupSpendLimit(
     );
   }
 
-  const syncResult = await syncGroupCapAlertsForGroup({
-    workspace,
-    groupId: group.sId,
-    poolCapAwuCredits,
-  });
-  if (syncResult.isErr()) {
-    // Metronome sync failed, restore DB values.
-    await group.updatePoolCap(auth, previousPoolCapAwuCredits);
-    logger.error(
-      {
+  const syncResult = await revertOnSyncFailure(
+    await syncGroupCapAlertsForGroup({
+      workspace,
+      groupId: group.sId,
+      poolCapAwuCredits,
+    }),
+    {
+      revert: async () => {
+        await group.updatePoolCap(auth, previousPoolCapAwuCredits);
+      },
+      logContext: {
+        scope: "group",
         workspaceId: workspace.sId,
         groupId: group.sId,
         previousPoolCapAwuCredits,
-        err: syncResult.error,
       },
-      "[GroupSpendLimit] set: failed to sync cap alerts; reverted DB pool cap"
-    );
+    }
+  );
+  if (syncResult.isErr()) {
     return new Err(syncResult.error);
   }
 

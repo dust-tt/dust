@@ -16,6 +16,7 @@ import {
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -320,26 +321,29 @@ export async function setDefaultUserSpendLimit(
   }
 
   // Sync per-seat-type Metronome alerts from the newly persisted value.
-  const syncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
-  if (syncResult.isErr()) {
-    // Metronome sync failed, restore DB values. There was no
-    // row before this call, so undo by deleting the one just created.
-    if (existingConfig) {
-      await existingConfig.updateConfiguration(auth, {
-        defaultPoolCapAwuCredits: previousAwuCredits,
-      });
-    } else {
-      await createdConfig?.delete(auth);
-    }
-    logger.error(
-      {
+  const syncResult = await revertOnSyncFailure(
+    await syncDefaultPoolCapAlertsForWorkspace(workspace),
+    {
+      // There was no row before this call, so undo by deleting the one just
+      // created.
+      revert: async () => {
+        if (existingConfig) {
+          await existingConfig.updateConfiguration(auth, {
+            defaultPoolCapAwuCredits: previousAwuCredits,
+          });
+        } else {
+          await createdConfig?.delete(auth);
+        }
+      },
+      logContext: {
+        scope: "default_user",
         workspaceId: workspace.sId,
         metronomeCustomerId,
         previousAwuCredits,
-        err: syncResult.error,
       },
-      "[DefaultUserSpendLimit] set: failed to sync cap alerts; reverted DB pool cap"
-    );
+    }
+  );
+  if (syncResult.isErr()) {
     return new Err(syncResult.error);
   }
 
