@@ -1,9 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -14,12 +14,10 @@ import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op, QueryTypes } from "sequelize";
+import { Op } from "sequelize";
 
 export type ConversationConsumptionMessageFacts = {
-  agentMessageId: string;
   agentConfigurationId: string;
-  parentAgentMessageId: string | null;
   billedCredits: number | null;
   dustRunIds: string[];
   status: AgentMessageStatus;
@@ -477,9 +475,12 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   /**
-   * Fetches the messages and persisted attribution facts belonging to a user-visible
-   * conversation, including recursively spawned run-agent descendants. Agent handovers stay in
-   * the root conversation and are already part of the seed query.
+   * Fetches every agent message and persisted attribution facts belonging directly to a
+   * user-visible conversation. Superseded and deleted message versions are retained because any
+   * execution that ran remains part of the conversation's bill.
+   *
+   * TODO(2026-08-04 FLAV) Include run-agent descendants once their lineage can be traversed without
+   * a recursive read-time query.
    */
   static async fetchConversationConsumptionFacts(
     auth: Authenticator,
@@ -494,128 +495,50 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     messages: ConversationConsumptionMessageFacts[];
   }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const query = `
-      WITH RECURSIVE latest_root_agent_messages AS (
-        SELECT DISTINCT ON (message.rank)
-          message."sId" AS agent_message_id,
-          message.visibility,
-          agent_message.id AS agent_message_model_id,
-          agent_message."agentConfigurationId" AS agent_configuration_id,
-          agent_message."costCredits" AS billed_credits,
-          agent_message."runIds" AS dust_run_ids,
-          agent_message.status,
-          parent_user_message."agenticOriginMessageId"::text AS parent_agent_message_id
-        FROM messages message
-        JOIN agent_messages agent_message
-          ON agent_message.id = message."agentMessageId"
-         AND agent_message."workspaceId" = :workspaceId
-        LEFT JOIN messages parent_message
-          ON parent_message.id = message."parentId"
-         AND parent_message."workspaceId" = :workspaceId
-        LEFT JOIN user_messages parent_user_message
-          ON parent_user_message.id = parent_message."userMessageId"
-         AND parent_user_message."workspaceId" = :workspaceId
-        WHERE message."workspaceId" = :workspaceId
-          AND message."conversationId" = :conversationId
-        ORDER BY message.rank ASC, message.version DESC
-      ),
-      scoped_agent_messages AS (
-        SELECT
-          root.agent_message_id,
-          root.agent_message_model_id,
-          root.agent_configuration_id,
-          root.parent_agent_message_id,
-          root.billed_credits,
-          root.dust_run_ids,
-          root.status,
-          0 AS depth
-        FROM latest_root_agent_messages root
-        WHERE root.visibility != 'deleted'
-
-        UNION ALL
-
-        SELECT
-          reply."sId" AS agent_message_id,
-          child_agent_message.id AS agent_message_model_id,
-          child_agent_message."agentConfigurationId" AS agent_configuration_id,
-          parent.agent_message_id::text AS parent_agent_message_id,
-          child_agent_message."costCredits" AS billed_credits,
-          child_agent_message."runIds" AS dust_run_ids,
-          child_agent_message.status,
-          parent.depth + 1 AS depth
-        FROM scoped_agent_messages parent
-        JOIN user_messages child_user_message
-          ON child_user_message."agenticOriginMessageId" = parent.agent_message_id
-         AND child_user_message."agenticMessageType" = 'run_agent'
-         AND child_user_message."workspaceId" = :workspaceId
-        JOIN messages child_user_message_envelope
-          ON child_user_message_envelope."userMessageId" = child_user_message.id
-         AND child_user_message_envelope."workspaceId" = :workspaceId
-        JOIN LATERAL (
-          SELECT candidate.*
-          FROM messages candidate
-          WHERE candidate."parentId" = child_user_message_envelope.id
-            AND candidate."workspaceId" = :workspaceId
-            AND candidate."agentMessageId" IS NOT NULL
-          ORDER BY candidate.version DESC
-          LIMIT 1
-        ) reply ON TRUE
-        JOIN agent_messages child_agent_message
-          ON child_agent_message.id = reply."agentMessageId"
-         AND child_agent_message."workspaceId" = :workspaceId
-        WHERE parent.depth < 10
-          AND reply.visibility != 'deleted'
-      )
-      SELECT DISTINCT ON (agent_message_model_id)
-        agent_message_id,
-        agent_message_model_id,
-        agent_configuration_id,
-        parent_agent_message_id,
-        billed_credits,
-        dust_run_ids,
-        status
-      FROM scoped_agent_messages
-      ORDER BY agent_message_model_id
-    `;
-
-    // biome-ignore lint/plugin/noRawSql: recursive run-agent traversal has no Sequelize equivalent.
-    const messages = await frontSequelize.query<{
-      agent_message_id: string;
-      agent_message_model_id: ModelId;
-      agent_configuration_id: string;
-      parent_agent_message_id: string | null;
-      billed_credits: number | null;
-      dust_run_ids: string[] | null;
-      status: AgentMessageStatus;
-    }>(query, {
-      type: QueryTypes.SELECT,
-      replacements: {
+    // Agent messages own the authoritative bill and the execution metadata needed to explain it.
+    const agentMessages = await AgentMessageModel.findAll({
+      attributes: [
+        "id",
+        "agentConfigurationId",
+        "costCredits",
+        "runIds",
+        "status",
+      ],
+      where: {
         workspaceId,
         conversationId: conversation.id,
       },
+      order: [["id", "ASC"]],
     });
-
-    const messageFacts = messages.map((message) => ({
-      agentMessageModelId: message.agent_message_model_id,
-      agentMessageId: message.agent_message_id,
-      agentConfigurationId: message.agent_configuration_id,
-      parentAgentMessageId: message.parent_agent_message_id,
-      billedCredits: message.billed_credits,
-      dustRunIds: message.dust_run_ids ?? [],
-      status: message.status,
+    const messageFacts = agentMessages.map((agentMessage) => ({
+      agentMessageModelId: agentMessage.id,
+      agentConfigurationId: agentMessage.agentConfigurationId,
+      billedCredits: agentMessage.costCredits,
+      dustRunIds: agentMessage.runIds ?? [],
+      status: agentMessage.status,
     }));
     const agentMessageModelIds = messageFacts.map(
       (message) => message.agentMessageModelId
     );
 
-    const [items, actions] = await Promise.all([
-      this.listByAgentMessageModelIds(auth, {
-        agentMessageModelIds,
-        attributionVersion,
+    // Attribution rows are conversation-scoped. Actions are still attached through their message.
+    const [itemModels, actions] = await Promise.all([
+      this.model.findAll({
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+          attributionVersion,
+        },
+        order: [
+          ["agentMessageId", "ASC"],
+          ["id", "ASC"],
+        ],
       }),
       AgentMCPActionResource.listByAgentMessageIds(auth, agentMessageModelIds),
     ]);
+    const items = itemModels.map((item) => new this(this.model, item.get()));
 
+    // Rebuild per-message facts because reconciliation happens independently for each bill.
     const itemsByMessageModelId = new Map<
       ModelId,
       AgentMessageConsumptionItemResource[]

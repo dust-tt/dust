@@ -244,7 +244,38 @@ describe("getConversationConsumption", () => {
     });
   });
 
-  it("includes recursively spawned run-agent messages in the exact total", async () => {
+  it("includes billed superseded message versions", async () => {
+    const { auth, workspace, conversation, agentMessage, agentConfiguration } =
+      await setupMessage();
+    const retryMessage = await ConversationFactory.createAgentMessageWithRank({
+      workspace,
+      conversationId: conversation.id,
+      rank: agentMessage.rank,
+      version: agentMessage.version + 1,
+      agentConfigurationId: agentConfiguration.sId,
+    });
+    if (!retryMessage.agentMessageId) {
+      throw new Error("Retry agent message was not created.");
+    }
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: retryMessage.agentMessageId,
+      costCredits: 7,
+    });
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: retryMessage.agentMessageId,
+      status: "succeeded",
+    });
+
+    await expect(
+      getConversationConsumption(auth, { conversation })
+    ).resolves.toEqual({
+      billedCredits: BILLED_CREDITS + 7,
+      details: null,
+    });
+  });
+
+  it("excludes run-agent messages from child conversations", async () => {
     const { auth, workspace, conversation, agentMessage } =
       await setupMessage();
     const childAgent = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -289,7 +320,7 @@ describe("getConversationConsumption", () => {
     await expect(
       getConversationConsumption(auth, { conversation })
     ).resolves.toEqual({
-      billedCredits: BILLED_CREDITS + 7,
+      billedCredits: BILLED_CREDITS,
       details: null,
     });
   });

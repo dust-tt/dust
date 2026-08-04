@@ -9,7 +9,6 @@ import type { ConversationConsumptionMessageFacts } from "@app/lib/resources/age
 import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import { isTerminalAgentMessageStatus } from "@app/types/assistant/conversation";
 import type {
   ConversationConsumptionAgentDetails,
@@ -89,33 +88,11 @@ function aggregateMessageDetails(
   };
 }
 
-function resolveEffectiveAgentId(
-  message: ConversationConsumptionMessageFacts,
-  messagesById: Map<string, ConversationConsumptionMessageFacts>,
-  visited = new Set<string>()
-): string {
-  if (
-    !isHiddenHelperSubAgentId(message.agentConfigurationId) ||
-    !message.parentAgentMessageId ||
-    visited.has(message.agentMessageId)
-  ) {
-    return message.agentConfigurationId;
-  }
-
-  const parent = messagesById.get(message.parentAgentMessageId);
-  if (!parent) {
-    return message.agentConfigurationId;
-  }
-
-  visited.add(message.agentMessageId);
-  return resolveEffectiveAgentId(parent, messagesById, visited);
-}
-
 /**
- * Aggregates the latest stable bill and active-version attribution for a conversation and its
- * run-agent descendants. In-progress messages are ignored until they reach a terminal state. If
- * any completed billed message lacks a complete attribution, the stable total remains available
- * while the detailed breakdown is withheld.
+ * Aggregates the latest stable bill and active-version attribution for messages belonging directly
+ * to a conversation. In-progress messages are ignored until they reach a terminal state. If any
+ * completed billed message lacks a complete attribution, the stable total remains available while
+ * the detailed breakdown is withheld.
  */
 export async function getConversationConsumption(
   auth: Authenticator,
@@ -169,12 +146,9 @@ export async function getConversationConsumption(
   if (completeMessageDetails.length !== messageDetails.length) {
     return { billedCredits, details: null };
   }
-  const messagesById = new Map(
-    facts.messages.map((message) => [message.agentMessageId, message])
-  );
   const detailsByAgentId = new Map<string, typeof completeMessageDetails>();
   for (const entry of completeMessageDetails) {
-    const agentId = resolveEffectiveAgentId(entry.message, messagesById);
+    const agentId = entry.message.agentConfigurationId;
     const agentDetails = detailsByAgentId.get(agentId) ?? [];
     agentDetails.push(entry);
     detailsByAgentId.set(agentId, agentDetails);

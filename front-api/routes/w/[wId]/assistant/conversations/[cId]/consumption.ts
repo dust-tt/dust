@@ -21,7 +21,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  * /api/w/{wId}/assistant/conversations/{cId}/consumption:
  *   get:
  *     summary: Get a conversation credit attribution
- *     description: Returns the latest stable credits billed for completed messages in a conversation and its run-agent descendants, plus an additive attribution reconciled exclusively through model input rows. In-progress messages are included after they reach a terminal state.
+ *     description: Returns the latest stable credits billed for completed messages belonging directly to a conversation, plus an additive attribution reconciled exclusively through model input rows. In-progress messages are included after they reach a terminal state.
  *     tags:
  *       - Private Conversations
  *     parameters:
@@ -50,7 +50,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *               properties:
  *                 billedCredits:
  *                   type: number
- *                   description: Latest stable credits billed across completed messages in the conversation and its run-agent descendants.
+ *                   description: Latest stable credits billed across completed messages belonging directly to the conversation.
  *                 details:
  *                   type: object
  *                   allOf:
