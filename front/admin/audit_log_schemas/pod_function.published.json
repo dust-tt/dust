@@ -16,6 +16,7 @@
     "pod_function_slug": "string",
     "user_identity": "string",
     "previous_user_identity": "string",
-    "file_id": "string"
+    "file_id": "string",
+    "actor_type": "string"
   }
 }
