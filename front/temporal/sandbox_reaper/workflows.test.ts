@@ -110,4 +110,53 @@ describe("sandboxReaperWorkflow", () => {
       { cursor: null, phase: "sleeping" },
     ]);
   });
+
+  it("stops maintenance when capacity work reaches its batch limit", async () => {
+    const maintenanceCursor: ReaperCursor = {
+      sandboxModelId: 30,
+      timestampMs: 3_000,
+    };
+    const capacityCursor: ReaperCursor = {
+      sandboxModelId: 40,
+      timestampMs: 4_000,
+    };
+    let killRequestedSleepingCalls = 0;
+
+    mockReapSandboxPhaseActivity.mockImplementation(
+      async ({
+        phase,
+      }: {
+        cursor: ReaperCursor | null;
+        phase: ReaperPhase;
+      }) => {
+        if (phase === "kill_requested") {
+          return makeResult(
+            killRequestedSleepingCalls > 0 ? capacityCursor : null
+          );
+        }
+        if (phase === "kill_requested_sleeping") {
+          killRequestedSleepingCalls += 1;
+          return makeResult(maintenanceCursor);
+        }
+        return makeResult(null);
+      }
+    );
+
+    await sandboxReaperWorkflow();
+
+    expect(killRequestedSleepingCalls).toBe(1);
+    expect(
+      mockReapSandboxPhaseActivity.mock.calls.some(
+        ([{ phase }]) => phase === "sleeping"
+      )
+    ).toBe(false);
+    expect(mockLogWarn).toHaveBeenCalledWith(
+      "Reaper phase reached its batch limit.",
+      expect.objectContaining({
+        phase: "kill_requested",
+        sandboxModelId: capacityCursor.sandboxModelId,
+        timestampMs: capacityCursor.timestampMs,
+      })
+    );
+  });
 });
