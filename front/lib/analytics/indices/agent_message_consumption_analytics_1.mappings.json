@@ -81,7 +81,7 @@
     "context_origin": {
       "type": "keyword"
     },
-    "api_key_id": {
+    "api_key_name": {
       "type": "keyword"
     },
     "tool": {
