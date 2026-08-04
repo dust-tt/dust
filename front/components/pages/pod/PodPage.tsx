@@ -13,6 +13,7 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import {
   CheckCircle,
+  CloudArrowLeftRight,
   Folder,
   MessageChatSquare,
   NavTabPill,
@@ -51,6 +52,7 @@ export function PodPage() {
     podId,
     podUiPreferences,
     setPodUiPreferences,
+    isAdminControlled: podInfo?.isAdminControlled,
   });
 
   if (isPodsInfoLoading) {
@@ -99,6 +101,14 @@ export function PodPage() {
             <NavTabPillTrigger value="files" icon={Folder}>
               Files
             </NavTabPillTrigger>
+            {podInfo.isAdminControlled && (
+              <NavTabPillTrigger
+                value="connected_data"
+                icon={CloudArrowLeftRight}
+              >
+                Connected Data
+              </NavTabPillTrigger>
+            )}
             <NavTabPillTrigger value="settings" icon={Settings01}>
               Settings
             </NavTabPillTrigger>

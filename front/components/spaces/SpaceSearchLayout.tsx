@@ -66,6 +66,17 @@ interface BaseSpaceSearchInputProps {
   space: SpaceType;
   parentId: string | undefined;
   category: DataSourceViewCategory | undefined;
+  /**
+   * When set, replaces the default SpacePageHeader (breadcrumbs + action
+   * buttons portal). The custom header must include the action-buttons
+   * container id if action buttons should still portal.
+   */
+  header?: React.ReactNode;
+  /**
+   * When set, used instead of navigating to Space admin URLs for expandable
+   * search result rows.
+   */
+  onNavigateToSearchResult?: (node: DataSourceViewContentNode) => void;
 }
 
 interface BackendSearchProps extends BaseSpaceSearchInputProps {
@@ -189,6 +200,8 @@ function BackendSearch({
   space,
   dataSourceView,
   parentId,
+  header,
+  onNavigateToSearchResult,
 }: FullBackendSearchProps) {
   const { q: searchParam } = useQueryParams(["q"]);
 
@@ -433,13 +446,15 @@ function BackendSearch({
             space={space}
           />
         ) : (
-          <SpacePageHeader
-            owner={owner}
-            space={space}
-            category={category}
-            dataSourceView={dataSourceView}
-            parentId={parentId}
-          />
+          (header ?? (
+            <SpacePageHeader
+              owner={owner}
+              space={space}
+              category={category}
+              dataSourceView={dataSourceView}
+              parentId={parentId}
+            />
+          ))
         )}
       </div>
 
@@ -467,6 +482,7 @@ function BackendSearch({
               onOpenDocument={handleOpenDocument}
               setEffectiveContentNode={setEffectiveContentNode}
               onClearSearchState={handleClearSearchState}
+              onNavigateToSearchResult={onNavigateToSearchResult}
               sorting={sorting}
               setSorting={handleSortingChange}
               scrollableDataTableRef={scrollableDataTableRef}
@@ -504,6 +520,7 @@ function FrontendSearch({
   owner,
   dataSourceView,
   parentId,
+  header,
 }: FullFrontendSearchProps) {
   const { q: searchParam } = useQueryParams(["q"]);
   // Keep input value in local debounce state so it does not lag behind shallow
@@ -539,13 +556,15 @@ function FrontendSearch({
         disabled={isSearchDisabled}
       />
       <div className="flex w-full justify-between gap-2">
-        <SpacePageHeader
-          owner={owner}
-          space={space}
-          category={category}
-          dataSourceView={dataSourceView}
-          parentId={parentId}
-        />
+        {header ?? (
+          <SpacePageHeader
+            owner={owner}
+            space={space}
+            category={category}
+            dataSourceView={dataSourceView}
+            parentId={parentId}
+          />
+        )}
       </div>
 
       {children}
@@ -581,6 +600,7 @@ interface SearchResultsTableProps {
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
   setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
   onClearSearchState: () => void;
+  onNavigateToSearchResult?: (node: DataSourceViewContentNode) => void;
   scrollableDataTableRef: React.Ref<HTMLDivElement>;
 }
 
@@ -599,6 +619,7 @@ function SearchResultsTable({
   onOpenDocument,
   setEffectiveContentNode,
   onClearSearchState,
+  onNavigateToSearchResult,
   scrollableDataTableRef,
 }: SearchResultsTableProps) {
   const router = useAppRouter();
@@ -693,13 +714,17 @@ function SearchResultsTable({
         ...(node.expandable && {
           onClick: () => {
             if (node.expandable) {
-              const baseUrl = `/w/${owner.sId}/spaces/${node.dataSourceView.spaceId}/categories/${category ?? node.dataSourceView.category}/data_source_views/${dataSourceView.sId}`;
-              // If the node is a data source, we don't need to pass the parentId.
-              const url =
-                node.mimeType === DATA_SOURCE_MIME_TYPE
-                  ? baseUrl
-                  : `${baseUrl}?parentId=${parentId}`;
-              void router.push(url);
+              if (onNavigateToSearchResult) {
+                onNavigateToSearchResult(node);
+              } else {
+                const baseUrl = `/w/${owner.sId}/spaces/${node.dataSourceView.spaceId}/categories/${category ?? node.dataSourceView.category}/data_source_views/${dataSourceView.sId}`;
+                // If the node is a data source, we don't need to pass the parentId.
+                const url =
+                  node.mimeType === DATA_SOURCE_MIME_TYPE
+                    ? baseUrl
+                    : `${baseUrl}?parentId=${parentId}`;
+                void router.push(url);
+              }
               onClearSearchState();
             }
           },
@@ -722,6 +747,7 @@ function SearchResultsTable({
     });
   }, [
     onClearSearchState,
+    onNavigateToSearchResult,
     addToSpace,
     canReadInSpace,
     canWriteInSpace,
