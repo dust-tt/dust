@@ -107,6 +107,19 @@ export type PatchSpaceResponseBody = {
   space: SpaceType;
 };
 
+/**
+ * For one space, the requested users that are not members of it — i.e. that
+ * cannot read the data it holds.
+ */
+export type SpaceUsersWithoutAccess = {
+  spaceId: string;
+  userIdsWithoutAccess: string[];
+};
+
+export type GetSpacesAccessCheckResponseBody = {
+  spacesAccess: SpaceUsersWithoutAccess[];
+};
+
 export type CheckNameResponseBody = {
   available: boolean;
 };

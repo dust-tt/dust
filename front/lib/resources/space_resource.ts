@@ -1487,6 +1487,26 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    */
 
   isMember(auth: Authenticator): boolean {
+    return this.isMemberByGroupPredicate((groupModelId) =>
+      auth.hasGroupByModelId(groupModelId)
+    );
+  }
+
+  /**
+   * Same membership rule as {@link SpaceResource.isMember}, evaluated against a
+   * precomputed set of group model ids instead of an `Authenticator`. Lets
+   * callers check many users at once without building one `Authenticator` per
+   * user.
+   */
+  isMemberByGroupModelIds(groupModelIds: ReadonlySet<ModelId>): boolean {
+    return this.isMemberByGroupPredicate((groupModelId) =>
+      groupModelIds.has(groupModelId)
+    );
+  }
+
+  private isMemberByGroupPredicate(
+    hasGroup: (groupModelId: ModelId) => boolean
+  ): boolean {
     // TODO(projects): update this method to check groups whose group_vaults relationship is
     // to remove the complexity of checking the global group based on the space type.
     switch (this.kind) {
@@ -1496,7 +1516,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           if (group.isGlobal()) {
             return true;
           }
-          if (auth.hasGroupByModelId(group.groupId)) {
+          if (hasGroup(group.groupId)) {
             return true;
           }
         }
@@ -1507,7 +1527,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           if (group.isGlobal()) {
             continue;
           }
-          if (auth.hasGroupByModelId(group.groupId)) {
+          if (hasGroup(group.groupId)) {
             return true;
           }
         }

@@ -26,10 +26,12 @@ import type {
 } from "@app/types/api/search";
 import type {
   GetSpaceResponseBody,
+  GetSpacesAccessCheckResponseBody,
   GetSpacesResponseBody,
   PatchSpaceResponseBody,
   PostSpaceRequestBodyType,
   PostSpacesResponseBody,
+  SpaceUsersWithoutAccess,
 } from "@app/types/api/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
@@ -122,6 +124,47 @@ export function useSpaceProjectsLookup({
     isSpacesLookupLoading: !error && !data && !!query && !disabled,
     isSpacesLookupError: !!error,
     mutate,
+  };
+}
+
+/**
+ * For each of `spaceIds`, which of `userIds` are not members of it — i.e. cannot
+ * read what the space holds. The endpoint errors out on any space the current
+ * user cannot read, so callers should only pass spaces they already display.
+ */
+export function useSpacesAccessCheck({
+  workspaceId,
+  spaceIds,
+  userIds,
+  disabled,
+}: {
+  workspaceId: string;
+  spaceIds: string[];
+  userIds: string[];
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const accessCheckFetcher: Fetcher<GetSpacesAccessCheckResponseBody> = fetcher;
+
+  const isEmpty = spaceIds.length === 0 || userIds.length === 0;
+  const params = new URLSearchParams();
+  for (const spaceId of spaceIds) {
+    params.append("spaceIds", spaceId);
+  }
+  for (const userId of userIds) {
+    params.append("userIds", userId);
+  }
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/access-check?${params.toString()}`,
+    accessCheckFetcher,
+    { disabled: disabled || isEmpty }
+  );
+
+  return {
+    spacesAccess: data?.spacesAccess ?? emptyArray<SpaceUsersWithoutAccess>(),
+    isSpacesAccessLoading: !error && !data && !disabled && !isEmpty,
+    isSpacesAccessError: !!error,
   };
 }
 

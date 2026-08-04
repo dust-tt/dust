@@ -1315,6 +1315,51 @@ export class GroupResource extends BaseResource<GroupModel> {
     return result;
   }
 
+  /**
+   * For each user, the subset of `groupModelIds` they are an active member of.
+   * Users with no matching membership are absent from the map. Restricting the
+   * query to the caller's group ids keeps this to a single row-bounded query
+   * regardless of how many groups the workspace has.
+   */
+  static async listGroupModelIdsByUserModelIdInWorkspace({
+    workspace,
+    userModelIds,
+    groupModelIds,
+  }: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+    groupModelIds: ModelId[];
+  }): Promise<Map<ModelId, Set<ModelId>>> {
+    const result = new Map<ModelId, Set<ModelId>>();
+    if (userModelIds.length === 0 || groupModelIds.length === 0) {
+      return result;
+    }
+
+    const now = new Date();
+    const memberships = await GroupMembershipModel.findAll({
+      attributes: ["userId", "groupId"],
+      where: {
+        workspaceId: workspace.id,
+        userId: userModelIds,
+        groupId: groupModelIds,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+
+    for (const membership of memberships) {
+      const existing = result.get(membership.userId);
+      if (existing) {
+        existing.add(membership.groupId);
+      } else {
+        result.set(membership.userId, new Set([membership.groupId]));
+      }
+    }
+
+    return result;
+  }
+
   // For each user, the highest per-group pool cap (excluding seat allowance)
   // among the cap-eligible (provisioned) groups they belong to. Users with no
   // capped group are absent from the map (the caller falls back to the workspace

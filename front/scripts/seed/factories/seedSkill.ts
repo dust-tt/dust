@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 
@@ -9,12 +10,17 @@ interface SeedSkillOptions {
   // Create the skill on behalf of this user, making them its only editor. Defaults to the
   // context user.
   owner?: UserResource;
+  // Users added to the skill's editor group on top of the owner.
+  editors?: UserResource[];
+  // Spaces the skill requires access to. Members of the skill that are not members of
+  // these spaces cannot view or use it.
+  spaces?: SpaceResource[];
 }
 
 export async function seedSkill(
   ctx: SeedContext,
   skillAsset: SkillAsset,
-  { owner }: SeedSkillOptions = {}
+  { owner, editors = [], spaces = [] }: SeedSkillOptions = {}
 ): Promise<SkillResource | null> {
   const { auth, workspace, execute, logger } = ctx;
 
@@ -44,13 +50,52 @@ export async function seedSkill(
       instructionsHtml: skillAsset.instructionsHtml,
       status: "active",
       availability: skillAsset.availability,
+      requestedSpaceIds: spaces.map((space) => space.id),
     });
     logger.info(
       { sId: skill.sId, ownerId: owner?.sId ?? auth.getNonNullableUser().sId },
       "Skill created"
     );
+
+    if (editors.length > 0) {
+      await addSkillEditors(ownerAuth, skill, editors);
+      logger.info(
+        { sId: skill.sId, editorIds: editors.map((editor) => editor.sId) },
+        "Skill editors added"
+      );
+    }
+
     return skill;
   }
 
   return null;
+}
+
+async function addSkillEditors(
+  auth: Authenticator,
+  skill: SkillResource,
+  editors: UserResource[]
+): Promise<void> {
+  const { editorGroup } = skill;
+  if (!editorGroup) {
+    throw new Error(`Skill ${skill.sId} has no editor group`);
+  }
+
+  // The owner is already in the group, and adding an existing member is an error.
+  const activeMemberIds = new Set(
+    (await editorGroup.getActiveMembers(auth)).map((member) => member.sId)
+  );
+  const usersToAdd = editors.filter(
+    (editor) => !activeMemberIds.has(editor.sId)
+  );
+  if (usersToAdd.length === 0) {
+    return;
+  }
+
+  const addResult = await editorGroup.dangerouslyAddMembers(auth, {
+    users: usersToAdd.map((editor) => editor.toJSON()),
+  });
+  if (addResult.isErr()) {
+    throw new Error(`Failed to add skill editors: ${addResult.error.message}`);
+  }
 }

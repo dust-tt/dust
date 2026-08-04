@@ -21,6 +21,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 import spaceId from "./[spaceId]";
+import accessCheck from "./access-check";
 import checkName from "./check-name";
 import projectsLookup from "./projects-lookup";
 import searchProjects from "./search_projects";
@@ -282,6 +283,7 @@ app.post(
 
 // Register static paths BEFORE `/:spaceId` so the param route does not
 // swallow these names as ids.
+app.route("/access-check", accessCheck);
 app.route("/check-name", checkName);
 app.route("/projects-lookup", projectsLookup);
 app.route("/search_projects", searchProjects);
