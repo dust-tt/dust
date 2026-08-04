@@ -1219,7 +1219,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listFavoritesForCurrentUser(
     auth: Authenticator,
-    { ...context }: SkillFetchContext = {}
+    context?: SkillFetchContext
   ): Promise<SkillResource[]> {
     const user = auth.user();
     if (!user) {
