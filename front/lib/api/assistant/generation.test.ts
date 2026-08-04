@@ -735,7 +735,9 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     expect(text).toContain("The Computer skill is always active for you");
     expect(text).toContain("Do not try to enable it first.");
-    expect(text).not.toContain("You must enable the Computer skill proactively");
+    expect(text).not.toContain(
+      "You must enable the Computer skill proactively"
+    );
   });
 
   it("should keep system skill instructions in the system prompt", async () => {
