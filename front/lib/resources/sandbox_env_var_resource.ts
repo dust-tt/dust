@@ -38,6 +38,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import { randomBytes } from "crypto";
 import type { Attributes, Includeable, Transaction } from "sequelize";
+import { UniqueConstraintError } from "sequelize";
 
 export type DeleteSandboxEnvVarResponseBody = {
   success: true;
@@ -404,20 +405,33 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
         return normalizedAllowedDomains;
       }
 
-      row = await this.model.create({
-        workspaceId: owner.id,
-        spaceId: scope.kind === "pod" ? scope.pod.id : null,
-        name,
-        kind,
-        // 16 bytes = 32 hex chars in the placeholder; matches the
-        // `__DSEC_<32hex>__` format from the design doc. Stable for the life
-        // of the row (rotations and allowedDomains edits don't touch it).
-        placeholderNonce: kind === "https_secret" ? randomBytes(16) : null,
-        allowedDomains: normalizedAllowedDomains.value ?? null,
-        encryptedValue,
-        createdByUserId: user.id,
-        lastUpdatedByUserId: user.id,
-      });
+      try {
+        row = await this.model.create({
+          workspaceId: owner.id,
+          spaceId: scope.kind === "pod" ? scope.pod.id : null,
+          name,
+          kind,
+          // 16 bytes = 32 hex chars in the placeholder; matches the
+          // `__DSEC_<32hex>__` format from the design doc. Stable for the
+          // life of the row (rotations and allowedDomains edits don't touch
+          // it).
+          placeholderNonce: kind === "https_secret" ? randomBytes(16) : null,
+          allowedDomains: normalizedAllowedDomains.value ?? null,
+          encryptedValue,
+          createdByUserId: user.id,
+          lastUpdatedByUserId: user.id,
+        });
+      } catch (error) {
+        // A concurrent create can slip past the findOne above and lose to
+        // the per-scope unique index — surface it like the sequential
+        // duplicate instead of leaking the Sequelize exception.
+        if (error instanceof UniqueConstraintError) {
+          return new Err(
+            new Error("Sandbox environment variable already exists.")
+          );
+        }
+        throw error;
+      }
       created = true;
     }
 
