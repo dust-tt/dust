@@ -1,0 +1,121 @@
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
+import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
+import type { Authenticator } from "@app/lib/auth";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { Ok } from "@app/types/shared/result";
+import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/assistant/call_llm", () => ({
+  runMultiActionsAgent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/assistant/models", () => ({
+  getLargeWhitelistedModel: vi.fn(),
+}));
+
+const mockRunMultiActionsAgent = vi.mocked(runMultiActionsAgent);
+const mockGetLargeWhitelistedModel = vi.mocked(getLargeWhitelistedModel);
+
+const event: WebhookEvent = {
+  name: "test.event",
+  value: "test.event",
+  description: "A test event",
+  schema: {
+    type: "object",
+    properties: {
+      status: { type: "string" },
+      count: { type: "integer" },
+    },
+  },
+  sample: {
+    status: "open",
+    count: 1,
+  },
+};
+
+function mockFilterGeneration(filter: string): void {
+  mockRunMultiActionsAgent.mockResolvedValueOnce(
+    new Ok({
+      actions: [
+        {
+          name: "set_filter",
+          arguments: { filter },
+        },
+      ],
+    }) as never
+  );
+}
+
+describe("getWebhookFilterGeneration", () => {
+  let authenticator: Authenticator;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockGetLargeWhitelistedModel.mockReturnValue({
+      modelId: "test-model",
+      providerId: "openai",
+    } as never);
+    const testResources = await createResourceTest({ role: "admin" });
+    authenticator = testResources.authenticator;
+  });
+
+  it("returns a valid filter without retrying", async () => {
+    mockFilterGeneration('(eq "status" "open")');
+
+    const result = await getWebhookFilterGeneration(authenticator, {
+      naturalDescription: "Status is open",
+      event,
+      providerSpecificInstructions: null,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.filter).toBe('(eq "status" "open")');
+    }
+    expect(mockRunMultiActionsAgent).toHaveBeenCalledOnce();
+  });
+
+  it("repairs an invalid generated filter once", async () => {
+    mockFilterGeneration('(has-any "status" ("open" "closed"))');
+    mockFilterGeneration('(or (eq "status" "open") (eq "status" "closed"))');
+
+    const result = await getWebhookFilterGeneration(authenticator, {
+      naturalDescription: "Status is open or closed",
+      event,
+      providerSpecificInstructions: null,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.filter).toBe(
+        '(or (eq "status" "open") (eq "status" "closed"))'
+      );
+    }
+    expect(mockRunMultiActionsAgent).toHaveBeenCalledTimes(2);
+    const repairInput = mockRunMultiActionsAgent.mock.calls[1][2];
+    expect(JSON.stringify(repairInput.conversation)).toContain(
+      'Operator \\"has-any\\" requires an array field'
+    );
+  });
+
+  it("returns an error when the repaired filter is still invalid", async () => {
+    mockFilterGeneration('(has-any "status" ("open" "closed"))');
+    mockFilterGeneration('(contains "count" "1")');
+
+    const result = await getWebhookFilterGeneration(authenticator, {
+      naturalDescription: "Status is open or closed",
+      event,
+      providerSpecificInstructions: null,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        'Unable to generate a valid filter: Operator "contains" requires a string field, but "count" is integer.'
+      );
+    }
+    expect(mockRunMultiActionsAgent).toHaveBeenCalledTimes(2);
+  });
+});

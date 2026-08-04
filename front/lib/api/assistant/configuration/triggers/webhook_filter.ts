@@ -1,5 +1,6 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { validateWebhookFilter } from "@app/lib/api/assistant/configuration/triggers/webhook_filter_validation";
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
@@ -304,57 +305,97 @@ export async function getWebhookFilterGeneration(
     .filter((part) => part !== null)
     .join("\n\n");
 
-  const res = await runMultiActionsAgent(
-    auth,
-    {
-      functionCall: SET_FILTER_FUNCTION_NAME,
-      modelId: model.modelId,
-      providerId: model.providerId,
-      temperature: 0.7,
-      useCache: false,
-    },
-    {
-      conversation: {
-        messages: [
-          {
-            role: "user",
-            content: [{ type: "text", text: userContent }],
-            name: "",
-          },
-        ],
+  const generateFilter = async (
+    content: string
+  ): Promise<Result<string, Error>> => {
+    const generationResult = await runMultiActionsAgent(
+      auth,
+      {
+        functionCall: SET_FILTER_FUNCTION_NAME,
+        modelId: model.modelId,
+        providerId: model.providerId,
+        temperature: 0.7,
+        useCache: false,
       },
-      prompt: getInstructions(providerSpecificInstructions),
-      specifications,
-      forceToolCall: SET_FILTER_FUNCTION_NAME,
-    },
-    {
-      context: {
-        operationType: "trigger_webhook_filter_generator",
-        userId: auth.user()?.sId,
-        workspaceId: owner.sId,
+      {
+        conversation: {
+          messages: [
+            {
+              role: "user",
+              content: [{ type: "text", text: content }],
+              name: "",
+            },
+          ],
+        },
+        prompt: getInstructions(providerSpecificInstructions),
+        specifications,
+        forceToolCall: SET_FILTER_FUNCTION_NAME,
       },
+      {
+        context: {
+          operationType: "trigger_webhook_filter_generator",
+          userId: auth.user()?.sId,
+          workspaceId: owner.sId,
+        },
+      }
+    );
+
+    if (generationResult.isErr()) {
+      return new Err(generationResult.error);
     }
-  );
 
-  if (res.isErr()) {
-    return new Err(res.error);
-  }
-
-  let filter: string | null = null;
-
-  if (res.value.actions) {
-    for (const action of res.value.actions) {
+    for (const action of generationResult.value.actions ?? []) {
       if (action.name === SET_FILTER_FUNCTION_NAME) {
-        filter = action.arguments.filter;
+        return new Ok(action.arguments.filter);
       }
     }
-  }
 
-  if (!filter) {
     return new Err(
       new Error("Unable to generate a filter. Please try rephrasing.")
     );
+  };
+
+  const generationResult = await generateFilter(userContent);
+  if (generationResult.isErr()) {
+    return new Err(generationResult.error);
   }
 
-  return new Ok({ filter });
+  const validationResult = validateWebhookFilter(
+    generationResult.value,
+    event.schema
+  );
+  if (validationResult.isOk()) {
+    return new Ok({ filter: generationResult.value });
+  }
+
+  const repairContent = `${userContent}
+
+<invalid_filter>
+${generationResult.value}
+</invalid_filter>
+
+<validation_error>
+${validationResult.error.message}
+</validation_error>
+
+The previous filter is invalid. Generate a corrected filter that resolves the validation error.`;
+
+  const repairResult = await generateFilter(repairContent);
+  if (repairResult.isErr()) {
+    return new Err(repairResult.error);
+  }
+
+  const repairValidationResult = validateWebhookFilter(
+    repairResult.value,
+    event.schema
+  );
+  if (repairValidationResult.isErr()) {
+    return new Err(
+      new Error(
+        `Unable to generate a valid filter: ${repairValidationResult.error.message}`
+      )
+    );
+  }
+
+  return new Ok({ filter: repairResult.value });
 }
