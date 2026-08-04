@@ -23,7 +23,7 @@ interface SkillDetailsButtonBarProps {
   onFavoriteChange?: (
     skill: GetSkillsWithRelationsResponseBody["skills"][number],
     isFavorite: boolean
-  ) => void;
+  ) => Promise<void>;
 }
 
 export function SkillDetailsButtonBar({
