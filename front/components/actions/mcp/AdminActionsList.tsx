@@ -112,7 +112,7 @@ export const AdminActionsList = ({
     owner,
   });
 
-  const [assistantSId, setAssistantSId] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string | null>(null);
   const [skillId, setSkillId] = useState<string | null>(null);
 
   const { usage } = useMCPServersUsage({
@@ -278,7 +278,7 @@ export const AdminActionsList = ({
           <div className="flex h-12 w-full items-center justify-center">
             <UsedByButton
               usage={info.row.original.usage}
-              onItemClick={setAssistantSId}
+              onItemClick={setAgentId}
               onSkillClick={setSkillId}
             />
           </div>
@@ -385,8 +385,8 @@ export const AdminActionsList = ({
       <AgentDetailsSheet
         owner={owner}
         user={user}
-        agentId={assistantSId}
-        onClose={() => setAssistantSId(null)}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
       />
       <SkillDetailsSheetById
         owner={owner}
