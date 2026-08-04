@@ -1,3 +1,4 @@
+import { setWorkspaceGovernancePermission } from "@app/lib/api/permissions/governance";
 import { makeScript } from "@app/scripts/helpers";
 import type {
   AgentAsset,
@@ -68,7 +69,20 @@ makeScript({}, async ({ execute }, logger) => {
     members: bob ? [bob] : [],
   });
 
-  // 3. Create skills. The current user's skill requires the restricted space and has both Bob and
+  // 3. Open skill creation to everyone
+  logger.info("Opening skill creation to everyone...");
+  if (execute) {
+    const res = await setWorkspaceGovernancePermission(ctx.auth, {
+      grantType: "create",
+      resourceType: "skill",
+      configuration: { scope: "everyone" },
+    });
+    if (res.isErr()) {
+      throw res.error;
+    }
+  }
+
+  // 4. Create skills. The current user's skill requires the restricted space and has both Bob and
   // Alfred as editors. Bob is a member of the space, Alfred is not, so the skill builder shows the
   // warning for Alfred only.
   logger.info("Seeding Alfred's unpublished skill...");
@@ -81,7 +95,7 @@ makeScript({}, async ({ execute }, logger) => {
     spaces: restrictedSpace ? [restrictedSpace] : [],
   });
 
-  // 4. Create an agent edited by the current user that uses Alfred's unpublished skill.
+  // 5. Create an agent edited by the current user that uses Alfred's unpublished skill.
   logger.info("Seeding agents...");
   await seedAgents(ctx, agents, {
     skills: alfredSkill ? [alfredSkill] : [],
