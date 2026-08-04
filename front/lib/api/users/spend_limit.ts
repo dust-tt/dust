@@ -446,13 +446,27 @@ export async function expireUserSpendLimitOverride(
     userId: user.sId,
   });
   if (clearWarningResult.isErr()) {
-    logger.warn(
+    // Same rationale as the cap alert above: put the DB override back so the
+    // sweep retries this membership (and re-clears the now-idempotent cap
+    // alert) until both Metronome alerts are confirmed gone.
+    await membership.updatePoolCapOverride({
+      poolCapOverrideAwuCredits: previousAwuCredits,
+      poolCapOverrideExpiresAt: previousExpiresAt,
+    });
+    logger.error(
       {
         workspaceId: workspace.sId,
         userId: user.sId,
+        previousAwuCredits,
         err: clearWarningResult.error,
       },
-      "[SpendLimitExpiration] Failed to clear warning alert; continuing"
+      "[SpendLimitExpiration] Failed to clear warning alert; reverted DB override back, will retry on next sweep"
+    );
+    return new Err(
+      new UserSpendLimitError(
+        "metronome_error",
+        clearWarningResult.error.message
+      )
     );
   }
 
