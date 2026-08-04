@@ -66,6 +66,7 @@ export { default as MicrosoftWordLogo } from "./MicrosoftWord";
 export { default as MinimaxLogo } from "./Minimax";
 export { default as MiroLogo } from "./Miro";
 export { default as MistralLogo } from "./Mistral";
+export { default as ModjoLogo } from "./Modjo";
 export { default as MondayLogo } from "./Monday";
 export { default as MoonshotLogo } from "./Moonshot";
 export { default as NaptaLogo } from "./Napta";
