@@ -5,7 +5,9 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { parse } from "csv-parse/sync";
 import { promises as fs } from "fs";
+import { extname } from "path";
 import { z } from "zod";
 
 import { makeScript } from "./helpers";
@@ -14,11 +16,17 @@ const EmailSchema = z
   .string()
   .email()
   .transform((email) => email.toLowerCase());
-const MergeFileSchema = z.array(
+const JsonMergeFileSchema = z.array(
   z.object({
     _comment: z.string().min(1),
     email: EmailSchema,
     sIdToKeep: z.string().min(1),
+  })
+);
+const CsvMergeFileSchema = z.array(
+  z.object({
+    "From address": EmailSchema,
+    "To address": EmailSchema,
   })
 );
 const MIN_ADMINS_FOR_REVOCATION = 2;
@@ -59,34 +67,82 @@ function parseComment(comment: string) {
     .parse({ oldEmail, primaryEmail });
 }
 
-async function loadRecords(filePath: string) {
+async function loadRecords(filePath: string): Promise<MergeRecord[]> {
   const content = await fs.readFile(filePath, "utf-8");
-  const inputRecords = MergeFileSchema.parse(JSON.parse(content));
+  let records: MergeRecord[];
+
+  if (extname(filePath).toLowerCase() === ".csv") {
+    const inputRecords = CsvMergeFileSchema.parse(
+      parse(content, {
+        bom: true,
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      })
+    );
+    const oldUsers = await UserResource.fetchByEmails(
+      inputRecords.map((record) => record["From address"])
+    );
+    const oldUserByEmail = new Map<string, UserResource>();
+    const duplicateOldEmails = new Set<string>();
+    for (const oldUser of oldUsers) {
+      const email = oldUser.email.toLowerCase();
+      if (oldUserByEmail.has(email)) {
+        duplicateOldEmails.add(email);
+        continue;
+      }
+      oldUserByEmail.set(email, oldUser);
+    }
+
+    records = inputRecords.map((record) => {
+      const oldEmail = record["From address"];
+      if (duplicateOldEmails.has(oldEmail)) {
+        throw new Error(`Multiple users found with email: ${oldEmail}`);
+      }
+      const oldUser = oldUserByEmail.get(oldEmail);
+      if (!oldUser) {
+        throw new Error(`No user found with email: ${oldEmail}`);
+      }
+
+      return {
+        primaryEmail: record["To address"],
+        expectedOldEmail: oldEmail,
+        oldUserId: oldUser.sId,
+      };
+    });
+  } else {
+    const inputRecords = JsonMergeFileSchema.parse(JSON.parse(content));
+    records = inputRecords.map(({ _comment, email, sIdToKeep }) => {
+      const { oldEmail, primaryEmail } = parseComment(_comment);
+      if (primaryEmail !== email) {
+        throw new Error(`Comment primary email does not match: ${email}`);
+      }
+
+      // The issue mapping names this field sIdToKeep, but its comment identifies it as the old
+      // account whose data must move to the newly provisioned account at `email`.
+      return {
+        primaryEmail: email,
+        expectedOldEmail: oldEmail,
+        oldUserId: sIdToKeep,
+      };
+    });
+  }
+
   const primaryEmails = new Set<string>();
   const oldUserIds = new Set<string>();
 
-  return inputRecords.map(({ _comment, email, sIdToKeep }) => {
-    const { oldEmail, primaryEmail } = parseComment(_comment);
-    if (primaryEmail !== email) {
-      throw new Error(`Comment primary email does not match: ${email}`);
+  for (const record of records) {
+    if (primaryEmails.has(record.primaryEmail)) {
+      throw new Error(`Duplicate primary email: ${record.primaryEmail}`);
     }
-    if (primaryEmails.has(email)) {
-      throw new Error(`Duplicate primary email: ${email}`);
+    if (oldUserIds.has(record.oldUserId)) {
+      throw new Error(`Duplicate old user ID: ${record.oldUserId}`);
     }
-    if (oldUserIds.has(sIdToKeep)) {
-      throw new Error(`Duplicate old user ID: ${sIdToKeep}`);
-    }
-    primaryEmails.add(email);
-    oldUserIds.add(sIdToKeep);
+    primaryEmails.add(record.primaryEmail);
+    oldUserIds.add(record.oldUserId);
+  }
 
-    // The issue mapping names this field sIdToKeep, but its comment identifies it as the old
-    // account whose data must move to the newly provisioned account at `email`.
-    return {
-      primaryEmail: email,
-      expectedOldEmail: oldEmail,
-      oldUserId: sIdToKeep,
-    };
-  });
+  return records;
 }
 
 function indexMembers(members: Member[]) {
@@ -106,11 +162,12 @@ function indexMembers(members: Member[]) {
     if (memberWorkspace.role === "admin") {
       activeAdminCount += 1;
     }
-    if (primaryByEmail.has(member.email)) {
-      duplicateEmails.add(member.email);
+    const email = member.email.toLowerCase();
+    if (primaryByEmail.has(email)) {
+      duplicateEmails.add(email);
       continue;
     }
-    primaryByEmail.set(member.email, member);
+    primaryByEmail.set(email, member);
   }
 
   return { memberById, primaryByEmail, duplicateEmails, activeAdminCount };
@@ -281,7 +338,8 @@ makeScript(
     },
     file: {
       alias: "f",
-      describe: "Issue JSON mapping primary emails to old user IDs",
+      describe:
+        "CSV mapping From address to To address, or issue JSON mapping primary emails to old user IDs",
       type: "string" as const,
       demandOption: true,
     },
