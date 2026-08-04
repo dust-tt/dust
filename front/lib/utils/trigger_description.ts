@@ -4,13 +4,10 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
 export function getTriggerDescription(trigger: TriggerType): string {
   switch (trigger.kind) {
-    case "schedule":
-      try {
-        // cronstrue throws on expressions it cannot parse.
-        return `Runs ${describeScheduleConfig(trigger.configuration)}.`;
-      } catch {
-        return "";
-      }
+    case "schedule": {
+      const schedule = describeScheduleConfig(trigger.configuration);
+      return schedule ? `Runs ${schedule}.` : "";
+    }
     case "webhook":
       return trigger.configuration.event
         ? `Triggered by ${trigger.configuration.event} events.`

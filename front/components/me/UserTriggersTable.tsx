@@ -5,7 +5,6 @@ import { getTriggerDescription } from "@app/lib/utils/trigger_description";
 import type { GetUserTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { TriggerStatus } from "@app/types/assistant/triggers";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -33,21 +32,12 @@ type UserTriggerRow = GetUserTriggersResponseBody["triggers"][number] & {
 
 type ChipColor = React.ComponentProps<typeof Chip>["color"];
 
-function statusChipColor(status: TriggerStatus): ChipColor {
-  switch (status) {
-    case "enabled":
-      return "success";
-    case "disabled":
-      return "primary";
-    case "relocating":
-      return "info";
-    case "downgraded":
-      return "warning";
-    default:
-      assertNeverAndIgnore(status);
-      return "primary";
-  }
-}
+const STATUS_CHIP_COLORS: Record<TriggerStatus, ChipColor> = {
+  enabled: "success",
+  disabled: "primary",
+  relocating: "info",
+  downgraded: "warning",
+};
 
 interface UserTriggersTableProps {
   owner: LightWorkspaceType;
@@ -160,7 +150,7 @@ export function UserTriggersTable({ owner }: UserTriggersTableProps) {
         header: "Status",
         cell: ({ row }) => (
           <DataTable.CellContent>
-            <Chip size="xs" color={statusChipColor(row.original.status)}>
+            <Chip size="xs" color={STATUS_CHIP_COLORS[row.original.status]}>
               {row.original.status.charAt(0).toUpperCase() +
                 row.original.status.slice(1)}
             </Chip>

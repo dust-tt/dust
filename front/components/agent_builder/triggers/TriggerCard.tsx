@@ -63,12 +63,10 @@ export function TriggerCard({
   const isEditor = trigger.editor === user?.id;
   const description = useMemo(() => {
     switch (trigger.kind) {
-      case "schedule":
-        try {
-          return `Runs ${describeScheduleConfig(trigger.configuration)}.`;
-        } catch {
-          return "";
-        }
+      case "schedule": {
+        const schedule = describeScheduleConfig(trigger.configuration);
+        return schedule ? `Runs ${schedule}.` : "";
+      }
       case "webhook":
         return getWebhookCardDescription({
           webhookTrigger: trigger,
