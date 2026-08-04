@@ -217,9 +217,13 @@ app.get(
 
     if (withRelations === "true") {
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);
-      const messageCountMap = withMessageCount
-        ? await SkillResource.batchFetchMessageCounts(auth, skills)
-        : null;
+      let messageCountMap: Map<string, number> | null = null;
+      if (withMessageCount) {
+        messageCountMap = await SkillResource.batchFetchMessageCounts(
+          auth,
+          skills
+        );
+      }
       const editorsMap = await SkillResource.batchListEditors(auth, skills);
       const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
         auth,
