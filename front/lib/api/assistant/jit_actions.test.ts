@@ -205,6 +205,114 @@ describe("getJITServers", () => {
 
         expect(skillManagementServer).toBeDefined();
       });
+
+      it("does not equip favorite skills when the feature flag is disabled", async () => {
+        await SkillFactory.linkGlobalSkillToAgent(auth, {
+          globalSkillId: "discover_skills",
+          agentConfigurationId: agentConfig.id,
+        });
+
+        const skill = await SkillFactory.create(auth, {
+          name: "Disabled Favorite Skill",
+        });
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { equippedSkills, favoriteSkills } =
+          await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration: agentConfig,
+            conversation: {
+              ...conversation,
+              spaceId: conversationsSpace.sId,
+            },
+          });
+        expect(equippedSkills.map((s) => s.sId)).not.toContain(skill.sId);
+        expect(favoriteSkills.map((s) => s.sId)).not.toContain(skill.sId);
+      });
+
+      it("does not equip favorite skills without discover_skills", async () => {
+        await FeatureFlagFactory.basic(auth, "skill_favorites");
+
+        const skill = await SkillFactory.create(auth, {
+          name: "Favorite Skill Without Discovery",
+        });
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { equippedSkills, favoriteSkills } =
+          await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration: agentConfig,
+            conversation: {
+              ...conversation,
+              spaceId: conversationsSpace.sId,
+            },
+          });
+        expect(equippedSkills.map((s) => s.sId)).not.toContain(skill.sId);
+        expect(favoriteSkills.map((s) => s.sId)).not.toContain(skill.sId);
+      });
+
+      it("equips favorite skills when discovery and favorites are enabled", async () => {
+        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+        await FeatureFlagFactory.basic(auth, "skill_favorites");
+        await SkillFactory.linkGlobalSkillToAgent(auth, {
+          globalSkillId: "discover_skills",
+          agentConfigurationId: agentConfig.id,
+        });
+
+        const skill = await SkillFactory.create(auth, {
+          name: "Favorite Skill",
+        });
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { equippedSkills, favoriteSkills } =
+          await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration: agentConfig,
+            conversation: {
+              ...conversation,
+              spaceId: conversationsSpace.sId,
+            },
+          });
+        expect(equippedSkills.map((s) => s.sId)).not.toContain(skill.sId);
+        expect(favoriteSkills.map((s) => s.sId)).toContain(skill.sId);
+
+        const jitServers = await getJITServers(auth, {
+          agentConfiguration: agentConfig,
+          conversation: { ...conversation, spaceId: conversationsSpace.sId },
+          attachments: [],
+        });
+
+        expect(
+          jitServers.some((server) => server.name === "skill_management")
+        ).toBe(true);
+      });
+
+      it("keeps discoverable favorites in the shared equipped skills", async () => {
+        await FeatureFlagFactory.basic(auth, "skill_favorites");
+        await SkillFactory.linkGlobalSkillToAgent(auth, {
+          globalSkillId: "discover_skills",
+          agentConfigurationId: agentConfig.id,
+        });
+
+        const skill = await SkillFactory.create(auth, {
+          name: "Discoverable Favorite Skill",
+          availability: "users_and_agents",
+        });
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { equippedSkills, favoriteSkills } =
+          await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration: agentConfig,
+            conversation: {
+              ...conversation,
+              spaceId: conversationsSpace.sId,
+            },
+          });
+
+        expect(equippedSkills.map((s) => s.sId)).toContain(skill.sId);
+        expect(favoriteSkills.map((s) => s.sId)).not.toContain(skill.sId);
+      });
     });
 
     it("keeps configured custom skills equipped after enabling them, but not system skills", async () => {

@@ -303,12 +303,13 @@ export function toBaseMessages(
 
 // Places provider user-message cache breakpoints at the same boundaries as the
 // legacy Anthropic router. Returns a new array; does not mutate its input.
-//   - Equipped-skills prefix: always. When the first message is the
+//   - Shared equipped-skills prefix: always. When the first message is the
 //     `name: "system"` user block (the stable per agent+workspace skills list),
 //     its last content block is cached for cross-conversation reuse. Mirrors the
 //     legacy `isFirst && message.name === "system"` breakpoint. `toBaseMessages`
 //     emits one BaseMessage per user content item, so messages[0]'s last block
-//     sits at index (content.length - 1).
+//     sits at index (content.length - 1). A following user-specific favorites
+//     message uses `name: "user"` and is intentionally left unmarked.
 //   - Conversation tail: only when `explicitTailBreakpoint` is set — i.e. on
 //     surfaces without the request-level automatic cache_control (Vertex/
 //     agent-platform). The last user message is cached, mirroring legacy's

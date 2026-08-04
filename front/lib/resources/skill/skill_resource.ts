@@ -10,6 +10,7 @@ import {
   hasSharedMembership,
 } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -1750,6 +1751,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     enabledSkills: SkillResource[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
+    favoriteSkills: SkillResource[];
   }> {
     const { agentConfiguration, conversation } = params;
     // Light type-guard to check whether we have a full AgentLoopExecutionData.
@@ -1785,11 +1787,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     let discoverableSkills: SkillResource[] = [];
+    let favoriteSkills: SkillResource[] = [];
     if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
       discoverableSkills = await this.listDiscoverable(auth, {
         agentLoopData,
         effectiveSpaceIds,
       });
+      const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
+      if (hasSkillFavorites) {
+        favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
+          agentLoopData,
+        });
+      }
     }
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
@@ -1862,9 +1871,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ];
     const systemSkillIds = new Set(systemSkills.map((skill) => skill.sId));
 
-    // Equipped skills are the enable-able candidates shown to the model. They
-    // come from the agent configuration, context auto-equipping, Pod defaults,
-    // and discoverable skills. System prompt skills are never enable-able.
+    // Equipped skills are the workspace-shared enable-able candidates shown to
+    // the model. User-specific favorites are returned separately so they don't
+    // invalidate the shared prompt cache prefix.
     const equippedSkillsById = new Map<string, SkillResource>();
     for (const skill of [
       ...autoEquippedSkills,
@@ -1888,6 +1897,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         .filter((s) => !systemSkillIds.has(s.sId))
         .sort(sortByName),
       equippedSkills: [...equippedSkillsById.values()].sort(sortByName),
+      favoriteSkills: favoriteSkills
+        .filter(
+          (skill) =>
+            !systemSkillIds.has(skill.sId) && !equippedSkillsById.has(skill.sId)
+        )
+        .sort(sortByName),
     };
   }
 
