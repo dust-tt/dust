@@ -1,6 +1,6 @@
 /*
 Statement 0
-  - INDEX_DROPPED: Dropping this index means queries that use this index might perform worse because they will no longer will be able to leverage it.
+  - INDEX_DROPPED: Drops the index on the column
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
