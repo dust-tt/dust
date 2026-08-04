@@ -553,7 +553,7 @@ describe("GET /api/w/:wId/skills", () => {
       requestedSpaceIds: [otherPodSpace.id],
     });
 
-    const response = await getSkills(workspace, { podSpaceId: podSpace.sId });
+    const response = await getSkills(workspace, { podId: podSpace.sId });
 
     expect(response.status).toBe(200);
     const skillNames = (await response.json()).skills.map(
@@ -594,6 +594,20 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).toContain("Global Skill");
     expect(skillNames).toContain("Regular Space Skill");
     expect(skillNames).not.toContain("Pod-Scoped Skill");
+  });
+
+  it("rejects combining globalSpaceOnly with podId as mutually exclusive scopes", async () => {
+    const { workspace, user, auth } = await setupTest("admin");
+
+    await SpaceFactory.defaults(auth);
+    const podSpace = await SpaceFactory.project(workspace, user.id);
+
+    const response = await getSkills(workspace, {
+      globalSpaceOnly: "true",
+      podId: podSpace.sId,
+    });
+
+    expect(response.status).toBe(400);
   });
 
   it("should not return instructions or tools in skill list", async () => {
