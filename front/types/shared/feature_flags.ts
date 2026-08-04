@@ -299,12 +299,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "fabiencelier",
   },
-  skill_favorites: {
-    description:
-      "Enable user favorites for skills, including favorite controls and runtime skill availability.",
-    stage: "dust_only",
-    owner: "aubin-tchoi",
-  },
   allow_old_notion_mcp: {
     description:
       "Allow individual workspaces to keep using the old internal Notion MCP server alongside the official one",

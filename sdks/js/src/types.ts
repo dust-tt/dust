@@ -881,7 +881,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "plan_mode"
   | "pod_frame_tabs"
   | "admin_can_see_private_entities"
-  | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
