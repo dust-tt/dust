@@ -7,6 +7,7 @@ import type {
   SkillUsageType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import { QueryTypes } from "sequelize";
 
@@ -14,6 +15,7 @@ import { QueryTypes } from "sequelize";
 // If it is a problem, let's add caching
 const DISABLE_QUERIES = false;
 
+export type MCPServersUsageByAgent = Record<string, AgentsUsageType>;
 export type MCPServersUsage = Record<string, SkillUsageType>;
 
 interface MCPServerUsageRow {
@@ -69,7 +71,7 @@ async function buildVisibilityFilter(auth: Authenticator): Promise<{
 function rowToUsageEntry(
   row: MCPServerUsageRow,
   workspaceId: ModelId
-): { key: string; usage: SkillUsageType } {
+): { key: string; usage: AgentsUsageType } {
   const key =
     row.internalMCPServerId ||
     remoteMCPServerNameToSId({
@@ -86,7 +88,6 @@ function rowToUsageEntry(
         name: row.names[index],
         pictureUrl: row.pictureUrls[index],
       })),
-      skills: [],
     },
   };
 }
@@ -129,9 +130,17 @@ async function fetchSkillsByMCPServer(
   return skillsByMCPServer;
 }
 
-export async function getToolsUsage(
+export function getToolsUsage(
   auth: Authenticator
-): Promise<MCPServersUsage> {
+): Promise<MCPServersUsageByAgent>;
+export function getToolsUsage(
+  auth: Authenticator,
+  options: { withSkills: true }
+): Promise<MCPServersUsage>;
+export async function getToolsUsage(
+  auth: Authenticator,
+  options?: { withSkills: true }
+): Promise<MCPServersUsageByAgent | MCPServersUsage> {
   const owner = auth.workspace();
 
   if (!owner || !auth.isUser()) {
@@ -165,21 +174,33 @@ export async function getToolsUsage(
     `,
     { replacements: params, type: QueryTypes.SELECT }
   );
-  const skillsByMCPServer = await fetchSkillsByMCPServer(auth);
-
-  const result: MCPServersUsage = {};
+  const result: MCPServersUsageByAgent = {};
   for (const row of rows) {
     const { key, usage } = rowToUsageEntry(row, owner.id);
     result[key] = usage;
   }
 
+  if (!options?.withSkills) {
+    return result;
+  }
+
+  const skillsByMCPServer = await fetchSkillsByMCPServer(auth);
+  const resultWithSkills: MCPServersUsage = {};
+  for (const [mcpServerId, usage] of Object.entries(result)) {
+    resultWithSkills[mcpServerId] = {
+      count: usage.count,
+      agents: usage.agents,
+      skills: [],
+    };
+  }
+
   for (const [mcpServerId, skills] of skillsByMCPServer) {
-    const usage = result[mcpServerId];
+    const usage = resultWithSkills[mcpServerId];
     if (usage) {
       usage.skills = skills;
       usage.count += skills.length;
     } else {
-      result[mcpServerId] = {
+      resultWithSkills[mcpServerId] = {
         count: skills.length,
         agents: [],
         skills,
@@ -187,5 +208,5 @@ export async function getToolsUsage(
     }
   }
 
-  return result;
+  return resultWithSkills;
 }

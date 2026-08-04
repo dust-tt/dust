@@ -28,6 +28,7 @@ import {
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SkillUsageType } from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
@@ -38,7 +39,7 @@ import { useMemo, useState } from "react";
 type RowData = {
   mcpServer: MCPServerType;
   mcpServerView?: MCPServerViewType;
-  usage: SkillUsageType | null;
+  usage: AgentsUsageType | SkillUsageType | null;
   isConnected: boolean;
   account: string;
   spaces: SpaceType[];

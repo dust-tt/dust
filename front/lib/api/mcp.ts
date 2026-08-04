@@ -17,7 +17,10 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { MCPServersUsage } from "@app/lib/api/agent_actions";
+import type {
+  MCPServersUsage,
+  MCPServersUsageByAgent,
+} from "@app/lib/api/agent_actions";
 import type {
   PatchMCPServerBodySchema,
   PostRequestActionsAccessBodySchema,
@@ -228,6 +231,10 @@ export type DeleteMCPServerResponseBody = {
 };
 
 export type GetMCPServersUsageResponseBody = {
+  usage: MCPServersUsageByAgent;
+};
+
+export type GetMCPServersUsageWithSkillsResponseBody = {
   usage: MCPServersUsage;
 };
 
