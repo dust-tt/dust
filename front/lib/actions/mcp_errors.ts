@@ -36,3 +36,33 @@ export class MCPError extends Error {
     this.code = code;
   }
 }
+
+export function isMCPError(error: unknown): error is MCPError {
+  return error instanceof MCPError;
+}
+
+/**
+ * Thrown by tool API clients when the service a tool depends on fails unexpectedly: HTTP
+ * 5xx-class responses, provider SDK internal errors, unreachable Dust infra. Caught in
+ * `withToolLogging` and surfaced as a tracked `MCPError`, so it reaches our observability
+ * stack regardless of the tool's error-tracking defaults.
+ *
+ * Must not be used for failures driven by user input or configuration (4xx-class responses,
+ * invalid queries, permission errors) nor for arbitrary user-provided endpoints (e.g.
+ * http_client URLs): those are not actionable on our side.
+ */
+export class ProviderError extends Error {
+  public readonly status?: number;
+
+  constructor(
+    message: string,
+    { status, cause }: { status?: number; cause?: Error } = {}
+  ) {
+    super(message, { cause });
+    this.status = status;
+  }
+}
+
+export function isProviderError(error: unknown): error is ProviderError {
+  return error instanceof ProviderError;
+}

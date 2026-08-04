@@ -1,4 +1,8 @@
-import type { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isMCPError,
+  isProviderError,
+  MCPError,
+} from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
   ToolHandlerResult,
@@ -13,8 +17,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
-import { errorToString } from "@app/types/shared/utils/error_utils";
+import { Err, Ok } from "@app/types/shared/result";
+import {
+  errorToString,
+  normalizeError,
+} from "@app/types/shared/utils/error_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
@@ -186,7 +193,43 @@ function withToolLogging<T>(
     }
     const startTime = performance.now();
 
-    const result = await toolCallback(params, extra);
+    let result: Result<CallToolResult["content"], MCPError>;
+    try {
+      result = await toolCallback(params, extra);
+    } catch (error) {
+      if (isProviderError(error)) {
+        // Unexpected failure of the service the tool depends on, thrown from the lowest
+        // level of the tool's API client: always tracked, regardless of the tool's
+        // error-tracking defaults.
+        result = new Err(
+          new MCPError(error.message, {
+            tracked: true,
+            code: error.status,
+            cause: error,
+          })
+        );
+      } else if (isMCPError(error)) {
+        // Thrown from call stacks where plumbing a Result back is impractical; honor the
+        // error as if it had been returned.
+        result = new Err(error);
+      } else {
+        // Any other throw is a bug: report it, then rethrow (the MCP SDK turns the throw
+        // into a generic isError result for the model).
+        getStatsDClient().increment("use_tools_error.count", 1, [
+          "error_type:uncaught_error",
+          ...tags,
+        ]);
+        logger.error(
+          {
+            ...loggerArgs,
+            duration: performance.now() - startTime,
+            error: normalizeError(error),
+          },
+          "Tool execution uncaught error"
+        );
+        throw error;
+      }
+    }
 
     const elapsed = performance.now() - startTime;
 
@@ -194,7 +237,9 @@ function withToolLogging<T>(
     if (result.isErr()) {
       if (enableAlerting && result.error.tracked) {
         getStatsDClient().increment("use_tools_error.count", 1, [
-          "error_type:run_error",
+          isProviderError(result.error.cause)
+            ? "error_type:provider_error"
+            : "error_type:run_error",
           ...tags,
         ]);
       }
