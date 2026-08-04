@@ -69,8 +69,7 @@ export const SPEND_LIMIT_EXPIRATION_SCHEDULE_ID =
 
 /**
  * Ensures the spend limit expiration schedule exists. Called from the worker
- * on startup (see `worker.ts`) instead of a one-off admin command, so a fresh
- * environment self-registers its schedule.
+ * on startup so a fresh environment self-registers its schedule.
  */
 export async function launchSpendLimitExpirationSchedule(): Promise<
   Result<undefined, Error>

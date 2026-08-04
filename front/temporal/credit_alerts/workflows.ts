@@ -21,10 +21,8 @@ const { expireWorkspacePoolCapOverridesActivity } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "2 minutes",
-  // Fail fast after a couple of attempts: this child workflow then closes,
-  // freeing up its workspace-scoped workflowId so the next hourly tick's
-  // `startChild` call picks the workspace back up in a fresh child instead
-  // of this one retrying indefinitely.
+  // Fail fast after so the next hourly tick's
+  // picks the workspace back up in a fresh child
   retry: { maximumAttempts: 2 },
 });
 
@@ -49,17 +47,12 @@ export async function creditAlertWorkflow({
 export async function expirePoolCapOverridesWorkflow(): Promise<void> {
   const workspaceIds = await getWorkspacesWithExpiredPoolCapOverrideActivity();
 
-  // Naive fan-out: just start each per-workspace sweep and move on. Abandon
-  // detaches the children from this workflow's lifecycle, and each child
-  // fails on its own after a couple of attempts (see the activity's retry
-  // policy above) instead of this workflow waiting on or tracking their
-  // outcome.
+  // Naive fan-out: just start each per-workspace sweep and move on.
   //
   // The workflowId is scoped only by workspaceId (not by this run), so if a
   // previous tick's sweep for the same workspace is still running, this
   // tick skips it instead of starting a second, concurrent sweep over the
-  // same memberships. Once that sweep closes (success or failure), the next
-  // tick is free to start a new one for the same workspace.
+  // same memberships.
   for (const workspaceId of workspaceIds) {
     try {
       await startChild(expireWorkspacePoolCapOverridesWorkflow, {
