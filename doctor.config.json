@@ -1,6 +1,7 @@
 {
   "$schema": "https://react.doctor/schema/config.json",
   "rules": {
-    "react-doctor/only-export-components": "off"
+    "react-doctor/only-export-components": "off",
+    "react-doctor/js-combine-iterations": "off"
   }
 }
