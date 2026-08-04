@@ -260,29 +260,7 @@ describe("searchCapabilityIndex ranking", () => {
     expect(result.map((item) => item.id)).toEqual(["alias", "prefix"]);
   });
 
-  it("does not let a partial alias outrank a canonical prefix", () => {
-    const result = searchCapabilityIndex({
-      items: [
-        {
-          id: "frames",
-          searchAliases: ["Frames"],
-          sortName: "Create Frames",
-        },
-        {
-          id: "canonical-prefix",
-          sortName: "Fraud Analysis",
-        },
-      ],
-      query: "fra",
-    });
-
-    expect(result.map((item) => item.id)).toEqual([
-      "canonical-prefix",
-      "frames",
-    ]);
-  });
-
-  it("ranks partial alias matches below canonical name matches", () => {
+  it("ranks partial alias matches below canonical names when favorite", () => {
     const result = searchCapabilityIndex({
       items: [
         {
@@ -291,6 +269,7 @@ describe("searchCapabilityIndex ranking", () => {
         },
         {
           id: "alias",
+          isFavorite: true,
           searchAliases: ["Sandbox"],
           sortName: "Computer",
         },

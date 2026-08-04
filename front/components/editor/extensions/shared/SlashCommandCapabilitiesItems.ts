@@ -116,9 +116,9 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
 
     if (a.matchedName !== null && b.matchedName !== null) {
       return (
-        favoriteComparison ||
         Number(a.matchedName.isLowPriorityAlias) -
           Number(b.matchedName.isLowPriorityAlias) ||
+        favoriteComparison ||
         compareForAutocompleteSort(
           normalizedQuery,
           a.matchedName.name,

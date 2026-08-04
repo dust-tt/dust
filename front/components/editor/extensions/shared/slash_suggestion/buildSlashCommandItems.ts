@@ -47,10 +47,8 @@ export function buildCapabilitySlashCommandItems<
   toolFilter?: (tool: SlashCommandToolSuggestion<V>) => boolean;
   tools: SlashCommandToolSuggestion<V>[];
 }): SlashCommand[] {
-  const normalizedQuery = query.trim().toLowerCase();
-
   const matches = searchCapabilityIndex({
-    query: normalizedQuery,
+    query,
     items: [
       ...skills
         .filter((skill) => skill.sId !== excludeSkillId)
@@ -61,7 +59,7 @@ export function buildCapabilitySlashCommandItems<
           normalizedDescription: skill.userFacingDescription?.toLowerCase(),
           searchAliases: GLOBAL_SKILL_SEARCH_ALIASES[skill.sId],
           skill,
-          sortName: skill.name.toLowerCase(),
+          sortName: skill.name,
         })),
       ...tools
         .filter((tool) => toolFilter?.(tool) ?? true)
@@ -70,7 +68,7 @@ export function buildCapabilitySlashCommandItems<
           normalizedDescription:
             getMcpServerViewDescription(tool)?.toLowerCase(),
           tool,
-          sortName: getToolSlashCommandLabel(tool).toLowerCase(),
+          sortName: getToolSlashCommandLabel(tool),
         })),
     ],
   });
