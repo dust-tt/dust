@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.65",
+      tag: "0.8.66",
     });
   });
 
@@ -265,10 +265,19 @@ describe("sandbox image registry", () => {
       copyOperations,
       "/etc/systemd/system/dust-egress-resolver.service"
     );
+    const resolve1Policy = getCopiedContent(
+      copyOperations,
+      "/etc/dbus-1/system.d/dust-resolve1.conf"
+    );
+    const resolvedIpcDropIn = getCopiedContent(
+      copyOperations,
+      "/etc/systemd/system/systemd-resolved.service.d/dust-ipc.conf"
+    );
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
         "chmod 755 /etc/dust/egress-nftables.sh",
+        "mkdir -p /etc/dbus-1/system.d /etc/systemd/system/systemd-resolved.service.d",
         "systemctl daemon-reload && systemctl enable systemd-resolved.service dust-egress-resolver.service dust-egress-nftables.service",
       ])
     );
@@ -311,6 +320,19 @@ describe("sandbox image registry", () => {
     expect(resolverUnit).toContain("ProtectSystem=strict");
     expect(resolverUnit).toContain("RestrictAddressFamilies=AF_INET");
     expect(resolverUnit).toContain("MemoryDenyWriteExecute=yes");
+
+    for (const user of ["agent", "agent-proxied"]) {
+      expect(resolve1Policy).toContain(`<policy user="${user}">`);
+    }
+    expect(
+      resolve1Policy.match(
+        /<deny send_destination="org\.freedesktop\.resolve1"\/>/g
+      )
+    ).toHaveLength(2);
+    expect(resolvedIpcDropIn).toContain("[Service]");
+    expect(resolvedIpcDropIn).toContain(
+      "ExecStartPost=/bin/chmod 0600 /run/systemd/resolve/io.systemd.Resolve"
+    );
 
     expect(nftablesScript).toContain("nft add table ip dust-egress");
     expect(nftablesScript).toContain('CONTROLLED_UIDS="1002 1003"');
