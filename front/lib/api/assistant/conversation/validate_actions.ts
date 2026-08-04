@@ -27,6 +27,134 @@ import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
+
+function getAuditLogDecision(
+  approvalState: ActionApprovalStateType
+): "approved" | "rejected" {
+  switch (approvalState) {
+    case "approved":
+    case "always_approved":
+      return "approved";
+    case "rejected":
+      return "rejected";
+    default:
+      return assertNever(approvalState);
+  }
+}
+
+type ApprovalRequestAuditStatus = "active" | "retry" | "stale";
+
+// Attribution for the audit event, kept separate from the deciding identity:
+// proposed_by_type explains the origin of the tool action, decided_by_type who
+// held the authority to approve or reject it.
+type AuditActorType = "ai_agent" | "human_user" | "system" | "integration";
+
+// Every approval request on this path originates from an agent's tool call.
+const PROPOSED_BY_AI_AGENT: AuditActorType = "ai_agent";
+
+function extractDataSourceId(input: unknown): string | null {
+  if (isString(input)) {
+    return input.split("/").pop() ?? input;
+  }
+
+  if (!input || typeof input !== "object" || !("uri" in input)) {
+    return null;
+  }
+
+  const { uri } = input;
+  return isString(uri) ? uri.split("/").pop() ?? uri : null;
+}
+
+function extractAccessedDataSourceIds(
+  inputs: Record<string, unknown>
+): string {
+  const dataSources = inputs.dataSources;
+  if (!Array.isArray(dataSources)) {
+    return "";
+  }
+
+  return dataSources.map(extractDataSourceId).filter(isString).join(",");
+}
+
+async function emitToolApprovalResolvedAuditEvent({
+  action,
+  approvalState,
+  auth,
+  conversationId,
+  messageId,
+  requestStatus,
+}: {
+  action: AgentMCPActionResource;
+  approvalState: ActionApprovalStateType;
+  auth: Authenticator;
+  conversationId: string;
+  messageId: string;
+  requestStatus: ApprovalRequestAuditStatus;
+}): Promise<void> {
+  try {
+    const owner = auth.getNonNullableWorkspace();
+    const user = auth.user();
+    const agentConfiguration = await action.getLightAgentConfiguration(auth);
+
+    const auditEvent = emitAuditLogEvent({
+      auth,
+      action: "tool.approval_resolved",
+      targets: [
+        buildAuditLogTarget("workspace", owner),
+        buildAuditLogTarget("agent", {
+          sId: agentConfiguration?.sId ?? "unknown",
+          name: agentConfiguration?.name ?? "unknown",
+        }),
+        buildAuditLogTarget("tool", {
+          sId: action.toolConfiguration.name,
+          name: action.toolConfiguration.originalName,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        action_id: String(action.sId),
+        tool_name: String(action.toolConfiguration.originalName),
+        mcp_server_name: String(action.toolConfiguration.mcpServerName),
+        conversation_id: String(conversationId),
+        agent_message_id: String(messageId),
+        stake_level: String(action.toolConfiguration.permission),
+        decision: getAuditLogDecision(approvalState),
+        request_status: requestStatus,
+        deciding_user_id: user?.sId ?? "unknown",
+        deciding_user_email: user?.email ?? "unknown",
+        proposed_by_type: PROPOSED_BY_AI_AGENT,
+        decided_by_type: user ? "human_user" : "system",
+        accessed_data_source_ids: extractAccessedDataSourceIds(
+          action.augmentedInputs
+        ),
+      },
+    });
+    void auditEvent.catch((error) => {
+      logger.error(
+        {
+          ...normalizeError(error),
+          actionId: action.sId,
+          conversationId,
+          messageId,
+        },
+        "Failed to emit tool approval decision audit event"
+      );
+    });
+  } catch (error) {
+    logger.error(
+      {
+        ...normalizeError(error),
+        actionId: action.sId,
+        conversationId,
+        messageId,
+      },
+      "Failed to prepare tool approval decision audit event"
+    );
+  }
+}
 
 export async function validateAction(
   auth: Authenticator,
@@ -89,6 +217,9 @@ export async function validateAction(
     );
   }
 
+  const activeRequestStatus: ApprovalRequestAuditStatus =
+    agentMessageVersion > 0 ? "retry" : "active";
+
   if (action.status !== "blocked_validation_required") {
     return new Err(
       new DustError(
@@ -100,10 +231,19 @@ export async function validateAction(
 
   // Stale approval links must not relaunch an already terminated agent message.
   if (!(await action.canAgentMessageResume(auth))) {
+    void emitToolApprovalResolvedAuditEvent({
+      action,
+      approvalState,
+      auth,
+      conversationId,
+      messageId,
+      requestStatus: "stale",
+    });
+
     return new Err(
       new DustError(
         "action_not_blocked",
-        "Action belongs to an agent message that can no longer resume"
+        "Action request is stale and can no longer be validated"
       )
     );
   }
@@ -160,6 +300,15 @@ export async function validateAction(
 
     return new Ok(undefined);
   }
+
+  void emitToolApprovalResolvedAuditEvent({
+    action,
+    approvalState,
+    auth,
+    conversationId,
+    messageId,
+    requestStatus: activeRequestStatus,
+  });
 
   // Emit an audit event for the approval decision. Fire-and-forget and fully
   // isolated: the agent-config lookup must never block or break the approval

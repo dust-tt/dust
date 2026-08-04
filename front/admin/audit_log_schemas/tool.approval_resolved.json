@@ -21,6 +21,10 @@
     "action_id": "string",
     "deciding_user_id": "string",
     "deciding_user_email": "string",
+    "request_status": "string",
+    "accessed_data_source_ids": "string",
+    "proposed_by_type": "string",
+    "decided_by_type": "string",
     "actor_type": "string"
   }
 }

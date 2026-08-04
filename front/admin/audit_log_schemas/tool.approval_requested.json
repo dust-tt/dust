@@ -12,12 +12,14 @@
     }
   ],
   "metadata": {
+    "action_id": "string",
     "tool_name": "string",
     "mcp_server_name": "string",
     "stake_level": "string",
     "conversation_id": "string",
     "agent_message_id": "string",
-    "action_id": "string",
+    "request_status": "string",
+    "accessed_data_source_ids": "string",
     "initiating_user_id": "string",
     "initiating_user_email": "string",
     "actor_type": "string"
