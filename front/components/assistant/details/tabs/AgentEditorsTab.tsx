@@ -123,6 +123,7 @@ export function AgentEditorsTab({
         )}
       </div>
       <MembersList
+        allowRemoveSelfAndProvisionedUsers
         currentUser={user}
         membersData={{
           members: selectedEditors.map((user) => ({
