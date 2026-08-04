@@ -19,27 +19,29 @@ const NON_JSON_SNIPPET_MAX_CHARS: usize = 512;
 ///   `DUST_SANDBOX_TOKEN` is set. As a testing/local convenience, when there is
 ///   no sandbox token the API call is skipped and the bare runner response is
 ///   written to dsbx's stdout instead (previous behavior).
-/// - `stdout`: print a protocol v3 envelope on stdout. Exit 0 whenever a
-///   well-formed envelope was written, including for runner `ok:false`, so the
-///   worker keeps structured errors. Never POSTs the callback.
+/// - `stdout`: print a protocol v3 envelope on stdout and exit 0, including for
+///   runner `ok:false` and for failures that keep the function from being
+///   spawned at all, so the worker keeps structured errors. Never POSTs the
+///   callback.
 pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Result<()> {
     let started = Instant::now();
-    let (code, captured) = spawn_function("run", name, true, true).await?;
+    let spawned = spawn_function("run", name, true, true).await;
     let runner_ms = started.elapsed().as_millis() as u64;
-    let response = captured.unwrap_or_default();
 
     match result_delivery {
-        ResultDelivery::Callback => deliver_callback(name, code, &response).await,
-        ResultDelivery::Stdout => {
-            deliver_stdout(
-                &response,
-                code,
-                TimingsMs {
-                    total: started.elapsed().as_millis() as u64,
-                    runner: runner_ms,
-                },
-            );
+        // Spawn failures keep propagating: the bare `{error}` line emit_error
+        // printed is the contract here, and the exit code stays non-zero.
+        ResultDelivery::Callback => {
+            let (code, captured) = spawned?;
+            deliver_callback(name, code, &captured.unwrap_or_default()).await
         }
+        ResultDelivery::Stdout => deliver_stdout(
+            spawned,
+            TimingsMs {
+                total: started.elapsed().as_millis() as u64,
+                runner: runner_ms,
+            },
+        ),
     }
 }
 
@@ -74,8 +76,8 @@ async fn deliver_callback(name: &str, code: i32, response: &str) -> Result<()> {
     std::process::exit(0);
 }
 
-fn deliver_stdout(response: &str, runner_exit_code: i32, timings_ms: TimingsMs) -> ! {
-    let (envelope, code) = stdout_result(response, runner_exit_code, timings_ms);
+fn deliver_stdout(spawned: Result<(i32, Option<String>)>, timings_ms: TimingsMs) -> ! {
+    let (envelope, code) = stdout_result(spawned, timings_ms);
     envelope.write_to_stdout();
     std::process::exit(code);
 }
@@ -85,11 +87,20 @@ fn deliver_stdout(response: &str, runner_exit_code: i32, timings_ms: TimingsMs) 
 /// Exit is always 0 when a well-formed envelope is produced so the worker can
 /// classify from `outcome` instead of treating the process as a hard failure.
 fn stdout_result(
-    response: &str,
-    runner_exit_code: i32,
+    spawned: Result<(i32, Option<String>)>,
     timings_ms: TimingsMs,
 ) -> (ResultEnvelope, i32) {
-    let line = last_non_empty_line(response);
+    // The function never ran (bad name, unset functions dir, missing or
+    // ambiguous bundle, spawn/read failure): stdout delivery owes the worker an
+    // envelope all the same. The bare `{error}` line emit_error already printed
+    // stays ahead of it on stdout; the envelope is the last non-empty line.
+    let (runner_exit_code, captured) = match spawned {
+        Ok(spawned) => spawned,
+        Err(err) => return (ResultEnvelope::stdout_invocation_failed(err.to_string()), 0),
+    };
+
+    let response = captured.unwrap_or_default();
+    let line = last_non_empty_line(&response);
     if line.is_empty() {
         return (
             ResultEnvelope::stdout_invocation_failed(format!(
@@ -141,8 +152,7 @@ mod tests {
     #[test]
     fn stdout_result_wraps_valid_json_and_exits_0() {
         let (envelope, code) = stdout_result(
-            "noise\n{\"ok\":true,\"output\":1}\n",
-            0,
+            Ok((0, Some("noise\n{\"ok\":true,\"output\":1}\n".to_string()))),
             TimingsMs {
                 total: 12,
                 runner: 8,
@@ -159,8 +169,7 @@ mod tests {
     #[test]
     fn stdout_result_exits_0_for_empty_and_non_json() {
         let (empty, empty_code) = stdout_result(
-            "",
-            7,
+            Ok((7, Some(String::new()))),
             TimingsMs {
                 total: 1,
                 runner: 1,
@@ -173,17 +182,41 @@ mod tests {
         );
 
         let (bad, bad_code) = stdout_result(
-            "not-json\n",
-            1,
+            Ok((1, Some("not-json\n".to_string()))),
             TimingsMs {
                 total: 1,
                 runner: 1,
             },
         );
         assert_eq!(bad_code, 0);
-        let message = bad.outcome["error"]["message"].as_str().unwrap();
+        let message = bad.outcome["error"]["message"]
+            .as_str()
+            .expect("invocation_failed message is a string");
         assert!(message.contains("runner exit 1"));
         assert!(message.contains("not-json"));
+    }
+
+    #[test]
+    fn stdout_result_envelopes_spawn_failures_and_exits_0() {
+        let (envelope, code) = stdout_result(
+            Err(anyhow!("function not found: greet")),
+            TimingsMs {
+                total: 1,
+                runner: 1,
+            },
+        );
+        assert_eq!(code, 0);
+        assert_eq!(envelope.delivery, ResultDelivery::Stdout);
+        assert_eq!(
+            envelope.outcome,
+            serde_json::json!({
+                "ok": false,
+                "error": {
+                    "code": "invocation_failed",
+                    "message": "function not found: greet",
+                }
+            })
+        );
     }
 
     #[test]
