@@ -4,4 +4,5 @@ export const GLOBAL_SKILL_SEARCH_ALIASES: Readonly<
   Record<string, readonly string[]>
 > = {
   "go-deep": ["Deep Dive"],
+  "frames": ["Frames"],
 } satisfies Partial<Record<GlobalSkillId, readonly string[]>>;
