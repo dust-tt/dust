@@ -253,6 +253,8 @@ COPY --from=base-deps /app/scripts/db /app/scripts/db
 COPY --from=front-api-build /app/front-api ./front-api
 # Copy migration SQL files (migrations live in front/ but the pre-deploy hook runs from /app/front-api).
 COPY --from=base-deps /app/front/migrations ./front-api/migrations
+# Copy prestop.sh (it lives in front/ but the preStop hook runs from /app/front-api).
+COPY --from=base-deps /app/front/admin/prestop.sh ./front-api/admin/prestop.sh
 
 # Sibling workspaces resolved via @app aliases or transitive imports.
 COPY --from=base-deps /app/sdks/js ./sdks/js
