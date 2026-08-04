@@ -110,6 +110,7 @@ import { Op, UniqueConstraintError } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
+import { destroyForWorkspaceInBatches } from "./storage/wrappers/workspace_models";
 
 export type FileVersion = "processed" | "original" | "public";
 
@@ -462,9 +463,9 @@ export class FileResource extends BaseResource<FileModel> {
       where: { workspaceId },
     });
 
-    return this.model.destroy({
-      where: { workspaceId },
-    });
+    // Batched: `files` can be very large and a single unbounded DELETE blocks concurrent
+    // migrations.
+    return destroyForWorkspaceInBatches(this.model, { workspaceId });
   }
 
   static async deleteAllForUser(

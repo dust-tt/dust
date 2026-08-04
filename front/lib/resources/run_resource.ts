@@ -13,6 +13,7 @@ import {
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { destroyForWorkspaceInBatches } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -341,22 +342,14 @@ export class RunResource extends BaseResource<RunModel> {
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
 
-    assert(typeof workspace.id === "number");
-    await RunUsageModel.destroy({
-      where: {
-        workspaceId: workspace.id,
-        runId: {
-          [Op.in]: Sequelize.literal(
-            // Sequelize prevents other safer constructs due to typing with the destroy method.
-            // `workspace.id` cannot cannot be user provided + assert above.
-            `(SELECT id FROM runs WHERE "workspaceId" = '${workspace.id}')`
-          ),
-        },
-      },
+    // Batched: both tables can be very large for old workspaces. `run_usages` carries its own
+    // `workspaceId` so it is swept directly; it must go first because of its FK on `runId`.
+    await destroyForWorkspaceInBatches(RunUsageModel, {
+      workspaceId: workspace.id,
     });
 
-    return this.model.destroy({
-      where: { workspaceId: workspace.id },
+    return destroyForWorkspaceInBatches(this.model, {
+      workspaceId: workspace.id,
     });
   }
 

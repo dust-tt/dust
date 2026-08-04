@@ -4,6 +4,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { destroyForWorkspaceInBatches } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -420,10 +421,9 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<undefined> {
-    await this.model.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+    // Batched: `agent_memories` grows with users x agents and can be large.
+    await destroyForWorkspaceInBatches(this.model, {
+      workspaceId: auth.getNonNullableWorkspace().id,
     });
   }
 

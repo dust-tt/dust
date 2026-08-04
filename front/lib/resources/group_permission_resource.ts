@@ -6,6 +6,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { destroyForWorkspaceInBatches } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   CapabilitySpec,
@@ -449,8 +450,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // Workspace-scrub hook: drop every grant for the workspace. Must run before groups and the
   // workspace row are torn down, since both FKs are ON DELETE RESTRICT.
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
-    await GroupPermissionModel.destroy({
-      where: { workspaceId: auth.getNonNullableWorkspace().id },
+    // Batched: `group_permissions` can be large and this runs on every downgrade scrub.
+    await destroyForWorkspaceInBatches(GroupPermissionModel, {
+      workspaceId: auth.getNonNullableWorkspace().id,
     });
   }
 
