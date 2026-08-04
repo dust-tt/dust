@@ -231,7 +231,7 @@ export function SkillBuilderSettingsSection({
       )}
 
       {hasSelfImprovingSkills && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Label className="text-base font-semibold text-foreground">
             Self Improvement
           </Label>
