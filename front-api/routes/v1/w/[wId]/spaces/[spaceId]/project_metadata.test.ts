@@ -120,6 +120,8 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       isAdminControlled: false,
       lastTodoAnalysisAt: null,
       pinnedFramePath: null,
+      frameTabs: [],
+      tabsOrder: ["conversations", "tasks", "files", "connected_data"],
       sId: expect.anything(),
       spaceId: space.sId,
       todoGenerationEnabled: false,

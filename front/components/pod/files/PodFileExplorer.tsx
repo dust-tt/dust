@@ -21,7 +21,9 @@ import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManag
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
+import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
 import {
@@ -61,6 +63,7 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   Folder,
+  LayoutAlt02,
   Pin02,
   Tooltip,
   UploadCloud02,
@@ -255,10 +258,19 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
   const isArchived = !!pod.archivedAt;
   const isEditor = pod.isEditor;
+  const { hasFeature } = useFeatureFlags();
+  const hasFrameTabs = hasFeature("pod_frame_tabs");
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
     podId: pod.sId,
     pinnedFramePath: pod.pinnedFramePath ?? null,
+    isEditor,
+  });
+  const { toggleFrameTab, isFrameTab } = usePodFrameTabs({
+    owner,
+    podId: pod.sId,
+    frameTabs: pod.frameTabs ?? [],
+    tabsOrder: pod.tabsOrder ?? [],
     isEditor,
   });
 
@@ -274,7 +286,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       }
 
       const pinned = isPinned(entry.path);
-      return [
+      const items: FileExplorerMenuAction[] = [
         {
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
           icon: Pin02,
@@ -284,8 +296,30 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           },
         },
       ];
+
+      if (hasFrameTabs) {
+        const asTab = isFrameTab(entry.path);
+        items.push({
+          label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
+          icon: LayoutAlt02,
+          onClick: (e) => {
+            e.stopPropagation();
+            void toggleFrameTab(entry.path, { fileName: entry.fileName });
+          },
+        });
+      }
+
+      return items;
     },
-    [isArchived, isEditor, isPinned, togglePin]
+    [
+      hasFrameTabs,
+      isArchived,
+      isEditor,
+      isFrameTab,
+      isPinned,
+      toggleFrameTab,
+      togglePin,
+    ]
   );
 
   const canManuallyManagePodKnowledge =
@@ -703,6 +737,8 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         fileName={framePreview?.fileName}
         podId={pod.sId}
         pinnedFramePath={pod.pinnedFramePath ?? null}
+        frameTabs={pod.frameTabs ?? []}
+        tabsOrder={pod.tabsOrder ?? []}
         isEditor={isEditor}
         isArchived={isArchived}
         isOpen={framePreview !== null}

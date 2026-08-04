@@ -1133,23 +1133,27 @@ export function useUpdatePodMetadata({
     void mutateSpaceInfoRegardlessOfQueryParams();
 
     const title =
-      updates.pinnedFramePath !== undefined
-        ? updates.pinnedFramePath
-          ? "Frame pinned as Pod banner"
-          : "Banner unpinned"
-        : updates.archive !== undefined
-          ? updates.archive
-            ? "Pod archived"
-            : "Pod unarchived"
-          : updates.todoGenerationEnabled !== undefined
-            ? updates.todoGenerationEnabled
-              ? "Automatic task suggestions turned on"
-              : "Automatic task suggestions turned off"
-            : updates.isAdminControlled !== undefined
-              ? updates.isAdminControlled
-                ? "Pod is now admin-controlled"
-                : "Pod is now self-serve"
-              : "Pod updated";
+      updates.frameTabs !== undefined || updates.tabsOrder !== undefined
+        ? updates.frameTabs?.length === 0
+          ? "Frame tabs cleared"
+          : "Pod frame tabs updated"
+        : updates.pinnedFramePath !== undefined
+          ? updates.pinnedFramePath
+            ? "Frame pinned as Pod banner"
+            : "Banner unpinned"
+          : updates.archive !== undefined
+            ? updates.archive
+              ? "Pod archived"
+              : "Pod unarchived"
+            : updates.todoGenerationEnabled !== undefined
+              ? updates.todoGenerationEnabled
+                ? "Automatic task suggestions turned on"
+                : "Automatic task suggestions turned off"
+              : updates.isAdminControlled !== undefined
+                ? updates.isAdminControlled
+                  ? "Pod is now admin-controlled"
+                  : "Pod is now self-serve"
+                : "Pod updated";
 
     sendNotification({
       type: "success",

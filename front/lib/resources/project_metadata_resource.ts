@@ -5,6 +5,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import { normalizeTabsOrder, sortPodFrameTabs } from "@app/types/pod_frame_tab";
 import type { PodMetadataType } from "@app/types/project_metadata";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -223,6 +225,14 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ pinnedFramePath }, transaction);
   }
 
+  async updateFrameTabs(
+    frameTabs: PodFrameTab[],
+    tabsOrder: string[],
+    transaction?: Transaction
+  ) {
+    await this.update({ frameTabs, tabsOrder }, transaction);
+  }
+
   async updateDefaultAgentId(
     defaultAgentId: string | null,
     transaction?: Transaction
@@ -276,6 +286,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       todoGenerationEnabled: this.todoGenerationEnabled,
       lastTodoAnalysisAt: this.lastTodoAnalysisAt?.getTime() ?? null,
       pinnedFramePath: this.pinnedFramePath ?? null,
+      frameTabs: sortPodFrameTabs(this.frameTabs ?? []).map(
+        ({ path, title, icon }) => ({ path, title, icon })
+      ),
+      tabsOrder: normalizeTabsOrder(
+        this.tabsOrder ?? [],
+        (this.frameTabs ?? []).map((tab) => tab.path)
+      ),
       defaultAgentId: this.defaultAgentId ?? null,
       defaultSkillIds: this.defaultSkillIds,
       isAdminControlled: this.isAdminControlled,

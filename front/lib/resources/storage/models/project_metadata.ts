@@ -5,6 +5,7 @@ import {
 } from "@app/lib/resources/storage/data_types";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
 export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataModel> {
@@ -26,6 +27,13 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare description: string | null;
   /** Scoped path to a project frame file, e.g. `project/banner.html`. */
   declare pinnedFramePath: CreationOptional<string | null>;
+  /** Frames promoted as custom pod tabs (shared). */
+  declare frameTabs: CreationOptional<PodFrameTab[]>;
+  /**
+   * Interleaved nav order before Settings: system tab ids + frame paths.
+   * Empty means default (system tabs then frame paths).
+   */
+  declare tabsOrder: CreationOptional<string[]>;
   /** sId of the agent pre-selected for new conversations in this pod. Null = @dust. */
   declare defaultAgentId: CreationOptional<string | null>;
   declare defaultSkillsIds: CreationOptional<string[] | null>;
@@ -72,6 +80,16 @@ ProjectMetadataModel.init(
     pinnedFramePath: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    frameTabs: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
+    },
+    tabsOrder: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
     },
     defaultAgentId: {
       type: DataTypes.STRING,

@@ -1,16 +1,31 @@
+import { EditPodFrameTabDialog } from "@app/components/pod/files/EditPodFrameTabDialog";
 import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
 import { PodPageContent } from "@app/components/pod/PodPageContent";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import {
   DEFAULT_POD_UI_PREFERENCES,
-  type PodTab,
+  isValidPodTabValue,
   usePodTabs,
 } from "@app/hooks/useSpaceProjectTabs";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import {
+  buildPodNavItemsBeforeSettings,
+  makePodFrameTabValue,
+  normalizeTabsOrder,
+  parsePodFrameTabPath,
+  sortPodFrameTabs,
+} from "@app/types/pod_frame_tab";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   CheckCircle,
   CloudArrowLeftRight,
@@ -22,11 +37,36 @@ import {
   Settings01,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useState } from "react";
+
+const SYSTEM_TAB_TRIGGERS = {
+  conversations: {
+    label: "Conversations",
+    icon: MessageChatSquare,
+  },
+  tasks: {
+    label: "Tasks",
+    icon: CheckCircle,
+  },
+  files: {
+    label: "Files",
+    icon: Folder,
+  },
+  connected_data: {
+    label: "Connected Data",
+    icon: CloudArrowLeftRight,
+  },
+} as const;
 
 export function PodPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const podId = useActivePodId();
+  const hasFrameTabs = hasFeature("pod_frame_tabs");
+  const [editingFrameTab, setEditingFrameTab] = useState<PodFrameTab | null>(
+    null
+  );
 
   const {
     spaceInfo: podInfo,
@@ -54,6 +94,44 @@ export function PodPage() {
     setPodUiPreferences,
     isAdminControlled: podInfo?.isAdminControlled,
   });
+
+  const frameTabs = useMemo(
+    () => (hasFrameTabs ? sortPodFrameTabs(podInfo?.frameTabs ?? []) : []),
+    [hasFrameTabs, podInfo?.frameTabs]
+  );
+
+  const tabsOrder = useMemo(
+    () =>
+      hasFrameTabs
+        ? normalizeTabsOrder(
+            podInfo?.tabsOrder ?? [],
+            frameTabs.map((tab) => tab.path)
+          )
+        : [],
+    [frameTabs, hasFrameTabs, podInfo?.tabsOrder]
+  );
+
+  const includeConnectedData = !!podInfo?.isAdminControlled;
+
+  const navItemsBeforeSettings = useMemo(
+    () =>
+      buildPodNavItemsBeforeSettings(frameTabs, tabsOrder, {
+        includeConnectedData,
+      }),
+    [frameTabs, tabsOrder, includeConnectedData]
+  );
+
+  // Drop frame-tab selection when the flag is off or the tab was removed
+  // (including restored preference pointing at a deleted tab).
+  useEffect(() => {
+    const framePath = parsePodFrameTabPath(currentTab);
+    if (!framePath) {
+      return;
+    }
+    if (!hasFrameTabs || !frameTabs.some((tab) => tab.path === framePath)) {
+      handleTabChange("conversations");
+    }
+  }, [currentTab, frameTabs, handleTabChange, hasFrameTabs]);
 
   if (isPodsInfoLoading) {
     return (
@@ -83,7 +161,11 @@ export function PodPage() {
         className="pt-2 flex min-h-0 flex-1 flex-col overflow-hidden"
         defaultValue="conversations"
         value={currentTab}
-        onValueChange={(value) => handleTabChange(value as PodTab)}
+        onValueChange={(value) => {
+          if (isValidPodTabValue(value)) {
+            handleTabChange(value);
+          }
+        }}
       >
         <div
           className={classNames(
@@ -92,23 +174,44 @@ export function PodPage() {
           )}
         >
           <NavTabPillList>
-            <NavTabPillTrigger value="conversations" icon={MessageChatSquare}>
-              Conversations
-            </NavTabPillTrigger>
-            <NavTabPillTrigger value="tasks" icon={CheckCircle}>
-              Tasks
-            </NavTabPillTrigger>
-            <NavTabPillTrigger value="files" icon={Folder}>
-              Files
-            </NavTabPillTrigger>
-            {podInfo.isAdminControlled && (
-              <NavTabPillTrigger
-                value="connected_data"
-                icon={CloudArrowLeftRight}
-              >
-                Connected Data
-              </NavTabPillTrigger>
-            )}
+            {navItemsBeforeSettings.map((item) => {
+              const kind = item.kind;
+              switch (kind) {
+                case "system": {
+                  const trigger = SYSTEM_TAB_TRIGGERS[item.id];
+                  return (
+                    <NavTabPillTrigger
+                      key={item.id}
+                      value={item.id}
+                      icon={trigger.icon}
+                    >
+                      {trigger.label}
+                    </NavTabPillTrigger>
+                  );
+                }
+                case "frame": {
+                  const tabValue = makePodFrameTabValue(item.tab.path);
+                  return (
+                    <NavTabPillTrigger
+                      key={item.tab.path}
+                      value={tabValue}
+                      icon={getIcon(item.tab.icon)}
+                      onPointerDown={() => {
+                        // Re-click of the already-active tab opens the editor.
+                        if (podInfo.isEditor && currentTab === tabValue) {
+                          setEditingFrameTab(item.tab);
+                        }
+                      }}
+                    >
+                      {item.tab.title}
+                    </NavTabPillTrigger>
+                  );
+                }
+                default: {
+                  assertNever(kind);
+                }
+              }
+            })}
             <NavTabPillTrigger value="settings" icon={Settings01}>
               Settings
             </NavTabPillTrigger>
@@ -134,8 +237,24 @@ export function PodPage() {
           podUiPreferences={podUiPreferences}
           setPodUiPreferences={setPodUiPreferences}
           mutatePodInfo={mutatePodInfo}
+          frameTabs={frameTabs}
         />
       </NavTabPill>
+
+      {editingFrameTab && (
+        <EditPodFrameTabDialog
+          key={editingFrameTab.path}
+          owner={owner}
+          podId={podInfo.sId}
+          frameTabs={frameTabs}
+          tabsOrder={tabsOrder}
+          isEditor={podInfo.isEditor}
+          includeConnectedData={includeConnectedData}
+          tab={editingFrameTab}
+          isOpen
+          onClose={() => setEditingFrameTab(null)}
+        />
+      )}
     </div>
   );
 }
