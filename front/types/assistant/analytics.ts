@@ -103,6 +103,15 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
 // "llm" document whose buckets are carried by `tokens` and `gross_credit_micro`.
 export type AgentMessageConsumptionAnalyticsType = "llm" | "tool";
 
+// Coarse bucket of what caused the consumption, derived at index time from the
+// user message origin (UserMessageOrigin). Deliberately coarser than
+// AgentMessageAnalyticsData.context_origin.
+export type AgentMessageConsumptionAnalyticsSource =
+  | "web"
+  | "api"
+  | "trigger"
+  | "wakeup";
+
 export interface AgentMessageConsumptionAnalyticsAgent {
   id: string;
   version: string;
@@ -164,7 +173,7 @@ export interface AgentMessageConsumptionAnalyticsData
   message_version: string;
   model: AgentMessageAnalyticsModel | null;
   run_usage_id: string;
-  source: string;
+  source: AgentMessageConsumptionAnalyticsSource;
   space_id: string | null;
   status: string;
   step_index: number;
