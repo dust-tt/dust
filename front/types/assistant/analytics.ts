@@ -1,5 +1,9 @@
 import type { ThumbReaction } from "@app/components/assistant/conversation/FeedbackSelector";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
+import type {
+  USAGE_TYPE_PROGRAMMATIC,
+  USAGE_TYPE_USER,
+} from "@app/lib/metronome/constants";
 
 import type { AgentMessageStatus, UserMessageOrigin } from "./conversation";
 import type { ConversationSkillOrigin } from "./conversation_skills";
@@ -103,14 +107,11 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
 // "llm" document whose buckets are carried by `tokens` and `gross_credit_micro`.
 export type AgentMessageConsumptionAnalyticsType = "llm" | "tool";
 
-// Coarse bucket of what caused the consumption, derived at index time from the
-// user message origin (UserMessageOrigin). Deliberately coarser than
-// AgentMessageAnalyticsData.context_origin.
-export type AgentMessageConsumptionAnalyticsSource =
-  | "web"
-  | "api"
-  | "trigger"
-  | "wakeup";
+// Billing slice of the consumption unit. USAGE_TYPE_FREE is deliberately absent:
+// the index holds billed consumption only, so free calls are never indexed.
+export type AgentMessageConsumptionAnalyticsUsageType =
+  | typeof USAGE_TYPE_USER
+  | typeof USAGE_TYPE_PROGRAMMATIC;
 
 export interface AgentMessageConsumptionAnalyticsAgent {
   id: string;
@@ -166,21 +167,21 @@ export interface AgentMessageConsumptionAnalyticsData
   // Idempotency key.
   consumption_key: string;
   consumption_type: AgentMessageConsumptionAnalyticsType;
+  context_origin: UserMessageOrigin | null;
   conversation_id: string;
   credit_micro: number;
   execution_time_ms: number | null;
   gross_credit_micro: AgentMessageConsumptionAnalyticsGrossCreditMicro;
-  is_billed: boolean;
   message_version: string;
   model: AgentMessageAnalyticsModel | null;
   run_usage_id: string;
-  source: AgentMessageConsumptionAnalyticsSource;
   space_id: string | null;
   status: string;
   step_index: number;
   tokens: AgentMessageConsumptionAnalyticsTokens;
   tool: AgentMessageConsumptionAnalyticsTool | null;
   trigger_id: string | null;
+  usage_type: AgentMessageConsumptionAnalyticsUsageType;
   user: AgentMessageConsumptionAnalyticsUser | null;
   workspace_id: string;
 }
