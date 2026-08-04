@@ -3,7 +3,7 @@ import type {
   ReaperCursor,
   ReaperPhase,
 } from "@app/temporal/sandbox_reaper/activities";
-import { log, patched, proxyActivities } from "@temporalio/workflow";
+import { log, proxyActivities } from "@temporalio/workflow";
 
 const { reapSandboxPhaseActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
@@ -12,16 +12,6 @@ const { reapSandboxPhaseActivity } = proxyActivities<typeof activities>({
     maximumAttempts: 3,
   },
 });
-
-// Legacy phase order, kept for replay of workflows that started before the
-// preemptible maintenance patch.
-const LEGACY_REAPER_PHASES = [
-  "kill_requested",
-  "running",
-  "pending_approval",
-  "kill_requested_sleeping",
-  "sleeping",
-] satisfies ReaperPhase[];
 
 // These phases free E2B concurrency and must preempt maintenance work.
 const CAPACITY_PHASES = ["kill_requested", "running"] satisfies ReaperPhase[];
@@ -83,13 +73,7 @@ async function drainCapacityPhases(): Promise<boolean> {
   return true;
 }
 
-async function runLegacyReaperWorkflow(): Promise<void> {
-  for (const phase of LEGACY_REAPER_PHASES) {
-    await drainPhase(phase);
-  }
-}
-
-async function runPreemptibleReaperWorkflow(): Promise<void> {
+export async function sandboxReaperWorkflow(): Promise<void> {
   const capacityFullyDrained = await drainCapacityPhases();
   if (!capacityFullyDrained) {
     return;
@@ -121,22 +105,6 @@ async function runPreemptibleReaperWorkflow(): Promise<void> {
       logPhaseBatchLimit(phase, cursor, MAX_BATCHES_PER_PHASE);
     }
   }
-}
-
-export async function sandboxReaperWorkflow(): Promise<void> {
-  // Patch lifecycle for preemptible maintenance:
-  // 1. Now: in-flight executions replay the legacy phase loop.
-  // 2. Once every history produced without this marker has left retention and
-  //    every worker runs this version, replace patched() with deprecatePatch()
-  //    and remove runLegacyReaperWorkflow and LEGACY_REAPER_PHASES.
-  // 3. Once every live run was produced by the deprecatePatch() version,
-  //    remove deprecatePatch() and the patch marker.
-  if (!patched("sandbox-reaper-preemptible-maintenance")) {
-    await runLegacyReaperWorkflow();
-    return;
-  }
-
-  await runPreemptibleReaperWorkflow();
 }
 
 export { sandboxKillRequesterWorkflow } from "./kill_requester/workflows";
