@@ -10,6 +10,7 @@ import {
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
+import { UserTriggersTable } from "@app/components/me/UserTriggersTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { MyAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
@@ -765,9 +766,7 @@ function ToolsSection({ owner }: { owner: WorkspaceType }) {
           <UserToolsTable owner={owner} />
         </TabsContent>
         <TabsContent value="triggers">
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Coming soon
-          </p>
+          <UserTriggersTable owner={owner} />
         </TabsContent>
       </Tabs>
     </SectionContent>
