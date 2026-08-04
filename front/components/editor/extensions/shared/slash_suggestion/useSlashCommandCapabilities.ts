@@ -79,7 +79,9 @@ export function useInputBarSlashCommandCapabilities({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    podContext: conversationPodSpaceId ?? null,
+    spaceScope: conversationPodSpaceId
+      ? { mode: "pod", podId: conversationPodSpaceId }
+      : { mode: "excludePodScoped" },
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
   // The JIT views endpoint only returns views whose tools can be enabled directly in a

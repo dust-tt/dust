@@ -403,7 +403,7 @@ export const activationManagementPlugin = createPlugin({
     const [skills, agents, groups] = await Promise.all([
       SkillResource.listByWorkspace(auth, {
         status: "active",
-        globalSpaceOnly: true,
+        spaceScope: { mode: "global_only" },
         withInstructions: false,
         withTools: false,
         withFileAttachments: false,

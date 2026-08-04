@@ -240,7 +240,9 @@ export function CapabilitiesPicker({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    podContext: conversationPodSpaceId ?? null,
+    spaceScope: conversationPodSpaceId
+      ? { mode: "pod", podId: conversationPodSpaceId }
+      : { mode: "excludePodScoped" },
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 

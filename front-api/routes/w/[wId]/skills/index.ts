@@ -9,6 +9,7 @@ import { hasFeatureFlag } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { SkillSpaceScopeFilter } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
@@ -134,8 +135,10 @@ app.get(
     const withRelations = ctx.req.query("withRelations");
     const withMessageCount = ctx.req.query("withMessageCount") === "true";
     const status = ctx.req.query("status");
-    const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
-    const podSpaceId = ctx.req.query("podSpaceId");
+    const globalSpaceOnly = ctx.req.query("globalSpaceOnly") === "true";
+    const podId = ctx.req.query("podId");
+    // Used outside any Pod context (e.g. the workspace-wide command palette, or a
+    // conversation not attached to a Pod) so Pod-restricted skills stay unsearchable there.
     const excludePodScopedSkills =
       ctx.req.query("excludePodScopedSkills") === "true";
     const onlyCustom = ctx.req.query("onlyCustom");
@@ -188,27 +191,42 @@ app.get(
       });
     }
 
-    let resolvedPodSpaceModelId: number | null | undefined;
-    if (podSpaceId) {
-      const podSpace = await SpaceResource.fetchById(auth, podSpaceId);
+    if (
+      [globalSpaceOnly, !!podId, excludePodScopedSkills].filter(Boolean)
+        .length > 1
+    ) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Only one of globalSpaceOnly, podId, or excludePodScopedSkills may be set.",
+        },
+      });
+    }
+
+    let spaceScope: SkillSpaceScopeFilter | undefined;
+    if (globalSpaceOnly) {
+      spaceScope = { mode: "global_only" };
+    } else if (podId) {
+      const podSpace = await SpaceResource.fetchById(auth, podId);
       if (!podSpace) {
         return apiError(ctx, {
           status_code: 404,
           api_error: {
             type: "space_not_found",
-            message: `Space "${podSpaceId}" was not found.`,
+            message: `Space "${podId}" was not found.`,
           },
         });
       }
-      resolvedPodSpaceModelId = podSpace.id;
+      spaceScope = { mode: "pod", podSpaceModelId: podSpace.id };
     } else if (excludePodScopedSkills) {
-      resolvedPodSpaceModelId = null;
+      spaceScope = { mode: "exclude_pod_scoped" };
     }
 
     const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
-      globalSpaceOnly: globalSpaceOnly === "true",
-      podSpaceModelId: resolvedPodSpaceModelId,
+      spaceScope,
       onlyCustom: onlyCustom === "true",
       availability,
       withInstructions: false,
