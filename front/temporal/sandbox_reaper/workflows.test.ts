@@ -7,17 +7,13 @@ import { BATCH_SIZE } from "@app/temporal/sandbox_reaper/config";
 import { sandboxReaperWorkflow } from "@app/temporal/sandbox_reaper/workflows";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockLogWarn, mockPatched, mockReapSandboxPhaseActivity } = vi.hoisted(
-  () => ({
-    mockLogWarn: vi.fn(),
-    mockPatched: vi.fn(),
-    mockReapSandboxPhaseActivity: vi.fn(),
-  })
-);
+const { mockLogWarn, mockReapSandboxPhaseActivity } = vi.hoisted(() => ({
+  mockLogWarn: vi.fn(),
+  mockReapSandboxPhaseActivity: vi.fn(),
+}));
 
 vi.mock("@temporalio/workflow", () => ({
   log: { warn: mockLogWarn },
-  patched: mockPatched,
   proxyActivities: () => ({
     reapSandboxPhaseActivity: mockReapSandboxPhaseActivity,
   }),
@@ -38,7 +34,6 @@ function makeResult(
 describe("sandboxReaperWorkflow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPatched.mockReturnValue(true);
     mockReapSandboxPhaseActivity.mockResolvedValue(makeResult(null));
   });
 
@@ -92,22 +87,6 @@ describe("sandboxReaperWorkflow", () => {
       { cursor: maintenanceCursor, phase: "kill_requested_sleeping" },
       { cursor: null, phase: "running" },
       { cursor: null, phase: "running" },
-    ]);
-  });
-
-  it("keeps the legacy phase loop for in-flight workflows", async () => {
-    mockPatched.mockReturnValue(false);
-
-    await sandboxReaperWorkflow();
-
-    expect(
-      mockReapSandboxPhaseActivity.mock.calls.map(([input]) => input)
-    ).toEqual([
-      { cursor: null, phase: "kill_requested" },
-      { cursor: null, phase: "running" },
-      { cursor: null, phase: "pending_approval" },
-      { cursor: null, phase: "kill_requested_sleeping" },
-      { cursor: null, phase: "sleeping" },
     ]);
   });
 
