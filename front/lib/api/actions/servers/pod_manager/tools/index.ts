@@ -34,6 +34,7 @@ import {
   POD_MANAGER_TOOLS_METADATA,
   SEMANTIC_SEARCH_TOOL_NAME,
   SET_DEFAULT_AGENT_TOOL_NAME,
+  SET_DEFAULT_SKILLS_TOOL_NAME,
   SET_PINNED_FRAME_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
@@ -71,6 +72,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { ProjectMetadataBlob } from "@app/lib/resources/project_metadata_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -488,6 +490,100 @@ export function createProjectManagerTools(
       }, "Failed to set Pod default agent");
     },
 
+    [SET_DEFAULT_SKILLS_TOOL_NAME]: async ({ skillNames, dustPod }) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getPod(auth, {
+          toolContext,
+          dustPod,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { pod } = contextRes.value;
+
+        if (!pod.canAdministrate(auth)) {
+          return new Err(
+            new MCPError(
+              "You do not have permission to edit this Pod's default skills",
+              { tracked: false }
+            )
+          );
+        }
+
+        const featureFlags = await getFeatureFlags(auth);
+        if (!featureFlags.includes("pod_default_skills")) {
+          return new Err(
+            new MCPError(
+              "Setting Pod default skills is not enabled for this workspace.",
+              { tracked: false }
+            )
+          );
+        }
+
+        const requestedNames = [...new Set(skillNames ?? [])];
+
+        let skills: SkillResource[] = [];
+        if (requestedNames.length > 0) {
+          skills = await SkillResource.fetchByNames(auth, requestedNames);
+
+          const foundNames = new Set(skills.map((skill) => skill.name));
+          const missingNames = requestedNames.filter(
+            (name) => !foundNames.has(name)
+          );
+          if (missingNames.length > 0) {
+            return new Err(
+              new MCPError(
+                `No skill found matching: ${missingNames
+                  .map((name) => `"${name}"`)
+                  .join(", ")}.`,
+                { tracked: false }
+              )
+            );
+          }
+
+          // Only global, workspace-wide skills can be Pod defaults
+          const globalSpace =
+            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+          const nonGlobalNames = skills
+            .filter(
+              (skill) =>
+                !skill.requestedSpaceIds.every((id) => id === globalSpace.id)
+            )
+            .map((skill) => skill.name);
+          if (nonGlobalNames.length > 0) {
+            return new Err(
+              new MCPError(
+                `Only global, workspace-wide skills can be set as Pod defaults. Not workspace-wide: ${nonGlobalNames
+                  .map((name) => `"${name}"`)
+                  .join(", ")}.`,
+                { tracked: false }
+              )
+            );
+          }
+        }
+
+        let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+        if (!metadata) {
+          metadata = await ProjectMetadataResource.makeNew(auth, pod, {});
+        }
+        await metadata.setDefaultSkills(auth, skills);
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            defaultSkillIds: metadata.defaultSkillIds,
+            message:
+              skills.length > 0
+                ? `Pod default skills set to: ${skills
+                    .map((skill) => skill.name)
+                    .join(", ")}.`
+                : "Pod default skills cleared.",
+          })
+        );
+      }, "Failed to set Pod default skills");
+    },
+
     [UPDATE_MEMBERS_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
@@ -694,6 +790,16 @@ export function createProjectManagerTools(
           };
         }
 
+        const defaultSkillIds = metadata?.defaultSkillIds ?? [];
+        const defaultSkillResources = await SkillResource.fetchByIds(
+          auth,
+          defaultSkillIds
+        );
+        const defaultSkills = defaultSkillResources.map((skill) => ({
+          id: skill.sId,
+          name: skill.name,
+        }));
+
         // Construct project URL
         const projectPath = getPodRoute(owner.sId, pod.sId);
         const projectUrl = `${config.getAppUrl()}${projectPath}`;
@@ -709,6 +815,7 @@ export function createProjectManagerTools(
               description: metadata?.description ?? null,
               pinnedFramePath: metadata?.pinnedFramePath ?? null,
               defaultAgent,
+              defaultSkills,
               contentNodes,
               files: {
                 count: projectFileCount,
