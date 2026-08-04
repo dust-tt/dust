@@ -109,6 +109,8 @@ makeScript(
   async ({ workspaceId, execute }, logger) => {
     await runOnAllWorkspaces(
       async (workspace) => {
+        logger.info({ workspaceId: workspace.sId }, "Processing workspace");
+
         const workspaceAuth = await Authenticator.internalAdminForWorkspace(
           workspace.sId
         );
