@@ -36,6 +36,7 @@ import {
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
+import type { GetAgentCartographyResponseBody } from "@app/types/api/assistant/cartography";
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
 import { BatchUpdateAgentModelResponseBodySchema } from "@app/types/api/assistant/configuration";
 import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
@@ -305,6 +306,37 @@ export function useAgentConfiguration({
     isAgentConfigurationError: error,
     isAgentConfigurationValidating: isValidating,
     mutateAgentConfiguration: mutate,
+  };
+}
+
+// Frozen constant to keep a stable reference while loading/error/disabled, so
+// consumers memoizing on the coordinates map don't re-run needlessly.
+const EMPTY_COORDINATES: GetAgentCartographyResponseBody["coordinates"] =
+  Object.freeze({});
+
+export function useAgentCartography({
+  workspaceId,
+  includeBuiltin = true,
+  disabled,
+}: {
+  workspaceId: string;
+  includeBuiltin?: boolean;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const cartographyFetcher: Fetcher<GetAgentCartographyResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/assistant/agent_configurations/cartography?includeBuiltin=${includeBuiltin}`,
+    cartographyFetcher,
+    { disabled }
+  );
+
+  return {
+    coordinates: data?.coordinates ?? EMPTY_COORDINATES,
+    duplicates: data?.duplicates ?? emptyArray(),
+    isAgentCartographyLoading: !error && !data && !disabled,
+    isAgentCartographyError: error,
   };
 }
 

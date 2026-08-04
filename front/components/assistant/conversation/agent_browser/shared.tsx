@@ -34,6 +34,12 @@ export const AGENTS_TABS = [
 
 export type TabId = (typeof AGENTS_TABS)[number]["id"];
 
+// Whether a tab should be selectable. Agent-listing tabs are disabled when they
+// have no agents.
+export function isTabEnabled(tabId: TabId, agentsByTab: AgentsByTab): boolean {
+  return agentsByTab[tabId].length > 0;
+}
+
 export type SortType = "popularity" | "alphabetical" | "updated";
 
 export type AgentsByTab = {

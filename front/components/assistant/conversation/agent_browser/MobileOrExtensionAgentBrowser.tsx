@@ -4,6 +4,7 @@ import {
   AgentBrowserSearchDropdown,
   AgentGrid,
   AllTabContent,
+  isTabEnabled,
   useTagClick,
 } from "@app/components/assistant/conversation/agent_browser/shared";
 import {
@@ -59,7 +60,7 @@ export function MobileOrExtensionAgentBrowser({
             {AGENTS_TABS.map((tab) => (
               <DropdownMenuItem
                 key={tab.id}
-                disabled={agentsByTab[tab.id].length === 0}
+                disabled={!isTabEnabled(tab.id, agentsByTab)}
                 onClick={() => setSelectedTab(tab.id)}
                 className="notranslate"
                 label={tab.label}

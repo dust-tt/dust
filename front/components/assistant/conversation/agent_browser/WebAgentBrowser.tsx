@@ -30,6 +30,7 @@ import {
   AgentBrowserSearchDropdown,
   AgentGrid,
   AllTabContent,
+  isTabEnabled,
   useTagClick,
   type WebAgentBrowserProps,
 } from "./shared";
@@ -145,7 +146,7 @@ export function WebAgentBrowser({
             <TabsList>
               {AGENTS_TABS.map((tab) => (
                 <TabsTrigger
-                  disabled={agentsByTab[tab.id].length === 0}
+                  disabled={!isTabEnabled(tab.id, agentsByTab)}
                   key={tab.id}
                   value={tab.id}
                   label={tab.label}

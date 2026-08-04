@@ -25,6 +25,7 @@ import agent from "./[aId]";
 import batchUpdateModel from "./batch_update_model";
 import batchUpdateScope from "./batch_update_scope";
 import batchUpdateTags from "./batch_update_tags";
+import cartography from "./cartography";
 import createPending from "./create-pending";
 import deleteRoute from "./delete";
 import lookup from "./lookup";
@@ -335,6 +336,7 @@ app.post(
 app.route("/batch_update_model", batchUpdateModel);
 app.route("/batch_update_scope", batchUpdateScope);
 app.route("/batch_update_tags", batchUpdateTags);
+app.route("/cartography", cartography);
 app.route("/create-pending", createPending);
 app.route("/delete", deleteRoute);
 app.route("/lookup", lookup);
