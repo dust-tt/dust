@@ -370,7 +370,10 @@ export async function extractGitHubTarballToGCS(
       // those late emissions — pipeline() still rejects with the original error.
       const gunzipStream = gunzip();
       gunzipStream.on("error", (err) => {
-        childLogger.warn({ err }, "Gunzip stream error during tarball extraction");
+        childLogger.warn(
+          { err },
+          "Gunzip stream error during tarball extraction"
+        );
       });
       await pipeline(tarballStream, gunzipStream, extract);
 
