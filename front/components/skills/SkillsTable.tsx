@@ -174,7 +174,7 @@ const usageColumn: ColumnDef<RowData, number> = {
     />
   ),
   meta: {
-    className: "hidden @sm:w-16 @sm:table-cell",
+    className: "hidden @sm:w-20 @sm:table-cell",
     tooltip: "All-time messages",
   },
 };
