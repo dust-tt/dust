@@ -160,7 +160,7 @@ export function TodoInputBar({
         "rounded-3xl border bg-primary-50/70 backdrop-blur-md transition-all",
         showFocusStyle
           ? "border-highlight-300 ring-2 ring-highlight-300/50"
-          : "border-border",
+          : "border",
         className
       )}
     >
@@ -189,26 +189,27 @@ export function TodoInputBar({
             ))}
           </NewCitationGrid>
         )}
-        <div className="flex w-full items-end gap-2 pr-2 pb-2">
-          <div className="min-w-0 flex-1">
-            <RichTextArea
-              ref={richTextAreaRef}
-              placeholder={placeholder}
-              onFocus={handleFocus}
-              onTextChange={setInputText}
-              variant="compact"
-              showFormattingMenu
-              showAskSidekickMenu={false}
-              className="placeholder:text-muted-foreground"
-            />
-          </div>
-          <div className="flex items-center gap-2 md:gap-1">
+        <RichTextArea
+          ref={richTextAreaRef}
+          placeholder={placeholder}
+          onFocus={handleFocus}
+          onTextChange={setInputText}
+          variant="compact"
+          showFormattingMenu
+          showAskSidekickMenu={false}
+          className="placeholder:text-muted-foreground"
+        />
+        <div className="flex w-full gap-2 p-2 pl-4">
+          <div className="flex items-center gap-0 md:gap-1">
             <Button
               variant="ghost-secondary"
               icon={Attachment01}
               size="xs"
               tooltip="Attach a document"
             />
+          </div>
+          <div className="grow" />
+          <div className="flex items-center gap-2 md:gap-1">
             <Button
               variant="ghost-secondary"
               icon={Microphone01}

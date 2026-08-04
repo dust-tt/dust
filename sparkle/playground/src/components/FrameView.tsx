@@ -1,27 +1,27 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
-  RefreshCw01,
-  Download01,
-  ReverseLeft,
   Button,
-  ClipboardCheck,
   Clipboard,
-  Terminal,
+  ClipboardCheck,
+  DotsHorizontal,
+  Download01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Maximize01,
   Link01,
-  DotsHorizontal,
+  Maximize01,
+  RefreshCw01,
+  ReverseLeft,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SpaceOpen,
+  Terminal,
   TextArea,
   XClose,
   useCopyToClipboard,
@@ -84,14 +84,14 @@ export function FrameView() {
         <Allotment.Pane
           minSize={320}
           preferredSize={50}
-          className="h-full border-r border-border"
+          className="h-full border-r border"
         >
           <div className="h-full w-full" />
         </Allotment.Pane>
 
         <Allotment.Pane minSize={320} preferredSize={50} className="h-full">
           <div className="flex h-full flex-col">
-            <div className="flex h-14 w-full items-center gap-2 border-b border-border bg-background px-3">
+            <div className="flex h-14 w-full items-center gap-2 border-b border bg-background px-3">
               <Button icon={RefreshCw01} variant="ghost" tooltip="Refresh" />
               <Button icon={Maximize01} variant="ghost" tooltip="Full screen" />
               <Button icon={Download01} variant="ghost" tooltip="Export" />

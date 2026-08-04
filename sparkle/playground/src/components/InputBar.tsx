@@ -47,17 +47,21 @@ interface InputBarProps {
   instructionReference?: { start: number; end: number } | null;
   taskCommand?: InputBarTaskCommand | null;
   variant?: "default" | "embedded";
+  autoFocus?: boolean;
+  beforeSendButton?: React.ReactNode;
   onInstructionInserted?: () => void;
   onClose?: () => void;
   onSend?: () => void;
 }
 
 export function InputBar({
-  placeholder = "Get work done",
+  placeholder = "What are we working on?",
   className,
   instructionReference,
   taskCommand,
   variant = "default",
+  autoFocus = false,
+  beforeSendButton,
   onInstructionInserted,
   onClose,
   onSend,
@@ -96,6 +100,15 @@ export function InputBar({
 
   const handleFocus = () => {
     setIsFocused(true);
+  };
+
+  // Clear the focus ring only when focus leaves the whole input (keyboard
+  // Tab-out, Escape blur, click outside). Keeps it set when moving focus to an
+  // inner control (e.g. the toolbar buttons).
+  const handleBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+    if (!containerRef.current?.contains(event.relatedTarget as Node | null)) {
+      setIsFocused(false);
+    }
   };
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -200,14 +213,19 @@ export function InputBar({
     <div
       ref={containerRef}
       onClick={handleFocus}
+      onBlur={handleBlur}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
+        "rounded-2xl",
         variant === "default" && "bg-primary-50/70 backdrop-blur-md",
         variant === "embedded" && "bg-primary-50",
-        variant === "default" && (showFocusStyle ? "" : "border-border"),
+        variant === "default" &&
+          (showFocusStyle
+            ? "border border-border-focus outline-hidden ring-2 ring-highlight/20"
+            : "border border-border"),
         className
       )}
     >
@@ -271,6 +289,7 @@ export function InputBar({
         <RichTextArea
           ref={richTextAreaRef}
           placeholder={placeholder}
+          autoFocus={autoFocus}
           onFocus={handleFocus}
           defaultValue={taskCommand ? "Let's start working on this task." : ""}
           variant="compact"
@@ -338,6 +357,7 @@ export function InputBar({
               size="xs"
               isRounded
             />
+            {beforeSendButton}
             <Button
               variant="highlight"
               icon={ArrowUp}

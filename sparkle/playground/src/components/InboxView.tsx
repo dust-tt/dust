@@ -5,7 +5,6 @@ import {
   Collapsible,
   CollapsibleContent,
   ConversationListItem,
-  Icon,
   Inbox01,
   ListGroup,
   ReplySection,
@@ -20,6 +19,7 @@ import { getAgentById } from "../data/agents";
 import { getRandomGreetingForName } from "../data/greetings";
 import type { Agent, Conversation, Space, User } from "../data/types";
 import { getUserById } from "../data/users";
+import { EmptyState } from "./EmptyState";
 import { TaskItem } from "./TaskItem";
 
 type InboxTab = "conversations" | "tasks";
@@ -375,6 +375,44 @@ export function InboxView({
     return spaces.filter((space) => conversationsBySpace.has(space.id));
   }, [spaces, conversationsBySpace]);
 
+  // Stabilize the random per-conversation display data (participants, creator,
+  // reply/message/mention counts) so unrelated re-renders don't reshuffle the
+  // lists. Recomputed only when the displayed conversations change.
+  const conversationDisplayById = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        creator?: User;
+        avatarProps: ReturnType<typeof participantsToAvatarProps>;
+        time: string;
+        replyCount: number;
+        messageCount: number;
+        mentionCount: number;
+      }
+    >();
+
+    const displayed = [
+      ...myConversations,
+      ...Array.from(conversationsBySpace.values()).flat(),
+    ];
+
+    displayed.forEach((conversation) => {
+      if (map.has(conversation.id)) {
+        return;
+      }
+      const participants = getRandomParticipants(conversation, users, agents);
+      const creator = getRandomCreator(conversation, users);
+      const meta = getConversationListItemMeta(conversation);
+      map.set(conversation.id, {
+        creator: creator || undefined,
+        avatarProps: participantsToAvatarProps(participants),
+        ...meta,
+      });
+    });
+
+    return map;
+  }, [myConversations, conversationsBySpace, users, agents]);
+
   const hasConversationContent =
     myConversations.length > 0 || spacesWithUnread.length > 0;
 
@@ -504,32 +542,51 @@ export function InboxView({
     );
   };
 
+  const handleMarkAllConversationsAsRead = () => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      next.add("my-conversations");
+      spacesWithUnread.forEach((space) => next.add(space.id));
+      return next;
+    });
+  };
+
   const renderConversationsToolbar = () => (
-    <SearchInputWithPopover
-      name="inbox-conversation-search"
-      value={conversationSearchText}
-      onChange={(value) => {
-        setConversationSearchText(value);
-        if (!value.trim()) {
-          setIsConversationSearchOpen(false);
+    <div className="flex items-center gap-2">
+      <SearchInputWithPopover
+        name="inbox-conversation-search"
+        value={conversationSearchText}
+        onChange={(value) => {
+          setConversationSearchText(value);
+          if (!value.trim()) {
+            setIsConversationSearchOpen(false);
+          }
+        }}
+        open={isConversationSearchOpen}
+        onOpenChange={setIsConversationSearchOpen}
+        placeholder="Search in Inbox"
+        className="w-full"
+        items={conversationSearchResults}
+        availableHeight
+        noResults={
+          conversationSearchText.trim()
+            ? "No results found"
+            : "Start typing to search"
         }
-      }}
-      open={isConversationSearchOpen}
-      onOpenChange={setIsConversationSearchOpen}
-      placeholder="Search in Inbox"
-      className="w-full"
-      items={conversationSearchResults}
-      availableHeight
-      noResults={
-        conversationSearchText.trim()
-          ? "No results found"
-          : "Start typing to search"
-      }
-      onItemSelect={handleConversationSearchSelect}
-      renderItem={(item, selected) =>
-        renderConversationSearchItem(item, selected)
-      }
-    />
+        onItemSelect={handleConversationSearchSelect}
+        renderItem={(item, selected) =>
+          renderConversationSearchItem(item, selected)
+        }
+      />
+      <Button
+        label="Mark all as read"
+        icon={Check}
+        size="sm"
+        variant="outline"
+        tooltip="Mark all as read"
+        onClick={handleMarkAllConversationsAsRead}
+      />
+    </div>
   );
 
   const renderTasksToolbar = () => (
@@ -568,11 +625,13 @@ export function InboxView({
   );
 
   const renderInboxConversationItem = (conversation: Conversation) => {
-    const participants = getRandomParticipants(conversation, users, agents);
-    const creator = getRandomCreator(conversation, users);
-    const avatarProps = participantsToAvatarProps(participants);
-    const { time, replyCount, messageCount, mentionCount } =
-      getConversationListItemMeta(conversation);
+    const display = conversationDisplayById.get(conversation.id);
+    const creator = display?.creator;
+    const avatarProps = display?.avatarProps ?? [];
+    const time = display?.time ?? "";
+    const replyCount = display?.replyCount ?? 0;
+    const messageCount = display?.messageCount ?? 0;
+    const mentionCount = display?.mentionCount ?? 0;
     const isSelected = selectedConversationId === conversation.id;
 
     return (
@@ -601,20 +660,19 @@ export function InboxView({
     );
   };
 
+  const renderEmptyState = (title: string, description: React.ReactNode) => (
+    <EmptyState icon={Inbox01} title={title} description={description} />
+  );
+
   const renderConversationsTab = () => {
     if (!hasConversationContent) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-            <Icon size="md" visual={Inbox01} />
-            <h2 className="heading-xl">Inbox</h2>
-          </div>
-          <p className="text-center text-lg text-muted-foreground">
-            You're all caught up!
-            <br />
-            Nothing new under the sun.
-          </p>
-        </div>
+      return renderEmptyState(
+        "Inbox",
+        <>
+          You're all caught up!
+          <br />
+          Nothing new under the sun.
+        </>
       );
     }
 
@@ -622,17 +680,14 @@ export function InboxView({
       return (
         <div className="flex flex-1 flex-col gap-3">
           {renderConversationsToolbar()}
-          <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-              <Icon size="md" visual={Inbox01} />
-              <h2 className="heading-xl">Inbox</h2>
-            </div>
-            <p className="text-center text-lg text-muted-foreground">
+          {renderEmptyState(
+            "Inbox",
+            <>
               You're all caught up!
               <br />
               Nothing new under the sun.
-            </p>
-          </div>
+            </>
+          )}
         </div>
       );
     }
@@ -719,22 +774,15 @@ export function InboxView({
 
   const renderTasksTab = () => {
     if (!hasTaskContent) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-            <Icon size="md" visual={Inbox01} />
-            <h2 className="heading-xl">All tasks done</h2>
-          </div>
-          <p className="text-center text-lg text-muted-foreground">
-            No ongoing tasks across your pods.
-          </p>
-        </div>
+      return renderEmptyState(
+        "All tasks done",
+        "No ongoing tasks across your pods."
       );
     }
 
     if (!hasFilteredTaskContent) {
       return (
-        <div className="flex flex-1 flex-col gap-4">
+        <div className="flex flex-1 flex-col gap-3">
           {renderTasksToolbar()}
           <div className="flex flex-1 flex-col items-center justify-center gap-2">
             <p className="text-center text-lg text-muted-foreground">
@@ -747,23 +795,18 @@ export function InboxView({
 
     if (allTaskSectionsCollapsed) {
       return (
-        <div className="flex flex-1 flex-col gap-4">
+        <div className="flex flex-1 flex-col gap-3">
           {renderTasksToolbar()}
-          <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-              <Icon size="md" visual={Inbox01} />
-              <h2 className="heading-xl">All tasks done</h2>
-            </div>
-            <p className="text-center text-lg text-muted-foreground">
-              No ongoing tasks across your pods.
-            </p>
-          </div>
+          {renderEmptyState(
+            "All tasks done",
+            "No ongoing tasks across your pods."
+          )}
         </div>
       );
     }
 
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {renderTasksToolbar()}
         {inboxTaskGroups.map((group) => (
           <Collapsible
