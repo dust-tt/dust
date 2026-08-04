@@ -109,10 +109,10 @@ describe("PATCH/DELETE /api/w/:wId/sandbox/env-vars/:id", () => {
     if (upsert.isErr()) {
       throw upsert.error;
     }
-    const staleSId = upsert.value.resource.sId;
+    const staleEnvVarId = upsert.value.resource.sId;
     await upsert.value.resource.delete(auth);
 
-    const response = await deleteEnvVar(workspace.sId, staleSId);
+    const response = await deleteEnvVar(workspace.sId, staleEnvVarId);
 
     expect(response.status).toBe(404);
   });
