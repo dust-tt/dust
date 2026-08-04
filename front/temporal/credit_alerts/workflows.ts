@@ -47,10 +47,6 @@ export async function expirePoolCapOverridesWorkflow(): Promise<void> {
   const workspaceIds = await getWorkspacesWithExpiredPoolCapOverrideActivity();
   const { workflowId } = workflowInfo();
 
-  // allSettled, not all: each child now fails when it can't keep Metronome
-  // and the DB in sync for its workspace, and one workspace's failure must
-  // not take down (or terminate, via default ParentClosePolicy) the
-  // still-running children for other workspaces.
   const results = await Promise.allSettled(
     workspaceIds.map((workspaceId) =>
       executeChild(expireWorkspacePoolCapOverridesWorkflow, {
