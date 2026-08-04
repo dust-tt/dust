@@ -518,9 +518,10 @@ impl Provider for MCPConnectionProvider {
             ProviderHttpRequestError::RequestFailed {
                 status, message, ..
             } if *status == 400 || *status == 401 => {
-                // Detect both "invalid_grant" and "invalid_refresh_token" as revoked token indicators.
-                let is_revoked =
-                    message.contains("invalid_grant") || message.contains("invalid_refresh_token");
+                let normalized_message = message.to_ascii_lowercase();
+                let is_revoked = normalized_message.contains("invalid_grant")
+                    || normalized_message.contains("invalid_refresh_token")
+                    || normalized_message.contains("refresh token is invalid");
                 info!(message, is_revoked, "MCP 400 error");
                 if is_revoked {
                     ProviderError::TokenRevokedError
@@ -540,6 +541,10 @@ impl Provider for MCPConnectionProvider {
 #[cfg(test)]
 mod tests {
     use super::{MCPConnectionMetadata, MCPConnectionProvider};
+    use crate::oauth::{
+        connection::{ConnectionProvider, Provider, ProviderError},
+        providers::utils::ProviderHttpRequestError,
+    };
     use serde_json::json;
 
     fn test_client() -> Option<reqwest::Client> {
@@ -619,5 +624,39 @@ mod tests {
             MCPConnectionProvider::client_for_builders(false, true, || None, || None, || None);
 
         assert!(client.is_err());
+    }
+
+    #[test]
+    fn databricks_invalid_refresh_token_is_revoked() {
+        let provider = MCPConnectionProvider::new();
+        let error =
+            provider.handle_provider_request_error(ProviderHttpRequestError::RequestFailed {
+                provider: ConnectionProvider::Mcp,
+                status: 400,
+                message: json!({
+                    "error": "invalid_request",
+                    "error_description": "Refresh token is invalid"
+                })
+                .to_string(),
+            });
+
+        assert!(matches!(error, ProviderError::TokenRevokedError));
+    }
+
+    #[test]
+    fn unrelated_invalid_request_is_not_revoked() {
+        let provider = MCPConnectionProvider::new();
+        let error =
+            provider.handle_provider_request_error(ProviderHttpRequestError::RequestFailed {
+                provider: ConnectionProvider::Mcp,
+                status: 400,
+                message: json!({
+                    "error": "invalid_request",
+                    "error_description": "Missing required parameter"
+                })
+                .to_string(),
+            });
+
+        assert!(matches!(error, ProviderError::UnknownError(_)));
     }
 }
