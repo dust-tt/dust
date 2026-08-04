@@ -3,6 +3,7 @@ import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumentation";
@@ -48,12 +49,41 @@ async function getTaskQueue(
 }
 
 // Relaunch paths (tool validation, retries, authentication resolution) pass the origin of the
-// original user message, so a run keeps its queue across relaunches.
-export async function getTaskQueueForUserMessageOrigin(
+// original user message and the same conversation, so a run keeps its queue across relaunches.
+export async function getTaskQueueForRun(
   auth: Authenticator,
-  userMessageOrigin: UserMessageOrigin
+  {
+    userMessageOrigin,
+    conversationId,
+  }: {
+    userMessageOrigin: UserMessageOrigin;
+    conversationId: string;
+  }
 ): Promise<string> {
-  return getTaskQueue(auth, getQueueForUserMessageOrigin(userMessageOrigin));
+  if (!(await hasFeatureFlag(auth, "agent_loop_qos_routing"))) {
+    return QUEUE_NAME;
+  }
+
+  // Schedule triggers and fair-use webhook triggers share the `triggered` origin (the origin
+  // encodes billing, not the trigger kind): resolve the conversation's trigger to keep webhook
+  // firings off the schedules queue. Deleting a trigger nulls the conversation's pointer, in
+  // which case the run stays on schedules.
+  if (userMessageOrigin === "triggered") {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (conversation && conversation.triggerId !== null) {
+      const [trigger] = await TriggerResource.fetchByModelIds(auth, [
+        conversation.triggerId,
+      ]);
+      if (trigger && trigger.kind === "webhook") {
+        return getQueueName("batch");
+      }
+    }
+  }
+
+  return getQueueName(getQueueForUserMessageOrigin(userMessageOrigin));
 }
 
 export async function launchAgentLoopWorkflow({
@@ -116,10 +146,10 @@ export async function launchAgentLoopWorkflow({
           initialStartTime,
         },
       ],
-      taskQueue: await getTaskQueueForUserMessageOrigin(
-        auth,
-        agentLoopArgs.userMessageOrigin
-      ),
+      taskQueue: await getTaskQueueForRun(auth, {
+        userMessageOrigin: agentLoopArgs.userMessageOrigin,
+        conversationId,
+      }),
       workflowId,
       searchAttributes: {
         conversationId: [conversationId],
@@ -271,10 +301,10 @@ export async function launchSandboxChildToolWorkflow(
   try {
     await client.workflow.start(runSandboxChildToolWorkflow, {
       args: [{ authType, agentLoopArgs, actionModelId: action.id, step }],
-      taskQueue: await getTaskQueueForUserMessageOrigin(
-        auth,
-        agentLoopArgs.userMessageOrigin
-      ),
+      taskQueue: await getTaskQueueForRun(auth, {
+        userMessageOrigin: agentLoopArgs.userMessageOrigin,
+        conversationId: agentLoopArgs.conversationId,
+      }),
       workflowId,
       searchAttributes: {
         conversationId: [agentLoopArgs.conversationId],

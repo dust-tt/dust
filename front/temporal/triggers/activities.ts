@@ -79,8 +79,10 @@ async function createConversationForAgentConfiguration({
     fullName: auth.getNonNullableUser().fullName(),
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
-    // All webhook triggers count as programmatic, fair_use execution mode included.
-    origin: trigger.kind === "webhook" ? "triggered_programmatic" : "triggered",
+    origin:
+      trigger.kind === "webhook" && trigger.executionMode === "programmatic"
+        ? "triggered_programmatic"
+        : "triggered",
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,
   };
 
