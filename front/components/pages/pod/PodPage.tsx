@@ -78,7 +78,7 @@ export function PodPage() {
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
       <NavTabPill
-        className="pt-2"
+        className="pt-2 flex min-h-0 flex-1 flex-col overflow-hidden"
         defaultValue="conversations"
         value={currentTab}
         onValueChange={(value) => handleTabChange(value as PodTab)}
