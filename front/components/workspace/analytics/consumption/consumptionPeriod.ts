@@ -19,6 +19,20 @@ export const CONSUMPTION_PERIOD_OPTIONS: ConsumptionPeriodSelection[] = [
   })),
 ];
 
+/**
+ * Periods and chart buckets are both resolved in UTC server-side, so they have
+ * to be rendered in UTC too. Formatting a UTC midnight boundary in the viewer's
+ * zone shifts the label by a day for anyone west of Greenwich — the chart would
+ * attribute a day's consumption to the day before.
+ */
+export function formatConsumptionDate(date: string | number): string {
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function consumptionPeriodLabel(
   selection: ConsumptionPeriodSelection
 ): string {
