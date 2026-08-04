@@ -52,7 +52,7 @@ export interface RunUsageType {
   isBatch: boolean;
 }
 
-interface RunUsageWithRunKeyType extends RunUsageType {
+export interface RunUsageWithRunKeyType extends RunUsageType {
   runKey: string | null;
   runUsageModelId: ModelId;
   runModelId: ModelId;

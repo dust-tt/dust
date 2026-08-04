@@ -4,7 +4,10 @@ import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assi
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
-import type { RunResource } from "@app/lib/resources/run_resource";
+import type {
+  RunResource,
+  RunUsageWithRunKeyType,
+} from "@app/lib/resources/run_resource";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type {
   AgentMessageConsumptionDetails,
@@ -13,8 +16,6 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 
 const MICRO_CREDITS_PER_CREDIT = 1_000_000;
-
-type RunUsages = Awaited<ReturnType<typeof RunResource.listRunUsagesForRuns>>;
 
 export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
   models: AgentMessageConsumptionModelDetails[];
@@ -83,10 +84,9 @@ function reconcileInputCredits({
 
   // Preserve the relative weight of the cache-naive input rows.
   const inputAllocations = inputItems.map((item, index) => {
-    const exactMicro =
-      (item.grossAttributedCreditAmountMicro *
-        reconciledInputCreditAmountMicro) /
-      grossInputCreditAmountMicro;
+    const inputShare =
+      item.grossAttributedCreditAmountMicro / grossInputCreditAmountMicro;
+    const exactMicro = inputShare * reconciledInputCreditAmountMicro;
     const floorMicro = Math.floor(exactMicro);
 
     return {
@@ -158,7 +158,7 @@ function buildConsumptionTotals({
 /** Ensures every provider-reported model bucket has a row for the active attribution version. */
 function hasCompleteModelAttribution(
   items: AgentMessageConsumptionItemResource[],
-  usages: RunUsages
+  usages: RunUsageWithRunKeyType[]
 ): boolean {
   const itemTypesByRunUsageModelId = new Map<ModelId, Set<string>>();
 
@@ -311,7 +311,7 @@ function buildModelDetails({
   reconciledCreditAmounts,
 }: {
   items: AgentMessageConsumptionItemResource[];
-  usages: RunUsages;
+  usages: RunUsageWithRunKeyType[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
 }): MessageConsumptionDetails["models"] {
   const usageByModelId = new Map(
@@ -366,7 +366,7 @@ export function buildMessageConsumptionDetails({
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
-  usages: RunUsages;
+  usages: RunUsageWithRunKeyType[];
 }): MessageConsumptionDetails | null {
   if (billedCredits === null || items.length === 0 || dustRunIds.length === 0) {
     return null;
