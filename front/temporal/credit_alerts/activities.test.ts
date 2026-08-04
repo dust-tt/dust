@@ -7,7 +7,7 @@ import {
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
@@ -140,5 +140,36 @@ describe("expireWorkspacePoolCapOverridesActivity", () => {
     await expireWorkspacePoolCapOverridesActivity(workspace.sId);
 
     expect(spendLimits.clearMetronomePerUserCapAlert).not.toHaveBeenCalled();
+  });
+
+  it("reverts the DB override back and throws when the Metronome cap alert clear fails", async () => {
+    vi.mocked(spendLimits.clearMetronomePerUserCapAlert).mockResolvedValue(
+      new Err(new Error("Metronome unavailable"))
+    );
+
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: "cust_metronome_failure_xxx",
+    });
+    const user = await UserFactory.basic();
+    const membership = await MembershipFactory.associate(workspace, user, {
+      role: "user",
+    });
+    const expiresAt = new Date(Date.now() - 60 * 60 * 1000);
+    await membership.updatePoolCapOverride({
+      poolCapOverrideAwuCredits: 500,
+      poolCapOverrideExpiresAt: expiresAt,
+    });
+
+    await expect(
+      expireWorkspacePoolCapOverridesActivity(workspace.sId)
+    ).rejects.toThrow();
+
+    const untouchedMembership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user,
+        workspace,
+      });
+    expect(untouchedMembership?.poolCapOverrideAwuCredits).toBe(500);
+    expect(untouchedMembership?.poolCapOverrideExpiresAt).toEqual(expiresAt);
   });
 });

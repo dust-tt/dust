@@ -123,6 +123,8 @@ export async function expireWorkspacePoolCapOverridesActivity(
   );
   const userByModelId = new Map(users.map((user) => [user.id, user]));
 
+  let failedCount = 0;
+
   const results = await concurrentExecutor(
     memberships,
     async (membership) => {
@@ -135,6 +137,7 @@ export async function expireWorkspacePoolCapOverridesActivity(
           },
           "[SpendLimitExpiration] User not found for expired membership override"
         );
+        failedCount++;
         return false;
       }
       const result = await expireUserSpendLimitOverride(auth, {
@@ -151,6 +154,7 @@ export async function expireWorkspacePoolCapOverridesActivity(
           },
           "[SpendLimitExpiration] Failed to revert expired pool cap override"
         );
+        failedCount++;
         return false;
       }
       return result.value.reverted;
@@ -160,7 +164,15 @@ export async function expireWorkspacePoolCapOverridesActivity(
 
   const revertedCount = results.filter(Boolean).length;
   logger.info(
-    { workspaceId: workspace.sId, revertedCount },
+    { workspaceId: workspace.sId, revertedCount, failedCount },
     "[SpendLimitExpiration] Completed expired pool cap override sweep for workspace"
   );
+
+  // Surface the failure so the (non-retrying) child workflow fails instead of
+  // silently leaving these memberships to be picked up by the next hourly tick.
+  if (failedCount > 0) {
+    throw new Error(
+      `[SpendLimitExpiration] Failed to revert ${failedCount} expired pool cap override(s) for workspace ${workspace.sId}`
+    );
+  }
 }
