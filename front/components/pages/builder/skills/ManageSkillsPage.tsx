@@ -73,6 +73,13 @@ export function ManageSkillsPage() {
   const { hasPermission } = useWorkspacePermissions();
   const { hasFeature } = useFeatureFlags();
   const hasSkillFavorites = hasFeature("skill_favorites");
+  const skillManagerTabs = useMemo(
+    () =>
+      SKILL_MANAGER_TABS.filter(
+        (tab) => tab.id !== "favorites" || hasSkillFavorites
+      ),
+    [hasSkillFavorites]
+  );
   const [selectedSkillOverride, setSelectedSkillOverride] = useState<
     GetSkillsWithRelationsResponseBody["skills"][number] | null
   >(null);
@@ -116,12 +123,12 @@ export function ManageSkillsPage() {
     if (
       selectedTab &&
       isValidTab(selectedTab) &&
-      SKILL_MANAGER_TABS.some((t) => t.id === selectedTab)
+      skillManagerTabs.some((t) => t.id === selectedTab)
     ) {
       return selectedTab;
     }
     return "active";
-  }, [selectedTab]);
+  }, [selectedTab, skillManagerTabs]);
 
   const canBypassEditorVisibility = isAdmin;
   const isBypassEditorVisibilityEnabled =
@@ -171,6 +178,9 @@ export function ManageSkillsPage() {
     const editableByMeSkills = sortedActiveSkills.filter((s) =>
       s.relations.editors?.some((e) => e.sId === user?.sId)
     );
+    const favoriteSkills = sortSkillsByName(
+      activeSkills.filter((s) => s.isFavorite)
+    );
 
     return {
       active: filterBySearch(
@@ -183,6 +193,11 @@ export function ManageSkillsPage() {
         searchLower,
         isSearchActive
       ),
+      favorites: filterBySearch(
+        filterByAvailability(favoriteSkills, availabilityFilter),
+        searchLower,
+        isSearchActive
+      ),
       archived: filterBySearch(
         filterByAvailability(sortedArchivedSkills, availabilityFilter),
         searchLower,
@@ -192,6 +207,7 @@ export function ManageSkillsPage() {
   }, [
     sortedActiveSkills,
     sortedArchivedSkills,
+    activeSkills,
     skillSearch,
     user,
     isSearchActive,
@@ -427,7 +443,7 @@ export function ManageSkillsPage() {
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>
               <TabsList>
-                {SKILL_MANAGER_TABS.map((tab) => (
+                {skillManagerTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}

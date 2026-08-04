@@ -6,7 +6,11 @@ import {
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
-export type SkillManagerTabType = "active" | "editable_by_me" | "archived";
+export type SkillManagerTabType =
+  | "active"
+  | "editable_by_me"
+  | "favorites"
+  | "archived";
 
 interface SkillManagerTab {
   id: SkillManagerTabType;
@@ -20,6 +24,11 @@ export const SKILL_MANAGER_TABS: SkillManagerTab[] = [
     id: "editable_by_me",
     label: "Editable by me",
     description: "Skills you can edit",
+  },
+  {
+    id: "favorites",
+    label: "Favorites",
+    description: "Skills you favorited",
   },
   { id: "archived", label: "Archived", description: "Archived skills" },
 ];
