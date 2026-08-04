@@ -302,7 +302,7 @@ export async function fireActivationNudge(
     targetUserId: string;
     context: ActivationNudgeContext;
   }
-): Promise<Result<{ triggerId: string | null }, Error>> {
+): Promise<Result<{ triggerId: string }, Error>> {
   const emitResult = await emitActivationEvent(
     adminAuth,
     pod,
@@ -311,6 +311,20 @@ export async function fireActivationNudge(
   );
   if (emitResult.isErr()) {
     return emitResult;
+  }
+
+  // The event was accepted but matched no trigger, so no conversation was
+  // created. Callers report a nudge as sent, so this has to surface as a
+  // failure rather than an empty success. The webhook request records which
+  // check rejected it (payload filter, disabled trigger, per-day limit).
+  const { triggerId } = emitResult.value;
+  if (!triggerId) {
+    return new Err(
+      new Error(
+        "The activation event fired no trigger, so no conversation was " +
+          "created. See the Activation webhook source's requests for the reason."
+      )
+    );
   }
 
   // Record the nudge so it counts toward the scheduler's cooldown (same as the
@@ -334,5 +348,5 @@ export async function fireActivationNudge(
     );
   }
 
-  return emitResult;
+  return new Ok({ triggerId });
 }
