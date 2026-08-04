@@ -14,7 +14,7 @@ export type GetSkillsResponseBody = {
 export type GetSkillsWithRelationsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsWithRelationsType & {
     isFavorite?: boolean;
-    messageCount?: number;
+    messageCount?: number | null;
   })[];
 };
 

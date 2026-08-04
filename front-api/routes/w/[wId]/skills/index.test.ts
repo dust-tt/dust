@@ -805,8 +805,13 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     const skillResult = responseBody.skills.find(
       (listedSkill) => listedSkill.sId === skill.sId
     );
+    const systemSkillResult = responseBody.skills.find(
+      (listedSkill) => listedSkill.sId === "discover_tools"
+    );
 
     expect(skillResult?.messageCount).toBe(2);
+    expect(systemSkillResult).toBeDefined();
+    expect(systemSkillResult?.messageCount).toBeNull();
   });
 
   it("should return skills with usage when linked to agents", async () => {
