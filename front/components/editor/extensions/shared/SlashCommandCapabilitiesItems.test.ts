@@ -10,6 +10,7 @@ import {
   type SlashCommandToolSuggestion,
   searchCapabilityIndex,
 } from "./SlashCommandCapabilitiesItems";
+import { buildCapabilitySlashCommandItems } from "./slash_suggestion/buildSlashCommandItems";
 
 function toolSuggestion({
   description = "Search data.",
@@ -239,6 +240,25 @@ describe("searchCapabilityIndex ranking", () => {
 
     expect(result.map((item) => item.id)).toEqual(["favorite", "non-favorite"]);
   });
+
+  it("uses the best matching name or alias for ranking", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "prefix",
+          sortName: "Deep Dive Assistant",
+        },
+        {
+          id: "alias",
+          searchAliases: ["Detailed Research", "Deep Dive"],
+          sortName: "Go Deep",
+        },
+      ],
+      query: "deep dive",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["alias", "prefix"]);
+  });
 });
 
 describe("searchCapabilityIndex", () => {
@@ -336,5 +356,29 @@ describe("getToolSlashCommandItem", () => {
       id: "mcp_server_view_linear",
       label: "Create ticket (Product)",
     });
+  });
+});
+
+describe("buildCapabilitySlashCommandItems", () => {
+  it("matches a global skill by its configured search aliases", () => {
+    const goDeep = skillSuggestion({
+      name: "Go Deep",
+      sId: "go-deep",
+    });
+    const deepDiveAssistant = skillSuggestion({
+      name: "Deep Dive Assistant",
+      sId: "skl_deep_dive_assistant",
+    });
+
+    const result = buildCapabilitySlashCommandItems({
+      query: "Deep Dive",
+      skills: [deepDiveAssistant, goDeep],
+      tools: [],
+    });
+
+    expect(result.map((item) => item.id)).toEqual([
+      "go-deep",
+      "skl_deep_dive_assistant",
+    ]);
   });
 });

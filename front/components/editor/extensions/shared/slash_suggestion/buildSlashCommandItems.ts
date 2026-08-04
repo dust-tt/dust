@@ -9,6 +9,7 @@ import {
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import { GLOBAL_SKILL_SEARCH_ALIASES } from "@app/lib/resources/skill/code_defined/global/search_aliases";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function filterSlashCommandItems(
@@ -58,6 +59,7 @@ export function buildCapabilitySlashCommandItems<
           isFavorite: skill.isFavorite ?? false,
           kind: "skill" as const,
           normalizedDescription: skill.userFacingDescription?.toLowerCase(),
+          searchAliases: GLOBAL_SKILL_SEARCH_ALIASES[skill.sId],
           skill,
           sortName: skill.name.toLowerCase(),
         })),
