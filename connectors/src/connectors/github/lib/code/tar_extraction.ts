@@ -230,6 +230,17 @@ export async function extractGitHubTarballToGCS(
     let bytesReceived = 0;
 
     extract.on("entry", (header, stream, next) => {
+      // When extraction aborts mid-entry (e.g. Z_BUF_ERROR on a truncated download),
+      // tar-stream destroys in-flight entry streams with that error. Without a listener,
+      // the resulting 'error' event crashes the process (uncaught exception). pipeline()
+      // still rejects with the original error, so the retry logic is unaffected.
+      stream.on("error", (err) => {
+        childLogger.warn(
+          { err, path: header.name },
+          "Tar entry stream error during extraction"
+        );
+      });
+
       // The tar archive is streamed sequentially, meaning you must drain each entry's stream
       // as you get them or else the main extract stream will receive backpressure and stop reading.
       const drainAndNext = () => {
@@ -364,18 +375,7 @@ export async function extractGitHubTarballToGCS(
       });
 
       // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
-      // gunzip-maybe's inner zlib stream can re-emit its error (e.g. Z_BUF_ERROR on a
-      // truncated download) after pipeline() has settled and detached its listeners; an
-      // 'error' event with no listener crashes the process. This listener only absorbs
-      // those late emissions — pipeline() still rejects with the original error.
-      const gunzipStream = gunzip();
-      gunzipStream.on("error", (err) => {
-        childLogger.warn(
-          { err },
-          "Gunzip stream error during tarball extraction"
-        );
-      });
-      await pipeline(tarballStream, gunzipStream, extract);
+      await pipeline(tarballStream, gunzip(), extract);
 
       // Validate content-length if provided.
       if (contentLength !== null && bytesReceived < contentLength) {
