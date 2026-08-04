@@ -13,10 +13,8 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import { getWeekStart } from "../lib/utils";
 import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
-import type {
-  JoinChannelUseCaseType,
-  SlackWebhookEventPayload,
-} from "./workflows";
+import type { SlackWebhookEventPayload } from "./webhook_event";
+import type { JoinChannelUseCaseType } from "./workflows";
 import {
   joinChannelWorkflow,
   joinChannelWorkflowId,
