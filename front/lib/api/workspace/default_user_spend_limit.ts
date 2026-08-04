@@ -322,10 +322,8 @@ export async function setDefaultUserSpendLimit(
   // Sync per-seat-type Metronome alerts from the newly persisted value.
   const syncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
   if (syncResult.isErr()) {
-    // Metronome sync failed, so the DB and Metronome would otherwise be left
-    // out of sync until someone retries — put the DB value back. There was no
-    // row before this call, so undo by deleting the one just created rather
-    // than leaving a stale `defaultPoolCapAwuCredits: 0` row behind.
+    // Metronome sync failed, restore DB values. There was no
+    // row before this call, so undo by deleting the one just created.
     if (existingConfig) {
       await existingConfig.updateConfiguration(auth, {
         defaultPoolCapAwuCredits: previousAwuCredits,
