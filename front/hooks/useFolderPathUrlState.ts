@@ -1,15 +1,16 @@
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { useMemo } from "react";
+import { useCallback } from "react";
 
-export function useFolderPathUrlState(
-  paramKey: string
-): [string, (path: string) => void] {
-  const paramNames = useMemo(() => [paramKey], [paramKey]);
-  const params = useQueryParams(paramNames);
-  const param = params[paramKey];
+// Module-level so the reference passed to `useQueryParams` stays stable.
+const FOLDER_PATH_PARAMS: ["folderPath"] = ["folderPath"];
 
-  const setPath = (path: string) =>
-    param.setParam(path === "" ? undefined : path);
+export function useFolderPathUrlState(): [string, (path: string) => void] {
+  const { folderPath } = useQueryParams(FOLDER_PATH_PARAMS);
 
-  return [param.value ?? "", setPath];
+  const setPath = useCallback(
+    (path: string) => folderPath.setParam(path === "" ? undefined : path),
+    [folderPath]
+  );
+
+  return [folderPath.value ?? "", setPath];
 }

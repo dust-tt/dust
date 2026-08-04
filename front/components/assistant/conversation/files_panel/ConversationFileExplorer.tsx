@@ -34,8 +34,7 @@ export function ConversationFileExplorer({
   const { closePanel, openPanel } = useConversationSidePanelContext();
   const isPod = isPodConversation(conversation);
 
-  const [currentFolderPath, setCurrentFolderPath] =
-    useFolderPathUrlState("folderPath");
+  const [currentFolderPath, setCurrentFolderPath] = useFolderPathUrlState();
 
   const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
     conversationId: conversation.sId,

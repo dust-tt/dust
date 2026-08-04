@@ -241,8 +241,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     fileName: string;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [currentFolderPath, setCurrentFolderPath] =
-    useFolderPathUrlState("folderPath");
+  const [currentFolderPath, setCurrentFolderPath] = useFolderPathUrlState();
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [itemToRename, setItemToRename] = useState<
