@@ -58,6 +58,7 @@
   "oauth.authorized": 3,
   "oauth.initiated": 3,
   "oauth.revoked": 2,
+  "pod_function.published": 1,
   "project.joined": 3,
   "project.left": 3,
   "sandbox_egress_policy.agent_requests_setting_updated": 1,

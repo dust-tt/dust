@@ -84,6 +84,7 @@ export const AUDIT_ACTIONS = [
   "self_improvement.batch_mode_updated",
   "skill.self_improvement_updated",
   // Sandbox.
+  "pod_function.published",
   "sandbox_egress_policy.agent_requests_setting_updated",
   "sandbox_egress_policy.sandbox_updated",
   "sandbox_egress_policy.updated",
@@ -415,6 +416,7 @@ type AuditTargetType =
   | "credential"
   | "mcp_connection"
   | "sandbox_env_var"
+  | "pod_function"
   | "frame";
 
 /**
