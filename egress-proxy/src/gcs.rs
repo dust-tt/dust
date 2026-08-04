@@ -111,12 +111,15 @@ impl GcsPolicyProvider {
         .await
     }
 
-    // A domain is allowed if ANY of the workspace, owner, or legacy sandbox
-    // policies allows it. Every lookup fails closed: a GCS error never grants.
+    // A domain is allowed if ANY of the workspace, owner, pod, or legacy
+    // sandbox policies allows it. `pod_id` is the inherited pod layer for
+    // conversation sandboxes running inside a pod — same file scheme as
+    // owner policies. Every lookup fails closed: a GCS error never grants.
     pub async fn evaluate(
         &self,
         w_id: Option<&str>,
         owner_id: Option<&str>,
+        pod_id: Option<&str>,
         sb_id: &str,
         domain: &str,
     ) -> bool {
@@ -151,6 +154,22 @@ impl GcsPolicyProvider {
         };
 
         if owner_allows {
+            return true;
+        }
+
+        let pod_allows = match (w_id, pod_id) {
+            (Some(w_id), Some(pod_id)) => match self.get_owner_policy(w_id, pod_id).await {
+                Ok(Some(policy)) => policy.allows(domain),
+                Ok(None) => false,
+                Err(error) => {
+                    warn!(error = %error, w_id, pod_id, "pod policy lookup failed");
+                    false
+                }
+            },
+            _ => false,
+        };
+
+        if pod_allows {
             return true;
         }
 
