@@ -61,9 +61,7 @@ interface EditSpendLimitModalProps {
   member: MemberUsageType | null;
   owner: WorkspaceType;
   // When set, the modal skips the "workspace default vs. custom limit"
-  // choice and opens straight into the custom-limit form. Used by the
-  // "Set credit amount" request-resolution action, where the admin has
-  // already decided a specific amount is what's needed.
+  // choice and opens straight into the custom-limit form.
   forceOverride?: boolean;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
   // Fired once the spend limit has been persisted successfully (not on cancel
@@ -110,9 +108,7 @@ export function EditSpendLimitModal({
     null
   );
 
-  // The amount currently persisted, if any — used to warn when the admin is
-  // about to lower it (see the ContentMessage below). Distinct from
-  // `creditsInput`, which tracks the in-progress edit.
+  // The amount currently persisted
   const currentAwuCredits =
     spendLimit?.kind === "limited" ? spendLimit.awuCredits : null;
 

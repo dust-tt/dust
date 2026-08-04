@@ -60,9 +60,8 @@ export function ManageUpgradeRequestModal({
           {
             key: "upgrade-plan",
             icon: ArrowUp,
-            label: "Upgrade to max plan",
-            description:
-              "Move this member to the richest seat the plan offers.",
+            label: "Upgrade User Plan",
+            description: "Move the member to a seat with more credits.",
             onClick: () => request && onUpgradePlan(request),
           },
         ]

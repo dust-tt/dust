@@ -347,10 +347,7 @@ export function UsagePage() {
     },
     []
   );
-  // Shared by every way a request can be approved (seat / credit-amount
-  // modal saved, or the one-click "Allow unlimited spend" action) — resolves
-  // the request itself, independent of whatever already updated the seat or
-  // spend limit.
+  // Shared by every way a request can be approved
   const resolveRequestApproved = useCallback(
     async (requestId: string): Promise<void> => {
       const request = upgradeRequests.find((r) => r.sId === requestId);

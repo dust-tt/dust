@@ -205,10 +205,8 @@ export function UpgradeRequestsTable({
     );
   }
 
-  // Hide "Upgrade to max plan" for enterprise workspaces (custom contracts, no
-  // self-serve plan ladder to move up), and whenever there is no higher seat
-  // tier to move the requester to: their current seat already grants as many
-  // AWU credits as the richest seat the plan offers.
+  // Hide "Upgrade User Plan" for enterprise workspaces
+  // and whenever there is no higher seat tier to move the requester to
   const canUpgradePlan =
     !isEnterprise &&
     canUpgrade(manageRequest?.requester.seatType ?? null, seatPlans);
