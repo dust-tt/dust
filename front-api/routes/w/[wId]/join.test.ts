@@ -36,6 +36,24 @@ function joinRequest(wId: string, query: Record<string, string> = {}) {
 }
 
 describe("GET /api/w/:wId/join", () => {
+  // Posture lock (CODING_RULES [API4]): join must NOT inherit workspaceAuth. It
+  // is mounted before /w/:wId in app.ts; if that order regresses, an
+  // unauthenticated request would be rejected by workspaceAuth (401) instead of
+  // reaching the public handler. No session is set up here, on purpose.
+  it("stays public — an unauthenticated request is not rejected by auth", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const invitation = await MembershipInvitationFactory.create(workspace, {
+      inviteEmail: "public-posture@example.com",
+    });
+    const token = getMembershipInvitationToken(invitation.toJSON());
+
+    const response = await joinRequest(workspace.sId, { t: token });
+
+    expect(response.status).not.toBe(401);
+    expect(response.status).not.toBe(403);
+    expect(response.status).toBe(200);
+  });
+
   it("returns 404 for unknown workspace", async () => {
     const response = await joinRequest("nonexistent-workspace-id");
 

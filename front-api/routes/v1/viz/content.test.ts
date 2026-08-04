@@ -50,6 +50,9 @@ describe("/api/v1/viz/content endpoint tests", () => {
     });
   }
 
+  // Posture lock (CODING_RULES [API4]): viz is mounted before /v1/w/:wId so it
+  // uses its own access token, not publicApiAuth. A valid viz JWT with no API
+  // key returning 200 proves publicApiAuth is not in the chain — don't remove.
   it("should return frame content with valid JWT access token", async () => {
     const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
