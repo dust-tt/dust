@@ -114,20 +114,14 @@ app.get(
     const { status, offset, format } = ctx.req.valid("query");
 
     if (format === "csv") {
-      // Unlike the paginated JSON response, the CSV export always covers the
-      // full history — `listAllResolvedUpgradeRequests` pages through the
-      // table internally rather than being capped at one page.
-      const requests =
-        status === "resolved"
-          ? await listAllResolvedUpgradeRequests(auth)
-          : await listPendingUpgradeRequests(auth);
+      // CSV export is only wired to the resolved-requests History tab; it
+      // always covers the full history.
+      const requests = await listAllResolvedUpgradeRequests(auth);
 
       ctx.header("Content-Type", "text/csv");
       ctx.header(
         "Content-Disposition",
-        `attachment; filename="dust_upgrade_requests${
-          status === "resolved" ? "_history" : ""
-        }.csv"`
+        'attachment; filename="dust_upgrade_requests_history.csv"'
       );
       return ctx.body(upgradeRequestsToCsv(requests));
     }
