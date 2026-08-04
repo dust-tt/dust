@@ -129,13 +129,11 @@ type ReplaceSkillReferenceTagsOptions = {
   html?: boolean;
 };
 
-type SkillFetchContextWithEffectiveSpaceIds = {
-  agentLoopData?: AgentLoopExecutionData;
-  effectiveSpaceIds: string[];
-};
-
 type SkillFetchContext =
-  | SkillFetchContextWithEffectiveSpaceIds
+  | {
+      agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds: string[];
+    }
   | {
       agentLoopData?: never;
       effectiveSpaceIds?: string[];
@@ -1210,7 +1208,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private static async listFavoritesForCurrentUser(
     auth: Authenticator,
-    { agentLoopData, effectiveSpaceIds }: SkillFetchContextWithEffectiveSpaceIds
+    { agentLoopData, effectiveSpaceIds = [] }: SkillFetchContext
   ): Promise<SkillResource[]> {
     const user = auth.user();
     if (!user) {
@@ -1684,8 +1682,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversation,
       agentLoopData,
       effectiveSpaceIds,
-    }: SkillFetchContextWithEffectiveSpaceIds & {
+    }: {
       conversation: ConversationWithoutContentType;
+      agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds: string[];
     }
   ): Promise<SkillResource[]> {
     if (!isPodConversation(conversation)) {
