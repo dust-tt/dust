@@ -17,6 +17,7 @@
     "trigger_type": "string",
     "parent_agent_message_id": "string",
     "depth": "string",
+    "conversation_context_mode": "string",
     "actor_type": "string",
     "initiating_user_id": "string",
     "initiating_user_email": "string"

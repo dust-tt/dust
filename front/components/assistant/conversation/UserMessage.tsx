@@ -47,6 +47,7 @@ import {
   DropdownMenuTrigger,
   Edit04,
   Icon,
+  LayerSingle,
   Link01,
   Toolbar,
   Tooltip,
@@ -304,8 +305,13 @@ export function UserMessage({
   const showBottomActionMenu = !isDeleted && (hasReactions || isMobile);
   const showSideActionMenu = !isDeleted && !hasReactions && !isMobile;
 
+  // Marks the run boundary on the message that opened it. The agent reply carries no duplicate
+  // chip and no synthetic divider is inserted.
+  const isFreshContext = message.conversationContextMode === "isolated";
   const displayChip =
-    message.version > 0 || isTriggeredOrigin(message.context.origin);
+    message.version > 0 ||
+    isTriggeredOrigin(message.context.origin) ||
+    isFreshContext;
   const pictureUrl = message.context.profilePictureUrl ?? message.user?.image;
   const timestamp = formatTimestring(message.created);
   const name = message.context.fullName ?? undefined;
@@ -349,6 +355,11 @@ export function UserMessage({
                           <TriggerChip message={message} />
                         </span>
                       )}
+                      {isFreshContext && (
+                        <span className="inline-block leading-none text-muted-foreground">
+                          <FreshContextChip />
+                        </span>
+                      )}
                       {message.version > 0 && !isDeleted && (
                         <span className="text-xs text-faint">(edited)</span>
                       )}
@@ -370,6 +381,11 @@ export function UserMessage({
                       {isTriggeredOrigin(message.context.origin) && (
                         <span className="inline-block leading-none text-muted-foreground">
                           <TriggerChip message={message} />
+                        </span>
+                      )}
+                      {isFreshContext && (
+                        <span className="inline-block leading-none text-muted-foreground">
+                          <FreshContextChip />
                         </span>
                       )}
                       {message.version > 0 && !isDeleted && (
@@ -518,6 +534,22 @@ function Label({ message }: { message?: UserMessageType }) {
   } else {
     return <span className="font-bold">Triggered and sent automatically</span>;
   }
+}
+
+function FreshContextChip() {
+  return (
+    <Tooltip
+      label="Earlier conversation messages were excluded from this run. This message and the reply remain part of the conversation."
+      trigger={
+        <Icon
+          size="xs"
+          visual={LayerSingle}
+          className="h-3.5 w-3.5"
+          aria-label="Fresh context"
+        />
+      }
+    />
+  );
 }
 
 function TriggerChip({ message }: { message?: UserMessageType }) {

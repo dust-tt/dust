@@ -1,4 +1,6 @@
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
+import type { AgentRunContextIsolation } from "@app/lib/api/assistant/conversation/context_isolation";
+import { FULL_CONTEXT_ISOLATION } from "@app/lib/api/assistant/conversation/context_isolation";
 import { updateConversationRequirements } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
@@ -29,6 +31,11 @@ import type {
   UserMessageType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
+import type { ConversationContextMode } from "@app/types/assistant/conversation_context_mode";
+import {
+  DEFAULT_CONVERSATION_CONTEXT_MODE,
+  normalizeConversationContextMode,
+} from "@app/types/assistant/conversation_context_mode";
 import type {
   ModelResolutionMethodType,
   ModelSelectionType,
@@ -120,6 +127,9 @@ export async function createUserMessage(
           agenticMessageData?: AgenticMessageData;
           visibility?: MessageVisibility;
           requestedModel: ModelSelectionType | null;
+          // Omitted by callers that have no per-run mode to express: they run with the full
+          // conversation, as before.
+          conversationContextMode?: ConversationContextMode;
         };
     transaction: Transaction;
   }
@@ -134,6 +144,8 @@ export async function createUserMessage(
   let agenticMessageData: AgenticMessageData | undefined = undefined;
   let visibility: MessageVisibility = "visible";
   let requestedModel: ModelSelectionType | null = null;
+  let conversationContextMode: ConversationContextMode =
+    DEFAULT_CONVERSATION_CONTEXT_MODE;
 
   switch (metadata.type) {
     case "edit":
@@ -146,6 +158,7 @@ export async function createUserMessage(
       context = metadata.message.context;
       agenticMessageData = metadata.message.agenticMessageData;
       requestedModel = metadata.message.requestedModel;
+      conversationContextMode = metadata.message.conversationContextMode;
       break;
     case "delete":
       // See softDeleteUserMessageAndReplies for why a v+1 placeholder is used instead of an UPDATE.
@@ -156,6 +169,7 @@ export async function createUserMessage(
 
       context = metadata.message.context;
       agenticMessageData = metadata.message.agenticMessageData;
+      conversationContextMode = metadata.message.conversationContextMode;
       visibility = "deleted";
       break;
     case "create":
@@ -165,6 +179,8 @@ export async function createUserMessage(
       context = metadata.context;
       agenticMessageData = metadata.agenticMessageData;
       requestedModel = metadata.requestedModel;
+      conversationContextMode =
+        metadata.conversationContextMode ?? DEFAULT_CONVERSATION_CONTEXT_MODE;
       if (metadata.visibility) {
         visibility = metadata.visibility;
       }
@@ -221,6 +237,7 @@ export async function createUserMessage(
       requestedModelId: requestedModel?.modelId ?? null,
       requestedProviderId: requestedModel?.providerId ?? null,
       requestedReasoningEffort: requestedModel?.reasoningEffort ?? null,
+      conversationContextMode,
       userId: user?.id,
       conversationId: conversation.id,
       workspaceId: workspace.id,
@@ -259,6 +276,7 @@ export async function createUserMessage(
     branchId: null,
     reactions: [],
     requestedModel,
+    conversationContextMode,
   };
   return createdUserMessage;
 }
@@ -311,6 +329,9 @@ export const createAgentMessages = async (
           userMessage: UserMessageTypeWithoutMentions;
           modelResolution: AgentMessageModelResolution | null;
           isRestrictedBySpaceUsage: boolean;
+          // Omitted by callers that have no per-run mode to express: the run gets the full
+          // conversation, as before.
+          contextIsolation?: AgentRunContextIsolation;
         }
       | {
           type: "approve_existing_mention";
@@ -320,6 +341,7 @@ export const createAgentMessages = async (
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
           modelResolution: AgentMessageModelResolution | null;
+          contextIsolation?: AgentRunContextIsolation;
         };
     transaction?: Transaction;
   }
@@ -358,6 +380,12 @@ export const createAgentMessages = async (
               metadata.agentMessageRow.resolvedReasoningEffort,
             modelResolutionMethod:
               metadata.agentMessageRow.modelResolutionMethod,
+            // A retry re-runs the same run: it inherits the source message's mode and isolation
+            // root verbatim so the retried run can never widen its context window.
+            conversationContextMode:
+              metadata.agentMessageRow.conversationContextMode,
+            contextIsolationRootRank:
+              metadata.agentMessageRow.contextIsolationRootRank,
           },
           { transaction }
         );
@@ -412,6 +440,12 @@ export const createAgentMessages = async (
             conversationId: conversation.id,
             workspaceId: owner.id,
             skipToolsValidation: metadata.agentMessage.skipToolsValidation,
+            // Placeholder row for a soft delete: it never runs, but it carries the deleted
+            // message's snapshot so the record stays consistent.
+            conversationContextMode:
+              metadata.agentMessage.conversationContextMode,
+            contextIsolationRootRank:
+              metadata.agentMessage.contextIsolationRootRank,
           },
           { transaction }
         );
@@ -519,6 +553,14 @@ export const createAgentMessages = async (
             resolvedModelId: resolvedModel.modelId,
             resolvedReasoningEffort: resolvedModel.reasoningEffort,
             modelResolutionMethod,
+            // Every agent message created from a post gets its own immutable snapshot, written in
+            // the same transaction as the row and before any workflow is launched.
+            conversationContextMode: (
+              metadata.contextIsolation ?? FULL_CONTEXT_ISOLATION
+            ).conversationContextMode,
+            contextIsolationRootRank: (
+              metadata.contextIsolation ?? FULL_CONTEXT_ISOLATION
+            ).contextIsolationRootRank,
           },
           { transaction }
         );
@@ -610,6 +652,10 @@ export const createAgentMessages = async (
             costCredits: null,
             resolvedModel: resolvedModelFromAgentMessageRow(agentMessageRow),
             modelResolutionMethod: agentMessageRow.modelResolutionMethod,
+            conversationContextMode: normalizeConversationContextMode(
+              agentMessageRow.conversationContextMode
+            ),
+            contextIsolationRootRank: agentMessageRow.contextIsolationRootRank,
           };
         }
       }

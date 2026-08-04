@@ -17,6 +17,7 @@ function makeWakeUp(scheduleConfig: WakeUpType["scheduleConfig"]): WakeUpType {
     scheduleConfig,
     reason: "Test",
     status: "scheduled",
+    conversationContextMode: "full",
     fireCount: 0,
     maxFires: 1,
     user: {

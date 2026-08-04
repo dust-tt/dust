@@ -154,6 +154,15 @@ const app = workspaceApp();
  *                       type: string
  *               skipToolsValidation:
  *                 type: boolean
+ *               conversationContextMode:
+ *                 type: string
+ *                 enum: [full, isolated]
+ *                 description: >-
+ *                   Conversation context mode for the agent run started by this message.
+ *                   `full` (the default when omitted) renders the conversation as usual.
+ *                   `isolated` omits every conversation-derived item that predates this message
+ *                   for this run only; the message and its reply are still stored and shown, and
+ *                   the next message goes back to `full`.
  *               modelSelection:
  *                 type: object
  *                 description: Optional per-message model override from the input-bar model picker (an explicit model pick).
@@ -266,8 +275,14 @@ app.post(
     const user = auth.getNonNullableUser();
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const { content, context, mentions, skipToolsValidation, modelSelection } =
-      ctx.req.valid("json");
+    const {
+      content,
+      context,
+      mentions,
+      skipToolsValidation,
+      modelSelection,
+      conversationContextMode,
+    } = ctx.req.valid("json");
 
     if (context.clientSideMCPServerIds) {
       const hasServerAccess = await concurrentExecutor(
@@ -399,6 +414,7 @@ app.post(
       },
       skipToolsValidation: skipToolsValidation ?? false,
       modelSelection,
+      conversationContextMode,
     });
 
     if (messageRes.isErr()) {

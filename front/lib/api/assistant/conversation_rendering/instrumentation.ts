@@ -5,8 +5,10 @@
  * assert on data instead of mocking a metrics client.
  */
 
+import type { ExecutionProjectionError } from "@app/lib/api/assistant/conversation_rendering/execution_projection";
 import type { ConversationPruningStats } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import { getStatsDClient } from "@app/lib/utils/statsd";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -124,4 +126,31 @@ export function emitConversationRenderingError({
     `caller:${caller}`,
     `kind:${kind}`,
   ]);
+}
+
+// Conversation-context isolation. Tags stay low-cardinality on purpose (no workspace, agent,
+// conversation or message identifiers) and no message content, prompt or tool result is ever
+// attached to these series.
+export function emitContextIsolationProjection({
+  outcome,
+}: {
+  outcome: "applied" | ExecutionProjectionError["type"];
+}): void {
+  getStatsDClient().increment("conversation_rendering.context_isolation", 1, [
+    `outcome:${outcome}`,
+  ]);
+}
+
+// Counts isolated runs at the point the agent message is persisted, so the series covers every
+// entry point (web, API, wake-ups, ...) rather than only the ones that reach the model.
+export function emitContextIsolationRunCreated({
+  origin,
+}: {
+  origin: UserMessageOrigin;
+}): void {
+  getStatsDClient().increment(
+    "conversation_rendering.context_isolation_runs",
+    1,
+    [`origin:${origin}`]
+  );
 }

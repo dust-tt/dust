@@ -3,6 +3,7 @@ import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragm
 import { checkMessagesLimit } from "@app/lib/api/assistant/conversation";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { contextIsolationForUserMessage } from "@app/lib/api/assistant/conversation/context_isolation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   getConversationRankVersionLock,
@@ -273,6 +274,12 @@ export async function validateAgentMention(
           nextMessageRank,
           userMessage: message,
           modelResolution,
+          // Approving a previously restricted mention starts the run the original message asked
+          // for, so it carries that message's mode and root.
+          contextIsolation: contextIsolationForUserMessage({
+            conversationContextMode: message.conversationContextMode,
+            userMessageRank: message.rank,
+          }),
         },
         transaction: t,
       });

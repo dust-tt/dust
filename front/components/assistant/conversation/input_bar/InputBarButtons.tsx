@@ -2,6 +2,8 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarFreshContextToggle } from "@app/components/assistant/conversation/input_bar/InputBarFreshContextToggle";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -60,6 +62,8 @@ interface InputBarButtonsProps {
   // Read-at-submit sink for the model picker; prefer over a change callback
   // when the parent only needs the value at submit time.
   modelSelectionRef?: React.MutableRefObject<ModelSelectionType | undefined>;
+  // Whether the one-shot "Fresh context" control is offered for this composer.
+  canUseFreshContext?: boolean;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
@@ -92,6 +96,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onAgentRemove,
   onMCPServerViewSelect,
   modelSelectionRef,
+  canUseFreshContext = false,
   onNodeSelect,
   onNodeUnselect,
   onSkillSelect,
@@ -106,6 +111,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
 }: InputBarButtonsProps) {
   const router = useAppRouter();
   const isWidthConstrained = useIsWidthConstrained();
+  const { isFreshContextEnabled, setIsFreshContextEnabled } =
+    React.useContext(InputBarContext);
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -262,12 +269,22 @@ export const InputBarButtons = React.memo(function InputBarButtons({
     />
   );
 
+  const freshContextButton = canUseFreshContext && (
+    <InputBarFreshContextToggle
+      buttonSize={buttonSize}
+      disabled={isInputDisabled}
+      isEnabled={isFreshContextEnabled}
+      onToggle={setIsFreshContextEnabled}
+    />
+  );
+
   return (
     <>
       {agentButton}
       {modelPickerButton}
       {!hideCapabilities && toolsButton}
       {attachmentButton}
+      {freshContextButton}
     </>
   );
 });

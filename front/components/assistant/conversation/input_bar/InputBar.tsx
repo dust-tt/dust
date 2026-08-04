@@ -99,6 +99,9 @@ interface InputBarProps {
   disableAgentMentions?: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
+  // Whether the one-shot "Fresh context" control is offered. Owned by the caller because the
+  // condition (an existing conversation with a prior visible interaction) is transcript state.
+  canUseFreshContext?: boolean;
   isSubmitting?: boolean;
   isAgentBuilder?: boolean;
   disableInput?: boolean;
@@ -131,6 +134,7 @@ export const InputBar = React.memo(function InputBar({
   isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
+  canUseFreshContext = false,
   disableInput = false,
   submitBlockMessage = null,
   placeholder,
@@ -774,6 +778,10 @@ export const InputBar = React.memo(function InputBar({
             onSelectedSpaceIdsChange={handleSelectedSpaceIdsChange}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             modelSelectionRef={modelSelectionRef}
+            canUseFreshContext={
+              canUseFreshContext &&
+              featureFlags.includes("conversation_context_isolation")
+            }
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}

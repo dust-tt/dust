@@ -108,6 +108,7 @@ app.post(
       skipToolsValidation,
       agenticMessageData,
       modelSelection: rawModelSelection,
+      conversationContextMode,
     } = ctx.req.valid("json");
 
     const origin = context.origin ?? "api";
@@ -248,6 +249,7 @@ app.post(
             conversationResource,
             mentions,
             modelSelection,
+            conversationContextMode,
             skipToolsValidation: skipToolsValidation ?? false,
           })
         : await postUserMessage(auth, {
@@ -257,6 +259,7 @@ app.post(
             conversationResource,
             mentions,
             modelSelection,
+            conversationContextMode,
             skipToolsValidation: skipToolsValidation ?? false,
           });
     if (messageRes.isErr()) {

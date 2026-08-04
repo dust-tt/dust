@@ -314,6 +314,12 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateReaction'
+ *         conversationContextMode:
+ *           type: string
+ *           enum: [full, isolated]
+ *           description: >-
+ *             Context mode requested for the agent run this message started. Display metadata:
+ *             the authoritative value for execution lives on the agent message.
  *     PrivateAgentMessage:
  *       type: object
  *       description: An agent message in a conversation.
@@ -429,6 +435,16 @@
  *           nullable: true
  *           enum: [agent, user, auto]
  *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy).
+ *         conversationContextMode:
+ *           type: string
+ *           enum: [full, isolated]
+ *           description: >-
+ *             Authoritative context mode this agent run executed with. `isolated` runs render no
+ *             conversation-derived item that predates their isolation root.
+ *         contextIsolationRootRank:
+ *           type: integer
+ *           nullable: true
+ *           description: Rank of the user message that opens the isolation window. Null in full mode.
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
@@ -1231,6 +1247,12 @@
  *           type: integer
  *         maxFires:
  *           type: integer
+ *         conversationContextMode:
+ *           type: string
+ *           enum: [full, isolated]
+ *           description: >-
+ *             Context mode applied to every message this wake-up posts. `isolated` answers each
+ *             firing without conversation-derived context that predates it.
  *     PrivateMention:
  *       type: object
  *       description: A mention in a message (agent or user).

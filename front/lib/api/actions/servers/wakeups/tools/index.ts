@@ -10,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { isUserMessageType } from "@app/types/assistant/conversation";
+import { DEFAULT_CONVERSATION_CONTEXT_MODE } from "@app/types/assistant/conversation_context_mode";
 import { isActiveWakeUp, type WakeUpType } from "@app/types/assistant/wakeups";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -121,6 +122,7 @@ function renderWakeUp(wakeUp: WakeUpType): string {
   return (
     `- ${wakeUp.sId} — ${renderScheduleConfig(wakeUp)}\n` +
     `  Status: ${wakeUp.status} (${wakeUp.fireCount}/${wakeUp.maxFires} fires)\n` +
+    `  Context: ${wakeUp.conversationContextMode}\n` +
     `  Reason: ${wakeUp.reason}`
   );
 }
@@ -130,7 +132,12 @@ export function createWakeupsTools(
   toolContext?: ToolContext
 ) {
   const handlers: ToolHandlers<typeof WAKEUPS_TOOLS_METADATA> = {
-    schedule_wakeup: async ({ when, reason, timezone }) => {
+    schedule_wakeup: async ({
+      when,
+      reason,
+      timezone,
+      conversationContextMode = DEFAULT_CONVERSATION_CONTEXT_MODE,
+    }) => {
       assert(
         isAgentLoopRunContext(toolContext?.runContext),
         "AgentLoopRunContext expected"
@@ -216,6 +223,7 @@ export function createWakeupsTools(
               cronExpression: null,
               cronTimezone: null,
               reason,
+              conversationContextMode,
             }
           : {
               scheduleType: "cron" as const,
@@ -224,6 +232,7 @@ export function createWakeupsTools(
               // parsed.kind === "cron" means we resolved cronTimezone above.
               cronTimezone: cronTimezone as string,
               reason,
+              conversationContextMode,
             };
 
       const result = await WakeUpResource.makeNew(
@@ -245,6 +254,7 @@ export function createWakeupsTools(
           text:
             `Scheduled wake-up ${wakeUp.sId}.\n\n` +
             `Schedule: ${renderScheduleConfig(wakeUp)}\n` +
+            `Context: ${wakeUp.conversationContextMode}\n` +
             `Reason: ${wakeUp.reason}`,
         },
       ]);

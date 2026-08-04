@@ -312,6 +312,7 @@ export class ConversationFactory {
       rank: messageRow.rank,
       reactions: [],
       requestedModel: null,
+      conversationContextMode: "full",
     };
 
     return { messageRow, userMessage };
@@ -501,6 +502,8 @@ export class ConversationFactory {
       costCredits: null,
       resolvedModel: null,
       modelResolutionMethod: null,
+      conversationContextMode: "full",
+      contextIsolationRootRank: null,
     };
 
     if (!mcpAction) {

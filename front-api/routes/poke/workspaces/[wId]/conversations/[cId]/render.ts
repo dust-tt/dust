@@ -191,6 +191,9 @@ app.post(
       costCredits: null,
       resolvedModel: null,
       modelResolutionMethod: null,
+      // Poke renders the conversation as the agent would see it in full mode.
+      conversationContextMode: "full",
+      contextIsolationRootRank: null,
     };
 
     const serverToolsAndInstructions = await tryListMCPTools(

@@ -22,6 +22,8 @@ import type {
   ParticipantActionType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import type { ConversationContextMode } from "@app/types/assistant/conversation_context_mode";
+import { CONVERSATION_CONTEXT_MODES } from "@app/types/assistant/conversation_context_mode";
 import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
 import { MODEL_RESOLUTION_METHODS } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -307,6 +309,11 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare userContextApiKeyId: ForeignKey<KeyModel["id"]> | null;
   declare userContextAuthMethod: string | null;
 
+  // Display metadata only: it renders the "Fresh context" marker in the transcript. Execution
+  // never reads it — the authority is `AgentMessageModel.conversationContextMode`.
+  // Legacy: null on every row created before the feature shipped, which resolves to "full".
+  declare conversationContextMode: ConversationContextMode | null;
+
   declare userId: ForeignKey<UserModel["id"]> | null;
   // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
   // is derived from messages at write time).
@@ -407,6 +414,14 @@ UserMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    conversationContextMode: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isIn: [[...CONVERSATION_CONTEXT_MODES]],
+      },
+    },
     conversationId: {
       type: DataTypes.BIGINT,
       allowNull: false,
@@ -499,6 +514,17 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare resolvedModelId: string | null;
   declare resolvedReasoningEffort: string | null;
   declare modelResolutionMethod: ModelResolutionMethodType | null;
+
+  // Canonical, immutable execution authority for this agent run's conversation context mode.
+  // Snapshotted in the same transaction that creates the row, before the Temporal workflow is
+  // launched, and never re-derived from request input, UI state, message text, origin or the
+  // latest message. Legacy: null on rows created before the feature shipped, resolving to "full".
+  declare conversationContextMode: ConversationContextMode | null;
+  // Rank of the user message that opens the isolation window. Set only when
+  // `conversationContextMode` is "isolated". A same-conversation handover inherits the parent
+  // agent message's root so the handed-over agent keeps the parent's post-boundary run state
+  // without ever regaining pre-boundary messages.
+  declare contextIsolationRootRank: number | null;
 
   // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
   // is derived from messages at write time).
@@ -615,6 +641,19 @@ AgentMessageModel.init(
       validate: {
         isIn: [MODEL_RESOLUTION_METHODS],
       },
+    },
+    conversationContextMode: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isIn: [[...CONVERSATION_CONTEXT_MODES]],
+      },
+    },
+    contextIsolationRootRank: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
     conversationId: {
       type: DataTypes.BIGINT,

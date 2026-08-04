@@ -41,8 +41,14 @@ export const WakeUpBanner = ({
           normal foreground color, let the schedule text inherit the muted
           color. */}
       <div className="flex min-w-0 items-center gap-2">
+        {/* The mode lives in the existing details tooltip rather than as another visible chip:
+            it matters when inspecting a wake-up, not at a glance. */}
         <Tooltip
-          label={wakeUp.reason}
+          label={
+            wakeUp.conversationContextMode === "isolated"
+              ? `${wakeUp.reason}\n\nFresh context — each firing is answered without earlier conversation messages.`
+              : wakeUp.reason
+          }
           tooltipTriggerAsChild
           trigger={
             <span className="min-w-0 truncate text-foreground">

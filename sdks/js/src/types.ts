@@ -742,6 +742,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "claude_fable_5_feature"
+  | "conversation_context_isolation"
   | "databricks_tool"
   | "deepseek_feature"
   | "dev_mcp_actions"
@@ -1135,6 +1136,15 @@ const AgenticMessageDataSchema = z.object({
   originMessageId: z.string(),
 });
 
+// Per-run conversation context mode. Strict on the request side so an unknown value is a 400
+// rather than a silent fallback; responses use the flexible variant so a future value does not
+// break older SDK versions.
+export const ConversationContextModeSchema = z.enum(["full", "isolated"]);
+
+export type ConversationContextMode = z.infer<
+  typeof ConversationContextModeSchema
+>;
+
 const UserMessageSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
@@ -1147,6 +1157,8 @@ const UserMessageSchema = z.object({
   content: z.string(),
   context: UserMessageContextSchema,
   agenticMessageData: AgenticMessageDataSchema.optional().nullable(),
+  // Absent on responses from servers predating the feature.
+  conversationContextMode: FlexibleEnumSchema<"full" | "isolated">().optional(),
 });
 export type UserMessageType = z.infer<typeof UserMessageSchema>;
 
@@ -2356,6 +2368,12 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
     // Optional per-message model + reasoning-effort override applied to the
     // mentioned agent(s). Omitted means each agent runs its configured model.
     modelSelection: PublicModelSelectionSchema.optional(),
+    // Optional per-run conversation context mode. "full" (the default when
+    // omitted) renders the conversation as usual. "isolated" runs the agent on
+    // this message without any conversation-derived context that predates it;
+    // the message and its reply are still stored in the conversation and the
+    // next message goes back to "full".
+    conversationContextMode: ConversationContextModeSchema.optional(),
   }),
   z
     .object({

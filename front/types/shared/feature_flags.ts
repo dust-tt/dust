@@ -97,6 +97,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Disable all Computer sandbox features for this workspace",
     stage: "on_demand",
   },
+  conversation_context_isolation: {
+    description:
+      "Show the one-shot 'Fresh context' composer control, which runs the next message without earlier conversation context. Gates exposure only: runs already persisted as isolated keep executing in isolation when the flag is turned off.",
+    stage: "dust_only",
+  },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",

@@ -38,6 +38,7 @@ import {
   isCompactionMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import { normalizeConversationContextMode } from "@app/types/assistant/conversation_context_mode";
 import {
   toMentionType,
   toRichAgentMentionType,
@@ -225,6 +226,9 @@ function renderUserMessage(
         : undefined,
     reactions: [],
     requestedModel: resolvedModelFromUserMessageRow(userMessage),
+    conversationContextMode: normalizeConversationContextMode(
+      userMessage.conversationContextMode
+    ),
   };
 }
 
@@ -831,6 +835,10 @@ async function renderSingleAgentMessage(
     subAgentCostCredits,
     resolvedModel: resolvedModelFromAgentMessageRow(agentMessage),
     modelResolutionMethod: agentMessage.modelResolutionMethod,
+    conversationContextMode: normalizeConversationContextMode(
+      agentMessage.conversationContextMode
+    ),
+    contextIsolationRootRank: agentMessage.contextIsolationRootRank,
   } satisfies AgentMessageType;
 
   if (viewType === "full") {

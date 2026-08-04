@@ -1,3 +1,4 @@
+import { ConversationContextModeSchema } from "@app/types/assistant/conversation_context_mode";
 import { UserSchema } from "@app/types/user";
 import { z } from "zod";
 
@@ -35,6 +36,9 @@ export const WakeUpSchema = z.object({
   fireCount: z.number(),
   maxFires: z.number(),
   user: UserSchema,
+  // Context mode applied to every message this wake-up posts. Read from the persisted wake-up at
+  // fire time, never from `reason` or any other model-generated text.
+  conversationContextMode: ConversationContextModeSchema,
 });
 
 /**

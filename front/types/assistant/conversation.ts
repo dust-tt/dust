@@ -15,6 +15,7 @@ import type {
   GenericErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
+import type { ConversationContextMode } from "./conversation_context_mode";
 import type { MentionType, RichMention } from "./mentions";
 import type {
   ModelResolutionMethodType,
@@ -216,6 +217,9 @@ export type UserMessageType = {
   reactions: MessageReactionType[];
   // Model's triplet requested by the user manually when running the agent. Null when the user did not request a specific model.
   requestedModel: ModelSelectionType | null;
+  // Display metadata for the transcript marker. Execution authority lives on the agent message
+  // (see `AgentMessageType.conversationContextMode`); nothing must derive run behavior from this.
+  conversationContextMode: ConversationContextMode;
 };
 
 export type UserMessageTypeWithoutMentions = Omit<
@@ -392,6 +396,11 @@ export type AgentMessageType = BaseAgentMessageType & {
   // (per-message model picked from the input-bar picker), or "auto" (routed
   // through the auto model). Legacy: null.
   modelResolutionMethod: ModelResolutionMethodType | null;
+  // Canonical execution authority for this run's conversation context mode, snapshotted at
+  // creation time. `contextIsolationRootRank` is the rank of the user message that opens the
+  // isolation window; it is null in "full" mode.
+  conversationContextMode: ConversationContextMode;
+  contextIsolationRootRank: number | null;
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<

@@ -4,6 +4,8 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { projectConversationForIsolatedRun } from "@app/lib/api/assistant/conversation_rendering/execution_projection";
+import { emitContextIsolationProjection } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { selectPreferredStreamEndpointForWorkspace } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
@@ -13,6 +15,7 @@ import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_st
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentConfigurationWithoutModelType,
@@ -29,6 +32,7 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import { isIsolatedConversationContextMode } from "@app/types/assistant/conversation_context_mode";
 import { NOOP_MODEL_ID } from "@app/types/assistant/models/noop";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { Result } from "../shared/result";
@@ -296,6 +300,37 @@ export async function getAgentLoopDataWithAuth(
   // Check if the user message was soft-deleted.
   if (userMessage.visibility === "deleted") {
     return new Err(new AgentLoopDataError("user_message_deleted"));
+  }
+
+  // Single boundary for the whole run. The mode is read from the canonical agent-message record
+  // identified by (conversation, agentMessageId, agentMessageVersion) — never from the request,
+  // the workflow payload, the latest message, the origin or the message text — so every model
+  // step, tool step, approval/steering continuation, activity retry and worker restart resolves
+  // the same projection. Legacy rows carry a null mode and resolve to "full".
+  if (isIsolatedConversationContextMode(agentMessage.conversationContextMode)) {
+    const projectionRes = projectConversationForIsolatedRun(conversation, {
+      agentMessage,
+      userMessage,
+      contextIsolationRootRank: agentMessage.contextIsolationRootRank,
+    });
+    if (projectionRes.isErr()) {
+      emitContextIsolationProjection({ outcome: projectionRes.error.type });
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          conversationId,
+          agentMessageId,
+          agentMessageVersion,
+          userMessageId,
+          userMessageVersion,
+          projectionError: projectionRes.error.type,
+        },
+        "Failed to build isolated execution projection, failing the run closed."
+      );
+      return projectionRes;
+    }
+    emitContextIsolationProjection({ outcome: "applied" });
+    conversation = projectionRes.value;
   }
 
   const agentId = agentMessage.configuration.sId;

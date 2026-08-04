@@ -22,6 +22,7 @@ import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { normalizeConversationContextMode } from "@app/types/assistant/conversation_context_mode";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -515,6 +516,12 @@ export async function runWakeUpActivity({
       clientSideMCPServerIds,
     },
     skipToolsValidation: false,
+    // Read from the persisted wake-up row, never from `reason` or any other model-generated text.
+    // Each firing of a cron wake-up posts into the same conversation and is isolated
+    // independently, because each one creates its own user message and its own isolation root.
+    conversationContextMode: normalizeConversationContextMode(
+      wakeUp.conversationContextMode
+    ),
   });
 
   if (postMessageResult.isErr()) {

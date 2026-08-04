@@ -126,6 +126,7 @@ export function mockUserMessage(
     reactions: [],
     contentFragments: [],
     requestedModel: null,
+    conversationContextMode: "full",
   };
 }
 
@@ -279,6 +280,8 @@ export function mockFullAgentMessage(
     modelInteractionDurationMs: null,
     resolvedModel: null,
     modelResolutionMethod: null,
+    conversationContextMode: "full",
+    contextIsolationRootRank: null,
     richMentions: [],
     completionDurationMs: null,
     reactions: [],

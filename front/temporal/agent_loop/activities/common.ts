@@ -33,6 +33,7 @@ import type {
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { normalizeConversationContextMode } from "@app/types/assistant/conversation_context_mode";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import maxBy from "lodash/maxBy";
 import {
@@ -619,6 +620,10 @@ export async function notifyWorkflowError(
     costCredits: null,
     resolvedModel: resolvedModelFromAgentMessageRow(messageRow.agentMessage),
     modelResolutionMethod: messageRow.agentMessage.modelResolutionMethod,
+    conversationContextMode: normalizeConversationContextMode(
+      messageRow.agentMessage.conversationContextMode
+    ),
+    contextIsolationRootRank: messageRow.agentMessage.contextIsolationRootRank,
 
     // HACKY: These last 3 fields are not used in the workflow error case but required in the type.
     configuration: null as unknown as LightAgentConfigurationType,

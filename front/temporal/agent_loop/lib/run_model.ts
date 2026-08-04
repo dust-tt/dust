@@ -34,7 +34,10 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import {
+  renderEnabledSkillUserMessageFromInstructions,
+  renderEquippedSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -91,6 +94,7 @@ import type {
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { isIsolatedConversationContextMode } from "@app/types/assistant/conversation_context_mode";
 import {
   isTextContent,
   type ModelConversationTypeMultiActions,
@@ -639,8 +643,21 @@ export async function runModel(
     disableFormattingPrompt,
     hasSelectedSpacesOutsideAgentScope,
   });
+  // In "full" mode an enabled Skill's instructions reach the model by replaying the `enable_skill`
+  // tool result that turned it on. An isolated run cuts that result away when it predates the
+  // boundary, while the Skill itself stays enabled — it is persisted on the conversation, not on a
+  // message. Re-render the instructions from the current persisted Skill configuration so the
+  // enabled Skills the run is given tools for also carry their directives. Nothing here is derived
+  // from pre-boundary messages: the list and the instructions both come from configuration.
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
+    ...(isIsolatedConversationContextMode(
+      originalAgentMessage.conversationContextMode
+    )
+      ? enabledSkills.map((skill) =>
+          renderEnabledSkillUserMessageFromInstructions({ skill })
+        )
+      : []),
   ]);
 
   const modelConfig = modelInfo.endpoint.modelConfig;

@@ -235,6 +235,7 @@ export interface InputBarContainerProps {
   onMCPServerViewDeselect: (serverView: MCPServerViewLightType) => void;
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   modelSelectionRef?: React.MutableRefObject<ModelSelectionType | undefined>;
+  canUseFreshContext?: boolean;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetMCPServerViews: () => void;
@@ -296,6 +297,7 @@ const InputBarContainer = ({
   attachedNodes,
   onMCPServerViewSelect,
   modelSelectionRef,
+  canUseFreshContext = false,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
   selectedSpaceIds = EMPTY_SPACE_IDS,
@@ -1782,6 +1784,7 @@ const InputBarContainer = ({
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
                       modelSelectionRef={modelSelectionRef}
+                      canUseFreshContext={canUseFreshContext}
                       onNodeSelect={onNodeSelect}
                       onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}

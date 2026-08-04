@@ -73,6 +73,7 @@ import {
   isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import type { ConversationContextMode } from "@app/types/assistant/conversation_context_mode";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
@@ -299,7 +300,11 @@ export const ConversationViewer = ({
   });
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
-  const { peekPendingFirstMessage } = useContext(InputBarContext);
+  const {
+    peekPendingFirstMessage,
+    isFreshContextEnabled,
+    setIsFreshContextEnabled,
+  } = useContext(InputBarContext);
 
   const { mutateConversationAttachments } = useConversationAttachments({
     conversationId,
@@ -1126,6 +1131,12 @@ export const ConversationViewer = ({
 
       submitInFlightRef.current = true;
 
+      // Snapshot the one-shot composer state at submit start. Everything below — the optimistic
+      // placeholder, the request body, the retry after a failed send — uses this value, so a
+      // toggle flipped mid-flight cannot change what was sent.
+      const conversationContextMode: ConversationContextMode =
+        isFreshContextEnabled ? "isolated" : "full";
+
       try {
         const messageData = {
           input,
@@ -1137,6 +1148,7 @@ export const ConversationViewer = ({
           selectedSpaceIds,
           skipToolsValidation: agentBuilderContext?.skipToolsValidation,
           modelSelection,
+          conversationContextMode,
         };
 
         const lastMessageRank = Math.max(
@@ -1160,6 +1172,7 @@ export const ConversationViewer = ({
             rank,
             contentFragments,
             requestedModel: modelSelection ?? null,
+            conversationContextMode,
           });
 
         // Skip placeholder agent messages if there's already a running agent in the conversation
@@ -1267,6 +1280,10 @@ export const ConversationViewer = ({
           });
         }
 
+        // The message is durably accepted: clear the one-shot state. A failed send above returns
+        // early and leaves it on, so retrying the unsent message keeps the user's intent.
+        setIsFreshContextEnabled(false);
+
         const {
           message: messageFromBackend,
           contentFragments: contentFragmentsFromBackend,
@@ -1340,6 +1357,8 @@ export const ConversationViewer = ({
       submitMessage,
       user,
       incrementPendingSteeringCount,
+      isFreshContextEnabled,
+      setIsFreshContextEnabled,
     ]
   );
 

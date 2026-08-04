@@ -163,6 +163,8 @@ makeScript(
       costCredits: null,
       resolvedModel: null,
       modelResolutionMethod: null,
+      conversationContextMode: "full",
+      contextIsolationRootRank: null,
     };
 
     const serverToolsAndInstructions = await tryListMCPTools(

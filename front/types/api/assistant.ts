@@ -2,6 +2,7 @@
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import { z } from "zod";
 import { CLIENT_MESSAGE_ORIGINS } from "../assistant/conversation";
+import { ConversationContextModeSchema } from "../assistant/conversation_context_mode";
 import { ModelSelectionSchema } from "../assistant/models/types";
 import type { SupportedNonImageContentType } from "../files";
 import { getSupportedNonImageMimeTypes } from "../files";
@@ -40,6 +41,11 @@ const MessageBaseSchema = z.object({
 
 export const InternalPostMessagesRequestBodySchema = MessageBaseSchema.extend({
   skipToolsValidation: z.boolean().optional(),
+  // Per-run conversation context mode ("Fresh context" in the product). Omitted means "full",
+  // which is what every existing client sends. Deliberately absent from `MessageBaseSchema`: the
+  // conversation-creation route reuses that schema and a brand-new conversation has no earlier
+  // context to isolate from, so the field cannot be smuggled in there.
+  conversationContextMode: ConversationContextModeSchema.optional(),
 });
 
 const ContentFragmentBaseSchema = z.object({

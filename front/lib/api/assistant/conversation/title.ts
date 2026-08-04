@@ -83,7 +83,19 @@ export async function ensureConversationTitleFromAgentLoop(
 
   const { conversation, auth } = runAgentDataRes.value;
 
-  return ensureConversationTitle(auth, { conversation });
+  // Titling is a conversation-level concern, so it reads the durable conversation record rather
+  // than the run's execution projection: an isolated run projects the title away (it is derived
+  // from messages that predate the run's boundary) and would otherwise look untitled here and
+  // overwrite an existing title.
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationResource) {
+    return null;
+  }
+
+  return ensureConversationTitle(auth, { conversation: conversationResource });
 }
 
 export async function ensureConversationTitle(

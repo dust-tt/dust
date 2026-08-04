@@ -71,6 +71,7 @@ function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
     },
     reactions: [],
     requestedModel: null,
+    conversationContextMode: "full",
   };
 
   const originMessage = {

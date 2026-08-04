@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { ConversationContextModeSchema } from "@app/types/assistant/conversation_context_mode";
 import { z } from "zod";
 
 export const WAKEUPS_SERVER_NAME = "wakeups" as const;
@@ -35,6 +36,14 @@ export const WAKEUPS_TOOLS_METADATA = [
         .describe(
           "IANA timezone (e.g. 'Europe/Paris'). Required only when `when` is a cron expression. " +
             "If omitted, falls back to the user's timezone."
+        ),
+      conversationContextMode:
+        ConversationContextModeSchema.optional().describe(
+          "Conversation context for each firing of this wake-up. 'full' (the default) answers " +
+            "with the conversation as usual. 'isolated' answers each firing without any " +
+            "conversation-derived context that predates it, which suits recurring checks that " +
+            "should not accumulate history; the wake-up message and its reply are still stored " +
+            "in this conversation either way."
         ),
     },
     // This static default remains high to avoid cascading usage on legacy plans. At runtime,

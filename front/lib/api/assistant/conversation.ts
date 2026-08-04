@@ -9,6 +9,10 @@ import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
+  contextIsolationForUserMessage,
+  resolveInheritedContextIsolation,
+} from "@app/lib/api/assistant/conversation/context_isolation";
+import {
   getConversationRankVersionLock,
   getNextConversationMessageRank,
 } from "@app/lib/api/assistant/conversation/lock";
@@ -27,6 +31,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { emitContextIsolationRunCreated } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
@@ -161,6 +166,8 @@ import {
   isUserMessageType,
   UNRESUMABLE_AGENT_MESSAGE_STATUSES,
 } from "@app/types/assistant/conversation";
+import type { ConversationContextMode } from "@app/types/assistant/conversation_context_mode";
+import { DEFAULT_CONVERSATION_CONTEXT_MODE } from "@app/types/assistant/conversation_context_mode";
 import type { MentionType } from "@app/types/assistant/mentions";
 import {
   isAgentMention,
@@ -531,6 +538,7 @@ export async function postUserMessage(
     skipDustAutoMention,
     doNotAssociateUser,
     modelSelection,
+    conversationContextMode = DEFAULT_CONVERSATION_CONTEXT_MODE,
   }: {
     conversationResource: ConversationResource;
     content: string;
@@ -541,6 +549,9 @@ export async function postUserMessage(
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
     modelSelection?: ModelSelectionType;
+    // Optional per-run context mode requested by the caller. Every caller that omits it — old
+    // clients, integrations, automations — runs with the full conversation, as before.
+    conversationContextMode?: ConversationContextMode;
   }
 ): Promise<
   Result<
@@ -858,6 +869,17 @@ export async function postUserMessage(
       authMethod: auth.authMethod(),
     };
 
+    // Nested runs never trust the incoming body: a same-conversation handover inherits its
+    // boundary from the canonical parent agent-message row, so the handed-over agent keeps the
+    // parent run's post-boundary state and can never reach messages that predate the boundary.
+    const inheritedContextIsolation = agenticMessageData
+      ? await resolveInheritedContextIsolation(auth, {
+          agenticMessageData,
+          conversation,
+          transaction: t,
+        })
+      : null;
+
     // Re-read the agent message status inside the critical section of the advisory lock. Between
     // the initial check and acquiring the lock, the agent loop may have finalized — if so, clear
     // runningAgentMessage so we fall through to the normal flow.
@@ -897,9 +919,19 @@ export async function postUserMessage(
         agenticMessageData,
         visibility,
         requestedModel: modelSelection ?? null,
+        conversationContextMode:
+          inheritedContextIsolation?.conversationContextMode ??
+          conversationContextMode,
       },
       transaction: t,
     });
+
+    const contextIsolation =
+      inheritedContextIsolation ??
+      contextIsolationForUserMessage({
+        conversationContextMode,
+        userMessageRank: userMessageWithoutMentions.rank,
+      });
 
     const richMentions = await createUserMentions(auth, {
       resolvedMentions: resolvedUserMentions,
@@ -942,6 +974,7 @@ export async function postUserMessage(
             userMessage: userMessageWithoutMentions,
             modelResolution,
             isRestrictedBySpaceUsage: mentionedAgentRestricted,
+            contextIsolation,
           },
           transaction: t,
         });
@@ -991,6 +1024,10 @@ export async function postUserMessage(
 
   // Emit agent.executed for each agent being invoked.
   for (const agentMessage of agentMessages) {
+    if (agentMessage.conversationContextMode === "isolated") {
+      emitContextIsolationRunCreated({ origin: context.origin });
+    }
+
     void emitAuditLogEvent({
       auth,
       action: "agent.executed",
@@ -1005,6 +1042,7 @@ export async function postUserMessage(
         origin: context.origin,
         trigger_type: triggerType,
         depth: String(conversation.depth),
+        conversation_context_mode: agentMessage.conversationContextMode,
         ...(conversation.triggerId
           ? { trigger_id: conversation.triggerId }
           : {}),
@@ -1314,6 +1352,14 @@ export async function editUserMessage(
               userMessage: userMessageWithoutMentions,
               modelResolution,
               isRestrictedBySpaceUsage: mentionedAgentRestricted,
+              // An edit keeps the edited message's mode (copied onto the new version by
+              // `createUserMessage`). The rank is stable across versions, so the isolation root
+              // is unchanged too.
+              contextIsolation: contextIsolationForUserMessage({
+                conversationContextMode:
+                  userMessageWithoutMentions.conversationContextMode,
+                userMessageRank: userMessageWithoutMentions.rank,
+              }),
             },
             transaction: t,
           });
@@ -3340,6 +3386,12 @@ export async function updateAgentMessageWithFinalStatus(
         userMessage: promotedUserMessages[promotedUserMessages.length - 1],
         modelResolution,
         isRestrictedBySpaceUsage: agentRestrictedBySpaceUsage,
+        // A promoted steering message starts its own run, so it carries its own mode and root
+        // rather than inheriting the interrupted run's.
+        contextIsolation: contextIsolationForUserMessage({
+          conversationContextMode: promotedUserMessage.conversationContextMode,
+          userMessageRank: promotedUserMessage.rank,
+        }),
       },
       transaction: t,
     });

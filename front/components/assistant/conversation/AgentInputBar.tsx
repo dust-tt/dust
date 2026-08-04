@@ -14,6 +14,7 @@ import {
   isCompactionMessage,
   isHandoverUserMessage,
   isHiddenMessage,
+  isPlaceholderMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { WakeUpBanner } from "@app/components/assistant/conversation/WakeUpBanner";
@@ -105,6 +106,18 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     );
 
   const lastRequestedModel = lastUserMessage?.requestedModel ?? null;
+
+  // "Fresh context" only makes sense once there is earlier context to leave out, so the control is
+  // hidden until the transcript shows a persisted interaction. Same visibility rules the transcript
+  // uses (hidden origins, handovers and soft-deleted messages don't count), and optimistic
+  // placeholders don't either — nothing is persisted behind them yet.
+  const hasPriorVisibleInteraction = allMessages.some(
+    (m) =>
+      isUserMessage(m) &&
+      !isHiddenMessage(m) &&
+      !isPlaceholderMessage(m) &&
+      m.visibility !== "deleted"
+  );
 
   // Last agent mentioned by anyone in the conversation. Computed outside useMemo so the
   // result is a stable object reference (same mention object from the message list) that
@@ -565,6 +578,11 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           onSubmit={context.handleSubmit}
           stickyMentions={autoMentions}
           lastRequestedModel={lastRequestedModel}
+          canUseFreshContext={
+            !!context.conversation &&
+            !agentBuilderContext &&
+            hasPriorVisibleInteraction
+          }
           conversation={context.conversation}
           draftKey={context.draftKey}
           disableAutoFocus={isMobile || hasUserAnswerRequired}

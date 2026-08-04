@@ -1,5 +1,7 @@
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import type { UserMessageType } from "@app/types/assistant/conversation";
+import type { ConversationContextMode } from "@app/types/assistant/conversation_context_mode";
+import { DEFAULT_CONVERSATION_CONTEXT_MODE } from "@app/types/assistant/conversation_context_mode";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
@@ -18,6 +20,7 @@ export function createPlaceholderUserMessage({
   rank,
   contentFragments,
   requestedModel,
+  conversationContextMode = DEFAULT_CONVERSATION_CONTEXT_MODE,
 }: {
   input: string;
   mentions: RichMention[];
@@ -25,6 +28,7 @@ export function createPlaceholderUserMessage({
   rank: number;
   contentFragments?: ContentFragmentsType;
   requestedModel?: ModelSelectionType | null;
+  conversationContextMode?: ConversationContextMode;
 }): UserMessageType & { contentFragments: ContentFragmentType[] } {
   const createdAt = new Date().getTime();
   const { email, fullName, image, username } = user;
@@ -56,6 +60,7 @@ export function createPlaceholderUserMessage({
     },
     reactions: [],
     requestedModel: requestedModel ?? null,
+    conversationContextMode,
     contentFragments: [
       ...(contentFragments?.uploaded ?? []).map(
         (cf) =>

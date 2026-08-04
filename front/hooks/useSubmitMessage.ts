@@ -6,6 +6,7 @@ import type {
   ClientMessageOrigin,
   SubmitMessageError,
 } from "@app/types/assistant/conversation";
+import type { ConversationContextMode } from "@app/types/assistant/conversation_context_mode";
 import type { MentionType } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
@@ -40,6 +41,7 @@ export function useSubmitMessage({
       origin?: ClientMessageOrigin;
       skipToolsValidation?: boolean;
       modelSelection?: ModelSelectionType;
+      conversationContextMode?: ConversationContextMode;
     }): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> => {
       if (!conversationId) {
         return new Err({
@@ -58,6 +60,7 @@ export function useSubmitMessage({
         origin: messageOrigin,
         skipToolsValidation,
         modelSelection,
+        conversationContextMode,
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
 
@@ -136,6 +139,7 @@ export function useSubmitMessage({
             mentions,
             skipToolsValidation,
             modelSelection,
+            conversationContextMode,
           }),
         }
       );

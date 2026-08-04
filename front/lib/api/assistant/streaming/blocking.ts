@@ -13,6 +13,7 @@ import type {
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import type { ConversationContextMode } from "@app/types/assistant/conversation_context_mode";
 import type { MentionType } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { PubSubError } from "@app/types/assistant/pubsub";
@@ -153,6 +154,7 @@ export async function postUserMessageAndWaitForCompletion(
     conversationResource,
     mentions,
     modelSelection,
+    conversationContextMode,
     skipToolsValidation,
   }: {
     content: string;
@@ -161,6 +163,7 @@ export async function postUserMessageAndWaitForCompletion(
     conversationResource: ConversationResource;
     mentions: MentionType[];
     modelSelection?: ModelSelectionType;
+    conversationContextMode?: ConversationContextMode;
     skipToolsValidation: boolean;
   }
 ): Promise<
@@ -181,6 +184,7 @@ export async function postUserMessageAndWaitForCompletion(
         conversationResource,
         mentions,
         modelSelection,
+        conversationContextMode,
         skipToolsValidation,
       });
 

@@ -101,6 +101,7 @@ describe("renderAllMessages", () => {
             },
             reactions: [],
             requestedModel: null,
+            conversationContextMode: "full",
           } satisfies UserMessageType,
         ];
       }
@@ -141,6 +142,8 @@ describe("renderAllMessages", () => {
             costCredits: null,
             resolvedModel: null,
             modelResolutionMethod: null,
+            conversationContextMode: "full",
+            contextIsolationRootRank: null,
           } satisfies AgentMessageType,
         ];
       }

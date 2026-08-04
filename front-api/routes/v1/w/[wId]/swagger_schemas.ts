@@ -412,6 +412,19 @@
  *           $ref: '#/components/schemas/Context'
  *         modelSelection:
  *           $ref: '#/components/schemas/ModelSelection'
+ *         conversationContextMode:
+ *           type: string
+ *           enum: [full, isolated]
+ *           description: |
+ *             Conversation context mode for the agent run started by this message. `full` (the
+ *             default when omitted) renders the conversation as usual. `isolated` runs the agent
+ *             without any conversation-derived context that predates this message — earlier user
+ *             and agent messages, their tool calls and results, earlier attachments and any
+ *             compaction summary. The message and its reply are still stored in the conversation
+ *             and shown in the transcript, and the next message goes back to `full`. This affects
+ *             context only: it does not change authorization, tool approvals, space access,
+ *             billing or message retention.
+ *           example: "isolated"
  *     ModelSelection:
  *       type: object
  *       description: |

@@ -637,6 +637,8 @@ describe("tryCallMCPTool", () => {
       costCredits: null,
       resolvedModel: null,
       modelResolutionMethod: null,
+      conversationContextMode: "full",
+      contextIsolationRootRank: null,
     };
     const userMessage: UserMessageType = {
       id: -1,
@@ -661,6 +663,7 @@ describe("tryCallMCPTool", () => {
       },
       reactions: [],
       requestedModel: null,
+      conversationContextMode: "full",
     };
 
     // Create tool configuration

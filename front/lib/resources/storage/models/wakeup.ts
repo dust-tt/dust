@@ -7,6 +7,8 @@ import {
 } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ConversationContextMode } from "@app/types/assistant/conversation_context_mode";
+import { CONVERSATION_CONTEXT_MODES } from "@app/types/assistant/conversation_context_mode";
 import type {
   WakeUpScheduleType,
   WakeUpStatus,
@@ -27,6 +29,9 @@ export class WakeUpModel extends WorkspaceAwareModel<WakeUpModel> {
   declare reason: string;
   declare status: CreationOptional<WakeUpStatus>;
   declare fireCount: CreationOptional<number>;
+  // Context mode applied to every message this wake-up posts. Read from this row at fire time,
+  // never from `reason` or any generated text. Legacy: null resolves to "full".
+  declare conversationContextMode: CreationOptional<ConversationContextMode>;
 }
 
 WakeUpModel.init(
@@ -93,6 +98,14 @@ WakeUpModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    conversationContextMode: {
+      type: DataTypes.STRING(16),
+      allowNull: false,
+      defaultValue: "full",
+      validate: {
+        isIn: [[...CONVERSATION_CONTEXT_MODES]],
+      },
     },
   },
   {

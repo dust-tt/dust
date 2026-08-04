@@ -22,6 +22,8 @@ import {
 } from "@app/temporal/triggers/wakeup_client";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ConversationContextMode } from "@app/types/assistant/conversation_context_mode";
+import { normalizeConversationContextMode } from "@app/types/assistant/conversation_context_mode";
 import {
   ACTIVE_WAKE_UP_STATUSES,
   isActiveWakeUp,
@@ -194,6 +196,8 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
           cronExpression: null;
           cronTimezone: null;
           reason: string;
+          // Optional at the call boundary; normalized to "full" before it is persisted.
+          conversationContextMode?: ConversationContextMode;
         }
       | {
           scheduleType: "cron";
@@ -201,12 +205,20 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
           cronExpression: string;
           cronTimezone: string;
           reason: string;
+          conversationContextMode?: ConversationContextMode;
         },
     conversation: ConversationWithoutContentType,
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
-    const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
+    const {
+      scheduleType,
+      fireAt,
+      cronExpression,
+      cronTimezone,
+      reason,
+      conversationContextMode,
+    } = blob;
     const user = auth.getNonNullableUser();
 
     if (scheduleType === "cron") {
@@ -232,6 +244,9 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         cronExpression,
         cronTimezone,
         reason,
+        conversationContextMode: normalizeConversationContextMode(
+          conversationContextMode
+        ),
       },
       { transaction }
     );
@@ -791,6 +806,9 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       fireCount: this.fireCount,
       maxFires: this.maxFires(),
       user: this.user.toJSON(),
+      conversationContextMode: normalizeConversationContextMode(
+        this.conversationContextMode
+      ),
     };
   }
 

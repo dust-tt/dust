@@ -78,6 +78,7 @@ function createMockUserMessage(rank: number): UserMessageType {
     },
     reactions: [],
     requestedModel: null,
+    conversationContextMode: "full",
   };
 }
 

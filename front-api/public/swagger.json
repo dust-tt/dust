@@ -7739,6 +7739,14 @@
                   "skipToolsValidation": {
                     "type": "boolean"
                   },
+                  "conversationContextMode": {
+                    "type": "string",
+                    "enum": [
+                      "full",
+                      "isolated"
+                    ],
+                    "description": "Conversation context mode for the agent run started by this message. `full` (the default when omitted) renders the conversation as usual. `isolated` omits every conversation-derived item that predates this message for this run only; the message and its reply are still stored and shown, and the next message goes back to `full`."
+                  },
                   "modelSelection": {
                     "type": "object",
                     "description": "Optional per-message model override from the input-bar model picker (an explicit model pick).",
@@ -10672,6 +10680,14 @@
             "items": {
               "$ref": "#/components/schemas/PrivateReaction"
             }
+          },
+          "conversationContextMode": {
+            "type": "string",
+            "enum": [
+              "full",
+              "isolated"
+            ],
+            "description": "Context mode requested for the agent run this message started. Display metadata: the authoritative value for execution lives on the agent message."
           }
         }
       },
@@ -10846,6 +10862,19 @@
               "auto"
             ],
             "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy)."
+          },
+          "conversationContextMode": {
+            "type": "string",
+            "enum": [
+              "full",
+              "isolated"
+            ],
+            "description": "Authoritative context mode this agent run executed with. `isolated` runs render no conversation-derived item that predates their isolation root."
+          },
+          "contextIsolationRootRank": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Rank of the user message that opens the isolation window. Null in full mode."
           }
         }
       },
@@ -12074,6 +12103,14 @@
           },
           "maxFires": {
             "type": "integer"
+          },
+          "conversationContextMode": {
+            "type": "string",
+            "enum": [
+              "full",
+              "isolated"
+            ],
+            "description": "Context mode applied to every message this wake-up posts. `isolated` answers each firing without conversation-derived context that predates it."
           }
         }
       },
@@ -13982,6 +14019,15 @@
           },
           "modelSelection": {
             "$ref": "#/components/schemas/ModelSelection"
+          },
+          "conversationContextMode": {
+            "type": "string",
+            "enum": [
+              "full",
+              "isolated"
+            ],
+            "description": "Conversation context mode for the agent run started by this message. `full` (the\ndefault when omitted) renders the conversation as usual. `isolated` runs the agent\nwithout any conversation-derived context that predates this message — earlier user\nand agent messages, their tool calls and results, earlier attachments and any\ncompaction summary. The message and its reply are still stored in the conversation\nand shown in the transcript, and the next message goes back to `full`. This affects\ncontext only: it does not change authorization, tool approvals, space access,\nbilling or message retention.\n",
+            "example": "isolated"
           }
         }
       },

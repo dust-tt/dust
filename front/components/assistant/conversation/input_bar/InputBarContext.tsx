@@ -102,6 +102,11 @@ export const InputBarContext = createContext<{
   setIsLoadingGoTemplate: (loading: boolean) => void;
   stickyModelOverride: ModelSelectionType | undefined;
   setStickyModelOverride: (selection: ModelSelectionType | undefined) => void;
+  // One-shot "Fresh context" composer state. Deliberately not sticky and not persisted (no
+  // sessionStorage, no draft): the submitter snapshots it, clears it once the message is durably
+  // accepted, and it resets when the conversation changes.
+  isFreshContextEnabled: boolean;
+  setIsFreshContextEnabled: (isEnabled: boolean) => void;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
   // Fired right before submit; the extension uses it to snapshot browser tab state.
@@ -122,6 +127,8 @@ export const InputBarContext = createContext<{
   setIsLoadingGoTemplate: () => {},
   stickyModelOverride: undefined,
   setStickyModelOverride: () => {},
+  isFreshContextEnabled: false,
+  setIsFreshContextEnabled: () => {},
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -177,6 +184,18 @@ export function InputBarContextProvider({
     },
     []
   );
+
+  const [isFreshContextEnabled, setIsFreshContextEnabled] = useState(false);
+
+  // Switching conversations resets the composer's one-shot state, the same way the provider
+  // above resets pending uploads.
+  const activeConversationId = useActiveConversationId();
+  const [freshContextConversationId, setFreshContextConversationId] =
+    useState(activeConversationId);
+  if (activeConversationId !== freshContextConversationId) {
+    setFreshContextConversationId(activeConversationId);
+    setIsFreshContextEnabled(false);
+  }
 
   // First message stashed while navigating to a newly-created conversation (deferred-send flow).
   const [
@@ -265,6 +284,8 @@ export function InputBarContextProvider({
       setIsLoadingGoTemplate,
       stickyModelOverride,
       setStickyModelOverride,
+      isFreshContextEnabled,
+      setIsFreshContextEnabled,
       captureActions,
       fileUploaderService,
       onBeforeSubmit,
@@ -282,6 +303,7 @@ export function InputBarContextProvider({
       isLoadingGoTemplate,
       stickyModelOverride,
       setStickyModelOverride,
+      isFreshContextEnabled,
       captureActions,
       fileUploaderService,
       onBeforeSubmit,

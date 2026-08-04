@@ -94,6 +94,66 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
     expect(relationships[0].mcpServerViewId).toBe(mcpServerView.id);
   });
 
+  it("defaults conversationContextMode to full when omitted", async () => {
+    const { workspace, conversation, user } = await setupTest("admin");
+
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "Hello",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl ?? null,
+      },
+      skipToolsValidation: true,
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.message.conversationContextMode).toBe("full");
+  });
+
+  it("accepts conversationContextMode: isolated and echoes it on the message", async () => {
+    const { workspace, conversation, user } = await setupTest("admin");
+
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "Hello",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl ?? null,
+      },
+      skipToolsValidation: true,
+      conversationContextMode: "isolated",
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.message.conversationContextMode).toBe("isolated");
+    // Every agent message this post creates carries the same snapshot. The authoritative
+    // agent-message row is asserted directly in
+    // front/lib/api/assistant/conversation/context_isolation.test.ts.
+    for (const agentMessage of body.agentMessages) {
+      expect(agentMessage.conversationContextMode).toBe("isolated");
+    }
+  });
+
+  it("rejects an unknown conversationContextMode value", async () => {
+    const { workspace, conversation, user } = await setupTest("admin");
+
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "Hello",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl ?? null,
+      },
+      skipToolsValidation: true,
+      conversationContextMode: "incognito",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 404 when conversation doesn't exist", async () => {
     const { workspace } = await setupTest("admin");
 
