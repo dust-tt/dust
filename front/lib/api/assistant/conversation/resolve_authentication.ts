@@ -129,12 +129,27 @@ export async function resolveAuthentication(
     );
   }
 
-  const [updatedCount] = await action.updateStatusFromExpected(auth, {
-    status: outcome === "completed" ? "ready_allowed_explicitly" : "denied",
-    expectedStatus: blockedStatus,
-  });
+  const { sandboxChildActionInfo } = action.stepContext;
+  const isSandboxChildAction = isSandboxChildActionInfo(sandboxChildActionInfo);
 
-  if (updatedCount === 0) {
+  let resolvedActions: AgentMCPActionResource[];
+  if (
+    kind === "authentication" &&
+    outcome === "completed" &&
+    !isSandboxChildAction
+  ) {
+    resolvedActions = await action.markMatchingAuthenticationActionsReady(auth);
+  } else {
+    const [updatedCount] = await action.updateStatusFromExpected(auth, {
+      status: outcome === "completed" ? "ready_allowed_explicitly" : "denied",
+      expectedStatus: blockedStatus,
+    });
+    resolvedActions = updatedCount > 0 ? [action] : [];
+  }
+
+  if (
+    !resolvedActions.some((resolvedAction) => resolvedAction.id === action.id)
+  ) {
     logger.info(
       {
         actionId,
@@ -148,16 +163,18 @@ export async function resolveAuthentication(
     return new Ok(undefined);
   }
 
+  const resolvedActionIds = new Set(
+    resolvedActions.map((resolvedAction) => resolvedAction.sId)
+  );
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
     return (
       isMatchingEvent(payload) &&
-      (payload as { actionId: string }).actionId === actionId
+      resolvedActionIds.has((payload as { actionId: string }).actionId)
     );
   }, getMessageChannelId(messageId));
 
-  const { sandboxChildActionInfo } = action.stepContext;
-  if (isSandboxChildActionInfo(sandboxChildActionInfo)) {
+  if (isSandboxChildAction) {
     // Sandbox-child resolution always relaunches the parent bash (the
     // frozen sandbox must be thawed regardless of auth outcome — the
     // relaunched bash sees the failure in its tool-call response).

@@ -1535,6 +1535,50 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
+   * Marks every direct authentication-blocked action from the same agent-message step and MCP
+   * server as ready. A personal connection is scoped to the MCP server, so one completed
+   * authentication can unblock parallel calls to any of its tools. The update is batched and
+   * compare-and-swapped so concurrent resolutions have a single winner. Sandbox-child actions are
+   * excluded because each one must thaw and relaunch its own parent bash.
+   */
+  async markMatchingAuthenticationActionsReady(
+    auth: Authenticator
+  ): Promise<AgentMCPActionResource[]> {
+    const mcpServerId = this.metadata.mcpServerId;
+    const blockedActions = mcpServerId
+      ? await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
+          agentMessageId: this.agentMessageId,
+        })
+      : [this];
+    const matchingActions = blockedActions.filter(
+      (action) =>
+        action.status === "blocked_authentication_required" &&
+        action.metadata.mcpServerId === mcpServerId &&
+        !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
+    );
+
+    // Do not let an idempotent request for an action resolved elsewhere claim its siblings.
+    if (!matchingActions.some((action) => action.id === this.id)) {
+      return [];
+    }
+
+    const [, affectedRows] = await AgentMCPActionModel.update(
+      { status: "ready_allowed_explicitly" },
+      {
+        where: {
+          id: { [Op.in]: matchingActions.map((action) => action.id) },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "blocked_authentication_required",
+        },
+        returning: true,
+      }
+    );
+    const affectedActionIds = new Set(affectedRows.map((action) => action.id));
+
+    return matchingActions.filter((action) => affectedActionIds.has(action.id));
+  }
+
+  /**
    * Resolves the (light) agent configuration that owns this action, via the
    * action's agent message. Returns null if the agent message can't be found.
    * Keeps the agent-message model lookup inside the resource layer.
