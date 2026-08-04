@@ -87,7 +87,6 @@ export async function verifyWorkspaceOAuthConnectionForMCPServer(
     if (connectionIdRes.error.kind !== "connection_not_found") {
       return new Ok(undefined);
     }
-    // The original diagnostic is replaced by a user-facing message below — log it here.
     logger.info(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
