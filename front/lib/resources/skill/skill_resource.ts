@@ -1225,8 +1225,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     {
       agentLoopData,
+      effectiveSpaceIds,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
     } = {}
   ): Promise<SkillResource[]> {
     const user = auth.user();
@@ -1249,6 +1251,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchByIds(auth, favorites.skillIds, {
       agentLoopData,
+      effectiveSpaceIds,
       onlyActive: true,
     });
   }
@@ -1797,6 +1800,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       if (hasSkillFavorites) {
         favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
           agentLoopData,
+          effectiveSpaceIds,
         });
       }
     }

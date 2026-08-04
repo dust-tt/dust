@@ -294,20 +294,43 @@ describe("getJITServers", () => {
           agentConfigurationId: agentConfig.id,
         });
 
-        const skill = await SkillFactory.create(auth, {
-          name: "Discoverable Favorite Skill",
-          availability: "users_and_agents",
-        });
+        const [skill] = await SkillResource.fetchByIds(auth, ["mention_users"]);
+        if (!skill) {
+          throw new Error("Expected Mention Users skill to be available");
+        }
         const favoriteResult = await skill.setFavorite(auth, true);
         expect(favoriteResult.isOk()).toBe(true);
 
+        const { userMessage } = await ConversationFactory.createUserMessage({
+          auth,
+          workspace,
+          conversation,
+          content: "Mention someone.",
+          rank: -1,
+        });
+        const { agentMessage } = await ConversationFactory.createAgentMessage(
+          auth,
+          {
+            workspace,
+            conversation,
+            agentConfig,
+          }
+        );
+        const { model: agentModel, ...agentConfiguration } = agentConfig;
+
         const { equippedSkills, favoriteSkills } =
           await SkillResource.listForAgentLoop(auth, {
-            agentConfiguration: agentConfig,
+            agentConfiguration,
+            modelInfo: {
+              endpoint: getTestStreamEndpoint(agentModel.modelId),
+              ...agentModel,
+            },
+            agentMessage,
             conversation: {
               ...conversation,
               spaceId: conversationsSpace.sId,
             },
+            userMessage,
           });
 
         expect(equippedSkills.map((s) => s.sId)).toContain(skill.sId);
