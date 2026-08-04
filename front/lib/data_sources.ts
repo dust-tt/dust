@@ -92,6 +92,13 @@ export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
   );
 }
 
+/** Pod-owned connector for files/conversations; must not be edited via connected-data selection. */
+export function isDustProjectDataSource(ds: {
+  connectorProvider: ConnectorProvider | null;
+}): boolean {
+  return ds.connectorProvider === "dust_project";
+}
+
 // Counts toward the plan's connected data sources limit (limits.connections.count):
 // managed content connectors the user explicitly adds. Excludes bot integrations,
 // the web crawler, and the system-created project connector (dust_project).

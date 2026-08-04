@@ -14,6 +14,7 @@ import {
   fetchProjectDataSourceView,
 } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ContentNodeAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -113,21 +114,39 @@ export async function buildPodSearchDataSources(
 
   const podDsViewRes = await fetchProjectDataSourceView(auth, space);
   if (podDsViewRes.isOk()) {
-    const needsFolder = scope === "files" || scope === "conversations";
-    if (!needsFolder || conversationFolderInternalId != null) {
-      dataSources.push({
-        uri: getDataSourceURI({
-          workspaceId: owner.sId,
-          dataSourceViewId: podDsViewRes.value.sId,
-          filter: podDataSourceFilter(scope, conversationFolderInternalId),
-        }),
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-      });
-    }
+    dataSources.push({
+      uri: getDataSourceURI({
+        workspaceId: owner.sId,
+        dataSourceViewId: podDsViewRes.value.sId,
+        filter: podDataSourceFilter(scope, conversationFolderInternalId),
+      }),
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+    });
   }
 
   if (scope === "conversations") {
     return dataSources;
+  }
+
+  const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
+  // Add potential connected data sources
+  for (const dsView of dataSourceViews) {
+    if (
+      dsView.dataSource.connectorProvider &&
+      dsView.dataSource.connectorProvider !== "dust_project"
+    ) {
+      dataSources.push({
+        uri: getDataSourceURI({
+          workspaceId: owner.sId,
+          dataSourceViewId: dsView.sId,
+          filter: {
+            parents: null,
+            tags: null,
+          },
+        }),
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      });
+    }
   }
 
   const podContextAttachments = await listProjectContextAttachments(

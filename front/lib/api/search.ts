@@ -5,7 +5,7 @@ import {
   NON_SEARCHABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { normalizeUrlForSourceUrlSearch } from "@app/lib/connectors";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -97,7 +97,11 @@ export async function handleSearch(
 ): Promise<Result<SearchResult, SearchError>> {
   let spaces;
   if (allowAdminSearch) {
-    const allWorkspaceSpaces = await SpaceResource.listWorkspaceSpaces(auth);
+    const featureFlags = await getFeatureFlags(auth);
+    const allowPods = featureFlags.includes("admin_controlled_pods");
+    const allWorkspaceSpaces = await SpaceResource.listWorkspaceSpaces(auth, {
+      includeProjectSpaces: allowPods,
+    });
     spaces = allWorkspaceSpaces.filter(
       (s) => s.canAdministrate(auth) || s.canRead(auth)
     );
