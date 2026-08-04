@@ -21,6 +21,7 @@ import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
+import type { AgentLoopQueue } from "./config";
 import {
   getQueueForUserMessageOrigin,
   getQueueName,
@@ -32,19 +33,27 @@ import {
   runSandboxChildToolWorkflow,
 } from "./workflows";
 
-// Relaunch paths (tool validation, retries, authentication resolution) pass the origin of the
-// original user message, so a run keeps its queue across relaunches. Routing is gated by the
-// `agent_loop_qos_routing` feature flag (workspace or global): unflagged workspaces land on
-// the default queue, which is always staffed — removing the flag is the killswitch.
-export async function getTaskQueueForUserMessageOrigin(
+// Routing is gated by the `agent_loop_qos_routing` feature flag (workspace or global):
+// unflagged workspaces land on the default queue, which is always staffed. Removing the flag
+// is the killswitch.
+async function getTaskQueue(
   auth: Authenticator,
-  userMessageOrigin: UserMessageOrigin
+  queue: AgentLoopQueue
 ): Promise<string> {
   if (!(await hasFeatureFlag(auth, "agent_loop_qos_routing"))) {
     return QUEUE_NAME;
   }
 
-  return getQueueName(getQueueForUserMessageOrigin(userMessageOrigin));
+  return getQueueName(queue);
+}
+
+// Relaunch paths (tool validation, retries, authentication resolution) pass the origin of the
+// original user message, so a run keeps its queue across relaunches.
+export async function getTaskQueueForUserMessageOrigin(
+  auth: Authenticator,
+  userMessageOrigin: UserMessageOrigin
+): Promise<string> {
+  return getTaskQueue(auth, getQueueForUserMessageOrigin(userMessageOrigin));
 }
 
 export async function launchAgentLoopWorkflow({
@@ -183,9 +192,9 @@ export async function launchCompactionWorkflow({
           sourceConversation,
         },
       ],
-      // Compaction stays on the default queue: low volume, a single LLM call, and no user
-      // message origin to route on (it is conversation-scoped, not run-scoped).
-      taskQueue: QUEUE_NAME,
+      // No user message origin to route on: a human is waiting on the compacted
+      // conversation, so interactive.
+      taskQueue: await getTaskQueue(auth, "interactive"),
       workflowId,
       searchAttributes: {
         conversationId: [conversationId],
