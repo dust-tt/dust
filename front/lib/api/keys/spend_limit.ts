@@ -150,8 +150,7 @@ export async function setApiKeySpendLimit(
         keyName: key.name,
       });
       if (clearResult.isErr()) {
-        // Metronome sync failed, so the DB and Metronome would otherwise be
-        // left out of sync until someone retries — put the DB value back.
+        // Metronome sync failed, restore DB values.
         await key.updateMonthlyCapAwuCredits(previousMonthlyCapAwuCredits);
         logger.error(
           {
