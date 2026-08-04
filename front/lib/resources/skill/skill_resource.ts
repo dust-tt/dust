@@ -1217,7 +1217,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       : { customSkillId: this.id };
   }
 
-  private static async listFavoritesForCurrentUser(
+  static async listFavoritesForCurrentUser(
     auth: Authenticator,
     {
       agentLoopData,
