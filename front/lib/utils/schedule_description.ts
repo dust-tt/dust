@@ -13,9 +13,14 @@ const DAY_NAMES = [
   "Saturday",
 ];
 
+// Returns an empty string for cron expressions cronstrue cannot parse.
 export function describeScheduleConfig(config: ScheduleConfig): string {
   if (isCronScheduleConfig(config)) {
-    return cronstrue.toString(config.cron);
+    try {
+      return cronstrue.toString(config.cron);
+    } catch {
+      return "";
+    }
   }
 
   const time = `${config.hour}:${String(config.minute).padStart(2, "0")}`;
