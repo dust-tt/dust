@@ -62,7 +62,7 @@ export function PodHeaderActions({
   const podEditors = members.filter((member) => member.isEditor);
   const isPodEditor = podEditors.some((member) => member.sId === user.sId);
   const canLeavePod =
-    (isMember && !isPodEditor) || // regular members can leave the pod
+    (isMember && !isPodEditor) || // regular members can leave
     (isPodEditor && podEditors.length > 1); // editors can leave if there's at least another editor
   return (
     <>

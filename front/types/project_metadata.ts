@@ -10,4 +10,5 @@ export interface PodMetadataType {
   pinnedFramePath: string | null;
   defaultAgentId: string | null;
   defaultSkillIds: string[];
+  isAdminControlled: boolean;
 }

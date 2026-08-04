@@ -42,6 +42,7 @@ export const PatchPodMetadataBodySchema = z.object({
   pinnedFramePath: z.string().nullable().optional(),
   defaultAgentId: z.string().nullable().optional(),
   defaultSkillIds: z.array(z.string()).optional(),
+  isAdminControlled: z.boolean().optional(),
 });
 
 export type PatchPodMetadataBodyType = z.infer<
@@ -97,6 +98,8 @@ export type RichSpaceType = SpaceType & {
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
+  /** Workspace admins control membership and connected data (project spaces only). */
+  isAdminControlled: boolean;
 };
 
 export type GetSpaceResponseBody = {

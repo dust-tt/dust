@@ -6,6 +6,7 @@ import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversati
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -983,6 +984,229 @@ describe("SpaceResource", () => {
               "group_requirements_not_met"
             );
           }
+        });
+      });
+
+      describe("admin-controlled Pods", () => {
+        beforeEach(async () => {
+          projectEditorGroup = await GroupResource.makeNew({
+            name: "Project Editors Group",
+            workspaceId: workspace.id,
+            kind: "space_editors",
+          });
+
+          projectSpace = await SpaceResource.makeNew(
+            {
+              name: "Admin Controlled Project",
+              kind: "project",
+              workspaceId: workspace.id,
+              managementMode: "manual",
+            },
+            { members: [projectMemberGroup] }
+          );
+
+          await GroupSpaceEditorResource.makeNew(adminAuth, {
+            group: projectEditorGroup,
+            space: projectSpace,
+          });
+
+          await ProjectMetadataResource.makeNew(adminAuth, projectSpace, {
+            description: "Admin controlled",
+            isAdminControlled: false,
+          });
+        });
+
+        it("demotes editors to members when enabling admin-controlled mode", async () => {
+          await projectEditorGroup.dangerouslyAddMember(adminAuth, {
+            user: editorUser.toJSON(),
+          });
+          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
+            user: memberUser.toJSON(),
+          });
+
+          const reloadedSpace = await SpaceResource.fetchById(
+            adminAuth,
+            projectSpace.sId
+          );
+          const result =
+            await reloadedSpace!.applyAdminControlledMembershipChange(
+              adminAuth,
+              true
+            );
+          expect(result.isOk()).toBe(true);
+
+          const editorGroupMembers =
+            await projectEditorGroup.getActiveMembers(adminAuth);
+          expect(editorGroupMembers).toHaveLength(0);
+
+          const memberGroupMembers =
+            await projectMemberGroup.getActiveMembers(adminAuth);
+          expect(memberGroupMembers.some((m) => m.sId === editorUser.sId)).toBe(
+            true
+          );
+          expect(memberGroupMembers.some((m) => m.sId === memberUser.sId)).toBe(
+            true
+          );
+        });
+
+        it("promotes the oldest member to editor when disabling admin-controlled mode", async () => {
+          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
+            user: memberUser.toJSON(),
+          });
+          // Add editorUser second so memberUser is oldest.
+          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
+            user: editorUser.toJSON(),
+          });
+
+          const metadata = await ProjectMetadataResource.fetchBySpace(
+            adminAuth,
+            projectSpace
+          );
+          await metadata!.updateIsAdminControlled(true);
+
+          const reloadedSpace = await SpaceResource.fetchById(
+            adminAuth,
+            projectSpace.sId
+          );
+          const result =
+            await reloadedSpace!.applyAdminControlledMembershipChange(
+              adminAuth,
+              false
+            );
+          expect(result.isOk()).toBe(true);
+
+          const editorGroupMembers =
+            await projectEditorGroup.getActiveMembers(adminAuth);
+          expect(editorGroupMembers).toHaveLength(1);
+          expect(editorGroupMembers[0].sId).toBe(memberUser.sId);
+
+          const memberGroupMembers =
+            await projectMemberGroup.getActiveMembers(adminAuth);
+          expect(memberGroupMembers.some((m) => m.sId === memberUser.sId)).toBe(
+            false
+          );
+          expect(memberGroupMembers.some((m) => m.sId === editorUser.sId)).toBe(
+            true
+          );
+        });
+
+        it("lets workspace admins administrate without being in the editor group", async () => {
+          const metadata = await ProjectMetadataResource.fetchBySpace(
+            adminAuth,
+            projectSpace
+          );
+          await metadata!.updateIsAdminControlled(true);
+
+          const reloadedSpace = await SpaceResource.fetchById(
+            adminAuth,
+            projectSpace.sId
+          );
+
+          expect(await reloadedSpace!.fetchIsAdminControlled()).toBe(true);
+          expect(reloadedSpace!.canAdministrate(adminAuth)).toBe(true);
+        });
+
+        it("does not let managers administrate", async () => {
+          const metadata = await ProjectMetadataResource.fetchBySpace(
+            adminAuth,
+            projectSpace
+          );
+          await metadata!.updateIsAdminControlled(true);
+
+          const managerUser = await UserFactory.basic();
+          await MembershipFactory.associate(workspace, managerUser, {
+            role: "manager",
+          });
+          const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            managerUser.sId,
+            workspace.sId
+          );
+
+          const reloadedSpace = await SpaceResource.fetchById(
+            managerAuth,
+            projectSpace.sId
+          );
+
+          expect(reloadedSpace!.canAdministrate(managerAuth)).toBe(false);
+        });
+
+        it("blocks addEditors while admin-controlled", async () => {
+          const metadata = await ProjectMetadataResource.fetchBySpace(
+            adminAuth,
+            projectSpace
+          );
+          await metadata!.updateIsAdminControlled(true);
+          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
+            user: memberUser.toJSON(),
+          });
+
+          const reloadedSpace = await SpaceResource.fetchById(
+            adminAuth,
+            projectSpace.sId
+          );
+
+          const addRes = await reloadedSpace!.addEditors(adminAuth, {
+            userIds: [memberUser.sId],
+          });
+          expect(addRes.isErr()).toBe(true);
+          if (addRes.isErr()) {
+            expect(addRes.error.code).toBe("unauthorized");
+          }
+        });
+
+        it("rejects setting editors via updatePermissions while admin-controlled", async () => {
+          const metadata = await ProjectMetadataResource.fetchBySpace(
+            adminAuth,
+            projectSpace
+          );
+          await metadata!.updateIsAdminControlled(true);
+          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
+            user: memberUser.toJSON(),
+          });
+
+          const reloadedSpace = await SpaceResource.fetchById(
+            adminAuth,
+            projectSpace.sId
+          );
+
+          const result = await reloadedSpace!.updatePermissions(adminAuth, {
+            name: projectSpace.name,
+            isRestricted: true,
+            managementMode: "manual",
+            memberIds: [],
+            editorIds: [memberUser.sId],
+          });
+
+          expect(result.isErr()).toBe(true);
+          if (result.isErr()) {
+            expect(result.error.code).toBe("unauthorized");
+          }
+        });
+
+        it("allows updating members with an empty editor list while admin-controlled", async () => {
+          const metadata = await ProjectMetadataResource.fetchBySpace(
+            adminAuth,
+            projectSpace
+          );
+          await metadata!.updateIsAdminControlled(true);
+          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
+            user: memberUser.toJSON(),
+          });
+
+          const reloadedSpace = await SpaceResource.fetchById(
+            adminAuth,
+            projectSpace.sId
+          );
+
+          const result = await reloadedSpace!.updatePermissions(adminAuth, {
+            name: projectSpace.name,
+            isRestricted: true,
+            managementMode: "manual",
+            memberIds: [memberUser.sId, editorUser.sId],
+            editorIds: [],
+          });
+
+          expect(result.isOk()).toBe(true);
         });
       });
 

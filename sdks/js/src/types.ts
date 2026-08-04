@@ -732,6 +732,7 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_scheduler"
   | "activation_skill"
+  | "admin_controlled_pods"
   | "advanced_notion_management"
   | "allow_scim"
   | "allow_sso"
