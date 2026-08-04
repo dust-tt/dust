@@ -399,6 +399,14 @@ if [ "$resolved" != 240.0.0.1 ]; then
   echo "CRITICAL: ${user} bypassed synthetic DNS: $resolved"
   exit 1
 fi
+if /usr/bin/resolvectl query example.com >/dev/null 2>&1; then
+  echo "CRITICAL: ${user} can delegate real DNS through resolve1 D-Bus"
+  exit 1
+fi
+if /usr/bin/python3 -c 'import socket; client = socket.socket(socket.AF_UNIX); client.connect("/run/systemd/resolve/io.systemd.Resolve")' >/dev/null 2>&1; then
+  echo "CRITICAL: ${user} can delegate real DNS through resolve1 Varlink"
+  exit 1
+fi
 `,
       { user }
     );
@@ -1138,7 +1146,7 @@ fi
   assertCommandSucceeded("pod-state workload denial probes", denials);
 }
 
-function assertSshAndDnsHardening(output: string): void {
+export function assertSshAndDnsHardening(output: string): void {
   if (!output.includes("SSH_PORT_22_LISTENING=0")) {
     throw new Error(`sshd appears to be listening on port 22:\n${output}`);
   }
@@ -1161,6 +1169,9 @@ function assertSshAndDnsHardening(output: string): void {
     "DNS_RESOLVER_ACTIVE=1",
     "DNS_NFTABLES_ACTIVE=1",
     "SYSTEM_RESOLVER_ACTIVE=1",
+    "SYSTEM_RESOLVER_VARLINK_PRIVATE=1",
+    "ROOT_RESOLVE1_DBUS_OK=1",
+    "ROOT_RESOLVE1_VARLINK_OK=1",
     "RESOLV_CONF_LOCAL=1",
     "ROOT_GCS_DNS_OK=1",
     "ROOT_GCS_HTTPS_OK=1",
@@ -1199,6 +1210,22 @@ if /usr/bin/systemctl is-active --quiet systemd-resolved.service; then
 else
   /usr/bin/systemctl status systemd-resolved.service --no-pager || true
   echo "SYSTEM_RESOLVER_ACTIVE=0"
+fi
+if [ "$(/usr/bin/stat -c '%a' /run/systemd/resolve/io.systemd.Resolve)" = 600 ]; then
+  echo "SYSTEM_RESOLVER_VARLINK_PRIVATE=1"
+else
+  /usr/bin/stat -c 'SYSTEM_RESOLVER_VARLINK_MODE=%a OWNER=%U:%G' /run/systemd/resolve/io.systemd.Resolve || true
+  echo "SYSTEM_RESOLVER_VARLINK_PRIVATE=0"
+fi
+if /usr/bin/resolvectl query storage.googleapis.com >/dev/null 2>&1; then
+  echo "ROOT_RESOLVE1_DBUS_OK=1"
+else
+  echo "ROOT_RESOLVE1_DBUS_OK=0"
+fi
+if /usr/bin/python3 -c 'import socket; client = socket.socket(socket.AF_UNIX); client.connect("/run/systemd/resolve/io.systemd.Resolve"); client.close()'; then
+  echo "ROOT_RESOLVE1_VARLINK_OK=1"
+else
+  echo "ROOT_RESOLVE1_VARLINK_OK=0"
 fi
 if /usr/bin/systemctl is-active --quiet dust-egress-resolver.service; then
   echo "DNS_RESOLVER_ACTIVE=1"

@@ -10,6 +10,7 @@ import {
   assertPodStateDirsSafe,
   assertRootInvokedHelpersSafe,
   assertRootPathSafe,
+  assertSshAndDnsHardening,
   assertStaticRootConsumedDirsSafe,
   assertSudoAbsent,
   assertSystemdUnitPathsSafe,
@@ -23,6 +24,40 @@ describe("sandbox security check assertions", () => {
     expect(buildBashCommand("echo 'ok'")).toBe(
       "/bin/bash -c 'echo '\\''ok'\\'''"
     );
+  });
+
+  test("requires system resolver IPC isolation evidence", () => {
+    const safeOutput = [
+      "SSH_PORT_22_LISTENING=0",
+      "PermitRootLogin no",
+      "PasswordAuthentication no",
+      "UsePAM no",
+      "AllowUsers agent",
+      "DenyUsers root agent-proxied",
+      "DNS_RESOLVER_ACTIVE=1",
+      "DNS_NFTABLES_ACTIVE=1",
+      "SYSTEM_RESOLVER_ACTIVE=1",
+      "SYSTEM_RESOLVER_VARLINK_PRIVATE=1",
+      "ROOT_RESOLVE1_DBUS_OK=1",
+      "ROOT_RESOLVE1_VARLINK_OK=1",
+      "RESOLV_CONF_LOCAL=1",
+      "ROOT_GCS_DNS_OK=1",
+      "ROOT_GCS_HTTPS_OK=1",
+      "udp dport 53 redirect",
+      "tcp dport 53 redirect",
+      "tcp dport 22 drop",
+      "meta l4proto",
+    ].join("\n");
+
+    expect(() => assertSshAndDnsHardening(safeOutput)).not.toThrow();
+    expect(() =>
+      assertSshAndDnsHardening(
+        safeOutput.replace(
+          "SYSTEM_RESOLVER_VARLINK_PRIVATE=1",
+          "SYSTEM_RESOLVER_VARLINK_PRIVATE=0"
+        )
+      )
+    ).toThrow("SYSTEM_RESOLVER_VARLINK_PRIVATE=1");
   });
 
   test("detects unrestricted passwordless sudo while ignoring comments", () => {

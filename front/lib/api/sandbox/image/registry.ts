@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.65";
+const DUST_BASE_IMAGE_VERSION = "0.8.66";
 const DSBX_CLI_VERSION = "0.1.41";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -692,6 +692,22 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .copy(
     getLocalContent(EGRESS_LOCAL_DIR, "dust-egress-resolver.service"),
     "/etc/systemd/system/dust-egress-resolver.service",
+    { user: "root" }
+  )
+  // The system resolver must remain available to root-owned services without
+  // becoming a DNS escape hatch for the two egress-controlled accounts.
+  .runCmd(
+    "mkdir -p /etc/dbus-1/system.d /etc/systemd/system/systemd-resolved.service.d",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "dust-resolve1.conf"),
+    "/etc/dbus-1/system.d/dust-resolve1.conf",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "systemd-resolved-ipc.conf"),
+    "/etc/systemd/system/systemd-resolved.service.d/dust-ipc.conf",
     { user: "root" }
   )
   .runCmd(
