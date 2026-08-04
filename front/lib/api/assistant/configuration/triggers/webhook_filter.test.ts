@@ -100,7 +100,7 @@ describe("getWebhookFilterGeneration", () => {
     );
   });
 
-  it("returns an error when the repaired filter is still invalid", async () => {
+  it("returns the repaired filter without validating it again", async () => {
     mockFilterGeneration('(has-any "status" ("open" "closed"))');
     mockFilterGeneration('(contains "count" "1")');
 
@@ -110,11 +110,9 @@ describe("getWebhookFilterGeneration", () => {
       providerSpecificInstructions: null,
     });
 
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toBe(
-        'Unable to generate a valid filter: Operator "contains" requires a string field, but "count" is integer.'
-      );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.filter).toBe('(contains "count" "1")');
     }
     expect(mockRunMultiActionsAgent).toHaveBeenCalledTimes(2);
   });

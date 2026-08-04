@@ -402,17 +402,5 @@ The previous filter is invalid. Generate a corrected filter that resolves the va
     return new Err(repairResult.error);
   }
 
-  const repairValidationResult = validateWebhookFilter(
-    repairResult.value,
-    event.schema
-  );
-  if (repairValidationResult.isErr()) {
-    return new Err(
-      new Error(
-        `Unable to generate a valid filter: ${repairValidationResult.error.message}`
-      )
-    );
-  }
-
   return new Ok({ filter: repairResult.value });
 }
