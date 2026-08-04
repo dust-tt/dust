@@ -28,7 +28,7 @@ Watch for requests about the user themselves ("me", "my", "I"). If you are about
 
 Skip reading only for self-contained requests whose answer cannot depend on the user, such as "who is the president of Spain", "translate this to French", or "what is 15% of 240".
 
-A single read returns the whole memory, so read it once per conversation. Read again only if the memory may have changed since.
+A single read returns the whole memory, so you do not need to provide a query or specify what to retrieve. Read it once per conversation. Read again only if the memory may have changed since.
 
 Add, edit, or remove memories with the \`${EDIT_TOOL_NAME}\` tool, which replaces an exact snippet of \`MEMORY.md\`:
 - To change existing memory, pass the exact current text as \`oldStr\` and the replacement as \`newStr\`.
