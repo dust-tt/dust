@@ -241,7 +241,7 @@ describe("searchCapabilityIndex ranking", () => {
     expect(result.map((item) => item.id)).toEqual(["favorite", "non-favorite"]);
   });
 
-  it("uses the best matching name or alias for ranking", () => {
+  it("allows exact aliases to rank normally", () => {
     const result = searchCapabilityIndex({
       items: [
         {
@@ -258,6 +258,47 @@ describe("searchCapabilityIndex ranking", () => {
     });
 
     expect(result.map((item) => item.id)).toEqual(["alias", "prefix"]);
+  });
+
+  it("does not let a partial alias outrank a canonical prefix", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "frames",
+          searchAliases: ["Frames"],
+          sortName: "Create Frames",
+        },
+        {
+          id: "canonical-prefix",
+          sortName: "Fraud Analysis",
+        },
+      ],
+      query: "fra",
+    });
+
+    expect(result.map((item) => item.id)).toEqual([
+      "canonical-prefix",
+      "frames",
+    ]);
+  });
+
+  it("ranks partial alias matches below canonical name matches", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "canonical-fuzzy",
+          sortName: "Search And Navigate Data",
+        },
+        {
+          id: "alias",
+          searchAliases: ["Sandbox"],
+          sortName: "Computer",
+        },
+      ],
+      query: "sand",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["canonical-fuzzy", "alias"]);
   });
 });
 

@@ -24,29 +24,44 @@ export interface CapabilitySearchIndexItem {
   sortName: string;
 }
 
+interface CapabilityNameMatch {
+  isLowPriorityAlias: boolean;
+  name: string;
+}
+
 function getBestMatchingName({
   item,
   normalizedQuery,
 }: {
   item: CapabilitySearchIndexItem;
   normalizedQuery: string;
-}): string | null {
-  let bestMatch: string | null = null;
+}): CapabilityNameMatch | null {
+  const aliases = item.searchAliases ?? [];
+  const exactAlias = aliases.find(
+    (alias) => alias.toLowerCase() === normalizedQuery
+  );
+  if (exactAlias) {
+    return { isLowPriorityAlias: false, name: exactAlias };
+  }
 
-  for (const candidate of [item.sortName, ...(item.searchAliases ?? [])]) {
-    if (!subFilter(normalizedQuery, candidate.toLowerCase())) {
+  if (subFilter(normalizedQuery, item.sortName.toLowerCase())) {
+    return { isLowPriorityAlias: false, name: item.sortName };
+  }
+
+  let bestAlias: string | null = null;
+  for (const alias of aliases) {
+    if (!subFilter(normalizedQuery, alias.toLowerCase())) {
       continue;
     }
-
     if (
-      bestMatch === null ||
-      compareForAutocompleteSort(normalizedQuery, candidate, bestMatch) < 0
+      bestAlias === null ||
+      compareForAutocompleteSort(normalizedQuery, alias, bestAlias) < 0
     ) {
-      bestMatch = candidate;
+      bestAlias = alias;
     }
   }
 
-  return bestMatch;
+  return bestAlias ? { isLowPriorityAlias: true, name: bestAlias } : null;
 }
 
 export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
@@ -59,12 +74,12 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
   limit?: number;
 }): T[] {
   const normalizedQuery = query.trim().toLowerCase();
-  const matches: { item: T; matchedName: string | null }[] = [];
+  const matches: { item: T; matchedName: CapabilityNameMatch | null }[] = [];
 
   for (const item of items) {
     const matchedName =
       normalizedQuery.length === 0
-        ? item.sortName
+        ? { isLowPriorityAlias: false, name: item.sortName }
         : getBestMatchingName({ item, normalizedQuery });
     const descriptionMatches =
       normalizedQuery.length > 0 &&
@@ -102,10 +117,12 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
     if (a.matchedName !== null && b.matchedName !== null) {
       return (
         favoriteComparison ||
+        Number(a.matchedName.isLowPriorityAlias) -
+          Number(b.matchedName.isLowPriorityAlias) ||
         compareForAutocompleteSort(
           normalizedQuery,
-          a.matchedName,
-          b.matchedName
+          a.matchedName.name,
+          b.matchedName.name
         ) ||
         a.item.sortName.localeCompare(b.item.sortName)
       );
