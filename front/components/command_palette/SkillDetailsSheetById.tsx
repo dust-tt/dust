@@ -25,6 +25,7 @@ export function SkillDetailsSheetById({
   return (
     <SkillDetailsSheet
       skill={skill ?? null}
+      open={skillId !== null}
       owner={owner}
       user={user}
       onClose={onClose}

@@ -36,6 +36,7 @@ import { useState } from "react";
 
 type SkillDetailsProps = {
   skill: GetSkillsWithRelationsResponseBody["skills"][number] | null;
+  open?: boolean;
   onClose: () => void;
   onFavoriteChange?: (
     skill: GetSkillsWithRelationsResponseBody["skills"][number],
@@ -48,12 +49,15 @@ type SkillDetailsProps = {
 
 export function SkillDetailsSheet({
   skill,
+  open,
   onClose,
   onFavoriteChange,
   user,
   owner,
   replaceOnEdit,
 }: SkillDetailsProps) {
+  const isOpen = open ?? skill !== null;
+
   // Fetch the full skill (with instructions/tools) for the content section,
   // since the list endpoint may not include them.
   const { skill: fullSkill, isSkillLoading } = useSkill({
@@ -63,12 +67,12 @@ export function SkillDetailsSheet({
   });
 
   return (
-    <Sheet open={skill !== null} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent size="lg" className="pb-4">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
-        {skill && (
+        {skill ? (
           <>
             <SheetHeader>
               <DescriptionSection
@@ -93,7 +97,11 @@ export function SkillDetailsSheet({
               )}
             </SheetContainer>
           </>
-        )}
+        ) : isOpen ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        ) : null}
       </SheetContent>
     </Sheet>
   );
