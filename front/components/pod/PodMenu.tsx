@@ -204,15 +204,18 @@ export function PodMenu({
   // Determine permissions based on spaceInfo
   const isPod = pod?.kind === "project" || podInfo?.kind === "project";
   const isMember = podInfo?.isMember ?? false;
+  // podInfo.isEditor is canAdministrate (true for workspace admins on
+  // admin-controlled Pods; true for Pod editors otherwise).
+  const canAdministratePod = podInfo?.isEditor ?? false;
   const podEditors =
     podInfo?.members?.filter((member) => member.isEditor) ?? [];
   const isPodEditor = podEditors.some((member) => member.sId === user.sId);
   const canLeave =
-    ((isMember && !isPodEditor) || // regular members can leave the pod
-      (isPodEditor && podEditors.length > 1)) && // editors can leave if there's at least another editor
-    isPod;
+    isPod &&
+    ((isMember && !isPodEditor) || // regular members can leave
+      (isPodEditor && podEditors.length > 1)); // editors can leave if there's at least another editor
   // Must match PATCH /spaces/[spaceId] (canAdministrate). canWrite is true for pod members too.
-  const canRename = podInfo?.isEditor ?? false;
+  const canRename = canAdministratePod;
 
   return (
     <div
@@ -305,7 +308,7 @@ export function PodMenu({
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
-          {isPodEditor && (
+          {canAdministratePod && (
             <DropdownMenuItem
               label="Archive"
               onClick={archivePod}

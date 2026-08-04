@@ -143,6 +143,10 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
   }
 
   async canAddMember(auth: Authenticator, _userId: string): Promise<boolean> {
+    if (await this.space.fetchIsAdminControlled()) {
+      // Editor group stays empty while admin-controlled.
+      return false;
+    }
     const requestedPermissions = await this.requestedPermissions();
     return auth.canWrite(requestedPermissions);
   }

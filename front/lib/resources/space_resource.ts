@@ -10,6 +10,7 @@ import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -116,6 +117,29 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       space.get(),
       space.groupSpaces.map(SpaceGroupReference.fromGroupSpaceModel)
     );
+  }
+
+  /**
+   * Project-only: when true, workspace admins are the only people with
+   * editor/admin powers. Enabling demotes editors to members; disabling
+   * promotes the oldest member back to editor.
+   *
+   * Fetched on demand from project_metadata (not joined on every space load).
+   */
+  async fetchIsAdminControlled(): Promise<boolean> {
+    if (!this.isProject()) {
+      return false;
+    }
+
+    const metadata = await ProjectMetadataModel.findOne({
+      attributes: ["isAdminControlled"],
+      where: {
+        spaceId: this.id,
+        workspaceId: this.workspaceId,
+      },
+    });
+
+    return metadata?.isAdminControlled ?? false;
   }
 
   static async makeNew(
@@ -999,6 +1023,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           "A user cannot be both a member and an editor of the same space."
         );
 
+        const isAdminControlled = await this.fetchIsAdminControlled();
+
+        // Admin-controlled Pods have an empty editor group; workspace admins
+        // administrate via role. Reject any attempt to set editors.
+        if (isAdminControlled && this.isProject()) {
+          if (editorIds.length > 0) {
+            return new Err(
+              new DustError(
+                "unauthorized",
+                "Editors cannot be set while this Pod is admin-controlled."
+              )
+            );
+          }
+        }
+
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);
 
@@ -1059,7 +1098,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
           // Set members of the editor group using the GroupSpaceEditorResource
           const editorUsers = await UserResource.fetchByIds(editorIds);
-          assert(editorUsers.length > 0, "Pods must have at least one editor.");
+          assert(
+            editorUsers.length > 0 || isAdminControlled,
+            "Pods must have at least one editor."
+          );
           const setEditorsRes = await editorGroupSpaces[0].setMembers(auth, {
             users: editorUsers.map((u) => u.toJSON()),
             transaction: t,
@@ -1175,6 +1217,139 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return editorGroupSpaces[0];
   }
 
+  /**
+   * When enabling admin-controlled mode: demote all editors to members.
+   * When disabling: promote the oldest member to editor.
+   * Caller must update project metadata separately; this only adjusts groups.
+   */
+  async applyAdminControlledMembershipChange(
+    auth: Authenticator,
+    isAdminControlled: boolean,
+    transaction?: Transaction
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "user_already_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    assert(this.isProject(), "Only projects support admin-controlled mode.");
+    assert(
+      this.managementMode === "manual",
+      "Admin-controlled mode requires manual membership management."
+    );
+
+    if (!auth.isAdmin()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Only workspace admins can change admin-controlled Pod mode."
+        )
+      );
+    }
+
+    return withTransaction(async (t: Transaction) => {
+      const editorGroupSpace = await this.fetchManualEditorGroupSpace();
+      const memberGroupSpace = await this.fetchManualMemberGroupSpace();
+      const editorGroup = editorGroupSpace.group;
+      const memberGroup = memberGroupSpace.group;
+
+      if (isAdminControlled) {
+        const editors = await editorGroup.getActiveMembers(auth, {
+          transaction: t,
+        });
+        if (editors.length === 0) {
+          return new Ok(undefined);
+        }
+
+        const members = await memberGroup.getActiveMembers(auth, {
+          transaction: t,
+        });
+        const existingMemberSIds = new Set(members.map((m) => m.sId));
+        const editorsToAdd = editors.filter(
+          (e) => !existingMemberSIds.has(e.sId)
+        );
+
+        if (editorsToAdd.length > 0) {
+          const addRes = await memberGroup.dangerouslyAddMembers(auth, {
+            users: editorsToAdd.map((u) => u.toJSON()),
+            transaction: t,
+          });
+          if (addRes.isErr()) {
+            return addRes;
+          }
+        }
+
+        const clearEditorsRes = await editorGroup.dangerouslySetMembers(auth, {
+          users: [],
+          transaction: t,
+        });
+        if (clearEditorsRes.isErr()) {
+          return clearEditorsRes;
+        }
+
+        return new Ok(undefined);
+      }
+
+      // Disabling: promote the oldest member (by join date) to editor.
+      const now = new Date();
+      const memberMemberships = await GroupMembershipModel.findAll({
+        where: {
+          workspaceId: this.workspaceId,
+          groupId: memberGroup.id,
+          status: "active" as const,
+          startAt: { [Op.lte]: now },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+        },
+        order: [["startAt", "ASC"]],
+        transaction: t,
+      });
+      if (memberMemberships.length === 0) {
+        return new Err(
+          new DustError(
+            "group_requirements_not_met",
+            "Cannot disable admin-controlled mode: this Pod has no members."
+          )
+        );
+      }
+
+      const oldestUsers = await UserResource.fetchByModelIds([
+        memberMemberships[0].userId,
+      ]);
+      const oldestMember = oldestUsers[0];
+      if (!oldestMember) {
+        return new Err(new DustError("user_not_found", "User not found"));
+      }
+
+      const removeFromMembersRes = await memberGroup.dangerouslyRemoveMembers(
+        auth,
+        {
+          users: [oldestMember.toJSON()],
+          transaction: t,
+        }
+      );
+      if (removeFromMembersRes.isErr()) {
+        return removeFromMembersRes;
+      }
+
+      const setEditorRes = await editorGroup.dangerouslySetMembers(auth, {
+        users: [oldestMember.toJSON()],
+        transaction: t,
+      });
+      if (setEditorRes.isErr()) {
+        return setEditorRes;
+      }
+
+      return new Ok(undefined);
+    }, transaction);
+  }
+
   async fetchActiveEditorUsers(auth: Authenticator): Promise<UserResource[]> {
     if (!this.isProject()) {
       return [];
@@ -1288,6 +1463,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
+    if (await this.fetchIsAdminControlled()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Editors cannot be changed while this Pod is admin-controlled."
+        )
+      );
+    }
+
     assert(this.isProject(), "Only projects can have editors.");
     assert(
       this.managementMode === "manual",
@@ -1368,6 +1552,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         new DustError(
           "unauthorized",
           "You do not have permission to remove editors from this space."
+        )
+      );
+    }
+
+    if (await this.fetchIsAdminControlled()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Editors cannot be changed while this Pod is admin-controlled."
         )
       );
     }
@@ -1645,7 +1838,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           groups: this.groups.reduce((acc, group) => {
             if (groupFilter(group)) {
               if (group.groupSpaceKind === "project_editor") {
-                // Project editors get admin permissions
                 acc.push({
                   id: group.groupId,
                   permissions: ["admin", "read", "write"],

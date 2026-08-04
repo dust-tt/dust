@@ -140,6 +140,9 @@ const app = workspaceApp();
  *                           type: string
  *                           nullable: true
  *                           description: Scoped path to the frame file pinned as the Pod banner.
+ *                         isAdminControlled:
+ *                           type: boolean
+ *                           description: Whether workspace admins control membership and connected data for this Pod.
  *       401:
  *         description: Unauthorized
  *   patch:
@@ -336,6 +339,7 @@ app.get(
         todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
         lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
         pinnedFramePath: meta?.pinnedFramePath ?? null,
+        isAdminControlled: meta?.isAdminControlled ?? false,
       },
     });
   }

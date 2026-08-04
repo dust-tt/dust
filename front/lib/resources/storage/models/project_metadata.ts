@@ -16,6 +16,11 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare todoGenerationEnabled: CreationOptional<boolean>;
   /** First-run window only; cleared after first successful analysis. Internal / workflow. */
   declare initialTodoAnalysisLookback: CreationOptional<string | null>;
+  /**
+   * When true, workspace admins control membership and can attach connected data
+   * (Space DataSourceViews) to this Pod. Opt-in; gated by `admin_controlled_pods`.
+   */
+  declare isAdminControlled: CreationOptional<boolean>;
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
@@ -51,6 +56,11 @@ ProjectMetadataModel.init(
       allowNull: true,
     },
     todoGenerationEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    isAdminControlled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

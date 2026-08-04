@@ -202,6 +202,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ todoGenerationEnabled }, transaction);
   }
 
+  async updateIsAdminControlled(
+    isAdminControlled: boolean,
+    transaction?: Transaction
+  ) {
+    await this.update({ isAdminControlled }, transaction);
+  }
+
   async updateInitialTodoAnalysisLookback(
     initialTodoAnalysisLookback: string | null,
     transaction?: Transaction
@@ -271,6 +278,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       pinnedFramePath: this.pinnedFramePath ?? null,
       defaultAgentId: this.defaultAgentId ?? null,
       defaultSkillIds: this.defaultSkillIds,
+      isAdminControlled: this.isAdminControlled,
     };
   }
 }

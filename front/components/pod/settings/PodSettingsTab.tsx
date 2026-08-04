@@ -2,6 +2,7 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
+import { AdminControlledPodTile } from "@app/components/pod/settings/AdminControlledPodTile";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
@@ -98,6 +99,7 @@ export function PodSettingsTab({
   const { hasFeature } = useFeatureFlags();
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
+  const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
   // The pod sandbox network allowlist is workspace-admin only (matching the
   // API) and part of the Sandbox Functions surface.
   // Mirrors the API gate (workspace-admin + sandbox_functions FF; pod
@@ -714,6 +716,12 @@ export function PodSettingsTab({
                 )}
               </div>
             </div>
+
+            {hasAdminControlledPodsFeature && (
+              <div className="border-t border-border">
+                <AdminControlledPodTile owner={owner} pod={pod} />
+              </div>
+            )}
 
             <div className="border-t border-border py-4">
               <SuggestedTasksGenerationTile owner={owner} pod={pod} />

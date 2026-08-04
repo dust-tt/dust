@@ -120,6 +120,7 @@ describe("ProjectMetadataResource", () => {
       expect(json.lastTodoAnalysisAt).toBeNull();
       expect(json.pinnedFramePath).toBeNull();
       expect(json.defaultSkillIds).toEqual([]);
+      expect(json.isAdminControlled).toBe(false);
     });
   });
 
