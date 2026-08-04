@@ -7,6 +7,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -21,6 +22,7 @@ export type ConversationConsumptionMessageFacts = {
   parentAgentMessageId: string | null;
   billedCredits: number | null;
   dustRunIds: string[];
+  status: AgentMessageStatus;
   items: AgentMessageConsumptionItemResource[];
   actions: AgentMCPActionResource[];
 };
@@ -501,6 +503,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           agent_message."agentConfigurationId" AS agent_configuration_id,
           agent_message."costCredits" AS billed_credits,
           agent_message."runIds" AS dust_run_ids,
+          agent_message.status,
           parent_user_message."agenticOriginMessageId"::text AS parent_agent_message_id
         FROM messages message
         JOIN agent_messages agent_message
@@ -524,6 +527,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           root.parent_agent_message_id,
           root.billed_credits,
           root.dust_run_ids,
+          root.status,
           0 AS depth
         FROM latest_root_agent_messages root
         WHERE root.visibility != 'deleted'
@@ -537,6 +541,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           parent.agent_message_id::text AS parent_agent_message_id,
           child_agent_message."costCredits" AS billed_credits,
           child_agent_message."runIds" AS dust_run_ids,
+          child_agent_message.status,
           parent.depth + 1 AS depth
         FROM scoped_agent_messages parent
         JOIN user_messages child_user_message
@@ -567,7 +572,8 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         agent_configuration_id,
         parent_agent_message_id,
         billed_credits,
-        dust_run_ids
+        dust_run_ids,
+        status
       FROM scoped_agent_messages
       ORDER BY agent_message_model_id
     `;
@@ -580,6 +586,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       parent_agent_message_id: string | null;
       billed_credits: number | null;
       dust_run_ids: string[] | null;
+      status: AgentMessageStatus;
     }>(query, {
       type: QueryTypes.SELECT,
       replacements: {
@@ -595,6 +602,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       parentAgentMessageId: message.parent_agent_message_id,
       billedCredits: message.billed_credits,
       dustRunIds: message.dust_run_ids ?? [],
+      status: message.status,
     }));
     const agentMessageModelIds = messageFacts.map(
       (message) => message.agentMessageModelId

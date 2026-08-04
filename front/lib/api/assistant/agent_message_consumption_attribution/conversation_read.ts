@@ -10,6 +10,7 @@ import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
+import { isTerminalAgentMessageStatus } from "@app/types/assistant/conversation";
 import type {
   ConversationConsumptionAgentDetails,
   ConversationConsumptionDetails,
@@ -17,6 +18,17 @@ import type {
   ConversationConsumptionResponse,
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
+
+type MessageDetailsEntry = {
+  message: ConversationConsumptionMessageFacts;
+  details: MessageConsumptionDetails | null;
+};
+
+function hasCompleteDetails(
+  entry: MessageDetailsEntry
+): entry is MessageDetailsEntry & { details: MessageConsumptionDetails } {
+  return entry.details !== null;
+}
 
 function mergeToolDetails(
   toolGroups: ConversationConsumptionToolDetails[][]
@@ -100,9 +112,10 @@ function resolveEffectiveAgentId(
 }
 
 /**
- * Aggregates the exact bill and active-version attribution for a conversation and its run-agent
- * descendants. If any billed message lacks a complete attribution, the exact total remains
- * available while the detailed breakdown is withheld.
+ * Aggregates the latest stable bill and active-version attribution for a conversation and its
+ * run-agent descendants. In-progress messages are ignored until they reach a terminal state. If
+ * any completed billed message lacks a complete attribution, the stable total remains available
+ * while the detailed breakdown is withheld.
  */
 export async function getConversationConsumption(
   auth: Authenticator,
@@ -119,11 +132,14 @@ export async function getConversationConsumption(
       attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     }
   );
-  const billedCredits = facts.messages.reduce(
+  const completedMessages = facts.messages.filter((message) =>
+    isTerminalAgentMessageStatus(message.status)
+  );
+  const billedCredits = completedMessages.reduce(
     (total, message) => total + (message.billedCredits ?? 0),
     0
   );
-  const billedMessages = facts.messages.filter(
+  const billedMessages = completedMessages.filter(
     (message) => (message.billedCredits ?? 0) > 0
   );
   if (billedMessages.length === 0) {
@@ -136,25 +152,23 @@ export async function getConversationConsumption(
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
   const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
-  const messageDetails = billedMessages.map((message) => ({
-    message,
-    details: buildMessageConsumptionDetails({
-      actions: message.actions,
-      billedCredits: message.billedCredits,
-      dustRunIds: message.dustRunIds,
-      items: message.items,
-      runs,
-      usages,
-    }),
-  }));
-  if (messageDetails.some(({ details }) => details === null)) {
+  const messageDetails: MessageDetailsEntry[] = billedMessages.map(
+    (message) => ({
+      message,
+      details: buildMessageConsumptionDetails({
+        actions: message.actions,
+        billedCredits: message.billedCredits,
+        dustRunIds: message.dustRunIds,
+        items: message.items,
+        runs,
+        usages,
+      }),
+    })
+  );
+  const completeMessageDetails = messageDetails.filter(hasCompleteDetails);
+  if (completeMessageDetails.length !== messageDetails.length) {
     return { billedCredits, details: null };
   }
-
-  const completeMessageDetails = messageDetails.map(({ message, details }) => ({
-    message,
-    details: details as MessageConsumptionDetails,
-  }));
   const messagesById = new Map(
     facts.messages.map((message) => [message.agentMessageId, message])
   );

@@ -46,6 +46,11 @@ async function setupConversation() {
     agentMessageModelId: agentMessage.agentMessageId,
     costCredits: BILLED_CREDITS,
   });
+  await ConversationFactory.setAgentMessageStatus({
+    workspace,
+    agentMessageModelId: agentMessage.agentMessageId,
+    status: "succeeded",
+  });
 
   return { auth, workspace, conversation, agentMessage, runUsageModelId };
 }

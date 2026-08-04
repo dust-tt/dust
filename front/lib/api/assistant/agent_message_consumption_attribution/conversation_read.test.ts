@@ -45,6 +45,11 @@ async function setupMessage() {
     agentMessageModelId: agentMessage.agentMessageId,
     costCredits: BILLED_CREDITS,
   });
+  await ConversationFactory.setAgentMessageStatus({
+    workspace,
+    agentMessageModelId: agentMessage.agentMessageId,
+    status: "succeeded",
+  });
 
   return {
     auth,
@@ -53,6 +58,7 @@ async function setupMessage() {
     run,
     runUsageModelId,
     agentMessage,
+    agentConfiguration,
   };
 }
 
@@ -196,6 +202,48 @@ describe("getConversationConsumption", () => {
     expect(consumption.details?.agents[0]?.tools).toEqual([]);
   });
 
+  it("ignores in-progress messages until they reach a terminal state", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      runUsageModelId,
+      agentMessage,
+      agentConfiguration,
+    } = await setupMessage();
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: modelRecords(runUsageModelId),
+      pendingToolItems: [],
+    });
+
+    const inProgressMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agentConfiguration.sId,
+      });
+    if (!inProgressMessage.agentMessageId) {
+      throw new Error("In-progress agent message was not created.");
+    }
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: inProgressMessage.agentMessageId,
+      costCredits: 7,
+    });
+
+    await expect(
+      getConversationConsumption(auth, { conversation })
+    ).resolves.toMatchObject({
+      billedCredits: BILLED_CREDITS,
+      details: {
+        agentWorkCredits: BILLED_CREDITS,
+      },
+    });
+  });
+
   it("includes recursively spawned run-agent messages in the exact total", async () => {
     const { auth, workspace, conversation, agentMessage } =
       await setupMessage();
@@ -231,6 +279,11 @@ describe("getConversationConsumption", () => {
     await ConversationResource.updateAgentMessageCostCredits(auth, {
       agentMessageModelId: childAgentMessageRow.agentMessageId,
       costCredits: 7,
+    });
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: childAgentMessageRow.agentMessageId,
+      status: "succeeded",
     });
 
     await expect(
