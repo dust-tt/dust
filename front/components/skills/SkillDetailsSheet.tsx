@@ -40,7 +40,7 @@ type SkillDetailsProps = {
   onFavoriteChange?: (
     skill: GetSkillsWithRelationsResponseBody["skills"][number],
     isFavorite: boolean
-  ) => void;
+  ) => Promise<void>;
   owner: WorkspaceType;
   user: UserType;
   replaceOnEdit?: boolean;
@@ -160,7 +160,7 @@ type DescriptionSectionProps = {
   onFavoriteChange?: (
     skill: GetSkillsWithRelationsResponseBody["skills"][number],
     isFavorite: boolean
-  ) => void;
+  ) => Promise<void>;
 };
 
 const DescriptionSection = ({
