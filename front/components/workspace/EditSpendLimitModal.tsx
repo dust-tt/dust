@@ -291,7 +291,7 @@ export function EditSpendLimitModal({
       {showsLoweringWarning && (
         <ContentMessage
           size="sm"
-          variant="warning"
+          variant="golden"
           title="This lowers the member's limit"
         >
           <p>Won&apos;t unblock them until usage drops below the new limit.</p>
