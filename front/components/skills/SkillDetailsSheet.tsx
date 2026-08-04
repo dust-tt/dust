@@ -17,6 +17,7 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
+  ContentMessageAction,
   InfoCircle,
   RefreshCw02,
   Sheet,
@@ -37,6 +38,8 @@ import { useState } from "react";
 type SkillDetailsProps = {
   skill: GetSkillsWithRelationsResponseBody["skills"][number] | null;
   open?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   onClose: () => void;
   onFavoriteChange?: (
     skill: GetSkillsWithRelationsResponseBody["skills"][number],
@@ -50,6 +53,8 @@ type SkillDetailsProps = {
 export function SkillDetailsSheet({
   skill,
   open,
+  isError = false,
+  onRetry,
   onClose,
   onFavoriteChange,
   user,
@@ -60,7 +65,12 @@ export function SkillDetailsSheet({
 
   // Fetch the full skill (with instructions/tools) for the content section,
   // since the list endpoint may not include them.
-  const { skill: fullSkill, isSkillLoading } = useSkill({
+  const {
+    skill: fullSkill,
+    isSkillLoading,
+    isSkillError: isFullSkillError,
+    mutateSkill: retryFullSkill,
+  } = useSkill({
     workspaceId: owner.sId,
     skillId: skill?.sId ?? null,
     disabled: !skill,
@@ -84,7 +94,9 @@ export function SkillDetailsSheet({
               />
             </SheetHeader>
             <SheetContainer className="pb-4">
-              {isSkillLoading || !fullSkill ? (
+              {!fullSkill && isFullSkillError ? (
+                <SkillLoadError onRetry={retryFullSkill} />
+              ) : isSkillLoading || !fullSkill ? (
                 <div className="flex justify-center py-8">
                   <Spinner size="lg" />
                 </div>
@@ -97,6 +109,8 @@ export function SkillDetailsSheet({
               )}
             </SheetContainer>
           </>
+        ) : isError ? (
+          <SkillLoadError onRetry={onRetry} />
         ) : isOpen ? (
           <div className="flex h-full w-full items-center justify-center">
             <Spinner size="lg" />
@@ -104,6 +118,31 @@ export function SkillDetailsSheet({
         ) : null}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function SkillLoadError({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center p-4">
+      <ContentMessage
+        title="Unable to load skill"
+        variant="warning"
+        icon={InfoCircle}
+        size="lg"
+        action={
+          onRetry ? (
+            <ContentMessageAction
+              icon={RefreshCw02}
+              label="Retry"
+              variant="warning"
+              onClick={onRetry}
+            />
+          ) : undefined
+        }
+      >
+        The skill could not be loaded. Please try again.
+      </ContentMessage>
+    </div>
   );
 }
 
