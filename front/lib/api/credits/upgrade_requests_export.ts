@@ -7,10 +7,8 @@ import type {
 import { toBaseSeatType } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
-// Mirrors what the History tab's table actually renders (see
-// `UpgradeRequestsHistoryTable`), not the raw request fields — dates are
-// formatted the same way, "Granted"/"For" are the same derived labels, and a
-// missing reason falls back to the same default copy shown in the UI.
+// Mirrors what the History tab's table actually renders
+// not the raw request fields to avoid confusing the user
 export interface UpgradeRequestExportRow {
   requesterName: string;
   requesterEmail: string;
@@ -39,8 +37,8 @@ export const UPGRADE_REQUEST_EXPORT_HEADERS: (keyof UpgradeRequestExportRow)[] =
 const REASON_LABEL = "Reached credit limit";
 
 // Same display names as `seatTypeDisplayName`
-// (front/components/workspace/billing/seatTypeUtils.ts) — duplicated here so
-// this business-layer module doesn't depend on a UI component file.
+// duplicated here so this business-layer module doesn't
+// depend on a UI component file.
 const SEAT_TYPE_DISPLAY_NAMES: Record<string, string> = {
   free: "Free",
   pro: "Pro",
