@@ -118,11 +118,25 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
 
   // ── Scope helpers ──────────────────────────────────────────────────────
 
-  private static assertScope(scope: SandboxEnvVarScope) {
+  // Also pins the scope to the authenticated workspace: the encryption key
+  // derives from the caller's scope object while queries filter on `auth`,
+  // so a foreign scope would encrypt rows under a key this workspace cannot
+  // decrypt.
+  private static assertScope(auth: Authenticator, scope: SandboxEnvVarScope) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
     if (scope.kind === "pod") {
       assert(
         scope.pod.isProject(),
         "Only pod spaces can have sandbox environment variables."
+      );
+      assert(
+        scope.pod.workspaceId === workspaceId,
+        "Scope does not belong to the authenticated workspace."
+      );
+    } else {
+      assert(
+        scope.workspace.id === workspaceId,
+        "Scope does not belong to the authenticated workspace."
       );
     }
   }
@@ -153,8 +167,11 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
   // Mutations derive the encryption key from the caller's scope object — a
   // mismatched scope would re-encrypt the row under the wrong key and
   // silently brick it.
-  private assertRowBelongsToScope(scope: SandboxEnvVarScope) {
-    SandboxEnvVarResource.assertScope(scope);
+  private assertRowBelongsToScope(
+    auth: Authenticator,
+    scope: SandboxEnvVarScope
+  ) {
+    SandboxEnvVarResource.assertScope(auth, scope);
     assert(
       this.belongsToScope(scope),
       "Sandbox environment variable does not belong to this scope."
@@ -202,7 +219,7 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     where?: Partial<Pick<SandboxEnvVarModel, "id" | "kind" | "name">>,
     { withUserJoins = true }: { withUserJoins?: boolean } = {}
   ): Promise<SandboxEnvVarResource[]> {
-    this.assertScope(scope);
+    this.assertScope(auth, scope);
 
     const isPointLookup = Boolean(where?.id ?? where?.name);
     const rows = await this.model.findAll({
@@ -290,7 +307,7 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
   ): Promise<
     Result<{ resource: SandboxEnvVarResource; created: boolean }, Error>
   > {
-    SandboxEnvVarResource.assertScope(scope);
+    SandboxEnvVarResource.assertScope(auth, scope);
 
     const owner = auth.getNonNullableWorkspace();
     // Admin-only path today. If we ever seed env vars from a script or Temporal
@@ -505,7 +522,7 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
       context?: AuditLogContext;
     }
   ): Promise<Result<SandboxEnvVarResource, Error>> {
-    this.assertRowBelongsToScope(scope);
+    this.assertRowBelongsToScope(auth, scope);
 
     if (this.kind !== "config") {
       return new Err(
@@ -597,7 +614,7 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
       context?: AuditLogContext;
     }
   ): Promise<Result<SandboxEnvVarResource, Error>> {
-    this.assertRowBelongsToScope(scope);
+    this.assertRowBelongsToScope(auth, scope);
 
     const owner = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
@@ -652,7 +669,7 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
       context?: AuditLogContext;
     }
   ): Promise<Result<SandboxEnvVarResource, Error>> {
-    this.assertRowBelongsToScope(scope);
+    this.assertRowBelongsToScope(auth, scope);
 
     if (this.kind !== "https_secret") {
       return new Err(

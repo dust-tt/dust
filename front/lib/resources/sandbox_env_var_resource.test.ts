@@ -6,6 +6,7 @@ import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_en
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { decrypt } from "@app/types/shared/utils/encryption";
 import { describe, expect, it } from "vitest";
 
@@ -518,6 +519,28 @@ describe("SandboxEnvVarResource pod scope", () => {
       throw podEnv.error;
     }
     expect(podEnv.value).toEqual({ DST_SHARED_TOKEN: "pod-value" });
+  });
+
+  it("rejects scopes from another workspace", async () => {
+    const { authenticator, user } = await setupPod();
+    const foreignWorkspace = await WorkspaceFactory.basic();
+    const foreignPod = await SpaceFactory.project(foreignWorkspace, user.id);
+
+    // The scope object pins the encryption key — a foreign scope would
+    // encrypt rows under a key this workspace cannot decrypt.
+    await expect(
+      SandboxEnvVarResource.makeNew(
+        authenticator,
+        { kind: "workspace", workspace: foreignWorkspace },
+        { name: "API_TOKEN", value: "value" }
+      )
+    ).rejects.toThrow("Scope does not belong to the authenticated workspace.");
+    await expect(
+      SandboxEnvVarResource.makeNew(authenticator, podScope(foreignPod), {
+        name: "API_TOKEN",
+        value: "value",
+      })
+    ).rejects.toThrow("Scope does not belong to the authenticated workspace.");
   });
 
   it("rejects duplicate names within a pod without clobbering", async () => {
