@@ -402,9 +402,7 @@ describe("createSandboxChildAction", () => {
     if (result.isOk()) {
       throw new Error("Expected the disabled tool call to fail.");
     }
-    expect(result.error.message).toBe(
-      "Tool is not available to this agent or conversation."
-    );
+    expect(result.error.message).toBe("Tool is disabled on this server.");
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
   });
 
