@@ -83,7 +83,7 @@ function modelRecords(runUsageModelId: ModelId) {
 }
 
 describe("getAgentMessageConsumption", () => {
-  it("groups repeated tools and keeps the exact bill separate from estimated attribution", async () => {
+  it("groups repeated tools and reconciles the breakdown to the exact bill", async () => {
     const {
       auth,
       workspace,
@@ -121,7 +121,7 @@ describe("getAgentMessageConsumption", () => {
           action: firstAction,
           inputTokensCount: 20,
           outputTokensCount: 5,
-          grossAttributedCreditAmountMicro: 5_000_000,
+          grossAttributedCreditAmountMicro: 4_000_000,
           directCreditAmountMicro: 3_000_000,
         },
         {
@@ -130,7 +130,7 @@ describe("getAgentMessageConsumption", () => {
           action: secondAction,
           inputTokensCount: 10,
           outputTokensCount: 4,
-          grossAttributedCreditAmountMicro: 4_000_000,
+          grossAttributedCreditAmountMicro: 3_000_000,
           directCreditAmountMicro: 1_000_000,
         },
       ],
@@ -146,14 +146,12 @@ describe("getAgentMessageConsumption", () => {
       billedCredits: BILLED_CREDITS,
       details: {
         attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-        grossAttributedCredits: 13,
-        estimatedCacheSavingsCredits: 3,
-        agentWorkCredits: 4,
+        agentWorkCredits: 3,
         tools: [
           expect.objectContaining({
             label: "Test Tool",
             callCount: 2,
-            grossAttributedCredits: 9,
+            attributedCredits: 7,
             directCredits: 4,
             pending: false,
             toolName: "test_tool",
@@ -226,11 +224,36 @@ describe("getAgentMessageConsumption", () => {
     });
 
     expect(consumption?.details).toMatchObject({
-      grossAttributedCredits: BILLED_CREDITS,
-      estimatedCacheSavingsCredits: 0,
       agentWorkCredits: BILLED_CREDITS,
       tools: [],
     });
+  });
+
+  it("withholds details when non-input attribution exceeds the bill", async () => {
+    const { auth, conversation, runUsageModelId, agentMessage } =
+      await setupMessage();
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: modelRecords(runUsageModelId).map((record) =>
+        record.itemType === "output"
+          ? {
+              ...record,
+              grossAttributedCreditAmountMicro: 10_000_000,
+            }
+          : record
+      ),
+      pendingToolItems: [],
+    });
+
+    await expect(
+      getAgentMessageConsumption(auth, {
+        conversation,
+        agentMessageId: agentMessage.sId,
+      })
+    ).resolves.toEqual({ billedCredits: BILLED_CREDITS, details: null });
   });
 
   it("withholds details when the active rows do not cover every current run bucket", async () => {
