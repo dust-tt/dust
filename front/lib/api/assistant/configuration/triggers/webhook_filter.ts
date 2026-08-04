@@ -154,6 +154,20 @@ In addition to the exhaustive JSON Schema of the payload, you will be provided a
     </existence>
   </available_operators>
 
+  <type_compatibility>
+    Operators are type-specific. Always read the field type from the JSON Schema before choosing an operator:
+      - String fields: eq, starts-with, contains
+      - Array fields: has, has-all, has-any
+      - Number or integer fields: eq, gt, gte, lt, lte
+      - Boolean fields: eq
+
+    Never use has, has-all, or has-any with a string or other scalar field. A type mismatch always evaluates to false.
+    To match one of several exact values for a scalar field, combine eq expressions with or:
+      (or (eq "issue.state" "open") (eq "issue.state" "closed"))
+
+    Comparison values must use the field's JSON Schema type. In particular, quote strings even when they contain only digits.
+  </type_compatibility>
+
   <composition_patterns>
     To express "not equal", use: (not (eq field value))
     To express "has none", use: (not (has-any field (values)))
