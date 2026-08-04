@@ -1,0 +1,18 @@
+{
+  "alfredSkill": {
+    "name": "Incident Postmortem",
+    "agentFacingDescription": "Guidelines to write an incident postmortem: timeline, impact, root cause and follow-up actions.",
+    "userFacingDescription": "Write incident postmortems following the internal template.",
+    "instructions": "# Incident Postmortem\n\nWhen writing a postmortem, always produce the following sections:\n\n## Summary\nOne paragraph describing what broke, for whom, and for how long.\n\n## Timeline\nA bulleted, timestamped list of events, from the first symptom to the resolution.\n\n## Impact\nQuantify the impact: number of affected users, failed requests, revenue at risk.\n\n## Root cause\nExplain the technical root cause, and the reason it was not caught earlier.\n\n## Follow-up actions\nList concrete, owned action items. Never write \"be more careful\".",
+    "instructionsHtml": "<div data-type=\"instructions-root\" data-block-id=\"instructions-root\"><h1 data-block-id=\"ip01titl\">Incident Postmortem</h1><p data-block-id=\"ip02intr\">When writing a postmortem, always produce the following sections:</p><h2 data-block-id=\"ip03summ\">Summary</h2><p data-block-id=\"ip04summ\">One paragraph describing what broke, for whom, and for how long.</p><h2 data-block-id=\"ip05time\">Timeline</h2><p data-block-id=\"ip06time\">A bulleted, timestamped list of events, from the first symptom to the resolution.</p><h2 data-block-id=\"ip07impa\">Impact</h2><p data-block-id=\"ip08impa\">Quantify the impact: number of affected users, failed requests, revenue at risk.</p><h2 data-block-id=\"ip09root\">Root cause</h2><p data-block-id=\"ip10root\">Explain the technical root cause, and the reason it was not caught earlier.</p><h2 data-block-id=\"ip11foll\">Follow-up actions</h2><p data-block-id=\"ip12foll\">List concrete, owned action items. Never write \"be more careful\".</p></div>",
+    "availability": "editors"
+  },
+  "currentUserSkill": {
+    "name": "Release Notes Writer",
+    "agentFacingDescription": "Guidelines to turn a list of merged pull requests into user-facing release notes.",
+    "userFacingDescription": "Turn merged pull requests into readable release notes.",
+    "instructions": "# Release Notes\n\nGroup changes under three headings: **New**, **Improved**, **Fixed**.\n\n- One line per change, written from the user's point of view.\n- No internal ticket numbers, no commit hashes.\n- Skip purely internal refactors.",
+    "instructionsHtml": "<div data-type=\"instructions-root\" data-block-id=\"instructions-root\"><h1 data-block-id=\"rn01titl\">Release Notes</h1><p data-block-id=\"rn02intr\">Group changes under three headings: <strong>New</strong>, <strong>Improved</strong>, <strong>Fixed</strong>.</p><ul data-block-id=\"rn03rul\"><li>One line per change, written from the user's point of view.</li><li>No internal ticket numbers, no commit hashes.</li><li>Skip purely internal refactors.</li></ul></div>",
+    "availability": "workspace_users"
+  }
+}
