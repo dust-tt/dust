@@ -81,13 +81,8 @@
     "context_origin": {
       "type": "keyword"
     },
-    "api_key_name": {
-      "type": "text",
-      "fields": {
-        "keyword": {
-          "type": "keyword"
-        }
-      }
+    "api_key_id": {
+      "type": "keyword"
     },
     "tool": {
       "type": "object",

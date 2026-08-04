@@ -160,7 +160,7 @@ export interface AgentMessageConsumptionAnalyticsData
   extends ElasticsearchBaseDocument {
   agent: AgentMessageConsumptionAnalyticsAgent;
   agent_message_id: string;
-  api_key_name: string | null;
+  api_key_id: string | null;
   // Version of the attribution logic that produced this document.
   attribution_version: number;
   completed_at: string; // ISO date string.
