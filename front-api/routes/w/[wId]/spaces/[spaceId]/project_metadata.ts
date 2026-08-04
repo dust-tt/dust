@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { validatePodFrameTabs } from "@app/lib/api/projects/frame_tabs";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -131,6 +132,49 @@ app.patch(
       }
     }
 
+    let resolvedFrameTabs: {
+      frameTabs: NonNullable<typeof body.frameTabs>;
+      tabsOrder: string[];
+    } | null = null;
+    if (body.frameTabs !== undefined || body.tabsOrder !== undefined) {
+      if (body.frameTabs === undefined || body.tabsOrder === undefined) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "frameTabs and tabsOrder must be provided together.",
+          },
+        });
+      }
+
+      if (!(await hasFeatureFlag(auth, "pod_frame_tabs"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message: "Pod frame tabs are not enabled for this workspace.",
+          },
+        });
+      }
+
+      const validation = await validatePodFrameTabs(
+        auth,
+        space,
+        body.frameTabs,
+        body.tabsOrder
+      );
+      if (validation.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: validation.error.message,
+          },
+        });
+      }
+      resolvedFrameTabs = validation.value;
+    }
+
     // Validate the default agent exists and is usable (handles both global agents like
     // "claude-4.5-sonnet" and workspace agents). A null value clears the default (@dust).
     if (body.defaultAgentId) {
@@ -228,6 +272,8 @@ app.patch(
         todoGenerationEnabled: body.todoGenerationEnabled ?? false,
         initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         pinnedFramePath: body.pinnedFramePath ?? null,
+        frameTabs: resolvedFrameTabs?.frameTabs ?? [],
+        tabsOrder: resolvedFrameTabs?.tabsOrder ?? [],
         defaultAgentId: body.defaultAgentId ?? null,
         isAdminControlled: body.isAdminControlled ?? false,
       });
@@ -278,6 +324,12 @@ app.patch(
       }
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
+      }
+      if (resolvedFrameTabs) {
+        await metadata.updateFrameTabs(
+          resolvedFrameTabs.frameTabs,
+          resolvedFrameTabs.tabsOrder
+        );
       }
       if (body.defaultAgentId !== undefined) {
         await metadata.updateDefaultAgentId(body.defaultAgentId);

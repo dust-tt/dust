@@ -320,6 +320,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable admin-controlled Pods: admins manage membership and attach connected data (Space DataSourceViews) to the Pod itself.",
     stage: "dust_only",
   },
+  pod_frame_tabs: {
+    description:
+      "Allow adding frames from the pod file system as custom tabs (title, icon, order) on the pod.",
+    stage: "dust_only",
+  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",

@@ -1,5 +1,4 @@
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Pin02 } from "@dust-tt/sparkle";
 
@@ -22,7 +21,6 @@ export function PinPodBannerButton({
   fileName,
   hidden,
 }: PinPodBannerButtonProps) {
-  const isMobile = useIsMobile();
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
     podId: spaceId,
@@ -39,8 +37,8 @@ export function PinPodBannerButton({
   return (
     <Button
       icon={Pin02}
-      variant="ghost"
-      label={isMobile ? undefined : pinnedAsBanner ? "Pinned" : "Pin"}
+      variant={pinnedAsBanner ? "highlight-ghost" : "ghost"}
+      label={""}
       tooltip={pinnedAsBanner ? "Unpin from Pod banner" : "Pin as Pod banner"}
       onClick={() =>
         void togglePin(framePath, {

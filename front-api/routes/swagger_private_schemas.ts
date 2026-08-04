@@ -1100,6 +1100,30 @@
  *               type: string
  *               nullable: true
  *               description: Scoped path to the frame file pinned as the Pod banner (e.g. project/banner.html).
+ *             frameTabs:
+ *               type: array
+ *               description: Frames promoted as custom Pod tabs (shared for all members).
+ *               items:
+ *                 type: object
+ *                 required:
+ *                   - path
+ *                   - title
+ *                   - icon
+ *                 properties:
+ *                   path:
+ *                     type: string
+ *                     description: Canonical scoped path to the frame file in the Pod filesystem.
+ *                   title:
+ *                     type: string
+ *                     description: Display title for the tab.
+ *                   icon:
+ *                     type: string
+ *                     description: Action icon name (e.g. ActionDashboardIcon).
+ *             tabsOrder:
+ *               type: array
+ *               description: Interleaved system tab ids and frame paths before Settings.
+ *               items:
+ *                 type: string
  *             isAdminControlled:
  *               type: boolean
  *               description: Whether workspace admins control membership and connected data for this Pod.

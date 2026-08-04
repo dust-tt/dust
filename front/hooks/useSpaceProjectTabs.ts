@@ -1,6 +1,18 @@
 import { DEFAULT_TASK_OWNER_FILTER } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import type { PodUiScopedPreferences } from "@app/hooks/useScopedUIPreferences";
+import {
+  isPodFrameTabValue,
+  makePodFrameTabValue,
+  parsePodFrameTabPath,
+} from "@app/types/pod_frame_tab";
 import { useCallback, useEffect, useRef } from "react";
+
+export type SystemPodTab =
+  | "conversations"
+  | "tasks"
+  | "files"
+  | "connected_data"
+  | "settings";
 
 export type PodTab = PodUiScopedPreferences["tab"];
 
@@ -12,20 +24,36 @@ export const DEFAULT_POD_UI_PREFERENCES: PodUiScopedPreferences = {
 
 const CONNECTED_DATA_QUERY_PARAMS = ["dsvId", "parentId", "q"] as const;
 
+const SYSTEM_POD_TAB_HASHES = new Set<string>([
+  "files",
+  "settings",
+  "conversations",
+  "tasks",
+  "connected_data",
+]);
+
+function isSystemPodTab(tab: string): tab is SystemPodTab {
+  return SYSTEM_POD_TAB_HASHES.has(tab);
+}
+
 /** Hash segment → tab when the user navigates with the hash (same pod). */
 function parsePodTabFromLocationHash(fallbackTab: PodTab): PodTab {
   if (typeof window === "undefined") {
     return fallbackTab;
   }
   const hash = window.location.hash.slice(1);
-  if (
-    hash === "files" ||
-    hash === "settings" ||
-    hash === "conversations" ||
-    hash === "tasks" ||
-    hash === "connected_data"
-  ) {
+  if (isSystemPodTab(hash)) {
     return hash;
+  }
+  if (hash.startsWith("frame/")) {
+    try {
+      const path = decodeURIComponent(hash.slice("frame/".length));
+      if (path.length > 0) {
+        return makePodFrameTabValue(path);
+      }
+    } catch {
+      return fallbackTab;
+    }
   }
   return fallbackTab;
 }
@@ -49,6 +77,11 @@ function hasConnectedDataQueryParams(): boolean {
   return CONNECTED_DATA_QUERY_PARAMS.some((key) => params.has(key));
 }
 
+function tabToHash(tab: PodTab): string {
+  const framePath = parsePodFrameTabPath(tab);
+  return framePath ? `frame/${encodeURIComponent(framePath)}` : tab;
+}
+
 function replaceUrlWithTab(tab: PodTab) {
   const url = new URL(window.location.href);
   if (tab !== "connected_data") {
@@ -56,7 +89,7 @@ function replaceUrlWithTab(tab: PodTab) {
       url.searchParams.delete(key);
     }
   }
-  url.hash = tab;
+  url.hash = tabToHash(tab);
   window.history.replaceState(null, "", url.pathname + url.search + url.hash);
 }
 
@@ -71,11 +104,7 @@ interface UsePodTabsParams {
 /**
  * Pod page tabs: URL hash mirrors `projectUIPreferences.tab` (per pod).
  *
- * One sync function runs on mount, `podId` change, and `hashchange`. If
- * the URL hash names a valid tab, state adopts it (so deep links like
- * `/pod/X#tasks` win over the persisted tab); otherwise the persisted
- * tab is written back into the URL asynchronously, so other layout hooks
- * (e.g. side panel) observe the previous hash first.
+ * System tabs use `#conversations` etc. Frame tabs use `#frame/<encoded-path>`.
  *
  * Tab clicks go through `handleTabChange`, which writes URL + state
  * synchronously and bypasses the sync function.
@@ -97,15 +126,16 @@ export function usePodTabs({
   onHashChangeRef.current = () => {
     const tabFromHash = parsePodTabFromLocationHash(podUiPreferences.tab);
     const resolved = resolvePodTab(tabFromHash, isAdminControlled);
+    const expectedHash = `#${tabToHash(podUiPreferences.tab)}`;
     if (resolved !== podUiPreferences.tab) {
       setPodUiPreferences({ ...podUiPreferences, tab: resolved });
       if (
-        window.location.hash !== `#${resolved}` ||
+        window.location.hash !== `#${tabToHash(resolved)}` ||
         (resolved !== "connected_data" && hasConnectedDataQueryParams())
       ) {
         replaceUrlWithTab(resolved);
       }
-    } else if (window.location.hash !== `#${podUiPreferences.tab}`) {
+    } else if (window.location.hash !== expectedHash) {
       const newTab = podUiPreferences.tab;
       window.setTimeout(() => replaceUrlWithTab(newTab), 0);
     } else if (resolved !== "connected_data" && hasConnectedDataQueryParams()) {
@@ -155,4 +185,8 @@ export function usePodTabs({
     currentTab: resolvePodTab(podUiPreferences.tab, isAdminControlled),
     handleTabChange,
   };
+}
+
+export function isValidPodTabValue(value: string): value is PodTab {
+  return isSystemPodTab(value) || isPodFrameTabValue(value);
 }

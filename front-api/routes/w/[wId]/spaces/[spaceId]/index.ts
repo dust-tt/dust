@@ -18,6 +18,7 @@ import type {
   SpaceCategoryInfo,
 } from "@app/types/api/spaces";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
+import { normalizeTabsOrder, sortPodFrameTabs } from "@app/types/pod_frame_tab";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -140,6 +141,23 @@ const app = workspaceApp();
  *                           type: string
  *                           nullable: true
  *                           description: Scoped path to the frame file pinned as the Pod banner.
+ *                         frameTabs:
+ *                           type: array
+ *                           description: Frames promoted as custom Pod tabs.
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               path:
+ *                                 type: string
+ *                               title:
+ *                                 type: string
+ *                               icon:
+ *                                 type: string
+ *                         tabsOrder:
+ *                           type: array
+ *                           description: Interleaved system tab ids and frame paths before Settings.
+ *                           items:
+ *                             type: string
  *                         isAdminControlled:
  *                           type: boolean
  *                           description: Whether workspace admins control membership and connected data for this Pod.
@@ -339,6 +357,11 @@ app.get(
         todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
         lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
         pinnedFramePath: meta?.pinnedFramePath ?? null,
+        frameTabs: sortPodFrameTabs(meta?.frameTabs ?? []),
+        tabsOrder: normalizeTabsOrder(
+          meta?.tabsOrder ?? [],
+          (meta?.frameTabs ?? []).map((tab) => tab.path)
+        ),
         isAdminControlled: meta?.isAdminControlled ?? false,
       },
     });
