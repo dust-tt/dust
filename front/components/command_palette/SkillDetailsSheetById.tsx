@@ -15,7 +15,7 @@ export function SkillDetailsSheetById({
   skillId,
   onClose,
 }: SkillDetailsSheetByIdProps) {
-  const { skill } = useSkill({
+  const { skill, isSkillError, mutateSkill } = useSkill({
     workspaceId: owner.sId,
     skillId,
     withRelations: true,
@@ -25,6 +25,9 @@ export function SkillDetailsSheetById({
   return (
     <SkillDetailsSheet
       skill={skill ?? null}
+      open={skillId !== null}
+      isError={isSkillError}
+      onRetry={mutateSkill}
       owner={owner}
       user={user}
       onClose={onClose}
