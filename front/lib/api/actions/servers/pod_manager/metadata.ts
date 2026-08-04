@@ -442,7 +442,7 @@ export const POD_MANAGER_TOOLS_METADATA = [
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
-    stake: "medium",
+    stake: "never_ask",
     displayLabels: {
       running: "Creating conversation",
       done: "Create conversation",
