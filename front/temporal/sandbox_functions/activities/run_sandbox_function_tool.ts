@@ -1,7 +1,13 @@
 import { isSandboxFunctionToolEvent } from "@app/lib/actions/mcp";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
+import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
+import { buildSandboxFunctionAuditMetadata } from "@app/lib/api/sandbox_functions/audit";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -89,7 +95,33 @@ export async function runSandboxFunctionToolActivity(
         case "tool_file_auth_required":
         case "tool_notification":
         case "tool_paused":
+          break;
         case "tool_success":
+          // Same action as the agent loop emits, with the invoking user as actor and pod function
+          // identifiers standing in for the conversation ones.
+          void emitAuditLogEvent({
+            auth,
+            action: "tool.executed",
+            targets: [
+              buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+              buildAuditLogTarget("tool", {
+                sId: action.toolConfiguration.name,
+                name: action.toolConfiguration.originalName,
+              }),
+            ],
+            metadata: {
+              tool_name: action.toolConfiguration.originalName,
+              tool_type: isLightClientSideMCPToolConfiguration(
+                action.toolConfiguration
+              )
+                ? "remote"
+                : "internal",
+              mcp_server_name: action.toolConfiguration.mcpServerName,
+              ...buildSandboxFunctionAuditMetadata(invocation),
+              initiating_user_id: auth.user()?.sId ?? "unknown",
+              initiating_user_email: auth.user()?.email ?? "unknown",
+            },
+          });
           break;
         default:
           assertNever(event);

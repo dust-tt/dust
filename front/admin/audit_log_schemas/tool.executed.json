@@ -5,9 +5,6 @@
       "type": "workspace"
     },
     {
-      "type": "agent"
-    },
-    {
       "type": "tool"
     }
   ],
@@ -18,6 +15,11 @@
     "conversation_id": "string",
     "agent_message_id": "string",
     "trigger_id": "string",
+    "pod_id": "string",
+    "pod_function_id": "string",
+    "pod_function_slug": "string",
+    "invocation_id": "string",
+    "invocation_origin": "string",
     "accessed_data_source_ids": "string",
     "accessed_table_ids": "string",
     "actor_type": "string",
