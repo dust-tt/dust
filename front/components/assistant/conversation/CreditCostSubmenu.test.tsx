@@ -70,14 +70,14 @@ vi.mock("@dust-tt/sparkle", () => ({
 const makeTool = (
   toolName: string,
   label: string,
-  grossAttributedCredits: number,
+  attributedCredits: number,
   overrides: Partial<AgentMessageConsumptionToolDetails> = {}
 ): AgentMessageConsumptionToolDetails => ({
   label,
   internalMCPServerName: null,
   toolName,
   callCount: 1,
-  grossAttributedCredits,
+  attributedCredits,
   directCredits: 0,
   pending: false,
   ...overrides,
@@ -103,8 +103,6 @@ describe("CreditCostSubmenu", () => {
         billedCredits: 12,
         details: {
           attributionVersion: 2,
-          grossAttributedCredits: 22,
-          estimatedCacheSavingsCredits: 2,
           agentWorkCredits: 4,
           tools: [
             makeTool("files", "File tool", 2),
@@ -129,7 +127,7 @@ describe("CreditCostSubmenu", () => {
     expect(screen.queryByText("Title tool")).not.toBeInTheDocument();
     expect(screen.getByText("Other tools")).toBeInTheDocument();
     expect(screen.getByText("2 tools, 2 uses")).toBeInTheDocument();
-    expect(screen.getByText("Saved through reuse")).toBeInTheDocument();
+    expect(screen.getByText("Credit breakdown")).toBeInTheDocument();
     expect(screen.getByText("Agent work and context")).toBeInTheDocument();
     expect(
       screen.getByText("Longer conversations require more context to process")
@@ -140,6 +138,32 @@ describe("CreditCostSubmenu", () => {
       "data-disabled",
       "true"
     );
+  });
+
+  it("shows an additive breakdown without a separate savings adjustment", () => {
+    mockUseAgentMessageConsumption.mockReturnValue({
+      consumption: {
+        billedCredits: 10,
+        details: {
+          attributionVersion: 3,
+          agentWorkCredits: 3,
+          tools: [
+            makeTool("search", "Semantic Search", 7, {
+              directCredits: 3,
+            }),
+          ],
+        },
+      },
+      isConsumptionLoading: false,
+      mutateConsumption: vi.fn(),
+    });
+
+    render(<CreditCostSubmenu {...defaultProps} />);
+
+    expect(screen.getByText("Credit breakdown")).toBeInTheDocument();
+    expect(screen.queryByText("Saved through reuse")).not.toBeInTheDocument();
+    expect(screen.getByText("3 credits")).toBeInTheDocument();
+    expect(screen.getByText("7 credits")).toBeInTheDocument();
   });
 
   it("keeps the exact charge visible when attribution details are unavailable", () => {

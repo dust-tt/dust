@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";

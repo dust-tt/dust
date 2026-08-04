@@ -1,8 +1,11 @@
+import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { RunFactory } from "@app/tests/utils/RunFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -17,21 +20,34 @@ async function setupMessage() {
     auth,
     { name: "Consumption endpoint" }
   );
-  const conversation = await ConversationFactory.create(auth, {
+  const createdConversation = await ConversationFactory.create(auth, {
     agentConfigurationId: agentConfiguration.sId,
     messagesCreatedAt: [],
+  });
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    createdConversation.sId
+  );
+  if (!conversation) {
+    throw new Error("Just-created conversation not found.");
+  }
+  const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
+    inputTokens: 100,
+    outputTokens: 20,
+    reasoningTokens: 5,
   });
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
     workspace,
     conversation,
     agentConfig: agentConfiguration,
+    runIds: [run.dustRunId],
   });
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
     costCredits: BILLED_CREDITS,
   });
 
-  return { auth, workspace, conversation, agentMessage };
+  return { auth, workspace, conversation, agentMessage, runUsageModelId };
 }
 
 function getConsumption({
@@ -64,6 +80,52 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/messages/:mId/consumption
     await expect(response.json()).resolves.toEqual({
       billedCredits: BILLED_CREDITS,
       details: null,
+    });
+  });
+
+  it("returns a breakdown reconciled exclusively through model input", async () => {
+    const { auth, workspace, conversation, agentMessage, runUsageModelId } =
+      await setupMessage();
+    await FeatureFlagFactory.basic(auth, "conversation_consumption_details");
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: [
+        {
+          itemType: "input",
+          runUsageModelId,
+          inputTokensCount: 100,
+          grossAttributedCreditAmountMicro: 8_000_000,
+        },
+        {
+          itemType: "output",
+          runUsageModelId,
+          outputTokensCount: 15,
+          grossAttributedCreditAmountMicro: 1_000_000,
+        },
+        {
+          itemType: "reasoning",
+          runUsageModelId,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 1_000_000,
+        },
+      ],
+      pendingToolItems: [],
+    });
+
+    const response = await getConsumption({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      billedCredits: BILLED_CREDITS,
+      details: {
+        agentWorkCredits: BILLED_CREDITS,
+      },
     });
   });
 

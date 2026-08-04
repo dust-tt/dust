@@ -22,7 +22,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption:
  *   get:
  *     summary: Get an agent message credit attribution
- *     description: Returns the exact billed credits and, when available, an estimated cache-naive attribution grouped into agent work and tools.
+ *     description: Returns exact billed credits and an additive attribution reconciled exclusively through model input rows.
  *     tags:
  *       - Private Messages
  *     parameters:
@@ -61,23 +61,17 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                 details:
  *                   type: object
  *                   nullable: true
- *                   description: Cache-naive estimated attribution. Null when the active attribution version is unavailable or incomplete.
+ *                   description: Additive attribution reconciled to the bill through model input rows. Null when the active attribution version is unavailable or incomplete.
  *                   required:
  *                     - attributionVersion
- *                     - grossAttributedCredits
- *                     - estimatedCacheSavingsCredits
  *                     - agentWorkCredits
  *                     - tools
  *                   properties:
  *                     attributionVersion:
  *                       type: integer
- *                     grossAttributedCredits:
- *                       type: number
- *                     estimatedCacheSavingsCredits:
- *                       type: number
- *                       nullable: true
  *                     agentWorkCredits:
  *                       type: number
+ *                       description: Agent work after assigning billing reconciliation exclusively to model input rows.
  *                     tools:
  *                       type: array
  *                       items:
@@ -87,7 +81,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                           - internalMCPServerName
  *                           - toolName
  *                           - callCount
- *                           - grossAttributedCredits
+ *                           - attributedCredits
  *                           - directCredits
  *                           - pending
  *                         properties:
@@ -100,8 +94,9 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                             type: string
  *                           callCount:
  *                             type: integer
- *                           grossAttributedCredits:
+ *                           attributedCredits:
  *                             type: number
+ *                             description: Share of billed credits after input-only reconciliation.
  *                           directCredits:
  *                             type: number
  *                           pending:

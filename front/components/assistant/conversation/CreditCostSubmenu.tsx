@@ -116,14 +116,13 @@ export function CreditCostSubmenu({
 
   const rankedTools = details
     ? [...details.tools].sort(
-        (left, right) =>
-          right.grossAttributedCredits - left.grossAttributedCredits
+        (left, right) => right.attributedCredits - left.attributedCredits
       )
     : [];
   const visibleTools = rankedTools.slice(0, MAX_VISIBLE_TOOLS);
   const remainingTools = rankedTools.slice(MAX_VISIBLE_TOOLS);
   const remainingToolCredits = remainingTools.reduce(
-    (total, tool) => total + tool.grossAttributedCredits,
+    (total, tool) => total + tool.attributedCredits,
     0
   );
   const remainingToolCallCount = remainingTools.reduce(
@@ -173,7 +172,7 @@ export function CreditCostSubmenu({
             />
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuLabel label="Estimated work before savings" />
+          <DropdownMenuLabel label="Credit breakdown" />
           {isConsumptionLoading && !consumption ? (
             <div
               aria-busy="true"
@@ -196,7 +195,7 @@ export function CreditCostSubmenu({
                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
                   label={tool.label}
                   description={toolDescription(tool)}
-                  value={formatCreditValue(tool.grossAttributedCredits)}
+                  value={formatCreditValue(tool.attributedCredits)}
                   icon={getActionStepIcon(tool)}
                 />
               ))}
@@ -208,13 +207,6 @@ export function CreditCostSubmenu({
                   icon={ShapesPlus}
                 />
               )}
-              {details.estimatedCacheSavingsCredits !== null &&
-                details.estimatedCacheSavingsCredits > 0 && (
-                  <ReadonlyCostItem
-                    label="Saved through reuse"
-                    value={`−${formatCreditValue(details.estimatedCacheSavingsCredits)}`}
-                  />
-                )}
             </>
           ) : (
             <ReadonlyNotice
