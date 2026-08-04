@@ -24,7 +24,6 @@ import {
   Hoverable,
   Icon,
   InfoCircle,
-  Label,
   LinkExternal01,
   LinkWrapper,
 } from "@dust-tt/sparkle";
@@ -115,7 +114,9 @@ export function SkillBuilderSettingsSection({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h2 className="heading-lg text-foreground">Skill settings</h2>
+        <h2 className="heading-lg font-semibold text-foreground">
+          Skill settings
+        </h2>
         {githubSkillFolderUrl && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <span>This skill was originally imported from</span>
@@ -232,9 +233,9 @@ export function SkillBuilderSettingsSection({
 
       {hasSelfImprovingSkills && (
         <div className="space-y-4">
-          <Label className="text-base font-semibold text-foreground">
+          <h3 className="text-base font-semibold text-foreground">
             Self Improvement
-          </Label>
+          </h3>
           <SkillBuilderEnableSuggestionsSection
             selfImprovementLock={skill?.selfImprovementLock ?? false}
           />
