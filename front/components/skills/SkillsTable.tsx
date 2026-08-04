@@ -173,7 +173,7 @@ const usageColumn: ColumnDef<RowData, number | null> = {
     return (
       <DataTable.BasicCellContent
         className="font-mono"
-        label={messageCount === null ? "—" : messageCount.toLocaleString()}
+        label={messageCount === null ? "-" : messageCount.toLocaleString()}
         tooltip={
           messageCount === null
             ? "System skills are always active, so message usage does not apply."
