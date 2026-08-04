@@ -400,6 +400,7 @@ export function AgentDetailsSheet({
                       </TabsContent>
                       <TabsContent value="editors">
                         <AgentEditorsTab
+                          key={agentConfiguration.sId}
                           owner={owner}
                           user={user}
                           agentConfiguration={agentConfiguration}
