@@ -63,6 +63,9 @@ interface EditSpendLimitModalProps {
   // When set, the modal skips the "workspace default vs. custom limit"
   // choice and opens straight into the custom-limit form.
   forceOverride?: boolean;
+  // sId of the linked upgrade request, if any — forwarded on save so the
+  // granted amount/expiry gets recorded on it for the admin history view.
+  linkedRequestId?: string | null;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
   // Fired once the spend limit has been persisted successfully (not on cancel
   // or a load error). Used to resolve a linked upgrade request as approved.
@@ -75,6 +78,7 @@ export function EditSpendLimitModal({
   member,
   owner,
   forceOverride = false,
+  linkedRequestId,
   onSavingChange,
   onSaved,
 }: EditSpendLimitModalProps) {
@@ -218,6 +222,7 @@ export function EditSpendLimitModal({
             kind: "limited",
             awuCredits: result.awuCredits,
             expiresAt,
+            expiryKind: expiryMode,
           };
           break;
         }
@@ -228,6 +233,7 @@ export function EditSpendLimitModal({
         memberId: displayedMember.sId,
         memberName: displayedMember.name,
         limit,
+        requestId: linkedRequestId,
       });
       if (body) {
         onSaved?.();
