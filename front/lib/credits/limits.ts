@@ -8,10 +8,10 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import type { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type Stripe from "stripe";
 
-// $1000 flat cap per billing cycle for Pro subscriptions.
-const MAX_PRO_CREDIT_TOTAL_MICRO_USD = 1_000_000_000;
-// $1000 minimum cap for Enterprise subscriptions.
-const MIN_ENTERPRISE_CREDIT_MICRO_USD = 1_000_000_000;
+// $5000 flat cap per billing cycle for Pro subscriptions.
+const MAX_PRO_CREDIT_TOTAL_MICRO_USD = 5_000_000_000;
+// $5000 minimum cap for Enterprise subscriptions.
+const MIN_ENTERPRISE_CREDIT_MICRO_USD = 5_000_000_000;
 
 export type CreditPurchaseLimits =
   | {
@@ -33,8 +33,8 @@ type CreditPurchaseLimitsContext =
  * Rules:
  * - Pro in trial: cannot purchase credits (Stripe-billed only)
  * - Pro with payment issues: cannot purchase credits (Stripe-billed only)
- * - Pro paying: flat $1000 per billing cycle
- * - Enterprise: max($1000, half of pay-as-you-go cap) per billing cycle
+ * - Pro paying: flat $5000 per billing cycle
+ * - Enterprise: max($5000, half of pay-as-you-go cap) per billing cycle
  *
  * Metronome-only workspaces skip the trial / payment-issue checks (no Stripe
  * subscription state to read; payment is on Stripe N+30 dunning).
@@ -55,9 +55,9 @@ export async function getCreditPurchaseLimits(
 
   if (isEnterprise) {
     // Enterprise limit:
-    //  - Stripe-billed (legacy programmatic): max($1000, half of PAYG cap)
+    //  - Stripe-billed (legacy programmatic): max($5000, half of PAYG cap)
     //    derived from `programmatic_usage_configuration.paygCapMicroUsd`.
-    //  - Metronome (credit-priced): flat $1000 floor. The credit-config PAYG
+    //  - Metronome (credit-priced): flat $5000 floor. The credit-config PAYG
     //    cap is in AWU credits and isn't used to gate fiat credit purchases.
     let enterpriseMaxMicroUsd = MIN_ENTERPRISE_CREDIT_MICRO_USD;
     if (context.type === "stripe-subscription") {
@@ -101,7 +101,7 @@ export async function getCreditPurchaseLimits(
     return { canPurchase: false, reason: "pending_payment" };
   }
 
-  // Pro paying: flat $1000 per billing cycle.
+  // Pro paying: flat $5000 per billing cycle.
   const alreadyPurchased =
     await CreditResource.sumCommittedCreditsPurchasedInPeriod(
       auth,

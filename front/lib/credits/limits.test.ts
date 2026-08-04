@@ -82,7 +82,7 @@ describe("getCreditPurchaseLimits", () => {
       vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     });
 
-    it("should allow purchase with $1000 minimum limit when no payg cap", async () => {
+    it("should allow purchase with $5000 minimum limit when no payg cap", async () => {
       fetchProgrammaticConfigSpy.mockResolvedValue(null);
 
       const result = await getCreditPurchaseLimits(auth, {
@@ -92,11 +92,11 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 1_000_000_000, // $1000 minimum
+        maxAmountMicroUsd: 5_000_000_000, // $5000 minimum
       });
     });
 
-    it("should use $1000 minimum when payg cap is low", async () => {
+    it("should use $5000 minimum when payg cap is low", async () => {
       fetchProgrammaticConfigSpy.mockResolvedValue({
         paygCapMicroUsd: 1_000_000_000, // $1000 payg cap -> $500 half
       });
@@ -108,13 +108,13 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 1_000_000_000, // $1000 minimum (half of $1000 is $500, less than $1000)
+        maxAmountMicroUsd: 5_000_000_000, // $5000 minimum (half of $1000 is $500, less than $5000)
       });
     });
 
-    it("should use half of payg cap when greater than $1000", async () => {
+    it("should use half of payg cap when greater than $5000", async () => {
       fetchProgrammaticConfigSpy.mockResolvedValue({
-        paygCapMicroUsd: 10_000_000_000, // $10,000 payg cap -> $5,000 half
+        paygCapMicroUsd: 20_000_000_000, // $20,000 payg cap -> $10,000 half
       });
 
       const result = await getCreditPurchaseLimits(auth, {
@@ -124,7 +124,7 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 5_000_000_000, // Half of $10,000 = $5,000
+        maxAmountMicroUsd: 10_000_000_000, // Half of $20,000 = $10,000
       });
     });
 
@@ -148,13 +148,13 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 700_000_000, // $1000 - $300 = $700
+        maxAmountMicroUsd: 4_700_000_000, // $5000 - $300 = $4700
       });
     });
 
     it("should subtract already purchased from payg-based limit", async () => {
       fetchProgrammaticConfigSpy.mockResolvedValue({
-        paygCapMicroUsd: 10_000_000_000, // $10,000 payg cap -> $5,000 half
+        paygCapMicroUsd: 20_000_000_000, // $20,000 payg cap -> $10,000 half
       });
       sumCommittedCreditsSpy.mockResolvedValue(2_000_000_000); // $2000 already purchased
 
@@ -165,13 +165,13 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 3_000_000_000, // $5,000 - $2,000 = $3,000
+        maxAmountMicroUsd: 8_000_000_000, // $10,000 - $2,000 = $8,000
       });
     });
 
     it("should return 0 if limit is exhausted", async () => {
       fetchProgrammaticConfigSpy.mockResolvedValue(null);
-      sumCommittedCreditsSpy.mockResolvedValue(1_000_000_000); // $1000 already purchased
+      sumCommittedCreditsSpy.mockResolvedValue(5_000_000_000); // $5000 already purchased
 
       const result = await getCreditPurchaseLimits(auth, {
         type: "stripe-subscription",
@@ -225,7 +225,7 @@ describe("getCreditPurchaseLimits", () => {
       vi.mocked(getCustomerPaymentStatus).mockResolvedValue("paying");
     });
 
-    it("should allow a flat $1000 per billing cycle", async () => {
+    it("should allow a flat $5000 per billing cycle", async () => {
       const result = await getCreditPurchaseLimits(auth, {
         type: "stripe-subscription",
         stripeSubscription: makeSubscription(),
@@ -233,7 +233,7 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 1_000_000_000, // Flat $1000
+        maxAmountMicroUsd: 5_000_000_000, // Flat $5000
       });
     });
 
@@ -247,12 +247,12 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 800_000_000, // $1000 - $200 = $800
+        maxAmountMicroUsd: 4_800_000_000, // $5000 - $200 = $4800
       });
     });
 
     it("should return 0 if the limit is exhausted", async () => {
-      sumCommittedCreditsSpy.mockResolvedValue(1_000_000_000); // $1000 already purchased
+      sumCommittedCreditsSpy.mockResolvedValue(5_000_000_000); // $5000 already purchased
 
       const result = await getCreditPurchaseLimits(auth, {
         type: "stripe-subscription",
