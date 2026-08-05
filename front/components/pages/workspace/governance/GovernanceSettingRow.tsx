@@ -37,6 +37,11 @@ const GOVERNANCE_SETTING_METADATA: Partial<
     label: "Publish agents",
     description: "Who can publish agents to the whole workspace",
   },
+  "create:trigger": {
+    label: "Create triggers",
+    description:
+      "Who can create schedules and webhook triggers that run agents automatically",
+  },
   "create:skill": {
     label: "Create skills",
     description: "Who can create custom skills",

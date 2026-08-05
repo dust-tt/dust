@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type {
   ScheduleConfig,
   TriggerStatus,
@@ -26,6 +27,19 @@ interface ScheduleTriggerOptions {
   customPrompt?: string | null;
 }
 
+async function ensureCanCreateTriggers(auth: Authenticator): Promise<void> {
+  if (await auth.hasWorkspacePermission("create", "trigger")) {
+    return;
+  }
+
+  await grantWorkspacePermission(
+    auth.getNonNullableWorkspace(),
+    auth.getNonNullableUser(),
+    { grantType: "create", resourceType: "trigger" }
+  );
+  await auth.refresh();
+}
+
 export class TriggerFactory {
   /**
    * Creates a webhook trigger for tests.
@@ -37,6 +51,8 @@ export class TriggerFactory {
   ): Promise<TriggerResource> {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
+
+    await ensureCanCreateTriggers(auth);
 
     const result = await TriggerResource.makeNew(auth, {
       workspaceId: workspace.id,
@@ -69,6 +85,8 @@ export class TriggerFactory {
   ): Promise<TriggerResource> {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
+
+    await ensureCanCreateTriggers(auth);
 
     const result = await TriggerResource.makeNew(auth, {
       workspaceId: workspace.id,

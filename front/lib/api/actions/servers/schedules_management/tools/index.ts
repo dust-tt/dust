@@ -18,7 +18,10 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
-import { isScheduleTrigger } from "@app/types/assistant/triggers";
+import {
+  isScheduleTrigger,
+  TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE,
+} from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { UniqueConstraintError } from "sequelize";
@@ -72,6 +75,14 @@ export function createSchedulesManagementTools(
 
       const owner = auth.getNonNullableWorkspace();
       const user = auth.getNonNullableUser();
+
+      if (!(await auth.hasWorkspacePermission("create", "trigger"))) {
+        return new Err(
+          new MCPError(TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE, {
+            tracked: false,
+          })
+        );
+      }
 
       const { agentConfiguration } = toolContext.runContext;
 

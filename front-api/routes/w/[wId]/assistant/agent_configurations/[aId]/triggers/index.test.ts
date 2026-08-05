@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { faker } from "@faker-js/faker";
@@ -79,6 +80,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId
       method: "POST",
       role: "builder",
     });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "trigger",
+    });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -107,6 +112,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId
       method: "POST",
       role: "builder",
     });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "trigger",
+    });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -127,6 +136,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
       role: "builder",
+    });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "trigger",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -152,6 +165,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId
       method: "POST",
       role: "builder",
     });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "trigger",
+    });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -173,6 +190,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId
       method: "POST",
       role: "builder",
     });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "trigger",
+    });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -193,6 +214,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId
       method: "POST",
       role: "builder",
     });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "trigger",
+    });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -209,11 +234,59 @@ describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId
   });
 });
 
+describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (permission)", () => {
+  it("rejects a member without the create:trigger permission", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "builder",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postTriggers(
+      workspace,
+      agent.sId,
+      scheduleTriggerBody(null)
+    );
+
+    expect(response.status).toBe(403);
+    const data = await response.json();
+    expect(data.error.type).toBe("workspace_auth_error");
+  });
+
+  it("allows an admin without an explicit grant", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postTriggers(
+      workspace,
+      agent.sId,
+      scheduleTriggerBody(null)
+    );
+
+    expect(response.status).toBe(204);
+  });
+});
+
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId)", () => {
   it("updates an existing trigger to run inside a Pod", async () => {
     const { workspace, user, globalGroup } = await createPrivateApiMockRequest({
       method: "POST",
       role: "builder",
+    });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "trigger",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -247,6 +320,10 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceI
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
       role: "builder",
+    });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "trigger",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,

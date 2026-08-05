@@ -3,9 +3,11 @@ import {
   useAgentTriggers,
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { getTriggerDescription } from "@app/lib/utils/trigger_description";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import { TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -61,6 +63,9 @@ export function AgentTriggersTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const sendNotification = useSendNotification();
 
+  const { hasPermission } = useWorkspacePermissions();
+  const canCreateTrigger = hasPermission("create", "trigger");
+
   const deleteTrigger = useDeleteTrigger({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
@@ -108,6 +113,12 @@ export function AgentTriggersTab({
           variant="outline"
           size="sm"
           onClick={onAddTrigger}
+          disabled={!canCreateTrigger}
+          tooltip={
+            !canCreateTrigger
+              ? TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE
+              : undefined
+          }
         />
       </div>
 

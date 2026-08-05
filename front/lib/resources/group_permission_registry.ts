@@ -63,6 +63,9 @@ export const ROLE_REGISTRY: Record<
     publish: { verbs: ["publish"], levels: ["type"] },
     make_discoverable: { verbs: ["make_discoverable"], levels: ["type"] },
   },
+  trigger: {
+    create: { verbs: ["create"], levels: ["type"] },
+  },
   frame: {
     invite: { verbs: ["invite"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },
@@ -193,6 +196,7 @@ export function workspacePermissionsFromGrants(
     space: new Set(),
     agent: new Set(),
     skill: new Set(),
+    trigger: new Set(),
     frame: new Set(),
     billing: new Set(),
     security: new Set(),
