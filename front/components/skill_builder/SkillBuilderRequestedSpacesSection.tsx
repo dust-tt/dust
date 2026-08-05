@@ -1,11 +1,9 @@
 import { SpaceSelectionSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
-import { useBlockedSkillSpaceRemovalConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
+import { useRemoveSkillSpace } from "@app/components/skill_builder/useRemoveSkillSpace";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { SpaceType } from "@app/types/space";
 import { Button, Planet } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
@@ -22,21 +20,15 @@ export function SkillBuilderRequestedSpacesSection() {
   const isReadOnly = additionalSpacesField.disabled ?? false;
   const selectedAdditionalSpaces = additionalSpacesField.value ?? [];
 
-  const { mcpServerViews } = useMCPServerViewsContext();
-  const confirmBlockedSpaceRemoval = useBlockedSkillSpaceRemovalConfirm({
-    mcpServerViews,
-  });
+  const { removeSpace } = useRemoveSkillSpace();
 
   const {
-    actionsBySpaceId,
     areSpaceRequirementsReady,
     globalSpace,
     initialAdditionalSpaces,
     initialRequestedSpaceIds,
-    knowledgeBySpaceId,
     missingSpaceIds,
     nonGlobalSpacesUsedBySkill,
-    skillsBySpaceId,
     spaceIdsUsedBySkill,
   } = useSkillSpaceRestrictionsContext();
 
@@ -62,30 +54,6 @@ export function SkillBuilderRequestedSpacesSection() {
     initialRequestedSpaceIds,
     resetField,
   ]);
-
-  const handleRemoveSpace = async (space: SpaceType) => {
-    if (!areSpaceRequirementsReady) {
-      return;
-    }
-
-    if (spaceIdsUsedBySkill.has(space.sId)) {
-      await confirmBlockedSpaceRemoval({
-        space,
-        actions: actionsBySpaceId[space.sId] ?? [],
-        knowledge: knowledgeBySpaceId[space.sId] ?? [],
-        skills: (skillsBySpaceId[space.sId] ?? []).map((skill) => ({
-          sId: skill.id,
-          name: skill.name,
-          icon: skill.icon,
-        })),
-      });
-      return;
-    }
-
-    additionalSpacesField.onChange(
-      selectedAdditionalSpaces.filter((spaceId) => spaceId !== space.sId)
-    );
-  };
 
   const handleOpenSheet = () => {
     if (!areSpaceRequirementsReady) {
@@ -137,7 +105,7 @@ export function SkillBuilderRequestedSpacesSection() {
       </div>
       <SpaceChips
         spaces={spacesToDisplay}
-        onRemoveSpace={isReadOnly ? undefined : handleRemoveSpace}
+        onRemoveSpace={isReadOnly ? undefined : removeSpace}
       />
 
       <SpaceSelectionSheet
