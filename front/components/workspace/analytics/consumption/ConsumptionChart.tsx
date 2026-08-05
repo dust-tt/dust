@@ -3,6 +3,8 @@ import { getIndexedColor } from "@app/components/agent_builder/observability/uti
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { CONSUMPTION_DIMENSION_CONFIG } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { formatConsumptionDate } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
@@ -114,18 +116,20 @@ function ConsumptionChartTooltip({
 interface ConsumptionChartProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  dimension: ConsumptionDimension;
 }
 
 export function ConsumptionChart({
   workspaceId,
   period,
+  dimension,
 }: ConsumptionChartProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
       workspaceId,
       period,
       mode: "daily",
-      breakdownBy: "agent",
+      breakdownBy: dimension,
       breakdownCount: DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
     });
 
@@ -174,7 +178,7 @@ export function ConsumptionChart({
 
   return (
     <ChartContainer
-      title="Daily credits"
+      title={`Daily credits by ${CONSUMPTION_DIMENSION_CONFIG[dimension].breakdownLabel}`}
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
