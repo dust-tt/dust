@@ -279,6 +279,20 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async requestIncrementalSync(
+    connectorId: string
+  ): Promise<ConnectorsAPIResponse<{ workflowId: string }>> {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/sync/${encodeURIComponent(connectorId)}/incremental`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   async deleteConnector(
     connectorId: string,
     force = false

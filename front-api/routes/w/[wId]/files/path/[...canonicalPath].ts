@@ -12,6 +12,7 @@ import {
   WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
+import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
 import {
   DUST_FILE_ID_HEADER,
   getFileFormat,
@@ -516,6 +517,8 @@ app.delete(
     if (deleteResult.isErr()) {
       return apiError(ctx, mapDustFsError(deleteResult.error));
     }
+
+    requestDustProjectIncrementalSyncForScopedPath(auth, canonicalPath);
 
     return new Response(null, { status: 204 });
   }
