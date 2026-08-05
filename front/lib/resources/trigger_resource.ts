@@ -5,6 +5,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
@@ -167,6 +168,28 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth, {
       where: { id: ids },
     });
+  }
+
+  static async fetchByConversationId(
+    auth: Authenticator,
+    conversationId: string
+  ): Promise<TriggerResource | null> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const trigger = await this.model.findOne({
+      where: { workspaceId: workspace.id },
+      include: [
+        {
+          model: ConversationModel,
+          as: "conversations",
+          required: true,
+          attributes: [],
+          where: { workspaceId: workspace.id, sId: conversationId },
+        },
+      ],
+    });
+
+    return trigger ? new this(this.model, trigger.get()) : null;
   }
 
   static listByAgentConfigurationId(

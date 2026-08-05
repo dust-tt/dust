@@ -69,17 +69,12 @@ export async function getTaskQueueForRun(
   // firings off the schedules queue. Deleting a trigger nulls the conversation's pointer, in
   // which case the run stays on schedules.
   if (userMessageOrigin === "triggered") {
-    const conversation = await ConversationResource.fetchById(
+    const trigger = await TriggerResource.fetchByConversationId(
       auth,
       conversationId
     );
-    if (conversation && conversation.triggerId !== null) {
-      const [trigger] = await TriggerResource.fetchByModelIds(auth, [
-        conversation.triggerId,
-      ]);
-      if (trigger && trigger.kind === "webhook") {
-        return getQueueName("batch");
-      }
+    if (trigger && trigger.kind === "webhook") {
+      return getQueueName("batch");
     }
   }
 
