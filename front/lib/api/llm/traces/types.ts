@@ -1,6 +1,7 @@
 import type { TokenUsage, ToolCall } from "@app/lib/api/llm/types/events";
 import type { SystemPromptInput } from "@app/lib/api/llm/types/options";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
   ReasoningEffort,
@@ -43,6 +44,11 @@ interface LLMTraceContextBase {
   workspaceId?: string;
   /** User who triggered the operation */
   userId?: string;
+  /**
+   * Origin of the triggering user message, set for agent_conversation calls.
+   * Used to classify free (unbilled) usage at the LLM call site.
+   */
+  userMessageOrigin?: UserMessageOrigin;
 }
 
 export type LLMTraceContext = LLMTraceContextBase & {
