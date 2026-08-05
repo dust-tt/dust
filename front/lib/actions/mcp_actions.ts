@@ -246,6 +246,9 @@ export function makeServerSideMCPToolConfigurations(
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     ...(tool.displayLabels && { displayLabels: tool.displayLabels }),
     ...(tool.eager && { eager: true }),
+    ...(tool.editableArguments && {
+      editableArguments: tool.editableArguments,
+    }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
 }

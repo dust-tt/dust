@@ -809,6 +809,7 @@ async function connectToRemoteMCPServer(
 type DustToolMeta = {
   stake?: MCPToolStakeLevelType;
   displayLabels?: ToolDisplayLabels;
+  editableArguments?: readonly string[];
   argumentsRequiringApproval?: string[];
   timeoutMs?: number;
   eager?: boolean;
@@ -856,6 +857,9 @@ export function getDustToolMeta(
   if (isValidDisplayLabels(dust.displayLabels)) {
     result.displayLabels = dust.displayLabels;
   }
+  if (isStringArray(dust.editableArguments)) {
+    result.editableArguments = dust.editableArguments;
+  }
   if (isStringArray(dust.argumentsRequiringApproval)) {
     result.argumentsRequiringApproval = dust.argumentsRequiringApproval;
   }
@@ -882,6 +886,9 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
         ? { displayLabels: dustMeta.displayLabels }
         : {}),
       ...(dustMeta?.eager ? { eager: true } : {}),
+      ...(dustMeta?.editableArguments
+        ? { editableArguments: dustMeta.editableArguments }
+        : {}),
     };
   });
 }

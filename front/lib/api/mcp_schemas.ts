@@ -25,6 +25,7 @@ const MCPToolSchema = z.object({
   description: z.string(),
   inputSchema: z.custom<JSONSchema>().optional(),
   displayLabels: ToolDisplayLabelsSchema.optional(),
+  editableArguments: z.array(z.string()).readonly().optional(),
 });
 
 const AuthorizationInfoSchema = z.object({
