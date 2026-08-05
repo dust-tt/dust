@@ -9,6 +9,7 @@ import {
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import { GLOBAL_SKILL_SEARCH_ALIASES } from "@app/lib/skills/global_search_aliases";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function filterSlashCommandItems(
@@ -46,10 +47,8 @@ export function buildCapabilitySlashCommandItems<
   toolFilter?: (tool: SlashCommandToolSuggestion<V>) => boolean;
   tools: SlashCommandToolSuggestion<V>[];
 }): SlashCommand[] {
-  const normalizedQuery = query.trim().toLowerCase();
-
   const matches = searchCapabilityIndex({
-    query: normalizedQuery,
+    query,
     items: [
       ...skills
         .filter((skill) => skill.sId !== excludeSkillId)
@@ -58,8 +57,9 @@ export function buildCapabilitySlashCommandItems<
           isFavorite: skill.isFavorite ?? false,
           kind: "skill" as const,
           normalizedDescription: skill.userFacingDescription?.toLowerCase(),
+          searchAliases: GLOBAL_SKILL_SEARCH_ALIASES[skill.sId],
           skill,
-          sortName: skill.name.toLowerCase(),
+          sortName: skill.name,
         })),
       ...tools
         .filter((tool) => toolFilter?.(tool) ?? true)
@@ -68,7 +68,7 @@ export function buildCapabilitySlashCommandItems<
           normalizedDescription:
             getMcpServerViewDescription(tool)?.toLowerCase(),
           tool,
-          sortName: getToolSlashCommandLabel(tool).toLowerCase(),
+          sortName: getToolSlashCommandLabel(tool),
         })),
     ],
   });

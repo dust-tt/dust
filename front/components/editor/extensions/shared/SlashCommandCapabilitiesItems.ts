@@ -19,8 +19,49 @@ export const MAX_RENDERED_CAPABILITY_ITEMS = 50;
 export interface CapabilitySearchIndexItem {
   isFavorite?: boolean;
   normalizedDescription?: string;
+  searchAliases?: readonly string[];
   sortGroup?: number;
   sortName: string;
+}
+
+interface CapabilityNameMatch {
+  isLowPriorityAlias: boolean;
+  name: string;
+}
+
+function getBestMatchingName({
+  item,
+  normalizedQuery,
+}: {
+  item: CapabilitySearchIndexItem;
+  normalizedQuery: string;
+}): CapabilityNameMatch | null {
+  const aliases = item.searchAliases ?? [];
+  const exactAlias = aliases.find(
+    (alias) => alias.toLowerCase() === normalizedQuery
+  );
+  if (exactAlias) {
+    return { isLowPriorityAlias: false, name: exactAlias };
+  }
+
+  if (subFilter(normalizedQuery, item.sortName.toLowerCase())) {
+    return { isLowPriorityAlias: false, name: item.sortName };
+  }
+
+  let bestAlias: string | null = null;
+  for (const alias of aliases) {
+    if (!subFilter(normalizedQuery, alias.toLowerCase())) {
+      continue;
+    }
+    if (
+      bestAlias === null ||
+      compareForAutocompleteSort(normalizedQuery, alias, bestAlias) < 0
+    ) {
+      bestAlias = alias;
+    }
+  }
+
+  return bestAlias ? { isLowPriorityAlias: true, name: bestAlias } : null;
 }
 
 export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
@@ -33,18 +74,20 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
   limit?: number;
 }): T[] {
   const normalizedQuery = query.trim().toLowerCase();
-  const matches: { item: T; titleMatches: boolean }[] = [];
+  const matches: { item: T; matchedName: CapabilityNameMatch | null }[] = [];
 
   for (const item of items) {
-    const titleMatches =
-      normalizedQuery.length === 0 || subFilter(normalizedQuery, item.sortName);
+    const matchedName =
+      normalizedQuery.length === 0
+        ? { isLowPriorityAlias: false, name: item.sortName }
+        : getBestMatchingName({ item, normalizedQuery });
     const descriptionMatches =
       normalizedQuery.length > 0 &&
       item.normalizedDescription !== undefined &&
       subFilter(normalizedQuery, item.normalizedDescription);
 
-    if (titleMatches || descriptionMatches) {
-      matches.push({ item, titleMatches });
+    if (matchedName !== null || descriptionMatches) {
+      matches.push({ item, matchedName });
     }
   }
 
@@ -65,18 +108,23 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
       );
     }
 
-    if (a.titleMatches !== b.titleMatches) {
-      return a.titleMatches ? -1 : 1;
+    const aNameMatches = a.matchedName !== null;
+    const bNameMatches = b.matchedName !== null;
+    if (aNameMatches !== bNameMatches) {
+      return aNameMatches ? -1 : 1;
     }
 
-    if (a.titleMatches) {
+    if (a.matchedName !== null && b.matchedName !== null) {
       return (
+        Number(a.matchedName.isLowPriorityAlias) -
+          Number(b.matchedName.isLowPriorityAlias) ||
         favoriteComparison ||
         compareForAutocompleteSort(
           normalizedQuery,
-          a.item.sortName,
-          b.item.sortName
-        )
+          a.matchedName.name,
+          b.matchedName.name
+        ) ||
+        a.item.sortName.localeCompare(b.item.sortName)
       );
     }
 
