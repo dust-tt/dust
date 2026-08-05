@@ -62,7 +62,6 @@ import {
   useBulkSetUserSpendLimit,
   useMembersUsage,
   useUpdateMemberSeatType,
-  useUpdateUserSpendLimit,
 } from "@app/lib/swr/memberships";
 import {
   useGroupAllowedModelTiers,
@@ -347,17 +346,15 @@ export function UsagePage() {
     },
     []
   );
-  // Shared by every way a request can be approved
+  // Shared by approval flows before resolving the request.
   const resolveRequestApproved = useCallback(
     async (requestId: string): Promise<void> => {
-      const request = upgradeRequests.find((r) => r.sId === requestId);
       await doResolveUpgradeRequest({
         requestId,
-        requesterName: request?.requester.name ?? "Member",
-        status: "approved",
+        resolution: { status: "approved" },
       });
     },
-    [upgradeRequests, doResolveUpgradeRequest]
+    [doResolveUpgradeRequest]
   );
   const handleApproveOnModalSaved = useCallback(async () => {
     if (!pendingApproveRequestId) {
@@ -371,9 +368,6 @@ export function UsagePage() {
       setRequestResolving(requestId, false);
     }
   }, [pendingApproveRequestId, resolveRequestApproved, setRequestResolving]);
-  const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
-    workspaceId: owner.sId,
-  });
   const handleAllowUnlimitedSpendRequest = useCallback(
     async (request: MembershipUpgradeRequestType) => {
       const confirmed = await confirm({
@@ -387,20 +381,15 @@ export function UsagePage() {
       }
       setRequestResolving(request.sId, true);
       try {
-        const member = memberFromUpgradeRequest(request);
-        const body = await doUpdateSpendLimit({
-          memberId: member.sId,
-          memberName: member.name,
-          limit: { kind: "unlimited" },
+        await doResolveUpgradeRequest({
+          requestId: request.sId,
+          resolution: { status: "approved", limit: { kind: "unlimited" } },
         });
-        if (body) {
-          await resolveRequestApproved(request.sId);
-        }
       } finally {
         setRequestResolving(request.sId, false);
       }
     },
-    [confirm, doUpdateSpendLimit, resolveRequestApproved, setRequestResolving]
+    [confirm, doResolveUpgradeRequest, setRequestResolving]
   );
   const handleDenyRequest = useCallback(
     async (request: MembershipUpgradeRequestType) => {
@@ -417,8 +406,7 @@ export function UsagePage() {
       try {
         await doResolveUpgradeRequest({
           requestId: request.sId,
-          requesterName: request.requester.name,
-          status: "denied",
+          resolution: { status: "denied" },
         });
       } finally {
         setRequestResolving(request.sId, false);

@@ -319,7 +319,7 @@ export function EditSpendLimitModal({
           <RadioGroupItem
             value="never"
             id="spend-limit-expiry-never"
-            label="Forever"
+            label="Never"
           />
         </RadioGroup>
       </div>

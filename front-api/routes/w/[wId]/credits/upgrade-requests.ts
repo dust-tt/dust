@@ -1,10 +1,11 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
-import type { UpgradeRequestError } from "@app/lib/api/credits/upgrade_requests";
+import type { ResolveUpgradeRequestError } from "@app/lib/api/credits/upgrade_requests";
 import {
   createUpgradeRequest,
   listPendingUpgradeRequests,
   resolveUpgradeRequest,
 } from "@app/lib/api/credits/upgrade_requests";
+import { UserSpendLimitError } from "@app/lib/api/users/spend_limit";
 import type {
   GetUpgradeRequestsResponseBody,
   PatchUpgradeRequestResponseBody,
@@ -17,15 +18,23 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import {
+  spendLimitErrorToApiError,
+  UpdateUserSpendLimitBodySchema,
+} from "@front-api/routes/w/[wId]/members/[uId]/spend_limit";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
   requestId: z.string(),
 });
 
-const ResolveBodySchema = z.object({
-  status: z.union([z.literal("approved"), z.literal("denied")]),
-});
+const ResolveBodySchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("denied") }),
+  z.object({
+    status: z.literal("approved"),
+    limit: UpdateUserSpendLimitBodySchema.optional(),
+  }),
+]);
 
 const CreateUpgradeRequestBodySchema = z.object({
   reason: z
@@ -36,8 +45,11 @@ const CreateUpgradeRequestBodySchema = z.object({
 });
 
 function upgradeRequestErrorToApiError(
-  error: UpgradeRequestError
+  error: ResolveUpgradeRequestError
 ): APIErrorWithContentfulStatusCode {
+  if (error instanceof UserSpendLimitError) {
+    return spendLimitErrorToApiError(error);
+  }
   switch (error.type) {
     case "workspace_not_metronome_billed":
       return {
@@ -68,7 +80,7 @@ function upgradeRequestErrorToApiError(
         api_error: { type: "invalid_request_error", message: error.message },
       };
     default:
-      assertNever(error.type);
+      assertNever(error);
   }
 }
 
@@ -114,10 +126,10 @@ app.patch(
   async (ctx): HandlerResult<PatchUpgradeRequestResponseBody> => {
     const auth = ctx.get("auth");
     const { requestId } = ctx.req.valid("param");
-    const { status } = ctx.req.valid("json");
+    const resolution = ctx.req.valid("json");
     const result = await resolveUpgradeRequest(auth, {
       requestId,
-      status,
+      resolution,
       auditContext: getAuditLogContext(auth),
     });
     if (result.isErr()) {

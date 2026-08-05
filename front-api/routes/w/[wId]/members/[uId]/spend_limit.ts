@@ -18,7 +18,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
+export const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("unlimited") }),
   z.object({
     kind: z.literal("limited"),
@@ -44,7 +44,7 @@ const ParamsSchema = z.object({
   uId: z.string(),
 });
 
-function spendLimitErrorToApiError(
+export function spendLimitErrorToApiError(
   error: UserSpendLimitError
 ): APIErrorWithContentfulStatusCode {
   switch (error.type) {
