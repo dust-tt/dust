@@ -43,7 +43,6 @@ const ResolveBodySchema = z.discriminatedUnion("status", [
   }),
 ]);
 
-// `decision` and `search` only apply to the "resolved" history view.
 const ListUpgradeRequestsQuerySchema = z.object({
   status: z.union([z.literal("pending"), z.literal("resolved")]).optional(),
   offset: z.coerce.number().int().min(0).catch(0),

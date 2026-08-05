@@ -237,10 +237,7 @@ export async function getUpgradeRequestAvailabilityForUser(
   };
 }
 
-// Admin-only: paginated upgrade requests for the workspace — either the
-// pending queue or the resolved history view, both offset-paginated at the
-// same page size. `decision` only applies to `status: "resolved"` (pending
-// requests have no decision yet).
+// Admin-only: paginated upgrade requests for the workspace
 export const UPGRADE_REQUESTS_PAGE_SIZE = 100;
 
 // The requester isn't joined in SQL so a name/email search

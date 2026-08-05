@@ -250,10 +250,6 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
     it("paginates pending requests 100 per page", async () => {
       const workspace = await creditPricedWorkspace();
 
-      // One distinct member per pending request — unlike the resolved-history
-      // pagination test, `createPending` is idempotent per (workspace, user)
-      // while a request is still pending, so reusing a single member wouldn't
-      // create 101 rows.
       const totalPendingRequests = 101;
       for (let i = 0; i < totalPendingRequests; i++) {
         const { user, auth: memberAuth } = await createPrivateApiMockRequest({
