@@ -21,9 +21,6 @@ const { expireWorkspacePoolCapOverridesActivity } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "2 minutes",
-  // Fail fast after so the next hourly tick's
-  // picks the workspace back up in a fresh child
-  retry: { maximumAttempts: 2 },
 });
 
 export interface CreditAlertWorkflowArgs {
