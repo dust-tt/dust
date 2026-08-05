@@ -1,6 +1,8 @@
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -28,6 +30,11 @@ export function AnalyticsConsumptionPage() {
   const isEnabled = hasFeature("enable_analytics_consumption");
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
+  );
+  // Shared by the chart and the attribution table.
+  // Changing attribution table dimension switches the chart's dimension too.
+  const [dimension, setDimension] = useState<ConsumptionDimension>(
+    DEFAULT_CONSUMPTION_DIMENSION
   );
 
   if (!isEnabled) {
@@ -68,9 +75,18 @@ export function AnalyticsConsumptionPage() {
       <div className="flex flex-col gap-8 pb-8">
         <ConsumptionOverview workspaceId={owner.sId} period={period} />
         <SafeSuspense fallback={<ChartFallback />}>
-          <ConsumptionChart workspaceId={owner.sId} period={period} />
+          <ConsumptionChart
+            workspaceId={owner.sId}
+            period={period}
+            dimension={dimension}
+          />
         </SafeSuspense>
-        <ConsumptionAttributionTable workspaceId={owner.sId} period={period} />
+        <ConsumptionAttributionTable
+          workspaceId={owner.sId}
+          period={period}
+          dimension={dimension}
+          onDimensionChange={setDimension}
+        />
       </div>
     </Page.Vertical>
   );
