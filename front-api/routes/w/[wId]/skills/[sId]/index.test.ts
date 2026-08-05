@@ -762,6 +762,97 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(updatedSkill?.requestedSpaceIds).toContain(openSpace.id);
   });
 
+  it("rejects a restricted space that an existing editor cannot access", async () => {
+    const { workspace, skill, requestUser, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    // Restricted: no global group is associated with it.
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await restrictedSpace.addMembers(adminAuth, {
+      userIds: [requestUser.sId],
+    });
+
+    const coEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, coEditor, { role: "builder" });
+    const addRes = await skill.editorGroup?.dangerouslyAddMembers(
+      requestUserAuth,
+      { users: [coEditor.toJSON()] }
+    );
+    if (!addRes || addRes.isErr()) {
+      throw new Error("Failed to add the co-editor");
+    }
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      additionalRequestedSpaceIds: [restrictedSpace.sId],
+    });
+
+    expect(response.status).toBe(400);
+    const { error } = await response.json();
+    expect(error.message).toContain("do not have access");
+    expect(error.message).toContain(restrictedSpace.name);
+
+    // The skill was not updated.
+    const unchangedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(unchangedSkill?.requestedSpaceIds).not.toContain(restrictedSpace.id);
+  });
+
+  it("accepts a restricted space that every editor can access", async () => {
+    const { workspace, skill, requestUser, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const coEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, coEditor, { role: "builder" });
+    await restrictedSpace.addMembers(adminAuth, {
+      userIds: [requestUser.sId, coEditor.sId],
+    });
+
+    const addRes = await skill.editorGroup?.dangerouslyAddMembers(
+      requestUserAuth,
+      { users: [coEditor.toJSON()] }
+    );
+    if (!addRes || addRes.isErr()) {
+      throw new Error("Failed to add the co-editor");
+    }
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      additionalRequestedSpaceIds: [restrictedSpace.sId],
+    });
+
+    const data = await response.json();
+    expect(data).not.toHaveProperty("error");
+    expect(response.status).toBe(200);
+    expect(data.skill.requestedSpaceIds).toContain(restrictedSpace.sId);
+  });
+
   it("should preserve existing additional requested spaces when omitted", async () => {
     const { workspace, skill, requestUserAuth, globalGroup } = await setupTest({
       requestUserRole: "admin",

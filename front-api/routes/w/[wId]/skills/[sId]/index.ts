@@ -1,5 +1,6 @@
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import {
+  findSkillEditorsWithoutSpaceAccess,
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
@@ -30,6 +31,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context, TypedResponse } from "hono";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 import { z } from "zod";
 
 import editors from "./editors";
@@ -405,6 +407,25 @@ app.patch(
       ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIds,
     ]);
+
+    // Adding a restricted space can lock out editors that are already on the skill. `updateSkill`
+    // also makes the caller an editor, so they are part of the set to validate.
+    const editors = skill.editorGroup
+      ? await skill.editorGroup.getActiveMembers(auth)
+      : [];
+    const editorsAccessError = await findSkillEditorsWithoutSpaceAccess(auth, {
+      editors: uniqBy([...editors, auth.getNonNullableUser()], "id"),
+      requestedSpaceModelIds: requestedSpaceIds,
+    });
+    if (editorsAccessError) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: editorsAccessError,
+        },
+      });
+    }
 
     // Validate file attachments if provided.
     let files: FileResource[] | undefined;

@@ -3,12 +3,13 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 async function setup() {
-  const { workspace, user } = await createPrivateApiMockRequest({
+  const { workspace, user, globalSpace } = await createPrivateApiMockRequest({
     method: "PATCH",
     role: "admin",
   });
@@ -21,7 +22,7 @@ async function setup() {
     subscription: null,
     authMethod: "internal",
   });
-  return { workspace, user, auth };
+  return { workspace, user, auth, globalSpace };
 }
 
 function patch(workspace: { sId: string }, sId: string, body: unknown) {
@@ -162,6 +163,79 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.editors).toHaveLength(0);
+  });
+
+  it("rejects adding an editor that cannot access a restricted space the skill requires", async () => {
+    const { workspace, user, auth } = await setup();
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const space = await SpaceFactory.regular(workspace);
+    await space.addMembers(adminAuth, { userIds: [user.sId] });
+
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [space.id],
+    });
+
+    const outsider = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, outsider, { role: "builder" });
+
+    const response = await patch(workspace, skill.sId, {
+      addEditorIds: [outsider.sId],
+    });
+
+    expect(response.status).toBe(400);
+    const { error } = await response.json();
+    expect(error.type).toBe("invalid_request_error");
+    expect(error.message).toContain("do not have access");
+
+    // The editor list is unchanged.
+    const editorsResponse = await get(workspace, skill.sId);
+    const data = await editorsResponse.json();
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toEqual([user.sId]);
+  });
+
+  it("allows adding an editor that is a member of the restricted space", async () => {
+    const { workspace, user, auth } = await setup();
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const space = await SpaceFactory.regular(workspace);
+
+    const peer = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, peer, { role: "builder" });
+    await space.addMembers(adminAuth, { userIds: [user.sId, peer.sId] });
+
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [space.id],
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      addEditorIds: [peer.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(peer.sId);
+  });
+
+  it("allows adding an editor when the skill only requires an open space", async () => {
+    const { workspace, auth, globalSpace } = await setup();
+
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [globalSpace.id],
+    });
+
+    const outsider = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, outsider, { role: "builder" });
+
+    const response = await patch(workspace, skill.sId, {
+      addEditorIds: [outsider.sId],
+    });
+
+    expect(response.status).toBe(200);
   });
 
   it("GET endpoint returns all editors", async () => {
