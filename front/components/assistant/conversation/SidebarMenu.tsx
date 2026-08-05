@@ -44,7 +44,10 @@ import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon, SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { useActivationRecommendations } from "@app/lib/swr/activation";
+import {
+  useActivationPod,
+  useActivationRecommendations,
+} from "@app/lib/swr/activation";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -441,7 +444,12 @@ export function AgentSidebarMenu({
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
   const { hasFeature } = useFeatureFlags();
-  const showGetStarted = hasFeature("activation_skill");
+  const hasActivationSkill = hasFeature("activation_skill");
+  const { activationPodId } = useActivationPod({
+    workspaceId: owner.sId,
+    disabled: !hasActivationSkill,
+  });
+  const showGetStarted = hasActivationSkill && activationPodId !== null;
   const { recommendations: activationRecsForBadge } =
     useActivationRecommendations({
       workspaceId: owner.sId,
