@@ -6,9 +6,10 @@ import {
   setUserSpendLimit,
   type UserSpendLimitError,
 } from "@app/lib/api/users/spend_limit";
-import type {
-  GetUserSpendLimitResponseBody,
-  PutUserSpendLimitResponseBody,
+import {
+  type GetUserSpendLimitResponseBody,
+  type PutUserSpendLimitResponseBody,
+  SPEND_LIMIT_EXPIRY_KINDS,
 } from "@app/types/api/users/spend_limit";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -18,26 +19,36 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+// Set when this save resolves a specific upgrade request (the admin used
+// "Set credit amount" or "Allow unlimited spend" from the requests table).
+// Snapshots the granted amount/expiry onto that request for the history view.
+const RequestIdSchema = z.object({ requestId: z.string().optional() });
+
 export const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("unlimited") }),
-  z.object({
-    kind: z.literal("limited"),
-    awuCredits: z
-      .number()
-      .int()
-      .min(MIN_USER_SPEND_LIMIT_AWU_CREDITS)
-      .max(MAX_USER_SPEND_LIMIT_AWU_CREDITS),
-    // Epoch ms at which the override auto-reverts to unlimited.
-    // Omitted/null means it never expires.
-    expiresAt: z
-      .number()
-      .int()
-      .positive()
-      .refine((value) => value > Date.now(), {
-        message: "expiresAt must be in the future.",
-      })
-      .nullish(),
-  }),
+  z.object({ kind: z.literal("unlimited") }).merge(RequestIdSchema),
+  z
+    .object({
+      kind: z.literal("limited"),
+      awuCredits: z
+        .number()
+        .int()
+        .min(MIN_USER_SPEND_LIMIT_AWU_CREDITS)
+        .max(MAX_USER_SPEND_LIMIT_AWU_CREDITS),
+      // Epoch ms at which the override auto-reverts to unlimited.
+      // Omitted/null means it never expires.
+      expiresAt: z
+        .number()
+        .int()
+        .positive()
+        .refine((value) => value > Date.now(), {
+          message: "expiresAt must be in the future.",
+        })
+        .nullish(),
+      // Which preset `expiresAt` was resolved from — a history-only
+      // snapshot hint, not used for enforcement.
+      expiryKind: z.enum(SPEND_LIMIT_EXPIRY_KINDS).optional(),
+    })
+    .merge(RequestIdSchema),
 ]);
 
 const ParamsSchema = z.object({
@@ -131,10 +142,12 @@ app.put(
     const { uId } = ctx.req.valid("param");
 
     const auditContext = getAuditLogContext(auth);
+    const { requestId, ...limit } = ctx.req.valid("json");
     const result = await setUserSpendLimit(auth, {
       userId: uId,
-      limit: ctx.req.valid("json"),
+      limit,
       auditContext,
+      requestId,
     });
     if (result.isErr()) {
       return apiError(ctx, spendLimitErrorToApiError(result.error));

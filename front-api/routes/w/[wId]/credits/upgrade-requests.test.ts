@@ -1,3 +1,4 @@
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
@@ -228,6 +229,146 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       );
 
       expect(response.status).toBe(403);
+    });
+  });
+
+  describe("GET ?status=resolved (history)", () => {
+    it("only lists resolved requests, most recently resolved first", async () => {
+      const workspace = await creditPricedWorkspace();
+      const { user: member } = await createMemberRequest(workspace);
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+      const { sId: requestId } = (
+        await (await honoApp.request(upgradeRequestsUrl(workspace.sId))).json()
+      ).requests[0];
+
+      const resolvedListBeforeResolve = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved`
+      );
+      expect((await resolvedListBeforeResolve.json()).requests).toHaveLength(0);
+
+      await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${requestId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "denied" }),
+        }
+      );
+
+      const resolvedListResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved`
+      );
+      expect(resolvedListResponse.status).toBe(200);
+      const { requests: resolvedRequests } = await resolvedListResponse.json();
+      expect(resolvedRequests).toHaveLength(1);
+      expect(resolvedRequests[0].sId).toBe(requestId);
+      expect(resolvedRequests[0].status).toBe("denied");
+      expect(resolvedRequests[0].requester.sId).toBe(member.sId);
+
+      // Still absent from the pending list.
+      const pendingListResponse = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId)
+      );
+      expect((await pendingListResponse.json()).requests).toHaveLength(0);
+    });
+
+    it("PATCH with grantedSeatType snapshots the seat upgrade for history", async () => {
+      const workspace = await creditPricedWorkspace();
+      await createMemberRequest(workspace);
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+      const { sId: requestId } = (
+        await (await honoApp.request(upgradeRequestsUrl(workspace.sId))).json()
+      ).requests[0];
+
+      const patchResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${requestId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "approved",
+            grantedSeatType: "max",
+          }),
+        }
+      );
+      expect(patchResponse.status).toBe(200);
+
+      const resolvedListResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved`
+      );
+      const { requests } = await resolvedListResponse.json();
+      expect(requests[0].grantedSeatType).toBe("max");
+      expect(requests[0].grantedAwuCredits).toBeNull();
+      expect(requests[0].grantedUnlimitedSpend).toBe(false);
+    });
+
+    it("paginates resolved requests 100 per page", async () => {
+      const workspace = await creditPricedWorkspace();
+      const { user: member, auth: memberAuth } =
+        await createPrivateApiMockRequest({
+          method: "GET",
+          role: "user",
+          workspace,
+        });
+
+      const totalResolvedRequests = 101;
+      for (let i = 0; i < totalResolvedRequests; i++) {
+        const created = await MembershipUpgradeRequestResource.createPending(
+          memberAuth,
+          { user: member, reason: null }
+        );
+        if (created.isErr()) {
+          throw created.error;
+        }
+        await created.value.markAsResolved(memberAuth, {
+          status: i % 2 === 0 ? "approved" : "denied",
+          resolvedByUser: member,
+        });
+      }
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+
+      const firstPageResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved`
+      );
+      expect(firstPageResponse.status).toBe(200);
+      const firstPage = await firstPageResponse.json();
+      expect(firstPage.requests).toHaveLength(100);
+      expect(firstPage.total).toBe(totalResolvedRequests);
+
+      const secondPageResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&offset=100`
+      );
+      expect(secondPageResponse.status).toBe(200);
+      const secondPage = await secondPageResponse.json();
+      expect(secondPage.requests).toHaveLength(1);
+      expect(secondPage.total).toBe(totalResolvedRequests);
+
+      // The two pages are disjoint and together cover every resolved request.
+      const firstPageIds = new Set(
+        firstPage.requests.map((r: { sId: string }) => r.sId)
+      );
+      const secondPageIds = new Set(
+        secondPage.requests.map((r: { sId: string }) => r.sId)
+      );
+      expect(firstPageIds.size).toBe(100);
+      for (const id of secondPageIds) {
+        expect(firstPageIds.has(id)).toBe(false);
+      }
     });
   });
 });
