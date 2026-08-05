@@ -1,5 +1,4 @@
 import { AssistantLayout } from "@app/components/assistant/AssistantLayout";
-import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -8,11 +7,16 @@ import {
   InputBarContext,
   InputBarProvider,
 } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { usePodConversations } from "@app/hooks/conversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { ActivationRecommendationForUserType } from "@app/lib/api/activation/recommendations";
-import { useAuth, useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
@@ -23,8 +27,8 @@ import {
 } from "@app/lib/swr/activation";
 import { timeAgoFrom } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { RichMention } from "@app/types/assistant/mentions";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
+import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
@@ -66,7 +70,11 @@ const ASK_SUGGESTIONS = [
   "How does my learning space work?",
 ];
 
-function SourceIcon({ sourceIcon }: { sourceIcon: string }) {
+interface SourceIconProps {
+  sourceIcon: string;
+}
+
+function SourceIcon({ sourceIcon }: SourceIconProps) {
   if (isConnectorProvider(sourceIcon)) {
     const Logo = CONNECTOR_UI_CONFIGURATIONS[sourceIcon].getLogoComponent();
     return (
@@ -88,19 +96,21 @@ function recencyLabel(createdAtMs: number): string {
   return `${timeAgoFrom(createdAtMs, { useLongFormat: true })} ago`;
 }
 
+interface RecommendationItemProps {
+  rec: ActivationRecommendationForUserType;
+  owner: { sId: string };
+  expanded: boolean;
+  onToggle: () => void;
+  onResolved: () => void;
+}
+
 function RecommendationItem({
   rec,
   owner,
   expanded,
   onToggle,
   onResolved,
-}: {
-  rec: ActivationRecommendationForUserType;
-  owner: { sId: string };
-  expanded: boolean;
-  onToggle: () => void;
-  onResolved: () => void;
-}) {
+}: RecommendationItemProps) {
   const router = useAppRouter();
   const [isUpdating, setIsUpdating] = useState(false);
   const { updateRecommendation } = useUpdateActivationRecommendation({
@@ -198,13 +208,12 @@ function RecommendationItem({
 // the home / pod new-conversation InputBar. The InputBar needs the file-drop,
 // generation, and file-preview providers (BlockedActionsProvider comes from
 // AssistantLayout; InputBarProvider is global at the app root).
-function JustAskComposer({
-  owner,
-  user,
-}: {
+interface JustAskComposerProps {
   owner: WorkspaceType;
   user: UserType | null;
-}) {
+}
+
+function JustAskComposer({ owner, user }: JustAskComposerProps) {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const { hasFeature } = useFeatureFlags();
@@ -312,13 +321,12 @@ function AskChips() {
 // [unread bar] avatar · name · **title** · description(truncated) · time(HH:mm).
 // The shared ConversationListItem stacks title-over-description with a different
 // order, so we render our own row here.
-function RecentConversationRow({
-  conversation,
-  owner,
-}: {
+interface RecentConversationRowProps {
   conversation: PodConversationListItemType;
   owner: WorkspaceType;
-}) {
+}
+
+function RecentConversationRow({ conversation, owner }: RecentConversationRowProps) {
   const router = useAppRouter();
   const unread = conversation.unreadMessageCount > 0;
 
@@ -326,9 +334,13 @@ function RecentConversationRow({
     <button
       type="button"
       onClick={() => {
-        void router.push(getConversationRoute(owner.sId, conversation.id), undefined, {
-          shallow: true,
-        });
+        void router.push(
+          getConversationRoute(owner.sId, conversation.id),
+          undefined,
+          {
+            shallow: true,
+          }
+        );
       }}
       className="flex w-full items-center gap-3 rounded-lg py-2.5 pr-2 text-left hover:bg-muted-background"
     >
@@ -364,13 +376,12 @@ function RecentConversationRow({
 
 // Recent conversations from the activation Pod, grouped by date, in the
 // mockup's row style.
-function RecentConversations({
-  owner,
-  podId,
-}: {
+interface RecentConversationsProps {
   owner: WorkspaceType;
   podId: string | null;
-}) {
+}
+
+function RecentConversations({ owner, podId }: RecentConversationsProps) {
   const { conversations } = usePodConversations({
     workspaceId: owner.sId,
     podId,
@@ -418,13 +429,12 @@ function RecentConversations({
 // bottom of the "Ideas for right now" card (with a count badge), matching the
 // mockup. Expanding it lists each completed recommendation in the same card
 // language (source row + title + subtitle), read-only.
-function PreviouslyDoneRow({
-  owner,
-  podId,
-}: {
+interface PreviouslyDoneRowProps {
   owner: WorkspaceType;
   podId: string | null;
-}) {
+}
+
+function PreviouslyDoneRow({ owner, podId }: PreviouslyDoneRowProps) {
   const router = useAppRouter();
   const [expanded, setExpanded] = useState(false);
   const { recommendations } = useActivationRecommendations({
