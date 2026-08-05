@@ -3,7 +3,7 @@ import {
   parseSandboxEnvVarNameForKind,
   validateEnvVarValueForKind,
 } from "@app/lib/api/sandbox/env_vars";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type {
   GetSandboxEnvVarsResponseBody,
   PostSandboxEnvVarsResponseBody,
@@ -30,7 +30,10 @@ const app = workspaceApp();
 app.get("/", async (ctx): HandlerResult<GetSandboxEnvVarsResponseBody> => {
   const auth = ctx.get("auth");
 
-  const envVars = await WorkspaceSandboxEnvVarResource.listForWorkspace(auth);
+  const envVars = await SandboxEnvVarResource.listForScope(auth, {
+    kind: "workspace",
+    workspace: auth.getNonNullableWorkspace(),
+  });
 
   return ctx.json({
     envVars: envVars.map((envVar) => envVar.toJSON()),
@@ -68,13 +71,17 @@ app.post(
       });
     }
 
-    const result = await WorkspaceSandboxEnvVarResource.upsert(auth, {
-      name: parsedName.value,
-      value: body.value,
-      kind,
-      allowedDomains: body.allowedDomains,
-      context: getAuditLogContext(auth),
-    });
+    const result = await SandboxEnvVarResource.upsert(
+      auth,
+      { kind: "workspace", workspace: auth.getNonNullableWorkspace() },
+      {
+        name: parsedName.value,
+        value: body.value,
+        kind,
+        allowedDomains: body.allowedDomains,
+        context: getAuditLogContext(auth),
+      }
+    );
     if (result.isErr()) {
       return apiError(ctx, {
         status_code: 400,

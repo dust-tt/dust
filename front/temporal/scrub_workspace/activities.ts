@@ -28,6 +28,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -36,7 +37,6 @@ import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -269,7 +269,7 @@ async function deleteTags(auth: Authenticator) {
 }
 
 async function deleteSandboxEnvVars(auth: Authenticator) {
-  await WorkspaceSandboxEnvVarResource.deleteAllForWorkspace(auth);
+  await SandboxEnvVarResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteDatasources(auth: Authenticator) {

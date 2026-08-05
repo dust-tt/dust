@@ -68,18 +68,11 @@ SandboxEnvVarModel.init(
     },
   },
   {
+    // The table keeps its legacy workspace_-prefixed name; renaming it is a
+    // dedicated follow-up migration.
     modelName: "workspace_sandbox_env_var",
     sequelize: frontSequelize,
     indexes: [
-      // TODO(2026-07-12 SANDBOX_SECRETS): legacy full unique, superseded by
-      // the partial uniques below. Kept so already-deployed
-      // (workspaceId, name) queries stay indexed; the resources PR drops it
-      // post-deploy.
-      {
-        name: "workspace_sandbox_env_vars_workspace_name_idx",
-        unique: true,
-        fields: ["workspaceId", "name"],
-      },
       // Per-scope uniqueness: one name per workspace scope...
       {
         name: "sandbox_env_vars_workspace_scope_name_idx",
@@ -95,6 +88,15 @@ SandboxEnvVarModel.init(
         unique: true,
         fields: ["spaceId", "name"],
         where: { spaceId: { [Op.ne]: null } },
+        concurrently: true,
+      },
+      // Workspace scrub deletes by bare workspaceId, which neither partial
+      // above can serve (the predicate implies neither spaceId condition).
+      // Keeps the workspace FK indexed once the legacy full unique on
+      // (workspaceId, name) is dropped post-deploy (BACK13).
+      {
+        name: "sandbox_env_vars_workspace_id_idx",
+        fields: ["workspaceId"],
         concurrently: true,
       },
       // User FKs are SET NULL on user deletion — without these indexes,
