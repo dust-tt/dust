@@ -113,6 +113,7 @@ async function findUserMessageForRetry(
     lastStep: blockedActions[blockedActions.length - 1].stepContent.step,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
+    // The `required: true` include guarantees userMessage is set.
     userMessageOrigin: parentMessage.userMessage!.userContextOrigin,
   });
 }
