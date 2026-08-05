@@ -98,6 +98,29 @@ async function fetchConversationIds(
   return actionByConversationId;
 }
 
+async function updateConversationDepthsToZero(
+  auth: Authenticator,
+  conversations: ConversationResource[]
+): Promise<number> {
+  if (conversations.length === 0) {
+    return 0;
+  }
+
+  const [updatedConversationCount] = await ConversationModel.update(
+    { depth: 0 },
+    {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: conversations.map(({ id }) => id) },
+      },
+      // Silent to not update the updatedAt of Sequelize.
+      silent: true,
+    }
+  );
+
+  return updatedConversationCount;
+}
+
 makeScript(
   {
     workspaceId: {
@@ -155,20 +178,9 @@ makeScript(
       (conversation) => conversation.depth === 1
     );
 
-    let updatedConversationCount = 0;
-    if (execute && conversationsToUpdate.length > 0) {
-      [updatedConversationCount] = await ConversationModel.update(
-        { depth: 0 },
-        {
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-            id: { [Op.in]: conversationsToUpdate.map(({ id }) => id) },
-          },
-          // Silent to not update the updatedAt of Sequelize.
-          silent: true,
-        }
-      );
-    }
+    const updatedConversationCount = execute
+      ? await updateConversationDepthsToZero(auth, conversationsToUpdate)
+      : 0;
 
     logger.info(
       {
