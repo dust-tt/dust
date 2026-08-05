@@ -1502,7 +1502,7 @@ const ConversationList = ({
       <NavigationListCompactLabel
         label={dateLabel}
         isSticky
-        className={cn("bg-app-background", isFirstGroup && "pt-1")}
+        className={cn("bg-app-background", isFirstGroup && "pt-2")}
       />
 
       {conversations.map((conversation) => (
