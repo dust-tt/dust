@@ -164,7 +164,9 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
       formData: data,
       owner,
       skillId: skill?.sId,
-      currentEditors: editors,
+      // A skill being created already has its creator as editor by the time the editors request
+      // runs, so that is the baseline to diff the picked editors against.
+      currentEditors: isCreatingNew ? [user] : editors,
     });
 
     if (result.isErr()) {
@@ -177,20 +179,33 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
       return;
     }
 
-    sendNotification({
-      title: isCreatingNew ? "Skill created" : "Skill updated",
-      description: isCreatingNew
-        ? "Your skill has been successfully created."
-        : "Your skill has been successfully updated.",
-      type: "success",
-    });
+    const { skill: savedSkill, editorsError } = result.value;
 
-    await mutateEditors({ editors: data.editors }, { revalidate: false });
+    if (editorsError) {
+      // The skill itself was saved, so we keep going: only the editors list is out of date.
+      sendNotification({
+        title: isCreatingNew
+          ? "Skill created, but its editors were not saved"
+          : "Skill updated, but its editors were not saved",
+        description: editorsError.message,
+        type: "error",
+      });
+      await mutateEditors();
+    } else {
+      sendNotification({
+        title: isCreatingNew ? "Skill created" : "Skill updated",
+        description: isCreatingNew
+          ? "Your skill has been successfully created."
+          : "Your skill has been successfully updated.",
+        type: "success",
+      });
+      await mutateEditors({ editors: data.editors }, { revalidate: false });
+    }
 
     onSaved();
 
-    if (isCreatingNew && result.value.sId) {
-      const newUrl = `/w/${owner.sId}/builder/skills/${result.value.sId}`;
+    if (isCreatingNew && savedSkill.sId) {
+      const newUrl = `/w/${owner.sId}/builder/skills/${savedSkill.sId}`;
       await router.replace(newUrl, undefined, { shallow: true });
     } else {
       form.reset(form.getValues(), { keepValues: true });
