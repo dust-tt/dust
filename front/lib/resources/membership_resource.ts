@@ -1665,8 +1665,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       order: [["workspaceId", "ASC"]],
       raw: true,
       // WORKSPACE_ISOLATION_BYPASS: hourly sweep across every workspace to
-      // find which ones have a membership whose pool cap override just
-      // expired (see front/temporal/credit_alerts/client.ts).
+      // find which ones have a membership whose pool cap override just expired.
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
@@ -1676,9 +1675,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   /**
    * Active memberships within `auth`'s workspace whose pool cap override has
-   * expired as of `now`. Scoped counterpart to
-   * `dangerouslyGetWorkspaceModelIdsWithExpiredMembershipPoolCapOverride`, called once
-   * per affected workspace by the expiration sweep.
+   * expired as of `now`.
    */
   static async listActiveWithExpiredPoolCapOverride({
     auth,
