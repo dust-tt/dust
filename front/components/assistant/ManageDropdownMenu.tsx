@@ -1,5 +1,8 @@
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   getAgentBuilderRoute,
   getSkillBuilderRoute,
@@ -23,6 +26,53 @@ interface ManageDropdownMenuProps {
 export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
   const router = useAppRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const { hasPermission } = useWorkspacePermissions();
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+
+  const canManageAgents =
+    hasPermission("create", "agent") ||
+    hasPermission("publish", "agent") ||
+    agentConfigurations.some((agent) => agent.canEdit);
+  const canManageSkills =
+    hasPermission("create", "skill") ||
+    hasPermission("publish", "skill") ||
+    hasPermission("make_discoverable", "skill");
+
+  if (!canManageAgents && !canManageSkills) {
+    return null;
+  }
+
+  // With a single destination the dropdown would only add a click: link
+  // straight to it instead.
+  if (!canManageSkills) {
+    return (
+      <Button
+        href={getAgentBuilderRoute(owner.sId, "manage")}
+        variant="primary"
+        icon={ContactsRobot}
+        label="Manage agents"
+        data-gtm-label="assistantManagementButton"
+        data-gtm-location="homepage"
+        size="sm"
+        onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents")}
+      />
+    );
+  }
+
+  if (!canManageAgents) {
+    return (
+      <Button
+        href={getSkillBuilderRoute(owner.sId, "manage")}
+        variant="primary"
+        icon={SKILL_ICON}
+        label="Manage skills"
+        size="sm"
+        onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_skills")}
+      />
+    );
+  }
 
   return (
     <DropdownMenu>

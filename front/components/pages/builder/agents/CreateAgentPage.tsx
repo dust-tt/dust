@@ -1,5 +1,6 @@
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
+import Custom404 from "@app/components/pages/Custom404";
 import {
   useSetContentWidth,
   useSetHideSidebar,
@@ -9,6 +10,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -26,6 +28,9 @@ export function CreateAgentPage() {
   const router = useAppRouter();
   const owner = useWorkspace();
   const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
+
+  const { hasPermission } = useWorkspacePermissions();
+  const canCreateAgent = hasPermission("create", "agent");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<TemplateTagCodeType[]>([]);
@@ -90,6 +95,10 @@ export function CreateAgentPage() {
   useSetContentWidth("centered");
   useSetHideSidebar(true);
   useSetTitle(title);
+
+  if (!canCreateAgent) {
+    return <Custom404 />;
+  }
 
   return (
     <div id="pageContent">

@@ -41,7 +41,17 @@ export const CreateDropdown = ({
   });
   const { hasPermission } = useWorkspacePermissions();
 
+  const canCreateAgent = hasPermission("create", "agent");
   const canCreateSkill = hasPermission("create", "skill");
+
+  // The section labels only disambiguate when both groups are listed.
+  const showSectionLabels = canCreateAgent && canCreateSkill;
+
+  // Each group is gated on its own permission, so the button itself is only
+  // worth showing when there is at least one thing the user can create.
+  if (!canCreateAgent && !canCreateSkill) {
+    return null;
+  }
 
   return (
     <DropdownMenu>
@@ -60,40 +70,44 @@ export const CreateDropdown = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {canCreateSkill && <DropdownMenuLabel label="Agents" />}
-        <DropdownMenuItem
-          label="agent from scratch"
-          icon={File02}
-          onClick={withTracking(
-            TRACKING_AREAS.BUILDER,
-            "create_from_scratch",
-            () => {
-              setIsLoading(true);
-              void router.push(getAgentBuilderRoute(owner.sId, "new"));
-            }
-          )}
-        />
-        <DropdownMenuItem
-          label="agent from template"
-          icon={MagicWand02}
-          onClick={withTracking(
-            TRACKING_AREAS.BUILDER,
-            "create_from_template",
-            () => {
-              setIsLoading(true);
-              void router.push(getAgentBuilderRoute(owner.sId, "create"));
-            }
-          )}
-        />
-        <DropdownMenuItem
-          label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
-          icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpen}
-          disabled={isUploadingYAML}
-          onClick={triggerYAMLUpload}
-        />
+        {canCreateAgent && (
+          <>
+            {showSectionLabels && <DropdownMenuLabel label="Agents" />}
+            <DropdownMenuItem
+              label="agent from scratch"
+              icon={File02}
+              onClick={withTracking(
+                TRACKING_AREAS.BUILDER,
+                "create_from_scratch",
+                () => {
+                  setIsLoading(true);
+                  void router.push(getAgentBuilderRoute(owner.sId, "new"));
+                }
+              )}
+            />
+            <DropdownMenuItem
+              label="agent from template"
+              icon={MagicWand02}
+              onClick={withTracking(
+                TRACKING_AREAS.BUILDER,
+                "create_from_template",
+                () => {
+                  setIsLoading(true);
+                  void router.push(getAgentBuilderRoute(owner.sId, "create"));
+                }
+              )}
+            />
+            <DropdownMenuItem
+              label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
+              icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpen}
+              disabled={isUploadingYAML}
+              onClick={triggerYAMLUpload}
+            />
+          </>
+        )}
         {canCreateSkill && (
           <>
-            <DropdownMenuLabel label="Skills" />
+            {showSectionLabels && <DropdownMenuLabel label="Skills" />}
             <DropdownMenuItem
               label="skill from scratch"
               icon={PuzzlePiece01}

@@ -130,6 +130,8 @@ export function ManageSkillsPage() {
     return "active";
   }, [selectedTab, skillManagerTabs]);
 
+  const canCreateSkill = hasPermission("create", "skill");
+
   const canBypassEditorVisibility = isAdmin;
   const isBypassEditorVisibilityEnabled =
     canBypassEditorVisibility && bypassEditorVisibility;
@@ -161,7 +163,9 @@ export function ManageSkillsPage() {
   } = useSkillsWithRelations({
     owner,
     status: "suggested",
-    disabled: activeTab !== "active",
+    // Suggestions are only ever listed to users who can create skills, since
+    // adopting one means becoming its editor.
+    disabled: activeTab !== "active" || !canCreateSkill,
   });
 
   const sortedActiveSkills = useMemo(
@@ -415,23 +419,25 @@ export function ManageSkillsPage() {
                 onClick={() => setIsBatchEditing(true)}
               />
             )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button label="Create skill" icon={Plus} isSelect />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  label="From scratch"
-                  icon={SKILL_ICON}
-                  href={getSkillBuilderRoute(owner.sId, "new")}
-                />
-                <DropdownMenuItem
-                  label="From existing"
-                  icon={FolderOpen}
-                  onClick={() => setIsImportDialogOpen(true)}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {canCreateSkill && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button label="Create skill" icon={Plus} isSelect />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    label="From scratch"
+                    icon={SKILL_ICON}
+                    href={getSkillBuilderRoute(owner.sId, "new")}
+                  />
+                  <DropdownMenuItem
+                    label="From existing"
+                    icon={FolderOpen}
+                    onClick={() => setIsImportDialogOpen(true)}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           {isBatchEditionAvailable && isBatchEditing && (
             <SkillsBatchEditBar
