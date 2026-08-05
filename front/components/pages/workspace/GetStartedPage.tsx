@@ -207,9 +207,10 @@ function RecommendationItem({
 interface JustAskComposerProps {
   owner: WorkspaceType;
   user: UserType | null;
+  podId: string | null;
 }
 
-function JustAskComposer({ owner, user }: JustAskComposerProps) {
+function JustAskComposer({ owner, user, podId }: JustAskComposerProps) {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const { hasFeature } = useFeatureFlags();
@@ -237,7 +238,8 @@ function JustAskComposer({ owner, user }: JustAskComposerProps) {
           mentions: mentions.map(toMentionType),
           contentFragments,
           selectedMCPServerViewIds,
-          selectedSpaceIds,
+          // Scope the conversation to the pod space so it surfaces in recent conversations.
+          selectedSpaceIds: podId ? [podId] : selectedSpaceIds,
           richMentions: mentions,
           modelSelection,
         },
@@ -264,7 +266,7 @@ function JustAskComposer({ owner, user }: JustAskComposerProps) {
       );
       return new Ok(undefined);
     },
-    [createConversationWithMessage, sendNotification, router, owner.sId]
+    [createConversationWithMessage, sendNotification, router, owner.sId, podId]
   );
 
   return (
@@ -594,7 +596,7 @@ export function GetStartedPage() {
               New here? Try one of these, or just start typing.
             </p>
             <div className="mt-4">
-              <JustAskComposer owner={owner} user={user} />
+              <JustAskComposer owner={owner} user={user} podId={activationPodId} />
             </div>
           </div>
 
