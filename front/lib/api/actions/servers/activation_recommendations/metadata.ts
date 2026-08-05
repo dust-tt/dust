@@ -50,7 +50,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         ),
       body: z
         .string()
-        .max(500)
+        .max(2000)
         .optional()
         .describe(
           "Optional 1-3 sentence explanation of the recommendation. " +
@@ -59,8 +59,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
             "are already self-explanatory."
         ),
       steps: z
-        .array(z.string().max(100))
-        .max(8)
+        .array(z.string().max(500))
         .optional()
         .describe(
           "Optional ordered list of concrete steps to complete the recommendation. " +
@@ -84,23 +83,18 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         .optional()
         .describe(
           "Optional icon identifier for the source of this recommendation. " +
-            "Two namespaces are accepted. " +
-            "ConnectorProvider — use when the recommendation is driven by a specific " +
-            "data source: 'slack', 'github', 'notion', 'google_drive', 'confluence', " +
-            "'microsoft_teams', 'intercom', 'salesforce', 'hubspot'. " +
-            "Sparkle icon name — use for Dust-native features: 'Brain' (agents/AI), " +
-            "'Zap' (triggers/automation), 'PuzzlePiece01' (skills), " +
-            "'ActionFrame' (frames), 'Dataflow01' (workflows), " +
-            "'Database01' (knowledge bases). " +
-            "Omit if no specific source applies."
+            "Use a ConnectorProvider value (e.g. 'slack', 'github', 'notion') when the " +
+            "recommendation is driven by a specific data source. " +
+            "Use a Sparkle icon name (e.g. 'ActionBrainIcon') for internal Dust features. " +
+            "Omit if no specific source icon applies."
         ),
       sourceLabel: z
         .string()
         .max(40)
         .optional()
         .describe(
-          "Optional short label shown alongside the source icon (e.g. 'Slack', 'GitHub'). " +
-            "Can be set independently of sourceIcon."
+          "Optional short label shown alongside the sourceIcon (e.g. 'Slack', 'GitHub'). " +
+            "Only set when sourceIcon is also set."
         ),
     },
     stake: "never_ask",
