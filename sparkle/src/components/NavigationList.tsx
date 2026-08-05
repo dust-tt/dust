@@ -385,10 +385,6 @@ const NavigationListCollapsibleSection = React.forwardRef<
     ref
   ) => {
     const [isShowingAll, setIsShowingAll] = React.useState(false);
-    // The collapse animates height, so the content has to clip while it runs
-    // or children spill outside the growing/shrinking box. Once it settles we
-    // stop clipping again so sticky children can pin to the scroll viewport.
-    const [isHeightAnimating, setIsHeightAnimating] = React.useState(false);
 
     const childArray = React.Children.toArray(children);
     const hasPartialCollapse =
@@ -452,13 +448,6 @@ const NavigationListCollapsibleSection = React.forwardRef<
       if (!newOpen) {
         setIsShowingAll(false);
       }
-      // Set synchronously, before Radix flips data-state, so the content is
-      // already clipping on the first frame of the height animation. Under
-      // reduced motion there is no animation, so no animationend would ever
-      // arrive to clear this again — stay unclipped instead.
-      setIsHeightAnimating(
-        !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      );
       onOpenChange?.(newOpen);
     };
 
@@ -565,18 +554,14 @@ const NavigationListCollapsibleSection = React.forwardRef<
           </CollapsibleTrigger>
           {actionElement}
         </div>
-        {/* Sticky children (e.g. date labels) need a non-clipping ancestor,
-         * but only once the height animation has finished — see above. */}
+        {/* Toggling a sidebar section is a high-frequency action, and the
+         * shared height animation is layout-bound — on a long list it reads
+         * as lag rather than motion. Open/close instantly instead.
+         * With no animation to spill out of, the content can also stop
+         * clipping outright, so sticky children pin to the scroll viewport. */}
         <CollapsibleContent
-          className={cn(
-            !isHeightAnimating && "data-[state=open]:overflow-visible"
-          )}
-          onAnimationEnd={(e) => {
-            // Ignore animations bubbling up from children.
-            if (e.target === e.currentTarget) {
-              setIsHeightAnimating(false);
-            }
-          }}
+          animated={false}
+          className="data-[state=open]:overflow-visible"
         >
           {renderedContent}
         </CollapsibleContent>
