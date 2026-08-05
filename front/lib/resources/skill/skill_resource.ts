@@ -94,6 +94,7 @@ import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   isNumber,
@@ -120,6 +121,26 @@ export type SkillMCPServerConfiguration = {
   childAgentId?: string;
   serverNameOverride?: string;
 };
+
+// Restricts `listByWorkspace` to a single space-visibility scope. Modeled as one
+// discriminated union (rather than separate `globalSpaceOnly`/`podSpaceModelId` params) so a
+// caller cannot ask for two contradictory scopes at once (e.g. "global only" + "this Pod's
+// skills", which would always resolve to zero Pod-scoped matches).
+//
+// Independent from availability/editor-group governance (`availability`, `canWrite`,
+// `canAdministrate`): those gate who may see an individual skill regardless of Pod, this gates
+// which Pod's skills are in scope regardless of who's asking. Omitting `spaceScope` entirely
+// means "every Pod" — used by workspace-wide callers (dedup checks, analytics/export) and by
+// admin governance views that intentionally span all Pods.
+export type SkillSpaceScopeFilter =
+  // Only skills requesting exclusively the global space (excludes every space-restricted
+  // skill, Pod-scoped or not).
+  | { mode: "global_only" }
+  // Excludes Pod-scoped skills but keeps skills restricted to non-Pod spaces. Used outside
+  // any Pod context, where a Pod-restricted skill must stay unsearchable.
+  | { mode: "exclude_pod_scoped" }
+  // Only this Pod's own skills, plus skills not scoped to any Pod.
+  | { mode: "pod"; podSpaceModelId: ModelId };
 
 type SkillReferenceTarget = {
   icon: string | null;
@@ -1493,7 +1514,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       status = "active",
       limit,
-      globalSpaceOnly,
+      spaceScope,
       onlyCustom,
       availability,
       updatedAfter,
@@ -1504,7 +1525,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
-      globalSpaceOnly?: boolean;
+      spaceScope?: SkillSpaceScopeFilter;
       onlyCustom?: boolean;
       availability?: SkillAvailability | SkillAvailability[];
       updatedAfter?: Date;
@@ -1528,14 +1549,46 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withFileAttachments,
     });
 
-    if (globalSpaceOnly) {
-      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-      return skills.filter((skill) =>
-        skill.requestedSpaceIds.every((id) => id === globalSpace.id)
-      );
+    if (!spaceScope) {
+      return skills;
     }
 
-    return skills;
+    switch (spaceScope.mode) {
+      case "global_only": {
+        const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+        return skills.filter((skill) =>
+          skill.requestedSpaceIds.every((id) => id === globalSpace.id)
+        );
+      }
+      case "exclude_pod_scoped":
+
+      case "pod": {
+        const allRequestedSpaceIds = uniq(
+          skills.flatMap((skill) => skill.requestedSpaceIds)
+        );
+        const podSpaceIds = new Set<ModelId>(
+          await SpaceResource.fetchProjectSpaceIdsAmong(
+            auth,
+            allRequestedSpaceIds
+          )
+        );
+
+        return skills.filter((skill) => {
+          const skillPodSpaceIds = skill.requestedSpaceIds.filter((id) =>
+            podSpaceIds.has(id)
+          );
+          if (skillPodSpaceIds.length === 0) {
+            return true;
+          }
+          return (
+            spaceScope.mode === "pod" &&
+            skillPodSpaceIds.includes(spaceScope.podSpaceModelId)
+          );
+        });
+      }
+      default:
+        return assertNever(spaceScope);
+    }
   }
 
   /**

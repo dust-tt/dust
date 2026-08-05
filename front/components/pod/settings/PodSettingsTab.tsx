@@ -176,6 +176,7 @@ export function PodSettingsTab({
   const { skills } = useSkills({
     owner,
     status: "active",
+    spaceScope: { mode: "pod", podId: pod.sId },
   });
   const [skillSearchText, setSkillSearchText] = useState("");
   const [isSkillPickerOpen, setIsSkillPickerOpen] = useState(false);

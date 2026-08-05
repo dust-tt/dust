@@ -73,3 +73,22 @@ export async function getReferencedSkillSpaceModelIds(
       .flatMap((skill) => skill.requestedSpaceIds)
   );
 }
+
+export function validateAtMostOnePodSpace(
+  requestedSpaces: SpaceResource[]
+): Result<void, Error> {
+  const podSpaceCount = requestedSpaces.filter((space) =>
+    space.isProject()
+  ).length;
+
+  if (podSpaceCount > 1) {
+    return new Err(
+      new Error(
+        "A skill can only be restricted to a single Pod, but this would restrict it to " +
+          `${podSpaceCount} different Pods.`
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}

@@ -26,6 +26,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
@@ -96,11 +97,23 @@ export function useSkill({
   };
 }
 
+// Restricts the listed skills to a single space-visibility scope. Modeled as one
+// discriminated union so a caller cannot request two contradictory scopes at once
+export type SkillsSpaceScopeParam =
+  // Skills with no restrictions
+  | { mode: "globalOnly" }
+  // Excludes Pod-scoped skills but keeps other space-restricted skills. Used outside any Pod
+  // context (ex. a conversation not attached to a Pod), where a Pod-restricted skill must
+  // stay unsearchable.
+  | { mode: "excludePodScoped" }
+  // Only this Pod's own skills, plus skills with no restrictions.
+  | { mode: "pod"; podId: string };
+
 export function useSkills({
   owner,
   disabled,
   status,
-  globalSpaceOnly,
+  spaceScope,
   availability,
   bypassEditorVisibility,
   swrOptions,
@@ -108,7 +121,7 @@ export function useSkills({
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
-  globalSpaceOnly?: boolean;
+  spaceScope?: SkillsSpaceScopeParam;
   availability?: SkillAvailability | SkillAvailability[];
   // Admin-only: bypass the editor-visibility rule and also list unpublished
   // (editors-only) skills the caller does not edit.
@@ -126,8 +139,20 @@ export function useSkills({
   if (status) {
     queryParams.set("status", status);
   }
-  if (globalSpaceOnly) {
-    queryParams.set("globalSpaceOnly", "true");
+  if (spaceScope) {
+    switch (spaceScope.mode) {
+      case "globalOnly":
+        queryParams.set("globalSpaceOnly", "true");
+        break;
+      case "excludePodScoped":
+        queryParams.set("excludePodScopedSkills", "true");
+        break;
+      case "pod":
+        queryParams.set("podId", spaceScope.podId);
+        break;
+      default:
+        assertNever(spaceScope);
+    }
   }
   if (availability) {
     const availabilities = Array.isArray(availability)
