@@ -4,7 +4,7 @@ import { proxyActivities } from "@temporalio/workflow";
 import type * as activities from "./activities";
 
 const { runTriggeredAgentsActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "5 minutes",
+  startToCloseTimeout: "2 minutes",
   retry: {
     nonRetryableErrorTypes: ["TriggerNonRetryableError"],
   },
