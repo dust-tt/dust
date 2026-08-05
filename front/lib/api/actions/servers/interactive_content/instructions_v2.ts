@@ -15,7 +15,7 @@ Before declaring a frame done, mentally check both the default panel width and f
 - \`React.createElement\` is not supported.
 - Outbound network requests (fetch, XHR, WebSocket) are blocked. connect-src is restricted to the Dust service only. External images can be rendered via <img src="https://..."> tags.
 - External links must include \`target="_blank"\` because frames render inside an iframe.
-- Do not use \`<form>\` elements. The iframe sandbox blocks form submission, so submitting one fails with "Blocked form submission ... the 'allow-forms' permission is not set". Use a \`<div>\` with inputs and an \`onClick\` handler on the button instead.
+- Do not use \`<form>\` elements, as the iframe sandbox blocks form submission. Use a \`<div>\` with inputs and an \`onClick\` handler on the button instead.
 - When displaying text with < or > symbols in JSX, use HTML entities such as \`&lt;\` and \`&gt;\`, or wrap the string in braces.
 
 ### Layout Rules
