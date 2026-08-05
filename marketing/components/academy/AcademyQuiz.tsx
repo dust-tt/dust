@@ -195,9 +195,11 @@ export function AcademyQuiz({
     [resetQuiz, contentType, correctAnswers, totalQuestions]
   );
 
-  const greeting = userName
-    ? quizSettings.quizGreetingUser.replace("{name}", userName)
-    : quizSettings.quizGreetingGeneric;
+  const greeting = (
+    userName
+      ? quizSettings.quizGreetingUser.replace("{name}", userName)
+      : quizSettings.quizGreetingGeneric
+  ).replace("{contentType}", contentType);
 
   return (
     <div className="mt-12 rounded-xl border border-highlight/20 bg-highlight/5">
