@@ -55,7 +55,7 @@ async function listPodManagerCreateConversationActions(
   );
 }
 
-async function mapConversationIdsToActions(
+async function fetchConversationIDs(
   auth: Authenticator,
   actions: AgentMCPActionModel[]
 ): Promise<Map<string, AgentMCPActionModel>> {
@@ -114,7 +114,7 @@ makeScript(
       return;
     }
 
-    const actionByConversationId = await mapConversationIdsToActions(
+    const actionByConversationId = await fetchConversationIDs(
       auth,
       actions
     );
