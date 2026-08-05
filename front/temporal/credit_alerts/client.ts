@@ -70,6 +70,11 @@ export const SPEND_LIMIT_EXPIRATION_SCHEDULE_ID =
 /**
  * Ensures the spend limit expiration schedule exists. Called from the worker
  * on startup so a fresh environment self-registers its schedule.
+ *
+ * This only registers the schedule once: if it already exists, its spec
+ * (cron expression, overlap policy, timezone) is left untouched. To change
+ * the spec, delete the schedule manually (or update it via `client.schedule
+ * .getHandle(scheduleId).update(...)`) and redeploy.
  */
 export async function launchSpendLimitExpirationSchedule(): Promise<
   Result<undefined, Error>
