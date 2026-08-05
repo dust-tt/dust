@@ -26,10 +26,14 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
+import {
+  DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+  isValidSandboxFunctionSlug,
+} from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
@@ -110,6 +114,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       slug,
       description,
       userIdentity = "optional",
+      executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
       inputSchema,
       outputSchema,
     }: {
@@ -118,6 +123,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       slug: string;
       description: string;
       userIdentity?: SandboxFunctionUserIdentityPolicy;
+      executionMode?: SandboxFunctionExecutionMode;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     },
@@ -157,6 +163,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         slug,
         description,
         userIdentity,
+        executionMode,
         inputSchema,
         outputSchema,
       },
@@ -178,12 +185,14 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       bundleCode,
       description,
       userIdentity = this.userIdentity ?? "optional",
+      executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
       inputSchema,
       outputSchema,
     }: {
       bundleCode: string;
       description: string;
       userIdentity?: SandboxFunctionUserIdentityPolicy;
+      executionMode?: SandboxFunctionExecutionMode;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
@@ -215,9 +224,18 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
           }
 
           await this.file.uploadContent(auth, bundleCode);
+          // The execution mode is restated by every publish, like the description and the schemas:
+          // a re-publish that does not name it gets the default. Carrying the old mode forward
+          // would keep a function fast after the publish that added a tool call to it, which only
+          // shows up as a refused tool call at run time.
+          //
+          // It moves after the upload, and unlike the user identity policy there is no window to
+          // guard: whichever mode is in effect while the upload lands, a fast bundle running as
+          // durable is harmless and a durable bundle running as fast just fails its tool calls.
           await this.update({
             description,
             userIdentity,
+            executionMode,
             inputSchema,
             outputSchema,
           });
@@ -463,6 +481,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       ...this.toPokeJSON(author),
       fileId: this.file.sId,
       userIdentity: this.userIdentity,
+      executionMode: this.executionMode,
       inputSchema: this.inputSchema,
       outputSchema: this.outputSchema,
     };

@@ -123,6 +123,90 @@ describe("publishSandboxFunction", () => {
     expect(listed.map(({ id }) => id)).toEqual([fn.id]);
   });
 
+  it("publishes as durable unless the caller asks for fast", async () => {
+    const { space, auth } = await setupPod();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "export default {};",
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema,
+      })
+    );
+
+    const durable = await publishSandboxFunction(auth, {
+      space,
+      slug: "greet",
+      description: "Greet someone.",
+      path: `pod-${space.sId}/greet.ts`,
+    });
+    expect(durable.isOk()).toBe(true);
+    if (durable.isErr()) {
+      return;
+    }
+    expect(durable.value.executionMode).toBe("durable");
+
+    const fast = await publishSandboxFunction(auth, {
+      space,
+      slug: "read-state",
+      description: "Read pod state.",
+      path: `pod-${space.sId}/read-state.ts`,
+      executionMode: "fast",
+    });
+    expect(fast.isOk()).toBe(true);
+    if (fast.isErr()) {
+      return;
+    }
+    expect(fast.value.executionMode).toBe("fast");
+  });
+
+  it("returns a re-publish that does not restate the execution mode to the default", async () => {
+    const { space, auth } = await setupPod();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "export default {};",
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema,
+      })
+    );
+
+    const created = await publishSandboxFunction(auth, {
+      space,
+      slug: "greet",
+      description: "Greet someone.",
+      path: `pod-${space.sId}/greet.ts`,
+      executionMode: "fast",
+    });
+    expect(created.isOk()).toBe(true);
+
+    // A publish that added a tool call and forgot to restate the mode must not stay fast.
+    const republished = await publishSandboxFunction(auth, {
+      space,
+      slug: "greet",
+      description: "Greet someone, again.",
+      path: `pod-${space.sId}/greet.ts`,
+    });
+    expect(republished.isOk()).toBe(true);
+    if (republished.isErr()) {
+      return;
+    }
+    expect(republished.value.executionMode).toBe("durable");
+
+    const restated = await publishSandboxFunction(auth, {
+      space,
+      slug: "greet",
+      description: "Greet someone, again.",
+      path: `pod-${space.sId}/greet.ts`,
+      executionMode: "fast",
+    });
+    expect(restated.isOk()).toBe(true);
+    if (restated.isErr()) {
+      return;
+    }
+    expect(restated.value.executionMode).toBe("fast");
+  });
+
   it("overwrites the bundle in place on re-publish, keeping one row and the same file", async () => {
     const { workspace, space, auth } = await setupPod();
 

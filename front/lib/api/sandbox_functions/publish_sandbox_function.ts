@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -26,11 +27,13 @@ export async function publishSandboxFunction(
     slug,
     description,
     path: sourcePath,
+    executionMode,
   }: {
     space: SpaceResource;
     slug: string;
     description: string;
     path: string;
+    executionMode?: SandboxFunctionExecutionMode;
   }
 ): Promise<Result<SandboxFunctionResource, SandboxFunctionError>> {
   // Resolve the model-supplied scoped path (e.g. `pod-{id}/greet.ts`) to its absolute path inside
@@ -70,6 +73,7 @@ export async function publishSandboxFunction(
       bundleCode,
       description,
       userIdentity,
+      executionMode,
       inputSchema,
       outputSchema,
     });
@@ -93,6 +97,7 @@ export async function publishSandboxFunction(
     slug,
     description,
     userIdentity,
+    executionMode,
     inputSchema,
     outputSchema,
   });
