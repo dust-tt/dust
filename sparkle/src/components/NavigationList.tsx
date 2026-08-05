@@ -421,10 +421,18 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     const actionElement = action && (
       <div
+        // Lets the header row keep its active styling while a menu opened from
+        // one of these actions is still open (see the collapse header below).
+        data-nav="section-action"
         className={cn(
           "flex gap-1 transition-opacity",
           actionOnHover
-            ? "[@media(hover:hover)_and_(pointer:fine)]:opacity-0 hover:opacity-100 group-has-[:focus-visible]/menu-item:opacity-100 group-hover/menu-item:opacity-100"
+            ? cn(
+                "[@media(hover:hover)_and_(pointer:fine)]:opacity-0 hover:opacity-100 group-has-[:focus-visible]/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                // The pointer leaves the row to navigate the menu it just
+                // opened; keep the action visible until the menu closes.
+                "has-[[data-state=open]]:opacity-100"
+              )
             : "opacity-100"
         )}
         onClick={(e) => {
@@ -508,7 +516,11 @@ const NavigationListCollapsibleSection = React.forwardRef<
             "text-muted-foreground font-semibold",
             "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
             "items-center outline-hidden rounded-lg text-sm p-2 transition-colors duration-150 motion-reduce:transition-none",
-            "hover:bg-hover hover:text-primary"
+            "hover:bg-hover hover:text-primary",
+            // Hold the hover styling while a menu opened from one of the row's
+            // actions is still open. Scoped to the action slot so the
+            // CollapsibleTrigger's own data-state=open never matches.
+            "has-[[data-nav=section-action]_[data-state=open]]:bg-hover has-[[data-nav=section-action]_[data-state=open]]:text-primary"
           )}
         >
           <CollapsibleTrigger hideChevron>
