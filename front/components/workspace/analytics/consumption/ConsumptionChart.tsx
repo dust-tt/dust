@@ -6,8 +6,12 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { formatConsumptionDate } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
-import type { ConsumptionTimeseriesGroup } from "@app/lib/api/analytics/consumption/series";
+import type {
+  ConsumptionTimeseriesGroup,
+  ConsumptionTimeseriesPoint,
+} from "@app/lib/api/analytics/consumption/series";
 import { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/series";
+import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { cn } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import {
@@ -26,13 +30,11 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 // growing, and at full strength it reads as a real drop in consumption.
 const PARTIAL_BAR_OPACITY = "opacity-40";
 
-interface ConsumptionChartDatum {
-  timestamp: number;
-  isPartial: boolean;
-  values: Record<string, number>;
-}
-
-function isConsumptionChartDatum(data: unknown): data is ConsumptionChartDatum {
+// Recharts hands the tooltip its datum as `unknown`; the points go into the
+// chart unchanged, so this narrows back to what the endpoint returned.
+function isConsumptionTimeseriesPoint(
+  data: unknown
+): data is ConsumptionTimeseriesPoint {
   return (
     typeof data === "object" &&
     data !== null &&
@@ -40,10 +42,6 @@ function isConsumptionChartDatum(data: unknown): data is ConsumptionChartDatum {
     "isPartial" in data &&
     "values" in data
   );
-}
-
-function formatCredits(credits: number): string {
-  return credits.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
 interface ConsumptionChartTooltipProps
@@ -59,7 +57,7 @@ function ConsumptionChartTooltip({
   colorByGroupKey,
 }: ConsumptionChartTooltipProps) {
   const datum = payload?.[0]?.payload;
-  if (!active || !isConsumptionChartDatum(datum)) {
+  if (!active || !isConsumptionTimeseriesPoint(datum)) {
     return null;
   }
 
@@ -109,13 +107,11 @@ export function ConsumptionChart({
       workspaceId,
       period,
       mode: "daily",
-      // Per-agent is the view that answers "where are the credits going".
-      // Becomes selectable once the attribution table can drive the chart.
       breakdownBy: "agent",
       breakdownCount: DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
     });
 
-  const groups = timeseries?.groups ?? [];
+  const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
 
   // Colors are assigned by rank, so the biggest consumer keeps its color as
   // long as it stays on top. "Others" is special-cased by getIndexedColor.
@@ -129,15 +125,7 @@ export function ConsumptionChart({
     );
   }, [groups]);
 
-  const chartData = useMemo<ConsumptionChartDatum[]>(
-    () =>
-      (timeseries?.points ?? []).map((point) => ({
-        timestamp: point.timestamp,
-        isPartial: point.isPartial,
-        values: point.values,
-      })),
-    [timeseries]
-  );
+  const chartData = useMemo(() => timeseries?.points ?? [], [timeseries]);
 
   const renderTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => (
@@ -165,7 +153,7 @@ export function ConsumptionChart({
 
   return (
     <ChartContainer
-      title="Daily credits by agent"
+      title="Daily credits"
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
@@ -189,8 +177,6 @@ export function ConsumptionChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          // Buckets run to the end of the cycle, so a cycle-length axis would
-          // label every empty future day without this.
           minTickGap={24}
           tickFormatter={(timestamp: number) =>
             formatConsumptionDate(timestamp)
@@ -201,6 +187,7 @@ export function ConsumptionChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
+          tickFormatter={formatCreditsCompact}
         />
         <Tooltip
           cursor={false}
@@ -219,9 +206,7 @@ export function ConsumptionChart({
         {groups.map((group) => (
           <Bar
             key={group.groupKey}
-            // The endpoint zero-fills every group on every point, so this
-            // accessor never has to cope with a missing series.
-            dataKey={(datum: ConsumptionChartDatum) =>
+            dataKey={(datum: ConsumptionTimeseriesPoint) =>
               datum.values[group.groupKey] ?? 0
             }
             name={group.name}
