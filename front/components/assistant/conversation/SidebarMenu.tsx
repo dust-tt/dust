@@ -773,9 +773,6 @@ export function AgentSidebarMenu({
       return null;
     }
 
-    const showCount =
-      isStarredPodsSectionCollapsed && starredCountInSummary > 0;
-
     const VISIBLE_STARRED = 5;
     const hiddenStarredSummary = starredSummary.slice(VISIBLE_STARRED);
     const hiddenOverflowCount = hiddenStarredSummary.reduce(
@@ -791,7 +788,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
-          label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
+          label="Starred"
           type="collapse"
           visibleItems={VISIBLE_STARRED}
           overflowCount={hiddenOverflowCount}
@@ -820,8 +817,6 @@ export function AgentSidebarMenu({
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const podsSection = useMemo(() => {
     const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
-    const podCountInSummary = nonStarredSummary.length;
-    const showCount = isPodsSectionCollapsed && podCountInSummary > 0;
 
     const VISIBLE_PODS = 4;
     const hiddenSummary = nonStarredSummary.slice(VISIBLE_PODS);
@@ -838,7 +833,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
         <NavigationListCollapsibleSection
-          label={showCount ? `Pods (${podCountInSummary})` : "Pods"}
+          label="Pods"
           type="collapse"
           visibleItems={VISIBLE_PODS}
           overflowCount={hiddenOverflowCount}
