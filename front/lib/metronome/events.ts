@@ -76,9 +76,9 @@ export function getUsageType(
 
 function getToolUsageType(
   baseUsageType: UsageType,
-  freeUsage: boolean
+  isFreeTool: boolean
 ): UsageType {
-  return freeUsage ? USAGE_TYPE_FREE : baseUsageType;
+  return isFreeTool ? USAGE_TYPE_FREE : baseUsageType;
 }
 
 // Intelligence (AI compute) credits for a *single execution's* run usages.
@@ -322,7 +322,7 @@ export function buildToolUseEvents({
   for (const billingLine of billingPlan.tools) {
     // Metronome prices every emitted tool event. Actions that never reached the
     // tool must therefore be omitted rather than represented as zero-cost.
-    if (billingLine.disposition === "unbillable_status") {
+    if (billingLine.billingDisposition === "unbillable_status") {
       continue;
     }
     const { action } = billingLine;
@@ -341,8 +341,11 @@ export function buildToolUseEvents({
   }
 
   return [...groups.values()].map(({ billingLine, count, totalDurationMs }) => {
-    const { action, toolCostCategory, freeUsage } = billingLine;
-    const effectiveUsageType = getToolUsageType(usageType, freeUsage);
+    const { action, billingDisposition, toolCostCategory } = billingLine;
+    const effectiveUsageType = getToolUsageType(
+      usageType,
+      billingDisposition === "free_tool"
+    );
     return {
       transaction_id: truncateTransactionId(
         `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`

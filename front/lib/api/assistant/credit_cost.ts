@@ -181,7 +181,7 @@ export function computeAgentMessageCredits({
     runUsages,
   });
   const hasBillableAction = billingPlan.tools.some(
-    ({ disposition }) => disposition !== "unbillable_status"
+    ({ billingDisposition }) => billingDisposition !== "unbillable_status"
   );
 
   // A free tool or free-origin action is still tracked with a zero charge. Only

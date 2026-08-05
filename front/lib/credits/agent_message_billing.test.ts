@@ -149,11 +149,9 @@ describe("buildAgentMessageBillingPlan", () => {
     expect(plan.tools.map(({ billedCredits }) => billedCredits)).toEqual([
       1, 3, 0,
     ]);
-    expect(plan.tools.map(({ disposition }) => disposition)).toEqual([
-      "billed",
-      "billed",
-      "unbillable_status",
-    ]);
+    expect(
+      plan.tools.map(({ billingDisposition }) => billingDisposition)
+    ).toEqual(["billed", "billed", "unbillable_status"]);
     expect(plan.totals).toEqual({
       llmBilledCredits: 1,
       toolBilledCredits: 4,
@@ -177,12 +175,12 @@ describe("buildAgentMessageBillingPlan", () => {
     expect(plan.llm[0]).toMatchObject({
       ratedCredits: 1,
       billedCredits: 0,
-      disposition: "free_origin",
+      billingDisposition: "free_origin",
     });
     expect(plan.tools[0]).toMatchObject({
       ratedCredits: 3,
       billedCredits: 0,
-      disposition: "free_origin",
+      billingDisposition: "free_origin",
     });
     expect(plan.totals.billedCredits).toBe(0);
   });
@@ -209,12 +207,12 @@ describe("buildAgentMessageBillingPlan", () => {
       expect.objectContaining({
         ratedCredits: 1,
         billedCredits: 0,
-        disposition: "free_tool",
+        billingDisposition: "free_tool",
       }),
       expect.objectContaining({
         ratedCredits: 3,
         billedCredits: 0,
-        disposition: "unbillable_status",
+        billingDisposition: "unbillable_status",
       }),
     ]);
   });

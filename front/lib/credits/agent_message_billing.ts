@@ -49,10 +49,17 @@ export type AgentMessageBillingAction = {
   toolName: string;
 };
 
+/** Explains how the rated credits were treated by the billing rules. */
+export type AgentMessageLlmBillingDisposition = "billed" | "free_origin";
+
+export type AgentMessageToolBillingDisposition =
+  | AgentMessageLlmBillingDisposition
+  | "free_tool"
+  | "unbillable_status";
+
 export type AgentMessageLlmBillingLine<
   TUsage extends AgentMessageBillingRunUsage,
 > = {
-  billingGroupKey: string;
   runKey: string;
   providerId: TUsage["providerId"];
   modelId: TUsage["modelId"];
@@ -63,7 +70,7 @@ export type AgentMessageLlmBillingLine<
   providerCostMicroUsd: number;
   ratedCredits: number;
   billedCredits: number;
-  disposition: "billed" | "free_origin";
+  billingDisposition: AgentMessageLlmBillingDisposition;
   usageAllocations: Array<{
     usage: TUsage;
     allocatedBilledCreditMicro: number;
@@ -75,10 +82,9 @@ export type AgentMessageToolBillingLine<
 > = {
   action: TAction;
   toolCostCategory: ToolCostCategory;
-  freeUsage: boolean;
   ratedCredits: number;
   billedCredits: number;
-  disposition: "billed" | "free_origin" | "free_tool" | "unbillable_status";
+  billingDisposition: AgentMessageToolBillingDisposition;
 };
 
 export type AgentMessageBillingPlan<
@@ -236,7 +242,6 @@ export function buildAgentMessageBillingPlan<
   const usagesByBillingGroup = new Map<
     string,
     {
-      billingGroupKey: string;
       runKey: string;
       providerId: TUsage["providerId"];
       modelId: TUsage["modelId"];
@@ -252,7 +257,6 @@ export function buildAgentMessageBillingPlan<
       group.usages.push(usage);
     } else {
       usagesByBillingGroup.set(billingGroupKey, {
-        billingGroupKey,
         runKey,
         providerId: usage.providerId,
         modelId: usage.modelId,
@@ -262,7 +266,7 @@ export function buildAgentMessageBillingPlan<
   }
 
   const llm = [...usagesByBillingGroup.values()].map(
-    ({ billingGroupKey, runKey, providerId, modelId, usages }) => {
+    ({ runKey, providerId, modelId, usages }) => {
       const promptTokensCount = usages.reduce(
         (total, usage) => total + usage.promptTokens,
         0
@@ -285,11 +289,10 @@ export function buildAgentMessageBillingPlan<
       );
       const ratedCredits = awuFromMicroUsd(providerCostMicroUsd);
       const billedCredits = isMessageFree ? 0 : ratedCredits;
-      const disposition: AgentMessageLlmBillingLine<TUsage>["disposition"] =
+      const billingDisposition: AgentMessageLlmBillingDisposition =
         isMessageFree ? "free_origin" : "billed";
 
       return {
-        billingGroupKey,
         runKey,
         providerId,
         modelId,
@@ -300,7 +303,7 @@ export function buildAgentMessageBillingPlan<
         providerCostMicroUsd,
         ratedCredits,
         billedCredits,
-        disposition,
+        billingDisposition,
         usageAllocations: getUsageAllocationKey
           ? allocateBilledCreditMicro({
               billedCredits,
@@ -318,7 +321,7 @@ export function buildAgentMessageBillingPlan<
       action.internalMCPServerName,
       action.toolName
     );
-    const disposition: AgentMessageToolBillingLine<TAction>["disposition"] =
+    const billingDisposition: AgentMessageToolBillingDisposition =
       !isToolExecutionStatusBillable(action.status)
         ? "unbillable_status"
         : isMessageFree
@@ -327,15 +330,14 @@ export function buildAgentMessageBillingPlan<
             ? "free_tool"
             : "billed";
     const ratedCredits = TOOL_COST_CATEGORY_AWU_WEIGHTS[toolCostCategory];
-    const billedCredits = disposition === "billed" ? ratedCredits : 0;
+    const billedCredits = billingDisposition === "billed" ? ratedCredits : 0;
 
     return {
       action,
       toolCostCategory,
-      freeUsage,
       ratedCredits,
       billedCredits,
-      disposition,
+      billingDisposition,
     };
   });
 
