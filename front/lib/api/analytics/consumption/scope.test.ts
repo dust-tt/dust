@@ -39,7 +39,7 @@ describe("buildConsumptionScopeQuery", () => {
       ...WINDOW,
       filter: {
         agent: ["a1"],
-        member: ["u1", "u2"],
+        user: ["u1", "u2"],
         model: ["gpt-5.6-luna"],
         tool: ["web_search_&_browse"],
         skill: ["s1"],
@@ -66,7 +66,7 @@ describe("buildConsumptionScopeQuery", () => {
     const query = buildConsumptionScopeQuery({
       auth: authenticator,
       ...WINDOW,
-      filter: { agent: [], member: [""] },
+      filter: { agent: [], user: [""] },
     });
 
     expect(query.bool?.filter).toHaveLength(2);

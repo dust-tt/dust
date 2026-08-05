@@ -1,11 +1,15 @@
+import { resolveConsumptionGroupNames } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionMetric,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
 import {
   buildConsumptionScopeQuery,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
-  CREDIT_MICRO_FIELD,
-  creditsFromMicroCredits,
+  CONSUMPTION_METRIC_DEFINITIONS,
+  DEFAULT_CONSUMPTION_METRIC,
 } from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionBreakdownDimension,
@@ -15,13 +19,10 @@ import type {
   ConsumptionTimeseriesPoint,
 } from "@app/lib/api/analytics/consumption/series";
 import {
+  DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
   OTHERS_GROUP_KEY,
   TOTAL_GROUP_KEY,
 } from "@app/lib/api/analytics/consumption/series";
-import {
-  resolveAnalyticsAgentLabels,
-  UNKNOWN_AGENT_LABEL,
-} from "@app/lib/api/assistant/observability/agent_labels";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
@@ -33,17 +34,19 @@ import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
 /**
- * Credit consumption bucketed over the period, behind the dashboard's
- * consumption chart.
+ * Consumption bucketed over the period, behind the dashboard's consumption
+ * chart. Filtered by any of the scope dimensions, optionally split along one of
+ * them, aggregating whichever metric was asked for (gross credits by default).
  *
  * Two things this does that the agent-message timeseries does not:
  *
- * - Buckets run to the end of the cycle, not to now. Empty future buckets are
- *   emitted so the chart's x axis covers the whole cycle from day one instead
- *   of growing as the cycle progresses.
+ * - Buckets run to the end of the period, not to now. When the period is a
+ *   billing cycle its end is in the future, and the empty buckets are emitted
+ *   so the chart's x axis covers the whole cycle from day one instead of
+ *   growing as the cycle progresses.
  * - The bucket the present moment falls into is flagged partial. Its total is
  *   still growing, and without the flag the chart's last bar reads as a drop in
- *   consumption rather than as a day in progress.
+ *   consumption rather than as a period in progress.
  */
 
 // Re-exported so server-side callers have one import for the whole timeseries
@@ -58,11 +61,12 @@ export type {
 };
 
 export type ConsumptionTimeseries = {
-  // Echoed so the chart can label its axis against the cycle it covers without
+  // Echoed so the chart can label its axis against the window it covers without
   // a second request.
   period: ConsumptionPeriod;
   granularity: ConsumptionGranularity;
   mode: ConsumptionTimeseriesMode;
+  metric: ConsumptionMetric;
   breakdownBy: ConsumptionBreakdownDimension | null;
   // In rank order, highest consumption first, with "others" last when present.
   groups: ConsumptionTimeseriesGroup[];
@@ -73,12 +77,12 @@ export type GetConsumptionTimeseriesResponse = ConsumptionTimeseries;
 
 type GroupBucket = {
   key: string;
-  credit_micro?: estypes.AggregationsSumAggregate;
+  metric?: estypes.AggregationsSumAggregate;
 };
 
 type DateBucket = {
   key: number;
-  credit_micro?: estypes.AggregationsSumAggregate;
+  metric?: estypes.AggregationsSumAggregate;
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
 };
 
@@ -90,9 +94,20 @@ type RankingAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
 };
 
-const CREDIT_MICRO_SUB_AGG = {
-  credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
-} as const;
+function metricSubAgg(
+  metric: ConsumptionMetric
+): Record<string, estypes.AggregationsAggregationContainer> {
+  return {
+    metric: { sum: { field: CONSUMPTION_METRIC_DEFINITIONS[metric].field } },
+  };
+}
+
+function metricValue(
+  metric: ConsumptionMetric,
+  agg: estypes.AggregationsSumAggregate | undefined
+): number {
+  return (agg?.value ?? 0) / CONSUMPTION_METRIC_DEFINITIONS[metric].divisor;
+}
 
 // Index of the bucket the present moment falls into, or -1 when the period is
 // already over (every bucket is then complete).
@@ -101,7 +116,7 @@ function findPartialBucketIndex(
   period: ConsumptionPeriod
 ): number {
   const nowMs = Date.now();
-  if (nowMs >= new Date(period.cycleEndDate).getTime()) {
+  if (nowMs >= new Date(period.endDate).getTime()) {
     return -1;
   }
   let partialIndex = -1;
@@ -130,7 +145,7 @@ function accumulate(
 }
 
 /**
- * Top `limit` group keys by consumption over the whole period.
+ * Top `limit` group keys by metric over the whole period.
  *
  * Ranked in its own request rather than as a terms sub-agg of the histogram:
  * a per-bucket top N would pick a different set of agents for each bucket, so
@@ -138,13 +153,17 @@ function accumulate(
  */
 async function fetchTopGroupKeys(
   query: estypes.QueryDslQueryContainer,
-  { field, limit }: { field: string; limit: number }
+  {
+    field,
+    limit,
+    metric,
+  }: { field: string; limit: number; metric: ConsumptionMetric }
 ): Promise<Result<string[], ElasticsearchError>> {
   const result = await searchConsumptionAnalytics<never, RankingAggs>(query, {
     aggregations: {
       by_group: {
-        terms: { field, size: limit, order: { credit_micro: "desc" } },
-        aggs: { ...CREDIT_MICRO_SUB_AGG },
+        terms: { field, size: limit, order: { metric: "desc" } },
+        aggs: metricSubAgg(metric),
       },
     },
     size: 0,
@@ -161,32 +180,21 @@ async function fetchTopGroupKeys(
   );
 }
 
-async function resolveGroupNames(
-  auth: Authenticator,
-  breakdownBy: ConsumptionBreakdownDimension,
-  groupKeys: string[]
-): Promise<Map<string, string>> {
-  // Only `agent` for now; the enum is a single value, so no dispatch needed
-  // beyond this. Extend alongside CONSUMPTION_BREAKDOWN_DIMENSIONS.
-  const labels = await resolveAnalyticsAgentLabels(auth, groupKeys);
-  return new Map(
-    groupKeys.map((key) => [key, (labels.get(key) ?? UNKNOWN_AGENT_LABEL).name])
-  );
-}
-
 export async function fetchConsumptionTimeseries(
   auth: Authenticator,
   {
     period,
     granularity,
     mode,
+    metric = DEFAULT_CONSUMPTION_METRIC,
     breakdownBy,
-    breakdownCount,
+    breakdownCount = DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
     filter,
   }: {
     period: ConsumptionPeriod;
     granularity: ConsumptionGranularity;
     mode: ConsumptionTimeseriesMode;
+    metric?: ConsumptionMetric;
     breakdownBy?: ConsumptionBreakdownDimension | null;
     breakdownCount?: number;
     filter?: ConsumptionScopeFilter;
@@ -204,10 +212,11 @@ export async function fetchConsumptionTimeseries(
     : null;
 
   let topGroupKeys: string[] = [];
-  if (breakdownBy && breakdownField) {
+  if (breakdownField) {
     const rankingResult = await fetchTopGroupKeys(query, {
       field: breakdownField,
-      limit: breakdownCount ?? 10,
+      limit: breakdownCount,
+      metric,
     });
     if (rankingResult.isErr()) {
       return rankingResult;
@@ -228,16 +237,17 @@ export async function fetchConsumptionTimeseries(
             time_zone: "UTC",
             min_doc_count: 0,
             extended_bounds: {
-              min: new Date(period.cycleStartDate).getTime(),
-              // Deliberately the end of the cycle rather than the end of the
-              // queried window: this is what produces the empty future buckets.
-              max: new Date(period.cycleEndDate).getTime(),
+              min: new Date(period.startDate).getTime(),
+              // The window is half-open, so `endDate` itself belongs to the
+              // next bucket and must not open one of its own.
+              max: new Date(period.endDate).getTime() - 1,
             },
           },
           aggs: {
-            // Kept even when broken down: "others" is this total minus the ranked
-            // groups, which is what keeps the stack summing to the period total.
-            ...CREDIT_MICRO_SUB_AGG,
+            // Kept even when broken down: "others" is this total minus the
+            // ranked groups, which is what keeps the stack summing to the
+            // period total.
+            ...metricSubAgg(metric),
             ...(breakdownField && topGroupKeys.length > 0
               ? {
                   by_group: {
@@ -246,7 +256,7 @@ export async function fetchConsumptionTimeseries(
                       include: topGroupKeys,
                       size: topGroupKeys.length,
                     },
-                    aggs: { ...CREDIT_MICRO_SUB_AGG },
+                    aggs: metricSubAgg(metric),
                   },
                 }
               : {}),
@@ -271,11 +281,7 @@ export async function fetchConsumptionTimeseries(
     const points: ConsumptionTimeseriesPoint[] = buckets.map(
       (bucket, index) => ({
         timestamp: bucket.key,
-        values: {
-          [TOTAL_GROUP_KEY]: creditsFromMicroCredits(
-            bucket.credit_micro?.value ?? 0
-          ),
-        },
+        values: { [TOTAL_GROUP_KEY]: metricValue(metric, bucket.metric) },
         isPartial: index === partialIndex,
       })
     );
@@ -283,42 +289,44 @@ export async function fetchConsumptionTimeseries(
       period,
       granularity,
       mode,
+      metric,
       breakdownBy: breakdownBy ?? null,
       groups: [{ groupKey: TOTAL_GROUP_KEY, name: "Total" }],
       points: finalizePoints(points, [TOTAL_GROUP_KEY], mode, partialIndex),
     });
   }
 
-  // Per bucket: the ranked groups' credits, plus whatever the bucket total has
+  // Per bucket: the ranked groups' values, plus whatever the bucket total has
   // left over for everyone outside the ranking.
-  const bucketCredits = buckets.map((bucket) => {
-    const creditsByKey = new Map(
+  const bucketValues = buckets.map((bucket) => {
+    const valuesByKey = new Map(
       bucketsToArray<GroupBucket>(bucket.by_group?.buckets).map(
         (groupBucket) => [
           String(groupBucket.key),
-          creditsFromMicroCredits(groupBucket.credit_micro?.value ?? 0),
+          metricValue(metric, groupBucket.metric),
         ]
       )
     );
 
-    const rankedCredits = topGroupKeys.map(
-      (groupKey) => creditsByKey.get(groupKey) ?? 0
+    const rankedValues = topGroupKeys.map(
+      (groupKey) => valuesByKey.get(groupKey) ?? 0
     );
-    const total = creditsFromMicroCredits(bucket.credit_micro?.value ?? 0);
+    const total = metricValue(metric, bucket.metric);
     return {
-      rankedCredits,
-      // Floating-point sums can leave a sliver behind; clamp so "others" never
-      // goes negative.
-      otherCredits: Math.max(
+      rankedValues,
+      // Clamped: floating-point sums can leave a sliver behind, and on a
+      // multi-valued dimension (a tool call attributed to several skills) the
+      // ranked groups legitimately double-count against the bucket total.
+      otherValue: Math.max(
         0,
-        total - rankedCredits.reduce((sum, credits) => sum + credits, 0)
+        total - rankedValues.reduce((sum, value) => sum + value, 0)
       ),
     };
   });
 
   // Only show an "others" series when something actually falls outside the top
   // N — an empty series in the legend of an all-agents-shown chart is noise.
-  const hasOthers = bucketCredits.some((bucket) => bucket.otherCredits > 0);
+  const hasOthers = bucketValues.some((bucket) => bucket.otherValue > 0);
   const groupKeys = hasOthers
     ? [...topGroupKeys, OTHERS_GROUP_KEY]
     : topGroupKeys;
@@ -328,15 +336,19 @@ export async function fetchConsumptionTimeseries(
     topGroupKeys.forEach((groupKey, groupIndex) => {
       // A group absent from a bucket still gets a 0, so every point carries
       // exactly the keys in `groups` and the stack is never ragged.
-      values[groupKey] = bucketCredits[index].rankedCredits[groupIndex];
+      values[groupKey] = bucketValues[index].rankedValues[groupIndex];
     });
     if (hasOthers) {
-      values[OTHERS_GROUP_KEY] = bucketCredits[index].otherCredits;
+      values[OTHERS_GROUP_KEY] = bucketValues[index].otherValue;
     }
     return { timestamp: bucket.key, values, isPartial: index === partialIndex };
   });
 
-  const names = await resolveGroupNames(auth, breakdownBy, topGroupKeys);
+  const names = await resolveConsumptionGroupNames(
+    auth,
+    breakdownBy,
+    topGroupKeys
+  );
   const groups: ConsumptionTimeseriesGroup[] = topGroupKeys.map((groupKey) => ({
     groupKey,
     name: names.get(groupKey) ?? groupKey,
@@ -349,6 +361,7 @@ export async function fetchConsumptionTimeseries(
     period,
     granularity,
     mode,
+    metric,
     breakdownBy,
     groups,
     points: finalizePoints(points, groupKeys, mode, partialIndex),
