@@ -167,7 +167,7 @@ export function CreditCostPopover({
           </dl>
         </section>
 
-        <div role="separator" className="my-1 border-t border-border" />
+        <hr className="my-1 border-t border-border" />
 
         <section aria-labelledby={`${headingId}-breakdown`}>
           <h3
