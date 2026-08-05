@@ -5,15 +5,31 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PodRestrictionImpactType } from "@app/types/api/projects/restriction_impact";
 import { POD_RESTRICTION_IMPACT_WINDOW_DAYS } from "@app/types/api/projects/restriction_impact";
+import type { ModelId } from "@app/types/shared/model_id";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-const EMPTY_IMPACT: PodRestrictionImpactType = {
-  brokenInvocationCount: 0,
-  brokenUserCount: 0,
-  totalInvocationCount: 0,
-  nonHumanInvocationCount: 0,
-};
+// Who still reaches the Pod once the global group is gone: its own member and editor groups, plus
+// workspace admins, who administrate every space. Function reads go through
+// `canReadOrAdministrate`, which is what makes the admin part true.
+async function fetchUserModelIdsRetainingAccess(
+  auth: Authenticator,
+  pod: SpaceResource
+): Promise<Set<ModelId>> {
+  const podMembers = await pod.fetchDistinctActiveManualGroupMembers(auth);
+  const retainsAccess = new Set(podMembers.map((member) => member.id));
+
+  const { memberships: adminMemberships } =
+    await MembershipResource.getActiveMemberships({
+      workspace: auth.getNonNullableWorkspace(),
+      roles: ["admin"],
+    });
+  for (const membership of adminMemberships) {
+    retainsAccess.add(membership.userId);
+  }
+
+  return retainsAccess;
+}
 
 /**
  * Estimates how much Pod function usage would break if `pod` were restricted.
@@ -31,10 +47,6 @@ export async function getPodRestrictionImpact(
   pod: SpaceResource
 ): Promise<PodRestrictionImpactType> {
   const sandboxFunctions = await SandboxFunctionResource.listBySpace(auth, pod);
-  if (sandboxFunctions.length === 0) {
-    return EMPTY_IMPACT;
-  }
-
   const since = new Date(
     Date.now() - POD_RESTRICTION_IMPACT_WINDOW_DAYS * MS_PER_DAY
   );
@@ -46,20 +58,12 @@ export async function getPodRestrictionImpact(
       since,
     });
 
-  // Who still reaches the Pod once the global group is gone: its own member and editor groups.
-  const podMembers = await pod.fetchDistinctActiveManualGroupMembers(auth);
-  const retainsAccess = new Set(podMembers.map((member) => member.id));
-
-  // Workspace admins administrate every space, so restricting the Pod does not lock them out.
-  // Function reads go through `canReadOrAdministrate`, which is what makes this true.
-  const { memberships: adminMemberships } =
-    await MembershipResource.getActiveMemberships({
-      workspace: auth.getNonNullableWorkspace(),
-      roles: ["admin"],
-    });
-  for (const membership of adminMemberships) {
-    retainsAccess.add(membership.userId);
-  }
+  // Nothing was called, so nothing can break: skip resolving who keeps access. Covers both a Pod
+  // with no functions and one whose functions saw no traffic in the window.
+  const retainsAccess =
+    countsByUserModelId.size === 0
+      ? new Set<ModelId>()
+      : await fetchUserModelIdsRetainingAccess(auth, pod);
 
   let brokenInvocationCount = 0;
   let brokenUserCount = 0;
