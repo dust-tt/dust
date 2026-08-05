@@ -124,7 +124,10 @@ async function resolveToolExecutionMode(
 
 const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
   {
-    create_recommendation: async ({ title, content }, { auth, runContext }) => {
+    create_recommendation: async (
+      { title, content, body, steps, ctaLabel, sourceIcon, sourceLabel },
+      { auth, runContext }
+    ) => {
       const conversationId = isAgentLoopRunContext(runContext)
         ? runContext.conversation.id
         : null;
@@ -146,6 +149,11 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         content,
         conversationId,
         activationPodId: activationPod?.id ?? null,
+        body: body ?? null,
+        steps: steps ?? null,
+        ctaLabel: ctaLabel ?? null,
+        sourceIcon: sourceIcon ?? null,
+        sourceLabel: sourceLabel ?? null,
       });
 
       return new Ok([

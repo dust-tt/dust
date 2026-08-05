@@ -62,7 +62,12 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       Partial<
         Pick<
           CreationAttributes<ActivationRecommendationModel>,
-          "activationPodId"
+          | "activationPodId"
+          | "body"
+          | "steps"
+          | "ctaLabel"
+          | "sourceIcon"
+          | "sourceLabel"
         >
       >
   ): Promise<ActivationRecommendationResource> {
@@ -77,6 +82,11 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       content: blob.content,
       conversationId: blob.conversationId ?? null,
       activationPodId: blob.activationPodId ?? null,
+      body: blob.body ?? null,
+      steps: blob.steps ?? null,
+      ctaLabel: blob.ctaLabel ?? null,
+      sourceIcon: blob.sourceIcon ?? null,
+      sourceLabel: blob.sourceLabel ?? null,
     });
 
     return new this(this.model, rec.get());
@@ -163,13 +173,19 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     return recs.map((rec) => new this(this.model, rec.get()));
   }
 
-  static async listSuggestedByUser(
+  static async listByUserAndStatus(
     auth: Authenticator,
     {
+      status,
       limit = 5,
       sinceDaysAgo,
       spaceModelId,
-    }: { limit?: number; sinceDaysAgo?: number; spaceModelId?: ModelId } = {}
+    }: {
+      status: ActivationRecommendationStatus;
+      limit?: number;
+      sinceDaysAgo?: number;
+      spaceModelId?: ModelId;
+    }
   ): Promise<
     {
       resource: ActivationRecommendationResource;
@@ -181,7 +197,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     const where: WhereOptions<ActivationRecommendationModel> = {
       userId: user.id,
       workspaceId: auth.getNonNullableWorkspace().id,
-      status: "suggested",
+      status,
     };
 
     if (sinceDaysAgo !== undefined) {
@@ -289,6 +305,11 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       status: this.status,
       title: this.title,
       content: this.content,
+      body: this.body,
+      steps: this.steps,
+      ctaLabel: this.ctaLabel,
+      sourceIcon: this.sourceIcon,
+      sourceLabel: this.sourceLabel,
       createdAt: this.createdAt,
     };
   }

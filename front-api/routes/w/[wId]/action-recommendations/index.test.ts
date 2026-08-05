@@ -50,7 +50,13 @@ describe("GET /api/w/:wId/action-recommendations", () => {
       sId: rec.sId,
       title: "Next step",
       content: "Automate your Monday meeting prep",
+      body: null,
+      steps: null,
+      ctaLabel: null,
+      sourceIcon: null,
+      sourceLabel: null,
       conversationId: null,
+      createdAt: expect.any(Number),
     });
   });
 
