@@ -4,6 +4,7 @@ import { InputBarAttachmentsPicker } from "@app/components/assistant/conversatio
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
@@ -60,6 +61,9 @@ interface InputBarButtonsProps {
   // Read-at-submit sink for the model picker; prefer over a change callback
   // when the parent only needs the value at submit time.
   modelSelectionRef?: React.MutableRefObject<ModelSelectionType | undefined>;
+  modelSelectionCommitRef?: React.MutableRefObject<
+    ((selection: Selection) => void) | null
+  >;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
@@ -92,6 +96,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onAgentRemove,
   onMCPServerViewSelect,
   modelSelectionRef,
+  modelSelectionCommitRef,
   onNodeSelect,
   onNodeUnselect,
   onSkillSelect,
@@ -259,6 +264,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       side={conversation ? "top" : "bottom"}
       disabled={isInputDisabled}
       selectionRef={modelSelectionRef}
+      commitApiRef={modelSelectionCommitRef}
     />
   );
 

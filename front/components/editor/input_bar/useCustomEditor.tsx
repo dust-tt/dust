@@ -23,6 +23,7 @@ import {
   createMentionSuggestion,
   mentionPluginKey,
 } from "@app/components/editor/input_bar/mentionSuggestion";
+import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
@@ -338,7 +339,11 @@ export interface CustomEditorProps {
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
+    includePickModelRef: React.RefObject<boolean>;
     attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
+    onModelSelectRef: React.RefObject<
+      ((selection: Selection) => void) | undefined
+    >;
     onNodeSelectRef: React.RefObject<
       ((node: DataSourceViewContentNode) => void) | undefined
     >;
@@ -495,10 +500,12 @@ export const buildEditorExtensions = ({
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
         onDetailsRef: slashSuggestion.onDetailsRef,
+        onModelSelectRef: slashSuggestion.onModelSelectRef,
         onNodeSelectRef: slashSuggestion.onNodeSelectRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
+        includePickModelRef: slashSuggestion.includePickModelRef,
         spaceIdRef: slashSuggestion.spaceIdRef,
       })
     );

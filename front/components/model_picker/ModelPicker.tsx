@@ -70,6 +70,8 @@ export interface ModelPickerProps {
   setStickyModelOverride?: (
     modelSelection: ModelSelectionType | undefined
   ) => void;
+  // Lets keyboard `/` Pick model commit through the same path as the button picker.
+  commitApiRef?: MutableRefObject<((selection: Selection) => void) | null>;
 }
 
 export function ModelPicker({
@@ -86,6 +88,7 @@ export function ModelPicker({
   onSelectionChange,
   stickyModelOverride,
   setStickyModelOverride,
+  commitApiRef,
 }: ModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
   const hasModelsPicker = hasFeature("models_picker");
@@ -184,6 +187,10 @@ export function ModelPicker({
     setUserOverride(selection);
     onSelectionChange?.(selection.toSend);
   };
+
+  if (commitApiRef) {
+    commitApiRef.current = commit;
+  }
 
   // Picking a concrete model (or nudging its effort slider) must keep the menu
   // and its open submenus visible so the effort can still be adjusted. The

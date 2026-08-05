@@ -1,10 +1,14 @@
 import { isInsertKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { isPickModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { Editor, Range } from "@tiptap/core";
 
 export const ATTACH_CONTEXT_SUB_MENU_ID = "attach-context";
+export const PICK_MODEL_SUB_MENU_ID = "pick-model";
 
-export type SlashSubMenuId = typeof ATTACH_CONTEXT_SUB_MENU_ID;
+export type SlashSubMenuId =
+  | typeof ATTACH_CONTEXT_SUB_MENU_ID
+  | typeof PICK_MODEL_SUB_MENU_ID;
 
 export interface SlashMenuStackFrame {
   command: SlashCommand;
@@ -41,6 +45,10 @@ export function createSlashMenuNavigationStorage(): SlashMenuNavigationStorage {
 function getSlashCommandSubMenuId(item: SlashCommand): SlashSubMenuId | null {
   if (isInsertKnowledgeSlashCommand(item)) {
     return ATTACH_CONTEXT_SUB_MENU_ID;
+  }
+
+  if (isPickModelSlashCommand(item)) {
+    return PICK_MODEL_SUB_MENU_ID;
   }
 
   return null;
