@@ -464,21 +464,22 @@ export class FileResource extends BaseResource<FileModel> {
       where: { workspaceId },
     });
 
-    return this.batchDestroyAllForWorkspace(workspaceId);
+    return this.batchDestroyAllForWorkspace(auth);
   }
 
   // A workspace can hold millions of files. Deleting them in a single statement exceeds the
   // Postgres statement timeout, and the aborted transaction rolls back after having written
   // gigabytes of WAL, which stalls every other query on the instance. Batching keeps each
   // statement short and lets the deletion make forward progress across retries.
-  private static async batchDestroyAllForWorkspace(workspaceId: ModelId) {
-    const localLogger = logger.child({ workspaceId });
+  private static async batchDestroyAllForWorkspace(auth: Authenticator) {
+    const owner = auth.getNonNullableWorkspace();
+    const localLogger = logger.child({ workspaceId: owner.id });
     let deletedCount = 0;
 
     for (;;) {
       const batch = await this.model.findAll({
         attributes: ["id"],
-        where: { workspaceId },
+        where: { workspaceId: owner.id },
         limit: BATCH_DESTROY_SIZE,
       });
 
@@ -488,7 +489,7 @@ export class FileResource extends BaseResource<FileModel> {
 
       deletedCount += await this.model.destroy({
         where: {
-          workspaceId,
+          workspaceId: owner.id,
           id: batch.map((file) => file.id),
         },
       });
