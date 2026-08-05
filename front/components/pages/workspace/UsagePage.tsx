@@ -997,7 +997,21 @@ export function UsagePage() {
           variant="outline"
           label={
             decisionFilter === "approved"
-              ? "Approved"
+          label={
+            (() => {
+              switch (decisionFilter) {
+                case "approved":
+                  return "Approved";
+                case "denied":
+                  return "Denied";
+                case null:
+                  return "All decisions";
+                default:
+                  assertNeverAndIgnore(decisionFilter);
+                  return "All decisions";
+              }
+            })()
+          }
               : decisionFilter === "denied"
                 ? "Denied"
                 : "All decisions"
