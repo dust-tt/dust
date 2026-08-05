@@ -381,6 +381,7 @@ export class ConversationFactory {
     version = 0,
     resolvedModel = null,
     modelResolutionMethod = null,
+    runIds = null,
   }: {
     workspace: WorkspaceType;
     conversationId: ModelId;
@@ -391,6 +392,7 @@ export class ConversationFactory {
     version?: number;
     resolvedModel?: ResolvedRequestedModel | null;
     modelResolutionMethod?: ModelResolutionMethodType | null;
+    runIds?: string[] | null;
   }): Promise<MessageModel> {
     const agentMessageRow = await AgentMessageModel.create({
       status: "created",
@@ -403,6 +405,7 @@ export class ConversationFactory {
       resolvedModelId: resolvedModel?.modelId ?? null,
       resolvedReasoningEffort: resolvedModel?.reasoningEffort ?? null,
       modelResolutionMethod,
+      runIds,
     });
 
     return MessageModel.create({

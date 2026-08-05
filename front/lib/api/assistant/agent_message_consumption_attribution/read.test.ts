@@ -12,6 +12,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
 const BILLED_CREDITS = 10;
+const PREVIOUS_ATTRIBUTION_VERSION =
+  AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
 const INPUT_GROSS_CREDITS_MICRO = 2_000_000;
 const OUTPUT_GROSS_CREDITS_MICRO = 1_000_000;
 const REASONING_GROSS_CREDITS_MICRO = 1_000_000;
@@ -256,7 +258,40 @@ describe("getAgentMessageConsumption", () => {
     ).resolves.toEqual({ billedCredits: BILLED_CREDITS, details: null });
   });
 
-  it("withholds details when the active rows do not cover every current run bucket", async () => {
+  it("falls back to the newest complete previous attribution", async () => {
+    const { auth, conversation, runUsageModelId, agentMessage } =
+      await setupMessage();
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: PREVIOUS_ATTRIBUTION_VERSION,
+      records: modelRecords(runUsageModelId),
+      pendingToolItems: [],
+    });
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: modelRecords(runUsageModelId).filter(
+        (record) => record.itemType !== "output"
+      ),
+      pendingToolItems: [],
+    });
+
+    const consumption = await getAgentMessageConsumption(auth, {
+      conversation,
+      agentMessageId: agentMessage.sId,
+    });
+
+    expect(consumption?.details).toMatchObject({
+      attributionVersion: PREVIOUS_ATTRIBUTION_VERSION,
+      agentWorkCredits: BILLED_CREDITS,
+      tools: [],
+    });
+  });
+
+  it("withholds details when no version covers every current run bucket", async () => {
     const { auth, conversation, runUsageModelId, agentMessage } =
       await setupMessage();
 

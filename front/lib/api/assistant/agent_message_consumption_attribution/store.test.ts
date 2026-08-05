@@ -96,7 +96,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       );
 
@@ -145,7 +145,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       );
 
@@ -187,7 +187,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       );
 
@@ -286,7 +286,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       );
     const toolItemByActionId = new Map(
@@ -382,7 +382,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       );
     const toolItem = items.find((item) => item.itemType === "tool");
@@ -419,7 +419,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       );
 
@@ -482,7 +482,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       )
     ).filter((item) => item.itemType === "tool");
@@ -538,7 +538,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       )
     ).filter((item) => item.itemType === "tool");
@@ -598,7 +598,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       )
     ).filter((item) => item.itemType === "tool");
@@ -643,7 +643,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         auth,
         {
           agentMessageModelIds: [agentMessage.agentMessageId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         }
       );
 

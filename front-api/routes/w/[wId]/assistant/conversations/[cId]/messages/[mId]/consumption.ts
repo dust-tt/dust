@@ -61,7 +61,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                 details:
  *                   type: object
  *                   nullable: true
- *                   description: Additive attribution reconciled to the bill through model input rows. Null when the active attribution version is unavailable or incomplete.
+ *                   description: Additive attribution reconciled to the bill through model input rows, using the newest complete stored attribution version. Null when no stored version is complete.
  *                   required:
  *                     - attributionVersion
  *                     - agentWorkCredits
@@ -69,6 +69,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                   properties:
  *                     attributionVersion:
  *                       type: integer
+ *                       description: Attribution version used for this breakdown.
  *                     agentWorkCredits:
  *                       type: number
  *                       description: Agent work after assigning billing reconciliation exclusively to model input rows.

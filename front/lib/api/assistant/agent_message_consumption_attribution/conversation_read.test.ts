@@ -12,6 +12,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
 const BILLED_CREDITS = 10;
+const PREVIOUS_ATTRIBUTION_VERSION =
+  AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
 
 async function setupMessage() {
   const { authenticator: auth, workspace } = await createResourceTest({});
@@ -129,7 +131,6 @@ describe("getConversationConsumption", () => {
     expect(consumption).toMatchObject({
       billedCredits: BILLED_CREDITS,
       details: {
-        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         agentWorkCredits: 5,
         tools: [
           {
@@ -153,6 +154,75 @@ describe("getConversationConsumption", () => {
           expect.objectContaining({
             billedCredits: BILLED_CREDITS,
             agentWorkCredits: 5,
+          }),
+        ],
+      },
+    });
+  });
+
+  it("aggregates messages using their newest complete attribution", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      runUsageModelId,
+      agentMessage,
+      agentConfiguration,
+    } = await setupMessage();
+    const { run: previousRun, runUsageModelId: previousRunUsageModelId } =
+      await RunFactory.createWithUsage(auth, {
+        inputTokens: 100,
+        outputTokens: 20,
+        reasoningTokens: 5,
+      });
+    const previousMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agentConfiguration.sId,
+        runIds: [previousRun.dustRunId],
+      });
+    if (!previousMessage.agentMessageId) {
+      throw new Error("Previous-version agent message was not created.");
+    }
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: previousMessage.agentMessageId,
+      costCredits: BILLED_CREDITS,
+    });
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: previousMessage.agentMessageId,
+      status: "succeeded",
+    });
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: modelRecords(runUsageModelId),
+      pendingToolItems: [],
+    });
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: previousMessage.agentMessageId,
+      attributionVersion: PREVIOUS_ATTRIBUTION_VERSION,
+      records: modelRecords(previousRunUsageModelId),
+      pendingToolItems: [],
+    });
+
+    const consumption = await getConversationConsumption(auth, {
+      conversation,
+    });
+
+    expect(consumption).toMatchObject({
+      billedCredits: BILLED_CREDITS * 2,
+      details: {
+        agentWorkCredits: BILLED_CREDITS * 2,
+        agents: [
+          expect.objectContaining({
+            billedCredits: BILLED_CREDITS * 2,
+            agentWorkCredits: BILLED_CREDITS * 2,
           }),
         ],
       },

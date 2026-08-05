@@ -446,11 +446,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     auth: Authenticator,
     {
       agentMessageModelIds,
-      attributionVersion,
+      maxAttributionVersion,
       transaction,
     }: {
       agentMessageModelIds: ModelId[];
-      attributionVersion: number;
+      maxAttributionVersion: number;
       transaction?: Transaction;
     }
   ): Promise<AgentMessageConsumptionItemResource[]> {
@@ -462,7 +462,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         agentMessageId: { [Op.in]: agentMessageModelIds },
-        attributionVersion,
+        attributionVersion: { [Op.lte]: maxAttributionVersion },
       },
       order: [
         ["agentMessageId", "ASC"],
@@ -486,10 +486,10 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     auth: Authenticator,
     {
       conversation,
-      attributionVersion,
+      maxAttributionVersion,
     }: {
       conversation: ConversationResource;
-      attributionVersion: number;
+      maxAttributionVersion: number;
     }
   ): Promise<{
     messages: ConversationConsumptionMessageFacts[];
@@ -527,7 +527,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         where: {
           workspaceId,
           conversationId: conversation.id,
-          attributionVersion,
+          attributionVersion: { [Op.lte]: maxAttributionVersion },
         },
         order: [
           ["agentMessageId", "ASC"],
@@ -584,11 +584,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     {
       conversation,
       agentMessageId,
-      attributionVersion,
+      maxAttributionVersion,
     }: {
       conversation: ConversationResource;
       agentMessageId: string;
-      attributionVersion: number;
+      maxAttributionVersion: number;
     }
   ): Promise<{
     billedCredits: number | null;
@@ -605,7 +605,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     const [items, actions] = await Promise.all([
       this.listByAgentMessageModelIds(auth, {
         agentMessageModelIds: [agentMessage.id],
-        attributionVersion,
+        maxAttributionVersion,
       }),
       AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessage.id]),
     ]);

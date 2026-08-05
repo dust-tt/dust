@@ -7067,7 +7067,7 @@
                     "details": {
                       "type": "object",
                       "nullable": true,
-                      "description": "Additive attribution reconciled to the bill through model input rows. Null when the active attribution version is unavailable or incomplete.",
+                      "description": "Additive attribution reconciled to the bill through model input rows, using the newest complete stored attribution version. Null when no stored version is complete.",
                       "required": [
                         "attributionVersion",
                         "agentWorkCredits",
@@ -7075,7 +7075,8 @@
                       ],
                       "properties": {
                         "attributionVersion": {
-                          "type": "integer"
+                          "type": "integer",
+                          "description": "Attribution version used for this breakdown."
                         },
                         "agentWorkCredits": {
                           "type": "number",
@@ -10541,18 +10542,14 @@
       },
       "PrivateConversationConsumptionDetails": {
         "type": "object",
-        "description": "Additive attribution reconciled to the authoritative bill exclusively through model input rows. Null when any billed message lacks complete attribution for the active version.",
+        "description": "Additive attribution reconciled to the authoritative bill exclusively through model input rows. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.",
         "required": [
-          "attributionVersion",
           "agentWorkCredits",
           "tools",
           "models",
           "agents"
         ],
         "properties": {
-          "attributionVersion": {
-            "type": "integer"
-          },
           "agentWorkCredits": {
             "type": "number",
             "description": "Agent work after assigning billing reconciliation exclusively to model input rows."

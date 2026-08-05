@@ -29,7 +29,6 @@ function makeTool(
 describe("ConversationCreditUsageBreakdown", () => {
   it("shows the largest tools and groups the rest", () => {
     const details: ConversationConsumptionDetails = {
-      attributionVersion: 3,
       agentWorkCredits: 4.5,
       tools: [
         makeTool("files", "File tool", 2),
@@ -86,7 +85,6 @@ describe("ConversationCreditUsageBreakdown", () => {
       models: [],
     };
     const details: ConversationConsumptionDetails = {
-      attributionVersion: 3,
       agentWorkCredits: 20,
       tools: [],
       models: [],
