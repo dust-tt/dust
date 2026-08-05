@@ -11,7 +11,10 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
-import type { MembershipSeatType, UserCreditState } from "@app/types/memberships";
+import type {
+  MembershipSeatType,
+  UserCreditState,
+} from "@app/types/memberships";
 import type { Fetcher } from "swr";
 
 export type PokeCreditsData = {

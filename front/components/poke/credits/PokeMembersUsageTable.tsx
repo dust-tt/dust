@@ -8,13 +8,13 @@ import { formatCredits } from "@app/lib/client/credits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
 import { usePokeMembersUsage } from "@app/poke/swr/credits";
-import {
-  MEMBERSHIP_SEAT_TYPES,
-  USER_CREDIT_STATES,
-} from "@app/types/memberships";
 import type {
   MembershipSeatType,
   UserCreditState,
+} from "@app/types/memberships";
+import {
+  MEMBERSHIP_SEAT_TYPES,
+  USER_CREDIT_STATES,
 } from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
 import {
