@@ -1,12 +1,11 @@
 import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { AvatarNameCell } from "@app/components/workspace/analytics/creditsTableCells";
-import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
-import { useDebounce } from "@app/hooks/useDebounce";
 import type {
   ConsumptionTopDimension,
   ConsumptionTopRow,
-  ConsumptionTopUnit,
-} from "@app/lib/api/analytics/consumption/top";
+} from "@app/hooks/useConsumptionTop";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { formatCredits } from "@app/lib/client/credits";
 import {
   cn,
@@ -20,20 +19,53 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
-// The rankings this table can show. Skills are intentionally absent for now:
-// the top endpoint does not break down by skill yet (a tool call can be enabled
-// by several skills, which double-counts).
+// The rankings this table can show, one tab per `top-*` endpoint. Tools and
+// skills average their cost over invocations rather than messages: a single
+// message can call the same tool many times, so a per-message figure would say
+// nothing about the tool itself.
 const DIMENSION_TABS: {
   dimension: ConsumptionTopDimension;
   label: string;
   // Agents and users have a picture; the rest are labels only.
   hasAvatar: boolean;
+  avgLabel: string;
 }[] = [
-  { dimension: "agent", label: "Agents", hasAvatar: true },
-  { dimension: "user", label: "Members", hasAvatar: true },
-  { dimension: "model", label: "Models", hasAvatar: false },
-  { dimension: "tool", label: "Tools", hasAvatar: false },
-  { dimension: "source", label: "Sources", hasAvatar: false },
+  {
+    dimension: "agent",
+    label: "Agents",
+    hasAvatar: true,
+    avgLabel: "Cost / message",
+  },
+  {
+    dimension: "user",
+    label: "Members",
+    hasAvatar: true,
+    avgLabel: "Cost / message",
+  },
+  {
+    dimension: "model",
+    label: "Models",
+    hasAvatar: false,
+    avgLabel: "Cost / message",
+  },
+  {
+    dimension: "tool",
+    label: "Tools",
+    hasAvatar: false,
+    avgLabel: "Cost / invocation",
+  },
+  {
+    dimension: "skill",
+    label: "Skills",
+    hasAvatar: false,
+    avgLabel: "Cost / invocation",
+  },
+  {
+    dimension: "source",
+    label: "Sources",
+    hasAvatar: false,
+    avgLabel: "Cost / message",
+  },
 ];
 
 // Enough to make the per-tab search useful without paging; the table shows a
@@ -46,11 +78,6 @@ const TOP_LIMIT = 25;
 type AttributionRowData = ConsumptionTopRow & {
   onClick?: () => void;
   onDoubleClick?: () => void;
-};
-
-const UNIT_LABEL: Record<ConsumptionTopUnit, string> = {
-  message: "Cost / message",
-  tool_call: "Cost / tool call",
 };
 
 function CostShareCell({ share }: { share: number }) {
@@ -72,11 +99,11 @@ function CostShareCell({ share }: { share: number }) {
 
 function buildColumns({
   hasAvatar,
-  unit,
+  avgLabel,
   totalCredits,
 }: {
   hasAvatar: boolean;
-  unit: ConsumptionTopUnit;
+  avgLabel: string;
   totalCredits: number;
 }): ColumnDef<AttributionRowData>[] {
   return [
@@ -124,13 +151,13 @@ function buildColumns({
       ),
     },
     {
-      id: "avgCreditPerUnit",
-      accessorKey: "avgCreditPerUnit",
-      header: UNIT_LABEL[unit],
+      id: "avgCredits",
+      accessorKey: "avgCredits",
+      header: avgLabel,
       meta: { sizeRatio: 22 },
       cell: (info) => (
         <DataTable.BasicCellContent
-          label={formatCredits(info.row.original.avgCreditPerUnit)}
+          label={formatCredits(info.row.original.avgCredits)}
         />
       ),
     },
@@ -141,6 +168,7 @@ interface AttributionRowsProps {
   workspaceId: string;
   dimension: ConsumptionTopDimension;
   hasAvatar: boolean;
+  avgLabel: string;
   period: ConsumptionPeriodSelection;
   search: string;
 }
@@ -149,10 +177,16 @@ function AttributionRows({
   workspaceId,
   dimension,
   hasAvatar,
+  avgLabel,
   period,
   search,
 }: AttributionRowsProps) {
-  const { top, isTopLoading, isTopError } = useConsumptionTop({
+  const {
+    rows: allRows,
+    totalCredits,
+    isTopLoading,
+    isTopError,
+  } = useConsumptionTop({
     workspaceId,
     dimension,
     period,
@@ -162,21 +196,15 @@ function AttributionRows({
   // Client-side filter over the loaded ranking. A row outside the top
   // TOP_LIMIT will not appear — the endpoint has no server-side search yet.
   const rows = useMemo(() => {
-    const all = top?.rows ?? [];
     const needle = search.trim().toLowerCase();
     return needle
-      ? all.filter((row) => row.name.toLowerCase().includes(needle))
-      : all;
-  }, [top, search]);
+      ? allRows.filter((row) => row.name.toLowerCase().includes(needle))
+      : allRows;
+  }, [allRows, search]);
 
   const columns = useMemo(
-    () =>
-      buildColumns({
-        hasAvatar,
-        unit: top?.unit ?? "message",
-        totalCredits: top?.totalCredits ?? 0,
-      }),
-    [hasAvatar, top?.unit, top?.totalCredits]
+    () => buildColumns({ hasAvatar, avgLabel, totalCredits }),
+    [hasAvatar, avgLabel, totalCredits]
   );
 
   if (isTopLoading) {
@@ -267,6 +295,7 @@ export function ConsumptionAttributionTable({
           workspaceId={workspaceId}
           dimension={dimension}
           hasAvatar={activeTab?.hasAvatar ?? false}
+          avgLabel={activeTab?.avgLabel ?? "Cost / message"}
           period={period}
           search={debouncedValue}
         />
