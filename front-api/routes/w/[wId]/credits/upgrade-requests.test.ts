@@ -6,9 +6,6 @@ import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it, vi } from "vitest";
 
-// Stub Elasticsearch-backed search with a SQL implementation so the History
-// tab's requester search doesn't depend on a running ES cluster — same
-// approach as members/search.test.ts.
 vi.mock(import("@app/lib/user_search/search"), async (importOriginal) => {
   const mod = await importOriginal();
   return {

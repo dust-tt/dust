@@ -194,9 +194,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     });
   }
 
-  // Resolved requests, most recent first. `decision` narrows to a single
-  // resolution outcome; `userModelIds`, when provided, restricts to
-  // requesters matching the History tab's search bar.
+  // Resolved requests, most recent first.
   static async listResolvedByWorkspace(
     auth: Authenticator,
     {

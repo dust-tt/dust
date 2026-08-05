@@ -17,9 +17,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useCallback, useEffect, useState } from "react";
 import type { Fetcher } from "swr";
 
-// The History tab's decision filter — restricts to a single resolution
-// outcome. Undefined/omitted returns every resolved request (approved and
-// denied).
 export type UpgradeRequestDecisionFilter = Exclude<
   MembershipUpgradeRequestStatus,
   "pending"
@@ -29,7 +26,7 @@ function upgradeRequestsUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/credits/upgrade-requests`;
 }
 
-// CSV download link for the resolved-requests History tab, filtered to match what's on screen.
+// CSV download link for the resolved-requests, also apply filtering
 export function upgradeRequestsHistoryCsvUrl(
   workspaceId: string,
   {
@@ -126,9 +123,7 @@ export function useUpgradeRequests({
 export const UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
 
 // Admin-only: resolved (approved/denied) upgrade requests, for the History
-// tab. Disabled until that tab is visible. `searchTerm` mirrors the Members
-// tab's search bar (debounced 300ms, same as `useMembersUsage`) and
-// `decision` mirrors its seat-type/group filters.
+// tab. Disabled until that tab is visible.
 export function useUpgradeRequestsHistory({
   workspaceId,
   pageIndex,

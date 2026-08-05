@@ -249,7 +249,7 @@ export async function listPendingUpgradeRequests(
 // Admin-only: resolved requests, for the history view, paginated.
 export const RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
 
-// The requester isn't joined in SQL (see `baseFetch`), so a name/email search
+// The requester isn't joined in SQL so a name/email search
 // resolves matching users via the user search index first, then restricts the
 // resource query to their ids. Returns `null` when the search matched no one,
 // meaning callers should return an empty result rather than an unfiltered one.

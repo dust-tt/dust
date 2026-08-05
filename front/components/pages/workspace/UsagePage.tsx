@@ -218,8 +218,7 @@ export function UsagePage() {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
-  // The decision filter is applied server-side before pagination, so reset to
-  // the first page of the History tab whenever it changes.
+  // The decision filter is applied server-side before pagination
   const handleSetDecisionFilter = useCallback(
     (next: UpgradeRequestDecisionFilter | null) => {
       setDecisionFilter(next);
@@ -228,9 +227,7 @@ export function UsagePage() {
     []
   );
 
-  // Name/email search is also applied server-side before pagination, so reset
-  // to the first page whenever the search term changes. It feeds both the
-  // Members table and the History tab, so both paginations reset together.
+  // Name/email search is also applied server-side before pagination
   const handleSetSearchTerm = useCallback((next: string) => {
     setSearchTerm(next);
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
@@ -997,21 +994,7 @@ export function UsagePage() {
           variant="outline"
           label={
             decisionFilter === "approved"
-          label={
-            (() => {
-              switch (decisionFilter) {
-                case "approved":
-                  return "Approved";
-                case "denied":
-                  return "Denied";
-                case null:
-                  return "All decisions";
-                default:
-                  assertNeverAndIgnore(decisionFilter);
-                  return "All decisions";
-              }
-            })()
-          }
+              ? "Approved"
               : decisionFilter === "denied"
                 ? "Denied"
                 : "All decisions"
