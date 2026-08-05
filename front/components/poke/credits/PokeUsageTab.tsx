@@ -2,6 +2,7 @@ import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
 import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart";
 import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersUsageTable";
+import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import type {
   PokeCreditUsageConfig,
@@ -309,6 +310,7 @@ export function PokeUsageTab({
       />
       <PokeDefaultAlertsCard defaultAlerts={defaultAlerts} />
       <PokeCreditPoolCard owner={owner} />
+      <PokeTopUpsHistoryTable owner={owner} />
       <PokeMembersUsageTable owner={owner} />
       {billingCycleStartDay && (
         <PokeAwuUsageFromAnalyticsChart

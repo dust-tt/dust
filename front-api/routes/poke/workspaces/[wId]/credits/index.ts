@@ -5,6 +5,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import awuPoolSummary from "./awu-pool-summary";
 import membersUsage from "./members-usage";
+import topUps from "./top-ups";
 
 // Mounted at /api/poke/workspaces/:wId/credits.
 const app = pokeApp();
@@ -35,5 +36,6 @@ app.get("/", async (ctx): HandlerResult<PokeListCreditsResponseBody> => {
 
 app.route("/awu-pool-summary", awuPoolSummary);
 app.route("/members-usage", membersUsage);
+app.route("/top-ups", topUps);
 
 export default app;
