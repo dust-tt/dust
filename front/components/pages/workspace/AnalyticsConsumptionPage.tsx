@@ -1,3 +1,4 @@
+import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
@@ -69,6 +70,7 @@ export function AnalyticsConsumptionPage() {
         <SafeSuspense fallback={<ChartFallback />}>
           <ConsumptionChart workspaceId={owner.sId} period={period} />
         </SafeSuspense>
+        <ConsumptionAttributionTable workspaceId={owner.sId} period={period} />
       </div>
     </Page.Vertical>
   );
