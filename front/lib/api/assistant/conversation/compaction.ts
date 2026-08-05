@@ -1,8 +1,5 @@
-import {
-  getConversationRankVersionLock,
-  getNextConversationMessageRank,
-} from "@app/lib/api/assistant/conversation/lock";
 import { createCompactionMessage } from "@app/lib/api/assistant/conversation/messages";
+import { getNextConversationMessageRank } from "@app/lib/api/assistant/conversation/rank";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import { CompactionMessageModel } from "@app/lib/models/agent/conversation";
@@ -23,9 +20,9 @@ import { Err, Ok } from "@app/types/shared/result";
 /**
  * Create a CompactionMessage in the conversation and launch the compaction workflow.
  *
- * The CompactionMessage is created with status "created" inside the conversation advisory lock,
- * ensuring it's serialized with other conversation operations. The workflow is launched
- * fire-and-forget after the transaction commits.
+ * The CompactionMessage is created with status "created". At most one may be running per
+ * conversation, which the `compaction_messages_one_running_per_conversation` partial unique index
+ * enforces. The workflow is launched fire-and-forget after the transaction commits.
  */
 export async function compactConversation(
   auth: Authenticator,
@@ -94,8 +91,12 @@ export async function compactConversation(
   }
 
   const { compactionMessage } = await withRetriedTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
-
+    // This check is not atomic with the insert below, and it does not need to be: the
+    // `compaction_messages_one_running_per_conversation` partial unique index is what actually
+    // enforces exclusivity. If a concurrent compaction commits between the two, the insert raises
+    // a unique violation, the transaction retries, and this re-read then sees the winner and
+    // returns the 409 below. No lock, so no per-conversation serialization and no lock ordering to
+    // reconcile with the message paths.
     const inFlight = await conversationResource.getInFlightMessages(auth, {
       transaction: t,
     });
@@ -179,8 +180,6 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
   const owner = auth.getNonNullableWorkspace();
 
   await withRetriedTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
-
     await CompactionMessageModel.update(
       { status, content },
       {

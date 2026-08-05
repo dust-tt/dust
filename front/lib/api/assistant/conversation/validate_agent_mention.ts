@@ -5,13 +5,10 @@ import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
-  getConversationRankVersionLock,
-  getNextConversationMessageRank,
-} from "@app/lib/api/assistant/conversation/lock";
-import {
   createAgentMessages,
   resolveModelForMentionedAgent,
 } from "@app/lib/api/assistant/conversation/messages";
+import { getNextConversationMessageRank } from "@app/lib/api/assistant/conversation/rank";
 import { publishMessageEventsOnMessagePostOrEdit } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import { MentionModel } from "@app/lib/models/agent/conversation";
@@ -240,8 +237,6 @@ export async function validateAgentMention(
 
   try {
     const created = await withRetriedTransaction(async (t) => {
-      await getConversationRankVersionLock(auth, conversation, t);
-
       const mentionModels = await MentionModel.findAll({
         where: {
           workspaceId: conversation.owner.id,

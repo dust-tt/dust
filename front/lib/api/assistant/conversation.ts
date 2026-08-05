@@ -9,10 +9,6 @@ import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
-  getConversationRankVersionLock,
-  getNextConversationMessageRank,
-} from "@app/lib/api/assistant/conversation/lock";
-import {
   createUserMentions,
   resolveUserMentions,
 } from "@app/lib/api/assistant/conversation/mentions";
@@ -27,6 +23,7 @@ import {
   isAgentRestrictedBySpaceUsage,
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
+import { getNextConversationMessageRank } from "@app/lib/api/assistant/conversation/rank";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
@@ -834,11 +831,6 @@ export async function postUserMessage(
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withRetriedTransaction(
     async (t) => {
-      // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
-      // this transaction, otherwise this other query will be competing for a connection in the database
-      // connection pool, resulting in a deadlock.
-      await getConversationRankVersionLock(auth, conversation, t);
-
       // We clear the hasError flag of a conversation when posting a new user message.
       if (conversation.hasError) {
         await ConversationResource.clearHasError(
@@ -865,15 +857,22 @@ export async function postUserMessage(
         authMethod: auth.authMethod(),
       };
 
-      // Re-read the agent message status inside the critical section of the advisory lock. Between
-      // the initial check and acquiring the lock, the agent loop may have finalized — if so, clear
-      // runningAgentMessage so we fall through to the normal flow.
+      // Lock the running agent message row before deciding to go pending. This is what keeps the
+      // steering handshake honest now that there is no conversation-wide lock: finalize flips the
+      // status with an `UPDATE ... WHERE status = 'created'`, which takes the same row lock, so
+      // exactly one of the two goes first. Whoever loses sees the other's committed state.
+      //
+      // If we win, finalize blocks until we commit and then finds the pending message to promote.
+      // If finalize wins, this re-read returns a status other than "created" and we clear
+      // runningAgentMessage to fall through to the normal flow. Without the lock both sides read a
+      // stale status, both commit, and the pending message is stranded with nobody to promote it.
       if (runningAgentMessage) {
         const agentMessageRow = await AgentMessageModel.findOne({
           where: {
             id: runningAgentMessage.agentMessageId,
             workspaceId: owner.id,
           },
+          lock: t.LOCK.UPDATE,
           transaction: t,
         });
 
@@ -1245,11 +1244,6 @@ export async function editUserMessage(
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
     const result = await withRetriedTransaction(async (t) => {
-      // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
-      // this transaction, otherwise this other query will be competing for a connection in the database
-      // connection pool, resulting in a deadlock.
-      await getConversationRankVersionLock(auth, conversation, t);
-
       const messageRow = await MessageModel.findOne({
         where: {
           sId: message.sId,
@@ -1820,8 +1814,6 @@ export async function retryAgentMessage(
   } | null = null;
   try {
     agentMessageResult = await withRetriedTransaction(async (t) => {
-      await getConversationRankVersionLock(auth, conversation, t);
-
       // We clear the hasError flag of a conversation when retrying an agent message.
       if (conversation.hasError) {
         await ConversationResource.clearHasError(
@@ -1999,8 +1991,6 @@ export async function postNewContentFragment(
 
         if (!alreadyPresent) {
           await withRetriedTransaction(async (t) => {
-            await getConversationRankVersionLock(auth, conversation, t);
-
             const nextMessageRank = await getNextConversationMessageRank(auth, {
               conversation,
               transaction: t,
@@ -2067,8 +2057,6 @@ export async function postNewContentFragment(
 
   const { contentFragment, messageRow } = await withRetriedTransaction(
     async (t) => {
-      await getConversationRankVersionLock(auth, conversation, t);
-
       const fullBlob = {
         ...cfBlobRes.value,
         userId: auth.user()?.id,
@@ -2402,8 +2390,6 @@ export async function softDeleteAgentMessage(
   }
 
   const { agentMessages } = await withRetriedTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
-
     return createAgentMessages(auth, {
       conversation,
       metadata: {
@@ -3271,8 +3257,6 @@ export async function updateAgentMessageWithFinalStatus(
     deniedActions,
     skippedTransition,
   } = await withRetriedTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
-
     // Only transition from "created": finalization is single-shot. A late terminal event from an
     // orphaned activity (e.g. an LLM call still running after an interrupt) must not overwrite
     // the final status nor re-run the pending-messages promotion below, which would spawn a

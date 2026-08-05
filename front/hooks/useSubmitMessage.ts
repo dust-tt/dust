@@ -14,9 +14,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
-// Bounded concurrency for content fragment POSTs: each grabs a per-conversation advisory lock
-// (getConversationRankVersionLock) that serializes inserts, so posting them unbounded races the
-// lock and times out (SequelizeDatabaseError).
+// Bounded concurrency for content fragment POSTs: they all allocate `max(rank) + 1` in the same
+// conversation, so concurrent inserts collide on the (rank, version) unique index and get retried
+// server-side. Posting them unbounded turns that into a retry storm.
 const CONTENT_FRAGMENT_POST_CONCURRENCY = 8;
 
 export function useSubmitMessage({
