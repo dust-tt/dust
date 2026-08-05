@@ -74,16 +74,14 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         ),
       executionMode: z
         .enum(SANDBOX_FUNCTION_EXECUTION_MODES)
-        .optional()
         .describe(
           "`fast` runs synchronously and returns in a fraction of the time, but cannot call Dust " +
             "tools through `dsbx tools`. It can still read and write pod state, run local " +
             "binaries and make outbound HTTP calls, though those count against its execution " +
-            "ceiling. `durable` (the default) is for a function that calls `dsbx tools`, which " +
-            "may wait on the user for approval or authentication. Keep the functions a Frame " +
-            "calls on user interaction or on a poll `fast`, and isolate `dsbx tools` calls in " +
-            "their own `durable` functions. Restate this on every publish: a re-publish that " +
-            "omits it goes back to `durable`."
+            "ceiling. `durable` is for a function that calls `dsbx tools`, which may wait on the " +
+            "user for approval or authentication. Keep the functions a Frame calls on user " +
+            "interaction or on a poll `fast`, and isolate `dsbx tools` calls in their own " +
+            "`durable` functions."
         ),
     },
     stake: "low",

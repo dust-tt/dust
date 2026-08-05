@@ -141,15 +141,48 @@ are available under the same substitution rules as the Computer.
 Computer: shell out to \`dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...\` and parse its
 stdout (\`{ content, isError }\`) for the result.
 Run \`dsbx tools --help\` from the Computer to explore available
-servers and tools before writing the function.
+servers and tools before writing the function. A function that calls \`dsbx tools\` must be
+published as \`durable\`, see below.
+
+#### Fast and durable functions
+
+Every function is published in one of two execution modes, and which one it needs shapes how you
+split functions up.
+
+- \`fast\`: runs synchronously and returns several times quicker, but **cannot call Dust tools**:
+  \`dsbx tools\` is refused inside it. Everything else still works, including Pod state, local
+  binaries and outbound HTTP calls, but those count against the invocation's execution ceiling, so
+  a fast function that waits on a slow endpoint will fail rather than return late.
+- \`durable\`: required for any function that calls \`dsbx tools\`. A tool call can wait on the user
+  for approval or authentication, for as long as they take, so the invocation runs in the
+  background and its result reaches the caller when it is ready.
+
+So the shape of your functions is the real decision:
+
+- The mode follows one question: does the function call \`dsbx tools\`? If it does it is \`durable\`,
+  if it does not it is \`fast\`. You do not get to choose that, but you do choose how to arrange
+  functions, and the aim is that the paths a Frame polls land on the fast side.
+- When a path the Frame polls needs data from an external system, do not fetch it inline and make
+  the whole path \`durable\`. Split it: a \`durable\` function calls \`dsbx tools\` and writes what it
+  gets into a database, and a \`fast\` function serves that database to the Frame. The Frame keeps
+  polling at full speed and the data refreshes on its own schedule, or on an explicit user action.
+- Some paths are \`durable\` and that is correct: a read that must be live on every call, or an
+  interaction that *is* a tool call, like sending a message to a teammate. Reach for the split
+  above when the data can tolerate being a little stale, not when it cannot.
+- Publishing a function that calls \`dsbx tools\` as \`fast\` is a bug: its tool call is refused at
+  run time and the invocation fails.
+
+The Frame API is identical for both, but a \`durable\` call takes visibly longer, so give it a
+loading state.
 
 #### Publishing, discovering, and invoking
 
-Once the source is on the Pod, use \`${toolName("publish")}\` to build it. Publishing bundles and
-type-checks the source on the Computer and extracts the input and output JSON schemas from the
-\`schema\` export. Publishing again under the same name replaces the previous version. The stored
-bundle is owned by the platform and runs from a read-only mount, so a published function can be
-executed but never overwritten from within the Computer.
+Once the source is on the Pod, use \`${toolName("publish")}\` to build it. It requires you to state
+\`executionMode\` on every publish. Publishing bundles and type-checks the source on the Computer
+and extracts the input and output JSON schemas from the \`schema\` export. Publishing again under
+the same name replaces the previous version. The stored bundle is owned by the platform and runs
+from a read-only mount, so a published function can be executed but never overwritten from within
+the Computer.
 
 Use \`${toolName("list")}\` and \`${toolName("get")}\` to see what the Pod has already
 published and to inspect a function's contract before relying on it or publishing a near-duplicate.
