@@ -35,6 +35,7 @@ import type { CustomEditorProps } from "@app/components/editor/input_bar/useCust
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
+import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
@@ -333,8 +334,12 @@ const InputBarContainer = ({
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
   const clientType = useClientType();
-  const { selectedSingleAgent, setSelectedSingleAgent, isLoadingGoTemplate } =
-    useContext(InputBarContext);
+  const {
+    selectedSingleAgent,
+    setSelectedSingleAgent,
+    isLoadingGoTemplate,
+    setStickyModelOverride,
+  } = useContext(InputBarContext);
 
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
   const canSubmitEmpty = !!selectedSingleAgent;
@@ -420,6 +425,27 @@ const InputBarContainer = ({
   onNodeSelectRef.current = onNodeSelect;
   const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
   includeAttachKnowledgeRef.current = actions.includes("attachment");
+  const { hasFeature } = useFeatureFlags();
+  const includePickModelRef = useRef(false);
+  includePickModelRef.current =
+    hasFeature("models_picker") && actions.includes("model-picker");
+  const modelSelectionCommitRef = useRef<
+    ((selection: Selection) => void) | null
+  >(null);
+  const onModelSelectRef = useRef<((selection: Selection) => void) | undefined>(
+    undefined
+  );
+  onModelSelectRef.current = (selection: Selection) => {
+    if (modelSelectionCommitRef.current) {
+      modelSelectionCommitRef.current(selection);
+      return;
+    }
+    // Fallback when the toolbar picker isn't mounted yet.
+    setStickyModelOverride(selection.toSend);
+    if (modelSelectionRef) {
+      modelSelectionRef.current = selection.toSend;
+    }
+  };
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -767,7 +793,9 @@ const InputBarContainer = ({
       selectedMCPServerViewIdsRef,
       slashCommandsRef,
       includeAttachKnowledgeRef,
+      includePickModelRef,
       attachedNodesRef,
+      onModelSelectRef,
       onNodeSelectRef,
       spaceIdRef,
     },
@@ -956,7 +984,6 @@ const InputBarContainer = ({
     });
   }, [attachedNodes]);
 
-  const { hasFeature } = useFeatureFlags();
   const isLiveStt = hasFeature("live_speech_to_text");
 
   const voiceTranscriberService = useVoiceTranscriberService({
@@ -1782,6 +1809,7 @@ const InputBarContainer = ({
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
                       modelSelectionRef={modelSelectionRef}
+                      modelSelectionCommitRef={modelSelectionCommitRef}
                       onNodeSelect={onNodeSelect}
                       onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}

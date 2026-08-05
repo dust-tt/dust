@@ -1,7 +1,10 @@
 import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
-import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
+import {
+  createAttachKnowledgeSlashCommand,
+  createPickModelSlashCommand,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
 import type {
   InputBarSlashCommand,
   InputBarSlashCommandId,
@@ -9,6 +12,7 @@ import type {
 import { INPUT_BAR_SLASH_COMMAND_ORDER } from "./InputBarSlashSuggestionTypes";
 
 const ATTACH_KNOWLEDGE_SLASH_COMMAND = createAttachKnowledgeSlashCommand();
+const PICK_MODEL_SLASH_COMMAND = createPickModelSlashCommand();
 
 function getInputBarRunCommandSlashCommandItem(
   command: InputBarSlashCommand
@@ -40,10 +44,12 @@ function getInputBarSlashCommandById({
   commandId,
   commands,
   includeAttachKnowledge,
+  includePickModel,
 }: {
   commandId: InputBarSlashCommandId;
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
+  includePickModel: boolean;
 }): SlashCommand | null {
   const runCommand = commands.find((command) => command.id === commandId);
   if (runCommand) {
@@ -54,16 +60,22 @@ function getInputBarSlashCommandById({
     return includeAttachKnowledge ? ATTACH_KNOWLEDGE_SLASH_COMMAND : null;
   }
 
+  if (commandId === "pick-model") {
+    return includePickModel ? PICK_MODEL_SLASH_COMMAND : null;
+  }
+
   return null;
 }
 
 export function buildInputBarSlashCommandItems({
   commands,
   includeAttachKnowledge,
+  includePickModel,
   query,
 }: {
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
+  includePickModel: boolean;
   query: string;
 }): SlashCommand[] {
   const normalizedQuery = query.trim().toLowerCase();
@@ -73,6 +85,7 @@ export function buildInputBarSlashCommandItems({
       commandId,
       commands,
       includeAttachKnowledge,
+      includePickModel,
     });
 
     if (!item || !matchesInputBarSlashCommandItem(item, normalizedQuery)) {

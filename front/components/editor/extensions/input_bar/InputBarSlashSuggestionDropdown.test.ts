@@ -2,6 +2,7 @@ import {
   INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
   isRunCommandSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { PICK_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { describe, expect, it } from "vitest";
 
@@ -50,6 +51,7 @@ describe("buildInputBarSlashCommandItems", () => {
     const result = buildInputBarSlashCommandItems({
       commands: [],
       includeAttachKnowledge: false,
+      includePickModel: false,
       query: "",
     });
 
@@ -60,6 +62,7 @@ describe("buildInputBarSlashCommandItems", () => {
     const result = buildInputBarSlashCommandItems({
       commands: ALL_COMMANDS,
       includeAttachKnowledge: true,
+      includePickModel: true,
       query: "",
     });
 
@@ -67,6 +70,7 @@ describe("buildInputBarSlashCommandItems", () => {
       "compact",
       "upload-file",
       "attach-knowledge",
+      "pick-model",
     ]);
   });
 
@@ -75,6 +79,7 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: false,
+        includePickModel: false,
         query: "",
       }).map(getInputBarSlashCommandItemId)
     ).toEqual(["compact", "upload-file"]);
@@ -83,7 +88,19 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: false,
+        includePickModel: false,
         query: "knowledge",
+      })
+    ).toEqual([]);
+  });
+
+  it("excludes pick model when includePickModel is false", () => {
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: false,
+        includePickModel: false,
+        query: "model",
       })
     ).toEqual([]);
   });
@@ -92,6 +109,7 @@ describe("buildInputBarSlashCommandItems", () => {
     const result = buildInputBarSlashCommandItems({
       commands: ALL_COMMANDS,
       includeAttachKnowledge: true,
+      includePickModel: true,
       query: "compact",
     });
 
@@ -101,6 +119,7 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: INPUT_BAR_SLASH_COMMANDS,
         includeAttachKnowledge: true,
+        includePickModel: false,
         query: "upload",
       }).map(getInputBarSlashCommandItemId)
     ).toEqual(["upload-file"]);
@@ -109,6 +128,7 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
+        includePickModel: false,
         query: "knowledge",
       }).map((item) => item.action)
     ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
@@ -117,6 +137,7 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
+        includePickModel: false,
         query: "reference",
       }).map((item) => item.action)
     ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
@@ -125,6 +146,7 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
+        includePickModel: false,
         query: "company",
       }).map((item) => item.action)
     ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
@@ -132,7 +154,17 @@ describe("buildInputBarSlashCommandItems", () => {
     expect(
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
+        includeAttachKnowledge: false,
+        includePickModel: true,
+        query: "model",
+      }).map((item) => item.action)
+    ).toEqual([PICK_MODEL_SLASH_COMMAND_ACTION]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
+        includePickModel: true,
         query: "zzz",
       })
     ).toEqual([]);

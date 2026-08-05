@@ -4,6 +4,7 @@ import type React from "react";
 export type InputBarSlashCommandId =
   | "attach-knowledge"
   | "compact"
+  | "pick-model"
   | "upload-file";
 
 /** Run commands backed by `INPUT_BAR_SLASH_COMMANDS` (icon, label, handler via `onSelectRef`). */
@@ -17,6 +18,7 @@ export const INPUT_BAR_SLASH_COMMAND_ORDER: InputBarSlashCommandId[] = [
   "compact",
   "upload-file",
   "attach-knowledge",
+  "pick-model",
 ];
 
 // Static command offered by the input bar `/` dropdown, as opposed to workspace capabilities
