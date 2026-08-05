@@ -347,7 +347,9 @@ describe("ensureConversationSandboxReady", () => {
     const result = await ensurePodSandboxReady(auth as never, pod as never);
 
     expect(result.isOk()).toBe(true);
-    expect(mockEnsurePodSandboxActive).toHaveBeenCalledWith(auth, pod);
+    expect(mockEnsurePodSandboxActive).toHaveBeenCalledWith(auth, pod, {
+      requireRunning: false,
+    });
     expect(mockEnsureSandboxActive).not.toHaveBeenCalled();
     // The pod's published bundles are mounted read-only under a pod-scoped
     // path; the litestream replica prefix is mounted rw for the in-sandbox

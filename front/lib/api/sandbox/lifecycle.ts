@@ -223,10 +223,12 @@ export async function ensureConversationSandboxReady(
 
 export async function ensurePodSandboxReady(
   auth: Authenticator,
-  pod: SpaceResource
+  pod: SpaceResource,
+  { requireRunning = false }: { requireRunning?: boolean } = {}
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   return ensureOwnerSandboxReady(auth, {
-    ensureActive: () => PodSandboxAdapter.ensureSandboxActive(auth, pod),
+    ensureActive: () =>
+      PodSandboxAdapter.ensureSandboxActive(auth, pod, { requireRunning }),
     getFileSystem: () =>
       DustFileSystem.forPod(auth, pod, {
         sandboxOnlyMounts: podSandboxOnlyMounts(pod),

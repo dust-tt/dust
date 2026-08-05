@@ -54,6 +54,7 @@ vi.mock("@app/lib/lock", () => ({
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
   SandboxModel,
@@ -64,6 +65,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { encrypt } from "@app/types/shared/utils/encryption";
@@ -1021,6 +1023,86 @@ describe("SandboxResource.ensureActive", () => {
       conversation
     );
     expect(persisted?.lastRuntimeRefreshAt).toBeNull();
+  });
+
+  // requireRunning is what lets a caller running inside a request use a sandbox without ever
+  // waiting on one being made ready. It is enforced under the lifecycle lock rather than by the
+  // caller, because a kill-requested sandbox reports itself as running right up until it is
+  // destroyed and recreated.
+  describe("with requireRunning", () => {
+    it("refuses a running sandbox that has a kill requested", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+      await SandboxFactory.createForPod(authenticator, pod, {
+        status: "running",
+        killRequestedAt: new Date(),
+      });
+
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockProviderDestroy).not.toHaveBeenCalled();
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+    });
+
+    it("refuses a sleeping sandbox instead of waking it", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+      await SandboxFactory.createForPod(authenticator, pod, {
+        status: "sleeping",
+      });
+
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockProviderWake).not.toHaveBeenCalled();
+    });
+
+    it("refuses to create a sandbox when the pod has none", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+    });
+
+    it("uses a running sandbox", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+      const running = await SandboxFactory.createForPod(authenticator, pod, {
+        status: "running",
+      });
+
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        return;
+      }
+      expect(result.value.sandbox.sId).toBe(running.sId);
+    });
   });
 
   it("destroys and recreates when killRequestedAt is set on the existing row", async () => {

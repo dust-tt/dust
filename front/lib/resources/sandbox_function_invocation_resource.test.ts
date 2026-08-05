@@ -1,5 +1,6 @@
 import { formatSandboxFunctionInvocations } from "@app/lib/api/actions/servers/sandbox_functions/tools/inspect_invocations";
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
+import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
@@ -9,6 +10,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -16,11 +18,13 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
+  SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
-import { Ok } from "@app/types/shared/result";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -47,6 +51,19 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
   return {
     ...actual,
     publishSandboxFunctionInvocationEvent: vi.fn(),
+  };
+});
+
+vi.mock("@app/temporal/sandbox_functions/client", async (importOriginal) => {
+  const mod =
+    await importOriginal<
+      typeof import("@app/temporal/sandbox_functions/client")
+    >();
+  return {
+    ...mod,
+    launchSandboxFunctionInvocationWorkflow: vi.fn(
+      async () => new Ok(undefined)
+    ),
   };
 });
 
@@ -82,7 +99,8 @@ beforeEach(() => {
 
 async function setupExecutionTest(
   userIdentity: SandboxFunctionUserIdentityPolicy = "optional",
-  origin: SandboxFunctionInvocationOrigin = "delegated"
+  origin: SandboxFunctionInvocationOrigin = "delegated",
+  executionMode: SandboxFunctionExecutionMode = "durable"
 ) {
   const { authenticator, workspace } = await createResourceTest({
     role: "admin",
@@ -102,6 +120,7 @@ async function setupExecutionTest(
     slug: "add-comment",
     description: "Add a comment.",
     userIdentity,
+    executionMode,
     inputSchema,
     outputSchema,
   });
@@ -673,7 +692,9 @@ describe("SandboxFunctionInvocationResource", () => {
       });
     expect(refetchedInvocation?.status).toBe("created");
     expect(updateLastActivityAtSpy).toHaveBeenCalledOnce();
-    expect(ensurePodSandboxReady).toHaveBeenCalledWith(authenticator, space);
+    expect(ensurePodSandboxReady).toHaveBeenCalledWith(authenticator, space, {
+      requireRunning: false,
+    });
     expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
       authenticator,
       {
@@ -1055,5 +1076,157 @@ describe("SandboxFunctionInvocationResource", () => {
       code: "invocation_failed",
       message: "function produced no output",
     });
+  });
+});
+
+describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
+  // Fast execution rides on stdout delivery, so both flags are on together in practice.
+  function enableFlags(flags: WhitelistableFeature[]) {
+    vi.mocked(hasFeatureFlag).mockImplementation(async (_auth, flag) =>
+      flags.includes(flag)
+    );
+  }
+
+  async function setupInlineTest(
+    executionMode: SandboxFunctionExecutionMode = "fast"
+  ) {
+    const setup = await setupExecutionTest(
+      "optional",
+      "delegated",
+      executionMode
+    );
+    // Stand in for the lifecycle, which refuses rather than creating, waking, or recreating a
+    // sandbox when the caller cannot wait for one.
+    vi.mocked(ensurePodSandboxReady).mockImplementation(
+      async (_auth, _pod, opts) => {
+        if (opts?.requireRunning && setup.sandbox.status !== "running") {
+          return new Err(new SandboxNotRunningError());
+        }
+        return new Ok({ sandbox: setup.sandbox, freshlyCreated: false });
+      }
+    );
+    const execSpy = vi.spyOn(setup.sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout:
+          JSON.stringify({
+            protocolVersion: 3,
+            delivery: "stdout",
+            outcome: { ok: true, output: { commentId: "inline" } },
+          }) + "\n",
+        stderr: "",
+      })
+    );
+
+    return { ...setup, execSpy };
+  }
+
+  it("runs a fast invocation inline instead of starting the workflow", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupInlineTest();
+    enableFlags([
+      "sandbox_function_fast_execution",
+      "sandbox_function_stdout_result",
+    ]);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: { input: { message: "hello" } } }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(execSpy).toHaveBeenCalledOnce();
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.status).toBe("succeeded");
+    expect(result.value.result).toEqual({ commentId: "inline" });
+    // An inline invocation holds a request while it runs, so it gets a far shorter ceiling than
+    // the workflow's.
+    const [, , execOptions] = execSpy.mock.calls[0]!;
+    expect(execOptions?.timeoutMs).toBe(10 * 1000);
+  });
+
+  it("starts the workflow for a durable function", async () => {
+    const { authenticator, sandboxFunction, execSpy } =
+      await setupInlineTest("durable");
+    enableFlags([
+      "sandbox_function_fast_execution",
+      "sandbox_function_stdout_result",
+    ]);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(execSpy).not.toHaveBeenCalled();
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("starts the workflow when fast execution is disabled", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupInlineTest();
+    enableFlags(["sandbox_function_stdout_result"]);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(execSpy).not.toHaveBeenCalled();
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  // Resuming a sandbox takes far longer than a request can be held, and nothing has executed at
+  // that point, so the workflow takes the invocation over.
+  it("starts the workflow when the sandbox is not running", async () => {
+    const { authenticator, sandboxFunction, sandbox, execSpy } =
+      await setupInlineTest();
+    enableFlags([
+      "sandbox_function_fast_execution",
+      "sandbox_function_stdout_result",
+    ]);
+    await sandbox.updateStatus("sleeping");
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(execSpy).not.toHaveBeenCalled();
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.status).toBe("created");
+  });
+
+  it("records the failure of a fast invocation that errors inline", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupInlineTest();
+    enableFlags(["sandbox_function_fast_execution"]);
+    execSpy.mockResolvedValue(
+      new Ok({ exitCode: 1, stdout: "", stderr: "boom" })
+    );
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.status).toBe("errored");
+    expect(result.value.error?.message).toContain("boom");
   });
 });

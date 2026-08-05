@@ -12,6 +12,7 @@ import {
   generateExecId,
   generateSandboxFunctionInvocationToken,
 } from "@app/lib/api/sandbox/access_tokens";
+import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
@@ -65,6 +66,11 @@ import { fromError } from "zod-validation-error";
 
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
 const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
+// A fast function is contractually short, and an inline invocation holds a request for as long as
+// it runs. Bound it well below the workflow's ceiling: past this the invocation is failed rather
+// than handed to the workflow, since by then the function may already have written to pod state
+// and re-running it would repeat those writes.
+const SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS = 10 * 1000;
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 // Caps on runner output surfaced on failure: a small head for the error forwarded to the agent,
 // a larger one for the log fields.
@@ -208,6 +214,25 @@ function buildSandboxFunctionRunCommand(
     return `${DSBX_BIN_PATH} function run --result-delivery stdout -- ${shellEscape(slug)}`;
   }
   return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
+}
+
+/**
+ * Whether an invocation runs inline, in the request that creates it, instead of through the
+ * invocation workflow.
+ *
+ * Only a fast function qualifies. A durable one may call a tool that waits on the user for
+ * approval or authentication, and holding the request there would deadlock: the approval card
+ * only renders once the client holds the invocation.
+ */
+async function shouldExecuteInline(
+  auth: Authenticator,
+  sandboxFunction: SandboxFunctionResource
+): Promise<boolean> {
+  if (sandboxFunction.executionMode !== "fast") {
+    return false;
+  }
+
+  return hasFeatureFlag(auth, "sandbox_function_fast_execution");
 }
 
 function getSandboxFunctionUserIdentity(
@@ -442,7 +467,20 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
     return true;
   }
-  async execute(auth: Authenticator): Promise<Result<undefined, Error>> {
+  /**
+   * Run the invocation on the pod sandbox and record its outcome.
+   *
+   * `inline` marks an invocation running inside the request that created it, which constrains it
+   * twice. The sandbox is used only if it is already running, never created, woken, or recreated,
+   * all of which take seconds to minutes, which the lifecycle enforces under its own lock and
+   * reports as `SandboxNotRunningError`. Nothing has executed when that happens, so the caller is
+   * free to restart the invocation durably. And execution is bounded by a much shorter timeout, so
+   * a function that never returns cannot hold the request open for the workflow's ceiling.
+   */
+  async execute(
+    auth: Authenticator,
+    { inline = false }: { inline?: boolean } = {}
+  ): Promise<Result<undefined, Error>> {
     if (this.status !== "created") {
       logger.info(
         {
@@ -486,7 +524,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
       const ensureResult = await ensurePodSandboxReady(
         auth,
-        sandboxFunction.space
+        sandboxFunction.space,
+        { requireRunning: inline }
       );
       if (ensureResult.isErr()) {
         return ensureResult;
@@ -545,7 +584,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             : "",
         },
         stdin: JSON.stringify(inputEnvelope),
-        timeoutMs: SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
+        timeoutMs: inline
+          ? SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS
+          : SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
         user: "agent-proxied",
       });
       if (execResult.isErr()) {
@@ -777,6 +818,30 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       },
       { invocationId: invocation.sId }
     );
+
+    if (await shouldExecuteInline(auth, sandboxFunction)) {
+      const executionResult = await invocation.execute(auth, { inline: true });
+      if (executionResult.isOk()) {
+        return new Ok(invocation);
+      }
+      if (!isSandboxNotRunningError(executionResult.error)) {
+        // The invocation ran and failed. Record the outcome here, as the invocation workflow's
+        // activity does, so listeners settle instead of waiting for a workflow that never ran.
+        await invocation.fail(executionResult.error);
+        return new Ok(invocation);
+      }
+      // The sandbox has to be resumed first. Nothing has executed, so hand the invocation to the
+      // workflow, which owns waits that outlive a request.
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          sandboxFunctionId: sandboxFunction.sId,
+          invocationId: invocation.sId,
+          reason: "sandbox_not_running",
+        },
+        "Escalating a fast Pod function invocation to the invocation workflow"
+      );
+    }
 
     const launchResult = await launchSandboxFunctionInvocationWorkflow(auth, {
       sandboxFunction,
