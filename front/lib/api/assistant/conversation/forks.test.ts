@@ -482,6 +482,7 @@ describe("createConversationFork", () => {
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
+      depth: 1,
       spaceId: null,
     });
 
@@ -514,9 +515,8 @@ describe("createConversationFork", () => {
 
     expect(childConversation.title).toBeNull();
     expect(childConversation.spaceId).toBe(null);
-    // Forks keep the parent's depth: depth > 0 marks run_agent sub-conversations,
-    // which are hidden from space conversation lists.
-    expect(childConversation.depth).toBe(parentConversation.depth);
+    // Forks are root conversations even when created from a sub-agent conversation.
+    expect(childConversation.depth).toBe(0);
     expect(childConversation.forkingData).toEqual({
       forkedFrom: {
         parentConversationId: parentConversation.sId,
