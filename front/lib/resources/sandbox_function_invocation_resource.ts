@@ -60,6 +60,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
+import { col, fn, Op } from "sequelize";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -106,6 +107,14 @@ const StoredCallErrorSchema = z.object({
 export type StoredSandboxFunctionCallError = z.infer<
   typeof StoredCallErrorSchema
 >;
+
+// A `findAll` carrying an aggregate attribute returns plain rows rather than model instances, so
+// the model's declared types do not describe them. Parsed instead of cast so a shape change fails
+// loudly. `count` is coerced because aggregates arrive as strings from some drivers.
+const InvocationCountByUserRowSchema = z.object({
+  userId: z.number().nullable(),
+  count: z.coerce.number(),
+});
 
 const InvocationDataBaseSchema = z.object({
   input: z.unknown().optional(),
@@ -988,6 +997,43 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       updatedAt: invocation.updatedAt,
       mcpActionCount: mcpActionCounts.get(invocation.id) ?? 0,
     }));
+  }
+
+  // Invocation counts per triggering user across a set of functions, since a cutoff. Grouped in
+  // SQL rather than counted in JS: the window can span many rows and none of them are needed
+  // individually. The `null` key holds invocations with no human actor (API keys, bots).
+  static async countByUserSince(
+    auth: Authenticator,
+    {
+      sandboxFunctionIds,
+      since,
+    }: {
+      sandboxFunctionIds: ModelId[];
+      since: Date;
+    }
+  ): Promise<Map<ModelId | null, number>> {
+    const counts = new Map<ModelId | null, number>();
+    if (sandboxFunctionIds.length === 0) {
+      return counts;
+    }
+
+    const rows = await this.model.findAll({
+      attributes: ["userId", [fn("COUNT", col("id")), "count"]],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sandboxFunctionId: sandboxFunctionIds,
+        createdAt: { [Op.gte]: since },
+      },
+      group: ["userId"],
+      raw: true,
+    });
+
+    for (const row of rows) {
+      const { userId, count } = InvocationCountByUserRowSchema.parse(row);
+      counts.set(userId, count);
+    }
+
+    return counts;
   }
 
   static async deleteAllForSandboxFunction(
