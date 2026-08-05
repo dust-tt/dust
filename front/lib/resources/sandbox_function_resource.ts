@@ -43,7 +43,7 @@ import type { Attributes, Transaction } from "sequelize";
 export interface SandboxFunctionResource
   extends ReadonlyAttributesType<SandboxFunctionModel> {}
 
-const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
+export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
 
 export function getSandboxFunctionPublishLockName(
   sandboxFunctionSId: string

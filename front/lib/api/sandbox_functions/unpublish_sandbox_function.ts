@@ -3,6 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import {
   getSandboxFunctionPublishLockName,
+  SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS,
   SandboxFunctionResource,
 } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -37,7 +38,7 @@ export async function unpublishSandboxFunction(
       getSandboxFunctionPublishLockName(sandboxFunction.sId),
       () => sandboxFunction.delete(auth),
       30_000,
-      { lockTtlMs: 5 * 60_000 }
+      { lockTtlMs: SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS }
     );
     if (deleteResult.isErr()) {
       return new Err(
