@@ -1079,14 +1079,16 @@ export async function tryListMCPTools(
     preFetchedViews.map((view) => [view.sId, view])
   );
 
+  const isSystemAuthored = isSystemAuthoredUserMessage(
+    agentLoopListToolsContext.userMessage
+  );
+
   // An admin scoping a server to `personal_actions` decided it runs on each
   // person's own credentials. A message nobody wrote (posted by Dust on the
   // user's behalf) has no person to run as, so those servers are left out of the
   // tool list entirely: running them on the workspace connection instead would
   // quietly override that decision.
-  const listableActionsWithOrigin = isSystemAuthoredUserMessage(
-    agentLoopListToolsContext.userMessage
-  )
+  const listableActionsWithOrigin = isSystemAuthored
     ? mcpServerActionsWithOrigin.filter(({ action }) => {
         if (!isServerSideMCPServerConfiguration(action)) {
           return true;
@@ -1164,6 +1166,13 @@ export async function tryListMCPTools(
       const processedTools: MCPToolConfigurationType[] = [];
 
       for (const toolConfig of rawToolsFromServer) {
+        // Nobody wrote this message, so nobody is waiting on its answer: an approval prompt would
+        // be addressed to a person who never asked anything, and the run would sit blocked until
+        // they happen to open the conversation. Only `never_ask` tools run without one.
+        if (isSystemAuthored && toolConfig.permission !== "never_ask") {
+          continue;
+        }
+
         // Fix the tool name to be valid for the model.
         const toolNameRes = tryGetPrefixedToolName(
           action.name,
