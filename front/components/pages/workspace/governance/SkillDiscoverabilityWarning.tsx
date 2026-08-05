@@ -2,6 +2,7 @@ import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import { capabilityKey } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import { ContentMessage } from "@dust-tt/sparkle";
 
 // Making a skill discoverable is useless without also being able to pick its availability: whoever
@@ -46,7 +47,7 @@ function getDiscoverabilityWarningSubject(
     return null;
   }
 
-  return `The groups ${missingGroupNames.join(", ")}`;
+  return `The group${pluralize(missingGroupNames.length)} ${missingGroupNames.join(", ")}`;
 }
 
 interface SkillDiscoverabilityWarningProps {
