@@ -42,11 +42,12 @@ import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillAvatarIcon, SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useActivationRecommendations } from "@app/lib/swr/activation";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
@@ -448,7 +449,9 @@ export function AgentSidebarMenu({
     });
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
-  const [searchText, setSearchText] = useState("");
+  const [agentSearchText, setAgentSearchText] = useState("");
+  const [skillSearchText, setSkillSearchText] = useState("");
+  const [hasOpenedActionsMenu, setHasOpenedActionsMenu] = useState(false);
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
   });
@@ -460,10 +463,33 @@ export function AgentSidebarMenu({
     () =>
       editableAgents
         .filter((agent) =>
-          agent.name.toLowerCase().includes(searchText.toLowerCase().trim())
+          agent.name
+            .toLowerCase()
+            .includes(agentSearchText.toLowerCase().trim())
         )
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [editableAgents, searchText]
+    [editableAgents, agentSearchText]
+  );
+
+  const { skills } = useSkills({
+    owner,
+    status: "active",
+    disabled: !hasOpenedActionsMenu,
+  });
+  const editableSkills = useMemo(
+    () => skills.filter((skill) => skill.canAdministrate),
+    [skills]
+  );
+  const filteredSkills = useMemo(
+    () =>
+      editableSkills
+        .filter((skill) =>
+          skill.name
+            .toLowerCase()
+            .includes(skillSearchText.toLowerCase().trim())
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [editableSkills, skillSearchText]
   );
 
   const { setSidebarOpen } = useContext(SidebarContext);
@@ -518,11 +544,20 @@ export function AgentSidebarMenu({
     useStarredPodsSectionCollapsed();
 
   const canCreateAgent = hasPermission("create", "agent");
-  const canPublishAgent = hasPermission("publish", "agent");
-  // Users who can publish agents can reach the manage agents page to discover
-  // existing agents and edit the ones they can, even without create permission.
-  const canManageAgents = canCreateAgent || canPublishAgent;
   const canCreateSkill = hasPermission("create", "skill");
+
+  // The manage pages themselves are open to every member, but linking to them
+  // from the sidebar is only useful to users who have something to do there:
+  // a workspace-level permission, or at least one resource they edit.
+  const canManageAgents =
+    canCreateAgent ||
+    hasPermission("publish", "agent") ||
+    editableAgents.length > 0;
+  const canManageSkills =
+    canCreateSkill ||
+    hasPermission("publish", "skill") ||
+    hasPermission("make_discoverable", "skill") ||
+    editableSkills.length > 0;
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
@@ -1021,7 +1056,14 @@ export function AgentSidebarMenu({
                     onClick={handleNewClick}
                   />
                   {!hideActions && (
-                    <DropdownMenu modal={false}>
+                    <DropdownMenu
+                      modal={false}
+                      onOpenChange={(open) => {
+                        if (open) {
+                          setHasOpenedActionsMenu(true);
+                        }
+                      }}
+                    >
                       <DropdownMenuTrigger asChild>
                         <Button
                           size="sm"
@@ -1104,8 +1146,8 @@ export function AgentSidebarMenu({
                                     <DropdownMenuSearchbar
                                       ref={agentsSearchInputRef}
                                       name="search"
-                                      value={searchText}
-                                      onChange={setSearchText}
+                                      value={agentSearchText}
+                                      onChange={setAgentSearchText}
                                       placeholder="Search"
                                     />
                                     <div className="max-h-150 overflow-y-auto">
@@ -1144,29 +1186,66 @@ export function AgentSidebarMenu({
                             />
                           </>
                         )}
-                        {canCreateSkill && (
+                        {canManageSkills && (
                           <>
                             <DropdownMenuLabel>Skills</DropdownMenuLabel>
-                            <DropdownMenuSub>
-                              <DropdownMenuSubTrigger
-                                icon={Plus}
-                                label="New skill"
-                              />
-                              <DropdownMenuSubContent>
-                                <DropdownMenuItem
-                                  href={getSkillBuilderRoute(owner.sId, "new")}
-                                  icon={SKILL_ICON}
-                                  label="From scratch"
+                            {canCreateSkill && (
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger
+                                  icon={Plus}
+                                  label="New skill"
                                 />
-                                <DropdownMenuItem
-                                  icon={FolderOpen}
-                                  label="From existing"
-                                  onClick={() =>
-                                    setIsImportSkillDialogOpen(true)
-                                  }
+                                <DropdownMenuSubContent>
+                                  <DropdownMenuItem
+                                    href={getSkillBuilderRoute(
+                                      owner.sId,
+                                      "new"
+                                    )}
+                                    icon={SKILL_ICON}
+                                    label="From scratch"
+                                  />
+                                  <DropdownMenuItem
+                                    icon={FolderOpen}
+                                    label="From existing"
+                                    onClick={() =>
+                                      setIsImportSkillDialogOpen(true)
+                                    }
+                                  />
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                            )}
+                            {editableSkills.length > 0 && (
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger
+                                  icon={Edit04}
+                                  label="Edit skill"
                                 />
-                              </DropdownMenuSubContent>
-                            </DropdownMenuSub>
+                                <DropdownMenuPortal>
+                                  <DropdownMenuSubContent className="pointer-events-auto">
+                                    <DropdownMenuSearchbar
+                                      name="search"
+                                      value={skillSearchText}
+                                      onChange={setSkillSearchText}
+                                      placeholder="Search"
+                                    />
+                                    <div className="max-h-150 overflow-y-auto">
+                                      {filteredSkills.map((skill) => (
+                                        <DropdownMenuItem
+                                          key={skill.sId}
+                                          href={getSkillBuilderRoute(
+                                            owner.sId,
+                                            skill.sId
+                                          )}
+                                          truncateText
+                                          label={skill.name}
+                                          icon={getSkillAvatarIcon(skill.icon)}
+                                        />
+                                      ))}
+                                    </div>
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                              </DropdownMenuSub>
+                            )}
                             <DropdownMenuItem
                               href={getSkillBuilderRoute(owner.sId, "manage")}
                               icon={SKILL_ICON}
