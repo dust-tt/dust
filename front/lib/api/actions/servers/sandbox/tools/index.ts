@@ -1,3 +1,7 @@
+import {
+  SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
+  SANDBOX_EXEC_TIMEOUT_BUFFER_MS,
+} from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { BlockedAwaitingInputOutputResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
@@ -12,11 +16,7 @@ import {
   isAgentLoopRunContext,
   isSandboxResumeState,
 } from "@app/lib/actions/types";
-import {
-  SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
-  SANDBOX_EXEC_TIMEOUT_BUFFER_MS,
-  SANDBOX_TOOLS_METADATA,
-} from "@app/lib/api/actions/servers/sandbox/metadata";
+import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
