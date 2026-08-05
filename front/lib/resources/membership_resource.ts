@@ -1653,12 +1653,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
    * pool cap override has expired. Global, cross-workspace.
    */
   static async dangerouslyGetWorkspaceModelIdsWithExpiredMembershipPoolCapOverride(
-    now: Date
+    nowMs: number
   ): Promise<ModelId[]> {
     const rows = await this.model.findAll({
       attributes: [[fn("DISTINCT", col("workspaceId")), "workspaceId"]],
       where: {
-        poolCapOverrideExpiresAt: { [Op.lte]: now },
+        poolCapOverrideExpiresAt: { [Op.lte]: new Date(nowMs) },
         poolCapOverrideAwuCredits: { [Op.ne]: null },
         endAt: null,
       },
@@ -1675,14 +1675,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   /**
    * Active memberships within `auth`'s workspace whose pool cap override has
-   * expired as of `now`.
+   * expired as of `nowMs`.
    */
   static async listActiveWithExpiredPoolCapOverride({
     auth,
-    now,
+    nowMs,
   }: {
     auth: Authenticator;
-    now: Date;
+    nowMs: number;
   }): Promise<MembershipResource[]> {
     const workspace = auth.getNonNullableWorkspace();
     const rows = await MembershipModel.findAll({
@@ -1690,7 +1690,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         workspaceId: workspace.id,
         endAt: null,
         poolCapOverrideAwuCredits: { [Op.ne]: null },
-        poolCapOverrideExpiresAt: { [Op.lte]: now },
+        poolCapOverrideExpiresAt: { [Op.lte]: new Date(nowMs) },
       },
     });
     return rows.map((row) => new this(this.model, row.get()));

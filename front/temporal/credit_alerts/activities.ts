@@ -79,7 +79,7 @@ export async function getWorkspacesWithExpiredPoolCapOverrideActivity(): Promise
 > {
   const workspaceModelIds =
     await MembershipResource.dangerouslyGetWorkspaceModelIdsWithExpiredMembershipPoolCapOverride(
-      new Date()
+      Date.now()
     );
   const workspaces = await WorkspaceResource.fetchByModelIds(workspaceModelIds);
   return workspaces
@@ -94,7 +94,7 @@ export async function getWorkspacesWithExpiredPoolCapOverrideActivity(): Promise
 export async function expireWorkspacePoolCapOverridesActivity(
   workspaceId: string
 ): Promise<void> {
-  const now = new Date();
+  const nowMs = Date.now();
   const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
     logger.error(
@@ -109,7 +109,7 @@ export async function expireWorkspacePoolCapOverridesActivity(
   const memberships =
     await MembershipResource.listActiveWithExpiredPoolCapOverride({
       auth,
-      now,
+      nowMs,
     });
   if (memberships.length === 0) {
     return;
