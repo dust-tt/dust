@@ -1,4 +1,9 @@
+import {
+  contributeFreeUsageCostForUser,
+  isFreeUsageCostLimitReachedForUser,
+} from "@app/lib/api/assistant/rate_limits";
 import config from "@app/lib/api/config";
+import { isFreeUsageContext } from "@app/lib/api/llm/free_usage";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -24,6 +29,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
@@ -141,6 +147,42 @@ export abstract class LLM<
       yield* this.completeStream(streamParameters, metadata);
       return;
     }
+
+    // Free (unbilled) usage — utility operations and free-origin agent calls
+    // (e.g. sidekick) — is metered per user per day: read the counter before the
+    // call, contribute the call's cost after it completes (see below). Only
+    // authenticated users are metered, and the `skip_free_usage_rate_limit`
+    // feature flag exempts a workspace entirely (escape hatch to unstick legit
+    // heavy free usage).
+    const isFreeUsage = isFreeUsageContext(this.context);
+    const user = this.authenticator.user();
+    let meterFreeUsage = isFreeUsage && Boolean(user);
+    if (meterFreeUsage) {
+      const featureFlags = await getFeatureFlags(this.authenticator);
+      if (featureFlags.includes("skip_free_usage_rate_limit")) {
+        meterFreeUsage = false;
+      }
+    }
+    if (
+      meterFreeUsage &&
+      user &&
+      (await isFreeUsageCostLimitReachedForUser(
+        this.authenticator.getNonNullableWorkspace(),
+        user.id
+      ))
+    ) {
+      yield new EventError(
+        {
+          type: "rate_limit_error",
+          message:
+            "You have reached the daily free-usage limit. Please try again later.",
+          isRetryable: false,
+        },
+        this.metadata
+      );
+      return;
+    }
+
     const { conversation, prompt, specifications, previousMessageId } =
       streamParameters;
 
@@ -362,25 +404,31 @@ export abstract class LLM<
           workspaceId: this.authenticator.getNonNullableWorkspace().id,
         });
 
-        // Classify usage at creation for internal/utility LLM operations
-        // (everything except the agent conversation itself): they are never
-        // billed and never processed by the usage queue, so they are free.
-        // agent_conversation runs are left untagged here and classified
-        // (free/user/programmatic) by the usage queue, which knows the
-        // triggering message origin.
-        const usageType =
-          this.context.operationType === "agent_conversation"
-            ? undefined
-            : USAGE_TYPE_FREE;
+        // Tag free (unbilled) usage at creation — utility operations and
+        // free-origin agent calls (e.g. sidekick). Paid agent_conversation runs
+        // are left untagged here and classified (user/programmatic) by the usage
+        // queue, which knows the triggering message origin.
+        const usageType = isFreeUsage ? USAGE_TYPE_FREE : undefined;
 
         // Run usage is only populated if the run is successful.
         if (buffer.runTokenUsage) {
-          await run.recordTokenUsage(
+          const costMicroUsd = await run.recordTokenUsage(
             this.authenticator,
             buffer.runTokenUsage,
             this.modelId,
             { inferenceRegion: this.metadata.inferenceRegion, usageType }
           );
+
+          // Contribute this free call's cost to the per-user daily free-usage
+          // counter enforced above. Skipped when metering is off (non-free, no
+          // user, or the workspace is exempt via feature flag).
+          if (meterFreeUsage && user && costMicroUsd) {
+            await contributeFreeUsageCostForUser(
+              this.authenticator.getNonNullableWorkspace(),
+              user.id,
+              costMicroUsd
+            );
+          }
         }
 
         const simulatedRunUsages = this.getSimulatedRunUsages();

@@ -784,6 +784,9 @@ export async function runModel(
     conversationId: conversation.sId,
     userId: auth.user()?.sId,
     workspaceId: conversation.owner.sId,
+    // Lets the LLM call site classify free usage (e.g. sidekick) and enforce the
+    // per-user free-usage cost cap.
+    userMessageOrigin: userMessage.context.origin,
   };
 
   const credentials = await getLlmCredentials(auth, {
