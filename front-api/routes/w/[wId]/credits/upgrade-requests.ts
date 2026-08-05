@@ -48,8 +48,6 @@ const ResolveBodySchema = z.discriminatedUnion("status", [
 const ListUpgradeRequestsQuerySchema = z.object({
   status: z.union([z.literal("pending"), z.literal("resolved")]).optional(),
   offset: z.coerce.number().int().min(0).catch(0),
-  // Omitted/"json" preserves the existing response body; "csv" streams a
-  // downloadable file instead — used by the History tab's export button.
   format: z.union([z.literal("json"), z.literal("csv")]).optional(),
 });
 
