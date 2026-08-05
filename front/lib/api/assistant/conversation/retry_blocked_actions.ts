@@ -64,18 +64,13 @@ async function findUserMessageForRetry(
         model: UserMessageModel,
         as: "userMessage",
         attributes: ["userContextOrigin"],
-        required: false,
+        required: true,
       },
     ],
   });
 
   if (!parentMessage) {
     return new Err(new Error("User message not found"));
-  }
-
-  // The parent of an agent message is always a user message: a missing row is corrupt data.
-  if (!parentMessage.userMessage) {
-    return new Err(new Error("User message context not found"));
   }
 
   const blockedActions =
@@ -118,7 +113,7 @@ async function findUserMessageForRetry(
     lastStep: blockedActions[blockedActions.length - 1].stepContent.step,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
-    userMessageOrigin: parentMessage.userMessage.userContextOrigin,
+    userMessageOrigin: parentMessage.userMessage!.userContextOrigin,
   });
 }
 
