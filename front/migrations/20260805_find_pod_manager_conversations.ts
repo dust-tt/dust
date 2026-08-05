@@ -100,25 +100,82 @@ async function fetchConversationIds(
 
 async function updateConversationDepthsToZero(
   auth: Authenticator,
-  conversations: ConversationResource[]
-): Promise<number> {
-  if (conversations.length === 0) {
-    return 0;
-  }
-
-  const [updatedConversationCount] = await ConversationModel.update(
-    { depth: 0 },
-    {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        id: { [Op.in]: conversations.map(({ id }) => id) },
-      },
-      // Silent to not update the updatedAt of Sequelize.
-      silent: true,
-    }
+  actionByConversationId: Map<string, AgentMCPActionModel>,
+  {
+    actionCount,
+    execute,
+    logger,
+  }: { actionCount: number; execute: boolean; logger: Logger }
+): Promise<void> {
+  const conversations = await ConversationResource.fetchByIds(auth, [
+    ...actionByConversationId.keys(),
+  ]);
+  const conversationById = new Map(
+    conversations.map((conversation) => [conversation.sId, conversation])
   );
 
-  return updatedConversationCount;
+  for (const [conversationId, action] of actionByConversationId) {
+    const conversation = conversationById.get(conversationId);
+    if (!conversation) {
+      logger.warn(
+        {
+          actionId: action.id,
+          conversationId,
+        },
+        "Conversation from pod_manager output not found"
+      );
+      continue;
+    }
+
+    logger.info(
+      {
+        actionId: action.id,
+        conversationId: conversation.sId,
+        conversationCreatedAt: conversation.createdAt,
+        depth: conversation.depth,
+      },
+      "Found conversation created via pod_manager.create_conversation"
+    );
+  }
+
+  const conversationsToUpdate = conversations.filter(
+    // We only take the ones with depth 1, the other ones have been created with sub agents so should remain hidden.
+    (conversation) => conversation.depth === 1
+  );
+  let updatedConversationCount = 0;
+  if (execute && conversationsToUpdate.length > 0) {
+    [updatedConversationCount] = await ConversationModel.update(
+      { depth: 0 },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: { [Op.in]: conversationsToUpdate.map(({ id }) => id) },
+        },
+        // Silent to not update the updatedAt of Sequelize.
+        silent: true,
+      }
+    );
+  }
+
+  logger.info(
+    {
+      execute,
+      conversationToUpdateCount: conversationsToUpdate.length,
+      updatedConversationCount,
+    },
+    execute
+      ? "Updated pod_manager conversation depths to 0"
+      : "Would update pod_manager conversation depths to 0"
+  );
+
+  logger.info(
+    {
+      actionCount,
+      actionWithConversationOutputCount: actionByConversationId.size,
+      conversationCount: conversations.length,
+    },
+    "Done finding pod_manager conversations"
+  );
 }
 
 makeScript(
@@ -141,64 +198,11 @@ makeScript(
     // Fetch the outputs, extract the conversation IDs and map with the actions.
     const actionByConversationId = await fetchConversationIds(auth, actions);
 
-    const conversations = await ConversationResource.fetchByIds(auth, [
-      ...actionByConversationId.keys(),
-    ]);
-    const conversationById = new Map(
-      conversations.map((conversation) => [conversation.sId, conversation])
-    );
-
-    for (const [conversationId, action] of actionByConversationId) {
-      const conversation = conversationById.get(conversationId);
-      if (!conversation) {
-        logger.warn(
-          {
-            actionId: action.id,
-            conversationId,
-          },
-          "Conversation from pod_manager output not found"
-        );
-        continue;
-      }
-
-      logger.info(
-        {
-          actionId: action.id,
-          conversationId: conversation.sId,
-          conversationCreatedAt: conversation.createdAt,
-          depth: conversation.depth,
-        },
-        "Found conversation created via pod_manager.create_conversation"
-      );
-    }
-
-    const conversationsToUpdate = conversations.filter(
-      // We only take the ones with depth 1, the other ones have been created with sub agents so should remain hidden.
-      (conversation) => conversation.depth === 1
-    );
-
-    const updatedConversationCount = execute
-      ? await updateConversationDepthsToZero(auth, conversationsToUpdate)
-      : 0;
-
-    logger.info(
-      {
-        execute,
-        conversationToUpdateCount: conversationsToUpdate.length,
-        updatedConversationCount,
-      },
-      execute
-        ? "Updated pod_manager conversation depths to 0"
-        : "Would update pod_manager conversation depths to 0"
-    );
-
-    logger.info(
-      {
-        actionCount: actions.length,
-        actionWithConversationOutputCount: actionByConversationId.size,
-        conversationCount: conversations.length,
-      },
-      "Done finding pod_manager conversations"
-    );
+    // Update the depth for those conversations.
+    await updateConversationDepthsToZero(auth, actionByConversationId, {
+      actionCount: actions.length,
+      execute,
+      logger,
+    });
   }
 );
