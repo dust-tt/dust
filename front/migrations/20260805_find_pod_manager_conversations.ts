@@ -107,9 +107,13 @@ async function updateConversationDepthsToZero(
     logger,
   }: { actionCount: number; execute: boolean; logger: Logger }
 ): Promise<void> {
-  const conversations = await ConversationResource.fetchByIds(auth, [
-    ...actionByConversationId.keys(),
-  ]);
+  const conversations = await ConversationResource.fetchByIds(
+    auth,
+    [...actionByConversationId.keys()],
+    {
+      dangerouslySkipPermissionFiltering: true,
+    }
+  );
   const conversationById = new Map(
     conversations.map((conversation) => [conversation.sId, conversation])
   );
