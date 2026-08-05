@@ -25,6 +25,7 @@ import {
   useActivationRecommendations,
   useUpdateActivationRecommendation,
 } from "@app/lib/swr/activation";
+import { usePodMetadata } from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
@@ -37,7 +38,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { getWorkspaceDefaultAgentId } from "@app/types/user";
+import {
+  getWorkspaceDefaultAgentId,
+  resolveDefaultAgentId,
+} from "@app/types/user";
 import {
   ActionBrainIcon,
   ArrowRight,
@@ -208,20 +212,21 @@ interface JustAskComposerProps {
   owner: WorkspaceType;
   user: UserType | null;
   podId: string | null;
+  defaultAgentId: string | null;
 }
 
-function JustAskComposer({ owner, user, podId }: JustAskComposerProps) {
+function JustAskComposer({
+  owner,
+  user,
+  podId,
+  defaultAgentId,
+}: JustAskComposerProps) {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
-  const { hasFeature } = useFeatureFlags();
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
     user,
   });
-
-  const defaultAgentId = hasFeature("workspace_default_agent")
-    ? getWorkspaceDefaultAgentId(owner)
-    : null;
 
   const startConversation = useCallback(
     async (
@@ -504,6 +509,19 @@ export function GetStartedPage() {
     workspaceId: owner.sId,
   });
 
+  const { hasFeature } = useFeatureFlags();
+  const { podMetadata } = usePodMetadata({
+    workspaceId: owner.sId,
+    podId: activationPodId,
+    disabled: isActivationPodLoading,
+  });
+  const defaultAgentId = resolveDefaultAgentId({
+    workspaceDefaultAgentId: hasFeature("workspace_default_agent")
+      ? getWorkspaceDefaultAgentId(owner)
+      : null,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+  });
+
   const { recommendations, isRecommendationsLoading, mutateRecommendations } =
     useActivationRecommendations({
       workspaceId: owner.sId,
@@ -596,7 +614,12 @@ export function GetStartedPage() {
               New here? Try one of these, or just start typing.
             </p>
             <div className="mt-4">
-              <JustAskComposer owner={owner} user={user} podId={activationPodId} />
+              <JustAskComposer
+                owner={owner}
+                user={user}
+                podId={activationPodId}
+                defaultAgentId={defaultAgentId}
+              />
             </div>
           </div>
 
