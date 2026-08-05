@@ -1,6 +1,7 @@
 import {
   launchDustProjectFullSyncWorkflow,
   launchDustProjectIncrementalSyncWorkflow,
+  signalDustProjectIncrementalSync,
   stopDustProjectSyncWorkflow,
 } from "@connectors/connectors/dust_project/temporal/client";
 import type {
@@ -154,12 +155,16 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    // Launch full sync if fromTs is null, otherwise incremental sync
+    // Launch full sync if fromTs is null, otherwise (re)schedule hourly incremental cron
     if (fromTs === null) {
       return launchDustProjectFullSyncWorkflow(this.connectorId);
     } else {
       return launchDustProjectIncrementalSyncWorkflow(this.connectorId);
     }
+  }
+
+  async requestIncrementalSync(): Promise<Result<string, Error>> {
+    return signalDustProjectIncrementalSync(this.connectorId);
   }
 
   async retrievePermissions({

@@ -15,6 +15,7 @@ import {
   patchSlackChannelsLinkedWithAgentHandler,
 } from "@connectors/api/slack_channels_linked_with_agent";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
+import { syncConnectorIncrementalAPIHandler } from "@connectors/api/sync_connector_incremental";
 import { unpauseConnectorAPIHandler } from "@connectors/api/unpause_connector";
 import { postConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookDiscordAppHandler } from "@connectors/api/webhooks/webhook_discord_app";
@@ -112,6 +113,10 @@ export function startServer(port: number) {
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
   app.get("/connectors", getConnectorsAPIHandler);
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
+  app.post(
+    "/connectors/sync/:connector_id/incremental",
+    syncConnectorIncrementalAPIHandler
+  );
   app.get(
     "/connectors/:connector_id/permissions",
     getConnectorPermissionsAPIHandler

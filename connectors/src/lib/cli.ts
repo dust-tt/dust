@@ -340,6 +340,7 @@ export const batch = async ({
         "snowflake",
         "zendesk",
         "bigquery",
+        "dust_project",
       ];
       if (!PROVIDERS_ALLOWING_RESTART.includes(args.provider)) {
         throw new Error(

@@ -21,7 +21,7 @@ export async function runDustProjectWorker() {
     }),
     activities: { ...activities, ...sync_status },
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 5,
+    maxConcurrentActivityTaskExecutions: 12,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     connection,
     reuseV8Context: true,

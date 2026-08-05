@@ -8,6 +8,7 @@ import type {
   ModelId,
 } from "@connectors/types";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err } from "@dust-tt/client";
 
 export type CreateConnectorErrorCode = "INVALID_CONFIGURATION";
 
@@ -71,6 +72,18 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
   abstract sync(params: {
     fromTs: number | null;
   }): Promise<Result<string, Error>>;
+
+  /**
+   * Request a debounced on-demand incremental sync (e.g. after content changes).
+   * Default: not supported for this connector type.
+   */
+  async requestIncrementalSync(): Promise<Result<string, Error>> {
+    return new Err(
+      new Error(
+        `requestIncrementalSync is not implemented for connector provider ${this.provider}`
+      )
+    );
+  }
 
   abstract retrievePermissions(params: {
     parentInternalId: string | null;
