@@ -1,7 +1,4 @@
-import {
-  buildConsumptionScopeQuery,
-  creditsFromMicroCredits,
-} from "@app/lib/api/analytics/consumption/scope";
+import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
 import { describe, expect, it } from "vitest";
 
 const WINDOW = {
@@ -61,12 +58,5 @@ describe("buildConsumptionScopeQuery", () => {
     });
 
     expect(query.bool?.filter).toHaveLength(2);
-  });
-});
-
-describe("creditsFromMicroCredits", () => {
-  it("converts micro-credits without rounding", () => {
-    expect(creditsFromMicroCredits(1_570_588)).toBeCloseTo(1.570588);
-    expect(creditsFromMicroCredits(0)).toBe(0);
   });
 });

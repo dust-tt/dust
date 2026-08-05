@@ -1,10 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 
-const MICRO_CREDITS_PER_CREDIT = 1_000_000;
-
-export const CREDIT_MICRO_FIELD = "credit_micro";
 export const COMPLETED_AT_FIELD = "completed_at";
-export const AGENT_MESSAGE_ID_FIELD = "agent_message_id";
 
 // Dimensions a consumption query can be filtered by. Every one of them maps to
 // a single keyword field, so filtering is always a term/terms clause.
@@ -35,10 +31,6 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
 export type ConsumptionScopeFilter = Partial<
   Record<ConsumptionScopeDimension, string[]>
 >;
-
-export function creditsFromMicroCredits(microCredits: number): number {
-  return microCredits / MICRO_CREDITS_PER_CREDIT;
-}
 
 function termFilter(
   field: string,
