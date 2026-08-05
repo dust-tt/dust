@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
-  MagicWand02,
   Spinner,
   TextArea,
   ThumbsDown,
@@ -89,6 +88,13 @@ function makeFeedbackSchema(showPredefinedAnswers: boolean) {
 
 type FeedbackFormValues = z.infer<ReturnType<typeof makeFeedbackSchema>>;
 
+const DEFAULT_FEEDBACK_FORM_VALUES: FeedbackFormValues = {
+  thumbDirection: null,
+  selectedAnswer: "",
+  feedbackContent: "",
+  isConversationShared: true,
+};
+
 export function FeedbackSelector({
   feedback,
   onSubmitThumb,
@@ -102,22 +108,11 @@ export function FeedbackSelector({
   // Predefined answers are not so relevant in the context of sidekick.
   const showPredefinedAnswers = !isSidekick;
 
-  const buttonLabel = feedback
-    ? "Clear feedback"
-    : isGlobalAgent
-      ? "Provide feedback"
-      : "Improve this agent";
-
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
   const form = useForm<FeedbackFormValues>({
     resolver: zodResolver(makeFeedbackSchema(showPredefinedAnswers)),
-    defaultValues: {
-      thumbDirection: null,
-      selectedAnswer: "",
-      feedbackContent: "",
-      isConversationShared: true,
-    },
+    defaultValues: DEFAULT_FEEDBACK_FORM_VALUES,
   });
 
   const thumbDirectionField = useController({
@@ -139,17 +134,22 @@ export function FeedbackSelector({
 
   const thumbDirection = thumbDirectionField.field.value;
 
-  const handleButtonClick = async () => {
-    if (feedback) {
+  const handleThumbClick = async (direction: ThumbReaction) => {
+    if (feedback?.thumb === direction) {
       await onSubmitThumb({
-        thumb: feedback.thumb,
+        thumb: direction,
         shouldRemoveExistingFeedback: true,
         feedbackContent: null,
         isConversationShared: false,
       });
-    } else {
-      setIsDialogOpen(true);
+      return;
     }
+
+    form.reset({
+      ...DEFAULT_FEEDBACK_FORM_VALUES,
+      thumbDirection: direction,
+    });
+    setIsDialogOpen(true);
   };
 
   const handleThumbSelect = (direction: ThumbReaction) => {
@@ -183,15 +183,22 @@ export function FeedbackSelector({
   });
 
   return (
-    <div className="flex items-center">
+    <div className="flex items-center gap-1">
       <Button
-        variant={feedback ? "primary" : "outline"}
+        variant={feedback?.thumb === "up" ? "primary" : "ghost-secondary"}
         size="xs"
         disabled={isSubmittingThumb}
-        onClick={handleButtonClick}
-        icon={MagicWand02}
-        label={buttonLabel}
-        className={feedback ? "" : "text-muted-foreground"}
+        onClick={() => void handleThumbClick("up")}
+        icon={ThumbsUp}
+        tooltip="I found this helpful"
+      />
+      <Button
+        variant={feedback?.thumb === "down" ? "primary" : "ghost-secondary"}
+        size="xs"
+        disabled={isSubmittingThumb}
+        onClick={() => void handleThumbClick("down")}
+        icon={ThumbsDown}
+        tooltip="Report an issue with this answer"
       />
 
       <Dialog

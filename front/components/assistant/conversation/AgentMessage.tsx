@@ -63,6 +63,7 @@ import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/out
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -102,11 +103,11 @@ import type {
 } from "@app/types/user";
 import {
   Button,
-  ButtonGroup,
   ButtonGroupDropdown,
   Chip,
   Clipboard,
   ClipboardCheck,
+  CoinsStacked01,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
@@ -274,7 +275,6 @@ export function AgentMessage({
     { index: number; document: MCPReferenceCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   // Latches to true the first time the menu opens. We use this rather than
   // `isMenuOpen` to gate the cost fetch so the query stays enabled after the
   // menu closes: otherwise disabling it nulls the SWR key, dropping
@@ -714,7 +714,6 @@ export function AgentMessage({
   });
 
   const alwaysVisibleButtons: ReactElement[] = [];
-  const hoverButtons: ReactElement[] = [];
 
   const hasMultiAgents =
     getConversationGeneratingMessages(conversationId).length > 1;
@@ -891,7 +890,7 @@ export function AgentMessage({
     }
   }, [streamError, reloadMessage, conversationId, agentMessage.sId]);
 
-  // Add feedback buttons (always visible)
+  // Add feedback buttons.
   if (shouldShowFeedback) {
     alwaysVisibleButtons.push(
       <FeedbackSelector
@@ -905,7 +904,7 @@ export function AgentMessage({
     );
   }
 
-  // Add copy button or split button with dropdown (hover only)
+  // Add the remaining footer actions.
   if (shouldShowMessageActions) {
     const dropdownItems: DropdownMenuItemProps[] = [
       {
@@ -948,79 +947,101 @@ export function AgentMessage({
       });
     }
 
-    hoverButtons.push(
-      <ButtonGroup key="split-button-group">
-        <Button
-          tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="outline"
-          size="xs"
-          onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheck : Clipboard}
-          className="text-muted-foreground"
+    alwaysVisibleButtons.push(
+      <Button
+        key="copy-message"
+        tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+        variant="ghost-secondary"
+        size="xs"
+        onClick={handleCopyToClipboard}
+        icon={isCopied ? ClipboardCheck : Clipboard}
+      />
+    );
+
+    if (agentMessage.costCredits !== null && agentMessage.costCredits > 0) {
+      const formattedCredits = formatCredits(agentMessage.costCredits);
+      alwaysVisibleButtons.push(
+        <Tooltip
+          key="message-credit-cost"
+          label="Credits used for this message"
+          tooltipTriggerAsChild
+          trigger={
+            <span
+              tabIndex={0}
+              aria-label={`${formattedCredits} credits used for this message`}
+              className="inline-flex h-6 items-center gap-1 rounded-lg px-1 text-sm font-medium leading-5 text-muted-foreground"
+            >
+              {formattedCredits}
+              <CoinsStacked01 className="h-4 w-4" />
+            </span>
+          }
         />
-        <DropdownMenu
-          onOpenChange={(open) => {
-            setIsMenuOpen(open);
-            if (open) {
-              setHasOpenedMenu(true);
-              // The streamed cost is stale after a live completion (computed
-              // post-event). Revalidate the authoritative value once per
-              // completion so the total (e.g. summed across an `ask_user`
-              // resume) is correct without a page refresh.
-              if (pendingCostRevalidationRef.current) {
-                pendingCostRevalidationRef.current = false;
-                void mutateMessage();
-              }
+      );
+    }
+
+    alwaysVisibleButtons.push(
+      <DropdownMenu
+        key="message-actions"
+        onOpenChange={(open) => {
+          if (open) {
+            setHasOpenedMenu(true);
+            // The streamed cost is stale after a live completion (computed
+            // post-event). Revalidate the authoritative value once per
+            // completion so the total (e.g. summed across an `ask_user`
+            // resume) is correct without a page refresh.
+            if (pendingCostRevalidationRef.current) {
+              pendingCostRevalidationRef.current = false;
+              void mutateMessage();
             }
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="xs"
-              icon={DotsHorizontal}
-              className="text-muted-foreground"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {(creditCostItem || isCreditCostLoading) && (
-              <>
-                {hasConsumptionDetails ? (
-                  <CreditCostSubmenu
-                    credits={
-                      refreshedAgentMessage?.costCredits ??
-                      agentMessage.costCredits
-                    }
-                    subAgentCredits={
-                      refreshedAgentMessage?.subAgentCostCredits ??
-                      agentMessage.subAgentCostCredits
-                    }
-                    conversationId={conversationId}
-                    messageId={agentMessage.sId}
-                    workspaceId={owner.sId}
-                    isCostLoading={isCreditCostLoading}
-                  />
-                ) : creditCostItem ? (
-                  <DropdownMenuItem {...creditCostItem} />
-                ) : (
-                  <DropdownMenuItem
-                    label="Credit cost"
-                    endComponent={
-                      <div className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
-                    }
-                    className={CREDIT_COST_ITEM_CLASS_NAME}
-                    onSelect={(e) => e.preventDefault()}
-                  />
-                )}
-                <DropdownMenuSeparator />
-              </>
-            )}
-            {dropdownItems.map((item, index) => (
-              <DropdownMenuItem key={index} {...item} />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </ButtonGroup>
+          }
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost-secondary"
+            size="xs"
+            icon={DotsHorizontal}
+            aria-label="More message actions"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {(creditCostItem || isCreditCostLoading) && (
+            <>
+              {hasConsumptionDetails ? (
+                <CreditCostSubmenu
+                  credits={
+                    refreshedAgentMessage?.costCredits ??
+                    agentMessage.costCredits
+                  }
+                  subAgentCredits={
+                    refreshedAgentMessage?.subAgentCostCredits ??
+                    agentMessage.subAgentCostCredits
+                  }
+                  conversationId={conversationId}
+                  messageId={agentMessage.sId}
+                  workspaceId={owner.sId}
+                  isCostLoading={isCreditCostLoading}
+                />
+              ) : creditCostItem ? (
+                <DropdownMenuItem {...creditCostItem} />
+              ) : (
+                <DropdownMenuItem
+                  label="Credit cost"
+                  endComponent={
+                    <div className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
+                  }
+                  className={CREDIT_COST_ITEM_CLASS_NAME}
+                  onSelect={(e) => e.preventDefault()}
+                />
+              )}
+              <DropdownMenuSeparator />
+            </>
+          )}
+          {dropdownItems.map((item, index) => (
+            <DropdownMenuItem key={index} {...item} />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 
@@ -1175,17 +1196,8 @@ export function AgentMessage({
 
   const footerButtons = !isDeleted &&
     !isGracefullyStopped &&
-    (alwaysVisibleButtons.length > 0 || hoverButtons.length > 0) && (
-      <div className="flex items-center gap-2">
-        {alwaysVisibleButtons}
-        {hoverButtons.length > 0 && (
-          <div
-            className={`flex gap-2 transition-opacity duration-150 ${isMenuOpen ? "opacity-100" : "@xs:opacity-0 @xs:group-hover:opacity-100"}`}
-          >
-            {hoverButtons}
-          </div>
-        )}
-      </div>
+    alwaysVisibleButtons.length > 0 && (
+      <div className="flex items-center gap-1">{alwaysVisibleButtons}</div>
     );
 
   const renderMessageContent = () => {
