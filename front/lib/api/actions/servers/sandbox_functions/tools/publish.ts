@@ -6,16 +6,19 @@ import type {
 import { getWritablePodContext } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
+import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functions";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function publishHandler(
   {
     description,
+    executionMode,
     path,
     slug,
   }: {
     description: string;
+    executionMode?: SandboxFunctionExecutionMode;
     path: string;
     slug: string;
   },
@@ -33,6 +36,7 @@ export async function publishHandler(
     slug,
     description,
     path,
+    executionMode,
   });
   if (result.isErr()) {
     return new Err(toMCPError(result.error));

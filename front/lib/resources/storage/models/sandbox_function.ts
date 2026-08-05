@@ -9,12 +9,15 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type {
+  SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
   SandboxFunctionInvocationStatus,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import {
+  DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
   isValidSandboxFunctionSlug,
+  SANDBOX_FUNCTION_EXECUTION_MODES,
   SANDBOX_FUNCTION_INVOCATION_ORIGINS,
   SANDBOX_FUNCTION_INVOCATION_STATUSES,
   SANDBOX_FUNCTION_USER_IDENTITY_POLICIES,
@@ -50,6 +53,7 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare slug: string;
   declare description: string;
   declare userIdentity: SandboxFunctionUserIdentityPolicy | null;
+  declare executionMode: CreationOptional<SandboxFunctionExecutionMode>;
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
 
@@ -108,6 +112,14 @@ SandboxFunctionModel.init(
       allowNull: true,
       validate: {
         isIn: [SANDBOX_FUNCTION_USER_IDENTITY_POLICIES],
+      },
+    },
+    executionMode: {
+      type: DataTypes.STRING(16),
+      allowNull: false,
+      defaultValue: DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+      validate: {
+        isIn: [SANDBOX_FUNCTION_EXECUTION_MODES],
       },
     },
     inputSchema: {
