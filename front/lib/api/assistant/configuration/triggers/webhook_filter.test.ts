@@ -2,6 +2,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
@@ -78,6 +79,7 @@ describe("getWebhookFilterGeneration", () => {
   });
 
   it("repairs an invalid generated filter once", async () => {
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
     mockFilterGeneration('(has-any "status" ("open" "closed"))');
     mockFilterGeneration('(or (eq "status" "open") (eq "status" "closed"))');
 
@@ -98,6 +100,18 @@ describe("getWebhookFilterGeneration", () => {
     expect(JSON.stringify(repairInput.conversation)).toContain(
       'Operator \\"has-any\\" requires an array field'
     );
+    expect(warnSpy).toHaveBeenCalledWith(
+      {
+        workspaceId: authenticator.getNonNullableWorkspace().sId,
+        webhookEvent: event.value,
+        error: expect.objectContaining({
+          message:
+            'Operator "has-any" requires an array field, but "status" is string.',
+        }),
+      },
+      "Generated webhook filter failed validation, retrying"
+    );
+    warnSpy.mockRestore();
   });
 
   it("returns the repaired filter without validating it again", async () => {

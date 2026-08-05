@@ -3,6 +3,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { validateWebhookFilter } from "@app/lib/api/assistant/configuration/triggers/webhook_filter_validation";
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -380,6 +381,15 @@ export async function getWebhookFilterGeneration(
   if (validationResult.isOk()) {
     return new Ok({ filter: generationResult.value });
   }
+
+  logger.warn(
+    {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      webhookEvent: event.value,
+      error: validationResult.error,
+    },
+    "Generated webhook filter failed validation, retrying"
+  );
 
   const repairContent = `${userContent}
 
