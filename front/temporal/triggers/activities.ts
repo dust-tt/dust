@@ -190,41 +190,6 @@ async function createConversationForAgentConfiguration({
   return new Ok(newConversation.toJSON());
 }
 
-export async function getTriggerActivity({
-  userId,
-  workspaceId,
-  triggerId,
-}: {
-  userId: string;
-  workspaceId: string;
-  triggerId: string;
-}) {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    userId,
-    workspaceId
-  );
-  if (!auth.workspace() || !auth.user()) {
-    throw new TriggerNonRetryableError(
-      "Invalid authentication. Missing workspaceId or userId."
-    );
-  }
-
-  if (!auth.isUser()) {
-    throw new TriggerNonRetryableError(
-      "Invalid authentication. Missing user permissions."
-    );
-  }
-
-  const triggerResource = await TriggerResource.fetchById(auth, triggerId);
-  if (!triggerResource) {
-    throw new TriggerNonRetryableError(
-      `Trigger with ID ${triggerId} not found.`
-    );
-  }
-
-  return triggerResource.toJSON();
-}
-
 export async function runTriggeredAgentsActivity({
   userId,
   workspaceId,
@@ -426,30 +391,6 @@ function buildWakeUpMessageContent(wakeUp: WakeUpType): string {
   content += `Wake-up reason: ${wakeUp.reason}`;
 
   return content;
-}
-
-export async function getWakeUpActivity({
-  workspaceId,
-  wakeUpId,
-}: {
-  workspaceId: string;
-  wakeUpId: string;
-}) {
-  const wakeUpAndAuthRes = await WakeUpResource.fetchWakeUpAndAuthenticatorById(
-    {
-      workspaceId,
-      wakeUpId,
-    }
-  );
-  if (wakeUpAndAuthRes.isErr()) {
-    logger.error(
-      { wakeUpId, workspaceId, error: normalizeError(wakeUpAndAuthRes.error) },
-      "Skipping wake-up: workspace or wake-up not found."
-    );
-    return;
-  }
-
-  return wakeUpAndAuthRes.value.wakeUp.toJSON();
 }
 
 export async function runWakeUpActivity({
