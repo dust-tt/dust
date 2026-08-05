@@ -1,5 +1,6 @@
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import type { SandboxChildActionInfo } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
@@ -39,6 +40,13 @@ export class AgentMCPActionFactory {
       step = 1,
       dustRunId = null,
       output = [],
+      inputs = {},
+      functionCallName = "test_tool",
+      toolName = "test_tool",
+      mcpServerName = "test_server",
+      toolServerId = "test-server",
+      sandboxChildActionInfo,
+      parentAction,
     }: {
       workspace: WorkspaceType;
       conversationModelId: ModelId;
@@ -47,6 +55,13 @@ export class AgentMCPActionFactory {
       step?: number;
       dustRunId?: string | null;
       output?: CallToolResult["content"];
+      inputs?: Record<string, unknown>;
+      functionCallName?: string;
+      toolName?: string;
+      mcpServerName?: string;
+      toolServerId?: string;
+      sandboxChildActionInfo?: SandboxChildActionInfo;
+      parentAction?: AgentMCPActionResource;
     }
   ): Promise<{
     action: AgentMCPActionResource;
@@ -54,29 +69,31 @@ export class AgentMCPActionFactory {
     const functionCallId = generateRandomModelSId();
     const currentIndex = this.stepContentIndex++;
 
-    const stepContent = await AgentStepContentModel.create({
-      workspaceId: workspace.id,
-      agentMessageId: agentMessageModelId,
-      step,
-      index: currentIndex,
-      version: 0,
-      dustRunId,
-      type: "function_call",
-      value: {
+    const stepContent =
+      parentAction?.stepContent ??
+      (await AgentStepContentModel.create({
+        workspaceId: workspace.id,
+        agentMessageId: agentMessageModelId,
+        step,
+        index: currentIndex,
+        version: 0,
+        dustRunId,
         type: "function_call",
         value: {
-          id: functionCallId,
-          name: "test_tool",
-          arguments: "{}",
+          type: "function_call",
+          value: {
+            id: functionCallId,
+            name: functionCallName,
+            arguments: "{}",
+          },
         },
-      },
-    });
+      }));
 
     const toolConfiguration: LightMCPToolConfigurationType = {
       id: 1,
       sId: generateRandomModelSId(),
       type: "mcp_configuration",
-      name: "test_tool",
+      name: functionCallName,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -90,10 +107,10 @@ export class AgentMCPActionFactory {
       internalMCPServerId: null,
       availability: "auto",
       permission: "low",
-      toolServerId: "test-server",
+      toolServerId,
       retryPolicy: "no_retry",
-      originalName: "test_tool",
-      mcpServerName: "test_server",
+      originalName: toolName,
+      mcpServerName,
     };
 
     // TODO(Adrien): Drop column if not used anymore.
@@ -106,7 +123,7 @@ export class AgentMCPActionFactory {
       mcpServerConfigurationId: generateRandomModelSId(),
       status,
       citationsAllocated: 0,
-      augmentedInputs: {},
+      augmentedInputs: inputs,
       toolConfiguration,
       stepContext: {
         citationsCount: 0,
@@ -114,6 +131,7 @@ export class AgentMCPActionFactory {
         resumeState: null,
         retrievalTopK: 10,
         websearchResultCount: 5,
+        ...(sandboxChildActionInfo ? { sandboxChildActionInfo } : {}),
       },
     });
 
