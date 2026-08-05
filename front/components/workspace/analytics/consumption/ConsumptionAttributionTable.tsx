@@ -1,8 +1,5 @@
 import { AvatarNameCell } from "@app/components/workspace/analytics/creditsTableCells";
-import type {
-  ConsumptionTopDimension,
-  ConsumptionTopRow,
-} from "@app/hooks/useConsumptionTop";
+import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
@@ -17,60 +14,13 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
-
-// The rankings this table can show, one tab per `top-*` endpoint.
-// Tools and Skills average their cost over invocations rather than messages.
-const DIMENSION_TABS: {
-  dimension: ConsumptionTopDimension;
-  label: string;
-  // Agents and users have a picture; the rest are labels only.
-  hasAvatar: boolean;
-  avgLabel: string;
-}[] = [
-  {
-    dimension: "agent",
-    label: "Agents",
-    hasAvatar: true,
-    avgLabel: "Cost / message",
-  },
-  {
-    dimension: "user",
-    label: "Members",
-    hasAvatar: true,
-    avgLabel: "Cost / message",
-  },
-  {
-    dimension: "model",
-    label: "Models",
-    hasAvatar: false,
-    avgLabel: "Cost / message",
-  },
-  {
-    dimension: "tool",
-    label: "Tools",
-    hasAvatar: false,
-    avgLabel: "Cost / invocation",
-  },
-  {
-    dimension: "skill",
-    label: "Skills",
-    hasAvatar: false,
-    avgLabel: "Cost / invocation",
-  },
-  {
-    dimension: "source",
-    label: "Sources",
-    hasAvatar: false,
-    avgLabel: "Cost / message",
-  },
-];
-
-function isConsumptionTopDimension(
-  value: string
-): value is ConsumptionTopDimension {
-  return DIMENSION_TABS.some((tab) => tab.dimension === value);
-}
+import { useMemo } from "react";
+import {
+  CONSUMPTION_DIMENSION_CONFIG,
+  CONSUMPTION_DIMENSIONS,
+  type ConsumptionDimension,
+  isConsumptionDimension,
+} from "./consumptionDimensions";
 
 const TOP_LIMIT = 25;
 
@@ -167,9 +117,7 @@ function buildColumns({
 
 interface AttributionRowsProps {
   workspaceId: string;
-  dimension: ConsumptionTopDimension;
-  hasAvatar: boolean;
-  avgLabel: string;
+  dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   search: string;
 }
@@ -177,11 +125,11 @@ interface AttributionRowsProps {
 function AttributionRows({
   workspaceId,
   dimension,
-  hasAvatar,
-  avgLabel,
   period,
   search,
 }: AttributionRowsProps) {
+  const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
+
   const {
     rows: allRows,
     totalCredits,
@@ -238,18 +186,19 @@ function AttributionRows({
 interface ConsumptionAttributionTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  dimension: ConsumptionDimension;
+  onDimensionChange: (dimension: ConsumptionDimension) => void;
 }
 
 export function ConsumptionAttributionTable({
   workspaceId,
   period,
+  dimension,
+  onDimensionChange,
 }: ConsumptionAttributionTableProps) {
-  const [dimension, setDimension] = useState<ConsumptionTopDimension>("agent");
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
-
-  const activeTab = DIMENSION_TABS.find((tab) => tab.dimension === dimension);
 
   return (
     <div className={cn("rounded-lg border border-border bg-card p-4")}>
@@ -266,17 +215,17 @@ export function ConsumptionAttributionTable({
       <Tabs
         value={dimension}
         onValueChange={(value) => {
-          if (isConsumptionTopDimension(value)) {
-            setDimension(value);
+          if (isConsumptionDimension(value)) {
+            onDimensionChange(value);
           }
         }}
       >
         <TabsList border>
-          {DIMENSION_TABS.map((tab) => (
+          {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
             <TabsTrigger
-              key={tab.dimension}
-              value={tab.dimension}
-              label={tab.label}
+              key={tabDimension}
+              value={tabDimension}
+              label={CONSUMPTION_DIMENSION_CONFIG[tabDimension].label}
             />
           ))}
         </TabsList>
@@ -285,8 +234,6 @@ export function ConsumptionAttributionTable({
         <AttributionRows
           workspaceId={workspaceId}
           dimension={dimension}
-          hasAvatar={activeTab?.hasAvatar ?? false}
-          avgLabel={activeTab?.avgLabel ?? "Cost / message"}
           period={period}
           search={debouncedValue}
         />
