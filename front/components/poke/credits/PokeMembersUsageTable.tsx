@@ -8,6 +8,10 @@ import { formatCredits } from "@app/lib/client/credits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
 import { usePokeMembersUsage } from "@app/poke/swr/credits";
+import {
+  MEMBERSHIP_SEAT_TYPES,
+  USER_CREDIT_STATES,
+} from "@app/types/memberships";
 import type {
   MembershipSeatType,
   UserCreditState,
@@ -17,8 +21,13 @@ import {
   AlertCircle,
   ArrowDown,
   ArrowUp,
+  Button,
   Chip,
   ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
   LinkWrapper,
 } from "@dust-tt/sparkle";
@@ -27,24 +36,85 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 type SortDirection = "asc" | "desc";
 
-// Explicit, server-driven sort header for the Member (name) column. Toggling
-// updates the parent sort state directly (no reliance on react-table's
-// manual-sorting toggle), which re-queries the server.
-interface MemberSortHeaderProps {
+type OrderColumn = "name" | "seatType" | "consumedAwuCredits" | "creditState";
+
+// Explicit, server-driven sort header. Toggling updates the parent sort state
+// directly (no reliance on react-table's manual-sorting toggle), which
+// re-queries the server. Clicking a non-active column switches to it
+// (ascending); clicking the active column flips its direction.
+interface SortableHeaderProps {
+  label: string;
+  column: OrderColumn;
+  activeColumn: OrderColumn;
   direction: SortDirection;
-  onToggle: () => void;
+  onToggle: (column: OrderColumn) => void;
 }
 
-function MemberSortHeader({ direction, onToggle }: MemberSortHeaderProps) {
+function SortableHeader({
+  label,
+  column,
+  activeColumn,
+  direction,
+  onToggle,
+}: SortableHeaderProps) {
+  const isActive = column === activeColumn;
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onClick={() => onToggle(column)}
       className="flex items-center gap-1 hover:text-foreground"
     >
-      Member
-      <Icon visual={direction === "desc" ? ArrowDown : ArrowUp} size="xs" />
+      {label}
+      {isActive && (
+        <Icon visual={direction === "desc" ? ArrowDown : ArrowUp} size="xs" />
+      )}
     </button>
+  );
+}
+
+interface EnumFilterDropdownProps<T extends string> {
+  label: string;
+  value: T | undefined;
+  options: readonly T[];
+  onChange: (value: T | undefined) => void;
+}
+
+// Single-value filter dropdown, mirroring the backend's single-value
+// `seatType`/`creditState` query params (not a multi-select facet).
+function EnumFilterDropdown<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: EnumFilterDropdownProps<T>) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="xs"
+          isSelect
+          label={value ? `${label}: ${value}` : label}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem
+          onClick={() => onChange(undefined)}
+          disabled={value === undefined}
+        >
+          All
+        </DropdownMenuItem>
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option}
+            onClick={() => onChange(option)}
+            disabled={value === option}
+          >
+            {option}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -95,22 +165,27 @@ interface PokeMembersUsageTableProps {
 function makeColumns({
   owner,
   onReconciled,
-  nameSortDirection,
-  onToggleNameSort,
+  orderColumn,
+  orderDirection,
+  onToggleSort,
 }: {
   owner: WorkspaceType;
   onReconciled: () => void;
-  nameSortDirection: SortDirection;
-  onToggleNameSort: () => void;
+  orderColumn: OrderColumn;
+  orderDirection: SortDirection;
+  onToggleSort: (column: OrderColumn) => void;
 }): ColumnDef<MemberUsageType>[] {
   return [
     {
       accessorKey: "name",
       enableSorting: false,
       header: () => (
-        <MemberSortHeader
-          direction={nameSortDirection}
-          onToggle={onToggleNameSort}
+        <SortableHeader
+          label="Member"
+          column="name"
+          activeColumn={orderColumn}
+          direction={orderDirection}
+          onToggle={onToggleSort}
         />
       ),
       cell: ({ row }) => {
@@ -127,7 +202,15 @@ function makeColumns({
     },
     {
       accessorKey: "seatType",
-      header: "Seat type",
+      header: () => (
+        <SortableHeader
+          label="Seat type"
+          column="seatType"
+          activeColumn={orderColumn}
+          direction={orderDirection}
+          onToggle={onToggleSort}
+        />
+      ),
       enableSorting: false,
       cell: ({ row }) => <span>{row.original.seatType ?? "-"}</span>,
     },
@@ -135,7 +218,16 @@ function makeColumns({
       accessorKey: "consumedAwuCredits",
       // ES = Elasticsearch, RL = Redis rate-limiter counter, MT = Metronome.
       // The three should agree; divergence points at a counter/metric issue.
-      header: "Consumed (ES / RL / MT)",
+      // Sorting is driven by the ES figure (see resolveMembersUsagePageUsers).
+      header: () => (
+        <SortableHeader
+          label="Consumed (ES / RL / MT)"
+          column="consumedAwuCredits"
+          activeColumn={orderColumn}
+          direction={orderDirection}
+          onToggle={onToggleSort}
+        />
+      ),
       enableSorting: false,
       cell: ({ row }) => {
         const {
@@ -237,7 +329,15 @@ function makeColumns({
     },
     {
       accessorKey: "creditState",
-      header: "Credit state",
+      header: () => (
+        <SortableHeader
+          label="Credit state"
+          column="creditState"
+          activeColumn={orderColumn}
+          direction={orderDirection}
+          onToggle={onToggleSort}
+        />
+      ),
       enableSorting: false,
       cell: ({ row }) => {
         const { creditState, nearLimit, sId } = row.original;
@@ -289,8 +389,15 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  // Only name sorting is supported (server-side). Default: name ascending.
+  // Sorting is server-side and single-column. Default: name ascending.
+  const [orderColumn, setOrderColumn] = useState<OrderColumn>("name");
   const [orderDirection, setOrderDirection] = useState<SortDirection>("asc");
+  const [seatTypeFilter, setSeatTypeFilter] = useState<
+    MembershipSeatType | undefined
+  >(undefined);
+  const [creditStateFilter, setCreditStateFilter] = useState<
+    UserCreditState | undefined
+  >(undefined);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
 
@@ -314,26 +421,55 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
     pageIndex: pagination.pageIndex,
     pageSize: pagination.pageSize,
     search,
-    orderColumn: "name",
+    orderColumn,
     orderDirection,
+    seatType: seatTypeFilter,
+    creditState: creditStateFilter,
   });
 
-  // Toggle name sort direction and jump back to the first page. Stable across
-  // renders (only uses functional setters), so it's safe in the columns memo.
-  const toggleNameSort = useCallback(() => {
-    setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, []);
+  // Switching to a new sort column resets to ascending; clicking the already-
+  // active column flips its direction. Jumps back to the first page either
+  // way. Depends on `orderColumn` (read to detect the "same column" case), so
+  // it's recreated when the active column changes.
+  const toggleSort = useCallback(
+    (column: OrderColumn) => {
+      if (column === orderColumn) {
+        setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      } else {
+        setOrderColumn(column);
+        setOrderDirection("asc");
+      }
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    },
+    [orderColumn]
+  );
+
+  const handleSeatTypeFilterChange = useCallback(
+    (value: MembershipSeatType | undefined) => {
+      setSeatTypeFilter(value);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    },
+    []
+  );
+
+  const handleCreditStateFilterChange = useCallback(
+    (value: UserCreditState | undefined) => {
+      setCreditStateFilter(value);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    },
+    []
+  );
 
   const columns = useMemo(
     () =>
       makeColumns({
         owner,
         onReconciled: () => void mutateMembersUsage(),
-        nameSortDirection: orderDirection,
-        onToggleNameSort: toggleNameSort,
+        orderColumn,
+        orderDirection,
+        onToggleSort: toggleSort,
       }),
-    [owner, mutateMembersUsage, orderDirection, toggleNameSort]
+    [owner, mutateMembersUsage, orderColumn, orderDirection, toggleSort]
   );
 
   if (isMembersUsageError) {
@@ -354,6 +490,20 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
       <span className="text-sm font-medium text-foreground">
         Members credit states
       </span>
+      <div className="flex items-center gap-2">
+        <EnumFilterDropdown
+          label="Seat type"
+          value={seatTypeFilter}
+          options={MEMBERSHIP_SEAT_TYPES}
+          onChange={handleSeatTypeFilterChange}
+        />
+        <EnumFilterDropdown
+          label="Credit state"
+          value={creditStateFilter}
+          options={USER_CREDIT_STATES}
+          onChange={handleCreditStateFilterChange}
+        />
+      </div>
       <PokeDataTable
         columns={columns}
         data={members}
