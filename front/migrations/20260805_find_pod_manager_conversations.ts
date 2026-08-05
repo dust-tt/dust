@@ -151,6 +151,7 @@ makeScript(
     }
 
     const conversationsToUpdate = conversations.filter(
+      // We only take the ones with depth 1, the other ones have been created with sub agents so should remain hidden.
       (conversation) => conversation.depth === 1
     );
 
