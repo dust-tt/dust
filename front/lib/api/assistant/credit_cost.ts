@@ -10,12 +10,11 @@ import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
+  buildAgentMessageBillingPlan,
   computeRunKey,
   getToolBillingInfo,
-  getUsageType,
-  intelligenceAwuFromRunUsagesGroupedByRunKey,
-  toolAwuFromActions,
-} from "@app/lib/metronome/events";
+} from "@app/lib/credits/agent_message_billing";
+import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
@@ -176,23 +175,20 @@ export function computeAgentMessageCredits({
   actions: CreditActionMinimalInput[];
   contextOrigin: UserMessageOrigin | null;
 }): number | null {
-  // Unbillable actions already price at 0 through toolAwuFromAction. Filtering them here settles
-  // the other question, whether the message has anything to bill at all.
-  const billableActions = actions.filter((a) =>
-    isToolExecutionStatusBillable(a.status)
+  const billingPlan = buildAgentMessageBillingPlan({
+    actions,
+    contextOrigin,
+    runUsages,
+  });
+  const hasBillableAction = billingPlan.tools.some(
+    ({ disposition }) => disposition !== "unbillable_status"
   );
 
-  if (runUsages.length === 0 && billableActions.length === 0) {
+  if (runUsages.length === 0 && !hasBillableAction) {
     return null;
   }
 
-  // Intelligence cost is ceiled per agent-loop execution (runKey) to match the
-  // per-execution Metronome events. Tool cost has no ceiling (fixed 1/3 per
-  // action), so it is grouping-invariant and stays message-level.
-  return (
-    intelligenceAwuFromRunUsagesGroupedByRunKey(runUsages, contextOrigin) +
-    toolAwuFromActions(billableActions, contextOrigin)
-  );
+  return billingPlan.totals.billedCredits;
 }
 
 /**
