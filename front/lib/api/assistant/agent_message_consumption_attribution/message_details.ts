@@ -1,8 +1,8 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getToolAggregateDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import {
-  creditsToMicroCredits,
   microCreditsToCredits,
+  roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -47,7 +47,7 @@ function reconcileInputCredits({
   items: AgentMessageConsumptionItemResource[];
   billedCredits: number;
 }): ReconciledCreditAmounts | null {
-  const billedCreditAmountMicro = creditsToMicroCredits(billedCredits);
+  const billedCreditAmountMicro = roundCreditsToMicroCredits(billedCredits);
   const inputItems = items.filter((item) => item.itemType === "input");
   const nonInputCreditAmountMicro = items.reduce(
     (total, item) =>

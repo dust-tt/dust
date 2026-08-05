@@ -8,7 +8,7 @@ import {
   type ToolExecutionStatus,
 } from "@app/lib/actions/statuses";
 import { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
-import { creditsToMicroCredits } from "@app/lib/credits/units";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -159,7 +159,7 @@ function allocateBilledCreditMicro<TUsage extends AgentMessageBillingRunUsage>({
   providerCostMicroUsd: number;
   usages: TUsage[];
 }): AgentMessageLlmBillingLine<TUsage>["usageAllocations"] {
-  const billedCreditMicro = creditsToMicroCredits(billedCredits);
+  const billedCreditMicro = roundCreditsToMicroCredits(billedCredits);
   if (providerCostMicroUsd === 0) {
     return usages.map((usage) => ({
       usage,
@@ -210,6 +210,27 @@ function allocateBilledCreditMicro<TUsage extends AgentMessageBillingRunUsage>({
       floorCreditMicro +
       (allocationKeysReceivingRemainder.has(allocationKey) ? 1 : 0),
   }));
+}
+
+function resolveToolBillingDisposition({
+  freeUsage,
+  isMessageFree,
+  status,
+}: {
+  freeUsage: boolean;
+  isMessageFree: boolean;
+  status: ToolExecutionStatus;
+}): AgentMessageToolBillingDisposition {
+  if (!isToolExecutionStatusBillable(status)) {
+    return "unbillable_status";
+  }
+  if (isMessageFree) {
+    return "free_origin";
+  }
+  if (freeUsage) {
+    return "free_tool";
+  }
+  return "billed";
 }
 
 /**
@@ -320,14 +341,11 @@ export function buildAgentMessageBillingPlan<
       action.internalMCPServerName,
       action.toolName
     );
-    const billingDisposition: AgentMessageToolBillingDisposition =
-      !isToolExecutionStatusBillable(action.status)
-        ? "unbillable_status"
-        : isMessageFree
-          ? "free_origin"
-          : freeUsage
-            ? "free_tool"
-            : "billed";
+    const billingDisposition = resolveToolBillingDisposition({
+      freeUsage,
+      isMessageFree,
+      status: action.status,
+    });
     const ratedCredits = TOOL_COST_CATEGORY_AWU_WEIGHTS[toolCostCategory];
     const billedCredits = billingDisposition === "billed" ? ratedCredits : 0;
 

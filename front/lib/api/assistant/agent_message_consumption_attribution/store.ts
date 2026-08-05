@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import type { Authenticator } from "@app/lib/auth";
-import { creditsToMicroCredits } from "@app/lib/credits/units";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { toolAwuFromAction } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
@@ -246,7 +246,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
 
       // Zero for a denied call, which billing does not charge. Its emitted output tokens stay
       // attributed here.
-      const directCreditAmountMicro = creditsToMicroCredits(
+      const directCreditAmountMicro = roundCreditsToMicroCredits(
         toolAwuFromAction(
           {
             toolName: enrichedAction.toolName,
@@ -289,7 +289,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
         continue;
       }
 
-      const directCreditAmountMicro = creditsToMicroCredits(
+      const directCreditAmountMicro = roundCreditsToMicroCredits(
         toolAwuFromAction(
           {
             toolName: enrichedAction.toolName,

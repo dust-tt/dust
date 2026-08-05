@@ -7,7 +7,7 @@
  */
 export const MICRO_CREDITS_PER_CREDIT = 1_000_000;
 
-export function creditsToMicroCredits(credits: number): number {
+export function roundCreditsToMicroCredits(credits: number): number {
   return Math.round(credits * MICRO_CREDITS_PER_CREDIT);
 }
 
