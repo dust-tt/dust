@@ -18,21 +18,74 @@ import { Sequelize } from "sequelize";
 declare module "sequelize" {
   interface Transaction {
     readonly id: string;
+    readonly parent?: Transaction;
   }
 }
 
 const IDLE_IN_TX_THRESHOLD_MS = 250;
 const MAX_TRACKED_QUERIES = 100;
+const LAG_SAMPLE_INTERVAL_MS = 50;
+
+// Event-loop lag accumulated process-wide. A stop-the-world pause (major GC, a blocking
+// callback) suspends every transaction that is open at that moment, and Postgres reports all of
+// them as idle in transaction. Without measuring the pause, one process freeze reads as a
+// separate slow codepath on each of those transactions.
+let cumulativeLagMs = 0;
+let lastLagSampleAtMs = performance.now();
+
+setInterval(() => {
+  const nowMs = performance.now();
+  cumulativeLagMs += Math.max(
+    0,
+    nowMs - lastLagSampleAtMs - LAG_SAMPLE_INTERVAL_MS
+  );
+  lastLagSampleAtMs = nowMs;
+}, LAG_SAMPLE_INTERVAL_MS).unref();
 
 interface TxState {
   beginAtMs: number;
   busyMs: number;
-  route: string | undefined;
+  busyStartMs: number;
+  idleLagMs: number;
+  inFlightCount: number;
+  lagAtIdleStartMs: number;
   lastQuerySql: string;
   queries: string[];
 }
 
-const txStates = new Map<string, TxState>();
+// Keyed on the transaction object, so statements can only ever be attributed to the transaction
+// they were issued with, and an abandoned transaction is collected instead of leaking its state.
+const txStates = new WeakMap<Transaction, TxState>();
+
+// Savepoints are distinct Transaction objects nested in the one that owns the BEGIN/COMMIT pair.
+function rootTransaction(transaction: Transaction): Transaction {
+  let root = transaction;
+  while (root.parent) {
+    root = root.parent;
+  }
+  return root;
+}
+
+// A transaction runs its statements one at a time, but callers can issue several before the
+// earlier ones complete, and those then queue on the connection. Timing each statement from the
+// moment it is issued makes those windows overlap, so busy time is their union.
+// Lag while a statement is in flight is already part of busyMs, so only the lag observed between
+// two statements is kept: that is the part that inflates the idle window.
+function openBusyWindow(state: TxState, atMs: number): void {
+  if (state.inFlightCount === 0) {
+    state.busyStartMs = atMs;
+    state.idleLagMs += cumulativeLagMs - state.lagAtIdleStartMs;
+  }
+  state.inFlightCount += 1;
+}
+
+function closeBusyWindow(state: TxState, atMs: number): void {
+  state.inFlightCount -= 1;
+  if (state.inFlightCount === 0) {
+    state.busyMs += atMs - state.busyStartMs;
+    state.lagAtIdleStartMs = cumulativeLagMs;
+  }
+}
 
 function trackTx(
   transaction: Transaction | null | undefined,
@@ -49,54 +102,52 @@ function trackTx(
   const isRollback =
     upper.startsWith("ROLLBACK") && !upper.startsWith("ROLLBACK TO");
 
-  const txId = transaction.id;
+  const root = rootTransaction(transaction);
 
   if (isBegin) {
-    const span = trace.getSpan(otelContext.active());
-    let route: string | undefined;
-    if (span && span.isRecording()) {
-      const attrs = (span as unknown as ReadableSpan).attributes;
-      if (attrs?.["next.route"]) {
-        route = String(attrs["next.route"]);
-      } else if (attrs?.["next.span_name"]) {
-        const m = String(attrs["next.span_name"]).match(
-          /executing api route \(pages\) (.+)$/
-        );
-        if (m) {
-          route = m[1];
-        }
-      }
-    }
-    txStates.set(txId, {
-      beginAtMs: performance.now(),
+    const beginAtMs = performance.now();
+    // BEGIN is a round trip like any other statement: the backend runs it, it is not idle.
+    const state: TxState = {
+      beginAtMs,
       busyMs: 0,
-      route,
+      busyStartMs: beginAtMs,
+      idleLagMs: 0,
+      inFlightCount: 1,
+      lagAtIdleStartMs: cumulativeLagMs,
       lastQuerySql: "",
       queries: [],
-    });
-    return undefined;
+    };
+    txStates.set(root, state);
+
+    return () => {
+      closeBusyWindow(state, performance.now());
+    };
   }
 
-  const state = txStates.get(txId);
+  const state = txStates.get(root);
   if (!state) {
     return undefined;
   }
-  const startMs = performance.now();
+  openBusyWindow(state, performance.now());
 
   return () => {
+    const endMs = performance.now();
+    closeBusyWindow(state, endMs);
+
     if (isCommit || isRollback) {
-      txStates.delete(txId);
-      const totalMs = performance.now() - state.beginAtMs;
+      txStates.delete(root);
+      const totalMs = endMs - state.beginAtMs;
       const idleMs = Math.max(0, totalMs - state.busyMs);
-      if (idleMs >= IDLE_IN_TX_THRESHOLD_MS) {
+      const lagMs = Math.min(idleMs, state.idleLagMs);
+      if (idleMs - lagMs >= IDLE_IN_TX_THRESHOLD_MS) {
         logger.warn(
           {
-            txId,
+            txId: root.id,
             totalMs,
             idleMs,
             busyMs: state.busyMs,
+            lagMs,
             outcome: isCommit ? "commit" : "rollback",
-            route: state.route,
             lastQuerySql: state.lastQuerySql,
             queries: state.queries,
           },
@@ -105,7 +156,7 @@ function trackTx(
       }
       return;
     }
-    state.busyMs += performance.now() - startMs;
+
     state.lastQuerySql = sqlString;
     if (state.queries.length < MAX_TRACKED_QUERIES) {
       state.queries.push(sqlString);
