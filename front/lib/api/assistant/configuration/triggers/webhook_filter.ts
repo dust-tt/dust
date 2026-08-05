@@ -1,7 +1,10 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { validateWebhookFilter } from "@app/lib/api/assistant/configuration/triggers/webhook_filter_validation";
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
@@ -286,6 +289,66 @@ In addition to the exhaustive JSON Schema of the payload, you will be provided a
 ${providerInstructionsSection}`;
 }
 
+async function generateFilter(
+  auth: Authenticator,
+  {
+    content,
+    model,
+    providerSpecificInstructions,
+  }: {
+    content: string;
+    model: ModelConfigurationType;
+    providerSpecificInstructions: string | null;
+  }
+): Promise<Result<string, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const generationResult = await runMultiActionsAgent(
+    auth,
+    {
+      functionCall: SET_FILTER_FUNCTION_NAME,
+      modelId: model.modelId,
+      providerId: model.providerId,
+      temperature: 0.7,
+      useCache: false,
+    },
+    {
+      conversation: {
+        messages: [
+          {
+            role: "user",
+            content: [{ type: "text", text: content }],
+            name: "",
+          },
+        ],
+      },
+      prompt: getInstructions(providerSpecificInstructions),
+      specifications,
+      forceToolCall: SET_FILTER_FUNCTION_NAME,
+    },
+    {
+      context: {
+        operationType: "trigger_webhook_filter_generator",
+        userId: auth.user()?.sId,
+        workspaceId: owner.sId,
+      },
+    }
+  );
+
+  if (generationResult.isErr()) {
+    return new Err(generationResult.error);
+  }
+
+  for (const action of generationResult.value.actions ?? []) {
+    if (action.name === SET_FILTER_FUNCTION_NAME) {
+      return new Ok(action.arguments.filter);
+    }
+  }
+
+  return new Err(
+    new Error("Unable to generate a filter. Please try rephrasing.")
+  );
+}
+
 export async function getWebhookFilterGeneration(
   auth: Authenticator,
   {
@@ -298,8 +361,6 @@ export async function getWebhookFilterGeneration(
     providerSpecificInstructions: string | null;
   }
 ): Promise<Result<{ filter: string }, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
   const model = await getLargeWhitelistedModel(auth);
   if (!model) {
     return new Err(
@@ -318,57 +379,52 @@ export async function getWebhookFilterGeneration(
     .filter((part) => part !== null)
     .join("\n\n");
 
-  const res = await runMultiActionsAgent(
-    auth,
+  const generationResult = await generateFilter(auth, {
+    content: userContent,
+    model,
+    providerSpecificInstructions,
+  });
+  if (generationResult.isErr()) {
+    return new Err(generationResult.error);
+  }
+
+  const validationResult = validateWebhookFilter(
+    generationResult.value,
+    event.schema
+  );
+  if (validationResult.isOk()) {
+    return new Ok({ filter: generationResult.value });
+  }
+
+  logger.warn(
     {
-      functionCall: SET_FILTER_FUNCTION_NAME,
-      modelId: model.modelId,
-      providerId: model.providerId,
-      temperature: 0.7,
-      useCache: false,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      webhookEvent: event.value,
+      error: validationResult.error,
     },
-    {
-      conversation: {
-        messages: [
-          {
-            role: "user",
-            content: [{ type: "text", text: userContent }],
-            name: "",
-          },
-        ],
-      },
-      prompt: getInstructions(providerSpecificInstructions),
-      specifications,
-      forceToolCall: SET_FILTER_FUNCTION_NAME,
-    },
-    {
-      context: {
-        operationType: "trigger_webhook_filter_generator",
-        userId: auth.user()?.sId,
-        workspaceId: owner.sId,
-      },
-    }
+    "Generated webhook filter failed validation, retrying"
   );
 
-  if (res.isErr()) {
-    return new Err(res.error);
+  const repairContent = `${userContent}
+
+<invalid_filter>
+${generationResult.value}
+</invalid_filter>
+
+<validation_error>
+${validationResult.error.message}
+</validation_error>
+
+The previous filter is invalid. Generate a corrected filter that resolves the validation error.`;
+
+  const repairResult = await generateFilter(auth, {
+    content: repairContent,
+    model,
+    providerSpecificInstructions,
+  });
+  if (repairResult.isErr()) {
+    return new Err(repairResult.error);
   }
 
-  let filter: string | null = null;
-
-  if (res.value.actions) {
-    for (const action of res.value.actions) {
-      if (action.name === SET_FILTER_FUNCTION_NAME) {
-        filter = action.arguments.filter;
-      }
-    }
-  }
-
-  if (!filter) {
-    return new Err(
-      new Error("Unable to generate a filter. Please try rephrasing.")
-    );
-  }
-
-  return new Ok({ filter });
+  return new Ok({ filter: repairResult.value });
 }
