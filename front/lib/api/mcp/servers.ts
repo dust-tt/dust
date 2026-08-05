@@ -372,11 +372,12 @@ async function checkNameConflictInGlobalSpace(
 ): Promise<Result<void, Error>> {
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const { hasConflict } =
-    await MCPServerViewResource.hasNameConflictInSpaceByName(auth, {
+    await MCPServerViewResource.hasNameConflictInSpaceByName(
+      auth,
       name,
-      tools,
-      space: globalSpace,
-    });
+      globalSpace,
+      tools
+    );
   if (hasConflict) {
     return new Err(
       new Error(`An existing Tool is already using the name "${name}"`)

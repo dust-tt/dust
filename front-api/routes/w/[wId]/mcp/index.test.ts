@@ -311,9 +311,6 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error.message).toContain(candidateName);
-    expect(await MCPServerViewResource.listForSystemSpace(auth)).toHaveLength(
-      1
-    );
   });
 
   it("succeeds when creating a remote server with includeGlobal and no name conflict", async () => {

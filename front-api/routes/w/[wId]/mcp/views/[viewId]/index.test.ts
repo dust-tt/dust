@@ -255,17 +255,14 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     }
   });
 
-  it("should return 400 when renaming generates a duplicate cropped tool name", async () => {
+  it("should return 400 when renaming to a name already used by another server", async () => {
     const { workspace, auth } = await setup("admin");
-    const sharedPrefix = "a".repeat(80);
-    const existingName = `${sharedPrefix}-existing`;
-    const candidateName = `${sharedPrefix}-candidate`;
 
     const server1 = await RemoteMCPServerFactory.create(workspace, {
       name: "server-one",
     });
     const server2 = await RemoteMCPServerFactory.create(workspace, {
-      name: existingName,
+      name: "server-two",
     });
 
     const systemView1 =
@@ -282,14 +279,14 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     expect(systemView2).toBeDefined();
 
     const response = await patchView(workspace.sId, systemView1!.sId, {
-      name: candidateName,
+      name: "server-two",
       description: "updated",
     });
 
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error.type).toBe("invalid_request_error");
-    expect(data.error.message).toContain(candidateName);
+    expect(data.error.message).toContain("server-two");
   });
 
   it("should allow renaming when the new name is unique", async () => {
