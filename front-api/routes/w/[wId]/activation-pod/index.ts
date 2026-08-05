@@ -1,5 +1,5 @@
 import type { GetActivationPodResponseBody } from "@app/lib/api/activation/recommendations";
-import { getActivationPodSpaceSIdForUser } from "@app/lib/api/activation/recommendations";
+import { getActivationPodSId } from "@app/lib/api/activation/recommendations";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -10,7 +10,7 @@ const app = workspaceApp();
 app.get("/", async (ctx): HandlerResult<GetActivationPodResponseBody> => {
   const auth = ctx.get("auth");
 
-  const podId = await getActivationPodSpaceSIdForUser(auth);
+  const podId = await getActivationPodSId(auth);
 
   return ctx.json({ podId });
 });

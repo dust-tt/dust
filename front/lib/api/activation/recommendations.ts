@@ -25,14 +25,10 @@ export interface GetActivationRecommendationsResponseBody {
 }
 
 export interface GetActivationPodResponseBody {
-  // The sId of the space backing the user's activation Pod, or null if they
-  // don't have one. Used to scope the Learning Space page (recommendations +
-  // recent conversations) to that Pod.
   podId: string | null;
 }
 
-// Resolves the space sId of the calling user's activation Pod.
-export async function getActivationPodSpaceSIdForUser(
+export async function getActivationPodSId(
   auth: Authenticator
 ): Promise<string | null> {
   const activationPod = await ActivationPodResource.fetchByUser(auth);
