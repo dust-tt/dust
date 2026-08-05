@@ -8,6 +8,11 @@ import type { estypes } from "@elastic/elasticsearch";
 
 export const COMPLETED_AT_FIELD = "completed_at";
 
+// A message spreads over several documents (one per LLM step, one per tool
+// call), so counting messages is always a cardinality on this field, never a
+// document count.
+export const AGENT_MESSAGE_ID_FIELD = "agent_message_id";
+
 // Dimensions a consumption query can be sliced by. The same list serves both
 // purposes: anything the query can be filtered on, it can also be broken down
 // by. Every one of them maps to a single keyword field, so filtering is always a
@@ -55,6 +60,17 @@ export const DEFAULT_CONSUMPTION_METRIC: ConsumptionMetric = "gross_credits";
 // the index sums is already in its final unit and takes a divisor of 1.
 const MICRO_CREDITS_PER_CREDIT = 1_000_000;
 
+export function creditsFromMicroCredits(microCredits: number): number {
+  return microCredits / MICRO_CREDITS_PER_CREDIT;
+}
+
+// The pre-reconciliation cost of a consumption unit: both its direct charge and
+// its token contribution. Additive across document types — an LLM document
+// carries its own tokens, a tool document carries its direct charge and the
+// footprint its result adds — so a sum over any slice of the index is a true
+// total for that slice.
+export const GROSS_CREDIT_MICRO_FIELD = "gross_credit_micro.total";
+
 export const CONSUMPTION_METRIC_DEFINITIONS: Record<
   ConsumptionMetric,
   {
@@ -64,7 +80,7 @@ export const CONSUMPTION_METRIC_DEFINITIONS: Record<
   }
 > = {
   gross_credits: {
-    field: "gross_credit_micro.total",
+    field: GROSS_CREDIT_MICRO_FIELD,
     divisor: MICRO_CREDITS_PER_CREDIT,
   },
 };

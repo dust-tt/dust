@@ -1,9 +1,21 @@
-import { fetchConsumptionTop } from "@app/lib/api/analytics/consumption/top";
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
+import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
+import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
+import { fetchConsumptionTopSources } from "@app/lib/api/analytics/consumption/top_sources";
+import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top_tools";
+import { fetchConsumptionTopUsers } from "@app/lib/api/analytics/consumption/top_users";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
+
+/**
+ * Covers the six `top-*` ranking endpoints together: they share their query
+ * contract and their error mapping, and only differ by the fetcher they call and
+ * the shape it returns.
+ */
 
 // devModeConstants reads localStorage at module load. jsdom does not always
 // have localStorage initialized when mock factories evaluate, which crashes
@@ -13,125 +25,285 @@ vi.mock("@app/components/dev/devModeConstants", () => ({
   DEV_MODE_ACTIVE: false,
 }));
 
-vi.mock(import("@app/lib/api/analytics/consumption/top"), async (orig) => {
-  const mod = await orig();
-  return { ...mod, fetchConsumptionTop: vi.fn() };
-});
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_agents"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopAgents: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_users"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopUsers: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_models"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopModels: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_sources"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopSources: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_tools"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopTools: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_skills"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopSkills: vi.fn() };
+  }
+);
 
-const TOP = {
-  dimension: "agent" as const,
-  unit: "message" as const,
+const PERIOD: ConsumptionPeriod = {
+  startDate: "2026-07-01T00:00:00.000Z",
+  endDate: "2026-08-01T00:00:00.000Z",
+};
+
+const TOP_AGENTS = {
+  period: PERIOD,
   totalCredits: 5000,
-  rows: [
+  agents: [
     {
-      id: "agent1",
+      agentId: "agent1",
       name: "@dust",
       pictureUrl: null,
       credits: 2230,
-      count: 10,
-      avgCreditPerUnit: 223,
+      messageCount: 10,
+      avgCreditsPerMessage: 223,
     },
   ],
 };
+
+const TOP_USERS = {
+  period: PERIOD,
+  totalCredits: 5000,
+  users: [
+    {
+      userId: "user1",
+      name: "Jane Doe",
+      pictureUrl: null,
+      credits: 100,
+      messageCount: 4,
+      avgCreditsPerMessage: 25,
+    },
+  ],
+};
+
+const TOP_MODELS = {
+  period: PERIOD,
+  totalCredits: 5000,
+  models: [
+    {
+      modelId: "claude-4-sonnet",
+      name: "Claude 4 Sonnet",
+      credits: 400,
+      messageCount: 8,
+      avgCreditsPerMessage: 50,
+    },
+  ],
+};
+
+const TOP_SOURCES = {
+  period: PERIOD,
+  totalCredits: 5000,
+  sources: [
+    {
+      source: "web",
+      name: "Conversation",
+      credits: 300,
+      messageCount: 6,
+      avgCreditsPerMessage: 50,
+    },
+  ],
+};
+
+const TOP_TOOLS = {
+  period: PERIOD,
+  totalCredits: 5000,
+  tools: [
+    {
+      serverName: "web_search_browse",
+      name: "Web Search & Browse",
+      credits: 60,
+      invocationCount: 12,
+      avgCreditsPerInvocation: 5,
+    },
+  ],
+};
+
+const TOP_SKILLS = {
+  period: PERIOD,
+  totalCredits: 5000,
+  skills: [
+    {
+      skillId: "skl_1",
+      name: "Research",
+      credits: 40,
+      invocationCount: 8,
+      avgCreditsPerInvocation: 5,
+    },
+  ],
+};
+
+// One entry per ranking endpoint. Each owns its own typed mock plumbing so the
+// table stays type-safe across six different response shapes.
+const RANKINGS = [
+  {
+    path: "top-agents",
+    body: TOP_AGENTS,
+    arrangeOk: () =>
+      vi
+        .mocked(fetchConsumptionTopAgents)
+        .mockResolvedValue(new Ok(TOP_AGENTS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopAgents).mock.lastCall,
+  },
+  {
+    path: "top-users",
+    body: TOP_USERS,
+    arrangeOk: () =>
+      vi.mocked(fetchConsumptionTopUsers).mockResolvedValue(new Ok(TOP_USERS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopUsers).mock.lastCall,
+  },
+  {
+    path: "top-models",
+    body: TOP_MODELS,
+    arrangeOk: () =>
+      vi
+        .mocked(fetchConsumptionTopModels)
+        .mockResolvedValue(new Ok(TOP_MODELS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopModels).mock.lastCall,
+  },
+  {
+    path: "top-sources",
+    body: TOP_SOURCES,
+    arrangeOk: () =>
+      vi
+        .mocked(fetchConsumptionTopSources)
+        .mockResolvedValue(new Ok(TOP_SOURCES)),
+    lastCall: () => vi.mocked(fetchConsumptionTopSources).mock.lastCall,
+  },
+  {
+    path: "top-tools",
+    body: TOP_TOOLS,
+    arrangeOk: () =>
+      vi.mocked(fetchConsumptionTopTools).mockResolvedValue(new Ok(TOP_TOOLS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopTools).mock.lastCall,
+  },
+  {
+    path: "top-skills",
+    body: TOP_SKILLS,
+    arrangeOk: () =>
+      vi
+        .mocked(fetchConsumptionTopSkills)
+        .mockResolvedValue(new Ok(TOP_SKILLS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopSkills).mock.lastCall,
+  },
+];
 
 async function setupTest({ role = "admin" as MembershipRoleType } = {}) {
   return createPrivateApiMockRequest({ role });
 }
 
-function getTopRequest(wId: string, query: Record<string, string> = {}) {
+function getRankingRequest(
+  wId: string,
+  path: string,
+  query: Record<string, string> = {}
+) {
   const qs = new URLSearchParams(query).toString();
   return honoApp.request(
-    `/api/w/${wId}/analytics/consumption/top${qs ? `?${qs}` : ""}`
+    `/api/w/${wId}/analytics/consumption/${path}${qs ? `?${qs}` : ""}`
   );
 }
 
-describe("GET /api/w/:wId/analytics/consumption/top", () => {
-  it("returns 403 for non-manager users", async () => {
-    const { workspace } = await setupTest({ role: "user" });
-
-    const response = await getTopRequest(workspace.sId, { dimension: "agent" });
-
-    expect(response.status).toBe(403);
-    expect(vi.mocked(fetchConsumptionTop)).not.toHaveBeenCalled();
-  });
-
-  it("returns the ranking for managers", async () => {
-    vi.mocked(fetchConsumptionTop).mockResolvedValue(new Ok(TOP));
+describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
+  it.each(
+    RANKINGS
+  )("$path is mounted, returns the ranking and defaults its period and limit", async ({
+    path,
+    body,
+    arrangeOk,
+    lastCall,
+  }) => {
+    arrangeOk();
     const { workspace } = await setupTest({ role: "admin" });
 
-    const response = await getTopRequest(workspace.sId, { dimension: "agent" });
+    const response = await getRankingRequest(workspace.sId, path);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(TOP);
-    expect(vi.mocked(fetchConsumptionTop)).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        dimension: "agent",
-        limit: 10,
-        period: expect.objectContaining({ kind: "cycle" }),
-        filter: undefined,
-      })
-    );
+    expect(await response.json()).toEqual(body);
+    // The period is resolved by the route, so only its shape is asserted here.
+    expect(lastCall()?.[1]).toEqual({
+      limit: 10,
+      period: { startDate: expect.any(String), endDate: expect.any(String) },
+      filter: undefined,
+    });
   });
 
-  it("forwards dimension, limit, period and filter", async () => {
-    vi.mocked(fetchConsumptionTop).mockResolvedValue(
-      new Ok({ ...TOP, dimension: "tool", unit: "tool_call" })
-    );
+  it.each(RANKINGS)("$path is refused to non-managers", async ({ path }) => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await getRankingRequest(workspace.sId, path);
+
+    expect(response.status).toBe(403);
+  });
+
+  it("forwards the limit, the period and the filter", async () => {
+    vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
     const { workspace } = await setupTest();
 
-    const response = await getTopRequest(workspace.sId, {
-      dimension: "tool",
+    const response = await getRankingRequest(workspace.sId, "top-agents", {
       limit: "5",
       period: "days",
       days: "7",
-      filter: JSON.stringify({ agent: ["a1"] }),
+      filter: JSON.stringify({ source: ["slack"] }),
     });
 
     expect(response.status).toBe(200);
-    expect(vi.mocked(fetchConsumptionTop)).toHaveBeenCalledWith(
+    expect(vi.mocked(fetchConsumptionTopAgents)).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        dimension: "tool",
         limit: 5,
-        period: expect.objectContaining({ kind: "days" }),
-        filter: { agent: ["a1"] },
+        filter: { source: ["slack"] },
       })
     );
   });
 
-  it("returns 400 when dimension is missing", async () => {
+  it("returns 400 on a limit above the cap", async () => {
     const { workspace } = await setupTest();
 
-    const response = await getTopRequest(workspace.sId);
-
-    expect(response.status).toBe(400);
-    expect(vi.mocked(fetchConsumptionTop)).not.toHaveBeenCalled();
-  });
-
-  it("returns 400 on an unknown dimension", async () => {
-    const { workspace } = await setupTest();
-
-    const response = await getTopRequest(workspace.sId, {
-      dimension: "conversation",
+    const response = await getRankingRequest(workspace.sId, "top-agents", {
+      limit: "1000",
     });
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
       error: { type: "invalid_request_error" },
     });
-    expect(vi.mocked(fetchConsumptionTop)).not.toHaveBeenCalled();
   });
 
   it("returns 500 when the search fails", async () => {
-    vi.mocked(fetchConsumptionTop).mockResolvedValue(
+    vi.mocked(fetchConsumptionTopTools).mockResolvedValue(
       new Err(
         Object.assign(new Error("boom"), { type: "query_error" as const })
       )
     );
     const { workspace } = await setupTest();
 
-    const response = await getTopRequest(workspace.sId, { dimension: "agent" });
+    const response = await getRankingRequest(workspace.sId, "top-tools");
 
     expect(response.status).toBe(500);
     expect(await response.json()).toMatchObject({
