@@ -702,6 +702,7 @@ describe("SandboxFunctionInvocationResource", () => {
         sandboxFunction,
         invocationId: invocation.sId,
         execId: expect.any(String),
+        noTools: false,
       }
     );
     expect(execSpy).toHaveBeenCalledTimes(1);
@@ -1146,6 +1147,32 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     // the workflow's.
     const [, , execOptions] = execSpy.mock.calls[0]!;
     expect(execOptions?.timeoutMs).toBe(10 * 1000);
+    // A fast function runs under a token that cannot call tools.
+    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ noTools: true })
+    );
+  });
+
+  it("runs a durable function under a token that can call tools", async () => {
+    const { authenticator, sandboxFunction } = await setupInlineTest("durable");
+    enableFlags(["sandbox_function_stdout_result"]);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    const executionResult = await result.value.execute(authenticator);
+    expect(executionResult.isOk()).toBe(true);
+    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ noTools: false })
+    );
   });
 
   it("starts the workflow for a durable function", async () => {

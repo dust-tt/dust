@@ -158,6 +158,7 @@ export async function createSandboxFunctionInvocationTokenTestContext({
     disableComputerFeature,
   });
   const token = await generateSandboxFunctionInvocationToken(context.auth, {
+    noTools: false,
     sandbox: context.sandbox,
     sandboxFunction: {
       sId: "sfn_test",
@@ -175,7 +176,11 @@ export async function createSandboxFunctionInvocationTokenTestContext({
 
 // Same as above but with a real sandbox function and invocation persisted, for flows that fetch
 // them back (calling MCP tools from a function invocation).
-export async function createPersistedSandboxFunctionInvocationTokenTestContext() {
+export async function createPersistedSandboxFunctionInvocationTokenTestContext({
+  noTools = false,
+}: {
+  noTools?: boolean;
+} = {}) {
   const context = await createSandboxTokenTestContext();
   const { workspace } = context;
 
@@ -226,6 +231,7 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext()
     },
     invocationId: invocation.sId,
     execId: `test-function-exec-${context.sandbox.sId}`,
+    noTools,
   });
 
   return {

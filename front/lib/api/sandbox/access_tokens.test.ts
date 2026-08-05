@@ -210,6 +210,7 @@ describe("sandbox access tokens", () => {
     const pod = await SpaceFactory.project(auth.getNonNullableWorkspace());
 
     const token = await generateSandboxFunctionInvocationToken(auth, {
+      noTools: false,
       sandbox,
       sandboxFunction: {
         sId: "sfn_test",

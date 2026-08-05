@@ -41,6 +41,26 @@ app.post(
     // scoped to the invocation. The sandbox is never paused (function invocations are blocking
     // execs), so the response can be returned directly.
     if (isSandboxFunctionInvocationTokenPayload(claims)) {
+      // A fast function is published on the promise that it does not call tools, and its
+      // invocation cannot survive the wait a tool call can turn into. Refusing on the token
+      // rather than in the sandbox makes this hold however the function is invoked.
+      //
+      // This is a guardrail against a mislabelled function, not a sandbox boundary: every
+      // invocation execs as the same user, so a fast function running alongside a durable one
+      // could read that invocation's token out of /proc. That grants nothing the pod owner could
+      // not get by publishing as durable, and the tool call still needs its usual approval.
+      if (claims.noTools) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "This Pod function is published as fast and cannot call tools. Publish it with " +
+              "executionMode `durable` to let it call tools.",
+          },
+        });
+      }
+
       const result = await createSandboxFunctionMCPAction(auth, {
         sandboxFunctionId: claims.sandboxFunctionId,
         invocationId: claims.invocationId,
