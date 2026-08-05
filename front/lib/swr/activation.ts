@@ -24,8 +24,8 @@ export function useActivationRecommendations({
     fetcher;
 
   const url = podId
-    ? `/api/w/${workspaceId}/action-recommendations?podId=${podId}`
-    : `/api/w/${workspaceId}/action-recommendations`;
+    ? `/api/w/${workspaceId}/activation-recommendations?podId=${podId}`
+    : `/api/w/${workspaceId}/activation-recommendations`;
 
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     url,
@@ -55,7 +55,7 @@ export function useUpdateActivationRecommendation({
     ): Promise<boolean> => {
       try {
         const res = await clientFetch(
-          `/api/w/${workspaceId}/action-recommendations/${recommendationId}`,
+          `/api/w/${workspaceId}/activation-recommendations/${recommendationId}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
