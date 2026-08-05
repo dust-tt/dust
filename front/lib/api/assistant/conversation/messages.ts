@@ -17,6 +17,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgenticMessageData,
   AgentMessageType,
@@ -280,7 +281,27 @@ export async function resolveModelForMentionedAgent(
 ): Promise<AgentMessageModelResolution> {
   const featureFlags = await getFeatureFlags(auth);
 
-  return resolveModel(auth, { selection, configuration, featureFlags });
+  // Sidekick picks its own model server-side. Never honor a user-supplied
+  // model override for it
+  let effectiveSelection = selection;
+  if (configuration.sId === GLOBAL_AGENTS_SID.SIDEKICK && selection) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: auth.user()?.sId,
+        requestedProviderId: selection.providerId,
+        requestedModelId: selection.modelId,
+      },
+      "Ignoring user model selection for the sidekick agent."
+    );
+    effectiveSelection = undefined;
+  }
+
+  return resolveModel(auth, {
+    selection: effectiveSelection,
+    configuration,
+    featureFlags,
+  });
 }
 
 export const createAgentMessages = async (
