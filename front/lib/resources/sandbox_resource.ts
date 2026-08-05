@@ -1,6 +1,7 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
 import { deleteLegacySandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
+import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
@@ -497,7 +498,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   static async ensureActive(
     auth: Authenticator,
     owner: SandboxCreateOwner,
-    opts: { beforeSleep?: SandboxPreSleepCheck } = {}
+    opts: {
+      beforeSleep?: SandboxPreSleepCheck;
+      // Use the sandbox only if it is already running: do not create, wake, or recreate one.
+      // Creating and waking take seconds to minutes, which a caller running inside a request
+      // cannot wait for.
+      requireRunning?: boolean;
+    } = {}
   ): Promise<Result<EnsureSandboxResult, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
@@ -507,6 +514,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
       const existing = await owner.fetchSandbox();
+
+      // Decided here rather than by the caller: only under the lifecycle lock are the status and
+      // the kill marker stable, and a kill-requested sandbox is recreated below however it is
+      // reported, so a caller checking `status === "running"` beforehand would still get a cold
+      // start during an image rollout.
+      if (
+        opts.requireRunning &&
+        (!existing ||
+          existing.killRequestedAt !== null ||
+          existing.status !== "running")
+      ) {
+        return new Err(new SandboxNotRunningError());
+      }
 
       if (!existing) {
         const imageResult = getSandboxImage(auth);

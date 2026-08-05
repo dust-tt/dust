@@ -149,7 +149,8 @@ export class PodSandboxAdapter {
 
   static async ensureSandboxActive(
     auth: Authenticator,
-    pod: SpaceResource
+    pod: SpaceResource,
+    { requireRunning = false }: { requireRunning?: boolean } = {}
   ): Promise<Result<EnsureSandboxResult, Error>> {
     this.assertPod(pod);
 
@@ -162,7 +163,7 @@ export class PodSandboxAdapter {
         createSandbox: (blob) =>
           this.createSandboxRecordForPod(auth, pod, blob),
       },
-      { beforeSleep: this.podPreSleepCheck(auth, pod) }
+      { beforeSleep: this.podPreSleepCheck(auth, pod), requireRunning }
     );
   }
 
