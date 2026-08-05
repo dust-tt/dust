@@ -543,10 +543,18 @@ const NavigationListCollapsibleSection = React.forwardRef<
                 size="xs"
                 className="block shrink-0 group-data-[state=open]/col:hidden"
               />
+              {/* An expanded section shows its own contents, so the chevron
+               * only appears on hover. It keeps its slot (opacity, not
+               * display) so the label doesn't shift, and stays visible where
+               * there is no hover to rely on: touch and keyboard focus. */}
               <Icon
                 visual={ChevronDown}
                 size="xs"
-                className="hidden shrink-0 group-data-[state=open]/col:block"
+                className={cn(
+                  "hidden shrink-0 transition-opacity group-data-[state=open]/col:block",
+                  "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                  "group-hover/menu-item:opacity-100 group-has-[:focus-visible]/menu-item:opacity-100"
+                )}
               />
             </span>
           </CollapsibleTrigger>
