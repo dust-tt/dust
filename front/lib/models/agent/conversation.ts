@@ -807,6 +807,20 @@ CompactionMessageModel.init(
         concurrently: true,
       },
       { fields: ["workspaceId", "conversationId"], concurrently: true },
+      // At most one running compaction per conversation. This is what makes compaction's
+      // "nothing is in flight here" check and its insert safe without a per-conversation lock:
+      // the predicate keeps the index empty at rest, a running compaction owns the single slot,
+      // and the status flip to succeeded/failed releases it. A second concurrent compaction gets
+      // a unique violation, which the transaction retry turns into the caller's 409.
+      {
+        unique: true,
+        fields: ["workspaceId", "conversationId"],
+        where: {
+          status: "created",
+        },
+        name: "compaction_messages_one_running_per_conversation",
+        concurrently: true,
+      },
     ],
   }
 );
