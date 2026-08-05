@@ -1,5 +1,5 @@
 import chunk from "lodash/chunk";
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 
 import {
   FileModel,

@@ -1464,7 +1464,7 @@ export async function processStripeWebhookEvent({
           {
             event,
             stripeSubscriptionId: stripeSubscription.id,
-            status: stripeSubscription.status,
+            subscriptionStatus: stripeSubscription.status,
             stripeError: true,
           },
           `[Stripe Webhook] Received customer.subscription.deleted with unknown status = ${stripeSubscription.status}. Expected status = canceled.`

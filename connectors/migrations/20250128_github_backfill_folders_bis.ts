@@ -6,7 +6,7 @@ import {
 } from "@connectors/connectors/github/temporal/activities";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import type { Logger } from "pino";
+import type { Logger } from "@connectors/logger/logger";
 import { makeScript } from "scripts/helpers";
 
 makeScript(
@@ -49,7 +49,7 @@ async function backfillMissingFolders(
     repos = await getRepositories(connectorId);
   } catch (error) {
     logger.error(
-      error,
+      { error },
       "Error getting repositories for connector, skipping this connector"
     );
     return;

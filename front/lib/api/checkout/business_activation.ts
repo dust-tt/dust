@@ -444,7 +444,7 @@ export async function handleSubscriptionActivationSuccess({
       {
         workspaceId: workspace.sId,
         contractId,
-        status: checkoutPayment.status,
+        paymentStatus: checkoutPayment.status,
       },
       "[Business Activation] payment_gate success: unexpected Redis status, skipping"
     );
@@ -646,7 +646,7 @@ export async function handleSubscriptionActivationSuccess({
         );
       } else {
         logger.info(
-          { workspaceId: workspace.sId, status: syncResult.value.status },
+          { workspaceId: workspace.sId, syncStatus: syncResult.value.status },
           "[Business Activation] Immediate seat sync completed"
         );
       }

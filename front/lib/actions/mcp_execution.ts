@@ -28,6 +28,7 @@ import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Logger } from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
   extensionsForContentType,
@@ -42,7 +43,6 @@ import {
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { extname } from "path";
-import type { Logger } from "pino";
 
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.

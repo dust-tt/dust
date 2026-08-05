@@ -5,6 +5,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
 import { getNotionWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -12,7 +13,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
-import type { Logger } from "pino";
 import { QueryTypes } from "sequelize";
 
 const TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS = 12 * 60 * 60 * 1000; // 12 hours.

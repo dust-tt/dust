@@ -1,4 +1,4 @@
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";

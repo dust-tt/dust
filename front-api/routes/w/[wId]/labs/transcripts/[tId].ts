@@ -114,7 +114,7 @@ app.patch(
       logger.info(
         {
           transcriptsConfigurationId: transcriptsConfiguration.sId,
-          status: newStatus,
+          configurationStatus: newStatus,
         },
         "Setting transcript configuration status."
       );

@@ -18,10 +18,10 @@ import {
   TakeawaysResource,
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { Logger } from "@app/logger/logger";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { startActiveObservation, updateActiveTrace } from "@langfuse/tracing";
-import type { Logger } from "pino";
 import { buildPromptForSourceType } from "./prompts";
 
 async function buildPromptProjectMembers(

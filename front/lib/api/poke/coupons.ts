@@ -69,7 +69,7 @@ export async function pushCouponToOtherRegion(
 
   if (!response.ok) {
     logger.error(
-      { status: response.status, couponId: coupon.sId },
+      { statusCode: response.status, couponId: coupon.sId },
       "[CouponSync] Failed to push coupon to other region"
     );
     return new Err("other_region_push_failed");

@@ -736,7 +736,7 @@ export async function finalizeInterruption(
       {
         agentMessageId: agentMessage.sId,
         conversationId: conversation.sId,
-        status: agentMessage.status,
+        messageStatus: agentMessage.status,
       },
       "finalizeInterruption: message already finalized, skipping"
     );

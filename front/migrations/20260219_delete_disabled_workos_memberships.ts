@@ -64,7 +64,7 @@ async function deleteDisabledMembershipsForWorkspace(
       {
         membershipId: membership.id,
         userId: membership.userId,
-        status: membership.status,
+        membershipStatus: membership.status,
       },
       execute
         ? "Deleting disabled WorkOS membership"

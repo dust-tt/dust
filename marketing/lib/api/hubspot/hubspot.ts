@@ -96,7 +96,7 @@ export async function submitToHubSpotForm(params: {
     if (!response.ok) {
       const errorText = await response.text();
       logger.error(
-        { status: response.status, error: errorText, fields },
+        { statusCode: response.status, error: errorText, fields },
         "HubSpot form submission failed"
       );
       return new Err(
@@ -198,7 +198,7 @@ export async function submitToHubSpotPartnerForm(params: {
     if (!response.ok) {
       const errorText = await response.text();
       logger.error(
-        { status: response.status, error: errorText, fields },
+        { statusCode: response.status, error: errorText, fields },
         "HubSpot partner form submission failed"
       );
       return new Err(
@@ -278,7 +278,7 @@ export async function submitToHubSpotEbookForm(params: {
     if (!response.ok) {
       const errorText = await response.text();
       logger.error(
-        { status: response.status, error: errorText, fields },
+        { statusCode: response.status, error: errorText, fields },
         "HubSpot ebook form submission failed"
       );
       return new Err(

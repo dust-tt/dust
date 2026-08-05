@@ -1,6 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 import type { CreationAttributes } from "sequelize";
 import { Op } from "sequelize";
 

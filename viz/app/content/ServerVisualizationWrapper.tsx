@@ -54,7 +54,7 @@ async function fetchFileRefsRecursively(
 
         if (!fileResponse.ok) {
           logger.warn(
-            { key, status: fileResponse.status },
+            { key, statusCode: fileResponse.status },
             "Failed to fetch file ref"
           );
           return;
@@ -154,7 +154,7 @@ export async function ServerSideVisualizationWrapper({
       );
     } else {
       logger.warn(
-        { identifier, status: codeResponse.status },
+        { identifier, statusCode: codeResponse.status },
         "Failed to fetch code"
       );
     }

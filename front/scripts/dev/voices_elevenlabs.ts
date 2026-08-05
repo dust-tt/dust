@@ -3,9 +3,9 @@ import type {
   VoiceGender,
   VoiceUseCase,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { Voice } from "@elevenlabs/elevenlabs-js/api/types";
-import type { Logger } from "pino";
 
 interface CandidateVoice {
   voiceId: string;

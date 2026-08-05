@@ -6,12 +6,12 @@ import {
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Logger } from "@app/logger/logger";
 import { googleDriveGarbageCollectorWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { withRetries } from "@app/types/shared/retries";
 import type { Client } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
-import type { Logger } from "pino";
 import { QueryTypes } from "sequelize";
 
 // Below this share of a data source's documents, a non-empty GC backlog is treated as

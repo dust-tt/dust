@@ -130,7 +130,7 @@ export async function retrieveGongTranscripts(
 
   if (!newTranscripts.ok) {
     localLogger.error(
-      { status: newTranscripts.status },
+      { statusCode: newTranscripts.status },
       "[retrieveNewTranscripts] Error fetching new transcripts from Gong. Stopping."
     );
     return [];
@@ -232,7 +232,7 @@ export async function retrieveGongTranscriptContent(
         localLogger.error(
           {
             fileId,
-            status: response.status,
+            statusCode: response.status,
           },
           "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
         );
@@ -298,7 +298,7 @@ export async function retrieveGongTranscriptContent(
     localLogger.error(
       {
         fileId,
-        status: call.status,
+        statusCode: call.status,
         statusText: call.statusText,
         errorText,
       },

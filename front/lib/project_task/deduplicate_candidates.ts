@@ -32,11 +32,11 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import type { Logger } from "@app/logger/logger";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation, updateActiveTrace } from "@langfuse/tracing";
-import type { Logger } from "pino";
 import { z } from "zod";
 
 // ── Public types ──────────────────────────────────────────────────────────────

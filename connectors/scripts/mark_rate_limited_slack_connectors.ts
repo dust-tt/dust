@@ -4,10 +4,10 @@ import {
   withSlackErrorHandling,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { ProviderRateLimitError } from "@connectors/lib/error";
+import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { concurrentExecutor } from "@connectors/types";
-import type { Logger } from "pino";
 
 import { makeScript } from "./helpers";
 

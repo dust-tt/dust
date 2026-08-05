@@ -225,7 +225,7 @@ makeScript(
         {
           text: todo.text,
           assignedTo: user.sId,
-          status: todo.deleted ? "deleted" : (todo.status ?? "todo"),
+          taskStatus: todo.deleted ? "deleted" : (todo.status ?? "todo"),
           isAgentSuggestion: todo.isAgentSuggestion,
         },
         "Created todo."

@@ -1,6 +1,6 @@
 /* Commented out as we don't use this anymore and a refactor broke it.
 import _ from "lodash";
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";

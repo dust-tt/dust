@@ -10,7 +10,7 @@ import { GongTranscriptModel } from "@connectors/lib/models/gong";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
-import type { Logger } from "pino";
+import type { Logger } from "@connectors/logger/logger";
 
 const BATCH_SIZE = 100;
 const CORE_DELETION_CONCURRENCY = 10;

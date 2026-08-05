@@ -1,4 +1,4 @@
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 import { Op } from "sequelize";
 
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";

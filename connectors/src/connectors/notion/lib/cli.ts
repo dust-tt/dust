@@ -736,7 +736,7 @@ export const notion = async ({
         {
           url,
           method,
-          status: response.status,
+          statusCode: response.status,
           connectorId: connector.id,
         },
         "[Admin] Notion API request completed"

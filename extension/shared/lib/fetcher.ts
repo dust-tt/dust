@@ -41,7 +41,7 @@ export const resHandler = async (res: Response) => {
   }
 
   logger.error(
-    { status: res.status, errorMessage },
+    { statusCode: res.status, errorMessage },
     "Error returned by the front API."
   );
   throw new APIError(errorType, errorMessage);
