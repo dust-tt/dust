@@ -9,13 +9,7 @@ import type {
   ConversationConsumptionModelDetails,
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
-import {
-  Avatar,
-  Chip,
-  DustLogoSquare,
-  Icon,
-  ShapesPlus,
-} from "@dust-tt/sparkle";
+import { Avatar, Chip, DustLogoSquare, Icon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
@@ -118,7 +112,7 @@ function ToolBreakdownCards({
           labelBadge={String(remainingTools.length)}
           description={toolUsageLabel(remainingToolCallCount)}
           value={remainingToolCredits}
-          icon={ShapesPlus}
+          icon={InternalActionIcons.ToolsIcon}
         />
       )}
     </div>

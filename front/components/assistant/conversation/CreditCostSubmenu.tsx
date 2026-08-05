@@ -12,7 +12,6 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  ShapesPlus,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useState } from "react";
@@ -204,7 +203,7 @@ export function CreditCostSubmenu({
                   label="Other tools"
                   description={`${remainingTools.length} ${remainingTools.length === 1 ? "tool" : "tools"}, ${remainingToolCallCount} ${remainingToolCallCount === 1 ? "use" : "uses"}`}
                   value={formatCreditValue(remainingToolCredits)}
-                  icon={ShapesPlus}
+                  icon={InternalActionIcons.ToolsIcon}
                 />
               )}
             </>

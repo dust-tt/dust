@@ -79,7 +79,11 @@ app.get(
       });
     }
 
-    return ctx.json(await getConversationConsumption(auth, { conversation }));
+    const consumption = await getConversationConsumption(auth, {
+      conversation,
+    });
+
+    return ctx.json(consumption);
   }
 );
 
