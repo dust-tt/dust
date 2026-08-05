@@ -21,10 +21,6 @@ function ChartFallback() {
   return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
 }
 
-/**
- * The consumption-backed Analytics dashboard, built alongside `AnalyticsPage`
- * behind `enable_analytics_consumption` until it reaches parity.
- */
 export function AnalyticsConsumptionPage() {
   const owner = useWorkspace();
   const { hasFeature } = useFeatureFlags();
