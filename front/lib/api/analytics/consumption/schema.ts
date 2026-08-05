@@ -9,6 +9,8 @@ import { z } from "zod";
 
 export const DEFAULT_CONSUMPTION_PERIOD_DAYS = 30;
 
+export const DEFAULT_CONSUMPTION_TOP_LIMIT = 10;
+
 const ConsumptionFilterSchema = z.record(
   z.enum(CONSUMPTION_SCOPE_DIMENSIONS),
   z.string().array()
@@ -42,6 +44,18 @@ export const ConsumptionQuerySchema = z.object({
 });
 
 export type ConsumptionQuery = z.infer<typeof ConsumptionQuerySchema>;
+
+// Every `top-*` endpoint takes the same query: the period and the filters of any
+// consumption endpoint, plus how many rows to rank.
+export const ConsumptionTopQuerySchema = ConsumptionQuerySchema.extend({
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(100)
+    .optional()
+    .default(DEFAULT_CONSUMPTION_TOP_LIMIT),
+});
 
 export function toConsumptionPeriodInput({
   period,

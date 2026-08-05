@@ -73,7 +73,7 @@ describe("GET /api/w/:wId/analytics/consumption/overview", () => {
     const response = await getOverviewRequest(workspace.sId, {
       period: "days",
       days: "7",
-      filter: JSON.stringify({ agent: ["a1"], member: ["u1", "u2"] }),
+      filter: JSON.stringify({ agent: ["a1"], user: ["u1", "u2"] }),
     });
 
     expect(response.status).toBe(200);
@@ -81,7 +81,7 @@ describe("GET /api/w/:wId/analytics/consumption/overview", () => {
       expect.anything(),
       expect.objectContaining({
         periodInput: { kind: "days", days: 7 },
-        filter: { agent: ["a1"], member: ["u1", "u2"] },
+        filter: { agent: ["a1"], user: ["u1", "u2"] },
       })
     );
   });

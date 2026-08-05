@@ -1,4 +1,7 @@
-import { resolveConsumptionGroupNames } from "@app/lib/api/analytics/consumption/labels";
+import {
+  resolveConsumptionGroupLabels,
+  resolveConsumptionGroupNames,
+} from "@app/lib/api/analytics/consumption/labels";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -71,5 +74,23 @@ describe("resolveConsumptionGroupNames", () => {
     expect(await resolveConsumptionGroupNames(auth, "agent", [])).toEqual(
       new Map()
     );
+  });
+
+  it("carries a picture for the dimensions that have one, null for the rest", async () => {
+    const user = await UserFactory.basic();
+
+    const users = await resolveConsumptionGroupLabels(auth, "user", [user.sId]);
+    const sources = await resolveConsumptionGroupLabels(auth, "source", [
+      "slack",
+    ]);
+
+    expect(users.get(user.sId)).toEqual({
+      name: user.fullName(),
+      pictureUrl: user.imageUrl,
+    });
+    expect(sources.get("slack")).toEqual({
+      name: "Slack",
+      pictureUrl: null,
+    });
   });
 });
