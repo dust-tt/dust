@@ -4,6 +4,7 @@ import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   getInternalMCPServerInfo,
+  getInternalMCPServerMetadata,
   isInternalMCPServerName,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -15,6 +16,7 @@ import type {
   MCPServerType,
   MCPServerTypeWithViews,
   MCPServerViewType,
+  MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -163,9 +165,15 @@ export async function createRemoteMCPServer(
     );
   }
 
-  const conflict = await checkNameConflictInSystemSpace(auth, name);
-  if (conflict.isErr()) {
-    return conflict;
+  if (includeGlobal) {
+    const conflict = await checkNameConflictInGlobalSpace(
+      auth,
+      name,
+      metadata.tools
+    );
+    if (conflict.isErr()) {
+      return conflict;
+    }
   }
 
   const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
@@ -276,12 +284,15 @@ export async function createInternalMCPServer(
   // Use viewName for the conflict check when provided (multi-instance),
   // otherwise fall back to the internal server name.
   const nameForConflictCheck = viewName ?? name;
-  const conflict = await checkNameConflictInSystemSpace(
-    auth,
-    nameForConflictCheck
-  );
-  if (conflict.isErr()) {
-    return conflict;
+  if (includeGlobal) {
+    const conflict = await checkNameConflictInGlobalSpace(
+      auth,
+      nameForConflictCheck,
+      getInternalMCPServerMetadata(name).tools
+    );
+    if (conflict.isErr()) {
+      return conflict;
+    }
   }
 
   const newInternalMCPServer = await InternalMCPServerInMemoryResource.makeNew(
@@ -354,17 +365,18 @@ export async function createInternalMCPServer(
   return new Ok(newInternalMCPServer.toJSON());
 }
 
-async function checkNameConflictInSystemSpace(
+async function checkNameConflictInGlobalSpace(
   auth: Authenticator,
-  name: string
+  name: string,
+  tools: readonly MCPToolType[]
 ): Promise<Result<void, Error>> {
-  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const { hasConflict } =
-    await MCPServerViewResource.hasNameConflictInSpaceByName(
-      auth,
+    await MCPServerViewResource.hasNameConflictInSpaceByName(auth, {
       name,
-      systemSpace
-    );
+      tools,
+      space: globalSpace,
+    });
   if (hasConflict) {
     return new Err(
       new Error(`An existing Tool is already using the name "${name}"`)

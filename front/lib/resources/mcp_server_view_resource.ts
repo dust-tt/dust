@@ -26,6 +26,7 @@ import {
   isValidInternalMCPServerId,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type {
   MCPServerLightType,
@@ -226,33 +227,79 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   /**
    * Check whether creating a view for `systemView` in `space` would conflict
-   * with an existing view that resolves to the same effective name. We fetch
-   * all views in the target space because different internalMCPServerIds can
-   * actually point to the same MCP server and thus share the same display name.
+   * with an existing view. A conflict happens when the effective view names are
+   * equal or when their generated model-facing tool names collide after the
+   * server-name prefix is truncated.
    */
   static async hasNameConflictInSpace(
     auth: Authenticator,
     systemView: MCPServerViewResource,
-    space: SpaceResource
+    space: SpaceResource,
+    {
+      name = systemView.name ?? systemView.getServerDisplayMetadata().name,
+      excludedMCPServerId,
+    }: {
+      name?: string;
+      excludedMCPServerId?: string;
+    } = {}
   ): Promise<{ hasConflict: boolean; name: string }> {
-    const name = systemView.name ?? systemView.getServerDisplayMetadata().name;
+    await this.hydrateRemoteServerHeavyAttributes(
+      auth,
+      [systemView],
+      ["cachedTools"]
+    );
 
-    return this.hasNameConflictInSpaceByName(auth, name, space);
+    return this.hasNameConflictInSpaceByName(auth, {
+      name,
+      tools: systemView.getServerTools(),
+      space,
+      excludedMCPServerId,
+    });
   }
 
   /**
-   * Check whether a view with the given name already exists in the target
-   * space. This variant can be called before the server/view is created.
+   * Check whether the given name and tools would conflict with an existing view
+   * in the target space. This variant can be called before the server/view is
+   * created.
    */
   static async hasNameConflictInSpaceByName(
     auth: Authenticator,
-    name: string,
-    space: SpaceResource
+    {
+      name,
+      tools,
+      space,
+      excludedMCPServerId,
+    }: {
+      name: string;
+      tools: readonly MCPToolType[];
+      space: SpaceResource;
+      excludedMCPServerId?: string;
+    }
   ): Promise<{ hasConflict: boolean; name: string }> {
-    const existingViews = await this.listBySpace(auth, space);
-    const hasConflict = existingViews.some(
-      (v) => (v.name ?? v.getServerDisplayMetadata().name) === name
+    const candidateToolNames = new Set(
+      tools.flatMap((tool) => {
+        const toolName = tryGetPrefixedToolName(name, tool.name);
+        return toolName.isOk() ? [toolName.value] : [];
+      })
     );
+    const existingViews = await this.listBySpace(auth, space, {
+      includeHeavyAttributes: ["cachedTools"],
+    });
+    const hasConflict = existingViews.some((view) => {
+      if (view.mcpServerId === excludedMCPServerId) {
+        return false;
+      }
+
+      const existingName = view.name ?? view.getServerDisplayMetadata().name;
+      if (existingName === name) {
+        return true;
+      }
+
+      return view.getServerTools().some((tool) => {
+        const toolName = tryGetPrefixedToolName(existingName, tool.name);
+        return toolName.isOk() && candidateToolNames.has(toolName.value);
+      });
+    });
 
     return { hasConflict, name };
   }

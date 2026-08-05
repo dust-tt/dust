@@ -1,10 +1,16 @@
+import {
+  DEFAULT_MCP_ACTION_VERSION,
+  DEFAULT_MCP_SERVER_ICON,
+} from "@app/lib/actions/constants";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -189,7 +195,6 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
       name: "agent_memory" as InternalMCPServerNameType,
       serverType: "internal",
       includeGlobal: true,
-      viewName: "agent_memory_2",
     });
 
     expect(response.status).toBe(201);
@@ -252,23 +257,60 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
 });
 
 describe("POST /api/w/:wId/mcp/ — name conflict", () => {
-  it("returns 400 when a server with the same name already exists in the system space", async () => {
+  it("returns 400 when distinct names generate the same cropped tool name", async () => {
     const { workspace, auth } = await setup();
+    const sharedPrefix = "a".repeat(80);
+    const existingName = `${sharedPrefix}-existing`;
+    const candidateName = `${sharedPrefix}-candidate`;
+    const tools = [
+      {
+        name: "test-tool",
+        description: "Test tool description",
+        inputSchema: undefined,
+      },
+    ];
 
-    await RemoteMCPServerFactory.create(workspace, {
-      name: "Test Server",
+    const existingServer = await RemoteMCPServerFactory.create(workspace, {
+      name: existingName,
       url: "https://existing.example.com",
+      tools,
     });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        existingServer.sId
+      );
+    expect(systemView).toBeDefined();
+
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    await MCPServerViewResource.create(auth, {
+      systemView: systemView!,
+      space: globalSpace,
+    });
+
+    vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
+      new Ok({
+        name: candidateName,
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: "Test description",
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        tools,
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+      })
+    );
 
     const response = await postMcp(workspace, {
       serverType: "remote",
       url: "https://new-server.example.com",
-      includeGlobal: false,
+      includeGlobal: true,
     });
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error.message).toContain("Test Server");
+    expect(body.error.message).toContain(candidateName);
     expect(await MCPServerViewResource.listForSystemSpace(auth)).toHaveLength(
       1
     );

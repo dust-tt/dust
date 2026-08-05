@@ -255,14 +255,17 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     }
   });
 
-  it("should return 400 when renaming to a name already used by another server", async () => {
+  it("should return 400 when renaming generates a duplicate cropped tool name", async () => {
     const { workspace, auth } = await setup("admin");
+    const sharedPrefix = "a".repeat(80);
+    const existingName = `${sharedPrefix}-existing`;
+    const candidateName = `${sharedPrefix}-candidate`;
 
     const server1 = await RemoteMCPServerFactory.create(workspace, {
       name: "server-one",
     });
     const server2 = await RemoteMCPServerFactory.create(workspace, {
-      name: "server-two",
+      name: existingName,
     });
 
     const systemView1 =
@@ -279,14 +282,14 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     expect(systemView2).toBeDefined();
 
     const response = await patchView(workspace.sId, systemView1!.sId, {
-      name: "server-two",
+      name: candidateName,
       description: "updated",
     });
 
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error.type).toBe("invalid_request_error");
-    expect(data.error.message).toContain("server-two");
+    expect(data.error.message).toContain(candidateName);
   });
 
   it("should allow renaming when the new name is unique", async () => {
@@ -335,39 +338,5 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     expect(data.success).toBe(true);
     expect(data.serverView.name).toBeNull();
     expect(data.serverView.description).toBeNull();
-  });
-
-  it("should reject resetting to a default name used by another server", async () => {
-    const { workspace, auth } = await setup("admin");
-
-    const server1 = await RemoteMCPServerFactory.create(workspace, {
-      name: "shared-default-name",
-    });
-    await RemoteMCPServerFactory.create(workspace, {
-      name: "shared-default-name",
-    });
-
-    const systemView1 =
-      await MCPServerViewResource.getMCPServerViewForSystemSpace(
-        auth,
-        server1.sId
-      );
-    expect(systemView1).toBeDefined();
-
-    const renameResponse = await patchView(workspace.sId, systemView1!.sId, {
-      name: "custom-name",
-      description: "updated",
-    });
-    expect(renameResponse.status).toBe(200);
-
-    const response = await patchView(workspace.sId, systemView1!.sId, {
-      name: null,
-      description: null,
-    });
-
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error.type).toBe("invalid_request_error");
-    expect(data.error.message).toContain("shared-default-name");
   });
 });
