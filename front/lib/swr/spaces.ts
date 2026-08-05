@@ -148,10 +148,11 @@ export function useSpacesAccessCheck({
 
   const isEmpty = spaceIds.length === 0 || userIds.length === 0;
   const params = new URLSearchParams();
-  for (const spaceId of spaceIds) {
+  // Sorted so that the same sets always produce the same key, whatever the caller's order.
+  for (const spaceId of [...spaceIds].sort()) {
     params.append("spaceIds", spaceId);
   }
-  for (const userId of userIds) {
+  for (const userId of [...userIds].sort()) {
     params.append("userIds", userId);
   }
 

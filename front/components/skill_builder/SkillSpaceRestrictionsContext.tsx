@@ -18,7 +18,7 @@ import { useWatch } from "react-hook-form";
 /** An editor of the skill, with the restricted spaces they cannot read. */
 export interface EditorWithoutSpaceAccess {
   editor: SkillBuilderFormData["editors"][number];
-  spaces: SpaceType[];
+  missingSpaces: SpaceType[];
 }
 
 interface SkillSpaceRestrictionsContextType {
@@ -197,7 +197,7 @@ export function SkillSpaceRestrictionsProvider({
     const spaceById = new Map(
       nonGlobalSpacesWithRestrictions.map((space) => [space.sId, space])
     );
-    const spacesByEditorId = new Map<string, SpaceType[]>();
+    const missingSpacesByEditorId = new Map<string, SpaceType[]>();
 
     for (const { spaceId, userIdsWithoutAccess } of spacesAccess) {
       const space = spaceById.get(spaceId);
@@ -206,18 +206,18 @@ export function SkillSpaceRestrictionsProvider({
       }
 
       for (const userId of userIdsWithoutAccess) {
-        const existing = spacesByEditorId.get(userId);
+        const existing = missingSpacesByEditorId.get(userId);
         if (existing) {
           existing.push(space);
         } else {
-          spacesByEditorId.set(userId, [space]);
+          missingSpacesByEditorId.set(userId, [space]);
         }
       }
     }
 
     return (editors ?? []).flatMap((editor) => {
-      const spaces = spacesByEditorId.get(editor.sId);
-      return spaces ? [{ editor, spaces }] : [];
+      const missingSpaces = missingSpacesByEditorId.get(editor.sId);
+      return missingSpaces ? [{ editor, missingSpaces }] : [];
     });
   }, [editors, nonGlobalSpacesWithRestrictions, spacesAccess]);
 
