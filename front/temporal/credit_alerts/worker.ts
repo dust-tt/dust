@@ -6,6 +6,7 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/credit_alerts/activities";
+import { launchSpendLimitExpirationSchedule } from "@app/temporal/credit_alerts/client";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
@@ -39,6 +40,9 @@ export async function runCreditAlertsWorker() {
       ],
     },
   });
+
+  // Start the schedule.
+  await launchSpendLimitExpirationSchedule();
 
   await worker.run();
 }

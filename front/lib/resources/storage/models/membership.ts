@@ -111,7 +111,7 @@ MembershipModel.init(
         concurrently: true,
       },
       // Partial index backing the expiration sweep's cross-workspace lookup
-      // (see `getWorkspacesWithExpiredPoolCapOverride`).
+      // (see `dangerouslyGetWorkspaceModelIdsWithExpiredMembershipPoolCapOverride`).
       {
         fields: ["poolCapOverrideExpiresAt"],
         where: { poolCapOverrideExpiresAt: { [Op.ne]: null } },

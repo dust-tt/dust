@@ -49,6 +49,7 @@
   "membership.bulk_seat_updated": 1,
   "membership.created": 2,
   "membership.origin_updated": 5,
+  "membership.pool_cap_override_expired": 2,
   "membership.revoked": 4,
   "membership.role_updated": 6,
   "membership.seat_auto_upgraded": 1,

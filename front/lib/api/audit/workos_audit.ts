@@ -51,6 +51,7 @@ export const AUDIT_ACTIONS = [
   "membership.bulk_role_updated",
   "membership.bulk_seat_updated",
   "member.spend_limit_updated",
+  "membership.pool_cap_override_expired",
   "group.advanced_model_access_updated",
   "group.member_added",
   "group.member_removed",
