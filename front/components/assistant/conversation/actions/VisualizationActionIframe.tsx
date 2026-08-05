@@ -15,7 +15,7 @@ import type {
   PostSandboxFunctionInvocationResponseBody,
   SandboxFunctionCallError,
   SandboxFunctionInvocationEvent,
-  SandboxFunctionInvocationType,
+  SandboxFunctionInvocationOutcome,
 } from "@app/types/api/sandbox_functions";
 import type {
   CallFunctionRequest,
@@ -150,6 +150,23 @@ const sendErrorToIframe = (
     },
     { targetOrigin: "*" }
   );
+};
+
+const resultFromInvocationOutcome = (
+  outcome: SandboxFunctionInvocationOutcome
+): Result<unknown, SandboxFunctionCallError> => {
+  switch (outcome.status) {
+    case "succeeded":
+      return new Ok(outcome.result);
+    case "errored":
+      return new Err(outcome.error);
+    default:
+      assertNeverAndIgnore(outcome);
+      return new Err({
+        code: "transport_error",
+        message: "Unsupported function invocation outcome.",
+      });
+  }
 };
 
 const getExtensionFromBlob = (blob: Blob): string => {
@@ -374,7 +391,9 @@ function useVisualizationDataHandler({
   createSandboxFunctionInvocation: (
     functionIdOrSlug: string,
     input?: unknown
-  ) => Promise<Result<SandboxFunctionInvocationType, SandboxFunctionCallError>>;
+  ) => Promise<
+    Result<PostSandboxFunctionInvocationResponseBody, SandboxFunctionCallError>
+  >;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
@@ -458,10 +477,16 @@ function useVisualizationDataHandler({
             break;
           }
 
-          const result = await waitForSandboxFunctionInvocationResult({
-            functionId: invocationRes.value.functionId,
-            invocationId: invocationRes.value.sId,
-          });
+          const { invocation, outcome } = invocationRes.value;
+          // An invocation that settled before the response was sent needs no stream: the outcome
+          // is the whole result. Anything still running, including one blocked on user input,
+          // comes back with no outcome and settles over its event stream.
+          const result = outcome
+            ? resultFromInvocationOutcome(outcome)
+            : await waitForSandboxFunctionInvocationResult({
+                functionId: invocation.functionId,
+                invocationId: invocation.sId,
+              });
 
           if (result.isErr()) {
             sendErrorToIframe(data, result.error, event.source, {
@@ -789,7 +814,10 @@ export const VisualizationActionIframe = forwardRef<
       functionIdOrSlug: string,
       input?: unknown
     ): Promise<
-      Result<SandboxFunctionInvocationType, SandboxFunctionCallError>
+      Result<
+        PostSandboxFunctionInvocationResponseBody,
+        SandboxFunctionCallError
+      >
     > => {
       try {
         if (!runtimeAccess.canInvokeFunctions) {
@@ -833,7 +861,7 @@ export const VisualizationActionIframe = forwardRef<
         const result: PostSandboxFunctionInvocationResponseBody =
           await response.json();
 
-        return new Ok(result.invocation);
+        return new Ok(result);
       } catch (error) {
         return new Err({
           code: "transport_error",

@@ -144,6 +144,16 @@ export type PostSandboxFunctionInvocationRequestBody = {
   context?: SandboxFunctionInvocationContext;
 };
 
+// The terminal state of an invocation, as returned by the invocation endpoint when the invocation
+// settled while the request was still open.
+export type SandboxFunctionInvocationOutcome =
+  | { status: "succeeded"; result: unknown }
+  | { status: "errored"; error: SandboxFunctionCallError };
+
 export type PostSandboxFunctionInvocationResponseBody = {
   invocation: SandboxFunctionInvocationType;
+  // Set when the invocation settled before the response was sent. Callers that get an outcome are
+  // done; callers that do not must subscribe to the invocation event stream, which replays
+  // everything published so far.
+  outcome?: SandboxFunctionInvocationOutcome;
 };

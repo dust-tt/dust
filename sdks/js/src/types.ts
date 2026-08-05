@@ -782,6 +782,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
+  | "sandbox_function_fast_execution"
   | "sandbox_function_stdout_result"
   | "sandbox_functions"
   | "self_created_slack_app_connector_rollout"
