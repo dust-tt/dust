@@ -1,0 +1,27 @@
+import type { SVGProps } from "react";
+import * as React from "react";
+
+// filled outer contour of puzzle-piece-01, derived not authored, need to re-derive if the outline changes
+const SvgPuzzlePiece01Filled = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <g clipPath="url(#puzzle-piece-01-filled_svg__a)">
+      <path
+        fill="currentColor"
+        d="M13.535 4.965c.67 0 1.223 0 1.677.031.471.032.91.101 1.332.276a4.03 4.03 0 0 1 2.183 2.184c.176.423.245.861.277 1.332q.02.307.025.677h.471a3.535 3.535 0 0 1 0 7.07h-.465v.665c0 .823 0 1.503-.045 2.055-.046.564-.145 1.086-.395 1.577a4.03 4.03 0 0 1-1.763 1.763c-.491.25-1.013.35-1.577.395-.552.045-1.232.045-2.055.045h-.7A1.035 1.035 0 0 1 11.465 22v-1.75a1.215 1.215 0 1 0-2.43 0V22c0 .572-.463 1.035-1.035 1.035H6.8c-.823 0-1.503 0-2.055-.045-.564-.046-1.086-.145-1.577-.395a4.03 4.03 0 0 1-1.763-1.763c-.25-.491-.35-1.013-.395-1.577-.045-.552-.045-1.232-.045-2.055v-1.7c0-.572.463-1.035 1.035-1.035h1.5a1.465 1.465 0 1 0 0-2.93H2A1.035 1.035 0 0 1 .965 10.5c0-.685 0-1.25.031-1.712.032-.471.101-.91.276-1.332a4.04 4.04 0 0 1 2.184-2.184c.423-.175.861-.244 1.332-.276a27 27 0 0 1 1.677-.031V4.5a3.535 3.535 0 0 1 7.07 0z"
+      />
+    </g>
+    <defs>
+      <clipPath id="puzzle-piece-01-filled_svg__a">
+        <path fill="#fff" d="M0 0h24v24H0z" />
+      </clipPath>
+    </defs>
+  </svg>
+);
+export default SvgPuzzlePiece01Filled;
