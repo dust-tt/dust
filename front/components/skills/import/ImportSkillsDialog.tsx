@@ -100,82 +100,71 @@ export function ImportSkillsDialog({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !isImporting) {
+        if (!open) {
           onClose();
         }
       }}
     >
       <DialogContent size="lg">
-        <DialogHeader hideButton={isImporting}>
-          <DialogTitle>
-            {isImporting ? "Importing skills" : "Import skills"}
-          </DialogTitle>
-          <DialogDescription>
-            {isImporting
-              ? "Your skills are being added to the workspace."
-              : description}
-          </DialogDescription>
+        <DialogHeader>
+          <DialogTitle>Import skills</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          {isImporting ? (
-            <SkillImportLoading
-              importType={importTypeField.value}
-              selectedCount={selectedCount}
-            />
-          ) : (
-            <FormProvider {...form}>
-              <Tabs
-                value={importTypeField.value}
-                onValueChange={(value) => {
-                  if (isImportType(value)) {
-                    importTypeField.onChange(value);
-                    selectedSkillNamesField.onChange([]);
-                    setDetectedCount(0);
-                    form.setValue("repoUrl", "");
-                  }
-                }}
-              >
-                <TabsList>
-                  <TabsTrigger value="repository" label="Repository" />
-                  <TabsTrigger value="files" label="Files" />
-                </TabsList>
-                <TabsContent value="repository">
-                  <ImportFromRepositoryTab
-                    owner={owner}
-                    isActive={importTypeField.value === "repository"}
-                    onDetectingChange={setIsDetecting}
-                    onDetectedCountChange={setDetectedCount}
-                    isImporting={isImporting}
-                  />
-                </TabsContent>
-                <TabsContent value="files">
-                  <ImportFromFilesTab
-                    owner={owner}
-                    isActive={importTypeField.value === "files"}
-                    onDetectingChange={setIsDetecting}
-                    onDetectedCountChange={setDetectedCount}
-                    onFilesChange={handleFilesChange}
-                    isImporting={isImporting}
-                  />
-                </TabsContent>
-              </Tabs>
-            </FormProvider>
-          )}
+          <FormProvider {...form}>
+            <Tabs
+              value={importTypeField.value}
+              onValueChange={(value) => {
+                if (isImportType(value)) {
+                  importTypeField.onChange(value);
+                  selectedSkillNamesField.onChange([]);
+                  setDetectedCount(0);
+                  form.setValue("repoUrl", "");
+                }
+              }}
+            >
+              <TabsList>
+                <TabsTrigger value="repository" label="Repository" />
+                <TabsTrigger value="files" label="Files" />
+              </TabsList>
+              <TabsContent value="repository">
+                <ImportFromRepositoryTab
+                  owner={owner}
+                  isActive={importTypeField.value === "repository"}
+                  onDetectingChange={setIsDetecting}
+                  onDetectedCountChange={setDetectedCount}
+                  isImporting={isImporting}
+                />
+              </TabsContent>
+              <TabsContent value="files">
+                <ImportFromFilesTab
+                  owner={owner}
+                  isActive={importTypeField.value === "files"}
+                  onDetectingChange={setIsDetecting}
+                  onDetectedCountChange={setDetectedCount}
+                  onFilesChange={handleFilesChange}
+                  isImporting={isImporting}
+                />
+              </TabsContent>
+            </Tabs>
+          </FormProvider>
         </DialogContainer>
-        {!isImporting && (
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-            }}
-          >
-            <Button
-              label="Import"
-              disabled={isDetecting || selectedCount === 0}
-              onClick={form.handleSubmit(onSubmit)}
-            />
-          </DialogFooter>
-        )}
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            disabled: isImporting,
+          }}
+        >
+          <Button
+            className="w-20"
+            label={isImporting ? undefined : "Import"}
+            icon={isImporting ? <SkillImportLoading /> : undefined}
+            disabled={isImporting || isDetecting || selectedCount === 0}
+            aria-label={isImporting ? "Importing skills" : undefined}
+            onClick={form.handleSubmit(onSubmit)}
+          />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
