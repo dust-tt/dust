@@ -1477,10 +1477,12 @@ function UnreadConversationsSection({
 const ConversationList = ({
   conversations,
   dateLabel,
+  isFirstGroup,
   ...props
 }: {
   conversations: ConversationListItemType[];
   dateLabel: string;
+  isFirstGroup: boolean;
   isMultiSelect: boolean;
   selectedConversations: ConversationListItemType[];
   toggleConversationSelection: (c: ConversationListItemType) => void;
@@ -1494,11 +1496,13 @@ const ConversationList = ({
   return (
     <ConversationListContainer>
       {/* Compact overline so date groups read as a level below the
-       * (semibold) section titles rather than competing with them. */}
+       * (semibold) section titles rather than competing with them. The top
+       * padding separates a group from the one above it, so the first group
+       * — which follows the section header — does without it. */}
       <NavigationListCompactLabel
         label={dateLabel}
         isSticky
-        className="bg-app-background"
+        className={cn("bg-app-background", isFirstGroup && "pt-1")}
       />
 
       {conversations.map((conversation) => (
@@ -1756,13 +1760,20 @@ function NavigationListWithInbox({
       })
     : ({} as Record<GroupLabel, ConversationListItemType[]>);
 
+  // Empty groups render nothing, so the first non-empty one is the first the
+  // user actually sees — that's the one that skips the top padding.
+  const nonEmptyDateLabels = Object.keys(conversationsByDate).filter(
+    (dateLabel) => conversationsByDate[dateLabel as GroupLabel].length > 0
+  );
+
   const conversationsContent = (
     <>
-      {Object.keys(conversationsByDate).map((dateLabel) => (
+      {nonEmptyDateLabels.map((dateLabel, index) => (
         <ConversationList
           key={dateLabel}
           conversations={conversationsByDate[dateLabel as GroupLabel]}
           dateLabel={dateLabel}
+          isFirstGroup={index === 0}
           isMultiSelect={isMultiSelect}
           selectedConversations={selectedConversations}
           toggleConversationSelection={toggleConversationSelection}
