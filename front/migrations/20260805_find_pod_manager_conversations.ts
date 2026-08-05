@@ -132,15 +132,14 @@ makeScript(
   async ({ workspaceId, execute }, logger) => {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
+    // Fetch all actions for the server pod_manager and tool create_conversation.
     const actions = await listPodManagerCreateConversationActions(auth);
     if (actions.length === 0) {
       return;
     }
 
-    const actionByConversationId = await fetchConversationIds(
-      auth,
-      actions
-    );
+    // Fetch the outputs, extract the conversation IDs and map with the actions.
+    const actionByConversationId = await fetchConversationIds(auth, actions);
 
     const conversations = await ConversationResource.fetchByIds(auth, [
       ...actionByConversationId.keys(),
