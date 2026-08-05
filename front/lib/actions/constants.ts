@@ -30,20 +30,18 @@ const SANDBOX_MCP_TIMEOUT_BUFFER_MS = 30 * 1000;
 export const SANDBOX_MCP_REQUEST_TIMEOUT_MS =
   SANDBOX_MAX_COMMAND_TIMEOUT_MS + SANDBOX_MCP_TIMEOUT_BUFFER_MS;
 
-// Time reserved inside the tool activity for the work surrounding the MCP call:
-// action setup and tool result processing, which can take minutes on large
-// outputs (see `processToolResults`).
-export const TOOL_RESULT_PROCESSING_BUDGET_MS = 5 * 60 * 1000;
-
 // Start-to-close for the Temporal tool activities: the longest MCP deadline any
-// tool can hold, plus the processing budget. Tool activities are not retried, so
-// blowing this budget loses the tool call instead of returning partial output.
+// tool can hold, plus a short buffer for the work surrounding the MCP call
+// (action setup, tool result processing) and to detect worker restarts
+// promptly. The MCP deadlines above are inputs so the activity always outlives
+// the tool call it wraps.
+const TOOL_ACTIVITY_TIMEOUT_BUFFER_MS = 60 * 1000;
 export const TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS =
   Math.max(
     RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
     DEFAULT_MCP_REQUEST_TIMEOUT_MS,
     SANDBOX_MCP_REQUEST_TIMEOUT_MS
-  ) + TOOL_RESULT_PROCESSING_BUDGET_MS;
+  ) + TOOL_ACTIVITY_TIMEOUT_BUFFER_MS;
 
 export const RETRY_ON_INTERRUPT_MAX_ATTEMPTS = 15;
 

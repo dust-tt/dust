@@ -4,7 +4,6 @@ import {
   SANDBOX_MAX_COMMAND_TIMEOUT_MS,
   SANDBOX_MCP_REQUEST_TIMEOUT_MS,
   TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS,
-  TOOL_RESULT_PROCESSING_BUDGET_MS,
 } from "@app/lib/actions/constants";
 import { describe, expect, it } from "vitest";
 
@@ -21,9 +20,9 @@ describe("tool timeouts", () => {
     ).toBeLessThan(SANDBOX_MCP_REQUEST_TIMEOUT_MS);
   });
 
-  it("leaves room to process tool results within the tool activity", () => {
-    expect(
-      SANDBOX_MCP_REQUEST_TIMEOUT_MS + TOOL_RESULT_PROCESSING_BUDGET_MS
-    ).toBeLessThanOrEqual(TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS);
+  it("aborts the MCP call before the tool activity times out", () => {
+    expect(SANDBOX_MCP_REQUEST_TIMEOUT_MS).toBeLessThan(
+      TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS
+    );
   });
 });
