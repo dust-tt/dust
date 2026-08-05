@@ -101,6 +101,108 @@
  *           type: object
  *           nullable: true
  *           additionalProperties: true
+ *     PrivateConversationConsumptionToolDetails:
+ *       type: object
+ *       required:
+ *         - label
+ *         - internalMCPServerName
+ *         - toolName
+ *         - callCount
+ *         - attributedCredits
+ *         - directCredits
+ *         - pending
+ *       properties:
+ *         label:
+ *           type: string
+ *         internalMCPServerName:
+ *           type: string
+ *           nullable: true
+ *         toolName:
+ *           type: string
+ *         callCount:
+ *           type: integer
+ *         attributedCredits:
+ *           type: number
+ *           description: Share of billed credits after reconciling exclusively through model input rows.
+ *         directCredits:
+ *           type: number
+ *         pending:
+ *           type: boolean
+ *     PrivateConversationConsumptionModelDetails:
+ *       type: object
+ *       required:
+ *         - providerId
+ *         - modelId
+ *         - displayName
+ *         - attributedCredits
+ *       properties:
+ *         providerId:
+ *           type: string
+ *         modelId:
+ *           type: string
+ *         displayName:
+ *           type: string
+ *         attributedCredits:
+ *           type: number
+ *           description: Model attribution after reconciling exclusively through its input rows.
+ *     PrivateConversationConsumptionAgentDetails:
+ *       type: object
+ *       required:
+ *         - agentId
+ *         - name
+ *         - pictureUrl
+ *         - billedCredits
+ *         - agentWorkCredits
+ *         - tools
+ *         - models
+ *       properties:
+ *         agentId:
+ *           type: string
+ *         name:
+ *           type: string
+ *         pictureUrl:
+ *           type: string
+ *           nullable: true
+ *         billedCredits:
+ *           type: number
+ *         agentWorkCredits:
+ *           type: number
+ *           description: Agent work after assigning billing reconciliation exclusively to model input rows.
+ *         tools:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionToolDetails'
+ *         models:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionModelDetails'
+ *     PrivateConversationConsumptionDetails:
+ *       type: object
+ *       description: Additive attribution reconciled to the authoritative bill exclusively through model input rows. Null when any billed message lacks complete attribution for the active version.
+ *       required:
+ *         - attributionVersion
+ *         - agentWorkCredits
+ *         - tools
+ *         - models
+ *         - agents
+ *       properties:
+ *         attributionVersion:
+ *           type: integer
+ *         agentWorkCredits:
+ *           type: number
+ *           description: Agent work after assigning billing reconciliation exclusively to model input rows.
+ *         tools:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionToolDetails'
+ *         models:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionModelDetails'
+ *         agents:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionAgentDetails'
  *     PrivateConversation:
  *       type: object
  *       description: Conversation without content, used in list responses.
@@ -412,7 +514,7 @@
  *         subAgentCostCredits:
  *           type: number
  *           nullable: true
- *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches. Null otherwise.
  *         resolvedModel:
  *           type: object
  *           nullable: true
@@ -537,7 +639,7 @@
  *         subAgentCostCredits:
  *           type: number
  *           nullable: true
- *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches. Null otherwise.
  *         resolvedModel:
  *           type: object
  *           nullable: true

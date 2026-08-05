@@ -5,6 +5,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  CREDITS_SIDE_PANEL_TYPE,
   FILE_PREVIEW_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
   FULL_SCREEN_HASH_PARAM,
@@ -36,6 +37,9 @@ type OpenPanelParams =
       type: "files";
     }
   | {
+      type: "credits";
+    }
+  | {
       type: "plan";
     };
 
@@ -43,6 +47,7 @@ const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
   type === "actions" ||
+  type === "credits" ||
   type === "interactive_content" ||
   type === "file_preview" ||
   type === "files" ||
@@ -171,6 +176,14 @@ export function ConversationSidePanelProvider({
             return;
           }
           setData("files");
+          break;
+
+        case CREDITS_SIDE_PANEL_TYPE:
+          if (toggle && currentPanel === CREDITS_SIDE_PANEL_TYPE) {
+            closePanel();
+            return;
+          }
+          setData("credits");
           break;
 
         case PLAN_SIDE_PANEL_TYPE:

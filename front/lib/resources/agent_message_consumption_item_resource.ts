@@ -1,11 +1,13 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -13,6 +15,15 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
+
+export type ConversationConsumptionMessageFacts = {
+  agentConfigurationId: string;
+  billedCredits: number | null;
+  dustRunIds: string[];
+  status: AgentMessageStatus;
+  items: AgentMessageConsumptionItemResource[];
+  actions: AgentMCPActionResource[];
+};
 
 type ConsumptionItemEvidenceBase = {
   grossAttributedCreditAmountMicro: number;
@@ -461,6 +472,106 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     });
 
     return items.map((item) => new this(this.model, item.get()));
+  }
+
+  /**
+   * Fetches every agent message and persisted attribution facts belonging directly to a
+   * user-visible conversation. Superseded and deleted message versions are retained because any
+   * execution that ran remains part of the conversation's bill.
+   *
+   * TODO(2026-08-04 FLAV) Include run-agent descendants once their lineage can be traversed without
+   * a recursive read-time query.
+   */
+  static async fetchConversationConsumptionFacts(
+    auth: Authenticator,
+    {
+      conversation,
+      attributionVersion,
+    }: {
+      conversation: ConversationResource;
+      attributionVersion: number;
+    }
+  ): Promise<{
+    messages: ConversationConsumptionMessageFacts[];
+  }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    // Agent messages own the authoritative bill and the execution metadata needed to explain it.
+    const agentMessages = await AgentMessageModel.findAll({
+      attributes: [
+        "id",
+        "agentConfigurationId",
+        "costCredits",
+        "runIds",
+        "status",
+      ],
+      where: {
+        workspaceId,
+        conversationId: conversation.id,
+      },
+      order: [["id", "ASC"]],
+    });
+    const messageFacts = agentMessages.map((agentMessage) => ({
+      agentMessageModelId: agentMessage.id,
+      agentConfigurationId: agentMessage.agentConfigurationId,
+      billedCredits: agentMessage.costCredits,
+      dustRunIds: agentMessage.runIds ?? [],
+      status: agentMessage.status,
+    }));
+    const agentMessageModelIds = messageFacts.map(
+      (message) => message.agentMessageModelId
+    );
+
+    // Attribution rows are conversation-scoped. Actions are still attached through their message.
+    const [itemModels, actions] = await Promise.all([
+      this.model.findAll({
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+          attributionVersion,
+        },
+        order: [
+          ["agentMessageId", "ASC"],
+          ["id", "ASC"],
+        ],
+      }),
+      AgentMCPActionResource.listByAgentMessageIds(auth, agentMessageModelIds),
+    ]);
+    const items = itemModels.map((item) => new this(this.model, item.get()));
+
+    // Rebuild per-message facts because reconciliation happens independently for each bill.
+    const itemsByMessageModelId = new Map<
+      ModelId,
+      AgentMessageConsumptionItemResource[]
+    >();
+    for (const item of items) {
+      const messageItems = itemsByMessageModelId.get(item.agentMessageId) ?? [];
+      messageItems.push(item);
+      itemsByMessageModelId.set(item.agentMessageId, messageItems);
+    }
+
+    const actionsByMessageModelId = new Map<
+      ModelId,
+      AgentMCPActionResource[]
+    >();
+    for (const action of actions) {
+      const messageActions =
+        actionsByMessageModelId.get(action.agentMessageId) ?? [];
+      messageActions.push(action);
+      actionsByMessageModelId.set(action.agentMessageId, messageActions);
+    }
+
+    return {
+      messages: messageFacts.map(
+        ({
+          agentMessageModelId,
+          ...message
+        }): ConversationConsumptionMessageFacts => ({
+          ...message,
+          items: itemsByMessageModelId.get(agentMessageModelId) ?? [],
+          actions: actionsByMessageModelId.get(agentMessageModelId) ?? [],
+        })
+      ),
+    };
   }
 
   /**
