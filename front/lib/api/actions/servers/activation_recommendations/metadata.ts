@@ -49,7 +49,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         ),
       body: z
         .string()
-        .max(2000)
+        .max(500)
         .optional()
         .describe(
           "Optional 1-3 sentence explanation of the recommendation. " +
@@ -58,7 +58,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
             "are already self-explanatory."
         ),
       steps: z
-        .array(z.string().max(500))
+        .array(z.string().max(100))
         .optional()
         .describe(
           "Optional ordered list of concrete steps to complete the recommendation. " +
@@ -80,18 +80,18 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         .optional()
         .describe(
           "Optional icon identifier for the source of this recommendation. " +
-            "Use a ConnectorProvider value (e.g. 'slack', 'github', 'notion') when the " +
-            "recommendation is driven by a specific data source. " +
-            "Use a Sparkle icon name (e.g. 'ActionBrainIcon') for internal Dust features. " +
-            "Omit if no specific source icon applies."
+            "Use a ConnectorProvider value when the recommendation is driven by a specific " +
+            "data source. Common values: 'slack', 'github', 'notion', 'google_drive', " +
+            "'confluence', 'microsoft_teams', 'intercom', 'salesforce', 'hubspot'. " +
+            "Omit if no specific source applies."
         ),
       sourceLabel: z
         .string()
         .max(40)
         .optional()
         .describe(
-          "Optional short label shown alongside the sourceIcon (e.g. 'Slack', 'GitHub'). " +
-            "Only set when sourceIcon is also set."
+          "Optional short label shown alongside the source icon (e.g. 'Slack', 'GitHub'). " +
+            "Can be set independently of sourceIcon."
         ),
     },
     stake: "never_ask",
