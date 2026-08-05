@@ -75,6 +75,7 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
       })
     ).resolves.toBeNull();
     const token = await generateSandboxFunctionInvocationToken(callbackAuth, {
+      noTools: false,
       sandbox,
       sandboxFunction,
       invocationId: invocation.sId,

@@ -549,11 +549,17 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       );
 
       const execId = generateExecId();
+      // The mode, not the transport, decides this: a fast function is denied tools however it
+      // ends up running, so it behaves the same whether it ran inline or through the workflow.
+      // Read from the persisted row rather than the in-memory copy, which may predate a
+      // re-publish, since this one gates tool access.
+      const noTools = persistedFunction.executionMode === "fast";
       const token = await generateSandboxFunctionInvocationToken(auth, {
         sandbox,
         sandboxFunction,
         invocationId: this.sId,
         execId,
+        noTools,
       });
 
       const command = buildSandboxFunctionRunCommand(sandboxFunction.slug, {
