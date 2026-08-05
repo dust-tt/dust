@@ -45,6 +45,12 @@ export interface SandboxFunctionResource
 
 const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
 
+export function getSandboxFunctionPublishLockName(
+  sandboxFunctionSId: string
+): string {
+  return `sandbox_function:publish:${sandboxFunctionSId}`;
+}
+
 function userIdentityPolicyStrength(
   policy: SandboxFunctionUserIdentityPolicy
 ): number {
@@ -184,7 +190,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   ): Promise<Result<undefined, Error>> {
     try {
       return await executeWithLock(
-        `sandbox_function:publish:${this.sId}`,
+        getSandboxFunctionPublishLockName(this.sId),
         async () => {
           const currentFunction = await this.model.findOne({
             where: {

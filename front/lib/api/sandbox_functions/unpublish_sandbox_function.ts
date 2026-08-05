@@ -1,7 +1,10 @@
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import {
+  getSandboxFunctionPublishLockName,
+  SandboxFunctionResource,
+} from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -31,7 +34,7 @@ export async function unpublishSandboxFunction(
 
   try {
     const deleteResult = await executeWithLock(
-      `sandbox_function:publish:${sandboxFunction.sId}`,
+      getSandboxFunctionPublishLockName(sandboxFunction.sId),
       () => sandboxFunction.delete(auth),
       30_000,
       { lockTtlMs: 5 * 60_000 }
