@@ -16,6 +16,7 @@ import {
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -297,20 +298,51 @@ export async function setDefaultUserSpendLimit(
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
   const previousAwuCredits = existingConfig?.defaultPoolCapAwuCredits ?? 0;
 
+  let createdConfig: CreditUsageConfigurationResource | null = null;
   if (existingConfig) {
     await existingConfig.updateConfiguration(auth, {
       defaultPoolCapAwuCredits: poolAwuCredits,
     });
   } else {
-    await CreditUsageConfigurationResource.makeNew(auth, {
+    const makeNewResult = await CreditUsageConfigurationResource.makeNew(auth, {
       defaultDiscountPercent: 0,
       usageCapCredits: null,
       defaultPoolCapAwuCredits: poolAwuCredits,
     });
+    if (makeNewResult.isErr()) {
+      return new Err(
+        new DefaultUserSpendLimitError(
+          "metronome_error",
+          makeNewResult.error.message
+        )
+      );
+    }
+    createdConfig = makeNewResult.value;
   }
 
   // Sync per-seat-type Metronome alerts from the newly persisted value.
-  const syncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
+  const syncResult = await revertOnSyncFailure(
+    await syncDefaultPoolCapAlertsForWorkspace(workspace),
+    {
+      // There was no row before this call, so undo by deleting the one just
+      // created.
+      revert: async () => {
+        if (existingConfig) {
+          await existingConfig.updateConfiguration(auth, {
+            defaultPoolCapAwuCredits: previousAwuCredits,
+          });
+        } else {
+          await createdConfig?.delete(auth);
+        }
+      },
+      logContext: {
+        scope: "default_user",
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        previousAwuCredits,
+      },
+    }
+  );
   if (syncResult.isErr()) {
     return new Err(syncResult.error);
   }

@@ -10,7 +10,7 @@ import * as seatTypes from "@app/lib/metronome/seat_types";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { Subscription } from "@metronome/sdk/resources";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -217,6 +217,42 @@ describe("setGroupSpendLimit", () => {
     expect(
       groupCapAlert.upsertMetronomeGroupCapAlertForSeatType
     ).not.toHaveBeenCalled();
+    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("reverts the DB pool cap when the Metronome cap alert upsert fails", async () => {
+    vi.mocked(
+      groupCapAlert.upsertMetronomeGroupCapAlertForSeatType
+    ).mockResolvedValue(new Err(new Error("Metronome unavailable")));
+
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: METRONOME_CUSTOMER_ID,
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const group = await GroupResource.makeNew({
+      name: "Sales",
+      workspaceId: workspace.id,
+      kind: "provisioned",
+      workOSGroupId: "fake-sales",
+    });
+    await group.updatePoolCap(auth, 10_000);
+
+    const result = await setGroupSpendLimit(auth, {
+      groupId: group.sId,
+      limit: { kind: "limited", awuCredits: 25_000 },
+      auditContext: AUDIT_CONTEXT,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("metronome_error");
+    }
+
+    const reloaded = await GroupResource.fetchById(auth, group.sId);
+    if (reloaded.isErr()) {
+      throw reloaded.error;
+    }
+    expect(reloaded.value.poolCapAwuCredits).toBe(10_000);
     expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
   });
 });

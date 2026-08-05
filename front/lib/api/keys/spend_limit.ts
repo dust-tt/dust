@@ -8,6 +8,7 @@ import {
   upsertMetronomeApiKeyCapAlert,
 } from "@app/lib/metronome/alerts/api_key_caps";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -137,26 +138,34 @@ export async function setApiKeySpendLimit(
   );
 
   // Persist the admin's intent first (source of truth), then derive the alert.
+  const previousMonthlyCapAwuCredits = key.monthlyCapAwuCredits;
   await key.updateMonthlyCapAwuCredits(
     limit.kind === "limited" ? limit.awuCredits : null
   );
 
+  const revert = () =>
+    key.updateMonthlyCapAwuCredits(previousMonthlyCapAwuCredits);
+
   switch (limit.kind) {
     case "unlimited": {
-      const clearResult = await clearMetronomeApiKeyCapAlert({
-        metronomeCustomerId,
-        workspaceId: workspace.sId,
-        keyName: key.name,
-      });
-      if (clearResult.isErr()) {
-        logger.error(
-          {
+      const clearResult = await revertOnSyncFailure(
+        await clearMetronomeApiKeyCapAlert({
+          metronomeCustomerId,
+          workspaceId: workspace.sId,
+          keyName: key.name,
+        }),
+        {
+          revert,
+          logContext: {
+            scope: "api_key",
+            operation: "clear_cap_alert",
             workspaceId: workspace.sId,
             keyName: key.name,
-            err: clearResult.error,
+            previousMonthlyCapAwuCredits,
           },
-          "[Metronome ApiKeyCap] set(unlimited): failed to clear cap alert"
-        );
+        }
+      );
+      if (clearResult.isErr()) {
         return new Err(
           new ApiKeySpendLimitError(
             "metronome_error",
@@ -167,22 +176,26 @@ export async function setApiKeySpendLimit(
       break;
     }
     case "limited": {
-      const upsertResult = await upsertMetronomeApiKeyCapAlert({
-        metronomeCustomerId,
-        workspaceId: workspace.sId,
-        keyName: key.name,
-        awuCredits: limit.awuCredits,
-      });
-      if (upsertResult.isErr()) {
-        logger.error(
-          {
+      const upsertResult = await revertOnSyncFailure(
+        await upsertMetronomeApiKeyCapAlert({
+          metronomeCustomerId,
+          workspaceId: workspace.sId,
+          keyName: key.name,
+          awuCredits: limit.awuCredits,
+        }),
+        {
+          revert,
+          logContext: {
+            scope: "api_key",
+            operation: "upsert_cap_alert",
             workspaceId: workspace.sId,
             keyName: key.name,
             awuCredits: limit.awuCredits,
-            err: upsertResult.error,
+            previousMonthlyCapAwuCredits,
           },
-          "[Metronome ApiKeyCap] set(limited): failed to upsert cap alert"
-        );
+        }
+      );
+      if (upsertResult.isErr()) {
         return new Err(
           new ApiKeySpendLimitError(
             "metronome_error",

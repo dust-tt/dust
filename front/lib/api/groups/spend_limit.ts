@@ -18,6 +18,7 @@ import {
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import logger from "@app/logger/logger";
 import type {
   GroupSpendLimit,
@@ -260,6 +261,7 @@ export async function setGroupSpendLimit(
   }
 
   const poolCapAwuCredits = limit.kind === "limited" ? limit.awuCredits : null;
+  const previousPoolCapAwuCredits = group.poolCapAwuCredits;
 
   // Persist the admin's intent first: the group column is the source of truth,
   // the Metronome alerts below are derived enforcement (a failed sync can be
@@ -271,11 +273,24 @@ export async function setGroupSpendLimit(
     );
   }
 
-  const syncResult = await syncGroupCapAlertsForGroup({
-    workspace,
-    groupId: group.sId,
-    poolCapAwuCredits,
-  });
+  const syncResult = await revertOnSyncFailure(
+    await syncGroupCapAlertsForGroup({
+      workspace,
+      groupId: group.sId,
+      poolCapAwuCredits,
+    }),
+    {
+      revert: async () => {
+        await group.updatePoolCap(auth, previousPoolCapAwuCredits);
+      },
+      logContext: {
+        scope: "group",
+        workspaceId: workspace.sId,
+        groupId: group.sId,
+        previousPoolCapAwuCredits,
+      },
+    }
+  );
   if (syncResult.isErr()) {
     return new Err(syncResult.error);
   }

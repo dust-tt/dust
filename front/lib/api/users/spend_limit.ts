@@ -29,6 +29,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { currentCalendarMonthCycleUtc } from "@app/lib/spend_limits/cycle";
+import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import {
   addFixedWindowCount,
   type FixedWindowBounds,
@@ -226,26 +227,30 @@ export async function setUserSpendLimit(
       limit.kind === "limited" ? limit.awuCredits : null,
   });
 
+  const revert = () =>
+    membership.revertPoolCapOverride(previousPoolCapOverride);
+
   switch (limit.kind) {
     case "unlimited": {
-      const clearResult = await clearMetronomePerUserCapAlert({
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceId: workspace.sId,
-        userId: user.sId,
-      });
-      if (clearResult.isErr()) {
-        // Metronome sync failed, put the DB value back.
-        await membership.revertPoolCapOverride(previousPoolCapOverride);
-        logger.error(
-          {
+      const clearResult = await revertOnSyncFailure(
+        await clearMetronomePerUserCapAlert({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          workspaceId: workspace.sId,
+          userId: user.sId,
+        }),
+        {
+          revert,
+          logContext: {
+            scope: "user",
+            operation: "clear_cap_alert",
             workspaceId: workspace.sId,
             metronomeCustomerId: workspace.metronomeCustomerId,
             userId: user.sId,
             previousAwuCredits,
-            err: clearResult.error,
           },
-          "[Metronome PerUserCap] failed to update metronome, overage is still active."
-        );
+        }
+      );
+      if (clearResult.isErr()) {
         return new Err(
           new UserSpendLimitError("metronome_error", clearResult.error.message)
         );
@@ -273,27 +278,27 @@ export async function setUserSpendLimit(
         membership
       );
       const totalAwuCredits = limit.awuCredits + seatAllowanceAwuCredits;
-      const upsertResult = await upsertMetronomePerUserCapAlert({
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceId: workspace.sId,
-        userId: user.sId,
-        awuCredits: totalAwuCredits,
-      });
-      if (upsertResult.isErr()) {
-        // Metronome sync failed, so the DB and Metronome would otherwise be
-        // left out of sync until someone retries, put the DB value back.
-        await membership.revertPoolCapOverride(previousPoolCapOverride);
-        logger.error(
-          {
+      const upsertResult = await revertOnSyncFailure(
+        await upsertMetronomePerUserCapAlert({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          workspaceId: workspace.sId,
+          userId: user.sId,
+          awuCredits: totalAwuCredits,
+        }),
+        {
+          revert,
+          logContext: {
+            scope: "user",
+            operation: "upsert_cap_alert",
             workspaceId: workspace.sId,
             userId: user.sId,
             awuCredits: totalAwuCredits,
             seatAllowance: seatAllowanceAwuCredits,
             previousAwuCredits,
-            err: upsertResult.error,
           },
-          "[Metronome PerUserCap] Failed to upsert per-user cap alert; reverted DB override"
-        );
+        }
+      );
+      if (upsertResult.isErr()) {
         return new Err(
           new UserSpendLimitError("metronome_error", upsertResult.error.message)
         );
@@ -402,45 +407,51 @@ export async function expireUserSpendLimitOverride(
     poolCapOverrideExpiresAt: null,
   });
 
-  const clearResult = await clearMetronomePerUserCapAlert({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    workspaceId: workspace.sId,
-    userId: user.sId,
-  });
-  if (clearResult.isErr()) {
-    // Metronome is still enforcing the old cap, so put the DB override back
-    // in place rather than leaving it cleared: keeps DB and Metronome
-    // consistent
-    await membership.revertPoolCapOverride(previousPoolCapOverride);
-    logger.error(
-      {
+  // On any Metronome failure below, the DB override is put back rather than
+  // left cleared: keeps DB and Metronome consistent
+  const revert = () =>
+    membership.revertPoolCapOverride(previousPoolCapOverride);
+
+  const clearResult = await revertOnSyncFailure(
+    await clearMetronomePerUserCapAlert({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      workspaceId: workspace.sId,
+      userId: user.sId,
+    }),
+    {
+      revert,
+      logContext: {
+        scope: "user",
+        operation: "expire_clear_cap_alert",
         workspaceId: workspace.sId,
         userId: user.sId,
         previousAwuCredits,
-        err: clearResult.error,
       },
-      "[SpendLimitExpiration] Failed to clear per-user cap alert; reverted DB override back, will retry on next sweep"
-    );
+    }
+  );
+  if (clearResult.isErr()) {
     return new Err(
       new UserSpendLimitError("metronome_error", clearResult.error.message)
     );
   }
-  const clearWarningResult = await clearMetronomePerUserWarningAlert({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    workspaceId: workspace.sId,
-    userId: user.sId,
-  });
-  if (clearWarningResult.isErr()) {
-    await membership.revertPoolCapOverride(previousPoolCapOverride);
-    logger.error(
-      {
+  const clearWarningResult = await revertOnSyncFailure(
+    await clearMetronomePerUserWarningAlert({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      workspaceId: workspace.sId,
+      userId: user.sId,
+    }),
+    {
+      revert,
+      logContext: {
+        scope: "user",
+        operation: "expire_clear_warning_alert",
         workspaceId: workspace.sId,
         userId: user.sId,
         previousAwuCredits,
-        err: clearWarningResult.error,
       },
-      "[SpendLimitExpiration] Failed to clear warning alert; reverted DB override back, will retry on next sweep"
-    );
+    }
+  );
+  if (clearWarningResult.isErr()) {
     return new Err(
       new UserSpendLimitError(
         "metronome_error",
