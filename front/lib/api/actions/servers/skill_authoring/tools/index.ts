@@ -369,10 +369,11 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     const pageSize = Math.min(limit ?? 20, 50);
     const offset = cursor ?? 0;
 
-    if (offset > skills.length) {
+    if (offset >= skills.length && offset > 0) {
       return new Err(
         new MCPError(
-          `cursor ${offset} is out of range (total: ${skills.length})`
+          `cursor ${offset} is out of range (total: ${skills.length})`,
+          { tracked: false }
         )
       );
     }
