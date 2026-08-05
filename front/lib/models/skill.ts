@@ -379,6 +379,14 @@ SkillFileAttachmentModel.init(
         name: "idx_skill_file_attachment_workspace_file",
         unique: true,
       },
+      // The `fileId` foreign key is ON DELETE RESTRICT, so Postgres checks this table on every
+      // `files` row deletion. That check filters on `fileId` alone, which the composite index
+      // above cannot serve.
+      {
+        fields: ["fileId"],
+        name: "idx_skill_file_attachment_file",
+        concurrently: true,
+      },
     ],
   }
 );
