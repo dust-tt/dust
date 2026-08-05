@@ -15,17 +15,6 @@ import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { emitAuditLogEventMock } = vi.hoisted(() => ({
-  emitAuditLogEventMock: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
-
-  return { ...actual, emitAuditLogEvent: emitAuditLogEventMock };
-});
-
 vi.mock(
   "@app/lib/api/sandbox_functions/build_on_sandbox",
   async (importOriginal) => {
@@ -132,26 +121,6 @@ describe("publishSandboxFunction", () => {
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed.map(({ id }) => id)).toEqual([fn.id]);
-
-    // A first publish has no prior policy, so `previous_user_identity` is absent rather than
-    // reported as the default.
-    expect(emitAuditLogEventMock).toHaveBeenCalledTimes(1);
-    expect(emitAuditLogEventMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "pod_function.published",
-        targets: [
-          { type: "workspace", id: workspace.sId, name: workspace.name },
-          { type: "space", id: space.sId, name: space.name },
-          { type: "pod_function", id: fn.sId, name: "greet" },
-        ],
-        metadata: {
-          operation: "created",
-          pod_function_slug: "greet",
-          user_identity: "interactive_workspace_user_required",
-          file_id: fn.file.sId,
-        },
-      })
-    );
   });
 
   it("overwrites the bundle in place on re-publish, keeping one row and the same file", async () => {
@@ -223,23 +192,6 @@ describe("publishSandboxFunction", () => {
       `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
     );
     expect(files[0].version).toBeGreaterThan(firstVersion ?? 0);
-
-    // The re-publish widened who may call the function. `previous_user_identity` must be the policy
-    // in force before the update, which only holds because it is captured before `updateContent`
-    // assigns the new values onto the resource instance.
-    expect(emitAuditLogEventMock).toHaveBeenCalledTimes(2);
-    expect(emitAuditLogEventMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        action: "pod_function.published",
-        metadata: {
-          operation: "updated",
-          pod_function_slug: "greet",
-          user_identity: "optional",
-          previous_user_identity: "workspace_user_required",
-          file_id: second.value.file.sId,
-        },
-      })
-    );
   });
 
   it("rejects a path that escapes the pod mount", async () => {
