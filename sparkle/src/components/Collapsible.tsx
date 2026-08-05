@@ -144,6 +144,8 @@ const CollapsibleContent = React.forwardRef<
     className={cn(
       contentVariants({ variant }),
       "data-[state=closed]:animate-collapse-up data-[state=open]:animate-collapse-down",
+      // Open/close still works, it just snaps instead of sliding.
+      "motion-reduce:animate-none",
       className
     )}
     {...props}

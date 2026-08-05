@@ -452,8 +452,12 @@ const NavigationListCollapsibleSection = React.forwardRef<
         setIsShowingAll(false);
       }
       // Set synchronously, before Radix flips data-state, so the content is
-      // already clipping on the first frame of the height animation.
-      setIsHeightAnimating(true);
+      // already clipping on the first frame of the height animation. Under
+      // reduced motion there is no animation, so no animationend would ever
+      // arrive to clear this again — stay unclipped instead.
+      setIsHeightAnimating(
+        !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      );
       onOpenChange?.(newOpen);
     };
 
