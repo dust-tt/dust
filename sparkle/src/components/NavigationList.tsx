@@ -384,6 +384,10 @@ const NavigationListCollapsibleSection = React.forwardRef<
     ref
   ) => {
     const [isShowingAll, setIsShowingAll] = React.useState(false);
+    // The collapse animates height, so the content has to clip while it runs
+    // or children spill outside the growing/shrinking box. Once it settles we
+    // stop clipping again so sticky children can pin to the scroll viewport.
+    const [isHeightAnimating, setIsHeightAnimating] = React.useState(false);
 
     const childArray = React.Children.toArray(children);
     const hasPartialCollapse =
@@ -447,6 +451,9 @@ const NavigationListCollapsibleSection = React.forwardRef<
       if (!newOpen) {
         setIsShowingAll(false);
       }
+      // Set synchronously, before Radix flips data-state, so the content is
+      // already clipping on the first frame of the height animation.
+      setIsHeightAnimating(true);
       onOpenChange?.(newOpen);
     };
 
@@ -545,9 +552,19 @@ const NavigationListCollapsibleSection = React.forwardRef<
           </CollapsibleTrigger>
           {actionElement}
         </div>
-        {/* Sticky children (e.g. date labels) need a non-clipping ancestor
-         * once the section is open; the clip only matters while animating. */}
-        <CollapsibleContent className="data-[state=open]:overflow-visible">
+        {/* Sticky children (e.g. date labels) need a non-clipping ancestor,
+         * but only once the height animation has finished — see above. */}
+        <CollapsibleContent
+          className={cn(
+            !isHeightAnimating && "data-[state=open]:overflow-visible"
+          )}
+          onAnimationEnd={(e) => {
+            // Ignore animations bubbling up from children.
+            if (e.target === e.currentTarget) {
+              setIsHeightAnimating(false);
+            }
+          }}
+        >
           {renderedContent}
         </CollapsibleContent>
       </Collapsible>
