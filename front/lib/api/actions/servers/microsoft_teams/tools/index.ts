@@ -724,7 +724,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
           `/me/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content`
         )
         .query({ $format: "text/vtt" })
-        .responseType("text" as any)
+        // Let the SDK infer the response type so Graph JSON error responses
+        // retain their message. Successful text/vtt responses are streams.
         .get();
 
       let text: string;
