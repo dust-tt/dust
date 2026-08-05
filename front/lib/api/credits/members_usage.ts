@@ -1433,20 +1433,23 @@ async function resolveMembersUsagePageUsers({
   }
   const { users: allUsers, total } = allUsersResult.value;
 
+  // Every remaining sort column derives its key from the active membership
+  // (seat type, credit state, or the seat-type split for consumed credits).
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+    users: allUsers,
+  });
+  const membershipByUserModelId = new Map(
+    memberships.map((m) => [m.userId, m])
+  );
+
   const sortKeyByUserId = new Map<string, number | string>();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
       // free-seat usage and everyone else by their paid-seat usage.
-      const { memberships } = await MembershipResource.getActiveMemberships({
-        workspace,
-        users: allUsers,
-      });
-      const seatTypeByUserModelId = new Map(
-        memberships.map((m) => [m.userId, m.seatType])
-      );
       const freeSeatUserIds = allUsers.flatMap((u) =>
-        seatTypeByUserModelId.get(u.id) === "free" ? [u.sId] : []
+        membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
       );
       const creditsByUserId = await fetchConsumedAwuCreditsByUserId({
         workspace,
@@ -1459,28 +1462,20 @@ async function resolveMembersUsagePageUsers({
       break;
     }
     case "seatType": {
-      const { memberships } = await MembershipResource.getActiveMemberships({
-        workspace,
-        users: allUsers,
-      });
-      const seatTypeByUserModelId = new Map(
-        memberships.map((m) => [m.userId, m.seatType ?? "none"])
-      );
       for (const u of allUsers) {
-        sortKeyByUserId.set(u.sId, seatTypeByUserModelId.get(u.id) ?? "none");
+        sortKeyByUserId.set(
+          u.sId,
+          membershipByUserModelId.get(u.id)?.seatType ?? "none"
+        );
       }
       break;
     }
     case "creditState": {
-      const { memberships } = await MembershipResource.getActiveMemberships({
-        workspace,
-        users: allUsers,
-      });
-      const creditStateByUserModelId = new Map(
-        memberships.map((m) => [m.userId, m.creditState])
-      );
       for (const u of allUsers) {
-        sortKeyByUserId.set(u.sId, creditStateByUserModelId.get(u.id) ?? "");
+        sortKeyByUserId.set(
+          u.sId,
+          membershipByUserModelId.get(u.id)?.creditState ?? ""
+        );
       }
       break;
     }
