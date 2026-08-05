@@ -8,14 +8,13 @@ import {
   type ToolExecutionStatus,
 } from "@app/lib/actions/statuses";
 import { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
+import { creditsToMicroCredits } from "@app/lib/credits/units";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
 export { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
-
-const MICRO_CREDITS_PER_CREDIT = 1_000_000;
 
 // Historical and non-agent-loop usages may not have a run key. Keep them in one
 // group to preserve the former message-level rounding behavior for those rows.
@@ -160,7 +159,7 @@ function allocateBilledCreditMicro<TUsage extends AgentMessageBillingRunUsage>({
   providerCostMicroUsd: number;
   usages: TUsage[];
 }): AgentMessageLlmBillingLine<TUsage>["usageAllocations"] {
-  const billedCreditMicro = billedCredits * MICRO_CREDITS_PER_CREDIT;
+  const billedCreditMicro = creditsToMicroCredits(billedCredits);
   if (providerCostMicroUsd === 0) {
     return usages.map((usage) => ({
       usage,
