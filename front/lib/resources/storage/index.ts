@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import { SequelizeWithComments } from "@app/lib/api/database";
 import { dbConfig } from "@app/lib/resources/storage/config";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -79,27 +78,16 @@ function reportPoolMetrics(
 
 const POOL_TAGS = ["pool:front_master"];
 
-// Web-serving deployments handle concurrent requests where the auth codepath
-// acquires multiple connections in parallel (Promise.all). They need a larger
-// pool than workers which process jobs sequentially.
-const WEB_SERVING_SERVICES = new Set(["front", "front-edge", "front-internal"]);
-
-function getPoolMaxForService(): number {
-  const service = config.getServiceName();
-
-  // DO NOT BLINDLY INCREASE THIS NUMBER (see comment below).
-  return service && WEB_SERVING_SERVICES.has(service) ? 40 : 25;
-}
+// DO NOT BLINDLY INCREASE THIS NUMBER. Each connection holds a PostgreSQL
+// backend via PgBouncer, so raising it shifts contention downstream. Prefer
+// reducing per-request connection usage (caching, shared connections).
+const POOL_MAX = 10;
 
 export const frontSequelize = new SequelizeWithComments(
   dbConfig.getRequiredFrontDatabaseURI(),
   {
-    // Pool size is intentionally conservative. Each connection holds a PostgreSQL
-    // backend via PgBouncer. Blindly increasing this shifts contention downstream.
-    // Prefer reducing per-request connection usage (caching, shared connections)
-    // over bumping pool size. See getPoolMax() for per-deployment values.
     pool: {
-      max: getPoolMaxForService(),
+      max: POOL_MAX,
       acquire: 30000,
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
