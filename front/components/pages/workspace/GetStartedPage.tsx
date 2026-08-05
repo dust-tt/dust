@@ -51,7 +51,7 @@ import {
   ListItemSection,
   Spinner,
 } from "@dust-tt/sparkle";
-import moment from "moment";
+import { format } from "date-fns";
 import type { ComponentType } from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
@@ -168,7 +168,7 @@ function RecommendationItem({
           {rec.steps && rec.steps.length > 0 && (
             <ol className="mt-4 flex flex-col gap-3">
               {rec.steps.map((step, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm">
+                <li key={step} className="flex items-center gap-3 text-sm">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-dark text-xs text-muted-foreground">
                     {i + 1}
                   </span>
@@ -204,10 +204,6 @@ function RecommendationItem({
   );
 }
 
-// "Or just ask" — a composer that starts a new workspace conversation, mirroring
-// the home / pod new-conversation InputBar. The InputBar needs the file-drop,
-// generation, and file-preview providers (BlockedActionsProvider comes from
-// AssistantLayout; InputBarProvider is global at the app root).
 interface JustAskComposerProps {
   owner: WorkspaceType;
   user: UserType | null;
@@ -297,8 +293,6 @@ function JustAskComposer({ owner, user }: JustAskComposerProps) {
   );
 }
 
-// Suggestion chips that prefill (not submit) the composer via the shared
-// InputBarContext, so the user can review/edit before sending.
 function AskChips() {
   const { setPendingInputText } = useContext(InputBarContext);
   return (
@@ -317,10 +311,6 @@ function AskChips() {
   );
 }
 
-// A single recent-conversation row, matching the mockup's layout exactly:
-// [unread bar] avatar · name · **title** · description(truncated) · time(HH:mm).
-// The shared ConversationListItem stacks title-over-description with a different
-// order, so we render our own row here.
 interface RecentConversationRowProps {
   conversation: PodConversationListItemType;
   owner: WorkspaceType;
@@ -368,14 +358,12 @@ function RecentConversationRow({ conversation, owner }: RecentConversationRowPro
         {stripMarkdown(conversation.description ?? "")}
       </span>
       <span className="shrink-0 text-xs text-faint">
-        {moment(conversation.updated).format("HH:mm")}
+        {format(new Date(conversation.updated), "HH:mm")}
       </span>
     </button>
   );
 }
 
-// Recent conversations from the activation Pod, grouped by date, in the
-// mockup's row style.
 interface RecentConversationsProps {
   owner: WorkspaceType;
   podId: string | null;
@@ -425,10 +413,6 @@ function RecentConversations({ owner, podId }: RecentConversationsProps) {
   );
 }
 
-// Previously done — executed recommendations, shown as a collapsible row at the
-// bottom of the "Ideas for right now" card (with a count badge), matching the
-// mockup. Expanding it lists each completed recommendation in the same card
-// language (source row + title + subtitle), read-only.
 interface PreviouslyDoneRowProps {
   owner: WorkspaceType;
   podId: string | null;
@@ -600,7 +584,6 @@ export function GetStartedPage() {
                       />
                     ))
                   )}
-                  {/* Previously done — collapsible row at the bottom of the card */}
                   <PreviouslyDoneRow owner={owner} podId={activationPodId} />
                 </div>
               )}
