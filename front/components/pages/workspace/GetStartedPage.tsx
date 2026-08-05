@@ -38,10 +38,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import {
-  getWorkspaceDefaultAgentId,
-  resolveDefaultAgentId,
-} from "@app/types/user";
+import { resolveDefaultAgentId } from "@app/types/user";
 import {
   ActionBrainIcon,
   ArrowRight,
@@ -516,10 +513,9 @@ export function GetStartedPage() {
     disabled: isActivationPodLoading,
   });
   const defaultAgentId = resolveDefaultAgentId({
-    workspaceDefaultAgentId: hasFeature("workspace_default_agent")
-      ? getWorkspaceDefaultAgentId(owner)
-      : null,
+    owner,
     podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
   });
 
   const { recommendations, isRecommendationsLoading, mutateRecommendations } =
