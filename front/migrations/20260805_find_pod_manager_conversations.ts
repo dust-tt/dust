@@ -102,7 +102,6 @@ makeScript(
   {
     workspaceId: {
       alias: "w",
-      describe: "Workspace sId to search",
       demandOption: true,
       type: "string" as const,
     },
@@ -152,8 +151,9 @@ makeScript(
     }
 
     const conversationsToUpdate = conversations.filter(
-      (conversation) => conversation.depth !== 0
+      (conversation) => conversation.depth === 1
     );
+
     let updatedConversationCount = 0;
     if (execute && conversationsToUpdate.length > 0) {
       [updatedConversationCount] = await ConversationModel.update(
@@ -163,6 +163,7 @@ makeScript(
             workspaceId: auth.getNonNullableWorkspace().id,
             id: { [Op.in]: conversationsToUpdate.map(({ id }) => id) },
           },
+          // Silent to not update the updatedAt of Sequelize.
           silent: true,
         }
       );
