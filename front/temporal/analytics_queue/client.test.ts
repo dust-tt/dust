@@ -35,6 +35,7 @@ describe("launchStoreAgentMessageConsumptionAttributionWorkflow", () => {
       conversationTitle: null,
       userMessageId: "user_message_test",
       userMessageVersion: 0,
+      userMessageOrigin: "web",
     };
 
     const first = await launchStoreAgentMessageConsumptionAttributionWorkflow({

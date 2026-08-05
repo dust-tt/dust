@@ -132,6 +132,7 @@ async function runAnalytics(
       conversationTitle: null,
       userMessageId,
       userMessageVersion: 0,
+      userMessageOrigin: "web",
     },
   });
 }

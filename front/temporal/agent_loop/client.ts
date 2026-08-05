@@ -1,7 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumentation";
@@ -15,16 +17,69 @@ import type {
   AgentLoopArgsWithTiming,
 } from "@app/types/assistant/agent_run";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-import { QUEUE_NAME } from "./config";
+import type { AgentLoopQueue } from "./config";
+import {
+  getQueueForUserMessageOrigin,
+  getQueueName,
+  QUEUE_NAME,
+} from "./config";
 import {
   agentLoopWorkflow,
   compactionWorkflow,
   runSandboxChildToolWorkflow,
 } from "./workflows";
+
+// Routing is gated by the `agent_loop_qos_routing` feature flag (workspace or global):
+// unflagged workspaces land on the default queue, which is always staffed. Removing the flag
+// is the killswitch.
+async function getTaskQueue(
+  auth: Authenticator,
+  queue: AgentLoopQueue
+): Promise<string> {
+  if (!(await hasFeatureFlag(auth, "agent_loop_qos_routing"))) {
+    return QUEUE_NAME;
+  }
+
+  return getQueueName(queue);
+}
+
+// Relaunch paths (tool validation, retries, authentication resolution) pass the origin of the
+// original user message and the same conversation, so a run keeps its queue across relaunches.
+export async function getTaskQueueForRun(
+  auth: Authenticator,
+  {
+    userMessageOrigin,
+    conversationId,
+  }: {
+    userMessageOrigin: UserMessageOrigin;
+    conversationId: string;
+  }
+): Promise<string> {
+  if (!(await hasFeatureFlag(auth, "agent_loop_qos_routing"))) {
+    return QUEUE_NAME;
+  }
+
+  // Schedule triggers and fair-use webhook triggers share the `triggered` origin (the origin
+  // encodes billing, not the trigger kind): resolve the conversation's trigger to keep webhook
+  // firings off the schedules queue. Deleting a trigger nulls the conversation's pointer, in
+  // which case the run stays on schedules.
+  if (userMessageOrigin === "triggered") {
+    const trigger = await TriggerResource.fetchByConversationId(
+      auth,
+      conversationId
+    );
+    if (trigger && trigger.kind === "webhook") {
+      return getQueueName("batch");
+    }
+  }
+
+  return getQueueName(getQueueForUserMessageOrigin(userMessageOrigin));
+}
 
 export async function launchAgentLoopWorkflow({
   auth,
@@ -86,7 +141,10 @@ export async function launchAgentLoopWorkflow({
           initialStartTime,
         },
       ],
-      taskQueue: QUEUE_NAME,
+      taskQueue: await getTaskQueueForRun(auth, {
+        userMessageOrigin: agentLoopArgs.userMessageOrigin,
+        conversationId,
+      }),
       workflowId,
       searchAttributes: {
         conversationId: [conversationId],
@@ -159,7 +217,9 @@ export async function launchCompactionWorkflow({
           sourceConversation,
         },
       ],
-      taskQueue: QUEUE_NAME,
+      // No user message origin to route on: a human is waiting on the compacted
+      // conversation, so interactive.
+      taskQueue: await getTaskQueue(auth, "interactive"),
       workflowId,
       searchAttributes: {
         conversationId: [conversationId],
@@ -236,7 +296,10 @@ export async function launchSandboxChildToolWorkflow(
   try {
     await client.workflow.start(runSandboxChildToolWorkflow, {
       args: [{ authType, agentLoopArgs, actionModelId: action.id, step }],
-      taskQueue: QUEUE_NAME,
+      taskQueue: await getTaskQueueForRun(auth, {
+        userMessageOrigin: agentLoopArgs.userMessageOrigin,
+        conversationId: agentLoopArgs.conversationId,
+      }),
       workflowId,
       searchAttributes: {
         conversationId: [agentLoopArgs.conversationId],

@@ -117,7 +117,9 @@ export type AgentLoopArgs = {
   // Note that the original user message may not be the same as the parent message as agent might mention other agents.
   userMessageId: string;
   userMessageVersion: number;
-  userMessageOrigin?: UserMessageOrigin | null;
+  // Always set at launch time (the column is NOT NULL); consumers reading Temporal-serialized
+  // args from old workflow histories must still tolerate a missing value at runtime.
+  userMessageOrigin: UserMessageOrigin;
 
   caching?: ConversationCaching;
 
