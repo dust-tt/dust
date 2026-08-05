@@ -10,6 +10,7 @@ import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_u
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
 import type { Fetcher } from "swr";
 
@@ -159,6 +160,27 @@ export function usePokeAwuPoolSummary({
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+export function usePokeTopUpsHistory({
+  owner,
+  disabled,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetAwuTopUpsHistoryResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled ? null : `/api/poke/workspaces/${owner.sId}/credits/top-ups`,
+    fetcherFn
+  );
+
+  return {
+    topUps: data?.topUps ?? emptyArray(),
+    isTopUpsHistoryLoading: !error && !data && !disabled,
+    isTopUpsHistoryError: error,
+    isTopUpsHistoryValidating: isValidating,
+    mutateTopUpsHistory: mutate,
   };
 }
 
