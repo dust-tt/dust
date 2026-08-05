@@ -1,3 +1,4 @@
+import { WriteConflictError } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -117,6 +118,40 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
     ]);
 
     return ctx.json({ error: { type, message: err.message } }, err.status);
+  }
+
+  // A transaction lost its race on every attempt. Transient by construction, so answer 503 with a
+  // retry hint rather than folding it into the 500 rate where it would be indistinguishable from a
+  // real fault. Mapped centrally so every route gets it.
+  if (err instanceof WriteConflictError) {
+    logger.warn(
+      {
+        method: ctx.req.method,
+        route: routePath(ctx) ?? ctx.req.path,
+        url: ctx.req.path,
+        attempts: err.attempts,
+        error: err.conflict,
+      },
+      "Write conflict exhausted"
+    );
+
+    getStatsDClient().increment("api_errors.count", 1, [
+      `method:${ctx.req.method}`,
+      `status_code:503`,
+      `error_type:service_unavailable`,
+    ]);
+
+    return ctx.json(
+      {
+        error: {
+          type: "service_unavailable" satisfies APIErrorType,
+          message:
+            "Conflicting concurrent write on this resource. Please retry the request.",
+        },
+      },
+      503,
+      { "Retry-After": "1" }
+    );
   }
 
   const error = normalizeError(err);

@@ -15,6 +15,7 @@ const STATUS_FOR_ERROR_TYPE: Record<
   user_already_participant: 400,
   message_not_found: 404,
   message_deletion_not_authorized: 403,
+  message_already_edited: 400,
   conversation_context_usage_not_found: 404,
 };
 

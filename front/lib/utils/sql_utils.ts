@@ -101,6 +101,25 @@ export function isWriteConflictError(err: unknown): boolean {
   );
 }
 
+/**
+ * Every attempt lost its race. Distinct from the underlying driver error so the HTTP boundary can
+ * answer 503 with a retry hint instead of a blanket 500: by construction this is transient, and it
+ * should not sit in the same bucket as a genuine server fault.
+ *
+ * A conflict that is *not* transient (the request derives a value that will collide no matter how
+ * often it is replayed) must not reach here. Those belong to whatever guard owns the invariant,
+ * which turns them into a 4xx the caller can act on.
+ */
+export class WriteConflictError extends Error {
+  constructor(
+    readonly attempts: number,
+    readonly conflict: unknown
+  ) {
+    super(`Transaction still conflicting after ${attempts} attempts.`);
+    this.name = "WriteConflictError";
+  }
+}
+
 export async function retryOnWriteConflict<T>(
   run: () => Promise<T>
 ): Promise<T> {
@@ -108,8 +127,17 @@ export async function retryOnWriteConflict<T>(
     try {
       return await run();
     } catch (err) {
-      if (attempt >= TRANSACTION_MAX_ATTEMPTS || !isWriteConflictError(err)) {
+      if (!isWriteConflictError(err)) {
         throw err;
+      }
+
+      if (attempt >= TRANSACTION_MAX_ATTEMPTS) {
+        logger.warn(
+          { attempts: attempt, err },
+          "Transaction still conflicting after every attempt, giving up."
+        );
+
+        throw new WriteConflictError(attempt, err);
       }
 
       logger.warn(

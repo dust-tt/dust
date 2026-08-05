@@ -2233,8 +2233,13 @@ export async function softDeleteUserMessageAndReplies(
   // conflicted on. The `deleted` visibility check has to stay inside too: a concurrent delete that
   // commits first makes these rows already-deleted, and cascading again would collide on
   // (rank, version).
-  const { userMessage, cascadedAgentMessages, runningOrphanIds } =
-    await withRetriedTransaction(async (t) => {
+  let deleted: {
+    userMessage: UserMessageTypeWithoutMentions;
+    cascadedAgentMessages: AgentMessageType[];
+    runningOrphanIds: string[];
+  };
+  try {
+    deleted = await withRetriedTransaction(async (t) => {
       const orphansToCascade = (
         await conversationResource.getConsecutiveAgentReplyModelsAfterRank(
           auth,
@@ -2246,6 +2251,26 @@ export async function softDeleteUserMessageAndReplies(
         parentUserMessage: message,
         rows: orphansToCascade,
       });
+
+      // Same fence editUserMessage and retryAgentMessage use, and it has to be here rather than
+      // left to the retry: the placeholder version comes from `message`, which names one immutable
+      // version row, so a replay derives the same `version + 1` and collides forever. Deterministic
+      // conflict, so answer it instead of retrying it.
+      const newerMessage = await MessageModel.findOne({
+        where: {
+          workspaceId: owner.id,
+          conversationId: conversation.id,
+          rank: message.rank,
+          version: message.version + 1,
+        },
+        transaction: t,
+      });
+
+      if (newerMessage) {
+        throw new UserMessageError(
+          "Invalid user message delete request, this message was already edited."
+        );
+      }
 
       const relatedContentFragments = await fetchPrecedingContentFragments(
         auth,
@@ -2307,6 +2332,15 @@ export async function softDeleteUserMessageAndReplies(
           .map((m) => m.sId),
       };
     });
+  } catch (e) {
+    if (e instanceof UserMessageError) {
+      return new Err(new ConversationError("message_already_edited"));
+    }
+
+    throw e;
+  }
+
+  const { userMessage, cascadedAgentMessages, runningOrphanIds } = deleted;
 
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
