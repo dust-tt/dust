@@ -16,13 +16,13 @@ import {
   conversationRedirectRoutes,
   conversationRoutes,
 } from "@spa/app/routes/conversationRoutes";
+import { getStartedRoutes } from "@spa/app/routes/getStartedRoutes";
 import { labsRoutes } from "@spa/app/routes/labsRoutes";
 import {
   loginAuthenticatedRoutes,
   loginUnauthenticatedRoutes,
 } from "@spa/app/routes/loginRoutes";
 import { onboardingRoutes } from "@spa/app/routes/onboardingRoutes";
-import { getStartedRoutes } from "@spa/app/routes/getStartedRoutes";
 import { podsRoutes } from "@spa/app/routes/podsRoutes";
 import {
   spacesRedirectRoutes,
