@@ -408,8 +408,7 @@ export async function expireUserSpendLimitOverride(
   });
 
   // On any Metronome failure below, the DB override is put back rather than
-  // left cleared: keeps DB and Metronome consistent, and the membership still
-  // matches `listActiveWithExpiredPoolCapOverride` so the next sweep retries it.
+  // left cleared: keeps DB and Metronome consistent
   const revert = () =>
     membership.revertPoolCapOverride(previousPoolCapOverride);
 
