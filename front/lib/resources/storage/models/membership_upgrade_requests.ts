@@ -2,7 +2,8 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
+import type { SpendLimitExpiryKind } from "@app/types/api/users/spend_limit";
+import type { MembershipUpgradeRequestStatus, MembershipSeatType } from "@app/types/memberships";
 import {
   MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
   MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS,
@@ -24,6 +25,12 @@ export class MembershipUpgradeRequestModel extends WorkspaceAwareModel<Membershi
 
   // Why the member needs the raised limit - Optional
   declare reason: string | null;
+
+  // Snapshot of what was actually granted when this (approved) request was resolved
+  declare grantedAwuCredits: number | null;
+  declare grantedExpiryKind: SpendLimitExpiryKind | null;
+  declare grantedUnlimitedSpend: CreationOptional<boolean>;
+  declare grantedSeatType: MembershipSeatType | null;
 
   // The member who requested the upgrade.
   declare userId: ForeignKey<UserModel["id"]>;
@@ -61,6 +68,26 @@ MembershipUpgradeRequestModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    grantedAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    grantedExpiryKind: {
+      type: DataTypes.STRING(24),
+      allowNull: true,
+      defaultValue: null,
+    },
+    grantedUnlimitedSpend: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    grantedSeatType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "membership_upgrade_request",
@@ -82,6 +109,12 @@ MembershipUpgradeRequestModel.init(
       {
         fields: ["resolvedByUserId"],
         name: "membership_upgrade_requests_resolved_by_user_idx",
+      },
+      // Admin history view: resolved requests for a workspace, newest first
+      // (see `listResolvedByWorkspace`).
+      {
+        fields: ["workspaceId", "resolvedAt"],
+        name: "membership_upgrade_requests_workspace_resolved_at_idx",
       },
     ],
   }
