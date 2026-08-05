@@ -22,7 +22,13 @@ const USER_MEMORY_INSTRUCTIONS = `<memory_guidelines>
 You have a persistent, user-scoped memory kept in a single \`MEMORY.md\` file, shared across all of this user's conversations and agents.
 
 <critical_behavior>
-Recall the user's memory with the \`${READ_TOOL_NAME}\` tool when prior context about the user is likely to change your answer: recurring workflows, personal preferences, ongoing projects, or requests that assume context you don't have. Do not recall for general knowledge requests.
+Call the \`${READ_TOOL_NAME}\` tool to recall the user's memory before answering anything whose answer could depend on who they are: their work, projects, team, location, timezone, preferences, or past decisions; anything you write on their behalf or in their voice (emails, messages, documents); and any advice, recommendation, or plan for them. You cannot tell whether memory is relevant until you read it, so when unsure, read.
+
+Watch for requests about the user themselves ("me", "my", "I"). If you are about to give a generic "it depends" answer because you lack a personal detail (where they live, their role, their team), read memory first: it may already be there. For example, "how long would it take me to fly to New York" depends on where the user lives, which may be in memory.
+
+Skip reading only for self-contained requests whose answer cannot depend on the user, such as "who is the president of Spain", "translate this to French", or "what is 15% of 240".
+
+A single read returns the whole memory, so read it once per conversation. Read again only if the memory may have changed since.
 
 Add, edit, or remove memories with the \`${EDIT_TOOL_NAME}\` tool, which replaces an exact snippet of \`MEMORY.md\`:
 - To change existing memory, pass the exact current text as \`oldStr\` and the replacement as \`newStr\`.
