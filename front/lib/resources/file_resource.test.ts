@@ -1623,4 +1623,50 @@ describe("FileResource", () => {
       );
     });
   });
+
+  describe("deleteAllForWorkspace", () => {
+    const makeFile = (auth: Authenticator, fileName: string) =>
+      FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName,
+        fileSize: 10,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-delete-all" },
+      });
+
+    it("should delete every file of the workspace", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      for (const fileName of ["a.txt", "b.txt", "c.txt"]) {
+        await makeFile(auth, fileName);
+      }
+
+      const deletedCount = await FileResource.deleteAllForWorkspace(auth);
+
+      expect(deletedCount).toBe(3);
+      expect(
+        await FileModel.count({ where: { workspaceId: workspace.id } })
+      ).toBe(0);
+    });
+
+    it("should leave the files of other workspaces untouched", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const { authenticator: otherAuth, workspace: otherWorkspace } =
+        await createResourceTest({ role: "admin" });
+
+      await makeFile(auth, "mine.txt");
+      await makeFile(otherAuth, "theirs.txt");
+
+      await FileResource.deleteAllForWorkspace(auth);
+
+      expect(
+        await FileModel.count({ where: { workspaceId: otherWorkspace.id } })
+      ).toBe(1);
+    });
+  });
 });
