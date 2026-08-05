@@ -133,6 +133,16 @@ type ReplaceSkillReferenceTagsOptions = {
   html?: boolean;
 };
 
+type SkillFetchContext =
+  | {
+      agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds: string[];
+    }
+  | {
+      agentLoopData?: never;
+      effectiveSpaceIds?: string[];
+    };
+
 type SkillResourceConstructorOptions =
   | {
       // For global skills, there is no editor group.
@@ -848,10 +858,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (def) => !agentLoopData || !def.isDisabledForAgentLoop?.(agentLoopData)
     );
 
-    assert(
-      !agentLoopData || providedEffectiveSpaceIds !== undefined,
-      "effectiveSpaceIds must be provided with agentLoopData"
-    );
     const effectiveSpaceIds = providedEffectiveSpaceIds ?? [];
     const requestedSpaceModelIds = removeNulls(
       effectiveSpaceIds.map(getResourceIdFromSId)
@@ -993,11 +999,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       effectiveSpaceIds,
       onlyActive = false,
-    }: {
-      agentLoopData?: AgentLoopExecutionData;
-      effectiveSpaceIds?: string[];
-      onlyActive?: boolean;
-    } = {}
+    }: SkillFetchContext & { onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -1038,13 +1040,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async fetchByName(
     auth: Authenticator,
     name: string,
-    {
-      agentLoopData,
-      effectiveSpaceIds,
-    }: {
-      agentLoopData?: AgentLoopExecutionData;
-      effectiveSpaceIds?: string[];
-    } = {}
+    { agentLoopData, effectiveSpaceIds }: SkillFetchContext = {}
   ): Promise<SkillResource | null> {
     const resources = await this.baseFetch(
       auth,
@@ -1227,13 +1223,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listFavoritesForCurrentUser(
     auth: Authenticator,
-    {
-      agentLoopData,
-      effectiveSpaceIds,
-    }: {
-      agentLoopData?: AgentLoopExecutionData;
-      effectiveSpaceIds?: string[];
-    } = {}
+    context?: SkillFetchContext
   ): Promise<SkillResource[]> {
     const user = auth.user();
     if (!user) {
@@ -1254,8 +1244,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return this.fetchByIds(auth, favorites.skillIds, {
-      agentLoopData,
-      effectiveSpaceIds,
+      ...context,
       onlyActive: true,
     });
   }
@@ -1336,13 +1325,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
-    {
-      agentLoopData,
-      effectiveSpaceIds,
-    }: {
-      agentLoopData?: AgentLoopExecutionData;
-      effectiveSpaceIds?: string[];
-    } = {}
+    { agentLoopData, effectiveSpaceIds }: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
       auth,
@@ -1543,13 +1526,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listDiscoverable(
     auth: Authenticator,
-    {
-      agentLoopData,
-      effectiveSpaceIds,
-    }: {
-      agentLoopData?: AgentLoopExecutionData;
-      effectiveSpaceIds?: string[];
-    } = {}
+    { agentLoopData, effectiveSpaceIds }: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
     return this.baseFetch(
       auth,
@@ -1680,11 +1657,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       effectiveSpaceIds,
       transaction,
-    }: {
+    }: SkillFetchContext & {
       conversation: ConversationWithoutContentType | ConversationResource;
       agentConfiguration?: AgentConfigurationWithoutModelType;
-      agentLoopData?: AgentLoopExecutionData;
-      effectiveSpaceIds?: string[];
       transaction?: Transaction;
     }
   ): Promise<SkillResource[]> {
@@ -1724,7 +1699,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       conversation: ConversationWithoutContentType;
       agentLoopData?: AgentLoopExecutionData;
-      effectiveSpaceIds?: string[];
+      effectiveSpaceIds: string[];
     }
   ): Promise<SkillResource[]> {
     if (!isPodConversation(conversation)) {
