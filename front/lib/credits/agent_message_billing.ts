@@ -248,9 +248,6 @@ export function buildAgentMessageBillingPlan<
     }
   >();
 
-  // This key is the billing and rounding boundary, not merely an aggregation
-  // convenience. Removing runKey would round at the message level; removing
-  // provider/model would round unlike Metronome's separately priced events.
   for (const usage of runUsages) {
     const runKey = usage.runKey ?? LEGACY_RUN_KEY;
     const billingGroupKey = `${runKey}|${usage.providerId}|${usage.modelId}`;
@@ -323,8 +320,6 @@ export function buildAgentMessageBillingPlan<
       action.internalMCPServerName,
       action.toolName
     );
-    // Status has precedence so an action that never became billable is omitted
-    // from Metronome even when its origin or tool would otherwise be free.
     const billingDisposition: AgentMessageToolBillingDisposition =
       !isToolExecutionStatusBillable(action.status)
         ? "unbillable_status"
