@@ -9,7 +9,7 @@ async function setupTest() {
 }
 
 function getRecommendations(wId: string) {
-  return honoApp.request(`/api/w/${wId}/action-recommendations`);
+  return honoApp.request(`/api/w/${wId}/activation-recommendations`);
 }
 
 function updateRecommendation(
@@ -22,7 +22,7 @@ function updateRecommendation(
   }
 ) {
   return honoApp.request(
-    `/api/w/${wId}/action-recommendations/${recommendationId}`,
+    `/api/w/${wId}/activation-recommendations/${recommendationId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -31,7 +31,7 @@ function updateRecommendation(
   );
 }
 
-describe("GET /api/w/:wId/action-recommendations", () => {
+describe("GET /api/w/:wId/activation-recommendations", () => {
   it("returns the user's suggested recommendations", async () => {
     const { workspace, auth } = await setupTest();
 
@@ -76,7 +76,7 @@ describe("GET /api/w/:wId/action-recommendations", () => {
   });
 });
 
-describe("PATCH /api/w/:wId/action-recommendations/:recommendationId", () => {
+describe("PATCH /api/w/:wId/activation-recommendations/:recommendationId", () => {
   it("dismisses a recommendation so it no longer surfaces", async () => {
     const { workspace, auth } = await setupTest();
 
