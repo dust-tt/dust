@@ -1086,7 +1086,7 @@ export function AgentSidebarMenu({
               </NavigationList>
             )}
             {!isMultiSelect && !hideActions && (
-              <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
+              <NavigationList className="mx-sidebar-side-spacing mb-4 flex-shrink-0">
                 <NavigationListItem
                   href={getAgentBuilderRoute(owner.sId, "manage")}
                   icon={Robot}
