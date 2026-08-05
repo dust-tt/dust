@@ -81,6 +81,27 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
+    name: "unpublish",
+    description:
+      "Unpublish a pod function by its slug. Permanently delete the published bundle and all " +
+      "invocation and tool-action history. The editable source file in the pod remains unchanged.",
+    schema: {
+      slug: z
+        .string()
+        .regex(SANDBOX_FUNCTION_SLUG_REGEX)
+        .describe(
+          "The slug of the pod function to unpublish, as shown by the list tool."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Unpublishing pod function...",
+      done: "Unpublished pod function",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
     name: "call",
     description:
       "Call a pod function published in the current pod by its slug, passing its input " +

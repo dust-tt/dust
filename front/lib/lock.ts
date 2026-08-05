@@ -50,6 +50,13 @@ export async function distributedUnlock(
 
 const WAIT_BETWEEN_RETRIES = 100;
 
+export class LockAcquisitionTimeoutError extends Error {
+  constructor(lockName: string) {
+    super(`Lock acquisition timed out for ${lockName}`);
+    this.name = "LockAcquisitionTimeoutError";
+  }
+}
+
 export const executeWithLock = async <T>(
   lockName: string,
   callback: () => Promise<T>,
@@ -89,7 +96,7 @@ export const executeWithLock = async <T>(
     : await acquire();
 
   if (!lockValue) {
-    throw new Error(`Lock acquisition timed out for ${lockName}`);
+    throw new LockAcquisitionTimeoutError(lockName);
   }
 
   try {

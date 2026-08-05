@@ -72,6 +72,10 @@ const MCP_TOOL_OVERRIDES: Partial<
       approveLabel: "Publish",
       alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
     },
+    unpublish: {
+      title: () => "Unpublish this function?",
+      approveLabel: "Unpublish",
+    },
   },
   [POD_TASKS_SERVER_NAME]: {
     [CREATE_TASKS_TOOL_NAME]: {

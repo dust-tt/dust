@@ -58,6 +58,10 @@ function toMCPError(error: SandboxFunctionError): MCPError {
     case "reconcile_blocked":
       // The model controls the path and the function source, so surface the detail to let it fix.
       return new MCPError(error.message, { tracked: false });
+    // Publish never returns not_found, but the shared sandbox-function error union also serves
+    // unpublish.
+    case "not_found":
+      return new MCPError(error.message, { tracked: false });
     case "sandbox_unavailable":
     case "reconcile_failed":
     case "internal":

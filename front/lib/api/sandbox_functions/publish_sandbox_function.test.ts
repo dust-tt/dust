@@ -15,6 +15,12 @@ import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const executeWithLockMock = vi.hoisted(() =>
+  vi.fn(async (_lockName: string, callback: () => Promise<unknown>) =>
+    callback()
+  )
+);
+
 vi.mock(
   "@app/lib/api/sandbox_functions/build_on_sandbox",
   async (importOriginal) => {
@@ -28,10 +34,7 @@ vi.mock(
 );
 
 vi.mock("@app/lib/lock", () => ({
-  executeWithLock: async (
-    _lockName: string,
-    callback: () => Promise<unknown>
-  ) => callback(),
+  executeWithLock: executeWithLockMock,
 }));
 
 const inputSchema: JSONSchema = {
@@ -103,6 +106,12 @@ describe("publishSandboxFunction", () => {
       space,
       srcSandboxPath: `/files/pod-${space.sId}/greet.ts`,
     });
+    expect(executeWithLockMock).toHaveBeenCalledWith(
+      `sandbox_function:mutation:${workspace.sId}:${space.sId}:greet`,
+      expect.any(Function),
+      30_000,
+      { lockTtlMs: 300_000 }
+    );
 
     // The source stays on the mount, so the bundle is the only FileResource.
     const files = await FileModel.findAll({
