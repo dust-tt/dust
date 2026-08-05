@@ -20,6 +20,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import { toAssignableRole } from "@app/types/user";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as all the
 // checks (decoding the JWT) have been run before. Simply create the membership if it does not
@@ -85,7 +86,7 @@ export async function handleMembershipInvite({
     const updateRes = await updateMembershipRoleAndTrack({
       user,
       workspace: lightWorkspace,
-      newRole: membershipInvite.initialRole,
+      newRole: toAssignableRole(membershipInvite.initialRole),
       allowTerminated: true,
       author: "no-author",
     });
@@ -104,7 +105,7 @@ export async function handleMembershipInvite({
     await createAndTrackMembership({
       workspace: lightWorkspace,
       user,
-      role: membershipInvite.initialRole,
+      role: toAssignableRole(membershipInvite.initialRole),
       origin: "invited",
       requestedSeatType: membershipInvite.seatType,
     });
@@ -161,7 +162,9 @@ export async function handleEnterpriseSignUpFlow(
     await createAndTrackMembership({
       workspace: lightWorkspace,
       user,
-      role: pendingMembershipInvitation?.initialRole ?? "user",
+      role: toAssignableRole(
+        pendingMembershipInvitation?.initialRole ?? "user"
+      ),
       origin: pendingMembershipInvitation ? "invited" : "auto-joined",
       requestedSeatType: pendingMembershipInvitation?.seatType ?? null,
     });

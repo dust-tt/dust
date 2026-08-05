@@ -24,7 +24,7 @@ export const ExportQuerySchema = z.object({
   billingCycleStartDay: z.coerce.number().min(1).max(31),
 });
 
-export type ExportQuery = z.infer<typeof ExportQuerySchema>;
+type ExportQuery = z.infer<typeof ExportQuerySchema>;
 
 type CompositeKey = {
   date: number;
@@ -45,7 +45,7 @@ type CompositeAggs = {
   };
 };
 
-export interface ExportRow {
+interface ExportRow {
   date: string;
   agent_name: string;
   api_key: string;
@@ -54,7 +54,7 @@ export interface ExportRow {
   [key: string]: string;
 }
 
-export type ProgrammaticCostExport = {
+type ProgrammaticCostExport = {
   csv: string;
   filename: string;
 };

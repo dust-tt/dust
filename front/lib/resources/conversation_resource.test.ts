@@ -3,6 +3,7 @@ import { loadAllModels } from "@app/admin/db";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -13,7 +14,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -757,6 +758,7 @@ describe("destroyConversation", () => {
   });
 
   it("should delete MCP actions with a missing step content link", async () => {
+    mockDeleteOwnerPolicy.mockResolvedValue(new Ok(undefined));
     const conversationType = await ConversationFactory.create(auth, {
       agentConfigurationId,
       messagesCreatedAt: [new Date()],
@@ -806,7 +808,7 @@ describe("destroyConversation", () => {
       mcpServerName: "test_server",
     };
 
-    await AgentMCPActionModel.create({
+    const action = await AgentMCPActionModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       agentMessageId,
       mcpServerConfigurationId: generateRandomModelSId(),
@@ -823,6 +825,22 @@ describe("destroyConversation", () => {
       },
     });
 
+    await AgentMessageConsumptionItemModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: conversation.id,
+      agentMessageId,
+      runUsageId: null,
+      agentMCPActionId: action.id,
+      itemKey: `tool-action:${action.id}`,
+      itemType: "tool",
+      attributionVersion: 1,
+      inputTokensCount: null,
+      outputTokensCount: null,
+      grossAttributedCreditAmountMicro: 0,
+      directCreditAmountMicro: null,
+      completedAt: null,
+    });
+
     const result = await destroyConversation(auth, { conversation });
 
     expect(result.isOk()).toBe(true);
@@ -834,6 +852,12 @@ describe("destroyConversation", () => {
         },
       })
     ).resolves.toBe(0);
+    await expect(
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [agentMessageId],
+        attributionVersion: 1,
+      })
+    ).resolves.toHaveLength(0);
   });
 
   it("should delete selected spaces before deleting a conversation", async () => {
@@ -1799,6 +1823,7 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         cId: participantRequiredConversation.sId,
         uId: sessionUser.sId,
         aId: agents[0].sId,
+        aV: agents[0].version,
         mId: "test-message-id-user",
         sbId: "test-sandbox-id-user",
         execId: "test-exec-id-user",
@@ -1870,6 +1895,7 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         cId: participantRequiredConversation.sId,
         uId: sessionAdminUser.sId,
         aId: agents[0].sId,
+        aV: agents[0].version,
         mId: "test-message-id-admin",
         sbId: "test-sandbox-id-admin",
         execId: "test-exec-id-admin",
@@ -1941,6 +1967,7 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         wId: workspace.sId,
         cId: participantRequiredConversation.sId,
         aId: agents[0].sId,
+        aV: agents[0].version,
         mId: "test-message-id-userless",
         sbId: "test-sandbox-id-userless",
         execId: "test-exec-id-userless",
@@ -3405,6 +3432,65 @@ describe("listSpaceUnreadConversationsForUser", () => {
     expect(allConversationIds).toContain(conversationIds[0]);
     expect(allConversationIds).not.toContain(subConversation.sId);
   });
+
+  it("hydrates nextWakeupAt on unread space conversations", async () => {
+    vi.spyOn(
+      wakeUpTemporalClient,
+      "launchOrScheduleWakeUpTemporalWorkflow"
+    ).mockResolvedValue(new Ok(undefined));
+
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(adminAuth);
+    const conversationResource = await ConversationResource.fetchById(
+      userAuth,
+      conversationIds[0]
+    );
+    assert(conversationResource, "Conversation not found");
+    const conversation = conversationResource.toJSON();
+
+    const scheduledFireAt = new Date("2030-01-01T12:00:00.000Z");
+    const cancelledFireAt = new Date("2029-01-01T12:00:00.000Z");
+
+    const cancelledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
+      {
+        scheduleType: "one_shot",
+        fireAt: cancelledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Cancelled wake-up",
+      },
+      conversation,
+      agentConfiguration
+    );
+    assert(cancelledWakeUpResult.isOk(), "Failed to create cancelled wake-up.");
+    await cancelledWakeUpResult.value.markCancelled(adminAuth);
+
+    const scheduledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
+      {
+        scheduleType: "one_shot",
+        fireAt: scheduledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Scheduled wake-up",
+      },
+      conversation,
+      agentConfiguration
+    );
+    assert(scheduledWakeUpResult.isOk(), "Failed to create scheduled wake-up.");
+
+    const userConversations =
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
+        userAuth,
+        spaceModelIds
+      );
+    const item = userConversations.unreadConversations.find(
+      (c) => c.sId === conversationIds[0]
+    );
+
+    expect(item?.toJSON().nextWakeupAt).toBe(scheduledFireAt.getTime());
+  });
 });
 
 describe("Space Handling", () => {
@@ -3989,7 +4075,10 @@ describe("Space Handling", () => {
     });
   });
 
-  describe("restricted project space access", () => {
+  // Pod conversation ACL (`spaceId` set): access is gated on read permission for the
+  // project space only. Extra `requestedSpaceIds` must not lock out pod members — that
+  // is the contract that lets a follow-up stop stripping agent/skill space requirements.
+  describe("pod conversation access", () => {
     it(
       "should not allow a user not in a restricted project space to fetch a conversation in that space",
       async () => {
@@ -4046,6 +4135,165 @@ describe("Space Handling", () => {
 
         // The conversation should not be accessible to the non-member user
         expect(fetchedConversation).toBeNull();
+        expect(
+          await ConversationResource.canAccess(nonMemberAuth, conversation.sId)
+        ).toBe("conversation_access_restricted");
+      },
+      RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS
+    );
+
+    it(
+      "should allow a project member to access a pod conversation even when requestedSpaceIds includes a restricted space they cannot read",
+      async () => {
+        const {
+          authenticator: adminAuth,
+          user: adminUser,
+          workspace,
+        } = await createResourceTest({ role: "admin" });
+
+        const memberUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, memberUser, {
+          role: "user",
+        });
+
+        const projectSpace = await SpaceFactory.project(
+          workspace,
+          adminUser.id
+        );
+        const restrictedSpace = await SpaceFactory.regular(workspace);
+
+        // Restricted space: admin only. Project: admin + member.
+        const addRestrictedRes = await restrictedSpace.addMembers(adminAuth, {
+          userIds: [adminUser.sId],
+        });
+        assert(
+          addRestrictedRes.isOk(),
+          "Failed to add admin to restricted space"
+        );
+        const addProjectRes = await projectSpace.addMembers(adminAuth, {
+          userIds: [adminUser.sId, memberUser.sId],
+        });
+        assert(addProjectRes.isOk(), "Failed to add members to project space");
+
+        const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          memberUser.sId,
+          workspace.sId
+        );
+        const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          adminUser.sId,
+          workspace.sId
+        );
+
+        const conversation = await ConversationResource.makeNew(
+          refreshedAdminAuth,
+          {
+            title: "Pod conversation with extra restricted requirement",
+            sId: generateRandomModelSId(),
+            spaceId: projectSpace.id,
+            requestedSpaceIds: [],
+          },
+          projectSpace
+        );
+
+        // Simulate accumulated agent/skill requirements (write path still strips these
+        // today; set them directly so this test locks the read ACL independently).
+        const updateRes = await ConversationResource.updateRequirements(
+          refreshedAdminAuth,
+          conversation.sId,
+          [projectSpace.id, restrictedSpace.id]
+        );
+        assert(updateRes.isOk(), "Failed to update conversation requirements");
+
+        // Under the old conjunctive ACL this would be denied; pod ACL only checks the project.
+        expect(
+          await ConversationResource.canAccess(memberAuth, conversation.sId)
+        ).toBe("allowed");
+        expect(
+          await ConversationResource.fetchById(memberAuth, conversation.sId)
+        ).not.toBeNull();
+        expect(
+          (await ConversationResource.listAll(memberAuth)).map((c) => c.sId)
+        ).toContain(conversation.sId);
+
+        // Non-member still denied even though they share the workspace.
+        const nonMemberUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, nonMemberUser, {
+          role: "user",
+        });
+        const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          nonMemberUser.sId,
+          workspace.sId
+        );
+        expect(
+          await ConversationResource.canAccess(nonMemberAuth, conversation.sId)
+        ).toBe("conversation_access_restricted");
+        expect(
+          await ConversationResource.fetchById(nonMemberAuth, conversation.sId)
+        ).toBeNull();
+      },
+      RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS
+    );
+
+    it(
+      "should deny access to a pod conversation when its project space is deleted",
+      async () => {
+        const {
+          authenticator: adminAuth,
+          user: adminUser,
+          workspace,
+        } = await createResourceTest({ role: "admin" });
+
+        const projectSpace = await SpaceFactory.project(
+          workspace,
+          adminUser.id
+        );
+        const addMemberRes = await projectSpace.addMembers(adminAuth, {
+          userIds: [adminUser.sId],
+        });
+        assert(addMemberRes.isOk(), "Failed to add admin to project space");
+
+        const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          adminUser.sId,
+          workspace.sId
+        );
+
+        const conversation = await ConversationResource.makeNew(
+          refreshedAdminAuth,
+          {
+            title: "Pod conversation whose space will be deleted",
+            sId: generateRandomModelSId(),
+            spaceId: projectSpace.id,
+            requestedSpaceIds: [],
+          },
+          projectSpace
+        );
+
+        expect(
+          await ConversationResource.canAccess(
+            refreshedAdminAuth,
+            conversation.sId
+          )
+        ).toBe("allowed");
+
+        await projectSpace.delete(refreshedAdminAuth, { hardDelete: false });
+
+        expect(
+          await ConversationResource.canAccess(
+            refreshedAdminAuth,
+            conversation.sId
+          )
+        ).toBe("conversation_access_restricted");
+        expect(
+          await ConversationResource.fetchById(
+            refreshedAdminAuth,
+            conversation.sId
+          )
+        ).toBeNull();
+        expect(
+          (await ConversationResource.listAll(refreshedAdminAuth)).map(
+            (c) => c.sId
+          )
+        ).not.toContain(conversation.sId);
       },
       RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS
     );
@@ -4773,20 +5021,14 @@ describe("Space Handling", () => {
   describe("getMessageByIdInConversation", () => {
     let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
     let ownerAuth: Authenticator;
-    let otherAuth: Authenticator;
     let conversation: ConversationWithoutContentType;
 
     beforeEach(async () => {
       workspace = await WorkspaceFactory.basic();
       const ownerUser = await UserFactory.basic();
-      const otherUser = await UserFactory.basic();
 
       ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
         ownerUser.sId,
-        workspace.sId
-      );
-      otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        otherUser.sId,
         workspace.sId
       );
 
@@ -4870,74 +5112,6 @@ describe("Space Handling", () => {
         expect(result.error.message).toBe("Message not found");
       }
     });
-
-    it("enforces branch read permissions based on auth", async () => {
-      const conversationResource = await ConversationResource.fetchById(
-        ownerAuth,
-        conversation.sId
-      );
-      assert(conversationResource, "Conversation resource not found");
-
-      const ownerUser = ownerAuth.getNonNullableUser();
-
-      const [mainMessage] = await MessageModel.findAll({
-        where: {
-          conversationId: conversationResource.id,
-          workspaceId: workspace.id,
-        },
-        limit: 1,
-      });
-      assert(mainMessage, "No main message found");
-
-      const branch = await ConversationBranchResource.makeNew(ownerAuth, {
-        state: "open",
-        previousMessageId: mainMessage.id,
-        conversationId: conversationResource.id,
-        userId: ownerUser.id,
-      });
-
-      const branchUserMessageRow = await UserMessageModel.create({
-        userId: ownerUser.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Branch message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-
-      const branchMessage = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 1,
-        conversationId: conversationResource.id,
-        parentId: mainMessage.id,
-        userMessageId: branchUserMessageRow.id,
-        workspaceId: workspace.id,
-        branchId: branch.id,
-      });
-
-      const okResult = await ConversationResource.getMessageByIdInConversation(
-        ownerAuth,
-        conversation,
-        branchMessage.sId
-      );
-      expect(okResult.isOk()).toBe(true);
-
-      const forbiddenResult =
-        await ConversationResource.getMessageByIdInConversation(
-          otherAuth,
-          conversation,
-          branchMessage.sId
-        );
-      expect(forbiddenResult.isOk()).toBe(false);
-      if (forbiddenResult.isErr()) {
-        expect(forbiddenResult.error.message).toBe("Message not found");
-      }
-    });
   });
 
   describe("getPendingUserMessagesInConversation", () => {
@@ -4963,8 +5137,7 @@ describe("Space Handling", () => {
 
     async function createPendingUserMessage(
       conversationModelId: number,
-      rank: number,
-      branchId: number | null = null
+      rank: number
     ) {
       const user = auth.getNonNullableUser();
       const userMessageRow = await UserMessageModel.create({
@@ -4989,11 +5162,10 @@ describe("Space Handling", () => {
         userMessageId: userMessageRow.id,
         workspaceId: workspace.id,
         visibility: "pending",
-        branchId,
       });
     }
 
-    it("returns pending messages with null branchId when conversation has no branch", async () => {
+    it("returns pending messages", async () => {
       const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
@@ -5010,141 +5182,6 @@ describe("Space Handling", () => {
 
       expect(pending).toHaveLength(2);
       expect(pending.map((m) => m.id)).toEqual([msg1.id, msg2.id]);
-    });
-
-    it("excludes pending messages that belong to a different branch", async () => {
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      assert(conversationResource, "Conversation resource not found");
-
-      const user = auth.getNonNullableUser();
-
-      // Create a main-thread message to anchor the branch.
-      const anchorUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Anchor message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-      const anchorMessage = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: anchorUserMessageRow.id,
-        workspaceId: workspace.id,
-      });
-
-      // Create two branches.
-      const branchA = await ConversationBranchResource.makeNew(auth, {
-        state: "open",
-        previousMessageId: anchorMessage.id,
-        conversationId: conversationResource.id,
-        userId: user.id,
-      });
-      const branchB = await ConversationBranchResource.makeNew(auth, {
-        state: "open",
-        previousMessageId: anchorMessage.id,
-        conversationId: conversationResource.id,
-        userId: user.id,
-      });
-
-      // Create a pending message on branchA.
-      const msgOnA = await createPendingUserMessage(
-        conversationResource.id,
-        10,
-        branchA.id
-      );
-      // Create a pending message on branchB.
-      await createPendingUserMessage(conversationResource.id, 11, branchB.id);
-      // Create a pending message with no branch.
-      const msgNoBranch = await createPendingUserMessage(
-        conversationResource.id,
-        12
-      );
-
-      // Query with conversation scoped to branchA.
-      const conversationOnBranchA: ConversationWithoutContentType = {
-        ...conversation,
-        branchId: branchA.sId,
-      };
-
-      const pending =
-        await ConversationResource.getPendingUserMessagesInConversation(auth, {
-          conversation: conversationOnBranchA,
-        });
-
-      // Should include the message on branchA and the one with null branchId,
-      // but NOT the message on branchB.
-      expect(pending).toHaveLength(2);
-      expect(pending.map((m) => m.id)).toEqual([msgOnA.id, msgNoBranch.id]);
-    });
-
-    it("excludes all branched pending messages when conversation has no branch", async () => {
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      assert(conversationResource, "Conversation resource not found");
-
-      const user = auth.getNonNullableUser();
-
-      // Create a main-thread anchor message.
-      const anchorUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Anchor",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-      const anchorMessage = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: anchorUserMessageRow.id,
-        workspaceId: workspace.id,
-      });
-
-      const branch = await ConversationBranchResource.makeNew(auth, {
-        state: "open",
-        previousMessageId: anchorMessage.id,
-        conversationId: conversationResource.id,
-        userId: user.id,
-      });
-
-      // A pending message on the branch.
-      await createPendingUserMessage(conversationResource.id, 10, branch.id);
-      // A pending message with no branch.
-      const msgNoBranch = await createPendingUserMessage(
-        conversationResource.id,
-        11
-      );
-
-      // Query with the main conversation (branchId: null).
-      const pending =
-        await ConversationResource.getPendingUserMessagesInConversation(auth, {
-          conversation,
-        });
-
-      // Only the null-branch message is returned.
-      expect(pending).toHaveLength(1);
-      expect(pending[0].id).toBe(msgNoBranch.id);
     });
 
     it("returns pending messages ordered by rank", async () => {
@@ -5700,85 +5737,6 @@ describe("Space Handling", () => {
         (m) => m.contentFragmentId === null
       ).length;
       expect(nonCfCount).toBe(2);
-    });
-
-    it("should exclude branch messages from pagination and allow duplicate ranks across branches", async () => {
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      assert(conversationResource, "Conversation resource not found");
-
-      const workspace = auth.getNonNullableWorkspace();
-      const user = auth.getNonNullableUser();
-
-      // Create a main-thread user message at rank 0
-      const mainUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Main thread message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-
-      const mainMessage = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: mainUserMessageRow.id,
-        workspaceId: workspace.id,
-      });
-
-      // Create a branch from that message
-      const branch = await ConversationBranchResource.makeNew(auth, {
-        state: "open",
-        previousMessageId: mainMessage.id,
-        conversationId: conversationResource.id,
-        userId: user.id,
-      });
-
-      // Create a branch user message at the same rank, attached to the branch
-      const branchUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Branch message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-
-      await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: branchUserMessageRow.id,
-        workspaceId: workspace.id,
-        branchId: branch.id,
-      });
-
-      const page = await conversationResource.fetchMessagesForPage(auth, {
-        limit: 10,
-      });
-
-      // Only the main-thread message should be included in pagination
-      expect(page.hasMore).toBe(false);
-      expect(page.messages).toHaveLength(1);
-      expect(page.messages[0].id).toBe(mainMessage.id);
-      expect(page.messages[0].rank).toBe(0);
-      expect(page.messages[0].branchId).toBeNull();
     });
   });
 });
@@ -7171,11 +7129,11 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
 });
 
 const KNOWN_CONVERSATION_RELATED_MODELS = [
+  "agent_message_consumption_item",
   "agent_message_skills",
   "agent_message_feedback",
   "agent_step_content_tool_execution",
   "agent_suggestion",
-  "conversation_branch",
   "conversation_fork",
   "conversation_mcp_server_view",
   "conversation_participant",
@@ -7200,7 +7158,6 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
 
 const KNOWN_MESSAGE_RELATED_MODELS = [
   // Tables that have a foreign key to the `message` table.
-  "conversation_branch",
   "conversation_fork",
   "message",
   "message_reaction",

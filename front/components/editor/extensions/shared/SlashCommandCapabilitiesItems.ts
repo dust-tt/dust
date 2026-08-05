@@ -6,8 +6,8 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import { compareForAutocompleteSort, subFilter } from "@app/lib/utils";
+import type { GetSkillsResponseBody } from "@app/types/api/skills";
 import React from "react";
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
@@ -17,9 +17,51 @@ export const INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION = "insert-knowledge-node";
 export const MAX_RENDERED_CAPABILITY_ITEMS = 50;
 
 export interface CapabilitySearchIndexItem {
+  isFavorite?: boolean;
   normalizedDescription?: string;
+  searchAliases?: readonly string[];
   sortGroup?: number;
   sortName: string;
+}
+
+interface CapabilityNameMatch {
+  isLowPriorityAlias: boolean;
+  name: string;
+}
+
+function getBestMatchingName({
+  item,
+  normalizedQuery,
+}: {
+  item: CapabilitySearchIndexItem;
+  normalizedQuery: string;
+}): CapabilityNameMatch | null {
+  const aliases = item.searchAliases ?? [];
+  const exactAlias = aliases.find(
+    (alias) => alias.toLowerCase() === normalizedQuery
+  );
+  if (exactAlias) {
+    return { isLowPriorityAlias: false, name: exactAlias };
+  }
+
+  if (subFilter(normalizedQuery, item.sortName.toLowerCase())) {
+    return { isLowPriorityAlias: false, name: item.sortName };
+  }
+
+  let bestAlias: string | null = null;
+  for (const alias of aliases) {
+    if (!subFilter(normalizedQuery, alias.toLowerCase())) {
+      continue;
+    }
+    if (
+      bestAlias === null ||
+      compareForAutocompleteSort(normalizedQuery, alias, bestAlias) < 0
+    ) {
+      bestAlias = alias;
+    }
+  }
+
+  return bestAlias ? { isLowPriorityAlias: true, name: bestAlias } : null;
 }
 
 export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
@@ -32,18 +74,20 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
   limit?: number;
 }): T[] {
   const normalizedQuery = query.trim().toLowerCase();
-  const matches: { item: T; titleMatches: boolean }[] = [];
+  const matches: { item: T; matchedName: CapabilityNameMatch | null }[] = [];
 
   for (const item of items) {
-    const titleMatches =
-      normalizedQuery.length === 0 || subFilter(normalizedQuery, item.sortName);
+    const matchedName =
+      normalizedQuery.length === 0
+        ? { isLowPriorityAlias: false, name: item.sortName }
+        : getBestMatchingName({ item, normalizedQuery });
     const descriptionMatches =
       normalizedQuery.length > 0 &&
       item.normalizedDescription !== undefined &&
       subFilter(normalizedQuery, item.normalizedDescription);
 
-    if (titleMatches || descriptionMatches) {
-      matches.push({ item, titleMatches });
+    if (matchedName !== null || descriptionMatches) {
+      matches.push({ item, matchedName });
     }
   }
 
@@ -53,34 +97,48 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
       return groupComparison;
     }
 
+    const aIsFavorite = a.item.isFavorite ?? false;
+    const bIsFavorite = b.item.isFavorite ?? false;
+    const favoriteComparison =
+      aIsFavorite === bIsFavorite ? 0 : aIsFavorite ? -1 : 1;
+
     if (normalizedQuery.length === 0) {
-      return a.item.sortName.localeCompare(b.item.sortName);
-    }
-
-    if (a.titleMatches !== b.titleMatches) {
-      return a.titleMatches ? -1 : 1;
-    }
-
-    if (a.titleMatches) {
       return (
-        compareForFuzzySort(
-          normalizedQuery,
-          a.item.sortName,
-          b.item.sortName
-        ) || a.item.sortName.localeCompare(b.item.sortName)
+        favoriteComparison || a.item.sortName.localeCompare(b.item.sortName)
       );
     }
 
-    return a.item.sortName.localeCompare(b.item.sortName);
+    const aNameMatches = a.matchedName !== null;
+    const bNameMatches = b.matchedName !== null;
+    if (aNameMatches !== bNameMatches) {
+      return aNameMatches ? -1 : 1;
+    }
+
+    if (a.matchedName !== null && b.matchedName !== null) {
+      return (
+        Number(a.matchedName.isLowPriorityAlias) -
+          Number(b.matchedName.isLowPriorityAlias) ||
+        favoriteComparison ||
+        compareForAutocompleteSort(
+          normalizedQuery,
+          a.matchedName.name,
+          b.matchedName.name
+        ) ||
+        a.item.sortName.localeCompare(b.item.sortName)
+      );
+    }
+
+    return favoriteComparison || a.item.sortName.localeCompare(b.item.sortName);
   });
 
   return sortedMatches.slice(0, limit).map(({ item }) => item);
 }
 
 export type SlashCommandSkillSuggestion = Pick<
-  SkillWithoutInstructionsAndToolsType,
+  GetSkillsResponseBody["skills"][number],
   | "editedBy"
   | "icon"
+  | "isFavorite"
   | "name"
   | "requestedSpaceIds"
   | "sId"
@@ -124,7 +182,7 @@ export interface RunCommandSlashCommand<TCommand = unknown>
   };
 }
 
-export interface InsertKnowledgeSlashCommand extends SlashCommand {
+interface InsertKnowledgeSlashCommand extends SlashCommand {
   action: typeof INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION;
 }
 

@@ -35,7 +35,7 @@ export async function setApiKeyCreditState(
   });
 }
 
-export async function getApiKeyCreditState(
+async function getApiKeyCreditState(
   workspaceId: string,
   keyModelId: ModelId
 ): Promise<ApiKeyCreditState> {

@@ -41,14 +41,12 @@ const WorkOSConnectM2MApplicationSchema =
     organization_id: z.string(),
   });
 
-export const WorkOSConnectApplicationSchema = z.discriminatedUnion(
+const WorkOSConnectApplicationSchema = z.discriminatedUnion(
   "application_type",
   [WorkOSConnectOAuthApplicationSchema, WorkOSConnectM2MApplicationSchema]
 );
 
-export type WorkOSConnectApplication = z.infer<
-  typeof WorkOSConnectApplicationSchema
->;
+type WorkOSConnectApplication = z.infer<typeof WorkOSConnectApplicationSchema>;
 
 const WorkOSJwtClaimValueSchema = z.union([
   z.string(),

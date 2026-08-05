@@ -4,9 +4,11 @@ import {
   type ActivationRecommendationStatus,
 } from "@app/lib/models/activation/activation_recommendation";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
+import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -146,6 +148,21 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     return recs.map((rec) => new this(this.model, rec.get()));
   }
 
+  static async listByWorkspace(
+    auth: Authenticator,
+    { limit = 100 }: { limit?: number } = {}
+  ): Promise<ActivationRecommendationResource[]> {
+    const recs = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      order: [["createdAt", "DESC"]],
+      limit,
+    });
+
+    return recs.map((rec) => new this(this.model, rec.get()));
+  }
+
   static async listSuggestedByUser(
     auth: Authenticator,
     {
@@ -194,21 +211,36 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     }));
   }
 
-  // Detaches all recommendations from a Pod being deleted. Recommendations
-  // are owned by the user, not the pod, so they are kept and only unlinked.
-  static async detachActivationPod(
+  // Deletes everything tied to a Pod's activation record before the record
+  // itself is deleted: its recommendations, and its dedicated activation
+  // trigger. The FK from activation_recommendations to activation_pods is
+  // `onDelete: "RESTRICT"`, so the recommendations must go first or deleting
+  // the activation pod record fails. The trigger only exists to nudge this
+  // Pod's user, so — unlike other triggers scoped to the Pod's space, which
+  // are merely detached and kept running elsewhere — it must be actually
+  // deleted, not just unlinked.
+  static async deleteAllForActivationPod(
     auth: Authenticator,
-    activationPodId: ModelId
+    activationPod: ActivationPodResource
   ): Promise<void> {
-    await this.model.update(
-      { activationPodId: null },
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          activationPodId,
-        },
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        activationPodId: activationPod.id,
+      },
+    });
+
+    if (activationPod.triggerId !== null) {
+      const [trigger] = await TriggerResource.fetchByModelIds(auth, [
+        activationPod.triggerId,
+      ]);
+      if (trigger) {
+        const deleteTriggerRes = await trigger.delete(auth);
+        if (deleteTriggerRes.isErr()) {
+          throw deleteTriggerRes.error;
+        }
       }
-    );
+    }
   }
 
   async updateFields(fields: {

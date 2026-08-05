@@ -609,7 +609,7 @@ export async function createProCreditPurchase({
   return new Ok({ invoiceId: invoice.id, paymentUrl });
 }
 
-export type DeleteCreditError =
+type DeleteCreditError =
   | { type: "credit_not_found" }
   | { type: "credit_already_started"; credit: CreditResource };
 

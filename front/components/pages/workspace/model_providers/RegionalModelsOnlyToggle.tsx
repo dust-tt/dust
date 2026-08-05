@@ -12,7 +12,7 @@ interface RegionalModelsOnlyToggleConfig {
   icon: React.ReactNode;
 }
 
-export const REGIONAL_MODELS_ONLY_TOGGLE_CONFIG: Record<
+const REGIONAL_MODELS_ONLY_TOGGLE_CONFIG: Record<
   RegionType,
   RegionalModelsOnlyToggleConfig | null
 > = {

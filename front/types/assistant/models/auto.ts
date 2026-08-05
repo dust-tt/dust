@@ -219,19 +219,19 @@ function makeMetaModelConfig(
 export const AUTO_MODEL_CONFIG: ModelConfigurationType = makeMetaModelConfig(
   AUTO_MODEL_ID,
   {
-    displayName: "Auto",
-    description: "Let's Dust select the best model for the task.",
+    displayName: "Standard",
+    description: "Best for most",
   }
 );
 
 export const AUTO_FAST_MODEL_CONFIG: ModelConfigurationType =
   makeMetaModelConfig(AUTO_FAST_MODEL_ID, {
     displayName: "Fast",
-    description: "Fast models for simple tasks.",
+    description: "Quick, low cost",
   });
 
 export const AUTO_COMPLEX_MODEL_CONFIG: ModelConfigurationType =
   makeMetaModelConfig(AUTO_COMPLEX_MODEL_ID, {
     displayName: "Complex",
-    description: "Powerful models for heavy tasks.",
+    description: "Slower, most capable",
   });

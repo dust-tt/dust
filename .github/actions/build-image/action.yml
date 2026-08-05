@@ -183,69 +183,56 @@ runs:
           LATEST_TAGS+=("-t" "${REGISTRY}/${COMPONENT}:latest")
         fi
 
-        # Special handling for front component, build workers and front-api targets
+        # Special handling for front component: Bake builds both targets in parallel
+        # and deduplicates work in their shared base-deps stage.
         if [[ "$BASE_COMPONENT" == "front" ]]; then
-          echo "🏗️ Building front component with two targets (workers + front-api)"
+          echo "🏗️ Building front component with Bake (workers + front-api)"
 
-          # Build workers target
-          LATEST_TAGS_WORKERS=()
-          if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
-            LATEST_TAGS_WORKERS+=("-t" "${REGISTRY}/${COMPONENT}-workers:latest")
-          fi
-          depot build \
-            --project $DEPOT_PROJECT_ID \
-            --platform linux/amd64 \
-            --provenance=false \
-            --target workers \
-            --cache-from type=gha,scope=${{ inputs.component }}-deps \
-            --cache-from type=gha,scope=${{ inputs.component }}-workers \
-            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
-            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-workers \
-            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-workers:${{ inputs.commit_sha }} \
-            "${LATEST_TAGS_WORKERS[@]}" \
-            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
-            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
-            --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
-            --build-arg DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }} \
-            ${build_args[@]} \
-            --push \
-            .
-
-          # Build front-api target. Insert `-api` after the base component so the prod image
-          # is `front-api` and the edge image is `front-api-edge` (parallel to `front`/`front-edge`).
+          # Insert `-api` after the base component so the prod image is `front-api`
+          # and the edge image is `front-api-edge` (parallel to `front`/`front-edge`).
           API_COMPONENT="${BASE_COMPONENT}-api${COMPONENT#${BASE_COMPONENT}}"
-          LATEST_TAGS_API=()
+
+          WORKERS_IMAGE_TAG="${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-workers:${{ inputs.commit_sha }}"
+          FRONT_API_IMAGE_TAG="${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${API_COMPONENT}:${{ inputs.commit_sha }}"
+          WORKERS_LATEST_IMAGE_TAG=""
+          FRONT_API_LATEST_IMAGE_TAG=""
+
+          BAKE_OVERRIDES=(
+            --set "*.args.COMMIT_HASH=${{ inputs.commit_sha }}"
+            --set "*.args.COMMIT_HASH_LONG=${{ inputs.commit_sha_long }}"
+            --set "*.args.DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust"
+            --set "*.args.DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }}"
+          )
+
+          # Convert the build arguments collected above to Bake target overrides.
+          for ((i = 1; i < ${#build_args[@]}; i += 2)); do
+            BAKE_OVERRIDES+=(--set "*.args.${build_args[$i]}")
+          done
+
           if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
-            LATEST_TAGS_API+=("-t" "${REGISTRY}/${API_COMPONENT}:latest")
+            WORKERS_LATEST_IMAGE_TAG="${REGISTRY}/${COMPONENT}-workers:latest"
+            FRONT_API_LATEST_IMAGE_TAG="${REGISTRY}/${API_COMPONENT}:latest"
           fi
-          depot build \
-            --project $DEPOT_PROJECT_ID \
-            --platform linux/amd64 \
+
+          export WORKERS_IMAGE_TAG FRONT_API_IMAGE_TAG
+          export WORKERS_LATEST_IMAGE_TAG FRONT_API_LATEST_IMAGE_TAG
+
+          FRONT_BUILD_STARTED_SECONDS=$SECONDS
+          depot bake \
+            --project "$DEPOT_PROJECT_ID" \
             --provenance=false \
-            --target front-api \
-            --cache-from type=gha,scope=${{ inputs.component }}-deps \
-            --cache-from type=gha,scope=${{ inputs.component }}-front-api \
-            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
-            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front-api \
-            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${API_COMPONENT}:${{ inputs.commit_sha }} \
-            "${LATEST_TAGS_API[@]}" \
-            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
-            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
-            --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
-            --build-arg DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }} \
-            ${build_args[@]} \
+            -f ./dockerfiles/front-bake.hcl \
+            "${BAKE_OVERRIDES[@]}" \
             --push \
-            .
+            front-images
+          echo "⏱️ Depot front Bake build and push took $((SECONDS - FRONT_BUILD_STARTED_SECONDS)) seconds"
         else
           # Standard single-target build for other components
+          BUILD_STARTED_SECONDS=$SECONDS
           depot build \
-            --project $DEPOT_PROJECT_ID \
+            --project "$DEPOT_PROJECT_ID" \
             --platform linux/amd64 \
             --provenance=false \
-            --cache-from type=gha,scope=${{ inputs.component }} \
-            --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
             -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }} \
             "${LATEST_TAGS[@]}" \
@@ -256,6 +243,7 @@ runs:
             ${build_args[@]} \
             --push \
             .
+          echo "⏱️ Depot build and push took $((SECONDS - BUILD_STARTED_SECONDS)) seconds"
         fi
 
     - name: Get current deployed version

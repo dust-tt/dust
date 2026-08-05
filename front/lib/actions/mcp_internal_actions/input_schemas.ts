@@ -155,7 +155,14 @@ export const ConfigurableToolInputSchemas = {
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET),
   }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD]: z.object({
-    uri: z.string().regex(POD_CONFIGURATION_URI_PATTERN),
+    uri: z
+      .string()
+      .regex(POD_CONFIGURATION_URI_PATTERN)
+      .describe(
+        "URI in the form pod://dust/w/<workspaceId>/pods/<podId>. " +
+          "Both path segments are opaque IDs, never names. " +
+          "Reuse a prior dustPod value; do not invent this URI."
+      ),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD),
   }),
   // All mime types do not necessarily have a fixed schema,

@@ -8,7 +8,21 @@ import { frameContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+
+  return {
+    ...actual,
+    emitAuditLogEvent: mockEmitAuditLogEvent,
+  };
+});
 
 // The permission gate we exercise here runs before the frame content pipeline. Stub the two
 // downstream helpers so the endpoint completes without reading frame content from storage —
@@ -59,6 +73,10 @@ function postShare(workspace: { sId: string }, fileId: string, body: unknown) {
 }
 
 describe("share scope endpoint", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe("publish permission (public scope)", () => {
     it("blocks publishing a frame publicly without the publish permission", async () => {
       const { auth, user, workspace } = await createPrivateApiMockRequest({
@@ -107,6 +125,19 @@ describe("share scope endpoint", () => {
 
       expect(response.status).toBe(200);
       expect((await response.json()).scope).toBe("public");
+      expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "frame.share_scope_updated",
+          metadata: {
+            frame_name: "test-frame.tsx",
+            share_scope: "public",
+          },
+          targets: [
+            expect.objectContaining({ type: "workspace", id: workspace.sId }),
+            expect.objectContaining({ type: "frame", id: file.sId }),
+          ],
+        })
+      );
     });
 
     it("allows an admin to publish a frame publicly without an explicit publish grant", async () => {

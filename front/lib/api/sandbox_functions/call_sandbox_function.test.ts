@@ -1,12 +1,15 @@
 import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import type { SandboxFunctionInvocationStreamEvent } from "@app/lib/api/sandbox_functions/events";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionInvocationEvent,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -72,7 +75,8 @@ function mockResult(result: unknown, invocationId: string): void {
 
 async function makeFunction(
   auth: Authenticator,
-  space: SpaceResource
+  space: SpaceResource,
+  userIdentity: SandboxFunctionUserIdentityPolicy = "optional"
 ): Promise<SandboxFunctionResource> {
   const file = await FileFactory.create(auth, null, {
     contentType: sandboxFunctionContentType,
@@ -87,6 +91,7 @@ async function makeFunction(
     file,
     slug: "greet",
     description: "Greet a user by name.",
+    userIdentity,
     inputSchema,
     outputSchema,
   });
@@ -136,6 +141,12 @@ describe("callSandboxFunction", () => {
       input: { name: "Soupinou" },
       context: { timezone: "Europe/Paris" },
     });
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({
+        invocation: expect.objectContaining({ origin: "delegated" }),
+      })
+    );
   });
 
   it("returns a typed invocation error", async () => {
@@ -161,6 +172,126 @@ describe("callSandboxFunction", () => {
       message: "boom",
       status: 503,
     });
+  });
+
+  it("fails closed on a policy introduced by a newer application version", async () => {
+    const { auth, fn } = await setup();
+    Object.assign(fn, { userIdentity: "future_policy" });
+
+    const result = await callSandboxFunction(auth, fn, { name: "x" });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("user_authentication_required");
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+  });
+
+  it("rejects an authenticator from another workspace", async () => {
+    const { fn } = await setup();
+    const { authenticator: otherWorkspaceAuth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const result = await fn.invoke(otherWorkspaceAuth, {
+      input: { name: "Soupinou" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toBe(
+      "This Pod Function belongs to another workspace."
+    );
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("rejects a workspace-user-required function without creating an invocation", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const fn = await makeFunction(
+      authenticator,
+      space,
+      "workspace_user_required"
+    );
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const result = await callSandboxFunction(userlessAuth, fn, {
+      name: "Soupinou",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toEqual({
+      code: "user_authentication_required",
+      message:
+        "This Pod Function requires a logged-in user from its workspace.",
+    });
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+  });
+
+  it("rejects delegated calls to an interactive-session-required function", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const fn = await makeFunction(
+      authenticator,
+      space,
+      "interactive_workspace_user_required"
+    );
+    vi.spyOn(authenticator, "authMethod").mockReturnValue("session");
+
+    const result = await callSandboxFunction(authenticator, fn, {
+      name: "Soupinou",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toEqual({
+      code: "user_authentication_required",
+      message:
+        "This Pod Function requires a logged-in workspace member in a live Dust session.",
+    });
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-session authenticator even with an interactive origin", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const fn = await makeFunction(
+      authenticator,
+      space,
+      "interactive_workspace_user_required"
+    );
+
+    const result = await fn.invoke(
+      authenticator,
+      { input: { name: "Soupinou" } },
+      { origin: "interactive_session" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toContain("live Dust session");
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
   });
 
   it("errors when no result event arrives", async () => {

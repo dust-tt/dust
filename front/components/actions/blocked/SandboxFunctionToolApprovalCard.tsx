@@ -1,24 +1,26 @@
 import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidationCard";
+import type { FrameViewer } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
-import { useAuth } from "@app/lib/auth/AuthContext";
 import { useValidateAction } from "@app/lib/swr/tool_actions";
 import { useState } from "react";
 
 interface SandboxFunctionToolApprovalCardProps {
   event: SandboxFunctionMCPApproveExecutionEvent;
+  // Viewer context is passed in: shared frames render this card outside of any AuthProvider.
+  viewer: FrameViewer;
   onResolved: () => void;
 }
 
 export function SandboxFunctionToolApprovalCard({
   event,
+  viewer,
   onResolved,
 }: SandboxFunctionToolApprovalCardProps) {
-  const { user, workspace } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { validateAction, isValidating } = useValidateAction({
-    owner: workspace,
+    owner: viewer.owner,
     onError: setErrorMessage,
   });
 
@@ -46,8 +48,9 @@ export function SandboxFunctionToolApprovalCard({
   return (
     <ToolValidationCard
       validationRequest={event}
-      triggeringUser={user}
-      owner={workspace}
+      triggeringUser={viewer.user}
+      currentUser={viewer.user}
+      owner={viewer.owner}
       errorMessage={errorMessage}
       isValidating={isValidating}
       onValidate={handleValidation}

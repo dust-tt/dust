@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.59",
+      tag: "0.8.64",
     });
   });
 
@@ -394,11 +394,58 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.38/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.41/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
         ),
+      ])
+    );
+  });
+
+  test("installs the pinned dbt Cloud CLI release to /opt/bin", () => {
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const image = getDustBaseImage();
+    const installCommand = runCommands.find((command) =>
+      command.includes("dbt-labs/dbt-cli/releases/download")
+    );
+
+    expect(installCommand).toBeDefined();
+    expect(installCommand).toContain(
+      "https://github.com/dbt-labs/dbt-cli/releases/download/v0.40.18/dbt_0.40.18_linux_amd64.tar.gz"
+    );
+    expect(installCommand).toContain(
+      "chown root:root /opt/bin/dbt && chmod 755 /opt/bin/dbt"
+    );
+    expect(image.tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "dbt", version: "0.40.18" }),
+      ])
+    );
+  });
+
+  test("installs the pinned Snowflake CLI release to /opt/bin", () => {
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const image = getDustBaseImage();
+    const installCommand = runCommands.find((command) =>
+      command.includes("sfc-repo.snowflakecomputing.com/snowflake-cli")
+    );
+
+    expect(installCommand).toBeDefined();
+    expect(installCommand).toContain(
+      "https://sfc-repo.snowflakecomputing.com/snowflake-cli/linux_x86_64/3.23.0/snowflake-cli-3.23.0.x86_64.deb"
+    );
+    expect(installCommand).toContain(
+      "bb1a3e645c171f43dac44965daa4047c256424bf47c954fef8b2a00d38e84775  /tmp/snowflake-cli.deb"
+    );
+    expect(installCommand).toContain(
+      "ln -sf /usr/lib/snowflake/snowflake-cli/snow /opt/bin/snow"
+    );
+    expect(image.tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "snow", version: "3.23.0" }),
       ])
     );
   });

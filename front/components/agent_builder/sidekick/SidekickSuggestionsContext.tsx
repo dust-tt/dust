@@ -37,7 +37,7 @@ import {
   useState,
 } from "react";
 
-export interface SidekickSuggestionsContextType {
+interface SidekickSuggestionsContextType {
   getSuggestionWithRelations: (
     sId: string
   ) => AgentSuggestionWithRelationsType | null;

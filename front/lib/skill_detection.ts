@@ -29,7 +29,7 @@ export function isImportableSkillStatus(status: DetectedSkillStatus): boolean {
   return status === "ready" || status === "skill_already_exists";
 }
 
-export type SkillUrlParseError = { type: "invalid_url"; message: string };
+type SkillUrlParseError = { type: "invalid_url"; message: string };
 
 /**
  * Parses a GitHub repository identifier from various formats:

@@ -1,6 +1,7 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import { z } from "zod";
+import { CLIENT_MESSAGE_ORIGINS } from "../assistant/conversation";
 import { ModelSelectionSchema } from "../assistant/models/types";
 import type { SupportedNonImageContentType } from "../files";
 import { getSupportedNonImageMimeTypes } from "../files";
@@ -14,15 +15,12 @@ const UserMentionSchema = z.object({
   userId: z.string(),
 });
 
-const UserMessageOriginSchema = z.enum([
-  "web",
-  "agent_sidekick",
-  "project_kickoff",
-  "extension",
-  "reinforced_skill_notification",
-]);
+// Clients may only claim a client origin: server-set origins (triggered,
+// reinforcement, ...) drive analytics and billing behavior and must never come
+// from a request body.
+const UserMessageOriginSchema = z.enum(CLIENT_MESSAGE_ORIGINS);
 
-export const MessageBaseSchema = z.object({
+const MessageBaseSchema = z.object({
   content: z.string(),
   mentions: z.array(z.union([AgentMentionSchema, UserMentionSchema])),
   context: z.object({
@@ -50,7 +48,7 @@ const ContentFragmentBaseSchema = z.object({
   supersededContentFragmentId: z.string().nullable().optional(),
 });
 
-export const getSupportedInlinedContentType = () => {
+const getSupportedInlinedContentType = () => {
   return z.enum(
     getSupportedNonImageMimeTypes() as [
       SupportedNonImageContentType,
@@ -77,11 +75,11 @@ export type SupportedContentNodeContentType = z.infer<
   ReturnType<typeof getSupportedContentNodeContentTypeSchema>
 >;
 
-export type SupportedInlinedContentFragmentTypeSchema = z.infer<
+type SupportedInlinedContentFragmentTypeSchema = z.infer<
   ReturnType<typeof getSupportedInlinedContentType>
 >;
 
-export const isSupportedInlinedFragmentContentType = (
+const isSupportedInlinedFragmentContentType = (
   contentType: string
 ): contentType is SupportedInlinedContentFragmentTypeSchema => {
   return (
@@ -131,7 +129,7 @@ export type ContentFragmentInputWithFileIdType = z.infer<
   typeof ContentFragmentInputWithFileIdSchema
 >;
 
-export type ContentFragmentInputType =
+type ContentFragmentInputType =
   | ContentFragmentInputWithInlinedContent
   | ContentFragmentInputWithFileIdType
   | ContentFragmentInputWithContentNode;
@@ -183,10 +181,6 @@ export const InternalPostContentFragmentRequestBodySchema = z.intersection(
     ContentFragmentInputWithContentNodeSchema,
   ])
 );
-
-export type InternalPostContentFragmentRequestBodyType = z.infer<
-  typeof InternalPostContentFragmentRequestBodySchema
->;
 
 const ConversationMetadataSchema = z.record(z.unknown());
 

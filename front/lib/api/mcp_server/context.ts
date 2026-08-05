@@ -8,7 +8,7 @@ export type { WorkOSWorkspaceAuthenticator } from "@app/lib/api/workos_authentic
 
 export const MCP_AUTHENTICATOR_AUTH_EXTRA_KEY = "dustAuthenticator";
 
-export type McpRequestExtra = {
+type McpRequestExtra = {
   authInfo?: AuthInfo;
 };
 

@@ -10,7 +10,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-export const NON_EXPANDABLE_NODES_MIME_TYPES = [
+const NON_EXPANDABLE_NODES_MIME_TYPES = [
   INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
   INTERNAL_MIME_TYPES.GITHUB.ISSUES,
   INTERNAL_MIME_TYPES.INTERCOM.TEAM,
@@ -33,7 +33,7 @@ export const FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES = [
   INTERNAL_MIME_TYPES.GITHUB.ISSUES,
 ] as readonly string[];
 
-export const FOLDERS_SELECTION_PREVENTED_MIME_TYPES = [
+const FOLDERS_SELECTION_PREVENTED_MIME_TYPES = [
   INTERNAL_MIME_TYPES.NOTION.SYNCING_FOLDER,
 ] as readonly string[];
 

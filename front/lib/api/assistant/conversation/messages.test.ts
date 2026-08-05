@@ -2,17 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock signalAgentUsage before importing the module that uses it
 vi.mock("@app/lib/api/assistant/agent_usage", () => ({
-  signalAgentUsage: vi.fn(),
+  signalAgentUsage: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import {
+  attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
   createCompactionMessage,
   createUserMessage,
+  resolveModelForMentionedAgent,
 } from "@app/lib/api/assistant/conversation/messages";
+import { canAgentBeUsedInProjectConversation } from "@app/lib/api/assistant/conversation/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -49,7 +52,7 @@ describe("createAgentMessages", () => {
   let auth: Authenticator;
   let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
-  let agentConfig2: LightAgentConfigurationType;
+  let _agentConfig2: LightAgentConfigurationType;
 
   beforeEach(async () => {
     // Reset mocks before each test
@@ -66,7 +69,7 @@ describe("createAgentMessages", () => {
       description: "First test agent",
     });
 
-    agentConfig2 = await AgentConfigurationFactory.createTestAgent(auth, {
+    _agentConfig2 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 2",
       description: "Second test agent",
     });
@@ -88,21 +91,26 @@ describe("createAgentMessages", () => {
         content: `Hello @${agentConfig1.name}`,
       });
 
-    const mentions: MentionType[] = [
+    const _mentions: MentionType[] = [
       {
         configurationId: agentConfig1.sId,
       } satisfies AgentMention,
     ];
 
+    const modelResolution = await resolveModelForMentionedAgent(auth, {
+      configuration: agentConfig1,
+    });
+
     const { agentMessages, richMentions } = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
-        mentions,
-        agentConfigurations: [agentConfig1],
+        agentConfiguration: agentConfig1,
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        modelResolution,
+        isRestrictedBySpaceUsage: false,
       },
     });
 
@@ -156,131 +164,7 @@ describe("createAgentMessages", () => {
     });
   });
 
-  it("should create multiple agent messages for multiple mentions", async () => {
-    const { messageRow, userMessage } =
-      await ConversationFactory.createUserMessage({
-        auth,
-        workspace,
-        conversation,
-        content: `Hello @${agentConfig1.name} and @${agentConfig2.name}`,
-      });
-
-    const mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } as AgentMention,
-      {
-        configurationId: agentConfig2.sId,
-      } as AgentMention,
-    ];
-
-    const { agentMessages, richMentions } = await createAgentMessages(auth, {
-      conversation,
-      metadata: {
-        type: "create",
-        mentions,
-        agentConfigurations: [agentConfig1, agentConfig2],
-        skipToolsValidation: false,
-        nextMessageRank: 1,
-        userMessage,
-      },
-    });
-
-    expect(agentMessages).toHaveLength(2);
-    expect(agentMessages[0].configuration.sId).toBe(agentConfig1.sId);
-    expect(agentMessages[1].configuration.sId).toBe(agentConfig2.sId);
-
-    // Verify richMentions are returned correctly
-    expect(richMentions).toHaveLength(2);
-    const agent1Mention = richMentions.find((m) => m.id === agentConfig1.sId);
-    const agent2Mention = richMentions.find((m) => m.id === agentConfig2.sId);
-    expect(agent1Mention).toBeDefined();
-    expect(agent2Mention).toBeDefined();
-    if (agent1Mention && isRichAgentMention(agent1Mention)) {
-      expect(agent1Mention.type).toBe("agent");
-      expect(agent1Mention.label).toBe(agentConfig1.name);
-      expect(agent1Mention.status).toBe("approved");
-    }
-    if (agent2Mention && isRichAgentMention(agent2Mention)) {
-      expect(agent2Mention.type).toBe("agent");
-      expect(agent2Mention.label).toBe(agentConfig2.name);
-      expect(agent2Mention.status).toBe("approved");
-    }
-
-    // Verify both mentions were created
-    const mentionsInDb = await MentionModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        messageId: messageRow.id,
-      },
-    });
-    expect(mentionsInDb).toHaveLength(2);
-
-    // Verify signalAgentUsage was called for each agent configuration
-    expect(signalAgentUsage).toHaveBeenCalledTimes(2);
-    expect(signalAgentUsage).toHaveBeenCalledWith({
-      agentConfigurationId: agentConfig1.sId,
-      workspaceId: workspace.sId,
-    });
-    expect(signalAgentUsage).toHaveBeenCalledWith({
-      agentConfigurationId: agentConfig2.sId,
-      workspaceId: workspace.sId,
-    });
-  });
-
-  it("should skip mentions for configurations not in the list", async () => {
-    const { userMessage } = await ConversationFactory.createUserMessage({
-      auth,
-      workspace,
-      conversation,
-      content: "Hello agent",
-    });
-
-    const mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } as AgentMention,
-      {
-        configurationId: "non-existent-agent",
-      } as AgentMention,
-    ];
-
-    // Only pass agentConfig1, not the non-existent one
-    const { agentMessages, richMentions } = await createAgentMessages(auth, {
-      conversation,
-      metadata: {
-        type: "create",
-        mentions,
-        agentConfigurations: [agentConfig1],
-        skipToolsValidation: false,
-        nextMessageRank: 1,
-        userMessage,
-      },
-    });
-
-    // Should only create one agent message for the valid configuration
-    expect(agentMessages).toHaveLength(1);
-    expect(agentMessages[0].configuration.sId).toBe(agentConfig1.sId);
-
-    // Verify richMentions only contains the valid agent mention
-    expect(richMentions).toHaveLength(1);
-    if (isRichAgentMention(richMentions[0])) {
-      expect(richMentions[0].id).toBe(agentConfig1.sId);
-      expect(richMentions[0].status).toBe("approved");
-    }
-
-    // Verify signalAgentUsage was called only for the valid configuration
-    expect(signalAgentUsage).toHaveBeenCalledTimes(1);
-    expect(signalAgentUsage).toHaveBeenCalledWith({
-      agentConfigurationId: agentConfig1.sId,
-      workspaceId: workspace.sId,
-    });
-
-    // Note: runAgentLoopWorkflow is no longer called from createAgentMessages.
-    // It's now called from postUserMessage/editUserMessage after the transaction commits.
-  });
-
-  it("should return empty array when no agent mentions are provided", async () => {
+  it("should create nothing when no agent configuration is provided", async () => {
     const { userMessage } = await ConversationFactory.createUserMessage({
       auth,
       workspace,
@@ -292,20 +176,21 @@ describe("createAgentMessages", () => {
       conversation,
       metadata: {
         type: "create",
-        mentions: [],
-        agentConfigurations: [agentConfig1],
+        agentConfiguration: null,
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        modelResolution: null,
+        isRestrictedBySpaceUsage: false,
       },
     });
 
     expect(agentMessages).toHaveLength(0);
 
-    // Verify richMentions is empty when no agent mentions are provided
+    // Verify richMentions is empty when no agent is mentioned
     expect(richMentions).toHaveLength(0);
 
-    // Verify signalAgentUsage was not called when no agent mentions are provided
+    // Verify signalAgentUsage was not called when no agent is mentioned
     expect(signalAgentUsage).not.toHaveBeenCalled();
   });
 
@@ -317,21 +202,26 @@ describe("createAgentMessages", () => {
       content: `Hello @${agentConfig1.name}`,
     });
 
-    const mentions: MentionType[] = [
+    const _mentions: MentionType[] = [
       {
         configurationId: agentConfig1.sId,
       } as AgentMention,
     ];
 
+    const modelResolution = await resolveModelForMentionedAgent(auth, {
+      configuration: agentConfig1,
+    });
+
     const { agentMessages, richMentions } = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
-        mentions,
-        agentConfigurations: [agentConfig1],
+        agentConfiguration: agentConfig1,
         skipToolsValidation: true,
         nextMessageRank: 1,
         userMessage,
+        modelResolution,
+        isRestrictedBySpaceUsage: false,
       },
     });
 
@@ -366,21 +256,26 @@ describe("createAgentMessages", () => {
       agenticOriginMessageId: originMessageId,
     });
 
-    const mentions: MentionType[] = [
+    const _mentions: MentionType[] = [
       {
         configurationId: agentConfig1.sId,
       } as AgentMention,
     ];
 
+    const modelResolution = await resolveModelForMentionedAgent(auth, {
+      configuration: agentConfig1,
+    });
+
     const { agentMessages, richMentions } = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
-        mentions,
-        agentConfigurations: [agentConfig1],
+        agentConfiguration: agentConfig1,
         skipToolsValidation: true,
         nextMessageRank: 1,
         userMessage,
+        modelResolution,
+        isRestrictedBySpaceUsage: false,
       },
     });
 
@@ -411,21 +306,26 @@ describe("createAgentMessages", () => {
       origin: "web",
     });
 
-    const mentions: MentionType[] = [
+    const _mentions: MentionType[] = [
       {
         configurationId: agentConfig1.sId,
       } as AgentMention,
     ];
 
+    const modelResolution = await resolveModelForMentionedAgent(auth, {
+      configuration: agentConfig1,
+    });
+
     const { agentMessages, richMentions } = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
-        mentions,
-        agentConfigurations: [agentConfig1],
+        agentConfiguration: agentConfig1,
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        modelResolution,
+        isRestrictedBySpaceUsage: false,
       },
     });
 
@@ -443,67 +343,6 @@ describe("createAgentMessages", () => {
     expect(signalAgentUsage).toHaveBeenCalledTimes(1);
     expect(signalAgentUsage).toHaveBeenCalledWith({
       agentConfigurationId: agentConfig1.sId,
-      workspaceId: workspace.sId,
-    });
-  });
-
-  it("should increment message rank correctly for multiple agent messages", async () => {
-    const { userMessage } = await ConversationFactory.createUserMessage({
-      auth,
-      workspace,
-      conversation,
-      content: `Hello @${agentConfig1.name} and @${agentConfig2.name}`,
-    });
-
-    const mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } as AgentMention,
-      {
-        configurationId: agentConfig2.sId,
-      } as AgentMention,
-    ];
-
-    const nextMessageRank = 10;
-
-    const { agentMessages, richMentions } = await createAgentMessages(auth, {
-      conversation,
-      metadata: {
-        type: "create",
-        mentions,
-        agentConfigurations: [agentConfig1, agentConfig2],
-        skipToolsValidation: false,
-        nextMessageRank: 10,
-        userMessage,
-      },
-    });
-
-    expect(agentMessages).toHaveLength(2);
-    // Note: The function increments nextMessageRank internally, so ranks should be 10 and 11
-    expect(agentMessages[0].rank).toBe(nextMessageRank);
-    expect(agentMessages[1].rank).toBe(nextMessageRank + 1);
-
-    // Verify richMentions are returned correctly
-    expect(richMentions).toHaveLength(2);
-    const agent1Mention = richMentions.find((m) => m.id === agentConfig1.sId);
-    const agent2Mention = richMentions.find((m) => m.id === agentConfig2.sId);
-    expect(agent1Mention).toBeDefined();
-    expect(agent2Mention).toBeDefined();
-    if (agent1Mention && isRichAgentMention(agent1Mention)) {
-      expect(agent1Mention.status).toBe("approved");
-    }
-    if (agent2Mention && isRichAgentMention(agent2Mention)) {
-      expect(agent2Mention.status).toBe("approved");
-    }
-
-    // Verify signalAgentUsage was called for each agent configuration
-    expect(signalAgentUsage).toHaveBeenCalledTimes(2);
-    expect(signalAgentUsage).toHaveBeenCalledWith({
-      agentConfigurationId: agentConfig1.sId,
-      workspaceId: workspace.sId,
-    });
-    expect(signalAgentUsage).toHaveBeenCalledWith({
-      agentConfigurationId: agentConfig2.sId,
       workspaceId: workspace.sId,
     });
   });
@@ -588,7 +427,7 @@ describe("createAgentMessages", () => {
       content: `Hello @${agentConfig.name}`,
     });
 
-    const mentions: MentionType[] = [
+    const _mentions: MentionType[] = [
       {
         configurationId: agentConfig.sId,
       } satisfies AgentMention,
@@ -604,17 +443,22 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
+    const modelResolution = await resolveModelForMentionedAgent(auth, {
+      configuration: agentConfigWithSpaces!,
+    });
+
     // Call createAgentMessages
     const { richMentions } = await withTransaction(async (transaction) => {
       return createAgentMessages(auth, {
         conversation: testConversation,
         metadata: {
           type: "create",
-          mentions,
-          agentConfigurations: [agentConfigWithSpaces!],
+          agentConfiguration: agentConfigWithSpaces!,
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          modelResolution,
+          isRestrictedBySpaceUsage: false,
         },
         transaction,
       });
@@ -715,7 +559,7 @@ describe("createAgentMessages", () => {
       content: `Hello @${agentConfig.name}`,
     });
 
-    const mentions: MentionType[] = [
+    const _mentions: MentionType[] = [
       {
         configurationId: agentConfig.sId,
       } satisfies AgentMention,
@@ -731,17 +575,22 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
+    const modelResolution = await resolveModelForMentionedAgent(auth, {
+      configuration: agentConfigWithSpaces!,
+    });
+
     // Call createAgentMessages
     const { richMentions } = await withTransaction(async (transaction) => {
       return createAgentMessages(auth, {
         conversation: testConversation,
         metadata: {
           type: "create",
-          mentions,
-          agentConfigurations: [agentConfigWithSpaces!],
+          agentConfiguration: agentConfigWithSpaces!,
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          modelResolution,
+          isRestrictedBySpaceUsage: false,
         },
         transaction,
       });
@@ -842,7 +691,7 @@ describe("createAgentMessages", () => {
       content: `Hello @${agentConfig.name}`,
     });
 
-    const mentions: MentionType[] = [
+    const _mentions: MentionType[] = [
       {
         configurationId: agentConfig.sId,
       } satisfies AgentMention,
@@ -858,17 +707,22 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
+    const modelResolution = await resolveModelForMentionedAgent(auth, {
+      configuration: agentConfigWithSpaces!,
+    });
+
     // Call createAgentMessages
     const { richMentions } = await withTransaction(async (transaction) => {
       return createAgentMessages(auth, {
         conversation: testConversation,
         metadata: {
           type: "create",
-          mentions,
-          agentConfigurations: [agentConfigWithSpaces!],
+          agentConfiguration: agentConfigWithSpaces!,
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          modelResolution,
+          isRestrictedBySpaceUsage: false,
         },
         transaction,
       });
@@ -894,69 +748,6 @@ describe("createAgentMessages", () => {
     expect(requestedSpaceIdsAfter).toHaveLength(2);
     expect(requestedSpaceIdsAfter).toContain(space1.sId);
     expect(requestedSpaceIdsAfter).toContain(space2.sId);
-  });
-
-  it("should deduplicate agent mentions and create only unique agent messages", async () => {
-    const { messageRow, userMessage } =
-      await ConversationFactory.createUserMessage({
-        auth,
-        workspace,
-        conversation,
-        content: `Hello @${agentConfig1.name}`,
-      });
-
-    // Create duplicate mentions for the same agent
-    const mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } as AgentMention,
-      {
-        configurationId: agentConfig1.sId,
-      } as AgentMention,
-      {
-        configurationId: agentConfig1.sId,
-      } as AgentMention,
-    ];
-
-    const { agentMessages, richMentions } = await createAgentMessages(auth, {
-      conversation,
-      metadata: {
-        type: "create",
-        mentions,
-        agentConfigurations: [agentConfig1],
-        skipToolsValidation: false,
-        nextMessageRank: 1,
-        userMessage,
-      },
-    });
-
-    // Should only create one agent message despite 3 duplicate mentions
-    expect(agentMessages).toHaveLength(1);
-    expect(agentMessages[0].configuration.sId).toBe(agentConfig1.sId);
-
-    // Should only have one rich mention
-    expect(richMentions).toHaveLength(1);
-    expect(richMentions[0].id).toBe(agentConfig1.sId);
-    if (isRichAgentMention(richMentions[0])) {
-      expect(richMentions[0].status).toBe("approved");
-    }
-
-    // Verify only one mention was created in the database
-    const mentionsInDb = await MentionModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        messageId: messageRow.id,
-      },
-    });
-    expect(mentionsInDb).toHaveLength(1);
-    expect(mentionsInDb[0].agentConfigurationId).toBe(agentConfig1.sId);
-
-    // Verify signalAgentUsage was called only once
-    expect(signalAgentUsage).toHaveBeenCalledTimes(1);
-    expect(signalAgentUsage).toHaveBeenCalledWith({
-      agentConfigurationId: agentConfig1.sId,
-      workspaceId: workspace.sId,
-    });
   });
 
   describe("conversations that belong to a space", () => {
@@ -1031,21 +822,31 @@ describe("createAgentMessages", () => {
         content: `Hello @${agentConfig.name}`,
       });
 
-      const mentions: MentionType[] = [
+      const _mentions: MentionType[] = [
         {
           configurationId: agentConfig.sId,
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+        configuration: updatedAgentConfig!,
+        conversation: spaceConversation.toJSON(),
+      });
+
+      const modelResolution = await resolveModelForMentionedAgent(auth, {
+        configuration: updatedAgentConfig!,
+      });
+
       const { agentMessages, richMentions } = await createAgentMessages(auth, {
         conversation: spaceConversation.toJSON(),
         metadata: {
           type: "create",
-          mentions,
-          agentConfigurations: [updatedAgentConfig!],
+          agentConfiguration: updatedAgentConfig!,
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          modelResolution,
+          isRestrictedBySpaceUsage: !canAgentBeUsed,
         },
       });
 
@@ -1175,11 +976,23 @@ describe("createAgentMessages", () => {
         content: `Hello @${agentConfig.name}`,
       });
 
-      const mentions: MentionType[] = [
+      const _mentions: MentionType[] = [
         {
           configurationId: agentConfig.sId,
         } satisfies AgentMention,
       ];
+
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
+      const modelResolution = await resolveModelForMentionedAgent(userAuth, {
+        configuration: updatedAgentConfig,
+      });
 
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
@@ -1187,11 +1000,12 @@ describe("createAgentMessages", () => {
           conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
-            mentions,
-            agentConfigurations: [updatedAgentConfig],
+            agentConfiguration: updatedAgentConfig,
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            modelResolution,
+            isRestrictedBySpaceUsage: !canAgentBeUsed,
           },
         }
       );
@@ -1307,11 +1121,23 @@ describe("createAgentMessages", () => {
         content: `Hello @${agentConfig.name}`,
       });
 
-      const mentions: MentionType[] = [
+      const _mentions: MentionType[] = [
         {
           configurationId: agentConfig.sId,
         } satisfies AgentMention,
       ];
+
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
+      const modelResolution = await resolveModelForMentionedAgent(userAuth, {
+        configuration: updatedAgentConfig,
+      });
 
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
@@ -1319,11 +1145,12 @@ describe("createAgentMessages", () => {
           conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
-            mentions,
-            agentConfigurations: [updatedAgentConfig],
+            agentConfiguration: updatedAgentConfig,
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            modelResolution,
+            isRestrictedBySpaceUsage: !canAgentBeUsed,
           },
         }
       );
@@ -1430,11 +1257,23 @@ describe("createAgentMessages", () => {
         content: `Hello @${agentConfig.name}`,
       });
 
-      const mentions: MentionType[] = [
+      const _mentions: MentionType[] = [
         {
           configurationId: agentConfig.sId,
         } satisfies AgentMention,
       ];
+
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
+      const modelResolution = await resolveModelForMentionedAgent(userAuth, {
+        configuration: updatedAgentConfig,
+      });
 
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
@@ -1442,11 +1281,12 @@ describe("createAgentMessages", () => {
           conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
-            mentions,
-            agentConfigurations: [updatedAgentConfig],
+            agentConfiguration: updatedAgentConfig,
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            modelResolution,
+            isRestrictedBySpaceUsage: !canAgentBeUsed,
           },
         }
       );
@@ -1579,11 +1419,23 @@ describe("createAgentMessages", () => {
         content: `Hello @${agentConfig.name}`,
       });
 
-      const mentions: MentionType[] = [
+      const _mentions: MentionType[] = [
         {
           configurationId: agentConfig.sId,
         } satisfies AgentMention,
       ];
+
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
+      const modelResolution = await resolveModelForMentionedAgent(userAuth, {
+        configuration: updatedAgentConfig,
+      });
 
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
@@ -1591,11 +1443,12 @@ describe("createAgentMessages", () => {
           conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
-            mentions,
-            agentConfigurations: [updatedAgentConfig],
+            agentConfiguration: updatedAgentConfig,
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            modelResolution,
+            isRestrictedBySpaceUsage: !canAgentBeUsed,
           },
         }
       );
@@ -1723,13 +1576,21 @@ describe("createUserMessage", () => {
       origin: "web",
     };
 
+    // Attribution happens at the caller (postUserMessage), before the message transaction.
+    const attributedUser = await attributeUserFromWorkspaceAndEmail(
+      workspace,
+      context.email
+    );
+    expect(attributedUser).not.toBeNull();
+    expect(attributedUser?.email).toBe(userJson.email);
+
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content,
         metadata: {
           type: "create",
-          user: null, // User should be attributed from email
+          user: attributedUser,
           rank,
           context,
           requestedModel: null,

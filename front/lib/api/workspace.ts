@@ -44,7 +44,7 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types/user";
-import { ACTIVE_ROLES, isBuilder } from "@app/types/user";
+import { ACTIVE_ROLES } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -303,7 +303,6 @@ export async function searchMembers(
     searchTerm?: string;
     searchEmails?: string[];
     groupKind?: Exclude<GroupKind, "system">;
-    buildersOnly?: boolean;
   },
   paginationParams: SearchMembersPaginationParams
 ): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
@@ -384,30 +383,10 @@ export async function searchMembers(
     { concurrency: 5 }
   );
 
-  let filteredUsers = usersWithWorkspace;
-  if (options.buildersOnly) {
-    filteredUsers = usersWithWorkspace.filter((u) => isBuilder(u.workspace));
-  }
-
   return {
-    members: filteredUsers,
-    total: options.buildersOnly ? filteredUsers.length : total,
+    members: usersWithWorkspace,
+    total,
   };
-}
-
-export async function getMembersCount(
-  auth: Authenticator,
-  { activeOnly = false }: { activeOnly?: boolean } = {}
-): Promise<number> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return 0;
-  }
-
-  return MembershipResource.getMembersCountForWorkspace({
-    workspace: owner,
-    activeOnly,
-  });
 }
 
 export async function checkWorkspaceSeatAvailabilityUsingAuth(
@@ -603,12 +582,6 @@ export async function setWorkspaceRelocated(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
   return updateWorkspaceMetadata(owner, { maintenance: "relocation-done" });
-}
-
-export function isWorkspaceRelocationOngoing(
-  owner: LightWorkspaceType
-): boolean {
-  return owner.metadata?.maintenance === "relocation";
 }
 
 export function isWorkspaceRelocationDone(owner: LightWorkspaceType): boolean {
@@ -810,10 +783,6 @@ export type GetProvisioningStatusResponseBody = {
 export type GetWelcomeResponseBody = {
   isFirstAdmin: boolean;
   emailProvider: EmailProviderType;
-};
-
-export type PostWorkspaceResponseBody = {
-  workspace: WorkspaceType;
 };
 
 export type GetWorkspaceResponseBody = {

@@ -5,13 +5,13 @@ export const DATASOURCE_QUOTA_PER_SEAT = 1024 * 1024 * 1024; // 1GB
 
 export class InvalidReportUsageError extends Error {}
 
-export const SUPPORTED_ENTERPRISE_REPORT_USAGE = [
+const SUPPORTED_ENTERPRISE_REPORT_USAGE = [
   "MAU_1",
   "MAU_5",
   "MAU_10",
   "FIXED",
 ] as const;
-export type SupportedEnterpriseReportUsage =
+type SupportedEnterpriseReportUsage =
   (typeof SUPPORTED_ENTERPRISE_REPORT_USAGE)[number];
 
 export const SUPPORTED_REPORT_USAGE = [

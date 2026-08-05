@@ -66,6 +66,7 @@ import MicrosoftWordLogo from "./MicrosoftWord";
 import MinimaxLogo from "./Minimax";
 import MiroLogo from "./Miro";
 import MistralLogo from "./Mistral";
+import ModjoLogo from "./Modjo";
 import MondayLogo from "./Monday";
 import MoonshotLogo from "./Moonshot";
 import NaptaLogo from "./Napta";
@@ -173,6 +174,7 @@ export const PLATFORM_LOGOS = {
   MinimaxLogo,
   MiroLogo,
   MistralLogo,
+  ModjoLogo,
   MondayLogo,
   MoonshotLogo,
   NaptaLogo,

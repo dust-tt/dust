@@ -26,10 +26,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
-export type PageId =
-  | "trigger-selection"
-  | "schedule-edition"
-  | "webhook-edition";
+type PageId = "trigger-selection" | "schedule-edition" | "webhook-edition";
 
 interface UseTriggerSheetStateParams {
   owner: LightWorkspaceType;

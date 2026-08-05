@@ -28,7 +28,6 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -73,12 +72,10 @@ async function createUserMessage(
     conversation,
     rank,
     content,
-    branchId = null,
   }: {
     conversation: ConversationWithoutContentType | ConversationResource;
     rank: number;
     content: string;
-    branchId?: ModelId | null;
   }
 ): Promise<MessageModel> {
   const workspace = auth.getNonNullableWorkspace();
@@ -103,7 +100,6 @@ async function createUserMessage(
     sId: generateRandomModelSId(),
     rank,
     conversationId: conversation.id,
-    branchId,
     parentId: null,
     userMessageId: userMessage.id,
   });
@@ -117,14 +113,12 @@ async function createAgentMessage(
     parentId,
     status,
     generatedFileId = null,
-    branchId = null,
   }: {
     conversation: ConversationWithoutContentType | ConversationResource;
     rank: number;
     parentId: ModelId;
     status: "created" | "succeeded";
     generatedFileId?: ModelId | null;
-    branchId?: ModelId | null;
   }
 ): Promise<MessageModel> {
   const workspace = auth.getNonNullableWorkspace();
@@ -144,7 +138,6 @@ async function createAgentMessage(
     sId: generateRandomModelSId(),
     rank,
     conversationId: conversation.id,
-    branchId,
     parentId,
     agentMessageId: agentMessage.id,
   });
@@ -484,12 +477,12 @@ function mockContentNodeAttachments(nodeDataSourceViewId: number) {
 
 describe("createConversationFork", () => {
   it("creates the child conversation, sole participant, and lineage row", async () => {
-    const { auth, globalSpace, user } = await createPrivateApiMockRequest();
+    const { auth, user } = await createPrivateApiMockRequest();
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
 
     const userMessage = await createUserMessage(auth, {
@@ -520,7 +513,7 @@ describe("createConversationFork", () => {
     );
 
     expect(childConversation.title).toBeNull();
-    expect(childConversation.spaceId).toBe(globalSpace.sId);
+    expect(childConversation.spaceId).toBe(null);
     // Forks keep the parent's depth: depth > 0 marks run_agent sub-conversations,
     // which are hidden from space conversation lists.
     expect(childConversation.depth).toBe(parentConversation.depth);
@@ -682,27 +675,6 @@ describe("createConversationFork", () => {
       status: "created",
     });
 
-    const branch = await ConversationBranchResource.makeNew(auth, {
-      state: "open",
-      previousMessageId: firstAgentMessage.id,
-      conversationId: parentConversation.id,
-      userId: auth.getNonNullableUser().id,
-    });
-
-    const branchUserMessage = await createUserMessage(auth, {
-      conversation: parentConversation,
-      rank: 10,
-      content: "Branch turn",
-      branchId: branch.id,
-    });
-    await createAgentMessage(auth, {
-      conversation: parentConversation,
-      rank: 11,
-      parentId: branchUserMessage.id,
-      status: "succeeded",
-      branchId: branch.id,
-    });
-
     const result = await createConversationFork(auth, {
       conversationId: parentConversation.sId,
     });
@@ -761,7 +733,7 @@ describe("createConversationFork", () => {
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
 
     const enabledRemoteServer = await RemoteMCPServerFactory.create(workspace);
@@ -840,12 +812,12 @@ describe("createConversationFork", () => {
   });
 
   it("copies enabled conversation skills into the child conversation", async () => {
-    const { auth, globalSpace } = await createPrivateApiMockRequest();
+    const { auth } = await createPrivateApiMockRequest();
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
 
     const enabledSkill = await SkillFactory.create(auth, {
@@ -1799,7 +1771,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
     await ConversationModel.update(
       { requestedSpaceIds: [globalSpace.id, restrictedSpace.id] },

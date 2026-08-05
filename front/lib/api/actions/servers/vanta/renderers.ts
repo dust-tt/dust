@@ -336,57 +336,22 @@ export const VantaDocumentResourcesResponseSchema = z.object({
   }),
 });
 
-const VantaIntegrationResourceSchema = z
-  .object({
-    id: z.string().optional().nullable(),
-    displayName: z.string().optional().nullable(),
-    kind: z.string().optional().nullable(),
-    inScope: z.boolean().optional().nullable(),
-    account: z.string().optional().nullable(),
-    region: z.string().optional().nullable(),
-    owner: z.union([z.string(), z.null()]).optional(),
-    description: z.string().optional().nullable(),
-    createdDate: z.string().optional().nullable(),
-  })
-  .passthrough();
-
-export const VantaIntegrationResourcesResponseSchema = z.union([
-  z.object({
-    results: z.object({
-      pageInfo: PageInfoSchema,
-      data: z.array(VantaIntegrationResourceSchema),
-    }),
-  }),
-  z.array(VantaIntegrationResourceSchema),
-  VantaIntegrationResourceSchema,
-  z.object({
-    data: VantaIntegrationResourceSchema,
-  }),
-]);
-
-export type VantaTestsResponse = z.infer<typeof VantaTestsResponseSchema>;
-export type VantaTestEntitiesResponse = z.infer<
+type VantaTestsResponse = z.infer<typeof VantaTestsResponseSchema>;
+type VantaTestEntitiesResponse = z.infer<
   typeof VantaTestEntitiesResponseSchema
 >;
-export type VantaControlsResponse = z.infer<typeof VantaControlsResponseSchema>;
-export type VantaDocumentsResponse = z.infer<
-  typeof VantaDocumentsResponseSchema
->;
-export type VantaDocumentResourcesResponse = z.infer<
+type VantaControlsResponse = z.infer<typeof VantaControlsResponseSchema>;
+type VantaDocumentsResponse = z.infer<typeof VantaDocumentsResponseSchema>;
+type VantaDocumentResourcesResponse = z.infer<
   typeof VantaDocumentResourcesResponseSchema
 >;
-export type VantaIntegrationsResponse = z.infer<
+type VantaIntegrationsResponse = z.infer<
   typeof VantaIntegrationsResponseSchema
 >;
-export type VantaIntegrationResourcesResponse = z.infer<
-  typeof VantaIntegrationResourcesResponseSchema
->;
-export type VantaFrameworksResponse = z.infer<
-  typeof VantaFrameworksResponseSchema
->;
-export type VantaPeopleResponse = z.infer<typeof VantaPeopleResponseSchema>;
-export type VantaRisksResponse = z.infer<typeof VantaRisksResponseSchema>;
-export type VantaVulnerabilitiesResponse = z.infer<
+type VantaFrameworksResponse = z.infer<typeof VantaFrameworksResponseSchema>;
+type VantaPeopleResponse = z.infer<typeof VantaPeopleResponseSchema>;
+type VantaRisksResponse = z.infer<typeof VantaRisksResponseSchema>;
+type VantaVulnerabilitiesResponse = z.infer<
   typeof VantaVulnerabilitiesResponseSchema
 >;
 
@@ -400,8 +365,6 @@ type VantaPerson = z.infer<typeof VantaPersonSchema>;
 type VantaRisk = z.infer<typeof VantaRiskSchema>;
 type VantaVulnerability = z.infer<typeof VantaVulnerabilitySchema>;
 type VantaDocumentResource = z.infer<typeof VantaDocumentResourceSchema>;
-type VantaIntegrationResource = z.infer<typeof VantaIntegrationResourceSchema>;
-
 function normalizeResponse<T extends object>(
   response:
     | {
@@ -1126,83 +1089,6 @@ function formatDocumentResource(
       addField("Type", resource.type),
       addField("URL", resource.url),
       addField("Description", resource.description),
-    ].filter((x): x is string => x !== null)
-  );
-  return parts.join("\n");
-}
-
-export function renderIntegrationResources(
-  response: VantaIntegrationResourcesResponse
-): string {
-  let items: VantaIntegrationResource[];
-  let pageInfo: z.infer<typeof PageInfoSchema> | null;
-
-  if (Array.isArray(response)) {
-    items = response;
-    pageInfo = null;
-  } else if (
-    typeof response === "object" &&
-    response !== null &&
-    "results" in response
-  ) {
-    const results = response.results as {
-      pageInfo: z.infer<typeof PageInfoSchema>;
-      data: VantaIntegrationResource[];
-    };
-    items = results.data;
-    pageInfo = results.pageInfo;
-  } else if (
-    typeof response === "object" &&
-    response !== null &&
-    "data" in response
-  ) {
-    items = [response.data as VantaIntegrationResource];
-    pageInfo = null;
-  } else {
-    items = [response as VantaIntegrationResource];
-    pageInfo = null;
-  }
-
-  if (!items.length) {
-    return "No integration resources found.";
-  }
-
-  const count = items.length;
-  const lines: string[] = [];
-  lines.push(`Found ${count} resource${pluralize(count)}`);
-
-  if (pageInfo?.endCursor) {
-    lines.push(`Next page cursor: ${pageInfo.endCursor}`);
-  }
-
-  lines.push("\n---");
-
-  items.forEach((resource, index) => {
-    lines.push("");
-    lines.push(formatIntegrationResource(resource, index + 1));
-    lines.push("\n---");
-  });
-
-  return lines.join("\n").trim();
-}
-
-function formatIntegrationResource(
-  resource: VantaIntegrationResource,
-  index: number
-): string {
-  const parts: string[] = [];
-  parts.push(`Resource #${index}`);
-  parts.push(
-    ...[
-      addRequiredField("ID", resource.id),
-      addRequiredField("Name", resource.displayName),
-      addRequiredField("Kind", resource.kind),
-      addBooleanField("In Scope", resource.inScope),
-      addField("Account", resource.account),
-      addField("Region", resource.region),
-      addField("Owner", resource.owner),
-      addField("Description", resource.description),
-      addDateField("Created", resource.createdDate),
     ].filter((x): x is string => x !== null)
   );
   return parts.join("\n");

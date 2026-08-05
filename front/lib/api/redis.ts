@@ -51,6 +51,7 @@ export const REDIS_CACHE_CONCURRENCY = 32;
 
 export type RedisUsageTagsType =
   | "agent_recent_authors"
+  | "agent_step_content_cache"
   | "agent_usage"
   | "assistant_generation"
   | "cache_diagnostics"

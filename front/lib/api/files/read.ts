@@ -8,11 +8,11 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type ReadInteractiveContentFileError =
+type ReadInteractiveContentFileError =
   | "file_not_found"
   | "not_interactive_content";
 
-export type InteractiveContentFile = {
+type InteractiveContentFile = {
   file: FileTypeWithMetadata;
   content: string;
   shareInfo: {

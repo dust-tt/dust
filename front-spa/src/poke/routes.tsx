@@ -22,6 +22,7 @@ import { MembershipsPage } from "@dust-tt/front/components/poke/pages/Membership
 import { NotionRequestsPage } from "@dust-tt/front/components/poke/pages/NotionRequestsPage";
 import { PlansPage } from "@dust-tt/front/components/poke/pages/PlansPage";
 import { PluginsPage } from "@dust-tt/front/components/poke/pages/PluginsPage";
+import { PodFunctionPage } from "@dust-tt/front/components/poke/pages/PodFunctionPage";
 import { PokefyPage } from "@dust-tt/front/components/poke/pages/PokefyPage";
 import { ProductionChecksPage } from "@dust-tt/front/components/poke/pages/ProductionChecksPage";
 import { SkillDetailsPage } from "@dust-tt/front/components/poke/pages/SkillDetailsPage";
@@ -124,6 +125,10 @@ export const routes: RouteObject[] = [
             path: "data_sources/:dsId/view",
             element: <DataSourceViewPage />,
           },
+          {
+            path: "connectors/:connectorId",
+            element: <ConnectorRedirectPage />,
+          },
           { path: "groups/:groupId", element: <GroupPage /> },
           { path: "files/:sId", element: <FramePage /> },
           { path: "skills/:sId", element: <SkillDetailsPage /> },
@@ -140,6 +145,10 @@ export const routes: RouteObject[] = [
           {
             path: "spaces/:spaceId/mcp_server_views/:svId",
             element: <MCPServerViewPage />,
+          },
+          {
+            path: "spaces/:spaceId/pod_functions/:functionId",
+            element: <PodFunctionPage />,
           },
           {
             path: "webhook-sources/:wsId",

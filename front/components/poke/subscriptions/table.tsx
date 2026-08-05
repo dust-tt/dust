@@ -155,7 +155,7 @@ function prepareSubscriptionsForDisplay(
   });
 }
 
-export function SubscriptionsDataTable({
+function SubscriptionsDataTable({
   owner,
   metronomeCustomerId,
   subscriptions,

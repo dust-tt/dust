@@ -242,9 +242,6 @@
  *             visibility:
  *               type: string
  *               enum: [unlisted, deleted, test]
- *             branchId:
- *               type: string
- *               nullable: true
  *             content:
  *               type: array
  *               description: Array of message arrays (versions/retries)
@@ -283,6 +280,10 @@
  *           type: integer
  *         rank:
  *           type: integer
+ *         branchId:
+ *           type: string
+ *           nullable: true
+ *           description: Legacy, always null. Branches were removed.
  *         user:
  *           type: object
  *           nullable: true
@@ -345,6 +346,10 @@
  *           type: integer
  *         rank:
  *           type: integer
+ *         branchId:
+ *           type: string
+ *           nullable: true
+ *           description: Legacy, always null. Branches were removed.
  *         parentMessageId:
  *           type: string
  *         parentAgentMessageId:
@@ -453,6 +458,10 @@
  *           type: integer
  *         rank:
  *           type: integer
+ *         branchId:
+ *           type: string
+ *           nullable: true
+ *           description: Legacy, always null. Branches were removed.
  *         parentMessageId:
  *           type: string
  *         parentAgentMessageId:
@@ -651,6 +660,10 @@
  *           type: string
  *           nullable: true
  *           description: Path of this file inside the sandbox conversation mount.
+ *         processedPath:
+ *           type: string
+ *           nullable: true
+ *           description: Path of the plain-text sibling of this file inside the sandbox conversation mount (e.g. an audio transcript), when it has one.
  *         skipDataSourceIndexing:
  *           type: boolean
  *           description: Whether data source indexing was skipped for this file.
@@ -705,6 +718,7 @@
  *         branchId:
  *           type: string
  *           nullable: true
+ *           description: Legacy, always null. Branches were removed.
  *         sourceConversationId:
  *           type: string
  *           nullable: true

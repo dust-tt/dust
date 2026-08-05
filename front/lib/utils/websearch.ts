@@ -15,13 +15,13 @@ const credentials = dustManagedServiceCredentials();
 const SERPAPI_BASE_URL = "https://serpapi.com";
 const SERPER_BASE_URL = "https://google.serper.dev";
 
-export type BaseWebSearchParams = {
+type BaseWebSearchParams = {
   query: string;
   num?: number;
   page?: number;
 };
 
-export type SerpapiParams = {
+type SerpapiParams = {
   provider: "serpapi";
   engine?: "google";
   location?: string;
@@ -29,17 +29,17 @@ export type SerpapiParams = {
   api_key?: string;
 };
 
-export type SerperParams = {
+type SerperParams = {
   provider: "serper";
   api_key: string;
 };
 
-export type FirecrawlParams = {
+type FirecrawlParams = {
   provider: "firecrawl";
   api_key?: string;
 };
 
-export type ExaParams = {
+type ExaParams = {
   provider: "exa";
   api_key?: string;
 };

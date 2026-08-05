@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 
 // Minimal pub/sub value container shared by the poke client-side stores; persistence and
 // cross-tab sync are layered on top by callers.
-export interface ExternalStore<T> {
+interface ExternalStore<T> {
   getSnapshot: () => T;
   setSnapshot: (value: T) => void;
   subscribe: (listener: () => void) => () => void;

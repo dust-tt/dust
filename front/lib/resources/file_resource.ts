@@ -118,6 +118,8 @@ const FRAME_CONTENT_TYPES = new Set([
   frameSlideshowContentType,
 ]);
 
+const BATCH_DESTROY_SIZE = 10_000;
+
 export interface FileUploadedRequestResponseBody {
   file: FileType & {
     /** Scoped mount path when the file is on GCS (same shape as `GCSMountEntryBase.path`). */
@@ -462,9 +464,44 @@ export class FileResource extends BaseResource<FileModel> {
       where: { workspaceId },
     });
 
-    return this.model.destroy({
-      where: { workspaceId },
-    });
+    return this.batchDestroyAllForWorkspace(auth);
+  }
+
+  // A workspace can hold millions of files. Deleting them in a single statement exceeds the
+  // Postgres statement timeout, and the aborted transaction rolls back after having written
+  // gigabytes of WAL, which stalls every other query on the instance. Batching keeps each
+  // statement short and lets the deletion make forward progress across retries.
+  private static async batchDestroyAllForWorkspace(auth: Authenticator) {
+    const owner = auth.getNonNullableWorkspace();
+    const localLogger = logger.child({ workspaceId: owner.id });
+    let deletedCount = 0;
+
+    for (;;) {
+      const batch = await this.model.findAll({
+        attributes: ["id"],
+        where: { workspaceId: owner.id },
+        limit: BATCH_DESTROY_SIZE,
+      });
+
+      if (batch.length === 0) {
+        break;
+      }
+
+      deletedCount += await this.model.destroy({
+        where: {
+          workspaceId: owner.id,
+          id: batch.map((file) => file.id),
+        },
+      });
+
+      localLogger.info({ deletedCount }, "Deleted a batch of workspace files");
+
+      if (batch.length < BATCH_DESTROY_SIZE) {
+        break;
+      }
+    }
+
+    return deletedCount;
   }
 
   static async deleteAllForUser(
@@ -642,7 +679,7 @@ export class FileResource extends BaseResource<FileModel> {
   /**
    * Returns the file version to read for "best available" content.
    */
-  private getContentVersion(): FileVersion {
+  getContentVersion(): FileVersion {
     if (this.useCaseMetadata?.skipFileProcessing === true) {
       return "original";
     }
@@ -668,6 +705,37 @@ export class FileResource extends BaseResource<FileModel> {
       return "processed";
     }
     return "original";
+  }
+
+  /**
+   * Mount path of the processed sibling `copyMountFiles` writes next to the original (e.g.
+   * `voice.processed.txt`), or null when this file has no processed version.
+   */
+  getProcessedMountFilePath(): string | null {
+    const { mountFilePath } = this;
+    if (!mountFilePath || this.getContentVersion() !== "processed") {
+      return null;
+    }
+
+    return makeProcessedMountFileName({
+      mountFilePath,
+      processedContentType: getProcessedContentType(
+        this.contentType,
+        this.useCase
+      ),
+    });
+  }
+
+  /**
+   * Same, restricted to files whose processed version is plain text (audio transcripts, text
+   * extraction). This is the only processed sibling worth pointing an agent at: none of our tools
+   * can read the binary original, while images process to a resized image the agent already sees.
+   */
+  getTextProcessedMountFilePath(): string | null {
+    return getProcessedContentType(this.contentType, this.useCase) ===
+      "text/plain"
+      ? this.getProcessedMountFilePath()
+      : null;
   }
 
   /**
@@ -1294,12 +1362,9 @@ export class FileResource extends BaseResource<FileModel> {
     await bucket.copyFile(srcOriginalPath, mountFilePath);
 
     // Copy processed version only if this file type has real processing.
-    if (this.getContentVersion() === "processed") {
+    const processedMountPath = this.getProcessedMountFilePath();
+    if (processedMountPath) {
       const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
-      const processedMountPath = makeProcessedMountFileName({
-        mountFilePath,
-        processedContentType: getProcessedContentType(this.contentType),
-      });
       await bucket.copyFile(srcProcessedPath, processedMountPath);
     }
   }
@@ -1324,22 +1389,11 @@ export class FileResource extends BaseResource<FileModel> {
     const bucket = getPrivateUploadBucket();
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
 
-    if (
-      this.useCaseMetadata?.skipFileProcessing === true ||
-      !hasProcessedVersion(this.contentType, this.useCase)
-    ) {
-      return;
-    }
-
     // Only delete processed mount file if this file type has real processing.
-    const processedMountPath = makeProcessedMountFileName({
-      mountFilePath: this.mountFilePath,
-      processedContentType: getProcessedContentType(
-        this.contentType,
-        this.useCase
-      ),
-    });
-    await bucket.delete(processedMountPath, { ignoreNotFound: true });
+    const processedMountPath = this.getProcessedMountFilePath();
+    if (processedMountPath) {
+      await bucket.delete(processedMountPath, { ignoreNotFound: true });
+    }
   }
 
   static async bulkSetUseCaseMetadata(
@@ -2082,7 +2136,7 @@ export class FileResource extends BaseResource<FileModel> {
     grantId,
   }: {
     grantId: ModelId;
-  }): Promise<Result<undefined, DustError>> {
+  }): Promise<Result<{ email: string }, DustError>> {
     assert(
       this.isInteractiveContent,
       "revokeSharingGrant requires interactive content file"
@@ -2106,7 +2160,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     await grant.update({ revokedAt: new Date() });
 
-    return new Ok(undefined);
+    return new Ok({ email: grant.email });
   }
 
   static async recordGrantView(

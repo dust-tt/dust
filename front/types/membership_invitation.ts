@@ -1,10 +1,8 @@
 import type { RegionType } from "@app/types/region";
-import { z } from "zod";
 
 import type { MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import type { ActiveRoleType } from "./user";
-import { ActiveRoleSchema } from "./user";
 
 export type MembershipInvitationType = {
   sId: string;
@@ -33,10 +31,3 @@ export interface PendingInvitationOption {
 }
 
 // Types for the invite form in Poke.
-
-export const InviteMemberFormSchema = z.object({
-  email: z.string().min(1),
-  role: ActiveRoleSchema,
-});
-
-export type InviteMemberFormType = z.infer<typeof InviteMemberFormSchema>;

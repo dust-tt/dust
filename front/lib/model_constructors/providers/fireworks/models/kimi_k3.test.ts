@@ -37,7 +37,7 @@ describe("Kimi K3 model configuration", () => {
     );
   });
 
-  it("uses Fireworks Priority with its matching token prices", () => {
+  it("uses Fireworks Responses in priority mode without storage", () => {
     const endpoint = new MoonshotAiKimiK3GlobalFireworksStream({
       FIREWORKS_API_KEY: "test",
     });
@@ -46,6 +46,8 @@ describe("Kimi K3 model configuration", () => {
       MoonshotAiKimiK3GlobalFireworksStream.configSchema.parse({})
     );
 
+    expect(payload.model).toBe("accounts/fireworks/models/kimi-k3");
+    expect(payload.store).toBe(false);
     expect(payload.service_tier).toBe("priority");
     expect(MoonshotAiKimiK3GlobalFireworksStream.tokenPricing).toEqual({
       cacheHit: 0.375,

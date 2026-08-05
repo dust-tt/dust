@@ -16,7 +16,7 @@ import React, { createContext, useContext, useMemo } from "react";
 export type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 // Sort MCP server views based on priority order.
 // Order: Search -> Include Data -> Query Tables -> Extract Data -> Others (alphabetically).
-export const sortMCPServerViewsByPriority = (
+const sortMCPServerViewsByPriority = (
   views: MCPServerViewTypeWithLabel[]
 ): MCPServerViewTypeWithLabel[] => {
   const priorityOrder: Record<string, number> = {
@@ -137,11 +137,13 @@ export const useMaybeMCPServerViewsContext = () => {
 interface MCPServerViewsProviderProps {
   owner: LightWorkspaceType;
   children: ReactNode;
+  includeRestrictedToSkills?: boolean;
 }
 
 export const MCPServerViewsProvider = ({
   owner,
   children,
+  includeRestrictedToSkills = false,
 }: MCPServerViewsProviderProps) => {
   const { spaces, isSpacesLoading } = useSpacesContext();
 
@@ -150,6 +152,7 @@ export const MCPServerViewsProvider = ({
     isLoading,
     isError: isMCPServerViewsError,
   } = useMCPServerViewsFromSpaces(owner, spaces, {
+    includeRestrictedToSkills,
     revalidateIfStale: false,
     revalidateOnFocus: false,
   });

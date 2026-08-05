@@ -16,6 +16,11 @@ export const PatchMCPServerViewBodySchema = z
       name: z.string().nullable(),
       description: z.string().nullable(),
     })
+  )
+  .or(
+    z.object({
+      isRestrictedToSkills: z.boolean(),
+    })
   );
 
 export type PatchMCPServerViewBody = z.infer<

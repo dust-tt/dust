@@ -5,11 +5,14 @@ import {
   type GCSMountTarget,
   GCSSandboxMountAdapter,
 } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
+import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import {
   type RootCommand,
   renderRootCommand,
 } from "@app/lib/api/sandbox/root_command";
+import { setupPlainConversation } from "@app/tests/utils/conversation_test_factories";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -42,11 +45,52 @@ function successfulExec() {
   return new Ok({ exitCode: 0, stdout: "", stderr: "" });
 }
 
+async function createTestSandbox() {
+  const { auth, conversation } = await setupPlainConversation();
+  const sandbox = await SandboxFactory.create(auth, conversation.toJSON());
+  const execRoot = vi
+    .spyOn(sandbox, "execRoot")
+    .mockResolvedValue(successfulExec());
+  const requestKill = vi
+    .spyOn(sandbox, "requestKill")
+    .mockResolvedValue(undefined);
+
+  return { auth, sandbox, execRoot, requestKill };
+}
+
+function createTestImage(): SandboxImage {
+  return SandboxImage.fromDocker("test-image").withCapability("gcsfuse");
+}
+
 function getRootCommandCall(
   mock: { mock: { calls: unknown[][] } },
   callIndex: number
 ): string {
   return renderRootCommand(mock.mock.calls[callIndex][1] as RootCommand);
+}
+
+function createPodSandboxAdapter(): GCSSandboxMountAdapter {
+  const backend = new GCSFileSystemBackend("ws1", "test-private-uploads");
+  const adapter = backend.createSandboxAdapter(
+    [
+      {
+        kind: "pod",
+        id: "spc1",
+        scopedPrefix: "pod-spc1",
+        sandboxMountPoint: "/files/pod-spc1",
+        legacyPrefix: "project",
+        legacySandboxMountPoint: "/files/pod",
+        permissions: { canRead: true, canWrite: true },
+      },
+    ],
+    podSandboxOnlyMounts({ sId: "spc1" })
+  );
+
+  if (!(adapter instanceof GCSSandboxMountAdapter)) {
+    throw new Error("expected a GCSSandboxMountAdapter");
+  }
+
+  return adapter;
 }
 
 describe("buildMountCommand", () => {
@@ -67,7 +111,7 @@ describe("buildMountCommand", () => {
     expect(command).toContain("bucket-x /files/pod-spc1");
   });
 
-  test("workload profile adds ro for read-only targets", () => {
+  test("pod function profile disables list caching for newly published functions", () => {
     const command = renderRootCommand(
       buildMountCommand({
         bucket: "bucket-x",
@@ -77,11 +121,13 @@ describe("buildMountCommand", () => {
           sandboxMountPoint: "/sandbox-functions/pods/spc1",
           legacySandboxMountPoint: null,
           readOnly: true,
+          mountProfile: "pod_sandbox_functions",
         }),
       })
     );
 
     expect(command).toContain("-o allow_other,ro");
+    expect(command).toContain("--kernel-list-cache-ttl-secs=0");
     expect(command).toContain("--token-url http://127.0.0.1:987/token/mount-1");
   });
 
@@ -126,25 +172,7 @@ describe("pod sandbox mount wiring", () => {
     // Derived from the ACTUAL wiring (podSandboxOnlyMounts + the backend's
     // prefix mapping) rather than hand-built prefixes, so dropping the state
     // mount from the pod set — or regressing its prefix string — fails here.
-    const backend = new GCSFileSystemBackend("ws1", "test-private-uploads");
-    const adapter = backend.createSandboxAdapter(
-      [
-        {
-          kind: "pod",
-          id: "spc1",
-          scopedPrefix: "pod-spc1",
-          sandboxMountPoint: "/files/pod-spc1",
-          legacyPrefix: "project",
-          legacySandboxMountPoint: "/files/pod",
-          permissions: { canRead: true, canWrite: true },
-        },
-      ],
-      podSandboxOnlyMounts({ sId: "spc1" })
-    );
-
-    if (!(adapter instanceof GCSSandboxMountAdapter)) {
-      throw new Error("expected a GCSSandboxMountAdapter");
-    }
+    const adapter = createPodSandboxAdapter();
 
     // Each mount gets its own 1 + 2-rule CAB. The firewall is the sole caller
     // authorization boundary; if a caller reaches the broker, each token still
@@ -165,15 +193,40 @@ describe("pod sandbox mount wiring", () => {
     expect(conditions).toContain("w/ws1/pods/spc1/sandbox-functions/");
     expect(conditions).toContain("w/ws1/pods/spc1/state/");
   });
+
+  test("the real pod function mount disables directory list caching", async () => {
+    vi.clearAllMocks();
+    mockMintDownscopedGcsToken.mockResolvedValue(
+      new Ok({ accessToken: "token", expiresInSeconds: 3600 })
+    );
+    const adapter = createPodSandboxAdapter();
+    const { auth, sandbox, execRoot } = await createTestSandbox();
+    const image = createTestImage();
+
+    const result = await adapter.setup(auth, sandbox, image);
+
+    expect(result.isOk()).toBe(true);
+    const commands = execRoot.mock.calls.map((_, callIndex) =>
+      getRootCommandCall(execRoot, callIndex)
+    );
+    const podFilesCommand = commands.find(
+      (command) =>
+        command.includes("/usr/bin/gcsfuse") &&
+        command.includes("/files/pod-spc1")
+    );
+    const podFunctionsCommand = commands.find(
+      (command) =>
+        command.includes("/usr/bin/gcsfuse") &&
+        command.includes("/sandbox-functions/pods/spc1")
+    );
+
+    expect(podFilesCommand).toContain("--kernel-list-cache-ttl-secs=60");
+    expect(podFunctionsCommand).toContain("--kernel-list-cache-ttl-secs=0");
+  });
 });
 
 describe("GCS credential lifecycle", () => {
-  const auth = {
-    getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
-  } as never;
-  const image = {
-    hasCapability: (capability: string) => capability === "gcsfuse",
-  } as never;
+  const image = createTestImage();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -183,17 +236,13 @@ describe("GCS credential lifecycle", () => {
   });
 
   test("starts the broker only after firewall setup and fail-closes the deny-check", async () => {
-    const sandbox = {
-      sId: "sandbox-id",
-      execRoot: vi.fn().mockResolvedValue(successfulExec()),
-      requestKill: vi.fn(),
-    };
+    const { auth, sandbox, execRoot } = await createTestSandbox();
     const adapter = new GCSSandboxMountAdapter("bucket-x", [workloadTarget()]);
 
-    const result = await adapter.setup(auth, sandbox as never, image);
+    const result = await adapter.setup(auth, sandbox, image);
 
     expect(result.isOk()).toBe(true);
-    const command = getRootCommandCall(sandbox.execRoot, 1);
+    const command = getRootCommandCall(execRoot, 1);
     expect(command).toContain(
       "/usr/local/bin/dust-gcs-token-firewall.sh; firewall_exit=$?"
     );
@@ -206,23 +255,20 @@ describe("GCS credential lifecycle", () => {
   });
 
   test("surfaces a firewall startup failure without polling the broker", async () => {
-    const sandbox = {
-      sId: "sandbox-id",
-      execRoot: vi
-        .fn()
-        .mockResolvedValueOnce(successfulExec())
-        .mockResolvedValueOnce(
-          new Ok({
-            exitCode: 1,
-            stdout: "",
-            stderr: "GCS token firewall setup failed (exit code 1)",
-          })
-        ),
-      requestKill: vi.fn(),
-    };
+    const { auth, sandbox, execRoot } = await createTestSandbox();
+    execRoot
+      .mockReset()
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(
+        new Ok({
+          exitCode: 1,
+          stdout: "",
+          stderr: "GCS token firewall setup failed (exit code 1)",
+        })
+      );
     const adapter = new GCSSandboxMountAdapter("bucket-x", [workloadTarget()]);
 
-    const result = await adapter.setup(auth, sandbox as never, image);
+    const result = await adapter.setup(auth, sandbox, image);
 
     expect(result.isErr()).toBe(true);
     if (result.isOk()) {
@@ -232,74 +278,52 @@ describe("GCS credential lifecycle", () => {
       "GCS token firewall setup failed (exit code 1)"
     );
     expect(result.error.message).not.toContain("not ready in time");
-    expect(sandbox.execRoot).toHaveBeenCalledTimes(2);
+    expect(execRoot).toHaveBeenCalledTimes(2);
   });
 
   test("refreshes the broker firewall before writing tokens", async () => {
-    const sandbox = {
-      sId: "sandbox-id",
-      execRoot: vi.fn().mockResolvedValue(successfulExec()),
-      requestKill: vi.fn(),
-    };
+    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
     const adapter = new GCSSandboxMountAdapter("bucket-x", [workloadTarget()]);
 
-    const result = await adapter.refreshCredential(
-      auth,
-      sandbox as never,
-      image
-    );
+    const result = await adapter.refreshCredential(auth, sandbox, image);
 
     expect(result.isOk()).toBe(true);
-    expect(sandbox.execRoot).toHaveBeenCalledTimes(2);
-    const firewallCommand = getRootCommandCall(sandbox.execRoot, 0);
+    expect(execRoot).toHaveBeenCalledTimes(2);
+    const firewallCommand = getRootCommandCall(execRoot, 0);
     expect(firewallCommand).toBe("/usr/local/bin/dust-gcs-token-firewall.sh");
-    expect(sandbox.requestKill).not.toHaveBeenCalled();
+    expect(requestKill).not.toHaveBeenCalled();
   });
 
   test("requests recreation when the image firewall helper is unavailable", async () => {
-    const sandbox = {
-      sId: "sandbox-id",
-      execRoot: vi.fn().mockResolvedValue(
-        new Ok({
-          exitCode: 127,
-          stdout: "",
-          stderr: "helper not found",
-        })
-      ),
-      requestKill: vi.fn().mockResolvedValue(undefined),
-    };
+    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
+    execRoot.mockReset().mockResolvedValue(
+      new Ok({
+        exitCode: 127,
+        stdout: "",
+        stderr: "helper not found",
+      })
+    );
     const adapter = new GCSSandboxMountAdapter("bucket-x", [workloadTarget()]);
 
-    const result = await adapter.refreshCredential(
-      auth,
-      sandbox as never,
-      image
-    );
+    const result = await adapter.refreshCredential(auth, sandbox, image);
 
     expect(result.isErr()).toBe(true);
-    expect(sandbox.execRoot).toHaveBeenCalledTimes(1);
+    expect(execRoot).toHaveBeenCalledTimes(1);
     expect(mockMintDownscopedGcsToken).not.toHaveBeenCalled();
-    expect(sandbox.requestKill).toHaveBeenCalledTimes(1);
+    expect(requestKill).toHaveBeenCalledTimes(1);
   });
 
   test("does not recreate a sandbox after a transient firewall exec error", async () => {
-    const sandbox = {
-      sId: "sandbox-id",
-      execRoot: vi
-        .fn()
-        .mockResolvedValue(new Err(new Error("transient E2B error"))),
-      requestKill: vi.fn(),
-    };
+    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
+    execRoot
+      .mockReset()
+      .mockResolvedValue(new Err(new Error("transient E2B error")));
     const adapter = new GCSSandboxMountAdapter("bucket-x", [workloadTarget()]);
 
-    const result = await adapter.refreshCredential(
-      auth,
-      sandbox as never,
-      image
-    );
+    const result = await adapter.refreshCredential(auth, sandbox, image);
 
     expect(result.isErr()).toBe(true);
     expect(mockMintDownscopedGcsToken).not.toHaveBeenCalled();
-    expect(sandbox.requestKill).not.toHaveBeenCalled();
+    expect(requestKill).not.toHaveBeenCalled();
   });
 });

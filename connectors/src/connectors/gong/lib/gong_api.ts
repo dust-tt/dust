@@ -250,6 +250,9 @@ const RETRY_AFTER_CEILING_SECONDS = 3600;
 const GONG_INVALID_CREDENTIALS_MESSAGES = [
   "Validate credentials failed. Please check your credentials and try again.",
   "Your access token has been revoked. Please generate a new access token.",
+  // Returned when the customer's Gong instance is deactivated (e.g. subscription ended); no
+  // credentials can work until the customer reactivates their Gong account.
+  "Company is inactive",
 ];
 
 export function clampRetryAfterSeconds(

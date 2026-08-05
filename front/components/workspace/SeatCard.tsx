@@ -43,7 +43,7 @@ export const SEAT_TYPE_ICONS: Record<
 
 // Display order when multiple seat tiers are returned by the endpoint. Seat
 // types not in this list are appended in the order they came in.
-export const SEAT_DISPLAY_ORDER: MembershipSeatType[] = [
+const SEAT_DISPLAY_ORDER: MembershipSeatType[] = [
   "free",
   "pro",
   "pro_yearly",
@@ -51,7 +51,7 @@ export const SEAT_DISPLAY_ORDER: MembershipSeatType[] = [
   "max_yearly",
 ];
 
-export const SEAT_BILLING_FREQUENCIES: SeatBillingFrequency[] = [
+const SEAT_BILLING_FREQUENCIES: SeatBillingFrequency[] = [
   "weekly",
   "monthly",
   "quarterly",
@@ -98,7 +98,7 @@ export function getAvailableFrequencies(
 
 // Shared across price formatting and invoice-impact messaging so both stay
 // consistent when a new cadence is added.
-export const BILLING_FREQUENCY_SUFFIX: Record<SeatBillingFrequency, string> = {
+const BILLING_FREQUENCY_SUFFIX: Record<SeatBillingFrequency, string> = {
   weekly: "/wk",
   monthly: "/mo",
   quarterly: "/qtr",
@@ -127,7 +127,7 @@ export function includedSeatsOpen(info: SeatTypeInfo): number {
   return Math.max(0, info.minSeats - info.assignedCount);
 }
 
-export function formatAwuCredits(info: SeatTypeInfo): string {
+function formatAwuCredits(info: SeatTypeInfo): string {
   const periodLabel: Record<SeatTypeInfo["awuCreditsPeriod"], string> = {
     weekly: "per week",
     monthly: "per month",
@@ -166,7 +166,7 @@ const BILLING_PERIOD_LABEL: Record<SeatBillingFrequency, string> = {
 
 // Prorates a full-period amount for the days remaining in the current
 // billing period, as of right now.
-export function prorateAmountForCurrentPeriod({
+function prorateAmountForCurrentPeriod({
   amountCents,
   currentBillingPeriod,
 }: {

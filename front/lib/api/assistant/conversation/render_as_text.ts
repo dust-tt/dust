@@ -20,7 +20,7 @@ type AnyMessageType =
   | CompactionMessageType
   | UserMessageTypeWithContentFragments;
 
-export interface RenderConversationAsTextOptions {
+interface RenderConversationAsTextOptions {
   // Include ISO timestamps on each message header line.
   includeTimestamps?: boolean;
   // Include user email in user message headers.

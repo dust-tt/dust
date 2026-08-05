@@ -5,6 +5,12 @@ import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/m
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
+import { buildSandboxFunctionAuditMetadata } from "@app/lib/api/sandbox_functions/audit";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -18,7 +24,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import omit from "lodash/omit";
 
-export class SandboxFunctionMCPActionError extends Error {
+class SandboxFunctionMCPActionError extends Error {
   constructor(
     readonly type:
       | "server_view_not_found"
@@ -182,6 +188,7 @@ export async function createSandboxFunctionMCPAction(
   const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
     sandboxFunction,
     invocationId,
+    access: "system",
   });
   if (!invocation) {
     return new Err(
@@ -253,6 +260,28 @@ export async function createSandboxFunctionMCPAction(
 
       await publishSandboxFunctionInvocationEvent(approvalEvent, {
         invocationId: invocation.sId,
+      });
+
+      void emitAuditLogEvent({
+        auth,
+        action: "tool.approval_requested",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("tool", {
+            sId: toolConfiguration.name,
+            name: toolConfiguration.originalName,
+          }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          tool_name: toolConfiguration.originalName,
+          mcp_server_name: toolConfiguration.mcpServerName,
+          stake_level: toolConfiguration.permission,
+          action_id: action.sId,
+          ...buildSandboxFunctionAuditMetadata(invocation),
+          initiating_user_id: auth.user()?.sId ?? "unknown",
+          initiating_user_email: auth.user()?.email ?? "unknown",
+        },
       });
       break;
     }

@@ -20,6 +20,7 @@ import { z } from "zod";
 
 import actions from "./actions";
 import answerQuestion from "./answer-question";
+import consumption from "./consumption";
 import edit from "./edit";
 import events from "./events";
 import feedbacks from "./feedbacks";
@@ -223,11 +224,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const branchId = message.getBranchId() ?? null;
-  const conversation = {
-    ...conversationResource.toJSON(),
-    branchId,
-  };
+  const conversation = conversationResource.toJSON();
 
   const renderRes = await batchRenderMessages(
     auth,
@@ -251,7 +248,6 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     const deleteResult = await softDeleteUserMessageAndReplies(auth, {
       message: renderedMessage,
       conversationResource,
-      branchId,
     });
     if (deleteResult.isErr()) {
       return apiError(ctx, {
@@ -291,6 +287,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
 
 app.route("/actions", actions);
 app.route("/answer-question", answerQuestion);
+app.route("/consumption", consumption);
 app.route("/edit", edit);
 app.route("/events", events);
 app.route("/feedbacks", feedbacks);

@@ -1,7 +1,13 @@
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { isMCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { buildSandboxFunctionAuditMetadata } from "@app/lib/api/sandbox_functions/audit";
 import { getSandboxFunctionInvocationChannelId } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -13,7 +19,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export class SandboxFunctionActionValidationError extends Error {
+class SandboxFunctionActionValidationError extends Error {
   constructor(
     readonly type: "action_not_found" | "action_not_blocked" | "unauthorized",
     message: string
@@ -138,9 +144,30 @@ export async function validateSandboxFunctionAction(
     });
   }
 
-  // TODO(2026-07-10 SANDBOX_FUNCTIONS): emit a tool.approval_resolved audit event once the schema
-  // supports function-scoped targets (the current one requires agent and conversation
-  // identifiers).
+  // Same action as the conversation flavor, with pod function identifiers standing in for the
+  // conversation ones. No agent metadata: a pod function has none.
+  void emitAuditLogEvent({
+    auth,
+    action: "tool.approval_resolved",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("tool", {
+        sId: action.toolConfiguration.name,
+        name: action.toolConfiguration.originalName,
+      }),
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      decision: approvalState,
+      tool_name: action.toolConfiguration.originalName,
+      mcp_server_name: action.toolConfiguration.mcpServerName,
+      stake_level: action.toolConfiguration.permission,
+      action_id: action.sId,
+      ...buildSandboxFunctionAuditMetadata(invocation),
+      deciding_user_id: user?.sId ?? "unknown",
+      deciding_user_email: user?.email ?? "unknown",
+    },
+  });
 
   // Remove the pending approval event from the invocation channel so SSE history replay does not
   // resurface the approval card.

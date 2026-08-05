@@ -5,7 +5,6 @@ import {
   ROLES_DATA,
 } from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -42,7 +41,6 @@ export function InvitationsList({
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
   const sendNotification = useSendNotification();
-  const { hasFeature } = useFeatureFlags();
 
   // Managers cannot resend invitations targeting the admin role (matches the
   // server-side escalation guard); only admins can.
@@ -116,11 +114,9 @@ export function InvitationsList({
       header: "Role",
       accessorFn: (row: RowData) => row.initialRole,
       cell: (info: CellContext<RowData, string>) => {
-        // `builder` is deprecated under admin governance: display it as a
-        // regular member.
+        // `builder` is deprecated: display it as a regular member.
         const displayedRole = normalizeDisplayRole(
-          info.row.original.initialRole,
-          hasFeature("admin_governance")
+          info.row.original.initialRole
         );
         return (
           <DataTable.CellContent>

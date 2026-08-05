@@ -20,7 +20,7 @@ import {
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
 
-export function getFavoriteChipColor(
+function getFavoriteChipColor(
   type: PokeFavoriteType
 ): ComponentProps<typeof Chip>["color"] {
   switch (type) {

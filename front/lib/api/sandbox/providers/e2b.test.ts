@@ -75,7 +75,7 @@ vi.mock("e2b", () => {
   };
 });
 
-import { CommandExitError } from "e2b";
+import { CommandExitError, NotFoundError } from "e2b";
 
 import { SANDBOX_ROOT_SAFE_PATH } from "../hardening";
 import { rootCommand } from "../root_command";
@@ -433,5 +433,47 @@ describe("E2BSandboxProvider", () => {
     expect(mockHandleKill).toHaveBeenCalledTimes(1);
     expect(mockCloseStdin).not.toHaveBeenCalled();
     expect(mockCommandHandleWait).not.toHaveBeenCalled();
+  });
+
+  it("recovers the command result when the process exits before stdin arrives", async () => {
+    const mockHandleKill = vi.fn().mockResolvedValue(false);
+    mockRun.mockResolvedValueOnce({
+      pid: 123,
+      wait: mockCommandHandleWait,
+      kill: mockHandleKill,
+    });
+    mockSendStdin.mockRejectedValueOnce(
+      new NotFoundError("[not_found] process with pid 123 not found")
+    );
+    mockCommandHandleWait.mockRejectedValueOnce(
+      new CommandExitError({
+        exitCode: 1,
+        stdout: '{"error":"function not found: new-function"}',
+        stderr: "",
+      })
+    );
+
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.exec(
+      "provider-id",
+      "/opt/bin/dsbx function run new-function",
+      { stdin: "request-json", user: "agent-proxied" },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result).toEqual(
+      new Ok({
+        exitCode: 1,
+        stdout: '{"error":"function not found: new-function"}',
+        stderr: "",
+      })
+    );
+    expect(mockCommandHandleWait).toHaveBeenCalledTimes(1);
+    expect(mockHandleKill).not.toHaveBeenCalled();
+    expect(mockCloseStdin).not.toHaveBeenCalled();
   });
 });

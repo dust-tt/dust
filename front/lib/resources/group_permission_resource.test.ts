@@ -17,7 +17,8 @@ describe("GroupPermissionResource", () => {
     workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
     groupA = await GroupFactory.regularAuto(workspace, "A");
-    groupB = await GroupFactory.regularAuto(workspace, "B");
+    // Manual: a second regular_auto group may not share an instance-level tuple with groupA.
+    groupB = await GroupFactory.regularManual(workspace, "B");
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
 
@@ -75,6 +76,33 @@ describe("GroupPermissionResource", () => {
           resourceId: 5,
         })
       ).rejects.toThrow(/not allowed/);
+    });
+
+    it("rejects a second regular_auto group on the same tuple", async () => {
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 7,
+      });
+
+      const otherAutoGroup = await GroupFactory.regularAuto(workspace, "C");
+      await expect(
+        GroupPermissionResource.grant(auth, {
+          group: otherAutoGroup,
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: 7,
+        })
+      ).rejects.toThrow(/regular_auto/);
+
+      // A non-auto group on the same tuple stays legal (grants are additive across groups).
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 7,
+      });
     });
 
     it("rejects a group from another workspace", async () => {
@@ -329,19 +357,19 @@ describe("GroupPermissionResource", () => {
       await GroupPermissionResource.grantMany(auth, {
         grants: [
           {
-            group: groupA,
+            group: groupB,
             grantType: "reader",
             resourceType: "space",
             resourceId: 1,
           },
           {
-            group: groupA,
+            group: groupB,
             grantType: "reader",
             resourceType: "space",
             resourceId: 1,
           },
           {
-            group: groupA,
+            group: groupB,
             grantType: "reader",
             resourceType: "space",
             resourceId: 2,
@@ -350,7 +378,7 @@ describe("GroupPermissionResource", () => {
       });
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id],
+        groupModelIds: [groupB.id],
       });
       expect(grants).toHaveLength(2);
     });
@@ -360,7 +388,7 @@ describe("GroupPermissionResource", () => {
         GroupPermissionResource.grantMany(auth, {
           grants: [
             {
-              group: groupA,
+              group: groupB,
               grantType: "reader",
               resourceType: "space",
               resourceId: -1,
@@ -368,6 +396,21 @@ describe("GroupPermissionResource", () => {
           ],
         })
       ).rejects.toThrow(/instance-level/);
+    });
+
+    it("grantMany rejects regular_auto groups", async () => {
+      await expect(
+        GroupPermissionResource.grantMany(auth, {
+          grants: [
+            {
+              group: groupA,
+              grantType: "reader",
+              resourceType: "space",
+              resourceId: 1,
+            },
+          ],
+        })
+      ).rejects.toThrow(/regular_auto/);
     });
   });
 
@@ -401,6 +444,38 @@ describe("GroupPermissionResource", () => {
       ]);
       expect(group[0].kind).toBe("regular_auto");
       expect(await group[0].isMember(user)).toBe(true);
+    });
+
+    it("is idempotent for a repeat grant to the same user", async () => {
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+
+      const spec = {
+        user: user.toJSON(),
+        grantType: "reader" as const,
+        resourceType: "space" as const,
+        resourceId: 42,
+      };
+      await GroupPermissionResource.grantToUser(auth, spec);
+      const repeat = await GroupPermissionResource.grantToUser(auth, spec);
+      expect(repeat.isOk()).toBe(true);
+
+      const grants = await GroupPermissionResource.listForGroups(auth, {
+        groupModelIds: (
+          await GroupResource.listAllWorkspaceGroups(auth, {
+            groupKinds: ["regular_auto"],
+          })
+        ).map((group) => group.id),
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 42,
+      });
+      expect(grants).toHaveLength(1);
+
+      const [backingGroup] = await GroupResource.fetchByModelIds(auth, [
+        grants[0].groupId,
+      ]);
+      expect(await backingGroup.getMemberCount(auth)).toBe(1);
     });
 
     it("reuses the existing regular_auto group for a second user", async () => {

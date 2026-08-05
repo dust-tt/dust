@@ -60,7 +60,7 @@ export interface GooglePickerFile {
   url?: string;
 }
 
-export interface UseGooglePickerProps {
+interface UseGooglePickerProps {
   clientId: string;
   developerKey: string;
   accessToken: string | null;
@@ -71,7 +71,7 @@ export interface UseGooglePickerProps {
   onCancel?: () => void;
 }
 
-export interface UseGooglePickerResult {
+interface UseGooglePickerResult {
   openPicker: () => void;
   isPickerLoaded: boolean;
   isPickerOpen: boolean;

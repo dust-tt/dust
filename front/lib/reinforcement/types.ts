@@ -12,12 +12,9 @@ export type ExploratoryToolName =
 
 export type TerminalToolName = "edit_skill" | "reject_suggestion";
 
-export const TERMINAL_TOOLS: TerminalToolName[] = [
-  "edit_skill",
-  "reject_suggestion",
-];
+const TERMINAL_TOOLS: TerminalToolName[] = ["edit_skill", "reject_suggestion"];
 
-export const EXPLORATORY_TOOLS: ExploratoryToolName[] = [
+const EXPLORATORY_TOOLS: ExploratoryToolName[] = [
   "get_available_tools",
   "search_knowledge",
   DESCRIBE_MCP_TOOL_NAME,

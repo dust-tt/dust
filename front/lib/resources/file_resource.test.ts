@@ -18,6 +18,10 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type {
+  AllSupportedFileContentType,
+  FileUseCaseMetadata,
+} from "@app/types/files";
 import {
   frameContentType,
   isUnverifiableFrameFileRefsShareError,
@@ -616,6 +620,49 @@ describe("FileResource", () => {
         where: { id: file.id, workspaceId: workspace.id },
       });
       expect(row?.mountFilePath).toBeNull();
+    });
+
+    it("should expose the transcript sibling for audio files only", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const makeConversationFile = async (
+        contentType: AllSupportedFileContentType,
+        fileName: string,
+        useCaseMetadata: FileUseCaseMetadata
+      ) => {
+        const file = await FileFactory.create(auth, null, {
+          contentType,
+          fileName,
+          fileSize: 100,
+          status: "created",
+          useCase: "conversation",
+          useCaseMetadata,
+        });
+        await file.markAsReady(auth);
+        return file;
+      };
+
+      const audio = await makeConversationFile("audio/webm", "voice.webm", {
+        conversationId: "conv-audio",
+      });
+      expect(audio.getTextProcessedMountFilePath()).toBe(
+        `w/${workspace.sId}/conversations/conv-audio/files/voice.processed.txt`
+      );
+
+      // Images process to a resized image, not to text.
+      const image = await makeConversationFile("image/png", "shot.png", {
+        conversationId: "conv-image",
+      });
+      expect(image.getTextProcessedMountFilePath()).toBeNull();
+
+      // Raw-mounted files are never processed, so no sibling is written.
+      const rawAudio = await makeConversationFile("audio/webm", "raw.webm", {
+        conversationId: "conv-raw",
+        skipFileProcessing: true,
+      });
+      expect(rawAudio.getTextProcessedMountFilePath()).toBeNull();
     });
 
     it("should not re-resolve when mountFilePath is already set", async () => {
@@ -1574,6 +1621,52 @@ describe("FileResource", () => {
       expect(row?.mountFilePath).toBe(
         `w/${workspace.sId}/pods/${space.sId}/files/notes.txt`
       );
+    });
+  });
+
+  describe("deleteAllForWorkspace", () => {
+    const makeFile = (auth: Authenticator, fileName: string) =>
+      FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName,
+        fileSize: 10,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-delete-all" },
+      });
+
+    it("should delete every file of the workspace", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      for (const fileName of ["a.txt", "b.txt", "c.txt"]) {
+        await makeFile(auth, fileName);
+      }
+
+      const deletedCount = await FileResource.deleteAllForWorkspace(auth);
+
+      expect(deletedCount).toBe(3);
+      expect(
+        await FileModel.count({ where: { workspaceId: workspace.id } })
+      ).toBe(0);
+    });
+
+    it("should leave the files of other workspaces untouched", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const { authenticator: otherAuth, workspace: otherWorkspace } =
+        await createResourceTest({ role: "admin" });
+
+      await makeFile(auth, "mine.txt");
+      await makeFile(otherAuth, "theirs.txt");
+
+      await FileResource.deleteAllForWorkspace(auth);
+
+      expect(
+        await FileModel.count({ where: { workspaceId: otherWorkspace.id } })
+      ).toBe(1);
     });
   });
 });

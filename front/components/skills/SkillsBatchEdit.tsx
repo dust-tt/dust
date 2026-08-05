@@ -17,41 +17,50 @@ import {
 
 export type BatchAvailabilityAction = {
   label: string;
+  description?: string;
   availability: SkillAvailability;
   getDialogTitle: (count: number) => string;
-  dialogDescription: string;
+  dialogDescription: (count: number) => string;
 };
 
 const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
   {
-    label: "Editor only",
+    label: "Editors only",
     availability: "editors",
     getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} editor only`,
-    dialogDescription:
-      "Non-editors won’t see these skills as options in the builder. Agents and skills that already use them won’t lose access.",
+      `Make ${count} skill${pluralize(count)} editors only`,
+    dialogDescription: (count) => {
+      const pronoun = count === 1 ? "it" : "them";
+      const subject = count === 1 ? "The skill remains" : "The skills remain";
+      return `Only editors can find ${pronoun} via the input bar and agent builder. ${subject} available through agents and skills that use ${pronoun}.`;
+    },
   },
   {
-    label: "Workspace members",
+    label: "All members",
     availability: "workspace_users",
     getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} available to workspace members`,
-    dialogDescription:
-      "Every workspace member can add them to agents, other skills and use them directly.",
+      `Make ${count} skill${pluralize(count)} available to all members`,
+    dialogDescription: (count) => {
+      const pronoun = count === 1 ? "it" : "them";
+      return `All members can find ${pronoun} via the input bar and agent builder.`;
+    },
   },
   {
-    label: "Auto-discoverable",
+    label: "All members and agents",
+    description: "Available to all members and agents with Discover Skills",
     availability: "users_and_agents",
-    getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} auto-discoverable`,
-    dialogDescription:
-      "Auto-discoverable skills are available to workspace members and can be automatically activated by agents with Discover Skills tools enabled.",
+    getDialogTitle: () => `This affects your entire workspace`,
+    dialogDescription: (count) => {
+      const pronoun = count === 1 ? "it" : "them";
+      return `All members can find ${pronoun} via the input bar and agent builder. Agents with Discover Skills, including Dust, can use ${pronoun} automatically.`;
+    },
   },
 ];
 
 interface SkillsBatchEditBarProps {
   selectedCount: number;
   isUpdating: boolean;
+  canMakeSkillAutoDiscoverable: boolean;
   onClose: () => void;
   onSelectAction: (action: BatchAvailabilityAction) => void;
 }
@@ -59,6 +68,7 @@ interface SkillsBatchEditBarProps {
 export function SkillsBatchEditBar({
   selectedCount,
   isUpdating,
+  canMakeSkillAutoDiscoverable,
   onClose,
   onSelectAction,
 }: SkillsBatchEditBarProps) {
@@ -82,14 +92,25 @@ export function SkillsBatchEditBar({
             disabled={selectedCount === 0 || isUpdating}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {BATCH_AVAILABILITY_ACTIONS.map((action) => (
-            <DropdownMenuItem
-              key={action.availability}
-              label={action.label}
-              onClick={() => onSelectAction(action)}
-            />
-          ))}
+        <DropdownMenuContent align="end">
+          {BATCH_AVAILABILITY_ACTIONS.map((action) => {
+            const isActionDisabled =
+              action.availability === "users_and_agents" &&
+              !canMakeSkillAutoDiscoverable;
+            return (
+              <DropdownMenuItem
+                key={action.availability}
+                label={action.label}
+                description={
+                  isActionDisabled
+                    ? "You don’t have permission to make skills auto-discoverable"
+                    : action.description
+                }
+                disabled={isActionDisabled}
+                onClick={() => onSelectAction(action)}
+              />
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -125,7 +146,7 @@ export function BatchAvailabilityDialog({
           <DialogTitle>{action.getDialogTitle(selectedCount)}</DialogTitle>
         </DialogHeader>
         <DialogContainer className="text-sm">
-          {action.dialogDescription}
+          {action.dialogDescription(selectedCount)}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{

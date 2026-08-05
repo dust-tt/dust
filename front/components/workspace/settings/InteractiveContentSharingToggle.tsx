@@ -1,11 +1,8 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
 import {
-  ActionFrame,
   Button,
-  ContextItem,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -45,7 +42,7 @@ const SHARING_POLICY_OPTIONS: {
 ];
 
 const LABEL = "Frame sharing";
-const DESCRIPTION = "Whether frames are shareable outside the workspace.";
+const DESCRIPTION = "Whether frames are shareable outside the workspace";
 
 interface InteractiveContentSharingToggleProps {
   owner: WorkspaceType;
@@ -77,7 +74,6 @@ export function InteractiveContentSharing({
   sharingPolicy,
   doUpdateSharingPolicy,
 }: InteractiveContentSharingProps) {
-  const { hasFeature } = useFeatureFlags();
   const [pendingPolicy, setPendingPolicy] =
     useState<WorkspaceSharingPolicy | null>(null);
 
@@ -104,35 +100,18 @@ export function InteractiveContentSharing({
 
   return (
     <>
-      {hasFeature("admin_governance") ? (
-        <GovernanceSettingRowLayout
-          label={LABEL}
-          description={DESCRIPTION}
-          action={
-            <InteractiveContentSharingDropdown
-              selectedOption={selectedOption}
-              onPolicyChange={handlePolicyChange}
-              isChanging={isChanging}
-              sharingPolicy={sharingPolicy}
-            />
-          }
-        />
-      ) : (
-        <ContextItem
-          title={LABEL}
-          subElement="Control how Frames can be shared in this workspace"
-          visual={<ActionFrame className="h-6 w-6" />}
-          hasSeparatorIfLast={true}
-          action={
-            <InteractiveContentSharingDropdown
-              selectedOption={selectedOption}
-              onPolicyChange={handlePolicyChange}
-              isChanging={isChanging}
-              sharingPolicy={sharingPolicy}
-            />
-          }
-        />
-      )}
+      <GovernanceSettingRowLayout
+        label={LABEL}
+        description={DESCRIPTION}
+        action={
+          <InteractiveContentSharingDropdown
+            selectedOption={selectedOption}
+            onPolicyChange={handlePolicyChange}
+            isChanging={isChanging}
+            sharingPolicy={sharingPolicy}
+          />
+        }
+      />
 
       <Dialog
         open={!!pendingPolicy}

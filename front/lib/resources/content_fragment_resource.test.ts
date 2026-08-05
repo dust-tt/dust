@@ -29,11 +29,13 @@ function makeFileFragment(
   {
     generatedTables = [],
     path = null,
+    processedPath = null,
     snippet = null,
     skipFileProcessing = false,
   }: {
     generatedTables?: string[];
     path?: string | null;
+    processedPath?: string | null;
     snippet?: string | null;
     skipFileProcessing?: boolean;
   } = {}
@@ -46,7 +48,6 @@ function makeFileFragment(
     visibility: "visible",
     version: 1,
     rank: 0,
-    branchId: null,
     sourceUrl: null,
     title: "file",
     contentType,
@@ -56,6 +57,7 @@ function makeFileFragment(
     expiredReason: null,
     contentFragmentType: "file",
     path,
+    processedPath,
     skipFileProcessing,
     fileId: "fil_abc123",
     snippet,
@@ -78,7 +80,6 @@ function makeContentNodeFragment(): ContentNodeContentFragmentType {
     visibility: "visible",
     version: 1,
     rank: 0,
-    branchId: null,
     sourceUrl: null,
     title: "Notion page",
     contentType: "text/plain",
@@ -314,6 +315,26 @@ describe("renderLightContentFragmentForModel", () => {
       expect(result?.content[0]).toMatchObject({
         type: "text",
         text: `<file name="file" path="conversation-conv123/report_fil_abc123.pdf"/>`,
+      });
+    });
+
+    it("points an audio file at its transcript sibling", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("audio/webm", {
+          path: "conversation-conv123/voice-2026-07-24T11:20:00.714Z.webm",
+          processedPath:
+            "conversation-conv123/voice-2026-07-24T11:20:00.714Z.processed.txt",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: true }
+      );
+      expect(result?.content[0]).toMatchObject({
+        type: "text",
+        text:
+          `<file name="file" ` +
+          `path="conversation-conv123/voice-2026-07-24T11:20:00.714Z.webm" ` +
+          `processedPath="conversation-conv123/voice-2026-07-24T11:20:00.714Z.processed.txt"/>`,
       });
     });
 

@@ -20,6 +20,8 @@ const SearchMembersQuerySchema = z.object({
   searchTerm: z.string().optional(),
   searchEmails: z.string().optional(),
   groupKind: z.enum(GROUP_KINDS).exclude(["system"]).optional(),
+  // Deprecated: the builder-role filter was removed; accepted but ignored to
+  // avoid breaking clients that still send it. Remove once no client does.
   buildersOnly: z
     .string()
     .transform((v) => v === "true")
@@ -58,7 +60,6 @@ app.get(
         searchTerm: query.searchTerm,
         searchEmails: emails,
         groupKind: query.groupKind,
-        buildersOnly: query.buildersOnly,
       },
       query
     );

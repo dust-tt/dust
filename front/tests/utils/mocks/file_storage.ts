@@ -2,12 +2,12 @@ import { Ok } from "@app/types/shared/result";
 import { PassThrough, Readable } from "stream";
 import { vi } from "vitest";
 
-export interface WriteStreamCall {
+interface WriteStreamCall {
   filePath: string;
   contentType: string | undefined;
 }
 
-export interface SaveFileCall {
+interface SaveFileCall {
   filePath: string;
   content: Buffer | string;
   contentType: string | undefined;
@@ -245,6 +245,12 @@ class FileStorageMock {
       uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
       uploadBufferToBucket: vi.fn(
         (args: { buffer: Buffer; contentType: string; filePath: string }) => {
+          if (this._saveShouldFail(args.filePath)) {
+            return Promise.reject(
+              new Error(`Simulated GCS write failure: ${args.filePath}`)
+            );
+          }
+          this._objectStore.set(args.filePath, args.buffer.toString());
           this._saveFileCalls.push({
             filePath: args.filePath,
             content: args.buffer,

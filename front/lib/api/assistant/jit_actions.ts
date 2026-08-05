@@ -56,8 +56,7 @@ async function getUnconditionalJITServers(
   );
   servers.push(commonUtilitiesServer);
 
-  const skillManagementServer = await getSkillManagementServer(
-    auth,
+  const skillManagementServer = getSkillManagementServer(
     agentConfiguration,
     conversation,
     autoInternalViews

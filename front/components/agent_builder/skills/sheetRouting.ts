@@ -6,7 +6,7 @@ import type {
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 
-export function getKnowledgeMCPServerViewForAction(
+function getKnowledgeMCPServerViewForAction(
   action: BuilderAction,
   mcpServerViewsWithKnowledge: MCPServerViewTypeWithLabel[]
 ): MCPServerViewTypeWithLabel | null {
@@ -17,7 +17,7 @@ export function getKnowledgeMCPServerViewForAction(
   );
 }
 
-export function getNonKnowledgeMCPServerViewForAction(
+function getNonKnowledgeMCPServerViewForAction(
   action: BuilderAction,
   mcpServerViewsWithoutKnowledge: MCPServerViewTypeWithLabel[]
 ): MCPServerViewTypeWithLabel | null {

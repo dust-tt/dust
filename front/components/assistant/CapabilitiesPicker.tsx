@@ -56,6 +56,7 @@ import { useEffect, useMemo, useState } from "react";
 interface CapabilityPickerItemBase extends CapabilitySearchIndexItem {
   description?: string;
   id: string;
+  isFavorite?: boolean;
   label: string;
 }
 
@@ -350,6 +351,7 @@ export function CapabilitiesPicker({
           kind: "skill",
           skill,
           id: `skills-picker-${skill.sId}`,
+          isFavorite: skill.isFavorite ?? false,
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,

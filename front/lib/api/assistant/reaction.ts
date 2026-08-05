@@ -5,50 +5,11 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
-  ConversationError,
-  ConversationMessageReactions,
   ConversationWithoutContentType,
   MessageReactionType,
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
-
-/**
- * We retrieve the reactions for a whole conversation, not just a single message.
- */
-export async function getConversationMessagesReactions(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType
-): Promise<Result<ConversationMessageReactions, ConversationError>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const messages = await MessageModel.findAll({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
-    },
-    attributes: ["sId"],
-    include: [
-      {
-        model: MessageReactionModel,
-        as: "reactions",
-        required: false,
-      },
-    ],
-  });
-
-  return new Ok(
-    messages.map((m) => ({
-      messageId: m.sId,
-      reactions: _renderMessageReactions(m.reactions ?? []),
-    }))
-  );
-}
 
 export async function getMessagesReactions(
   auth: Authenticator,

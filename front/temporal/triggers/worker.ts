@@ -7,6 +7,7 @@ import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import * as activities from "./activities";
 import { QUEUE_NAME } from "./config";
@@ -22,6 +23,17 @@ export async function runAgentTriggerWorker() {
       workerName: "agent_schedule",
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
+    bundlerOptions: {
+      // Same as the other workers whose workflow code imports `@app/*` values
+      // (see `temporal/agent_loop/worker.ts`): resolve the tsconfig aliases, or
+      // the bundle fails and this worker never polls.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
+    },
     activities,
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,

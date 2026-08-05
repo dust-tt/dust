@@ -33,6 +33,7 @@ import uniq from "lodash/uniq";
 import { z } from "zod";
 
 import editors from "./editors";
+import favorite from "./favorite";
 import filesRoute from "./files/[fileId]/content";
 import history from "./history";
 import reinforcement from "./reinforcement";
@@ -94,6 +95,7 @@ const app = workspaceApp();
 
 // Sub-routes for this skill.
 app.route("/editors", editors);
+app.route("/favorite", favorite);
 app.route("/history", history);
 app.route("/reinforcement", reinforcement);
 app.route("/restore", restore);
@@ -118,6 +120,13 @@ app.get(
     const { skill } = loaded;
 
     const withRelations = ctx.req.query("withRelations");
+
+    const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
+    let favoriteState: { isFavorite?: boolean } = {};
+    if (hasSkillFavorites) {
+      const isFavorite = await skill.isFavoriteForCurrentUser(auth);
+      favoriteState = { isFavorite };
+    }
 
     const serializedSkill = skill.toJSON(auth);
 
@@ -154,9 +163,13 @@ app.get(
         },
       };
 
-      return ctx.json({ skill: skillWithRelations });
+      return ctx.json({
+        skill: { ...skillWithRelations, ...favoriteState },
+      } satisfies GetSkillWithRelationsResponseBody);
     }
-    return ctx.json({ skill: serializedSkill });
+    return ctx.json({
+      skill: { ...serializedSkill, ...favoriteState },
+    } satisfies GetSkillResponseBody);
   }
 );
 
@@ -196,32 +209,13 @@ app.patch(
         ? availabilityFromIsDefault(body.isDefault)
         : undefined);
 
-    const hasSkillPublicationGovernance = await hasFeatureFlag(
-      auth,
-      "admin_governance_skill_publication"
-    );
-
-    // Without skill publication governance, keep the previous behavior: only the two
-    // legacy availability values are accepted.
-    if (!hasSkillPublicationGovernance && requestedAvailability === "editors") {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            'Availability "editors" requires skill publication governance to be enabled.',
-        },
-      });
-    }
-
     const availabilityChanged =
       requestedAvailability !== undefined &&
       requestedAvailability !== skill.availability;
 
-    // With skill publication governance, changing a skill's availability requires the
-    // workspace-level permission to publish skills — even for editors.
+    // Changing a skill's availability requires the workspace-level permission to publish
+    // skills — even for editors.
     if (
-      hasSkillPublicationGovernance &&
       availabilityChanged &&
       !(await auth.hasWorkspacePermission("publish", "skill"))
     ) {
@@ -231,6 +225,26 @@ app.patch(
           type: "app_auth_error",
           message:
             "You don't have permission to change this skill's availability.",
+        },
+      });
+    }
+
+    // without make skill discoverable permission, a user can neither make a skill
+    // auto-discoverable nor change an already auto-discoverable skill's availability.
+    const involvesAutoDiscoverable =
+      requestedAvailability === "users_and_agents" ||
+      skill.availability === "users_and_agents";
+    if (
+      availabilityChanged &&
+      involvesAutoDiscoverable &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to change this skill's auto-discoverable status.",
         },
       });
     }

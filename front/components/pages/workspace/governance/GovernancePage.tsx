@@ -15,13 +15,10 @@ import { PrivateConversationUrlsToggle } from "@app/components/workspace/setting
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
+import { WorkspaceDefaultAgentPicker } from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useGovernancePermissions,
@@ -100,12 +97,6 @@ function groupGovernancePermissionsBySection(
 }
 
 export const GovernancePage = () => {
-  const { hasFeature } = useFeatureFlags();
-  const hasAdminGovernanceFeature = hasFeature("admin_governance");
-  const hasSkillPublicationFeature = hasFeature(
-    "admin_governance_skill_publication"
-  );
-
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { groups, isGroupsLoading, isGroupsError } = useGroups({
@@ -132,11 +123,6 @@ export const GovernancePage = () => {
     isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
 
-  const skillPermissions = skills.filter(
-    (permission) =>
-      hasSkillPublicationFeature || permission.grantType !== "publish"
-  );
-
   const router = useAppRouter();
   const handleNavigateToGroups = () => {
     void router.push(`/w/${owner.sId}/members?tab=groups`);
@@ -158,7 +144,7 @@ export const GovernancePage = () => {
       id: "skills",
       label: "Skills",
       icon: PuzzlePiece01,
-      governancePermissions: skillPermissions,
+      governancePermissions: skills,
     },
     ...(framePermissions.length > 0 || isAdmin
       ? [
@@ -181,10 +167,6 @@ export const GovernancePage = () => {
         ]
       : []),
   ];
-
-  if (!hasAdminGovernanceFeature) {
-    return null;
-  }
 
   if (isLoading) {
     return <GovernancePageSkeleton />;
@@ -247,6 +229,7 @@ export const GovernancePage = () => {
               <PodKnowledgePolicy owner={owner} />
             </GovernanceSettingSection>
             <GovernanceSettingSection label="Features" icon={ShapesPlus}>
+              <WorkspaceDefaultAgentPicker owner={owner} />
               <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />

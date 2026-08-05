@@ -89,7 +89,7 @@ export function AgentBuilderSpacesBlock({
     return new Set([...skillRequestedSpaceIds, ...actionRequestedSpaceIds]);
   }, [selectedSkills, allSkills, spaceIdToActions]);
 
-  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+  const nonGlobalSpacesUsedByAgent = useMemo(() => {
     const nonGlobalSpaces = allSpaces.filter((s) => s.kind !== "global");
     const allRequestedSpaceIds = new Set([
       ...actionsAndSkillsRequestedSpaceIds,
@@ -98,6 +98,10 @@ export function AgentBuilderSpacesBlock({
 
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
   }, [allSpaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
+
+  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+    return nonGlobalSpacesUsedByAgent.filter((s) => s.isRestricted);
+  }, [nonGlobalSpacesUsedByAgent]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
@@ -165,19 +169,18 @@ export function AgentBuilderSpacesBlock({
   }, [allSpaces]);
 
   const spacesToDisplay = useMemo(() => {
-    return removeNulls([globalSpace, ...nonGlobalSpacesWithRestrictions]);
-  }, [globalSpace, nonGlobalSpacesWithRestrictions]);
+    return removeNulls([globalSpace, ...nonGlobalSpacesUsedByAgent]);
+  }, [globalSpace, nonGlobalSpacesUsedByAgent]);
 
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="heading-lg text-foreground">
-            Visibility control and available data
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Add a space or pod to restrict usage to its members and make all its
-            data available to this agent.
+          <h2 className="heading-lg text-foreground">Data and access</h2>
+          <p className="text-sm text-muted-foreground max-w-9/10">
+            Adding spaces or pods will make the data from each of them available
+            to the agent. Only members of all the spaces and pods listed will
+            have access to the agent.
           </p>
         </div>
         <Button

@@ -115,7 +115,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-export interface MCPActionDetailsProps {
+interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;

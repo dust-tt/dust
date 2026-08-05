@@ -7,7 +7,3 @@ export type GetPokeFeaturesResponseBody = {
     createdAt: string;
   }[];
 };
-
-export type CreateOrDeleteFeatureFlagResponseBody = {
-  success: true;
-};

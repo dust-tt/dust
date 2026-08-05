@@ -82,7 +82,7 @@ function getReviewerIdentifier(
   return reviewer.login ?? reviewer.slug ?? null;
 }
 
-export const createOctokit = async (
+const createOctokit = async (
   auth: Authenticator,
   { accessToken }: { accessToken?: string }
 ) => {

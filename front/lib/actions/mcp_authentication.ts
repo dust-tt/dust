@@ -8,7 +8,7 @@ import type { OAuthConnectionType, OAuthProvider } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type MCPServerAdminAuthenticationReason = "setup" | "reconnect";
+type MCPServerAdminAuthenticationReason = "setup" | "reconnect";
 
 // Dedicated function to get the connection details for an MCP server.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.

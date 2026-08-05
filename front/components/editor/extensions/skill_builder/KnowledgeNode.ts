@@ -24,7 +24,7 @@ const DOCUMENT_ICON = "📄";
 
 export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
 
-export interface KnowledgeNodeOptions {
+interface KnowledgeNodeOptions {
   readOnly: boolean;
 }
 

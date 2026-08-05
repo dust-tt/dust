@@ -4,7 +4,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
-import { getFeatureFlags } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -17,11 +17,10 @@ import type {
 } from "@app/types/api/skills";
 import {
   availabilityFromIsDefault,
-  getDefaultSkillAvailability,
+  DEFAULT_SKILL_AVAILABILITY,
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillAvailability,
-  type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
@@ -129,6 +128,7 @@ app.get(
     // @deprecated viewType query param is ignored — instructions and tools
     // are never returned from the list endpoint. Use GET /skills/:sId for full details.
     const withRelations = ctx.req.query("withRelations");
+    const withMessageCount = ctx.req.query("withMessageCount") === "true";
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
@@ -190,17 +190,40 @@ app.get(
       withTools: false,
       withFileAttachments: false,
     });
+    const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
+    let favoriteSkillIds = new Set<string>();
+    if (hasSkillFavorites) {
+      const favoriteSkills =
+        await SkillResource.listFavoritesForCurrentUser(auth);
+      favoriteSkillIds = new Set(favoriteSkills.map((skill) => skill.sId));
+    }
+
+    const canCreateSkill = await auth.hasWorkspacePermission("create", "skill");
 
     // Skills with editors-only availability (unpublished) are only listed for members of
-    // their editor group.
+    // their editor group. Suggestions are the exception: they are created with an empty
+    // editor group, so nobody can write them and the rule would hide them from everyone.
+    // They are listed instead to the skill administrators allowed to create skills.
     const skills = bypassEditorVisibility
       ? allSkills
       : allSkills.filter(
-          (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+          (skill) =>
+            skill.availability !== "editors" ||
+            skill.canWrite(auth) ||
+            (skill.status === "suggested" &&
+              canCreateSkill &&
+              skill.canAdministrate(auth))
         );
 
     if (withRelations === "true") {
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);
+      let messageCountMap: Map<string, number> | null = null;
+      if (withMessageCount) {
+        messageCountMap = await SkillResource.batchFetchMessageCounts(
+          auth,
+          skills.filter((skill) => !skill.isSystemSkill)
+        );
+      }
       const editorsMap = await SkillResource.batchListEditors(auth, skills);
       const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
         auth,
@@ -216,6 +239,9 @@ app.get(
       );
 
       const skillsWithRelations = skills.map((sc) => {
+        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
+          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
+          : {};
         const {
           instructions,
           instructionsHtml,
@@ -235,6 +261,13 @@ app.get(
 
         return {
           ...skillWithoutInstructionsAndTools,
+          ...(messageCountMap
+            ? {
+                messageCount: sc.isSystemSkill
+                  ? null
+                  : (messageCountMap.get(sc.sId) ?? 0),
+              }
+            : {}),
           relations: {
             usage: usageWithSkills,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
@@ -252,7 +285,8 @@ app.get(
               }
             ),
           },
-        } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
+          ...favoriteState,
+        } satisfies GetSkillsWithRelationsResponseBody["skills"][number];
       });
 
       return ctx.json({ skills: skillsWithRelations });
@@ -260,6 +294,9 @@ app.get(
 
     return ctx.json({
       skills: skills.map((sc) => {
+        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
+          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
+          : {};
         const {
           instructions,
           instructionsHtml,
@@ -267,7 +304,10 @@ app.get(
           ...skillWithoutInstructionsAndTools
         } = sc.toJSON(auth);
 
-        return skillWithoutInstructionsAndTools;
+        return {
+          ...skillWithoutInstructionsAndTools,
+          ...favoriteState,
+        } satisfies GetSkillsResponseBody["skills"][number];
       }),
     });
   }
@@ -300,31 +340,12 @@ app.post(
       });
     }
 
-    const featureFlags = await getFeatureFlags(auth);
-    const hasSkillPublicationGovernance = featureFlags.includes(
-      "admin_governance_skill_publication"
-    );
-
-    // Without skill publication governance, keep the previous behavior: only the two
-    // legacy availability values are accepted.
-    if (!hasSkillPublicationGovernance && body.availability === "editors") {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            'Availability "editors" requires skill publication governance to be enabled.',
-        },
-      });
-    }
-
     const requestedAvailability = resolveRequestedAvailability(body);
 
-    // With skill publication governance, explicitly creating a skill already published
-    // (anything other than editors-only) requires the workspace-level permission to publish
-    // skills. The default availability is exempt so plain creation keeps working.
+    // Explicitly creating a skill already published (anything other than editors-only) requires
+    // the workspace-level permission to publish skills. The default availability is exempt so
+    // plain creation keeps working.
     if (
-      hasSkillPublicationGovernance &&
       requestedAvailability !== undefined &&
       requestedAvailability !== "editors" &&
       !(await auth.hasWorkspacePermission("publish", "skill"))
@@ -338,9 +359,21 @@ app.post(
         },
       });
     }
+    if (
+      requestedAvailability === "users_and_agents" &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to create a skill with that availability.",
+        },
+      });
+    }
 
-    const availability =
-      requestedAvailability ?? getDefaultSkillAvailability(featureFlags);
+    const availability = requestedAvailability ?? DEFAULT_SKILL_AVAILABILITY;
 
     const existingSkill = await SkillResource.fetchByName(auth, name);
 

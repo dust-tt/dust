@@ -20,6 +20,7 @@ import {
   SkillVersionComparisonProvider,
   useSkillVersionComparisonContext,
 } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { SkillSpaceRestrictionsProvider } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,
@@ -29,7 +30,6 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
@@ -64,7 +64,6 @@ interface SkillBuilderProps {
 
 export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
-  const { featureFlags } = useFeatureFlags();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -110,9 +109,8 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
     return getDefaultSkillFormData({
       user,
-      featureFlags,
     });
-  }, [skill, user, featureFlags]);
+  }, [skill, user]);
 
   const form = useForm<SkillBuilderFormData>({
     disabled: isEditorLocked,
@@ -186,6 +184,8 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
         : "Your skill has been successfully updated.",
       type: "success",
     });
+
+    await mutateEditors({ editors: data.editors }, { revalidate: false });
 
     onSaved();
 
@@ -294,9 +294,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           )}
           <SkillBuilderAgentFacingDescriptionSection />
           <SkillBuilderInstructionsSection />
-          <SkillBuilderRequestedSpacesSection
-            initialRequestedSpaceIds={skill?.requestedSpaceIds}
-          />
+          <SkillBuilderRequestedSpacesSection />
           <SkillBuilderFilesSection />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
@@ -337,37 +335,43 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     <SkillBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
         <SkillVersionComparisonProvider>
-          <div
-            className={cn(
-              "flex h-dvh flex-row",
-              "bg-background text-foreground"
-            )}
+          <SkillSpaceRestrictionsProvider
+            initialRequestedSpaceIds={skill?.requestedSpaceIds}
           >
-            {showSuggestionsPanel ? (
-              <ResizablePanelGroup
-                id="skill-builder-layout"
-                direction="horizontal"
-                className="h-full w-full"
-              >
-                <ResizablePanel defaultSize={65} minSize={40}>
-                  <div className="h-full w-full overflow-y-auto">
-                    {leftPanel}
-                  </div>
-                </ResizablePanel>
-
-                <>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+            <div
+              className={cn(
+                "flex h-dvh flex-row",
+                "bg-background text-foreground"
+              )}
+            >
+              {showSuggestionsPanel ? (
+                <ResizablePanelGroup
+                  id="skill-builder-layout"
+                  direction="horizontal"
+                  className="h-full w-full"
+                >
+                  <ResizablePanel defaultSize={65} minSize={40}>
                     <div className="h-full w-full overflow-y-auto">
-                      <SkillBuilderSuggestionsPanel disabled={isEditorLocked} />
+                      {leftPanel}
                     </div>
                   </ResizablePanel>
-                </>
-              </ResizablePanelGroup>
-            ) : (
-              leftPanel
-            )}
-          </div>
+
+                  <>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+                      <div className="h-full w-full overflow-y-auto">
+                        <SkillBuilderSuggestionsPanel
+                          disabled={isEditorLocked}
+                        />
+                      </div>
+                    </ResizablePanel>
+                  </>
+                </ResizablePanelGroup>
+              ) : (
+                leftPanel
+              )}
+            </div>
+          </SkillSpaceRestrictionsProvider>
         </SkillVersionComparisonProvider>
       </FormProvider>
     </SkillBuilderFormContext.Provider>

@@ -1802,6 +1802,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "set_default_agent": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "set_pinned_frame": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -3122,7 +3126,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "pod_manager": {
     "add_content_node": "never_ask",
     "add_message_to_conversation": "medium",
-    "create_conversation": "medium",
+    "create_conversation": "never_ask",
     "create_pod": "low",
     "edit_information": "low",
     "get_information": "never_ask",
@@ -3133,6 +3137,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "remove_content_node": "low",
     "retrieve_recent_documents": "never_ask",
     "semantic_search": "never_ask",
+    "set_default_agent": "low",
     "set_pinned_frame": "never_ask",
     "update_members": "low",
   },

@@ -32,13 +32,13 @@ export type PokeSearchWorkspaceMembers = {
   total: number;
 };
 
-export const pokeSearchWorkspaceMemberSchema = z.object({
+const pokeSearchWorkspaceMemberSchema = z.object({
   sId: z.string(),
   fullName: z.string().nullable(),
   email: z.string(),
 });
 
-export const pokeSearchWorkspaceMembersSchema = z.object({
+const pokeSearchWorkspaceMembersSchema = z.object({
   members: z.array(pokeSearchWorkspaceMemberSchema),
   total: z.number(),
 });

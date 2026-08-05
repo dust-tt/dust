@@ -30,7 +30,7 @@ export type SeatLimit = {
  * {@link WorkspaceSeatLimitResource.fetchScheduleByWorkspace} so callers can
  * reason about scheduled future changes, not just the value effective now.
  */
-export type SeatLimitSegment = SeatLimit & {
+type SeatLimitSegment = SeatLimit & {
   startAt: Date;
   endAt: Date | null;
 };

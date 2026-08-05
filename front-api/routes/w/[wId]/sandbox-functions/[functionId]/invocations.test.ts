@@ -1,5 +1,6 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -15,6 +16,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -87,9 +89,11 @@ afterEach(() => {
 async function setupSandboxFunction({
   addCallerToSpace = true,
   withSandboxFunctionsFeatureFlag = true,
+  userIdentity = "optional",
 }: {
   addCallerToSpace?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
+  userIdentity?: SandboxFunctionUserIdentityPolicy;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
     role: "admin",
@@ -112,6 +116,7 @@ async function setupSandboxFunction({
     file,
     slug: "run-function",
     description: "Run the function.",
+    userIdentity,
     inputSchema,
     outputSchema,
   });
@@ -303,6 +308,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         invocation: expect.objectContaining({
           sId: invocation.sId,
           context: { timezone: "Europe/Paris" },
+          origin: "interactive_session",
         }),
       }
     );
@@ -314,6 +320,77 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       },
       { invocationId: invocation.sId }
     );
+  });
+
+  it("allows a workspace member to invoke a workspace-user-required function", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      userIdentity: "workspace_user_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("allows a workspace member's live session to invoke an interactive function", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      userIdentity: "interactive_workspace_user_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("records an OAuth invocation as delegated", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+    vi.spyOn(Authenticator.prototype, "authMethod").mockReturnValue("oauth");
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        invocation: expect.objectContaining({ origin: "delegated" }),
+      })
+    );
+  });
+
+  it("returns a typed authentication error when the function rejects the caller", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+    vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValueOnce(
+      new Err(
+        new SandboxFunctionInvocationError(
+          "This Pod Function requires a logged-in user from its workspace."
+        )
+      )
+    );
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "user_authentication_required",
+        message:
+          "This Pod Function requires a logged-in user from its workspace.",
+      },
+    });
   });
 
   it("creates an invocation by pod id and function slug", async () => {
@@ -629,7 +706,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     });
   });
 
-  it("rejects validation from a user who did not initiate the invocation", async () => {
+  it("hides validation for another user's invocation", async () => {
     const { workspace, sandboxFunction, invocation, action } =
       await setupBlockedAction({ invocationOwnedByOtherMember: true });
 
@@ -641,14 +718,14 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       body: { approved: "approved" },
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "action_not_found" },
     });
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  it("rejects validation when the invocation has no initiating user", async () => {
+  it("hides validation for a userless invocation", async () => {
     const { workspace, sandboxFunction, invocation, action } =
       await setupBlockedAction({ invocationOwnerless: true });
     expect(invocation.userId).toBeNull();
@@ -661,9 +738,9 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       body: { approved: "approved" },
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "action_not_found" },
     });
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
@@ -812,7 +889,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     });
   });
 
-  it("rejects authentication resolution from a user who did not initiate the invocation", async () => {
+  it("hides authentication resolution for another user's invocation", async () => {
     const { workspace, sandboxFunction, invocation, action } =
       await setupBlockedAction({
         blockedStatus: "blocked_authentication_required",
@@ -827,14 +904,14 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       body: { outcome: "completed" },
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "action_not_found" },
     });
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  it("rejects authentication resolution when the invocation has no initiating user", async () => {
+  it("hides authentication resolution for a userless invocation", async () => {
     const { workspace, sandboxFunction, invocation, action } =
       await setupBlockedAction({
         blockedStatus: "blocked_authentication_required",
@@ -850,9 +927,9 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       body: { outcome: "completed" },
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "action_not_found" },
     });
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });

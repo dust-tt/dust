@@ -86,6 +86,7 @@ export function ReplySection({
 }
 
 export interface ConversationListItemProps {
+  unread: boolean;
   conversation: {
     id: string;
     title: string;
@@ -113,6 +114,7 @@ export interface ConversationListItemProps {
 
 export function ConversationListItem({
   conversation,
+  unread,
   avatar,
   creator,
   time,
@@ -194,7 +196,16 @@ export function ConversationListItem({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-normal">{time}</span>
+            {unread && (
+              <div
+                className={cn(
+                  "heading-xs flex flex-shrink-0 items-center justify-center rounded-full h-2 w-2 m-1 bg-highlight-500"
+                )}
+              />
+            )}
+            <span className={cn("font-normal", unread && "text-highlight")}>
+              {time}
+            </span>
           </div>
         </div>
         {conversation.description && (

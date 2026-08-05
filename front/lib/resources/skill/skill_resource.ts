@@ -95,7 +95,11 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { removeNulls } from "@app/types/shared/utils/general";
+import {
+  isNumber,
+  isString,
+  removeNulls,
+} from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
@@ -420,6 +424,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
+
+    assert(
+      await auth.hasWorkspacePermission("create", "skill"),
+      "User is not authorized to create skills"
+    );
+
+    if (blob.availability === "users_and_agents") {
+      assert(
+        await auth.hasWorkspacePermission("make_discoverable", "skill"),
+        "User is not authorized to create an auto-discoverable skill"
+      );
+    }
 
     // Use a transaction to ensure all creations succeed or all are rolled back.
     return withTransaction(async (transaction) => {
@@ -922,6 +938,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  static async fetchFileSkills(
+    auth: Authenticator,
+    file: FileResource
+  ): Promise<{ isReferenced: boolean; skills: SkillResource[] }> {
+    const workspace = auth.getNonNullableWorkspace();
+    // The unique workspace/file index bounds this lookup to one attachment.
+    const attachment = await SkillFileAttachmentModel.findOne({
+      attributes: ["skillConfigurationId"],
+      where: {
+        fileId: file.id,
+        workspaceId: workspace.id,
+      },
+    });
+
+    if (attachment) {
+      const skills = await this.fetchByModelIds(auth, [
+        attachment.skillConfigurationId,
+      ]);
+      return { isReferenced: true, skills };
+    }
+
+    // This fallback is only used for detached files. The workspace-leading index bounds the scan.
+    const where: WhereOptions<SkillVersionModel> = {
+      fileAttachmentIds: { [Op.contains]: [file.id] },
+      workspaceId: workspace.id,
+    };
+    const versions = await SkillVersionModel.findAll({
+      attributes: ["skillConfigurationId"],
+      group: ["skillConfigurationId"],
+      where,
+    });
+
+    const skillModelIds = uniq(
+      versions.map((version) => version.skillConfigurationId)
+    );
+    const skills = await this.fetchByModelIds(auth, skillModelIds);
+    return { isReferenced: skillModelIds.length > 0, skills };
+  }
+
   static async fetchById(
     auth: Authenticator,
     sId: string
@@ -1174,8 +1229,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     {
       agentLoopData,
+      effectiveSpaceIds,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
     } = {}
   ): Promise<SkillResource[]> {
     const user = auth.user();
@@ -1198,6 +1255,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchByIds(auth, favorites.skillIds, {
       agentLoopData,
+      effectiveSpaceIds,
       onlyActive: true,
     });
   }
@@ -1700,6 +1758,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     enabledSkills: SkillResource[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
+    favoriteSkills: SkillResource[];
   }> {
     const { agentConfiguration, conversation } = params;
     // Light type-guard to check whether we have a full AgentLoopExecutionData.
@@ -1735,11 +1794,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     let discoverableSkills: SkillResource[] = [];
+    let favoriteSkills: SkillResource[] = [];
     if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
       discoverableSkills = await this.listDiscoverable(auth, {
         agentLoopData,
         effectiveSpaceIds,
       });
+      const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
+      if (hasSkillFavorites) {
+        favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
+          agentLoopData,
+          effectiveSpaceIds,
+        });
+      }
     }
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
@@ -1812,9 +1879,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ];
     const systemSkillIds = new Set(systemSkills.map((skill) => skill.sId));
 
-    // Equipped skills are the enable-able candidates shown to the model. They
-    // come from the agent configuration, context auto-equipping, Pod defaults,
-    // and discoverable skills. System prompt skills are never enable-able.
+    // Equipped skills are the workspace-shared enable-able candidates shown to
+    // the model. User-specific favorites are returned separately so they don't
+    // invalidate the shared prompt cache prefix.
     const equippedSkillsById = new Map<string, SkillResource>();
     for (const skill of [
       ...autoEquippedSkills,
@@ -1838,6 +1905,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         .filter((s) => !systemSkillIds.has(s.sId))
         .sort(sortByName),
       equippedSkills: [...equippedSkillsById.values()].sort(sortByName),
+      favoriteSkills: favoriteSkills
+        .filter(
+          (skill) =>
+            !systemSkillIds.has(skill.sId) && !equippedSkillsById.has(skill.sId)
+        )
+        .sort(sortByName),
     };
   }
 
@@ -2516,6 +2589,64 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * Count distinct agent messages using each skill, keyed by skill sId.
+   */
+  static async batchFetchMessageCounts(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Map<string, number>> {
+    if (skills.length === 0) {
+      return new Map();
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const customSkillIdByModelId = new Map(
+      skills
+        .filter((skill) => !skill.globalSId)
+        .map((skill) => [skill.id, skill.sId])
+    );
+    const globalSkillIds = removeNulls(skills.map((skill) => skill.globalSId));
+
+    const counts = await AgentMessageSkillModel.count({
+      attributes: ["customSkillId", "globalSkillId"],
+      // Finalization activities can retry after the snapshot insert succeeds.
+      distinct: true,
+      col: "agentMessageId",
+      where: {
+        workspaceId: workspace.id,
+        [Op.or]: removeNulls([
+          customSkillIdByModelId.size > 0
+            ? {
+                customSkillId: {
+                  [Op.in]: [...customSkillIdByModelId.keys()],
+                },
+              }
+            : null,
+          globalSkillIds.length > 0
+            ? { globalSkillId: { [Op.in]: globalSkillIds } }
+            : null,
+        ]),
+      },
+      group: ["customSkillId", "globalSkillId"],
+    });
+
+    const result = new Map<string, number>();
+    for (const row of counts) {
+      let skillId: string | undefined;
+      if (isNumber(row.customSkillId)) {
+        skillId = customSkillIdByModelId.get(row.customSkillId);
+      } else if (isString(row.globalSkillId)) {
+        skillId = row.globalSkillId;
+      }
+      if (skillId) {
+        result.set(skillId, row.count);
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Batch fetch skill references for multiple child skills.
    * Keyed by child skill sId to avoid collisions with global skills.
    */
@@ -2845,15 +2976,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
 
-    // With skill publication governance, changing the availability requires the
-    // workspace-level publish permission — even for editors.
-    if (
-      availability !== undefined &&
-      availability !== this.availability &&
-      (await hasFeatureFlag(auth, "admin_governance_skill_publication"))
-    ) {
+    const availabilityChanged =
+      availability !== undefined && availability !== this.availability;
+
+    // Changing the availability requires the workspace-level publish
+    // permission — even for editors.
+    if (availabilityChanged) {
       assert(
         await auth.hasWorkspacePermission("publish", "skill"),
+        "User is not authorized to update this skill's availability"
+      );
+    }
+
+    // Making a skill auto-discoverable, or changing an already auto-discoverable skill's
+    // availability, additionally requires the make-discoverable permission.
+    if (
+      availabilityChanged &&
+      (availability === "users_and_agents" ||
+        this.availability === "users_and_agents")
+    ) {
+      assert(
+        await auth.hasWorkspacePermission("make_discoverable", "skill"),
         "User is not authorized to update this skill's availability"
       );
     }
@@ -2956,6 +3099,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await auth.hasWorkspacePermission("publish", "skill"),
       "User is not authorized to update skill availability"
     );
+
+    // Making skills auto-discoverable, or changing an already auto-discoverable skill's
+    // availability, additionally requires the workspace-level make-discoverable permission.
+    if (
+      availability === "users_and_agents" ||
+      skills.some((skill) => skill.availability === "users_and_agents")
+    ) {
+      assert(
+        await auth.hasWorkspacePermission("make_discoverable", "skill"),
+        "User is not authorized to update this skill availability"
+      );
+    }
 
     const changedSkills = skills.filter(
       (skill) => skill.availability !== availability

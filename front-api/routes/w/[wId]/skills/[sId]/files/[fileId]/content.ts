@@ -28,11 +28,21 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const file = await FileResource.fetchById(auth, fileId);
-  if (
-    !file ||
-    file.useCase !== "skill_attachment" ||
-    file.useCaseMetadata?.skillId !== sId
-  ) {
+  if (!file || file.useCase !== "skill_attachment") {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
+
+  const { isReferenced, skills } = await SkillResource.fetchFileSkills(
+    auth,
+    file
+  );
+  const belongsToSkill =
+    skills.some((referencedSkill) => referencedSkill.id === skill.id) ||
+    (!isReferenced && file.useCaseMetadata?.skillId === sId);
+  if (!belongsToSkill) {
     return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },

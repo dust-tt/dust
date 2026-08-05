@@ -62,7 +62,9 @@ describe("fetchMessageExportRows", () => {
     });
 
     mockMessageHits([
-      messageDoc({ cost: { full_awu: 7, llm_awu: 4, tool_awu: 3 } }),
+      messageDoc({
+        cost: { full_awu: 10, llm_awu: 4, tool_awu: 3, billable_awu: 7 },
+      }),
     ]);
 
     const result = await fetchMessageExportRows({

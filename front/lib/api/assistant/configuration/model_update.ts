@@ -16,7 +16,7 @@ import { Err, Ok } from "@app/types/shared/result";
 // connection pool.
 const UPDATE_MODEL_CONCURRENCY = 4;
 
-export type UpdateAgentConfigurationsModelResult = {
+type UpdateAgentConfigurationsModelResult = {
   updatedAgentIds: string[];
   skippedAgentIds: string[];
 };

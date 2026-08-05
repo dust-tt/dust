@@ -3,6 +3,7 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
+  MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
   MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS,
   type MembershipUpgradeRequestStatus,
 } from "@app/types/memberships";
@@ -20,6 +21,9 @@ export class MembershipUpgradeRequestModel extends WorkspaceAwareModel<Membershi
 
   declare status: CreationOptional<MembershipUpgradeRequestStatus>;
   declare resolvedAt: Date | null;
+
+  // Why the member needs the raised limit - Optional
+  declare reason: string | null;
 
   // The member who requested the upgrade.
   declare userId: ForeignKey<UserModel["id"]>;
@@ -49,6 +53,11 @@ MembershipUpgradeRequestModel.init(
     },
     resolvedAt: {
       type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    reason: {
+      type: DataTypes.STRING(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS),
       allowNull: true,
       defaultValue: null,
     },

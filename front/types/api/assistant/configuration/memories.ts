@@ -20,11 +20,7 @@ export type GetAgentMemoriesResponseBody = z.infer<
 export const PatchAgentMemoryRequestBodySchema = z.object({
   content: z.string(),
 });
-export type PatchAgentMemoryRequestBody = z.infer<
-  typeof PatchAgentMemoryRequestBodySchema
->;
-
-export const PatchAgentMemoryResponseBodySchema = z.object({
+const PatchAgentMemoryResponseBodySchema = z.object({
   memory: z.object({
     sId: z.string(),
     lastUpdated: z.date(),

@@ -239,7 +239,7 @@ async function createPoolTopupCouponCredit({
   return new Ok(result.value !== null ? [result.value.id] : []);
 }
 
-export type RedeemPoolTopupCouponError =
+type RedeemPoolTopupCouponError =
   | { code: "workspace_not_on_metronome" }
   | { code: "coupon_validation_failed"; reason: CouponValidationError };
 
@@ -368,7 +368,7 @@ export async function endCouponCredit({
   return new Ok(undefined);
 }
 
-export type RedeemSeatCouponError =
+type RedeemSeatCouponError =
   | { code: "workspace_not_on_metronome" }
   | { code: "coupon_validation_failed"; reason: CouponValidationError };
 

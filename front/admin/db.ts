@@ -23,6 +23,7 @@ import {
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
+import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
@@ -38,7 +39,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
@@ -128,6 +129,7 @@ import {
   SandboxModel,
   SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -149,7 +151,6 @@ import { UserProjectPreferencesModel } from "@app/lib/resources/storage/models/u
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import { isDevelopment, isTest } from "@app/types/shared/env";
@@ -239,6 +240,7 @@ export function loadAllModels() {
     AgentStepContentModel,
     AgentMCPActionModel,
     AgentMCPActionOutputItemModel,
+    AgentMessageConsumptionItemModel,
     AgentStepContentToolExecutionModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,
@@ -269,7 +271,6 @@ export function loadAllModels() {
     AcademyChapterVisitModel,
     SandboxModel,
     SandboxOwnerModel,
-    ConversationBranchModel,
     ConversationForkModel,
     ProjectTaskModel,
     ProjectTaskConversationModel,
@@ -281,7 +282,7 @@ export function loadAllModels() {
     TakeawaysVersionModel,
     UserProjectPreferencesModel,
     WorkspaceSensitivityLabelConfigModel,
-    WorkspaceSandboxEnvVarModel,
+    SandboxEnvVarModel,
     WorkspaceSeatLimitModel,
     ActivationPodModel,
     ActivationRecommendationModel,

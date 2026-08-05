@@ -3,7 +3,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import type { RawPost, SlabPost, SlabSearchResult, SlabTopic } from "./types";
 
-export const SLAB_GRAPHQL_URL = "https://api.slab.com/v1/graphql";
+const SLAB_GRAPHQL_URL = "https://api.slab.com/v1/graphql";
 export const MAX_LIMIT = 100;
 
 function normalizePost(post: RawPost): SlabPost {

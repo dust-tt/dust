@@ -1,40 +1,17 @@
 import { SpaceSelectionSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useBlockedSkillSpaceRemovalConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
-import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type {
-  AttachedKnowledgeFormData,
-  ReferencedSkillFormData,
-  SkillBuilderFormData,
-} from "@app/components/skill_builder/SkillBuilderFormContext";
-import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import { Button, Planet } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
-interface SkillBuilderRequestedSpacesSectionProps {
-  initialRequestedSpaceIds?: string[];
-}
-
-export function SkillBuilderRequestedSpacesSection({
-  initialRequestedSpaceIds,
-}: SkillBuilderRequestedSpacesSectionProps) {
+export function SkillBuilderRequestedSpacesSection() {
   const { resetField } = useFormContext<SkillBuilderFormData>();
-
-  const tools = useWatch<SkillBuilderFormData, "tools">({ name: "tools" });
-  const attachedKnowledge = useWatch<SkillBuilderFormData, "attachedKnowledge">(
-    {
-      name: "attachedKnowledge",
-    }
-  );
-  const referencedSkills = useWatch<SkillBuilderFormData, "referencedSkills">({
-    name: "referencedSkills",
-  });
 
   const {
     field: additionalSpacesField,
@@ -45,102 +22,26 @@ export function SkillBuilderRequestedSpacesSection({
   const isReadOnly = additionalSpacesField.disabled ?? false;
   const selectedAdditionalSpaces = additionalSpacesField.value ?? [];
 
-  const { mcpServerViews, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
-  const { spaces, owner, isSpacesLoading } = useSpacesContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
   const confirmBlockedSpaceRemoval = useBlockedSkillSpaceRemovalConfirm({
     mcpServerViews,
   });
 
-  const missingSpaceIds = useMemo(() => {
-    if (isSpacesLoading || !initialRequestedSpaceIds?.length) {
-      return [];
-    }
-
-    const existingSpaceIds = new Set(spaces.map((space) => space.sId));
-    return initialRequestedSpaceIds.filter((id) => !existingSpaceIds.has(id));
-  }, [isSpacesLoading, initialRequestedSpaceIds, spaces]);
-
-  const { spaces: missingSpaces } = useSpaceProjectsLookup({
-    workspaceId: owner.sId,
-    spaceIds: missingSpaceIds,
-  });
-
-  const allSpaces = useMemo(() => {
-    return [...spaces, ...missingSpaces];
-  }, [spaces, missingSpaces]);
+  const {
+    actionsBySpaceId,
+    areSpaceRequirementsReady,
+    globalSpace,
+    initialAdditionalSpaces,
+    initialRequestedSpaceIds,
+    knowledgeBySpaceId,
+    missingSpaceIds,
+    nonGlobalSpacesUsedBySkill,
+    skillsBySpaceId,
+    spaceIdsUsedBySkill,
+  } = useSkillSpaceRestrictionsContext();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);
-
-  const actionsBySpaceId = useMemo(() => {
-    return getSpaceIdToActionsMap(tools ?? [], mcpServerViews);
-  }, [tools, mcpServerViews]);
-
-  const spaceIdsFromKnowledge = useMemo(() => {
-    return new Set(attachedKnowledge?.map((k) => k.spaceId) ?? []);
-  }, [attachedKnowledge]);
-
-  const spaceIdsFromNestedSkills = useMemo(() => {
-    return new Set(
-      (referencedSkills ?? []).flatMap((skill) => skill.requestedSpaceIds)
-    );
-  }, [referencedSkills]);
-
-  const spaceIdsUsedBySkill = useMemo(() => {
-    const actionRequestedSpaceIds = Object.keys(actionsBySpaceId).filter(
-      (spaceId) => actionsBySpaceId[spaceId]?.length > 0
-    );
-
-    return new Set([
-      ...actionRequestedSpaceIds,
-      ...spaceIdsFromKnowledge,
-      ...spaceIdsFromNestedSkills,
-    ]);
-  }, [actionsBySpaceId, spaceIdsFromKnowledge, spaceIdsFromNestedSkills]);
-
-  const areSpaceRequirementsReady =
-    !isMCPServerViewsLoading &&
-    (!initialRequestedSpaceIds ||
-      (attachedKnowledge !== undefined && referencedSkills !== undefined));
-
-  const knowledgeBySpaceId = useMemo(() => {
-    const knowledgeBySpace: Record<string, AttachedKnowledgeFormData[]> = {};
-
-    for (const knowledge of attachedKnowledge ?? []) {
-      knowledgeBySpace[knowledge.spaceId] = (
-        knowledgeBySpace[knowledge.spaceId] ?? []
-      ).concat(knowledge);
-    }
-
-    return knowledgeBySpace;
-  }, [attachedKnowledge]);
-
-  const skillsBySpaceId = useMemo(() => {
-    const skillsBySpace: Record<string, ReferencedSkillFormData[]> = {};
-
-    for (const skill of referencedSkills ?? []) {
-      for (const spaceId of skill.requestedSpaceIds) {
-        skillsBySpace[spaceId] = (skillsBySpace[spaceId] ?? []).concat(skill);
-      }
-    }
-
-    return skillsBySpace;
-  }, [referencedSkills]);
-
-  const initialAdditionalSpaces = useMemo(() => {
-    if (!areSpaceRequirementsReady || !initialRequestedSpaceIds?.length) {
-      return [];
-    }
-
-    return initialRequestedSpaceIds.filter(
-      (spaceId) => !spaceIdsUsedBySkill.has(spaceId)
-    );
-  }, [
-    areSpaceRequirementsReady,
-    initialRequestedSpaceIds,
-    spaceIdsUsedBySkill,
-  ]);
 
   useEffect(() => {
     if (
@@ -161,19 +62,6 @@ export function SkillBuilderRequestedSpacesSection({
     initialRequestedSpaceIds,
     resetField,
   ]);
-
-  const additionalSpaceIds = useMemo(() => {
-    return new Set(selectedAdditionalSpaces);
-  }, [selectedAdditionalSpaces]);
-
-  const nonGlobalSpacesWithRestrictions = useMemo(() => {
-    return allSpaces.filter(
-      (space) =>
-        space.kind !== "global" &&
-        (spaceIdsUsedBySkill.has(space.sId) ||
-          additionalSpaceIds.has(space.sId))
-    );
-  }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     if (!areSpaceRequirementsReady) {
@@ -222,24 +110,21 @@ export function SkillBuilderRequestedSpacesSection({
     handleCloseSheet();
   };
 
-  const globalSpace = useMemo(() => {
-    return allSpaces.find((s) => s.kind === "global");
-  }, [allSpaces]);
-
   const spacesToDisplay = useMemo(() => {
-    return removeNulls([globalSpace, ...nonGlobalSpacesWithRestrictions]);
-  }, [globalSpace, nonGlobalSpacesWithRestrictions]);
+    return removeNulls([globalSpace, ...nonGlobalSpacesUsedBySkill]);
+  }, [globalSpace, nonGlobalSpacesUsedBySkill]);
 
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
           <h3 className="heading-lg font-semibold text-foreground">
-            Visibility control and available data
+            Data and access
           </h3>
           <p className="text-sm text-muted-foreground">
-            Add a space or pod to restrict usage to its members and make its
-            data available to this skill.
+            Adding spaces or pods will make the data from each of them available
+            to the skill. Only members of all the spaces and pods listed will
+            have access to the skill.
           </p>
         </div>
         <Button
@@ -250,11 +135,6 @@ export function SkillBuilderRequestedSpacesSection({
           onClick={handleOpenSheet}
         />
       </div>
-      <SpaceRestrictionMessage
-        entityName="skill"
-        owner={owner}
-        spaces={nonGlobalSpacesWithRestrictions}
-      />
       <SpaceChips
         spaces={spacesToDisplay}
         onRemoveSpace={isReadOnly ? undefined : handleRemoveSpace}

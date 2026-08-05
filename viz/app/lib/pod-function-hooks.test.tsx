@@ -5,6 +5,7 @@ import {
   PodFunctionHooksProvider,
   usePodFunction,
   usePodFunctionMutation,
+  useUserIdentity,
 } from "@viz/app/lib/pod-function-hooks";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import { createElement, type PropsWithChildren } from "react";
@@ -28,6 +29,11 @@ function makeDataAPI(
     callFunction,
     fetchCode: vi.fn(),
     fetchFile: vi.fn(),
+    getUserIdentity: vi.fn().mockResolvedValue({
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      user: null,
+    }),
   };
 }
 
@@ -36,6 +42,60 @@ function makeWrapper(dataAPI: VisualizationDataAPI) {
     return createElement(PodFunctionHooksProvider, { dataAPI }, children);
   };
 }
+
+describe("useUserIdentity", () => {
+  it("returns the user authenticated in the Frame workspace", async () => {
+    const dataAPI = makeDataAPI(vi.fn());
+    dataAPI.getUserIdentity = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: {
+        sId: "usr_123",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+
+    const { result } = renderHook(() => useUserIdentity(), {
+      wrapper: makeWrapper(dataAPI),
+    });
+
+    expect(result.current).toMatchObject({
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      isLoading: true,
+      user: null,
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current).toMatchObject({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: { sId: "usr_123", fullName: "Ada Lovelace" },
+    });
+  });
+
+  it("fails closed when identity cannot be loaded", async () => {
+    const dataAPI = makeDataAPI(vi.fn());
+    dataAPI.getUserIdentity = vi
+      .fn()
+      .mockRejectedValue(new Error("Frame host unavailable"));
+
+    const { result } = renderHook(() => useUserIdentity(), {
+      wrapper: makeWrapper(dataAPI),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current).toMatchObject({
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      user: null,
+      error: new Error("Frame host unavailable"),
+    });
+  });
+});
 
 describe("usePodFunction", () => {
   it("calls a qualified slug and returns the direct function output", async () => {
@@ -190,12 +250,8 @@ describe("usePodFunction", () => {
     expect(result.current.mutate).toBe(mutate);
   });
 
-  it("shows cached data while revalidating when a query remounts", async () => {
-    const remountRequest = deferred<unknown>();
-    const callFunction = vi
-      .fn()
-      .mockResolvedValueOnce([{ id: 1 }])
-      .mockReturnValueOnce(remountRequest.promise);
+  it("serves cached data without revalidating when a query remounts immediately", async () => {
+    const callFunction = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { result, rerender } = renderHook(
       ({ slug }: { slug: string | null }) =>
         usePodFunction(slug, { threadId: "thread-1" }),
@@ -210,14 +266,9 @@ describe("usePodFunction", () => {
     rerender({ slug: null });
     rerender({ slug: "vlt_123/list-comments" });
 
-    await waitFor(() => expect(callFunction).toHaveBeenCalledTimes(2));
     expect(result.current.data).toEqual([{ id: 1 }]);
-    expect(result.current.isValidating).toBe(true);
-
-    remountRequest.resolve([{ id: 1 }, { id: 2 }]);
-    await waitFor(() =>
-      expect(result.current.data).toEqual([{ id: 1 }, { id: 2 }])
-    );
+    expect(result.current.isValidating).toBe(false);
+    expect(callFunction).toHaveBeenCalledTimes(1);
   });
 
   it("normalizes function failures without retrying", async () => {
@@ -370,13 +421,12 @@ describe("usePodFunctionMutation", () => {
     expect(callFunction).not.toHaveBeenCalled();
   });
 
-  it("supports explicit query revalidation after a successful write", async () => {
-    const comments = [[{ id: 1 }], [{ id: 1 }, { id: 2 }]];
+  it("updates query data from a mutation result without revalidating", async () => {
     const callFunction = vi.fn(async (functionId: string) => {
       if (functionId.endsWith("/post-comment")) {
-        return { id: 2 };
+        return [{ id: 1 }, { id: 2 }];
       }
-      return comments.shift();
+      return [{ id: 1 }];
     });
     const { result } = renderHook(
       () => ({
@@ -390,12 +440,15 @@ describe("usePodFunctionMutation", () => {
 
     await waitFor(() => expect(result.current.list.data).toEqual([{ id: 1 }]));
     await act(async () => {
-      await result.current.post.trigger({
+      const updatedComments = await result.current.post.trigger({
         threadId: "thread-1",
         body: "Second",
       });
-      await result.current.list.mutate();
+      await result.current.list.mutate(updatedComments, {
+        revalidate: false,
+      });
     });
     expect(result.current.list.data).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(callFunction).toHaveBeenCalledTimes(2);
   });
 });

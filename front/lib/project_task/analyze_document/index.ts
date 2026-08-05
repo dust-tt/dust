@@ -152,7 +152,7 @@ async function buildPromptProjectDescription(
   return `Project description: ${metadata.description}`;
 }
 
-export type ExtractedTakeawayStats = {
+type ExtractedTakeawayStats = {
   actionItems: number;
 };
 

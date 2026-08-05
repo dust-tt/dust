@@ -84,6 +84,7 @@ export const AUDIT_ACTIONS = [
   "self_improvement.batch_mode_updated",
   "skill.self_improvement_updated",
   // Sandbox.
+  "pod_function.published",
   "sandbox_egress_policy.agent_requests_setting_updated",
   "sandbox_egress_policy.sandbox_updated",
   "sandbox_egress_policy.updated",
@@ -168,6 +169,9 @@ export const AUDIT_ACTIONS = [
   // Files.
   "file.moved",
   "frame.authorized_files_updated",
+  "frame.email_grant_added",
+  "frame.email_grant_revoked",
+  "frame.share_scope_updated",
   // Audit Logs.
   "audit_log.viewed",
   "audit_log.export_configured",
@@ -180,7 +184,7 @@ export const AUDIT_ACTIONS = [
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-export type EmitAuditLogEventParams = {
+type EmitAuditLogEventParams = {
   auth: Authenticator;
   action: AuditAction;
   targets: AuditLogTarget[];
@@ -411,7 +415,9 @@ type AuditTargetType =
   | "group"
   | "credential"
   | "mcp_connection"
-  | "sandbox_env_var";
+  | "sandbox_env_var"
+  | "pod_function"
+  | "frame";
 
 /**
  * Resource shape required for each audit target type.
@@ -452,7 +458,7 @@ export function getAuditLogContext(
   return { location: auth.clientIp() ?? "internal" };
 }
 
-export type AgentTriggerType = "user" | "agent" | "trigger" | "handover";
+type AgentTriggerType = "user" | "agent" | "trigger" | "handover";
 
 /**
  * Classifies how an agent run was triggered, for the `trigger_type` metadata on

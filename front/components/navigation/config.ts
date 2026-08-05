@@ -16,7 +16,6 @@ import {
   BarChart01,
   Brackets,
   Brain,
-  Building04,
   CreditCard01,
   File04,
   Fingerprint04,
@@ -66,17 +65,15 @@ function matchesRoutePattern(
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
  */
-export type TopNavigationId =
+type TopNavigationId =
   | "conversations"
   | "assistants"
   | "admin"
   | "data_sources";
 
-export type SubNavigationConversationsId =
-  | "conversation"
-  | "personal_assistants";
+type SubNavigationConversationsId = "conversation" | "personal_assistants";
 
-export type SubNavigationAssistantsId =
+type SubNavigationAssistantsId =
   | "data_sources_managed"
   | "data_sources_static"
   | "workspace_assistants"
@@ -87,10 +84,9 @@ export type SubNavigationAssistantsId =
   | "community"
   | "spaces";
 
-export type SubNavigationAdminId =
+type SubNavigationAdminId =
   | "subscription"
   | "billing"
-  | "workspace"
   | "governance"
   | "workspace_branding"
   | "model_providers"
@@ -105,10 +101,9 @@ export type SubNavigationAdminId =
   | "usage"
   | "self_improving_skills";
 
-export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
+const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
   identity_and_provisioning: ["/w/[wId]/identity-and-provisioning"],
-  workspace: ["/w/[wId]/workspace"],
   governance: ["/w/[wId]/governance"],
   workspace_branding: ["/w/[wId]/brand"],
   model_providers: ["/w/[wId]/model-providers"],
@@ -151,7 +146,7 @@ export type AppLayoutNavigation = {
   disabled?: boolean;
 };
 
-export type TabAppLayoutNavigation = {
+type TabAppLayoutNavigation = {
   id:
     | TopNavigationId
     | SubNavigationConversationsId
@@ -224,7 +219,6 @@ export const getTopNavigationTabs = (
         matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
           "/w/[wId]/identity-and-provisioning",
-          "/w/[wId]/workspace",
           "/w/[wId]/governance",
           "/w/[wId]/branding",
           "/w/[wId]/model-providers",
@@ -279,7 +273,6 @@ export const subNavigationAdmin = ({
 
   const hasAdminRole = isAdmin(owner);
   const hasManagerRole = isManager(owner);
-  const isAdminGovernanceEnabled = featureFlags.includes("admin_governance");
 
   nav.push({
     id: "workspace",
@@ -295,35 +288,20 @@ export const subNavigationAdmin = ({
       },
       {
         id: "identity_and_provisioning",
-        label: isAdminGovernanceEnabled
-          ? "IT & Security"
-          : "Identity & Provisioning",
+        label: "IT & Security",
         icon: Fingerprint04,
         href: `/w/${owner.sId}/identity-and-provisioning`,
         current: isCurrent("identity_and_provisioning"),
         disabled: !canAdminSecurity,
       },
-      ...(isAdminGovernanceEnabled
-        ? [
-            {
-              id: "governance" as const,
-              label: "Settings & Governance",
-              icon: Toggle01Left,
-              href: `/w/${owner.sId}/governance`,
-              current: isCurrent("governance"),
-              disabled: !hasManagerRole,
-            },
-          ]
-        : [
-            {
-              id: "workspace" as const,
-              label: "Workspace Settings",
-              icon: Building04,
-              href: `/w/${owner.sId}/workspace`,
-              current: isCurrent("workspace"),
-              disabled: !hasAdminRole,
-            },
-          ]),
+      {
+        id: "governance",
+        label: "Settings & Governance",
+        icon: Toggle01Left,
+        href: `/w/${owner.sId}/governance`,
+        current: isCurrent("governance"),
+        disabled: !hasManagerRole,
+      },
       ...(featureFlags.includes("whitelabel_frames")
         ? [
             {

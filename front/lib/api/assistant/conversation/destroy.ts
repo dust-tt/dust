@@ -12,12 +12,12 @@ import {
   MessageReactionModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import {
   AgentMessageSkillModel,
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -82,13 +82,6 @@ async function destroyMessageRelatedResources(
     sourceMessageModelIds: messageIds,
   });
 
-  await ConversationBranchModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      previousMessageId: messageIds,
-    },
-  });
-
   await MessageReactionModel.destroy({
     where: {
       workspaceId: owner.id,
@@ -147,6 +140,82 @@ async function destroyConversationDataSource(
   }
 }
 
+export async function destroyConversationMessages(
+  auth: Authenticator,
+  messages: MessageModel[]
+) {
+  const owner = auth.getNonNullableWorkspace();
+
+  // To preserve the DB, we delete messages in batches.
+  const messagesChunks = chunk(messages, DESTROY_MESSAGE_BATCH);
+  for (const messagesChunk of messagesChunks) {
+    const messageIds = messagesChunk.map((m) => m.id);
+    const userMessageIds = removeNulls(
+      messagesChunk.map((m) => m.userMessageId)
+    );
+    const agentMessageIds = removeNulls(
+      messagesChunk.map((m) => m.agentMessageId)
+    );
+    const compactionMessageIds = removeNulls(
+      messagesChunk.map((m) => m.compactionMessageId)
+    );
+    const contentFragmentIds = removeNulls(
+      messagesChunk.map((m) => m.contentFragmentId)
+    );
+
+    await AgentMessageConsumptionItemResource.deleteByAgentMessageModelIds(
+      auth,
+      {
+        agentMessageModelIds: agentMessageIds,
+      }
+    );
+
+    await destroyActionsRelatedResources(auth, agentMessageIds);
+
+    await UserMessageModel.destroy({
+      where: {
+        id: userMessageIds,
+        workspaceId: owner.id,
+      },
+    });
+    await AgentStepContentResource.deleteByAgentMessageIds(auth, {
+      agentMessageIds,
+    });
+    await AgentMessageFeedbackModel.destroy({
+      where: {
+        agentMessageId: agentMessageIds,
+        workspaceId: owner.id,
+      },
+    });
+
+    const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentMessageId: agentMessageIds,
+    };
+    await AgentMessageSkillModel.destroy({
+      where: whereAgentMessageSkill,
+    });
+
+    await AgentMessageModel.destroy({
+      where: {
+        id: agentMessageIds,
+        workspaceId: owner.id,
+      },
+    });
+
+    await destroyContentFragments(auth, contentFragmentIds);
+
+    await CompactionMessageModel.destroy({
+      where: {
+        id: compactionMessageIds,
+        workspaceId: owner.id,
+      },
+    });
+
+    await destroyMessageRelatedResources(auth, messageIds);
+  }
+}
+
 // This belongs to the ConversationResource. The authenticator is expected to have access to the
 // groups involved in the conversation.
 export async function destroyConversation(
@@ -183,14 +252,6 @@ export async function destroyConversation(
       conversation,
     });
 
-    // Clean up all branches attached to this conversation before deleting messages.
-    await ConversationBranchModel.destroy({
-      where: {
-        workspaceId: owner.id,
-        conversationId: conversation.id,
-      },
-    });
-
     // One prefix covers every content-fragment attachment for this conversation
     // (`.../conversations/{conversationId}/content_fragment/{messageId}/{text|raw}`).
     // Failures abort destroy before DB rows are touched so Temporal can retry.
@@ -212,67 +273,7 @@ export async function destroyConversation(
       },
     });
 
-    // To preserve the DB, we delete messages in batches.
-    const messagesChunks = chunk(messages, DESTROY_MESSAGE_BATCH);
-    for (const messagesChunk of messagesChunks) {
-      const messageIds = messagesChunk.map((m) => m.id);
-      const userMessageIds = removeNulls(
-        messagesChunk.map((m) => m.userMessageId)
-      );
-      const agentMessageIds = removeNulls(
-        messagesChunk.map((m) => m.agentMessageId)
-      );
-      const compactionMessageIds = removeNulls(
-        messagesChunk.map((m) => m.compactionMessageId)
-      );
-      const contentFragmentIds = removeNulls(
-        messagesChunk.map((m) => m.contentFragmentId)
-      );
-
-      await destroyActionsRelatedResources(auth, agentMessageIds);
-
-      await UserMessageModel.destroy({
-        where: {
-          id: userMessageIds,
-          workspaceId: owner.id,
-        },
-      });
-      await AgentStepContentResource.deleteByAgentMessageIds(auth, {
-        agentMessageIds,
-      });
-      await AgentMessageFeedbackModel.destroy({
-        where: {
-          agentMessageId: agentMessageIds,
-          workspaceId: owner.id,
-        },
-      });
-
-      const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        agentMessageId: agentMessageIds,
-      };
-      await AgentMessageSkillModel.destroy({
-        where: whereAgentMessageSkill,
-      });
-
-      await AgentMessageModel.destroy({
-        where: {
-          id: agentMessageIds,
-          workspaceId: owner.id,
-        },
-      });
-
-      await destroyContentFragments(auth, contentFragmentIds);
-
-      await CompactionMessageModel.destroy({
-        where: {
-          id: compactionMessageIds,
-          workspaceId: owner.id,
-        },
-      });
-
-      await destroyMessageRelatedResources(auth, messageIds);
-    }
+    await destroyConversationMessages(auth, messages);
 
     await destroyConversationDataSource(auth, {
       conversation: conversation.toJSON(),

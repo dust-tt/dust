@@ -130,7 +130,9 @@ export function useSkillBuilderSlashCommandCapabilities({
     status: "active",
   });
   const { serverViews, isLoading: isServerViewsLoading } =
-    useMCPServerViewsFromSpaces(owner, spaces);
+    useMCPServerViewsFromSpaces(owner, spaces, {
+      includeRestrictedToSkills: true,
+    });
 
   const tools = useMemo(
     () => getSkillBuilderSlashCommandTools({ serverViews, spaces }),

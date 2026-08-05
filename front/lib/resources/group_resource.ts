@@ -1633,20 +1633,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    if (
-      this.kind === "skill_editors" &&
-      workspaceMemberships.some((member) => !member.isBuilder)
-    ) {
-      return new Err(
-        new DustError(
-          "group_requirements_not_met",
-          userIds.length === 1
-            ? "Cannot add: user is not a builder in the workspace"
-            : "Cannot add: some users are not builders in the workspace"
-        )
-      );
-    }
-
     // Check if the user is already a member of the group.
     const activeMembers = await this.getActiveMembers(auth, { transaction });
     const activeMembersIds = activeMembers.map((m) => m.sId);
@@ -2634,16 +2620,21 @@ export class GroupResource extends BaseResource<GroupModel> {
     workspace,
     user,
     isBuilder,
+    createIfMissing = true,
   }: {
     workspace: LightWorkspaceType;
     user: UserResource;
     isBuilder: boolean;
+    // When false, the group is never created: if it doesn't exist yet the sync is a no-op. Used
+    // by provisioning, which mirrors `dust-builders` membership into an existing manual group but
+    // must not create one.
+    createIfMissing?: boolean;
   }): Promise<void> {
     const existingGroup =
       await GroupResource.fetchManualBuildersGroup(workspace);
 
-    if (!existingGroup && !isBuilder) {
-      // Nothing to revoke from a group that doesn't exist yet.
+    if (!existingGroup && (!isBuilder || !createIfMissing)) {
+      // Nothing to revoke from a group that doesn't exist yet, and we won't create it.
       return;
     }
 

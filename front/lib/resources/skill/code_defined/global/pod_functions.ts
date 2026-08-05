@@ -135,7 +135,6 @@ tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress
 workspace's \`DST_*\` (plain config) and \`DSEC_*\` (HTTPS secret placeholder) environment variables
 are available under the same substitution rules as the Computer.
 
-
 #### Calling other tools from a function
 
 \`dsbx\` is available inside a function's own process, the same way it is in the conversation's
@@ -175,6 +174,17 @@ A Frame calls published functions through the injected \`@dust/react-hooks\` mod
 \`${toolName("get")}\`. Never pass a bare slug or infer the function from the Frame's current Pod.
 This keeps the reference stable if the Frame is moved.
 
+##### Designing functions for a Frame
+
+Design the function contract around the Frame interaction, not individual database tables:
+
+- make reads idempotent and side-effect-free, and return one bounded screen snapshot instead of
+  creating waterfalls or N+1 calls;
+- make mutations return the updated entity or screen snapshot so the Frame can update its cache
+  without another function call;
+- keep write operations safe against duplicate interaction, using a stable idempotency key when a
+  repeated request would otherwise create duplicate data.
+
 Use \`usePodFunction\` for idempotent reads. It caches identical calls, deduplicates calls already
 in flight, and keeps previous data visible while revalidating. Pass \`null\` as the reference to
 disable the query.
@@ -190,7 +200,8 @@ const { data, error, isLoading, isValidating, mutate } = usePodFunction(
 
 Use \`usePodFunctionMutation\` for writes and other side effects. Mutations only run when
 \`trigger\` is called. They are not deduplicated and do not guess which cached queries they affect.
-Revalidate the affected read explicitly after the mutation succeeds.
+Prefer mutation functions whose output matches the affected read snapshot, then write that result
+to the query cache without revalidating.
 
 \`\`\`tsx
 import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks"
@@ -199,10 +210,15 @@ const comments = usePodFunction("<podId>/list-comments", { threadId })
 const addComment = usePodFunctionMutation("<podId>/post-comment")
 
 async function handleAddComment(body: string) {
-  await addComment.trigger({ threadId, body })
-  await comments.mutate()
+  const updatedComments = await addComment.trigger({ threadId, body })
+  await comments.mutate(updatedComments, { revalidate: false })
 }
 \`\`\`
+
+For immediate feedback, apply an optimistic cache update before triggering the mutation and replace
+it with the authoritative mutation result afterward. Roll the optimistic value back if the mutation
+fails. Only call \`mutate()\` without data when the mutation cannot return the affected state; do not
+make a blocking mutation-then-refetch sequence the default.
 
 Call mutation handlers from a button or another supported in-Frame interaction. Do not model this
 as HTML form submission because forms cannot run inside the Frame iframe.
@@ -221,11 +237,92 @@ fall back to a generic message for the rest. The ones worth branching on are \`i
 \`invalid_output\` for schema mismatches, \`threw\` when the function threw, \`http_error\` when the
 function's own request failed, \`sandbox_function_not_found\`, and \`not_supported\`.
 
-The existing imperative \`callFunction\` remains available unchanged for explicit calls and also
-takes \`<podId>/<slug>\` or a function id. Pod functions are only reachable from authenticated Pod
-Frames, not from public or shared Frames.`,
+Pod functions in shared Frames are available to authenticated members of the Pod's workspace;
+anonymous viewers cannot call them.
+
+#### Knowing who called a function
+
+A function can require a caller and read who they are. These are two separate things: the
+\`schema.userIdentity\` policy decides **whether the function runs at all**, and \`currentUser()\`
+decides **what it does** for the caller it got.
+
+Declare the policy alongside the input and output schemas:
+
+- \`"optional"\` (the default when you omit the field) runs the function with or without a user.
+  It does not hide the caller: \`currentUser()\` still returns whoever called, and only returns
+  \`null\` when the invocation genuinely has no user. Use it when the function should still answer
+  a userless caller, and personalize from \`currentUser()\` when there happens to be one.
+- \`"workspace_user_required"\` refuses the call unless it comes from a current member of the Pod's
+  workspace. Use it as soon as the function reads or writes anything that belongs to a person, or
+  performs an action that should be attributable.
+
+\`\`\`ts
+import { z } from "zod";
+import { currentUser } from "@dust/pod";
+
+export const schema = {
+  description: "List the notes belonging to the calling user.",
+  userIdentity: "workspace_user_required",
+  input: z.object({}),
+  output: z.object({ notes: z.array(z.object({ id: z.number(), body: z.string() })) }),
+};
+\`\`\`
+
+Inside \`fetch\`, \`currentUser()\` from \`@dust/pod\` returns the caller as
+\`{ sId, firstName, lastName, fullName, image }\`, or \`null\` when the invocation has no user.
+Under \`"workspace_user_required"\` the platform has already rejected userless calls, so a
+non-null user is guaranteed; under \`"optional"\` you must handle \`null\` yourself.
+
+The membership is re-checked against the Pod's workspace when the invocation runs, not just when
+it is queued, so a user removed from the workspace in between is refused.
+
+**Never take the caller's identity as an input.** An \`input\` field like \`userId\` is supplied by
+whoever calls the function and can name anyone. \`currentUser()\` is the only trustworthy source.
+
+This matters most when a Frame calls the function. A Frame can read its viewer with
+\`useUserIdentity\`, but that is for what it displays; it decides nothing. The function resolves its
+own caller, so never accept an identity the Frame sends, and put the check that actually restricts
+something here rather than in the interface that renders the button.
+
+\`\`\`ts
+// BAD: any caller can pass someone else's id.
+input: z.object({ userId: z.string() })
+
+// GOOD: the platform decides who the caller is.
+const user = currentUser();
+\`\`\`
+
+#### Per-user state and sessions
+
+Scope rows by \`currentUser().sId\`, which is stable for a user across calls, conversations, and
+Frames. That single column is what turns a shared Pod database into per-user state, so add it when
+you create the table rather than retrofitting it later (schema evolution is additive-only).
+
+\`\`\`ts
+// databases/notes.db.ts
+export const notes = sqliteTable("notes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id"),        // currentUser().sId
+  body: text("body"),
+  createdAt: integer("created_at", { mode: "timestamp" }),
+}, (t) => [index("notes_user_idx").on(t.userId)]);
+
+// list-notes.ts, declared "workspace_user_required"
+const user = currentUser();
+const rows = db("notes").select().from(notes).where(eq(notes.userId, user.sId)).all();
+\`\`\`
+
+Filter by \`userId\` on **every** read and write, not only on the read that renders the screen: a
+function that fetches a row by its primary key and then updates it must still check the row belongs
+to the caller, otherwise a guessed id reaches another user's data.
+
+Split capabilities across functions rather than branching inside one. A \`list-notes\` and a
+\`delete-note\` published separately can carry different policies and are each easy to reason about;
+one \`notes\` function taking an \`action\` field is not. If a capability must be restricted to a
+subset of members, keep that list in the database and check it against \`currentUser().sId\` —
+the platform only tells you the caller is a workspace member, not what they are allowed to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 4,
+  version: 5,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

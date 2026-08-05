@@ -10,7 +10,6 @@ import type {
   GetProjectContextResponseBody,
   PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
 import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
@@ -210,52 +209,6 @@ export function useAddPodContextContentNodes({
       sendNotification({
         type: "error",
         title: "Failed to add references to Pod",
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
-}
-
-export function useRemovePodContextFile({
-  owner,
-  podId,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-}) {
-  const sendNotification = useSendNotification();
-
-  return async (fileId: string): Promise<Result<void, Error>> => {
-    try {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${podId}/project_context/files/${fileId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to remove file from Pod",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
-
-      sendNotification({
-        type: "success",
-        title: "Removed from Pod files",
-      });
-
-      return new Ok(undefined);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to remove file from Pod",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -1102,25 +1055,18 @@ export function usePodDefaultSkills({
   podId: string;
   disabled?: boolean;
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const hasPodDefaultSkillsFeature = hasFeature("pod_default_skills");
-  const enabled = hasPodDefaultSkillsFeature && !disabled;
-
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
     podId,
-    disabled: !enabled,
+    disabled,
   });
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    disabled: !enabled,
+    disabled,
   });
 
   const defaultSkills = useMemo(() => {
-    if (!hasPodDefaultSkillsFeature) {
-      return undefined;
-    }
     const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
     // Preserve the stored order.
     return (podMetadata?.defaultSkillIds ?? []).flatMap((skillId) => {
@@ -1129,7 +1075,7 @@ export function usePodDefaultSkills({
         ? [{ sId: skill.sId, name: skill.name, icon: skill.icon }]
         : [];
     });
-  }, [hasPodDefaultSkillsFeature, skills, podMetadata?.defaultSkillIds]);
+  }, [skills, podMetadata?.defaultSkillIds]);
 
   return {
     defaultSkills,

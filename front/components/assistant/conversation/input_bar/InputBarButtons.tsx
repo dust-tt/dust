@@ -11,7 +11,7 @@ import type useCustomEditor from "@app/components/editor/input_bar/useCustomEdit
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -64,9 +64,9 @@ interface InputBarButtonsProps {
   lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
-  onModelSelectionChange?: (
-    modelSelection: ModelSelectionType | undefined
-  ) => void;
+  // Read-at-submit sink for the model picker; prefer over a change callback
+  // when the parent only needs the value at submit time.
+  modelSelectionRef?: React.MutableRefObject<ModelSelectionType | undefined>;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
@@ -104,7 +104,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   lastRequestedModel,
   onAgentRemove,
   onMCPServerViewSelect,
-  onModelSelectionChange,
+  modelSelectionRef,
   onNodeSelect,
   onNodeUnselect,
   onSkillSelect,
@@ -125,7 +125,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
 }: InputBarButtonsProps) {
   const router = useAppRouter();
   const isMobile = useIsMobile();
-  const isWidthConstrained = isMobile || clientType === "extension";
+  const isWidthConstrained = useIsWidthConstrained();
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -249,7 +249,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       buttonSize={buttonSize}
       side={conversation ? "top" : "bottom"}
       disabled={isInputDisabled}
-      onSelectionChange={onModelSelectionChange}
+      selectionRef={modelSelectionRef}
     />
   );
 

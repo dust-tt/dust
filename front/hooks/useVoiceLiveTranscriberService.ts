@@ -26,7 +26,7 @@ interface UseVoiceLiveTranscriberServiceParams {
   onError?: (error: Error) => void;
 }
 
-export type VoiceLiveTranscriberService = VoiceTranscriberService;
+type VoiceLiveTranscriberService = VoiceTranscriberService;
 
 // AudioWorklet processor: converts float32 PCM to int16 and transfers the buffer
 // to the main thread. Runs on the dedicated audio-rendering thread (not main thread).

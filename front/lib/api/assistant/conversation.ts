@@ -12,13 +12,18 @@ import {
   getConversationRankVersionLock,
   getNextConversationMessageRank,
 } from "@app/lib/api/assistant/conversation/lock";
-import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
 import {
+  createUserMentions,
+  resolveUserMentions,
+} from "@app/lib/api/assistant/conversation/mentions";
+import {
+  attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
   createUserMessage,
+  resolveModelForMentionedAgent,
 } from "@app/lib/api/assistant/conversation/messages";
 import {
-  canAgentBeUsedInProjectConversation,
+  isAgentRestrictedBySpaceUsage,
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
@@ -42,6 +47,9 @@ import {
   makeMessageRateLimitKeyForWorkspaceActor,
   makeMessageRateLimitKeyForWorkspaceActorPerHour,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
+  makeSidekickMessageRateLimitKeyForWorkspaceActor,
+  SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+  SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
@@ -63,6 +71,10 @@ import {
 } from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { config as regionConfig } from "@app/lib/api/regions/config";
+import {
+  isNonCreditPricedUserSpendLimitReached,
+  isUserSpendLimitRateCapReached,
+} from "@app/lib/api/users/spend_limit";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -94,7 +106,6 @@ import { triggerConversationUnreadNotifications } from "@app/lib/notifications/w
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import {
   ConversationResource,
   type RunningAgentMessageContext,
@@ -104,7 +115,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 
@@ -148,6 +158,7 @@ import {
   ConversationError,
   isAgentMessageType,
   isPodConversation,
+  isSystemAuthoredUserMessage,
   isUserMessageType,
   UNRESUMABLE_AGENT_MESSAGE_STATUSES,
 } from "@app/types/assistant/conversation";
@@ -352,16 +363,6 @@ export async function getConversationMessageType(
     return null;
   }
 
-  if (message.getBranchId()) {
-    const branch = await ConversationBranchResource.fetchById(
-      auth,
-      message.getBranchId()!
-    );
-    if (!branch || !branch.canRead(auth)) {
-      return null;
-    }
-  }
-
   if (message.userMessageId) {
     return "user_message";
   }
@@ -508,7 +509,7 @@ export function isUserMessageContextValid(
     case "project_kickoff":
     case "reinforced_skill_notification":
     case "reinforcement":
-    case "branch_anchor":
+    case "system_activation":
     case "web":
       return false;
     default:
@@ -523,7 +524,6 @@ export async function postUserMessage(
   auth: Authenticator,
   {
     conversationResource,
-    branchId: initialBranchId = null,
     content,
     mentions,
     context,
@@ -534,7 +534,6 @@ export async function postUserMessage(
     modelSelection,
   }: {
     conversationResource: ConversationResource;
-    branchId?: string | null;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
@@ -558,10 +557,8 @@ export async function postUserMessage(
   const subscription = auth.subscription();
   const plan = subscription?.plan;
 
-  const conversation: ConversationWithoutContentType = {
-    ...conversationResource.toJSON(),
-    branchId: initialBranchId,
-  };
+  const conversation: ConversationWithoutContentType =
+    conversationResource.toJSON();
 
   if (!owner || !subscription || !plan) {
     return new Err({
@@ -619,7 +616,6 @@ export async function postUserMessage(
     const hasOtherHumans =
       await conversationResource.hasUserMessageFromOtherUser(auth, {
         excludeUserId: user?.id,
-        branchId: conversation.branchId,
       });
 
     if (!hasOtherHumans) {
@@ -659,9 +655,7 @@ export async function postUserMessage(
   // below which means an agent loop could be triggered whle a compaction is running. This is not
   // that problematic if it happens (agent message after the compaction message).
   const { runningAgentMessage: runningAgentContext, runningCompactionMessage } =
-    await conversationResource.getInFlightMessages(auth, {
-      branchId: conversation.branchId,
-    });
+    await conversationResource.getInFlightMessages(auth);
   if (runningCompactionMessage) {
     return new Err({
       status_code: 409,
@@ -741,7 +735,6 @@ export async function postUserMessage(
   ]);
 
   let agentConfigurations = removeNulls(results[0]);
-  let shouldCreateBranch = false;
 
   // Retired global agents can't be invoked (new conversations or new messages).
   // The internal `run_agent` path is exempt: some hidden sub-agents are retired.
@@ -806,17 +799,32 @@ export async function postUserMessage(
         },
       });
     }
-
-    // When the agent is not usable, we will create a branch.
-    if (isPartOfPod) {
-      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-        configuration: agentConfig,
-        conversation,
-      });
-
-      shouldCreateBranch = shouldCreateBranch || !canAgentBeUsed;
-    }
   }
+
+  // TODO(2026-07-31 SEC): this allow spoofing as we trust blindly the user email from the metadata.
+  let messageUser = doNotAssociateUser ? null : (user?.toJSON() ?? null);
+  messageUser ??= await attributeUserFromWorkspaceAndEmail(
+    owner,
+    context.email
+  );
+
+  const resolvedUserMentions = await resolveUserMentions(auth, {
+    mentions,
+    conversation,
+    message: { type: "user_message" },
+  });
+
+  const mentionedAgentConfiguration = agentConfigurations[0] ?? null;
+  const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
+    configuration: mentionedAgentConfiguration,
+    conversation,
+  });
+  const modelResolution = mentionedAgentConfiguration
+    ? await resolveModelForMentionedAgent(auth, {
+        configuration: mentionedAgentConfiguration,
+        selection: modelSelection,
+      })
+    : null;
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
@@ -824,93 +832,6 @@ export async function postUserMessage(
     // this transaction, otherwise this other query will be competing for a connection in the database
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
-
-    let nextMessageRank: number | undefined;
-
-    // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
-    // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
-    // - Message has user mentions, we don't support multiple users in a branch yet.
-    // - Last message in conversation has no content should never happen, but we will log an error and continue.
-    // If we do not create a branch, the user will receive a notification that the agent is not usable.
-    if (shouldCreateBranch) {
-      if (user === null) {
-        // Should never happen, but we will log an error and continue.
-        logger.error("User is null, cannot create branch without a user.");
-      } else if (mentions.some(isUserMention)) {
-        logger.info(
-          "Message has user mentions, for now we do not support branching with user mentions."
-        );
-      } else {
-        const branchContext =
-          await conversationResource.getBranchCreationContext(auth, {
-            branchId: conversation.branchId,
-            transaction: t,
-          });
-        const shouldCreateAnchorMessage =
-          branchContext.isEmpty || branchContext.onlyContentFragments;
-
-        if (shouldCreateAnchorMessage) {
-          // Create an invisible anchor message so the branch has a previousMessageId
-          // to reference. If the conversation only contains content fragments, keep
-          // them before the anchor so they remain attached to the branch context.
-          const anchorMessageRank =
-            branchContext.maxRank !== null ? branchContext.maxRank + 1 : 0;
-          const anchorMessage = await createUserMessage(auth, {
-            conversation,
-            content: "",
-            metadata: {
-              type: "create",
-              user: user.toJSON(),
-              rank: anchorMessageRank,
-              context: {
-                ...context,
-                origin: "branch_anchor",
-              },
-              requestedModel: modelSelection ?? null,
-            },
-            transaction: t,
-          });
-
-          const branch = await ConversationBranchResource.makeNew(
-            auth,
-            {
-              conversationId: conversation.id,
-              previousMessageId: anchorMessage.id,
-              state: "open",
-              userId: user.id,
-            },
-            t
-          );
-
-          conversation.branchId = branch.sId;
-          nextMessageRank = anchorMessageRank + 1;
-        } else {
-          const previousMessage = branchContext.lastMessage;
-          if (!previousMessage) {
-            logger.error(
-              "Last message in conversation has no content, cannot create branch."
-            );
-          } else {
-            // Create a new branch for the conversation.
-            const branch = await ConversationBranchResource.makeNew(
-              auth,
-              {
-                conversationId: conversation.id,
-                previousMessageId: previousMessage.id,
-                state: "open",
-                userId: user.id,
-              },
-              t
-            );
-
-            // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
-            conversation.branchId = branch.sId;
-            // Set the next message rank to the rank of the previous message plus one.
-            nextMessageRank = previousMessage.rank + 1;
-          }
-        }
-      }
-    }
 
     // We clear the hasError flag of a conversation when posting a new user message.
     if (conversation.hasError) {
@@ -923,7 +844,7 @@ export async function postUserMessage(
       );
     }
 
-    nextMessageRank ??= await getNextConversationMessageRank(auth, {
+    let nextMessageRank = await getNextConversationMessageRank(auth, {
       conversation,
       transaction: t,
     });
@@ -971,7 +892,7 @@ export async function postUserMessage(
       content,
       metadata: {
         type: "create",
-        user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
+        user: messageUser,
         rank: nextMessageRank++,
         context: enrichedContext,
         agenticMessageData,
@@ -982,7 +903,7 @@ export async function postUserMessage(
     });
 
     const richMentions = await createUserMentions(auth, {
-      mentions,
+      resolvedMentions: resolvedUserMentions,
       message: userMessageWithoutMentions,
       conversation,
       transaction: t,
@@ -1016,11 +937,12 @@ export async function postUserMessage(
           conversation,
           metadata: {
             type: "create",
-            mentions,
-            agentConfigurations,
+            agentConfiguration: mentionedAgentConfiguration,
             skipToolsValidation,
             nextMessageRank,
             userMessage: userMessageWithoutMentions,
+            modelResolution,
+            isRestrictedBySpaceUsage: mentionedAgentRestricted,
           },
           transaction: t,
         });
@@ -1120,7 +1042,6 @@ export async function postUserMessage(
         contentFragments: await fetchPrecedingContentFragments(auth, {
           conversationResource,
           targetRank: userMessage.rank,
-          branchId: conversation.branchId,
         }),
       },
       agentMessages
@@ -1163,6 +1084,20 @@ function canAccessAgent(
 
 class UserMessageError extends Error {}
 
+// A system-authored message has no author to be, so nobody passes this. Testing
+// that first also stops an API key, which has no `auth.user()` either, from
+// matching null against null.
+function isUserMessageAuthor(
+  auth: Authenticator,
+  message: UserMessageType
+): boolean {
+  if (isSystemAuthoredUserMessage(message)) {
+    return false;
+  }
+
+  return auth.user()?.id === message.user?.id;
+}
+
 /**
  * This method creates a new user message version. If a new message contains agent mentions, it will create new agent messages,
  * only when there are no agent messages after the edited user message.
@@ -1171,14 +1106,12 @@ export async function editUserMessage(
   auth: Authenticator,
   {
     conversationResource,
-    branchId: initialBranchId = null,
     message,
     content,
     mentions,
     skipToolsValidation,
   }: {
     conversationResource: ConversationResource;
-    branchId?: string | null;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
@@ -1203,7 +1136,7 @@ export async function editUserMessage(
     });
   }
 
-  if (auth.user()?.id !== message.user?.id) {
+  if (!isUserMessageAuthor(auth, message)) {
     return new Err({
       status_code: 403,
       api_error: {
@@ -1213,10 +1146,8 @@ export async function editUserMessage(
     });
   }
 
-  const conversation: ConversationWithoutContentType = {
-    ...conversationResource.toJSON(),
-    branchId: initialBranchId,
-  };
+  const conversation: ConversationWithoutContentType =
+    conversationResource.toJSON();
 
   const canInteractRes = await WakeUpResource.canUserInteract(
     auth,
@@ -1284,6 +1215,26 @@ export async function editUserMessage(
     }
   }
 
+  const resolvedUserMentions = await resolveUserMentions(auth, {
+    mentions,
+    conversation,
+    message: { type: "user_message" },
+  });
+
+  const mentionedAgentConfiguration = agentConfigurations[0] ?? null;
+
+  const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
+    configuration: mentionedAgentConfiguration,
+    conversation,
+  });
+
+  const modelResolution = mentionedAgentConfiguration
+    ? await resolveModelForMentionedAgent(auth, {
+        configuration: mentionedAgentConfiguration,
+        selection: message.requestedModel ?? undefined,
+      })
+    : null;
+
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
     const result = await withTransaction(async (t) => {
@@ -1341,7 +1292,7 @@ export async function editUserMessage(
       });
 
       const richMentions = await createUserMentions(auth, {
-        mentions,
+        resolvedMentions: resolvedUserMentions,
         message: userMessageWithoutMentions,
         conversation,
         transaction: t,
@@ -1353,7 +1304,6 @@ export async function editUserMessage(
         const hasAgentMessagesAfter =
           await conversationResource.hasAgentMessageAfterRank(auth, {
             afterRank: messageRow.rank,
-            branchId: conversation.branchId,
             transaction: t,
           });
 
@@ -1373,11 +1323,12 @@ export async function editUserMessage(
             conversation,
             metadata: {
               type: "create",
-              mentions,
-              agentConfigurations,
+              agentConfiguration: mentionedAgentConfiguration,
               skipToolsValidation,
               nextMessageRank,
               userMessage: userMessageWithoutMentions,
+              modelResolution,
+              isRestrictedBySpaceUsage: mentionedAgentRestricted,
             },
             transaction: t,
           });
@@ -1457,7 +1408,6 @@ export async function editUserMessage(
       contentFragments: await fetchPrecedingContentFragments(auth, {
         conversationResource,
         targetRank: userMessage.rank,
-        branchId: conversation.branchId,
       }),
     },
     agentMessages
@@ -1496,10 +1446,16 @@ export async function handleAgentMessage(
 
   const richMentions: RichMentionWithStatus[] = [];
   if (userMentions.length > 0) {
+    const resolvedUserMentions = await resolveUserMentions(auth, {
+      mentions: userMentions,
+      conversation,
+      message: agentMessage,
+    });
+
     await withTransaction(async (t) => {
       richMentions.push(
         ...(await createUserMentions(auth, {
-          mentions: userMentions,
+          resolvedMentions: resolvedUserMentions,
           message: agentMessage,
           conversation,
           transaction: t,
@@ -1565,9 +1521,6 @@ export async function createAgentMessageFromText(
         sId: generateRandomModelSId(),
         rank,
         conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
         parentId,
         agentMessageId: agentMessageRow.id,
         workspaceId: owner.id,
@@ -1751,18 +1704,14 @@ export async function retryAgentMessage(
   auth: Authenticator,
   {
     conversationResource,
-    branchId: initialBranchId = null,
     message,
   }: {
     conversationResource: ConversationResource;
-    branchId?: string | null;
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
-  const conversation: ConversationWithoutContentType = {
-    ...conversationResource.toJSON(),
-    branchId: initialBranchId,
-  };
+  const conversation: ConversationWithoutContentType =
+    conversationResource.toJSON();
 
   const parentMessageRes = await conversationResource.getMessageById(
     auth,
@@ -1781,7 +1730,6 @@ export async function retryAgentMessage(
   const latestParentMessageModel =
     await conversationResource.getLatestUserMessageModelAtRank(auth, {
       rank: parentMessageRes.value.rank,
-      branchId: message.branchId,
     });
   if (!latestParentMessageModel) {
     return new Err({
@@ -1820,6 +1768,18 @@ export async function retryAgentMessage(
     });
   }
 
+  // Retrying would replay the parent's server-set origin, which can carry free
+  // usage.
+  if (isSystemAuthoredUserMessage(parentUserMessage)) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "The answer to a message posted by Dust cannot be retried.",
+      },
+    });
+  }
+
   // Check plan and rate limit before retrying.
   const mentions = [{ configurationId: message.configuration.sId }];
   const limitResult = await checkMessagesLimit(auth, {
@@ -1845,22 +1805,8 @@ export async function retryAgentMessage(
     });
   }
 
-  if (isPodConversation(conversation)) {
-    const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-      configuration: retryAgentConfiguration,
-      conversation,
-    });
-    if (!canAgentBeUsed) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Invalid agent message retry request, the agent is restricted by space usage.",
-        },
-      });
-    }
-  }
+  // Restricted-space agents may already exist in a Pod conversation after the
+  // user approved the mention. Retry must not re-apply canAgentBeUsedInProjectConversation.
 
   let agentMessageResult: {
     agentMessage: AgentMessageType;
@@ -1970,7 +1916,6 @@ export async function retryAgentMessage(
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
-      conversationBranchId: conversation.branchId,
       userMessageId: parentUserMessage.sId,
       userMessageVersion: parentUserMessage.version,
       userMessageOrigin: parentUserMessage.context.origin,
@@ -2059,9 +2004,6 @@ export async function postNewContentFragment(
                 sId: generateRandomModelSId(),
                 rank: nextMessageRank,
                 conversationId: conversation.id,
-                branchId: conversation.branchId
-                  ? getResourceIdFromSId(conversation.branchId)
-                  : null,
                 contentFragmentId: r.fragment.id,
                 workspaceId: owner.id,
               },
@@ -2151,9 +2093,6 @@ export async function postNewContentFragment(
         sId: messageId,
         rank: nextMessageRank,
         conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
         contentFragmentId: contentFragment.id,
         workspaceId: owner.id,
       },
@@ -2201,21 +2140,17 @@ export async function softDeleteUserMessageAndReplies(
   {
     message,
     conversationResource,
-    branchId: initialBranchId = null,
   }: {
     message: UserMessageType;
     conversationResource: ConversationResource;
-    branchId?: string | null;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
     return new Ok({ success: true });
   }
 
-  const conversation: ConversationWithoutContentType = {
-    ...conversationResource.toJSON(),
-    branchId: initialBranchId,
-  };
+  const conversation: ConversationWithoutContentType =
+    conversationResource.toJSON();
 
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
@@ -2225,15 +2160,12 @@ export async function softDeleteUserMessageAndReplies(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  const branchId = message.branchId ?? initialBranchId;
-
   // Known small race: this snapshot is taken before the rank lock below. A concurrent retry/edit
   // that takes the lock first and writes a v+1 at the same rank could cause the cascade insert to
   // hit the (rank, version) unique constraint.
   const orphanAgentMessageModels =
     await conversationResource.getConsecutiveAgentReplyModelsAfterRank(auth, {
       afterRank: message.rank,
-      branchId,
     });
 
   const orphanModelsToCascade = orphanAgentMessageModels.filter(
@@ -2261,7 +2193,6 @@ export async function softDeleteUserMessageAndReplies(
     const relatedContentFragments = await fetchPrecedingContentFragments(auth, {
       conversationResource,
       targetRank: message.rank,
-      branchId,
       transaction: t,
     });
 
@@ -2463,7 +2394,7 @@ function getMessageLimitErrorMessage({
   }
 }
 
-async function checkMessagesLimit(
+export async function checkMessagesLimit(
   auth: Authenticator,
   {
     mentions,
@@ -2478,18 +2409,99 @@ async function checkMessagesLimit(
     return new Ok(undefined);
   }
 
+  // The "agent_sidekick" origin is the builder assistant: an interactive UI
+  // feature backed by free (unbilled) usage. Gate it here (so post, edit, and
+  // retry are all covered):
+  //   1. API keys can't use it — it's UI/session only, never programmatic.
+  //   2. It may only target the sidekick global agent — any other target would
+  //      let a caller run a real agent for free (the sidekick agent runs its
+  //      target via the run_agent tool, not a user-message mention).
+  //   3. It's capped per actor to bound how much free usage a single user can
+  //      generate through the assistant.
+  if (context.origin === "agent_sidekick") {
+    if (auth.isKey()) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          apiKeyId: auth.key()?.id,
+        },
+        "agent_sidekick origin used with API key auth; rejecting."
+      );
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "The agent_sidekick origin is only available to interactive users.",
+        },
+      });
+    }
+
+    const sidekickAgentMentions = mentions.filter(isAgentMention);
+    if (
+      sidekickAgentMentions.some(
+        (mention) => mention.configurationId !== GLOBAL_AGENTS_SID.SIDEKICK
+      )
+    ) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          userId: auth.user()?.sId,
+          mentionedAgentIds: sidekickAgentMentions.map(
+            (m) => m.configurationId
+          ),
+        },
+        "Message with agent_sidekick origin targets a non-sidekick agent; refusing to bill it as free."
+      );
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "The agent_sidekick origin can only target the sidekick agent.",
+        },
+      });
+    }
+
+    const remaining = await rateLimiter({
+      key: makeSidekickMessageRateLimitKeyForWorkspaceActor(
+        auth.getNonNullableWorkspace(),
+        getMessageRateLimitActor(auth)
+      ),
+      maxPerTimeframe: SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+      timeframeSeconds:
+        SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
+      logger,
+    });
+    if (remaining <= 0) {
+      return new Err({
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message:
+            "You have reached the sidekick usage limit. Please try again later.",
+        },
+      });
+    }
+  }
+
   // Credit-state + programmatic rate-limit gate. Two systems coexist:
   // - Credit-priced (Metronome) plans: workspace pool + per-user cap, cached in Redis.
   //   For API calls (no user), only the workspace pool applies via `isApiBlocked`.
   //   Pool-balance concurrency limiting (`checkPoolCreditConcurrencyLimit`) prevents
   //   close-to-0 attacks where many requests overshoot the pool before debits settle.
-  // - Legacy plans: programmatic credits checked via `checkProgrammaticUsageLimits`,
-  //   plus a credit-balance-scaled pre-emptive rate limit (`checkProgrammaticUsageRateLimit`).
+  // - Legacy plans: a per-user credit limit checked from the Redis fixed-window
+  //   counter (`isNonCreditPricedUserSpendLimitReached`), plus programmatic credits
+  //   checked via `checkProgrammaticUsageLimits` and a credit-balance-scaled
+  //   pre-emptive rate limit (`checkProgrammaticUsageRateLimit`).
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.subscription()?.plan;
   const user = auth.user();
+  const isCreditPricedWorkspace = Boolean(
+    owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)
+  );
 
-  if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
+  if (isCreditPricedWorkspace) {
     const blockedReason = user
       ? await isUserBlocked(owner, user)
       : (await isApiBlocked(owner.sId))
@@ -2533,6 +2545,27 @@ async function checkMessagesLimit(
             message: "You have reached your personal usage cap.",
           },
         });
+      }
+      // Redis fixed-window per-user spend cap: a synchronous backup of the
+      // Metronome per-user cap over the current contract billing cycle. Only
+      // applies to real users (API keys are gated by pool / programmatic caps
+      // instead). Enforcement is gated behind a feature flag while we validate
+      // the counter; usage is recorded regardless (in credit_cost), so the flag
+      // only controls blocking.
+      if (user) {
+        const featureFlags = await getFeatureFlags(auth);
+        if (
+          featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
+          (await isUserSpendLimitRateCapReached(auth, { user }))
+        ) {
+          return new Err({
+            status_code: 403,
+            api_error: {
+              type: "user_cap_reached",
+              message: "You have reached your personal usage cap.",
+            },
+          });
+        }
       }
       if (blockedReason === "credits_exhausted") {
         return new Err({
@@ -2608,7 +2641,33 @@ async function checkMessagesLimit(
         });
       }
     }
-  } else if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+  } else if (user && !isFreeOrigin(context.origin)) {
+    // Non-credit-priced plans: no workspace pool and no Metronome per-user cap,
+    // so the per-user credit limit is enforced solely from the Redis fixed-window
+    // counter, bucketed on the UTC calendar month. Admin-set (poke) workspace
+    // default, overridable per member. Free origins produce no billable usage,
+    // and API keys have no per-user limit (they are gated by the programmatic
+    // caps below). Flag-gated while we validate the counter; usage is recorded
+    // regardless (in credit_cost), so the flag only controls blocking.
+    const featureFlags = await getFeatureFlags(auth);
+    if (
+      featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
+      (await isNonCreditPricedUserSpendLimitReached(auth, { user }))
+    ) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "user_cap_reached",
+          message: "You have reached your personal usage cap.",
+        },
+      });
+    }
+  }
+
+  if (
+    !isCreditPricedWorkspace &&
+    isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
+  ) {
     const limitsResult = await checkProgrammaticUsageLimits(auth);
     if (limitsResult.isErr()) {
       return new Err({
@@ -3066,14 +3125,6 @@ export async function isConversationEventAllowedForAuth(
   switch (type) {
     case "user_message_new":
     case "agent_message_new":
-      if (event.message.branchId) {
-        // It's okay to fetch the branch here because theses events are only sent once per message.
-        const branch = await ConversationBranchResource.fetchById(
-          auth,
-          event.message.branchId
-        );
-        return !!branch && branch.canRead(auth);
-      }
       return true;
     case "agent_message_done":
     case "compaction_message_new":
@@ -3122,6 +3173,20 @@ export async function updateAgentMessageWithFinalStatus(
 }> {
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
+
+  const agentRestrictedBySpaceUsage = await isAgentRestrictedBySpaceUsage(
+    auth,
+    {
+      configuration: agentMessage.configuration,
+      conversation,
+    }
+  );
+
+  const defaultModelResolution = agentMessage.configuration
+    ? await resolveModelForMentionedAgent(auth, {
+        configuration: agentMessage.configuration,
+      })
+    : null;
 
   const {
     promotedUserMessages,
@@ -3282,16 +3347,26 @@ export async function updateAgentMessageWithFinalStatus(
       transaction: t,
     });
 
+    // The no-selection default was resolved before the transaction.
+    const modelResolution =
+      defaultModelResolution && !promotedUserMessage.requestedModel
+        ? defaultModelResolution
+        : await resolveModelForMentionedAgent(promotedAuth, {
+            configuration: agentMessage.configuration,
+            selection: promotedUserMessage.requestedModel ?? undefined,
+          });
+
     // Create a new agent message using the last promoted user message.
     const { agentMessages } = await createAgentMessages(promotedAuth, {
       conversation,
       metadata: {
         type: "create",
-        mentions: [{ configurationId: agentMessage.configuration.sId }],
-        agentConfigurations: [agentMessage.configuration],
+        agentConfiguration: agentMessage.configuration,
         skipToolsValidation: agentMessage.skipToolsValidation,
         nextMessageRank,
         userMessage: promotedUserMessages[promotedUserMessages.length - 1],
+        modelResolution,
+        isRestrictedBySpaceUsage: agentRestrictedBySpaceUsage,
       },
       transaction: t,
     });

@@ -71,7 +71,7 @@ export type StartVerificationError = {
   retryAfterSeconds?: number;
 };
 
-export type StartVerificationStatus = "code_sent" | "already_verified";
+type StartVerificationStatus = "code_sent" | "already_verified";
 
 export async function startVerification(
   auth: Authenticator,

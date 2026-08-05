@@ -9,7 +9,8 @@ import { Tooltip } from "./Tooltip";
 export const checkboxStyles = cva(
   cn(
     "h-4 w-4 rounded-md relative shrink-0 peer border transition duration-100 ease-out motion-reduce:transition-none",
-    "active:scale-95",
+    // Disabling the transition would make the press scale instantaneous, so disable the scale too.
+    "active:scale-95 motion-reduce:active:scale-100",
     "border-border-form bg-background",
     "data-[state=checked]:border-border-form-active",
     "data-[state=indeterminate]:border-border-form-active",
@@ -23,12 +24,12 @@ export const checkboxStyles = cva(
 // content area; the "ring" is the box's own border showing through.
 // Concentric corners: inner radius = outer radius (rounded-md, 6px) minus the
 // 1px border the fill sits inside.
+// Keep the fill mounted and full-sized so checked controls stay still on mount
+// and the border never separates from the fill during the icon animation.
 export const checkboxIndicatorStyles = cva(
   cn(
-    "absolute inset-0 flex items-center justify-center rounded-[5px]",
-    // Quick pop-in on check; unchecking unmounts instantly, which is fine —
-    // exits may be faster than entrances, and this is a high-frequency control.
-    "animate-in fade-in-0 zoom-in-90 duration-150 ease-enter motion-reduce:animate-none"
+    "group/checkbox-indicator absolute inset-0 flex items-center justify-center rounded-[5px] opacity-0",
+    "data-[state=checked]:opacity-100 data-[state=indeterminate]:opacity-100"
   ),
   {
     variants: {
@@ -39,6 +40,20 @@ export const checkboxIndicatorStyles = cva(
     },
     defaultVariants: {
       isMutedAfterCheck: false,
+    },
+  }
+);
+
+export const checkboxIconStyles = cva(
+  "absolute h-3 w-3 scale-90 text-background opacity-0 transition-[opacity,transform] duration-150 ease-enter motion-reduce:transition-none",
+  {
+    variants: {
+      state: {
+        checked:
+          "group-data-[state=checked]/checkbox-indicator:scale-100 group-data-[state=checked]/checkbox-indicator:opacity-100",
+        indeterminate:
+          "group-data-[state=indeterminate]/checkbox-indicator:scale-100 group-data-[state=indeterminate]/checkbox-indicator:opacity-100",
+      },
     },
   }
 );
@@ -68,13 +83,11 @@ const Checkbox = React.forwardRef<
       {...props}
     >
       <CheckboxPrimitive.Indicator
+        forceMount
         className={checkboxIndicatorStyles({ isMutedAfterCheck })}
       >
-        {checked === "partial" ? (
-          <Minus className="h-3 w-3 text-background" />
-        ) : (
-          <Check className="h-3 w-3 text-background" />
-        )}
+        <Check className={checkboxIconStyles({ state: "checked" })} />
+        <Minus className={checkboxIconStyles({ state: "indeterminate" })} />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   );

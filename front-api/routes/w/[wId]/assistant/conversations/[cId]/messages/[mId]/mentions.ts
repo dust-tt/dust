@@ -2,6 +2,7 @@ import {
   dismissMention,
   validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
+import { validateAgentMention } from "@app/lib/api/assistant/conversation/validate_agent_mention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { PostMentionActionResponseBody } from "@app/types/api/assistant/conversation/mentions";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -56,17 +57,7 @@ app.post(
       if (dismissMentionRes.isErr()) {
         return apiError(ctx, dismissMentionRes.error);
       }
-    } else {
-      if (type !== "user") {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Only user mentions are supported.",
-          },
-        });
-      }
-
+    } else if (type === "user") {
       const validateUserMentionRes = await validateUserMention(auth, {
         conversationId: cId,
         userId: id,
@@ -76,6 +67,17 @@ app.post(
 
       if (validateUserMentionRes.isErr()) {
         return apiError(ctx, validateUserMentionRes.error);
+      }
+    } else {
+      const validateAgentMentionRes = await validateAgentMention(auth, {
+        conversationId: cId,
+        agentConfigurationId: id,
+        messageId: mId,
+        approvalState: action,
+      });
+
+      if (validateAgentMentionRes.isErr()) {
+        return apiError(ctx, validateAgentMentionRes.error);
       }
     }
 

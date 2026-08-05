@@ -5,7 +5,7 @@ import {
 import type { ConversationMetadata } from "@app/types/assistant/conversation";
 
 // TODO(sidekick 2026-01-23): move all sidekick mcp servers and these helpers in dedicated folder
-export interface SidekickMetadata {
+interface SidekickMetadata {
   sidekickTargetAgentConfigurationId: string;
   sidekickTargetAgentConfigurationVersion: number;
 }

@@ -40,7 +40,7 @@ export const PostSubscriptionRequestBody = z.object({
   targetUserId: z.string().optional(),
 });
 
-export type CheckoutUrlError =
+type CheckoutUrlError =
   | { type: "missing_cp_fields" }
   | { type: "already_on_pro_plan" };
 

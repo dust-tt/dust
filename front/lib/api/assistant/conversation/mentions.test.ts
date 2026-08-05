@@ -2,7 +2,6 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
-  createUserMentions,
   getMentionStatus,
   validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
@@ -26,6 +25,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { resolveAndCreateUserMentions } from "@app/tests/utils/mentions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -74,7 +74,7 @@ describe("createAgentMessages", () => {
       },
     ];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -141,7 +141,7 @@ describe("createAgentMessages", () => {
       },
     ];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -216,7 +216,7 @@ describe("createAgentMessages", () => {
 
     const mentions: MentionType[] = [];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -268,7 +268,7 @@ describe("createAgentMessages", () => {
       } as AgentMention,
     ];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -325,7 +325,7 @@ describe("createAgentMessages", () => {
       },
     ];
 
-    const result = await createUserMentions(auth, {
+    const result = await resolveAndCreateUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
@@ -374,7 +374,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: userMessage,
         conversation,
@@ -437,7 +437,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation,
@@ -481,7 +481,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation,
@@ -588,7 +588,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation: updatedConversation,
@@ -694,7 +694,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation: updatedConversation,
@@ -800,7 +800,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation: updatedConversation,
@@ -884,7 +884,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: userMessage,
         conversation: restrictedConversation,
@@ -987,7 +987,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: userMessage,
         conversation: openConversation,
@@ -1089,7 +1089,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(auth, {
+      const result = await resolveAndCreateUserMentions(auth, {
         mentions,
         message: agentMessage,
         conversation: restrictedConversation,
@@ -1176,7 +1176,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(userAuth, {
+      const result = await resolveAndCreateUserMentions(userAuth, {
         mentions,
         message: agentMessage,
         conversation: projectConversation,
@@ -1255,7 +1255,7 @@ describe("createAgentMessages", () => {
         },
       ];
 
-      const result = await createUserMentions(userAuth, {
+      const result = await resolveAndCreateUserMentions(userAuth, {
         mentions,
         message: agentMessage,
         conversation: projectConversation,

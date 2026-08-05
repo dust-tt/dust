@@ -31,7 +31,7 @@ export function sanitizeFilename(filename: string): string {
     .substring(0, 255);
 }
 
-export type ConversationFileRef = {
+type ConversationFileRef = {
   contentType: string;
   sizeBytes: number;
   fileName: string;

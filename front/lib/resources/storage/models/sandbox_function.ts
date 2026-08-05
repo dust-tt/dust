@@ -8,10 +8,16 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
-import type { SandboxFunctionInvocationStatus } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionInvocationOrigin,
+  SandboxFunctionInvocationStatus,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import {
   isValidSandboxFunctionSlug,
+  SANDBOX_FUNCTION_INVOCATION_ORIGINS,
   SANDBOX_FUNCTION_INVOCATION_STATUSES,
+  SANDBOX_FUNCTION_USER_IDENTITY_POLICIES,
 } from "@app/types/api/sandbox_functions";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
@@ -43,6 +49,7 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare fileId: ForeignKey<FileModel["id"]>;
   declare slug: string;
   declare description: string;
+  declare userIdentity: SandboxFunctionUserIdentityPolicy | null;
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
 
@@ -57,6 +64,7 @@ export class SandboxFunctionInvocationModel extends WorkspaceAwareModel<SandboxF
   declare sandboxFunctionId: ForeignKey<SandboxFunctionModel["id"]>;
   // Human who triggered the invocation. Null for non-human origins (API key, scheduled/bot runs).
   declare userId: ForeignKey<UserModel["id"]> | null;
+  declare origin: SandboxFunctionInvocationOrigin | null;
   declare status: SandboxFunctionInvocationStatus;
   declare gcsPath: string;
 
@@ -94,6 +102,13 @@ SandboxFunctionModel.init(
     description: {
       type: DataTypes.STRING(255),
       allowNull: false,
+    },
+    userIdentity: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      validate: {
+        isIn: [SANDBOX_FUNCTION_USER_IDENTITY_POLICIES],
+      },
     },
     inputSchema: {
       type: DataTypes.JSONB,
@@ -178,6 +193,13 @@ SandboxFunctionInvocationModel.init(
     userId: {
       type: DataTypes.BIGINT,
       allowNull: true,
+    },
+    origin: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      validate: {
+        isIn: [SANDBOX_FUNCTION_INVOCATION_ORIGINS],
+      },
     },
     status: {
       type: DataTypes.STRING(64),

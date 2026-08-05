@@ -19,8 +19,6 @@ import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
@@ -33,6 +31,14 @@ export interface ActionBlob {
 
 type CreateToolActionsResult = {
   actionBlobs: ActionBlob[];
+};
+
+type PreparedToolAction = {
+  actionConfiguration: MCPToolConfigurationType;
+  rawInputs: Record<string, unknown>;
+  status: "ready_allowed_implicitly" | "blocked_validation_required";
+  stepContent: AgentStepContentResource;
+  stepContext: StepContext;
 };
 
 export async function createToolActionsActivity(
@@ -53,8 +59,7 @@ export async function createToolActionsActivity(
     runIds: string[];
   }
 ): Promise<CreateToolActionsResult> {
-  const { agentConfiguration, modelInfo, agentMessage, conversation } =
-    runAgentData;
+  const { agentMessage, conversation } = runAgentData;
 
   const actionBlobs: ActionBlob[] = [];
   const approvalEvents: Omit<
@@ -62,22 +67,61 @@ export async function createToolActionsActivity(
     "isLastBlockingEventForStep"
   >[] = [];
 
+  const stepContents = await AgentStepContentResource.fetchByModelIds(
+    auth,
+    actions.map(
+      ({ functionCallId }) => functionCallStepContentIds[functionCallId]
+    )
+  );
+  const stepContentsById = new Map(stepContents.map((sc) => [sc.id, sc]));
+
+  // Execution statuses are resolved for the whole step upfront: whether any tool of the
+  // step awaits approval decides the status the other tools are persisted with below.
+  const preparedActions: PreparedToolAction[] = [];
   for (const [
     index,
     { action: actionConfiguration, functionCallId },
   ] of actions.entries()) {
     const stepContentId = functionCallStepContentIds[functionCallId];
+    const stepContent = stepContentsById.get(stepContentId);
+    assert(
+      stepContent,
+      `Step content not found for stepContentId: ${stepContentId}`
+    );
+    assert(
+      stepContent.isFunctionCallContent(),
+      `Expected step content to be a function call, got: ${stepContent.value.type}`
+    );
 
-    const result = await createActionForTool(auth, {
+    const rawInputs = JSON.parse(stepContent.value.value.arguments);
+    const { status } = await getExecutionStatusFromConfig(auth, {
       actionConfiguration,
-      agentConfiguration,
-      model: modelInfo.endpoint.modelConfig,
-      agentMessage,
-      conversation,
-      stepContentId,
+      skipToolsValidation: agentMessage.skipToolsValidation,
+      context: {
+        toolInputs: rawInputs,
+      },
+    });
+
+    preparedActions.push({
+      actionConfiguration,
+      rawInputs,
+      status,
+      stepContent,
       stepContext: stepContexts[index],
+    });
+  }
+
+  const stepRequiresApproval = preparedActions.some(
+    ({ status }) => status === "blocked_validation_required"
+  );
+
+  for (const preparedAction of preparedActions) {
+    const result = await createActionForTool(auth, {
+      preparedAction,
+      runAgentData,
       step,
       runIds,
+      stepRequiresApproval,
     });
 
     if (result) {
@@ -111,23 +155,15 @@ export async function createToolActionsActivity(
 async function createActionForTool(
   auth: Authenticator,
   {
-    actionConfiguration,
-    agentConfiguration,
-    model,
-    agentMessage,
-    conversation,
-    stepContentId,
-    stepContext,
+    preparedAction,
+    runAgentData,
+    stepRequiresApproval,
     step,
     runIds,
   }: {
-    actionConfiguration: MCPToolConfigurationType;
-    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-    model: ModelConfigurationType;
-    agentMessage: AgentLoopExecutionData["agentMessage"];
-    conversation: ConversationWithoutContentType;
-    stepContentId: ModelId;
-    stepContext: StepContext;
+    preparedAction: PreparedToolAction;
+    runAgentData: AgentLoopExecutionData;
+    stepRequiresApproval: boolean;
     step: number;
     runIds: string[];
   }
@@ -138,29 +174,11 @@ async function createActionForTool(
     "isLastBlockingEventForStep"
   >;
 } | void> {
-  // First, get the step content and parse inputs - we need this for medium stake checks
-  const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
-    auth,
-    stepContentId
-  );
-  assert(
-    stepContent,
-    `Step content not found for stepContentId: ${stepContentId}`
-  );
-
-  assert(
-    stepContent.isFunctionCallContent(),
-    `Expected step content to be a function call, got: ${stepContent.value.type}`
-  );
-
-  const rawInputs = JSON.parse(stepContent.value.value.arguments);
-  const { status } = await getExecutionStatusFromConfig(auth, {
-    actionConfiguration,
-    skipToolsValidation: agentMessage.skipToolsValidation,
-    context: {
-      toolInputs: rawInputs,
-    },
-  });
+  const { actionConfiguration, rawInputs, status, stepContent, stepContext } =
+    preparedAction;
+  const { agentConfiguration, modelInfo, agentMessage, conversation } =
+    runAgentData;
+  const model = modelInfo.endpoint.modelConfig;
 
   const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {
@@ -168,7 +186,7 @@ async function createActionForTool(
       {
         conversationId: conversation.sId,
         agentMessageId: agentMessage.sId,
-        stepContentId,
+        stepContentId: stepContent.id,
         modelId: model.modelId,
         providerId: model.providerId,
         error: validateToolInputsResult.error,
@@ -203,6 +221,14 @@ async function createActionForTool(
     rawInputs,
   });
 
+  // The workflow runs the step's tools right after creation unless one of them awaits
+  // approval: auto-allowed tools are persisted as "running" directly (like sandbox
+  // function actions) instead of being rewritten to it at execution start.
+  const persistedStatus =
+    status === "ready_allowed_implicitly" && !stepRequiresApproval
+      ? "running"
+      : status;
+
   // Create the action object in the database and yield an event for the generation of the params.
   // We store the action here as the params have been generated, if an error occurs later on,
   // the error will be stored on the parent agent message.
@@ -211,7 +237,7 @@ async function createActionForTool(
     agentMessage,
     augmentedInputs,
     conversation,
-    status,
+    status: persistedStatus,
     stepContent,
     stepContext,
   });
@@ -229,9 +255,10 @@ async function createActionForTool(
         id: agentConfiguration.sId,
         name: agentConfiguration.name,
       },
+      // The agent is the actor, so it is deliberately not repeated as a target:
+      // pod function tool calls share this action and have no agent.
       targets: [
         buildAuditLogTarget("workspace", workspace),
-        buildAuditLogTarget("agent", agentConfiguration),
         buildAuditLogTarget("tool", {
           sId: actionConfiguration.name,
           name: actionConfiguration.originalName,
@@ -269,7 +296,7 @@ async function createActionForTool(
   return {
     actionBlob: {
       actionId: action.id,
-      actionStatus: status,
+      actionStatus: persistedStatus,
       needsApproval: status === "blocked_validation_required",
       retryPolicy: getRetryPolicyFromToolConfiguration(actionConfiguration),
     },

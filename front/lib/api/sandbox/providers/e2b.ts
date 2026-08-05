@@ -139,6 +139,14 @@ async function runWithStdin(
     });
     return await handle.wait();
   } catch (err) {
+    if (err instanceof NotFoundError) {
+      // The process can exit between `run` returning its handle and the stdin
+      // RPC reaching E2B. The handle consumes process events from startup, so
+      // waiting recovers the actual exit code and output instead of replacing
+      // them with a misleading "process with pid ... not found" error.
+      return await handle.wait();
+    }
+
     try {
       await handle.kill();
     } catch {

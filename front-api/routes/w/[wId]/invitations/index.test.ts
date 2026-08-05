@@ -158,7 +158,7 @@ describe("POST /api/w/:wId/invitations", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify([
         { email: "new-user@example.com", role: "user" },
-        { email: "new-builder@example.com", role: "builder" },
+        { email: "new-manager@example.com", role: "manager" },
       ]),
     });
 
@@ -166,6 +166,23 @@ describe("POST /api/w/:wId/invitations", () => {
     const data = await response.json();
     expect(data).toHaveLength(2);
     expect(data.every((r: { success: boolean }) => r.success)).toBe(true);
+  });
+
+  it("rejects an invitation with the deprecated builder role", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const response = await honoApp.request(invitationsUrl(workspace.sId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([
+        { email: "new-builder@example.com", role: "builder" },
+      ]),
+    });
+
+    expect(response.status).toBe(400);
   });
 
   it("creates invitations for multiple new emails in a single request", async () => {
@@ -179,7 +196,7 @@ describe("POST /api/w/:wId/invitations", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify([
         { email: "new-user-1@example.com", role: "user" },
-        { email: "new-user-2@example.com", role: "builder" },
+        { email: "new-user-2@example.com", role: "manager" },
         { email: "new-user-3@example.com", role: "admin" },
       ]),
     });
@@ -198,7 +215,7 @@ describe("POST /api/w/:wId/invitations", () => {
 
     const byEmail = new Map(invitations.map((i) => [i.inviteEmail, i]));
     expect(byEmail.get("new-user-1@example.com")?.initialRole).toBe("user");
-    expect(byEmail.get("new-user-2@example.com")?.initialRole).toBe("builder");
+    expect(byEmail.get("new-user-2@example.com")?.initialRole).toBe("manager");
     expect(byEmail.get("new-user-3@example.com")?.initialRole).toBe("admin");
 
     expect(sgSendMock).toHaveBeenCalledTimes(3);

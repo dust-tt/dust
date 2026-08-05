@@ -5974,6 +5974,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "kinds",
+            "required": false,
+            "description": "Comma-separated list of space kinds to filter on (e.g. `regular,global`).",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -6927,6 +6936,134 @@
           },
           "404": {
             "description": "Conversation, message, or action not found"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption": {
+      "get": {
+        "summary": "Get an agent message credit attribution",
+        "description": "Returns exact billed credits and an additive attribution reconciled exclusively through model input rows.",
+        "tags": [
+          "Private Messages"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Credit attribution for the agent message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "billedCredits",
+                    "details"
+                  ],
+                  "properties": {
+                    "billedCredits": {
+                      "type": "number",
+                      "nullable": true,
+                      "description": "Authoritative credits billed for this agent message."
+                    },
+                    "details": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "Additive attribution reconciled to the bill through model input rows. Null when the active attribution version is unavailable or incomplete.",
+                      "required": [
+                        "attributionVersion",
+                        "agentWorkCredits",
+                        "tools"
+                      ],
+                      "properties": {
+                        "attributionVersion": {
+                          "type": "integer"
+                        },
+                        "agentWorkCredits": {
+                          "type": "number",
+                          "description": "Agent work after assigning billing reconciliation exclusively to model input rows."
+                        },
+                        "tools": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "label",
+                              "internalMCPServerName",
+                              "toolName",
+                              "callCount",
+                              "attributedCredits",
+                              "directCredits",
+                              "pending"
+                            ],
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "internalMCPServerName": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "toolName": {
+                                "type": "string"
+                              },
+                              "callCount": {
+                                "type": "integer"
+                              },
+                              "attributedCredits": {
+                                "type": "number",
+                                "description": "Share of billed credits after input-only reconciliation."
+                              },
+                              "directCredits": {
+                                "type": "number"
+                              },
+                              "pending": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The workspace does not have access to consumption details"
+          },
+          "404": {
+            "description": "Conversation or agent message not found"
           }
         }
       }
@@ -8510,7 +8647,7 @@
     "/api/w/{wId}/files/{fileId}": {
       "get": {
         "summary": "Get or download a file",
-        "description": "View or download a file. Use query parameters `version` (original, processed, public) and `action` (view, download).",
+        "description": "View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).",
         "tags": [
           "Private Files"
         ],
@@ -8662,7 +8799,7 @@
       },
       "delete": {
         "summary": "Delete a file",
-        "description": "Delete a file from the workspace.",
+        "description": "Delete a file from the workspace. Files referenced by a skill or its version history cannot be deleted.",
         "tags": [
           "Private Files"
         ],
@@ -8694,6 +8831,9 @@
         "responses": {
           "204": {
             "description": "File deleted"
+          },
+          "400": {
+            "description": "File is referenced by a skill or its version history"
           },
           "403": {
             "description": "Permission denied"
@@ -10410,10 +10550,6 @@
                   "test"
                 ]
               },
-              "branchId": {
-                "type": "string",
-                "nullable": true
-              },
               "content": {
                 "type": "array",
                 "description": "Array of message arrays (versions/retries)",
@@ -10480,6 +10616,11 @@
           },
           "rank": {
             "type": "integer"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "user": {
             "type": "object",
@@ -10573,6 +10714,11 @@
           },
           "rank": {
             "type": "integer"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "parentMessageId": {
             "type": "string"
@@ -10737,6 +10883,11 @@
           },
           "rank": {
             "type": "integer"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "parentMessageId": {
             "type": "string"
@@ -11041,6 +11192,11 @@
             "nullable": true,
             "description": "Path of this file inside the sandbox conversation mount."
           },
+          "processedPath": {
+            "type": "string",
+            "nullable": true,
+            "description": "Path of the plain-text sibling of this file inside the sandbox conversation mount (e.g. an audio transcript), when it has one."
+          },
           "skipDataSourceIndexing": {
             "type": "boolean",
             "description": "Whether data source indexing was skipped for this file."
@@ -11117,7 +11273,8 @@
           },
           "branchId": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Legacy, always null. Branches were removed."
           },
           "sourceConversationId": {
             "type": "string",
@@ -13889,6 +14046,12 @@
             "description": "Path of this file inside the sandbox conversation mount.",
             "example": "conversation/report.csv"
           },
+          "processedPath": {
+            "type": "string",
+            "nullable": true,
+            "description": "Path of the plain-text sibling of this file inside the sandbox conversation mount (e.g. an audio transcript), when it has one.",
+            "example": "conversation/voice.processed.txt"
+          },
           "skipDataSourceIndexing": {
             "type": "boolean",
             "description": "Whether data source indexing was skipped for this file."
@@ -14493,6 +14656,9 @@
       },
       "MCPServerView": {
         "type": "object",
+        "required": [
+          "isRestrictedToSkills"
+        ],
         "properties": {
           "id": {
             "type": "integer",
@@ -14655,6 +14821,11 @@
             ],
             "description": "OAuth use case for the MCP server view",
             "example": "platform_actions"
+          },
+          "isRestrictedToSkills": {
+            "type": "boolean",
+            "description": "Whether the MCP server view can only be used through skills",
+            "example": false
           },
           "editedByUser": {
             "type": "object",

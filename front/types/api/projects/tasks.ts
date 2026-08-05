@@ -31,8 +31,6 @@ export interface PatchPodTaskResponseBody {
   task: PodTaskType;
 }
 
-export type DeletePodTaskResponseBody = never;
-
 export const PostStartPodTaskBodySchema = z.object({
   customMessage: z.string().optional(),
   agentConfigurationId: z.string().optional(),
@@ -41,10 +39,6 @@ export const PostStartPodTaskBodySchema = z.object({
 export interface PostStartPodTaskResponseBody {
   task: PodTaskType;
 }
-
-export type BulkActionsResponse = {
-  success: boolean;
-};
 
 export const BulkActionsBodySchema = z.discriminatedUnion("action", [
   z.object({
@@ -63,16 +57,6 @@ export const BulkActionsBodySchema = z.discriminatedUnion("action", [
 ]);
 
 export type BulkActionsBody = z.infer<typeof BulkActionsBodySchema>;
-
-export const PostPodTaskBodySchema = z.object({
-  text: z
-    .string()
-    .trim()
-    .min(1, "Text is required.")
-    .max(256, "Text must be at most 256 characters."),
-  /** Omit to assign to the current user; pass `null` for unassigned (or the sole assignable member if the pod has exactly one). */
-  assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
-});
 
 export interface GetPodTasksResponseBody {
   tasks: PodTaskType[];

@@ -5,6 +5,7 @@ import {
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import { markSandboxFunctionInvocationFailedActivity } from "@app/temporal/sandbox_functions/activities/mark_sandbox_function_invocation_failed";
 import { runSandboxFunctionInvocationActivity } from "@app/temporal/sandbox_functions/activities/run_sandbox_function_invocation";
 import { runSandboxFunctionToolActivity } from "@app/temporal/sandbox_functions/activities/run_sandbox_function_tool";
 import { QUEUE_NAME } from "@app/temporal/sandbox_functions/config";
@@ -24,6 +25,7 @@ export async function runSandboxFunctionsWorker() {
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities: {
+      markSandboxFunctionInvocationFailedActivity,
       runSandboxFunctionInvocationActivity,
       runSandboxFunctionToolActivity,
     },

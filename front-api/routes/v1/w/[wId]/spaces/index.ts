@@ -2,12 +2,26 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SpaceType } from "@app/types/space";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import spaceId from "./[spaceId]";
 
 export type GetPublicSpacesResponseBody = {
   spaces: SpaceType[];
 };
+
+// The kinds this endpoint exposes. `kinds` narrows that list, it never widens
+// it.
+const LISTED_SPACE_KINDS = ["system", "global", "regular"] as const;
+
+const GetSpacesQuerySchema = z.object({
+  kinds: z
+    .string()
+    .optional()
+    .transform((value) => value?.split(","))
+    .pipe(z.array(z.enum(LISTED_SPACE_KINDS)).optional()),
+});
 
 // Mounted at /api/v1/w/:wId/spaces. publicApiAuth is applied by the parent
 // v1 workspace sub-app, so ctx.get("auth") is always available here.
@@ -32,6 +46,12 @@ app.route("/:spaceId", spaceId);
  *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: kinds
+ *         required: false
+ *         description: Comma-separated list of space kinds to filter on (e.g. `regular,global`).
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Spaces of the workspace
@@ -54,15 +74,21 @@ app.route("/:spaceId", spaceId);
  *         description: Internal Server Error.
  */
 
-app.get("/", async (ctx): HandlerResult<GetPublicSpacesResponseBody> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  validate("query", GetSpacesQuerySchema),
+  async (ctx): HandlerResult<GetPublicSpacesResponseBody> => {
+    const auth = ctx.get("auth");
+    const { kinds } = ctx.req.valid("query");
 
-  const allSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-  const spaces = allSpaces.filter((space) => space.kind !== "conversations");
+    const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth, {
+      kinds: kinds ?? [...LISTED_SPACE_KINDS],
+    });
 
-  return ctx.json({
-    spaces: spaces.map((space) => space.toJSON()),
-  });
-});
+    return ctx.json({
+      spaces: spaces.map((space) => space.toJSON()),
+    });
+  }
+);
 
 export default app;

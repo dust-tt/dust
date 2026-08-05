@@ -10,7 +10,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 
 export const SKILL_COMPANY_DATA_SERVER_NAME = "company_data";
 
-export type MCPServerDefinition = {
+type MCPServerDefinition = {
   name: AutoInternalMCPServerNameType;
   childAgentId?: string;
   serverNameOverride?: string;

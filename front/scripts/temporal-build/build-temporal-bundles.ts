@@ -12,11 +12,20 @@ interface WorkerInfo {
 }
 
 function discoverWorkers(): WorkerInfo[] {
-  return ALL_WORKERS.map((workerName): WorkerInfo => {
+  // Workers sharing a workflows directory (the agent-loop pools) share one bundle, keyed by
+  // the first worker name — their Worker.create calls all load the agent_loop bundle.
+  const seenPaths = new Set<string>();
+  const workers: WorkerInfo[] = [];
+  for (const workerName of ALL_WORKERS) {
     const name = workerName as WorkerName;
     const workflowsPath = getWorkerWorkflowsPath(name);
-    return { name, workflowsPath };
-  });
+    if (seenPaths.has(workflowsPath)) {
+      continue;
+    }
+    seenPaths.add(workflowsPath);
+    workers.push({ name, workflowsPath });
+  }
+  return workers;
 }
 
 function getWorkerWorkflowsPath(workerName: WorkerName): string {
@@ -35,6 +44,10 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
     case "activation_scheduler":
       return path.join(baseDir, "temporal/activation_scheduler");
     case "agent_loop":
+    case "agent_loop_batch":
+    case "agent_loop_interactive":
+    case "agent_loop_programmatic":
+    case "agent_loop_schedules":
       return path.join(baseDir, "temporal/agent_loop");
     case "agent_schedule":
       return path.join(baseDir, "temporal/triggers");

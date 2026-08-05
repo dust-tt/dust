@@ -175,7 +175,7 @@ function formatTimestamp(
   }
 }
 
-export interface BaseAwuUsageFromAnalyticsChartProps {
+interface BaseAwuUsageFromAnalyticsChartProps {
   awuUsageData: AwuUsageAnalyticsResponse | undefined;
   isAwuUsageLoading: boolean;
   isAwuUsageError: boolean;

@@ -1,4 +1,4 @@
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
@@ -429,7 +429,7 @@ export function FrameRenderer({
           </div>
         ) : (
           <div className="h-full">
-            <VisualizationActionIframe
+            <AuthenticatedVisualizationActionIframe
               agentConfigurationId={
                 fileMetadata?.useCaseMetadata
                   .lastEditedByAgentConfigurationId ?? ""

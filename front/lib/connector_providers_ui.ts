@@ -45,7 +45,7 @@ export interface ConnectorOptionsProps {
   plan: PlanType;
 }
 
-export interface ConnectorAdvancedOptionsProps {
+interface ConnectorAdvancedOptionsProps {
   owner: LightWorkspaceType;
   readOnly: boolean;
   controller: SensitivityLabelsController;
@@ -70,7 +70,7 @@ type ConnectorPermissionsConfigurable =
       isPermissionsConfigurableBlocked?: never;
     };
 
-export type ConnectorProviderUIDetails = {
+type ConnectorProviderUIDetails = {
   hide: boolean;
   getLogoComponent: (
     isDark?: boolean

@@ -48,7 +48,6 @@ export type BaseContentFragmentType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
-  branchId: string | null;
   sourceUrl: string | null;
   title: string;
   contentType: SupportedContentFragmentType;
@@ -80,6 +79,7 @@ export type ContentNodeContentFragmentType = BaseContentFragmentType & {
 export type FileContentFragmentType = BaseContentFragmentType & {
   contentFragmentType: "file";
   path?: string | null;
+  processedPath?: string | null;
   skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
 } & (

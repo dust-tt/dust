@@ -8,6 +8,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -20,6 +21,10 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type {
+  GetSkillsResponseBody,
+  GetSkillsWithRelationsResponseBody,
+} from "@app/types/api/skills";
 import type {
   SkillWithoutInstructionsAndToolsType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
@@ -70,6 +75,18 @@ function postSkill(workspace: { sId: string }, body: unknown) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+function favoriteSkill(workspace: { sId: string }, skillId: string) {
+  return honoApp.request(`/api/w/${workspace.sId}/skills/${skillId}/favorite`, {
+    method: "POST",
+  });
+}
+
+function unfavoriteSkill(workspace: { sId: string }, skillId: string) {
+  return honoApp.request(`/api/w/${workspace.sId}/skills/${skillId}/favorite`, {
+    method: "DELETE",
   });
 }
 
@@ -146,6 +163,82 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).toContain("My Unpublished Skill");
     expect(skillNames).toContain("Someone Else's Published Skill");
     expect(skillNames).not.toContain("Someone Else's Unpublished Skill");
+  });
+
+  // Suggestions are created with an empty editor group (SkillResource.makeSuggestion), and
+  // they get editors-only availability. Without the status exemption the editor-visibility
+  // rule would hide them from everyone.
+  it("lists editors-only suggestions to admins who can create skills", async () => {
+    const { workspace, user } = await setupTest("admin");
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await SkillFactory.create(auth, {
+      name: "Suggested Skill",
+      status: "suggested",
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+
+    // A regular unpublished skill the admin does not edit stays hidden: the exemption is
+    // scoped to suggestions, not to admins at large (that is bypassEditorVisibility's job).
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "builder",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(skillOwnerAuth, {
+      name: "Someone Else's Unpublished Skill",
+      availability: "editors",
+    });
+
+    const response = await getSkills(workspace, { status: "suggested" });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("Suggested Skill");
+
+    const activeResponse = await getSkills(workspace);
+    expect(activeResponse.status).toBe(200);
+    const activeSkillNames = (await activeResponse.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(activeSkillNames).not.toContain("Someone Else's Unpublished Skill");
+  });
+
+  it("does not list editors-only suggestions to members who cannot administrate skills", async () => {
+    const { workspace, user } = await setupTest("user");
+
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(adminAuth, {
+      name: "Suggested Skill",
+      status: "suggested",
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+
+    // Even with the create/skill capability, a user cannot administrate the suggestion's
+    // editor group, so the suggestion stays hidden.
+    await grantCreateSkillCapability(workspace, user);
+
+    const response = await getSkills(workspace, { status: "suggested" });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).not.toContain("Suggested Skill");
   });
 
   it("lets admins bypass editor visibility to list unpublished skills they do not edit", async () => {
@@ -459,10 +552,9 @@ describe("GET /api/w/:wId/skills", () => {
 
     expect(response.status).toBe(200);
 
-    const skillWithoutInstructionsAndTools = (
-      await response.json()
-    ).skills.find(
-      (s: SkillWithoutInstructionsAndToolsType) => s.sId === skill.sId
+    const responseBody: GetSkillsResponseBody = await response.json();
+    const skillWithoutInstructionsAndTools = responseBody.skills.find(
+      (s) => s.sId === skill.sId
     );
 
     expect(skillWithoutInstructionsAndTools).toMatchObject({
@@ -514,9 +606,214 @@ describe("GET /api/w/:wId/skills", () => {
       fetchInstructionsSpy.mockRestore();
     }
   });
+
+  it("should not expose or mutate favorite state when the feature flag is disabled", async () => {
+    const { workspace, auth } = await setupTest();
+
+    const skill = await SkillFactory.create(auth, {
+      name: "Disabled Favorite Candidate",
+    });
+    const result = await skill.setFavorite(auth, true);
+    expect(result.isOk()).toBe(true);
+
+    const response = await getSkills(workspace);
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsResponseBody = await response.json();
+    const listedSkill = responseBody.skills.find((s) => s.sId === skill.sId);
+    expect(listedSkill).not.toHaveProperty("isFavorite");
+
+    const relationsResponse = await getSkills(workspace, {
+      withRelations: "true",
+    });
+    expect(relationsResponse.status).toBe(200);
+    const relationsResponseBody: GetSkillsWithRelationsResponseBody =
+      await relationsResponse.json();
+    const relationsSkill = relationsResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(relationsSkill).not.toHaveProperty("isFavorite");
+
+    const favoriteResponse = await favoriteSkill(workspace, skill.sId);
+    expect(favoriteResponse.status).toBe(403);
+    expect((await favoriteResponse.json()).error.type).toBe(
+      "feature_flag_not_found"
+    );
+
+    const unfavoriteResponse = await unfavoriteSkill(workspace, skill.sId);
+    expect(unfavoriteResponse.status).toBe(403);
+    expect((await unfavoriteResponse.json()).error.type).toBe(
+      "feature_flag_not_found"
+    );
+  });
+
+  it("should include favorite state for custom skills", async () => {
+    const { workspace, auth } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "skill_favorites");
+
+    const skill = await SkillFactory.create(auth, {
+      name: "Favorite Candidate",
+    });
+
+    const firstResponse = await getSkills(workspace);
+    expect(firstResponse.status).toBe(200);
+    const firstResponseBody: GetSkillsResponseBody = await firstResponse.json();
+    const firstSkill = firstResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(firstSkill?.isFavorite).toBe(false);
+
+    const favoriteResponse = await favoriteSkill(workspace, skill.sId);
+    expect(favoriteResponse.status).toBe(200);
+
+    const secondResponse = await getSkills(workspace);
+    expect(secondResponse.status).toBe(200);
+    const secondResponseBody: GetSkillsResponseBody =
+      await secondResponse.json();
+    const secondSkill = secondResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(secondSkill?.isFavorite).toBe(true);
+
+    const relationsResponse = await getSkills(workspace, {
+      withRelations: "true",
+    });
+    expect(relationsResponse.status).toBe(200);
+    const relationsResponseBody: GetSkillsWithRelationsResponseBody =
+      await relationsResponse.json();
+    const relationsSkill = relationsResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(relationsSkill?.isFavorite).toBe(true);
+
+    const unfavoriteResponse = await unfavoriteSkill(workspace, skill.sId);
+    expect(unfavoriteResponse.status).toBe(200);
+
+    const thirdResponse = await getSkills(workspace);
+    expect(thirdResponse.status).toBe(200);
+    const thirdResponseBody: GetSkillsResponseBody = await thirdResponse.json();
+    const thirdSkill = thirdResponseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
+    expect(thirdSkill?.isFavorite).toBe(false);
+  });
+
+  it("should include favorite state for global skills", async () => {
+    const { workspace, auth } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "skill_favorites");
+
+    const favoriteResponse = await favoriteSkill(workspace, "frames");
+    expect(favoriteResponse.status).toBe(200);
+
+    const response = await getSkills(workspace);
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsResponseBody = await response.json();
+    const framesSkill = responseBody.skills.find((s) => s.sId === "frames");
+    expect(framesSkill?.isFavorite).toBe(true);
+  });
+
+  it("should not update favorite state for archived skills", async () => {
+    const { workspace, auth } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "skill_favorites");
+
+    const skill = await SkillFactory.create(auth, {
+      name: "Archived Favorite Candidate",
+      status: "archived",
+    });
+
+    const favoriteResponse = await favoriteSkill(workspace, skill.sId);
+    expect(favoriteResponse.status).toBe(400);
+    expect(await favoriteResponse.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Only active skills can update favorite state.",
+      },
+    });
+
+    const unfavoriteResponse = await unfavoriteSkill(workspace, skill.sId);
+    expect(unfavoriteResponse.status).toBe(400);
+    expect(await unfavoriteResponse.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Only active skills can update favorite state.",
+      },
+    });
+  });
 });
 
 describe("GET /api/w/:wId/skills?withRelations=true", () => {
+  it("should return the number of messages using each skill", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(auth, {
+      name: "Skill Used In Messages",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    await skill.enableForAgent(auth, {
+      agentConfiguration: agent,
+      conversation,
+    });
+
+    const firstAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 0,
+        agentConfigurationId: agent.sId,
+      });
+    if (!firstAgentMessage.agentMessageId) {
+      throw new Error("Expected an agent message");
+    }
+    await SkillResource.snapshotConversationSkillsForMessage(auth, {
+      agentConfigurationId: agent.sId,
+      agentMessageId: firstAgentMessage.agentMessageId,
+      conversationId: conversation.id,
+    });
+
+    const secondAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agent.sId,
+      });
+    if (!secondAgentMessage.agentMessageId) {
+      throw new Error("Expected an agent message");
+    }
+    await SkillResource.snapshotConversationSkillsForMessage(auth, {
+      agentConfigurationId: agent.sId,
+      agentMessageId: secondAgentMessage.agentMessageId,
+      conversationId: conversation.id,
+    });
+
+    const response = await getSkills(workspace, {
+      withRelations: "true",
+      withMessageCount: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsWithRelationsResponseBody =
+      await response.json();
+    const skillResult = responseBody.skills.find(
+      (listedSkill) => listedSkill.sId === skill.sId
+    );
+    const systemSkillResult = responseBody.skills.find(
+      (listedSkill) => listedSkill.sId === "discover_tools"
+    );
+
+    expect(skillResult?.messageCount).toBe(2);
+    expect(systemSkillResult).toBeDefined();
+    expect(systemSkillResult?.messageCount).toBeNull();
+  });
+
   it("should return skills with usage when linked to agents", async () => {
     const { workspace, user } = await setupTest();
 
@@ -625,6 +922,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         usage: { count: 0, agents: [], skills: [] },
       },
     });
+    expect(skillResult).not.toHaveProperty("messageCount");
   });
 
   it("should return child skills", async () => {
@@ -825,28 +1123,9 @@ describe("POST /api/w/:wId/skills", () => {
     expect(createdSkill).not.toBeNull();
   });
 
-  it("rejects the editors availability when skill publication governance is off", async () => {
-    const { workspace } = await setupTest("admin");
-
-    const response = await postSkill(workspace, {
-      name: "Unpublished Skill",
-      agentFacingDescription: "To use in various situations",
-      userFacingDescription: "A skill",
-      instructions: "Instructions",
-      icon: "PuzzleIcon",
-      tools: [],
-      attachedKnowledge: [],
-      instructionsHtml: null,
-      availability: "editors",
-    });
-
-    expect(response.status).toBe(400);
-  });
-
-  it("defaults new skills to unpublished, without requiring the publish permission, when governance is on", async () => {
-    const { auth, workspace, user } = await setupTest("builder");
+  it("defaults new skills to unpublished, without requiring the publish permission", async () => {
+    const { workspace, user } = await setupTest("user");
     await grantCreateSkillCapability(workspace, user);
-    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
 
     const response = await postSkill(workspace, {
       name: "Draft Skill",
@@ -864,10 +1143,9 @@ describe("POST /api/w/:wId/skills", () => {
     expect(responseData.skill.availability).toBe("editors");
   });
 
-  it("requires the publish permission to create a published skill when governance is on", async () => {
-    const { auth, workspace, user } = await setupTest("builder");
+  it("requires the publish permission to create a published skill", async () => {
+    const { workspace, user } = await setupTest("user");
     await grantCreateSkillCapability(workspace, user);
-    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
 
     const response = await postSkill(workspace, {
       name: "Published Skill",
@@ -884,9 +1162,53 @@ describe("POST /api/w/:wId/skills", () => {
     expect(response.status).toBe(403);
   });
 
-  it("lets an admin create a published skill when governance is on", async () => {
-    const { auth, workspace } = await setupTest("admin");
-    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
+  it("requires the make-discoverable permission to create an auto-discoverable skill", async () => {
+    const { workspace, user } = await setupTest("user");
+    await grantCreateSkillCapability(workspace, user);
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const publisherGroup = await GroupFactory.regularAuto(
+      workspace,
+      `skill-publisher-${user.sId}`
+    );
+    await GroupFactory.withMembers(adminAuth, publisherGroup, [user]);
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group: publisherGroup,
+      grantType: "publish",
+      resourceType: "skill",
+    });
+
+    const body = {
+      name: "Auto-discoverable Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      availability: "users_and_agents",
+    };
+
+    let response = await postSkill(workspace, body);
+    expect(response.status).toBe(403);
+
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group: publisherGroup,
+      grantType: "make_discoverable",
+      resourceType: "skill",
+    });
+
+    response = await postSkill(workspace, body);
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.skill.availability).toBe("users_and_agents");
+  });
+
+  it("lets an admin create a published skill", async () => {
+    const { workspace } = await setupTest("admin");
 
     const response = await postSkill(workspace, {
       name: "Published Skill",

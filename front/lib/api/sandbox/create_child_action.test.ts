@@ -179,6 +179,7 @@ describe("createSandboxChildAction", () => {
     return createSandboxChildAction(auth, {
       parentActionId,
       agentId: agentConfig.sId,
+      agentVersion: agentConfig.version,
       conversationId: conversation.sId,
       agentMessageId: agentMessage.sId,
       serverViewId,
@@ -271,7 +272,7 @@ describe("createSandboxChildAction", () => {
       auth,
       result.value.actionId
     );
-    expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(child?.status).toBe("running");
     // The child configuration must carry the same function-call name as direct
     // calls so approval checks and recordings share one key.
     expect(child?.toolConfiguration.name).toBe(directCallToolName);
@@ -293,7 +294,30 @@ describe("createSandboxChildAction", () => {
       auth,
       result.value.actionId
     );
-    expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(child?.status).toBe("running");
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the agent version that issued the sandbox token", async () => {
+    await setToolPermission("never_ask");
+    await AgentConfigurationFactory.updateTestAgent(auth, agentConfig.sId);
+
+    const latestConfig = await getAgentConfiguration(auth, {
+      agentId: agentConfig.sId,
+      variant: "full",
+    });
+    expect(
+      latestConfig?.actions
+        .filter(isServerSideMCPServerConfiguration)
+        .some((action) => action.mcpServerViewId === view.sId)
+    ).toBe(false);
+
+    const result = await callChildTool();
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value.pauseSandbox).toBeUndefined();
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
   });
 
@@ -365,7 +389,7 @@ describe("createSandboxChildAction", () => {
       auth,
       result.value.actionId
     );
-    expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(child?.status).toBe("running");
     expect(child?.toolConfiguration.name).toBe(disambiguatedKey);
   });
 
@@ -378,10 +402,41 @@ describe("createSandboxChildAction", () => {
     if (result.isOk()) {
       throw new Error("Expected the disabled tool call to fail.");
     }
+    expect(result.error.message).toBe("Tool is disabled on this server.");
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+  });
+
+  it("rejects calls from a `dsbx` process that outlived its parent bash action", async () => {
+    await setToolPermission("medium");
+
+    // The bash call returned, but its in-sandbox process issues one more `/call`.
+    const parentAction = await AgentMCPActionResource.fetchById(
+      auth,
+      parentActionId
+    );
+    if (!parentAction) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    await parentAction.updateStatus("succeeded");
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the orphaned child call to fail.");
+    }
     expect(result.error.message).toBe(
-      "Tool is not available to this agent or conversation."
+      "Parent action already completed with status succeeded."
     );
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+    expect(vi.mocked(updateResourceAndPublishEvent)).not.toHaveBeenCalled();
+
+    // The parent must keep its final status: no resurrection.
+    const reloadedParent = await AgentMCPActionResource.fetchById(
+      auth,
+      parentActionId
+    );
+    expect(reloadedParent?.status).toBe("succeeded");
   });
 
   it("defaults to high stake and blocks when the tool has no configured permission", async () => {

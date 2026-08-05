@@ -19,7 +19,7 @@ export type AvailableSkill = {
   totalExecutions: number;
 };
 
-export type AvailableSkillById = {
+type AvailableSkillById = {
   skillId: string;
   totalExecutions: number;
 };

@@ -7,19 +7,18 @@ import {
   USER_MEMORY_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { SCOPED_PREFIX_USER } from "@app/lib/api/file_system/types";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
+import {
+  exceedsUserMemoryLimit,
+  MEMORY_CONTENT_TYPE,
+  userMemoryPath,
+} from "@app/lib/api/user_memory";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_USER_MEMORY_CONTENT_LENGTH } from "@app/types/api/me/memory";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const MEMORY_CONTENT_TYPE = "text/markdown";
-
-function userMemoryPath(userId: string): string {
-  return `${SCOPED_PREFIX_USER}${userId}/MEMORY.md`;
-}
-
-async function openUserMemory(
+async function resolveUserMemoryFile(
   auth: Authenticator
 ): Promise<Result<{ fs: DustFileSystem; path: string }, MCPError>> {
   const user = auth.user();
@@ -41,7 +40,7 @@ async function openUserMemory(
 
 const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
   [USER_MEMORY_READ_TOOL_NAME]: async (_, { auth }) => {
-    const memoryResult = await openUserMemory(auth);
+    const memoryResult = await resolveUserMemoryFile(auth);
     if (memoryResult.isErr()) {
       return memoryResult;
     }
@@ -67,7 +66,7 @@ const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
   },
 
   [USER_MEMORY_EDIT_TOOL_NAME]: async ({ oldStr, newStr }, { auth }) => {
-    const memoryResult = await openUserMemory(auth);
+    const memoryResult = await resolveUserMemoryFile(auth);
     if (memoryResult.isErr()) {
       return memoryResult;
     }
@@ -127,6 +126,15 @@ const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
       }
 
       nextContent = updatedContent;
+    }
+
+    if (exceedsUserMemoryLimit(nextContent)) {
+      return new Err(
+        new MCPError(
+          `Memory would exceed the ${MAX_USER_MEMORY_CONTENT_LENGTH} character limit. Shorten the content first.`,
+          { tracked: false }
+        )
+      );
     }
 
     const writeResult = await fs.write(path, nextContent, MEMORY_CONTENT_TYPE);

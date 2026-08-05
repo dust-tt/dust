@@ -1,6 +1,7 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -15,10 +16,14 @@ import {
 import { useState } from "react";
 
 interface SkillDetailsButtonBarProps {
-  skill: SkillWithoutInstructionsAndToolsWithRelationsType;
+  skill: GetSkillsWithRelationsResponseBody["skills"][number];
   owner: WorkspaceType;
   onClose: () => void;
   replaceOnEdit?: boolean;
+  onFavoriteChange?: (
+    skill: GetSkillsWithRelationsResponseBody["skills"][number],
+    isFavorite: boolean
+  ) => Promise<void>;
 }
 
 export function SkillDetailsButtonBar({
@@ -26,10 +31,11 @@ export function SkillDetailsButtonBar({
   owner,
   onClose,
   replaceOnEdit,
+  onFavoriteChange,
 }: SkillDetailsButtonBarProps) {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
-  if (!skill.canAdministrate) {
+  if (!skill.canAdministrate && !onFavoriteChange) {
     return null;
   }
 
@@ -45,35 +51,49 @@ export function SkillDetailsButtonBar({
         }}
       />
       <div className="flex flex-row items-center gap-2 px-1.5">
-        <Button
-          size="sm"
-          tooltip="Edit skill"
-          href={getSkillBuilderRoute(owner.sId, skill.sId)}
-          replace={replaceOnEdit}
-          variant="outline"
-          icon={Edit04}
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={DotsHorizontal}
-              size="sm"
-              variant="ghost"
-              tooltip="Skill options"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              label="Archive"
-              icon={Trash01}
-              variant="warning"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowArchiveDialog(true);
-              }}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {onFavoriteChange && (
+          <SkillFavoriteButton
+            isFavorite={skill.isFavorite ?? false}
+            skill={skill}
+            variant="outline"
+            onFavoriteChange={(isFavorite) =>
+              onFavoriteChange(skill, isFavorite)
+            }
+          />
+        )}
+        {skill.canAdministrate && (
+          <Button
+            size="sm"
+            tooltip="Edit skill"
+            href={getSkillBuilderRoute(owner.sId, skill.sId)}
+            replace={replaceOnEdit}
+            variant="outline"
+            icon={Edit04}
+          />
+        )}
+        {skill.canAdministrate && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                icon={DotsHorizontal}
+                size="sm"
+                variant="ghost"
+                tooltip="Skill options"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                label="Archive"
+                icon={Trash01}
+                variant="warning"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowArchiveDialog(true);
+                }}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </>
   );

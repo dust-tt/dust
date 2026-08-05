@@ -17,19 +17,19 @@ export const ProductboardErrorResponseSchema = z.object({
   ),
 });
 
-export const ProductboardLinksSchema = z
+const ProductboardLinksSchema = z
   .object({
     self: z.string().url(),
   })
   .passthrough();
 
-export const ProductboardConfigLinksSchema = z
+const ProductboardConfigLinksSchema = z
   .object({
     self: z.string().url().nullable(),
   })
   .passthrough();
 
-export const ProductboardNoteRelationshipSchema = z.object({
+const ProductboardNoteRelationshipSchema = z.object({
   type: z.enum(["customer", "link"]),
   target: z.object({
     id: z.string().uuid(),
@@ -65,7 +65,7 @@ export const ProductboardNoteResponseSchema = z.object({
   data: ProductboardNoteSchema,
 });
 
-export const ProductboardEntityRelationshipSchema = z.object({
+const ProductboardEntityRelationshipSchema = z.object({
   type: z.enum(["parent", "child", "link", "isBlockedBy", "isBlocking"]),
   target: z.object({
     id: z.string().uuid(),
@@ -157,45 +157,20 @@ export const ProductboardRelationshipsListResponseSchema = z.object({
   }),
 });
 
-export const ProductboardCustomFieldValueSchema = z
-  .object({
-    id: z.string().optional(),
-    label: z.string().optional(),
-    value: z.union([z.string(), z.number(), z.boolean()]).optional(),
-  })
-  .passthrough();
-
-export const ProductboardCustomFieldSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    type: z.string(),
-    values: z.array(ProductboardCustomFieldValueSchema).optional(),
-  })
-  .passthrough();
-
-export type ProductboardCustomField = z.infer<
-  typeof ProductboardCustomFieldSchema
->;
-
-export const ProductboardCustomFieldsListResponseSchema = z.object({
-  data: z.array(ProductboardCustomFieldSchema),
-});
-
-export const ProductboardFieldLifecycleOpsSchema = z.object({
+const ProductboardFieldLifecycleOpsSchema = z.object({
   set: z.boolean().default(false),
   clear: z.boolean().default(false),
   addItems: z.boolean().default(false),
   removeItems: z.boolean().default(false),
 });
 
-export const ProductboardFieldLifecycleSchema = z.object({
+const ProductboardFieldLifecycleSchema = z.object({
   create: ProductboardFieldLifecycleOpsSchema.optional(),
   update: ProductboardFieldLifecycleOpsSchema.optional(),
   patch: ProductboardFieldLifecycleOpsSchema.optional(),
 });
 
-export const ProductboardFieldConstraintsSchema = z.object({
+const ProductboardFieldConstraintsSchema = z.object({
   maxLength: z.number().min(0).optional(),
   maxSize: z.number().min(0).optional(),
   maxItems: z.number().min(0).optional(),
@@ -243,7 +218,7 @@ export type ProductboardConfigField = z.infer<
   typeof ProductboardConfigFieldSchema
 >;
 
-export const ProductboardConfigurationRelationshipSchema = z.object({
+const ProductboardConfigurationRelationshipSchema = z.object({
   targetType: z.array(
     z.enum([
       "product",

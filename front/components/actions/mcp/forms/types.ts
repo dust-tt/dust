@@ -3,24 +3,22 @@ import { isSupportedOAuthCredential } from "@app/types/oauth/lib";
 import { z } from "zod";
 
 // OAuth use cases
-export const MCP_SERVER_OAUTH_USE_CASES = [
+const MCP_SERVER_OAUTH_USE_CASES = [
   "platform_actions",
   "personal_actions",
 ] as const;
 
-export type MCPServerOAuthUseCase = (typeof MCP_SERVER_OAUTH_USE_CASES)[number];
-
 // Auth methods
-export const CREATE_MCP_SERVER_AUTH_METHODS = [
+const CREATE_MCP_SERVER_AUTH_METHODS = [
   "oauth-dynamic",
   "oauth-static",
   "bearer",
 ] as const;
 
-export type CreateMCPServerAuthMethod =
+type CreateMCPServerAuthMethod =
   (typeof CREATE_MCP_SERVER_AUTH_METHODS)[number];
 
-export const DEFAULT_CREATE_MCP_SERVER_AUTH_METHOD: CreateMCPServerAuthMethod =
+const DEFAULT_CREATE_MCP_SERVER_AUTH_METHOD: CreateMCPServerAuthMethod =
   "oauth-dynamic";
 
 // Runtime validator for OAuthCredentials.

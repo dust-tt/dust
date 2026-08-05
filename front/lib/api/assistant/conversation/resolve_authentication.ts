@@ -52,13 +52,11 @@ export async function resolveAuthentication(
     messageId,
     outcome,
     kind = "authentication",
-    resumeAncestorConversations = false,
   }: {
     actionId: string;
     messageId: string;
     outcome: ResolveAuthenticationOutcome;
     kind?: ResolveAuthenticationKind;
-    resumeAncestorConversations?: boolean;
   }
 ): Promise<Result<void, DustError>> {
   const { blockedStatus, isMatchingEvent, label } = KIND_CONFIG[kind];
@@ -85,7 +83,6 @@ export async function resolveAuthentication(
     userMessageVersion,
     userMessageUserId,
     userMessageOrigin,
-    branchId,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
@@ -171,7 +168,6 @@ export async function resolveAuthentication(
       agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        conversationBranchId: branchId,
         conversationId,
         conversationTitle,
         userMessageId,
@@ -203,7 +199,6 @@ export async function resolveAuthentication(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: branchId,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,
@@ -223,17 +218,17 @@ export async function resolveAuthentication(
     `${label} ${outcome}, agent loop resumed`
   );
 
-  if (!resumeAncestorConversations) {
-    return new Ok(undefined);
-  }
-
-  return resumeAncestorConversationsHelper(auth, conversation, {
+  // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it, so
+  // this must run whatever the surface the authentication was resolved from. The resolution is
+  // already committed, so a failed wake-up is logged, never returned.
+  await resumeAncestorConversationsHelper(auth, conversation, {
     agentMessageId,
   });
+
+  return new Ok(undefined);
 }
 
 export const ResolveAuthenticationSchema = z.object({
   actionId: z.string(),
   outcome: z.enum(["completed", "denied"]),
-  resumeAncestorConversations: z.boolean().optional(),
 });

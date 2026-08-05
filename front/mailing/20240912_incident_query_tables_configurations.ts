@@ -5,7 +5,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 const { SENDGRID_API_KEY = "", LIVE = false } = process.env;
 sgMail.setApiKey(SENDGRID_API_KEY);
 
-export const sendIncidentEmail = async ({
+const sendIncidentEmail = async ({
   email,
   assistants,
 }: {

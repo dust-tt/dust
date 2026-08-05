@@ -134,6 +134,9 @@ export interface SuccessCompletionEvent {
   textGenerated?: TextGeneratedEvent;
   reasoningGenerated?: ReasoningGeneratedEvent;
   toolCalls?: ToolCallEvent[];
+  // Raw provider stop/finish reason, verbatim and unmapped: why the turn ended.
+  // Diagnostics only.
+  stopReason?: string;
   metadata: LLMClientMetadata;
 }
 

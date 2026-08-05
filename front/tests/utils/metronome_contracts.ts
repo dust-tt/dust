@@ -7,7 +7,7 @@ export type SeatFixture = {
   entitled?: boolean;
 };
 
-export type ContractOverride = {
+type ContractOverride = {
   entitled: boolean;
   starting_at?: string;
   product: { id: string };

@@ -98,6 +98,23 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return activationPods.map((pod) => new this(this.model, pod.get()));
   }
 
+  // Fetches the ActivationPod whose nudge trigger this is, if any. The trigger
+  // link is written only by the provisioning path, which makes it the
+  // server-owned fact that identifies a firing as a nudge.
+  static async fetchByTriggerModelId(
+    auth: Authenticator,
+    triggerModelId: ModelId
+  ): Promise<ActivationPodResource | null> {
+    const activationPod = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        triggerId: triggerModelId,
+      },
+    });
+
+    return activationPod ? new this(this.model, activationPod.get()) : null;
+  }
+
   // Lists every ActivationPod in the calling workspace.
   static async listForWorkspace(
     auth: Authenticator

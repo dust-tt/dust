@@ -5,9 +5,11 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import {
   EDIT_INFORMATION_TOOL_NAME,
   POD_MANAGER_SERVER_NAME,
+  SET_DEFAULT_AGENT_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import {
+  isPodManagerDefaultAgentInput,
   isPodManagerEditInformationInput,
   isPodManagerUpdateMembersInput,
 } from "@app/lib/api/actions/servers/pod_manager/types";
@@ -23,7 +25,6 @@ import {
 import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
-import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -147,6 +148,18 @@ const MCP_TOOL_OVERRIDES: Partial<
       },
       alwaysAllowLabel: () => `Always allow agent to update Pod members`,
     },
+    [SET_DEFAULT_AGENT_TOOL_NAME]: {
+      title: (inputs) => {
+        if (!isPodManagerDefaultAgentInput(inputs)) {
+          return `Allow agent to set the Pod default agent?`;
+        }
+        if (inputs.agentName === null) {
+          return `Allow agent to reset the Pod default agent to @dust?`;
+        }
+        return `Allow agent to set the Pod default agent to @${inputs.agentName}?`;
+      },
+      alwaysAllowLabel: () => "Always allow agent to set the Pod default agent",
+    },
   },
   [WAKEUPS_SERVER_NAME]: {
     schedule_wakeup: {
@@ -163,7 +176,7 @@ const MCP_TOOL_OVERRIDES: Partial<
 
 // Display data needed to render a tool validation card, for both agent-loop and sandbox-function
 // blocked tool executions.
-export type ToolValidationRequest = Pick<
+type ToolValidationRequest = Pick<
   BlockedToolExecution,
   | "actionId"
   | "userId"
@@ -177,6 +190,9 @@ export type ToolValidationRequest = Pick<
 interface ToolValidationCardProps {
   validationRequest: ToolValidationRequest;
   triggeringUser: UserType | null;
+  // The viewer looking at the card. Passed in rather than read from `AuthContext` because shared
+  // frames render this card outside of any AuthProvider.
+  currentUser: UserType;
   owner: LightWorkspaceType;
   conversationId?: string | null;
   errorMessage: string | null;
@@ -189,6 +205,7 @@ interface ToolValidationCardProps {
 export function ToolValidationCard({
   validationRequest,
   triggeringUser,
+  currentUser,
   owner,
   conversationId,
   errorMessage,
@@ -196,16 +213,15 @@ export function ToolValidationCard({
   isPulsing = false,
   onValidate,
 }: ToolValidationCardProps) {
-  const { user } = useAuth();
   const [neverAskAgain, setNeverAskAgain] = useState(false);
 
   const canCurrentUserRespond = useMemo(
     () =>
       canCurrentUserRespondToParentUserMessage({
         parentUserId: validationRequest.userId,
-        currentUserId: user?.sId,
+        currentUserId: currentUser.sId,
       }),
-    [validationRequest.userId, user?.sId]
+    [validationRequest.userId, currentUser.sId]
   );
 
   const icon = validationRequest.metadata.icon
@@ -282,7 +298,7 @@ export function ToolValidationCard({
         <>
           <ToolValidationDetails
             blockedAction={validationRequest}
-            user={user}
+            user={currentUser}
             owner={owner}
             conversationId={conversationId}
             defaultExpanded={toolOverride?.detailsExpanded}

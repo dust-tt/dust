@@ -14,10 +14,10 @@ import { toGlobalResponse, untrustedFetch } from "@app/lib/egress/server";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { destroyMCPServerViewDependencies } from "@app/lib/resources/mcp_server_view_helper";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -264,6 +264,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
         oAuthUseCase: blob.oAuthUseCase,
+        isRestrictedToSkills: false,
       },
       {
         transaction,

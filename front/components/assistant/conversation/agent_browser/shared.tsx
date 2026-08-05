@@ -97,7 +97,7 @@ type AgentGridProps = {
   canGetMore?: boolean;
 };
 
-export function trackAgentBrowserEvent({
+function trackAgentBrowserEvent({
   enabled,
   object,
   action = TRACKING_ACTIONS.CLICK,
@@ -268,7 +268,7 @@ type SearchDropdownContentProps = {
   trackAgentBrowserEvents?: boolean;
 };
 
-export function SearchDropdownContent({
+function SearchDropdownContent({
   filteredTags,
   filteredAgents,
   isLoading,

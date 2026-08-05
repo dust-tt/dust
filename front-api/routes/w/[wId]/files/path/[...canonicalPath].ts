@@ -12,7 +12,11 @@ import {
   WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
-import { DUST_FILE_ID_HEADER } from "@app/types/files";
+import {
+  DUST_FILE_ID_HEADER,
+  getFileFormat,
+  normalizeMimeType,
+} from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -74,6 +78,19 @@ function putContentTooLargeError(ctx: Context) {
       message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
     },
   });
+}
+
+function isContentTypeSafeToDisplay(contentType: string): boolean {
+  // Mirrors the isSafeToDisplay policy from getSecureFileAction (FileResource-backed serving),
+  // applied to the raw stored content type since canonical-path files may lack a FileResource.
+  return (
+    getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay ?? false
+  );
+}
+
+function contentDispositionAttachment(fileName: string): string {
+  const asciiFallback = fileName.replace(/[^\x20-\x7E\/\\]/g, "_");
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
 const putBodyLimit = honoBodyLimit({
@@ -139,6 +156,7 @@ async function handleHeadRequest(
   const headers: Record<string, string> = {
     "Content-Type": statResult.value.contentType,
     "Content-Length": String(statResult.value.sizeBytes),
+    "X-Content-Type-Options": "nosniff",
   };
   if (linkedFileResource) {
     headers[DUST_FILE_ID_HEADER] = linkedFileResource.sId;
@@ -233,6 +251,7 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
         "Content-Disposition": `inline; filename="${asciiFallback}"; filename*=UTF-8''${encodedName}`,
         "Content-Length": String(pdfBuffer.length),
         "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   }
@@ -269,6 +288,7 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   }
@@ -298,13 +318,18 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const headers: Record<string, string> = { "Content-Type": contentType };
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "X-Content-Type-Options": "nosniff",
+  };
 
-  // ?download=1 sets Content-Disposition: attachment.
-  if (download && download !== "0") {
+  // Unsafe content types and ?download=1 must always be served as attachments.
+  if (
+    !isContentTypeSafeToDisplay(contentType) ||
+    (download && download !== "0")
+  ) {
     const fileName = path.posix.basename(canonicalPath);
-    headers["Content-Disposition"] =
-      `attachment; filename="${encodeURIComponent(fileName)}"`;
+    headers["Content-Disposition"] = contentDispositionAttachment(fileName);
   }
 
   const nodeStream = readResult.value;

@@ -12,18 +12,18 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type NudgePlan = {
+type NudgePlan = {
   podId: string;
   spaceId: string;
   targetUserId: string;
 };
 
-export type SkippedUser = {
+type SkippedUser = {
   userId: string;
   podId: string;
 };
 
-export type OrchestratorResult = {
+type OrchestratorResult = {
   eligible: NudgePlan[];
   skipped: SkippedUser[];
 };

@@ -1,6 +1,6 @@
 import { clientFetch } from "@app/lib/egress/client";
 import type { PokePlanTypeFilter } from "@app/lib/plans/plan_codes";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray } from "@app/lib/swr/swr";
 import type { GetPokeSearchItemsResponseBody } from "@app/types/api/poke/search";
 import type {
   GetPokeWorkspacesResponseBody,
@@ -10,7 +10,6 @@ import type { PokeItemBase } from "@app/types/poke";
 import type { RegionType } from "@app/types/region";
 import { SUPPORTED_REGIONS } from "@app/types/region";
 import { useEffect, useState } from "react";
-import type { Fetcher } from "swr";
 
 // Deduplicate regions by URL. In dev, all regions point to the same localhost
 // server, so without this we would fire one identical request per region and
@@ -27,35 +26,6 @@ function getUniqueRegions(
     seen.add(url);
     return true;
   });
-}
-
-export function usePokeSearch({
-  disabled,
-  search,
-}: {
-  disabled?: boolean;
-  search?: string;
-} = {}) {
-  const { fetcher } = useFetcher();
-  const workspacesFetcher: Fetcher<GetPokeSearchItemsResponseBody> = fetcher;
-
-  const queryParams = new URLSearchParams({
-    search: search ?? "",
-  });
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/poke/search?${queryParams.toString()}`,
-    workspacesFetcher,
-    {
-      disabled,
-    }
-  );
-
-  return {
-    results: data?.results ?? emptyArray(),
-    isLoading: !error && !data && !disabled,
-    isError: error,
-  };
 }
 
 /**

@@ -1,9 +1,9 @@
 import { DustPodConfigurationSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { z } from "zod";
 
-export const PodMemberRoleSchema = z.enum(["member", "editor"]);
+const PodMemberRoleSchema = z.enum(["member", "editor"]);
 
-export const PodAccessSchema = z.enum(["restricted", "open"]);
+const PodAccessSchema = z.enum(["restricted", "open"]);
 
 export const PodMembersToAddSchema = z.record(z.string(), PodMemberRoleSchema);
 
@@ -23,23 +23,31 @@ export const PodManagerEditInformationInputSchema = z.object({
   dustPod: DustPodConfigurationSchema.optional(),
 });
 
-export const PodManagerMoveConversationInputSchema = z.object({
+const PodManagerMoveConversationInputSchema = z.object({
   destination: z.enum(["pod", "personal"]),
   conversationId: z.string().optional(),
   dustPod: DustPodConfigurationSchema.optional(),
 });
 
+const PodManagerDefaultAgentInputSchema = z.object({
+  agentName: z.string().nullable(),
+  dustPod: DustPodConfigurationSchema.optional(),
+});
+
 export type PodMemberRole = z.infer<typeof PodMemberRoleSchema>;
 export type PodAccess = z.infer<typeof PodAccessSchema>;
-export type PodMembersToAdd = z.infer<typeof PodMembersToAddSchema>;
+type PodMembersToAdd = z.infer<typeof PodMembersToAddSchema>;
 export type PodManagerUpdateMembersInput = z.infer<
   typeof PodManagerUpdateMembersInputSchema
 >;
 export type PodManagerEditInformationInput = z.infer<
   typeof PodManagerEditInformationInputSchema
 >;
-export type PodManagerMoveConversationInput = z.infer<
+type PodManagerMoveConversationInput = z.infer<
   typeof PodManagerMoveConversationInputSchema
+>;
+type PodManagerDefaultAgentInput = z.infer<
+  typeof PodManagerDefaultAgentInputSchema
 >;
 
 export function isPodManagerUpdateMembersInput(
@@ -58,6 +66,12 @@ export function isPodManagerMoveConversationInput(
   input: Record<string, unknown>
 ): input is PodManagerMoveConversationInput {
   return PodManagerMoveConversationInputSchema.safeParse(input).success;
+}
+
+export function isPodManagerDefaultAgentInput(
+  input: Record<string, unknown>
+): input is PodManagerDefaultAgentInput {
+  return PodManagerDefaultAgentInputSchema.safeParse(input).success;
 }
 
 export function partitionMembersToAdd(membersToAdd: PodMembersToAdd): {

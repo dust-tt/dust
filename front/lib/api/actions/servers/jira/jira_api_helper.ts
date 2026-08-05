@@ -720,7 +720,7 @@ export async function transitionIssue(
   return handleResults(result, null);
 }
 
-export async function getAllFields(
+async function getAllFields(
   baseUrl: string,
   accessToken: string
 ): Promise<

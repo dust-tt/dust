@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 
 const MOBILE_BREAKPOINT = 768;
 
-export function useIsMobile() {
+export function useIsMobile({
+  excludeExtension = true,
+}: {
+  excludeExtension?: boolean;
+} = {}) {
   const clientType = useClientType();
   // Read from window immediately so the initial value is correct to avoid keyboard pop up on mobile.
   const [isMobile, setIsMobile] = useState<boolean>(
@@ -21,9 +25,13 @@ export function useIsMobile() {
   }, []);
 
   // The extension is narrow but not mobile.
-  if (clientType === "extension") {
+  if (excludeExtension && clientType === "extension") {
     return false;
   }
 
   return isMobile;
+}
+
+export function useIsWidthConstrained() {
+  return useIsMobile({ excludeExtension: false });
 }

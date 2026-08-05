@@ -201,7 +201,7 @@ function renderUserMessage(
     visibility: message.visibility,
     version: message.version,
     rank: message.rank,
-    branchId: message.getBranchId(),
+    branchId: null,
     created: message.createdAt.getTime(),
     user: linkedUser ?? null,
     content: userMessage.content,
@@ -439,7 +439,6 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     async () =>
       AgentStepContentResource.fetchByAgentMessages(auth, {
         agentMessageIds,
-        latestVersionsOnly: true,
         textContentOnly,
       }),
     async () =>
@@ -810,7 +809,7 @@ async function renderSingleAgentMessage(
     visibility: message.visibility,
     version: message.version,
     rank: message.rank,
-    branchId: message.getBranchId(),
+    branchId: null,
     parentMessageId: parentMessage.sId,
     parentAgentMessageId: parentAgentMessage?.sId ?? null,
     status: agentMessage.status,
@@ -877,7 +876,7 @@ async function batchRenderCompactionMessages(
       visibility: m.visibility,
       version: m.version,
       rank: m.rank,
-      branchId: m.getBranchId(),
+      branchId: null,
       status: compactionMessage.status,
       content: compactionMessage.content,
       ...(compactionMessage.sourceConversationId

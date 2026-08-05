@@ -50,7 +50,7 @@ export type GetProjectContextResponseBody = {
   attachments: ConversationAttachmentType[];
 };
 
-export const PostProjectContextContentNodeItemSchema = z.object({
+const PostProjectContextContentNodeItemSchema = z.object({
   title: z.string().min(1, "title is required"),
   nodeId: z.string().min(1, "nodeId is required"),
   nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
@@ -85,53 +85,6 @@ export function getProjectConversationFolderInternalId(
   spaceId: string
 ): string {
   return `dust-project-${dustProjectConnectorId}-project-${spaceId}`;
-}
-
-export async function listProjectContentFragments(
-  auth: Authenticator,
-  space: SpaceResource
-): Promise<ContentFragmentResource[]> {
-  return ContentFragmentResource.listBySpace(auth, space);
-}
-
-/**
- * Project context files for a space from latest file-backed `content_fragments`
- * rows (`spaceId`), in fragment order (`createdAt` DESC).
- */
-export async function listProjectContextFiles(
-  auth: Authenticator,
-  space: SpaceResource
-): Promise<FileResource[]> {
-  const fragments = await ContentFragmentResource.listBySpace(auth, space);
-  const fileModelIds = removeNulls(fragments.map((fr) => fr.fileId));
-
-  const filesByModelId = new Map<number, FileResource>();
-  if (fileModelIds.length > 0) {
-    const fetched = await FileResource.fetchByModelIdsWithAuth(
-      auth,
-      fileModelIds
-    );
-    for (const f of fetched) {
-      filesByModelId.set(f.id, f);
-    }
-  }
-
-  const files: FileResource[] = [];
-  const seenIds = new Set<string>();
-
-  for (const fragment of fragments) {
-    if (fragment.fileId == null) {
-      continue;
-    }
-    const file = filesByModelId.get(fragment.fileId);
-    if (!file || seenIds.has(file.sId)) {
-      continue;
-    }
-    seenIds.add(file.sId);
-    files.push(file);
-  }
-
-  return files;
 }
 
 /**

@@ -3,7 +3,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import { isDevelopment } from "@app/types/shared/env";
 import type { TagType } from "@app/types/tag";
-import isEqual from "lodash/isEqual";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 
@@ -60,24 +59,6 @@ export const timeAgoFrom = (
 
   return "<1m";
 };
-
-export function getWeekBoundaries(date: Date): {
-  startDate: Date;
-  endDate: Date;
-} {
-  const startDate = new Date(date);
-  startDate.setHours(0, 0, 0, 0);
-  const diff =
-    startDate.getDate() -
-    startDate.getDay() +
-    (startDate.getDay() === 0 ? -6 : 1);
-  startDate.setDate(diff);
-
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 7);
-
-  return { startDate, endDate };
-}
 
 /**
  * Formats a timestamp to a human-readable date string.
@@ -149,23 +130,6 @@ export const isDomain = (domain: string | null): boolean => {
     return false;
   }
   return DOMAIN_REGEX.test(domain);
-};
-
-export const objectToMarkdown = (obj: any, indent = 0) => {
-  let markdown = "";
-
-  for (const key in obj) {
-    if (typeof obj[key] === "object") {
-      markdown += `${"  ".repeat(indent)}- **${key}**:\n${objectToMarkdown(
-        obj[key],
-        indent + 1
-      )}`;
-    } else {
-      markdown += `${"  ".repeat(indent)}- **${key}**: ${obj[key]}\n`;
-    }
-  }
-
-  return markdown;
 };
 
 /**
@@ -250,6 +214,73 @@ export const getAgentSearchString = (
  */
 export function subFilter(a: string, b: string) {
   return subFilterLastIndex(a, b) > -1;
+}
+
+interface AutocompleteMatch {
+  matchStart: number | null;
+  rank: number;
+}
+
+function getAutocompleteMatch(
+  query: string,
+  candidate: string
+): AutocompleteMatch {
+  if (candidate === query) {
+    return { matchStart: 0, rank: 0 };
+  }
+  if (candidate.startsWith(query)) {
+    return { matchStart: 0, rank: 1 };
+  }
+
+  const substringStart = candidate.indexOf(query);
+  if (substringStart !== -1) {
+    return { matchStart: substringStart, rank: 2 };
+  }
+  if (subFilter(query, candidate)) {
+    return { matchStart: null, rank: 3 };
+  }
+  return { matchStart: null, rank: 4 };
+}
+
+/**
+ * Compares two strings for predictable autocomplete relevance.
+ * Exact matches rank first, followed by prefixes, substrings, and fuzzy matches.
+ * Within the same tier, earlier and shorter matches rank first, followed by an
+ * alphabetical comparison that preserves the candidates' original casing.
+ */
+export function compareForAutocompleteSort(
+  query: string,
+  a: string,
+  b: string
+) {
+  const normalizedQuery = query.toLowerCase();
+  const normalizedA = a.toLowerCase();
+  const normalizedB = b.toLowerCase();
+
+  if (normalizedQuery.length === 0) {
+    return a.localeCompare(b);
+  }
+
+  const matchA = getAutocompleteMatch(normalizedQuery, normalizedA);
+  const matchB = getAutocompleteMatch(normalizedQuery, normalizedB);
+  const rankComparison = matchA.rank - matchB.rank;
+  if (rankComparison !== 0) {
+    return rankComparison;
+  }
+
+  if (
+    matchA.matchStart !== null &&
+    matchB.matchStart !== null &&
+    matchA.matchStart !== matchB.matchStart
+  ) {
+    return matchA.matchStart - matchB.matchStart;
+  }
+
+  if (matchA.rank < 4 && a.length !== b.length) {
+    return a.length - b.length;
+  }
+
+  return a.localeCompare(b);
 }
 
 /**
@@ -343,48 +374,6 @@ export function removeDiacritics(input: string): string {
   return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-/**
- * Compares two 2D arrays for equality, ignoring the order of elements.
- * Does not mutate input arrays.
- */
-export function isArrayEqual2DUnordered(
-  first: unknown[][],
-  second: unknown[][]
-): boolean {
-  if (first.length !== second.length) {
-    return false;
-  }
-
-  // Sort both arrays and their inner arrays.
-  const sort2D = (arr: unknown[][]) =>
-    [...arr].map((row) => [...row].sort()).sort();
-
-  return isEqual(sort2D(first), sort2D(second));
-}
-
-// Postgres requires all subarrays to be of the same length.
-// This function ensures that all subarrays are of the same length
-// by repeating the last element of each subarray until all subarrays have the same length.
-// Make sure that it's okay to use this function for your use case.
-export function normalizeArrays<T>(array2D: T[][]): T[][] {
-  // Copy the array to avoid mutating the original array.
-  const array2DCopy = array2D.map((array) => [...array]);
-
-  const longestArray = array2DCopy.reduce(
-    (max, req) => Math.max(max, req.length),
-    0
-  );
-  // for each array, repeatedly add the last id until array is of longest array length
-  const updatedArrays = array2DCopy.map((array) => {
-    while (array.length < longestArray) {
-      array.push(array[array.length - 1]);
-    }
-    return array;
-  });
-
-  return updatedArrays;
-}
-
 // from http://detectmobilebrowsers.com/
 export const isMobile = (navigator: Navigator) =>
   /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(
@@ -397,7 +386,7 @@ export const isMobile = (navigator: Navigator) =>
 /**
  * Bridge a push-based callback to a pull-based `.next()` promise stream.
  */
-export type CallbackReader<T> = {
+type CallbackReader<T> = {
   /** Push endpoint fed by the producer (e.g. Redis subscription). */
   callback: (v: T) => void;
   /** Pull endpoint for the consumer; resolves with the next value. */

@@ -95,7 +95,7 @@ export function useCredits({
   };
 }
 
-export type PurchaseResult =
+type PurchaseResult =
   | { status: "success" }
   | { status: "redirect"; paymentUrl: string }
   | { status: "error"; message: string };
@@ -346,7 +346,7 @@ export function useAwuPurchaseInfo({
   };
 }
 
-export type RedeemPoolTopupCouponOutcome =
+type RedeemPoolTopupCouponOutcome =
   | { status: "success" }
   | { status: "error"; message: string };
 

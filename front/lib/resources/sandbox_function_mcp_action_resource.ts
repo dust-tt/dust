@@ -1,6 +1,7 @@
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 import type { ToolOutputItemType } from "@app/lib/actions/types";
+import type { PokePodFunctionMCPAction } from "@app/lib/api/poke/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
@@ -156,6 +157,48 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
     });
 
     return action ?? null;
+  }
+
+  // Oldest-first: the actions of a single invocation, in the order the function called them.
+  static async listByInvocation(
+    auth: Authenticator,
+    invocation: SandboxFunctionInvocationResource
+  ): Promise<SandboxFunctionMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: { sandboxFunctionInvocationId: invocation.id },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+  }
+
+  // Counts the actions of each invocation, keyed by invocation model id. Counting the fetched ids
+  // in memory rather than grouping in SQL keeps the result typed; the row count is bounded by the
+  // caller's page of invocations times their tool calls.
+  static async countByInvocationModelIds(
+    auth: Authenticator,
+    invocationModelIds: ModelId[]
+  ): Promise<Map<ModelId, number>> {
+    const counts = new Map<ModelId, number>();
+    if (invocationModelIds.length === 0) {
+      return counts;
+    }
+
+    const actions = await this.model.findAll({
+      attributes: ["sandboxFunctionInvocationId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sandboxFunctionInvocationId: invocationModelIds,
+      },
+    });
+
+    for (const action of actions) {
+      const invocationModelId = action.sandboxFunctionInvocationId;
+      counts.set(invocationModelId, (counts.get(invocationModelId) ?? 0) + 1);
+    }
+
+    return counts;
   }
 
   static async fetchByModelIdWithAuth(
@@ -449,6 +492,21 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       inputs: this.inputs,
       status: this.status,
       executionDurationMs: this.executionDurationMs,
+    };
+  }
+
+  // `mcpServerView` names the tool's server and links to it; it is null when the view has since
+  // been deleted. The output itself stays behind `readOutput`, poke fetches it on demand.
+  toPokeJSON(
+    mcpServerView: MCPServerViewResource | null
+  ): PokePodFunctionMCPAction {
+    return {
+      ...this.toJSON(),
+      mcpServerViewId: mcpServerView?.sId ?? null,
+      mcpServerName: mcpServerView
+        ? mcpServerView.getServerDisplayMetadata().name
+        : null,
+      hasOutput: this.outputGcsPath !== null,
     };
   }
 }

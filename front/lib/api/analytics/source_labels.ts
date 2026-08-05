@@ -2,7 +2,7 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 export type AnalyticsVisibleOrigin = Exclude<
   UserMessageOrigin,
-  "reinforced_skill_notification" | "branch_anchor"
+  "reinforced_skill_notification" | "system_activation"
 >;
 
 export const SOURCE_ORIGIN_LABELS: Record<AnalyticsVisibleOrigin, string> = {
@@ -33,7 +33,7 @@ export const SOURCE_ORIGIN_LABELS: Record<AnalyticsVisibleOrigin, string> = {
   project_kickoff: "Pod Kickoff",
 };
 
-export function isAnalyticsVisibleOrigin(
+function isAnalyticsVisibleOrigin(
   origin: string
 ): origin is AnalyticsVisibleOrigin {
   return origin in SOURCE_ORIGIN_LABELS;

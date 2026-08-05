@@ -14,7 +14,7 @@ export class AgentMessageCompletedEvent extends CustomEvent<void> {
   }
 }
 
-export const COMPACTION_STARTED_EVENT = "compaction-started";
+const COMPACTION_STARTED_EVENT = "compaction-started";
 
 export class CompactionStartedEvent extends CustomEvent<{
   conversationId: string;

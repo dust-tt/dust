@@ -7,6 +7,7 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import { serializeSkillTag } from "@app/lib/skills/format";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type {
   SkillAvailability,
   SkillStatus,
@@ -38,6 +39,42 @@ export class SkillFactory {
     const user = auth.user();
     assert(user, "User is required");
 
+    const availability = overrides.availability ?? DEFAULT_SKILL_AVAILABILITY;
+
+    if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+      await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
+        grantType: "create",
+        resourceType: "skill",
+      });
+      await auth.refresh();
+    }
+
+    // Any availability beyond "editors" requires the publish capability; grant it so the factory
+    // can set up any availability.
+    if (
+      availability !== "editors" &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
+        grantType: "publish",
+        resourceType: "skill",
+      });
+      await auth.refresh();
+    }
+
+    // Auto-discoverable skills additionally require the make_discoverable capability when
+    // admin governance is enabled; grant it so the factory can set up any availability.
+    if (
+      availability === "users_and_agents" &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
+        grantType: "make_discoverable",
+        resourceType: "skill",
+      });
+      await auth.refresh();
+    }
+
     const name = overrides.name ?? "Test Skill";
     const agentFacingDescription =
       overrides.agentFacingDescription ?? "Test skill agent facing description";
@@ -62,7 +99,7 @@ export class SkillFactory {
         requestedSpaceIds,
         status,
         icon: SKILL_ICON.name,
-        availability: overrides.availability ?? DEFAULT_SKILL_AVAILABILITY,
+        availability,
       },
       {
         mcpServerViews,

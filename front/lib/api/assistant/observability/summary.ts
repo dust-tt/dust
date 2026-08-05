@@ -11,14 +11,14 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type AgentObservabilitySummaryInput = {
+type AgentObservabilitySummaryInput = {
   auth: Authenticator;
   baseQuery: estypes.QueryDslQueryContainer;
   days: number;
   agentName: string;
 };
 
-export type AgentObservabilitySummaryResult = {
+type AgentObservabilitySummaryResult = {
   summaryText: string;
 };
 

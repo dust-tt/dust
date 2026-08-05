@@ -204,6 +204,40 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.relations.usage.skills).toEqual([]);
   });
 
+  it("should not expose favorite state when the feature flag is disabled", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const result = await skill.setFavorite(requestUserAuth, true);
+    expect(result.isOk()).toBe(true);
+
+    const response = await getSkill(workspace, skill.sId);
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill).not.toHaveProperty("isFavorite");
+
+    const relationsResponse = await getSkillWithRelations(workspace, skill.sId);
+    expect(relationsResponse.status).toBe(200);
+    const relationsData = await relationsResponse.json();
+    expect(relationsData.skill).not.toHaveProperty("isFavorite");
+  });
+
+  it("should include favorite state when the feature flag is enabled", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+    await FeatureFlagFactory.basic(requestUserAuth, "skill_favorites");
+
+    const result = await skill.setFavorite(requestUserAuth, true);
+    expect(result.isOk()).toBe(true);
+
+    const response = await getSkill(workspace, skill.sId);
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.isFavorite).toBe(true);
+  });
+
   it("should return 404 for non-existent skill", async () => {
     const { workspace } = await setupTest();
 
@@ -401,35 +435,11 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(updatedSkill?.availability).toBe("workspace_users");
   });
 
-  it("rejects the editors availability when skill publication governance is off", async () => {
-    const { workspace, skill } = await setupTest({
-      requestUserRole: "admin",
-    });
-
-    const response = await patchSkill(workspace, skill.sId, {
-      name: skill.name,
-      agentFacingDescription: skill.agentFacingDescription,
-      userFacingDescription: skill.userFacingDescription,
-      instructions: skill.instructions,
-      icon: skill.icon,
-      tools: [],
-      attachedKnowledge: [],
-      instructionsHtml: skill.instructionsHtml,
-      availability: "editors",
-    });
-
-    expect(response.status).toBe(400);
-  });
-
   it("denies any edit to a non-editor even with the publish permission", async () => {
-    const { workspace, skill, requestUserAuth } = await setupTest({
+    const { workspace, skill } = await setupTest({
       skillOwnerRole: "builder",
       requestUserRole: "admin",
     });
-    await FeatureFlagFactory.basic(
-      requestUserAuth,
-      "admin_governance_skill_publication"
-    );
 
     const response = await patchSkill(workspace, skill.sId, {
       name: "Renamed By Admin",
@@ -447,14 +457,10 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   });
 
   it("denies an availability change to an editor without the publish permission", async () => {
-    const { workspace, skill, requestUserAuth } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
+    const { workspace, skill } = await setupTest({
+      skillOwnerRole: "user",
+      requestUserRole: "user",
     });
-    await FeatureFlagFactory.basic(
-      requestUserAuth,
-      "admin_governance_skill_publication"
-    );
 
     const response = await patchSkill(workspace, skill.sId, {
       name: skill.name,
@@ -473,13 +479,9 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
 
   it("lets an editor without the publish permission edit when availability is unchanged", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
+      skillOwnerRole: "user",
+      requestUserRole: "user",
     });
-    await FeatureFlagFactory.basic(
-      requestUserAuth,
-      "admin_governance_skill_publication"
-    );
 
     const response = await patchSkill(workspace, skill.sId, {
       name: "Renamed By Editor",

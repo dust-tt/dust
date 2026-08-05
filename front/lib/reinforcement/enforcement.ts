@@ -37,7 +37,7 @@ export function getReinforcementBillingUnit(
 
 // Micro-USD amounts are raw, without markup (matching the legacy global cap
 // check); AWU credits have the margin baked in.
-export type ReinforcementGlobalConsumptionStatus =
+type ReinforcementGlobalConsumptionStatus =
   | {
       unit: "micro_usd";
       consumedMicroUsd: number;

@@ -467,6 +467,11 @@
  *           nullable: true
  *           description: Path of this file inside the sandbox conversation mount.
  *           example: conversation/report.csv
+ *         processedPath:
+ *           type: string
+ *           nullable: true
+ *           description: Path of the plain-text sibling of this file inside the sandbox conversation mount (e.g. an audio transcript), when it has one.
+ *           example: conversation/voice.processed.txt
  *         skipDataSourceIndexing:
  *           type: boolean
  *           description: Whether data source indexing was skipped for this file.
@@ -878,6 +883,8 @@
  *           example: 150
  *     MCPServerView:
  *       type: object
+ *       required:
+ *         - isRestrictedToSkills
  *       properties:
  *         id:
  *           type: integer
@@ -992,6 +999,10 @@
  *           enum: ["platform_actions", "personal_actions"]
  *           description: OAuth use case for the MCP server view
  *           example: "platform_actions"
+ *         isRestrictedToSkills:
+ *           type: boolean
+ *           description: Whether the MCP server view can only be used through skills
+ *           example: false
  *         editedByUser:
  *           type: object
  *           nullable: true

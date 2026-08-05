@@ -3,12 +3,17 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import type { CachedAgentStepContent } from "@app/lib/resources/agent_step_content/cache";
+import {
+  tryHydrateAgentStepContentsFromCache,
+  warmAgentStepContentCacheMany,
+} from "@app/lib/resources/agent_step_content/cache";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { withTransaction } from "@app/lib/utils/sql_utils";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type {
   AgentFunctionCallContentType,
@@ -30,6 +35,18 @@ export const FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE = 512;
 // to bump up FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE
 // value = max peak concurrency - 1
 const FETCH_BY_AGENT_MESSAGES_CONCURRENCY = 4;
+
+const METADATA_ATTRIBUTES = [
+  "id",
+  "createdAt",
+  "updatedAt",
+  "workspaceId",
+  "agentMessageId",
+  "step",
+  "index",
+  "version",
+  "type",
+] as const;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -108,17 +125,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       .map((a) => a.id);
   }
 
-  private static async makeNew(
-    blob: CreationAttributes<AgentStepContentModel>,
-    transaction?: Transaction
-  ): Promise<AgentStepContentResource> {
-    const agentStepContent = await this.model.create(blob, {
-      transaction,
-    });
-
-    return new AgentStepContentResource(this.model, agentStepContent.get());
-  }
-
   public static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[]
@@ -143,33 +149,68 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   /**
-   * Helper to filter latest versions from fetched content
+   * Helper to filter latest versions from fetched content.
+   * Contents must already be ordered by version DESC within each group.
    */
-  private static filterLatestVersions(
-    contents: AgentStepContentModel[],
-    groupByFields: string[]
-  ): AgentStepContentModel[] {
+  private static filterLatestVersions<
+    T extends {
+      agentMessageId: ModelId;
+      step: number;
+      index: number;
+    },
+  >(contents: T[], groupByFields: (keyof T)[]): T[] {
     const grouped = groupBy(contents, (content) =>
-      groupByFields
-        .map((field) => content[field as keyof AgentStepContentModel])
-        .join("-")
+      groupByFields.map((field) => content[field]).join("-")
     );
 
     // For each group, keep only the first item (already sorted by version DESC)
     return Object.values(grouped).map((group) => group[0]);
   }
 
-  static async fetchByAgentMessages(
+  private static fromCached(
+    cached: CachedAgentStepContent
+  ): AgentStepContentResource {
+    return new AgentStepContentResource(this.model, {
+      id: cached.id,
+      workspaceId: cached.workspaceId,
+      agentMessageId: cached.agentMessageId,
+      step: cached.step,
+      index: cached.index,
+      version: cached.version,
+      type: cached.type,
+      value: cached.value,
+      dustRunId: cached.dustRunId,
+      createdAt: new Date(cached.createdAt),
+      updatedAt: new Date(cached.updatedAt),
+    });
+  }
+
+  // Serialize into the Redis cache shape. Inverse of `fromCached`.
+  private toCachedJSON(): CachedAgentStepContent {
+    return {
+      id: this.id,
+      workspaceId: this.workspaceId,
+      agentMessageId: this.agentMessageId,
+      step: this.step,
+      index: this.index,
+      version: this.version,
+      type: this.type,
+      value: this.value,
+      dustRunId: this.dustRunId,
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
+    };
+  }
+
+  private static async fetchByAgentMessagesFromPostgres(
     auth: Authenticator,
     {
       agentMessageIds,
       transaction,
-      latestVersionsOnly = false,
       textContentOnly = false,
     }: {
       agentMessageIds: ModelId[];
       transaction?: Transaction;
-      latestVersionsOnly?: boolean;
       textContentOnly?: boolean;
     }
   ): Promise<AgentStepContentResource[]> {
@@ -183,7 +224,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     const batchResults = await concurrentExecutor(
       chunks,
-      async (chunk) =>
+      async (idsChunk) =>
         this.model.findAll({
           where: {
             workspaceId: owner.id,
@@ -198,7 +239,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
             ["version", "DESC"],
           ],
           bind: {
-            agentMessageIds: chunk,
+            agentMessageIds: idsChunk,
           },
           transaction,
         }),
@@ -209,16 +250,174 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     let contents = batchResults.flat();
 
-    if (latestVersionsOnly) {
-      contents = this.filterLatestVersions(contents, [
-        "agentMessageId",
-        "step",
-        "index",
-      ]);
-    }
+    // We only care about the latest version of the step content for each agent message, step, and index.
+    contents = this.filterLatestVersions(contents, [
+      "agentMessageId",
+      "step",
+      "index",
+    ]);
 
     return contents.map(
       (content) => new AgentStepContentResource(this.model, content.get())
+    );
+  }
+
+  /**
+   * Cheap metadata-only fetch (no TOAST de-toast of `value`) used to check
+   * Redis Hash completeness before hydrating from cache.
+   */
+  private static async fetchLatestMetadataByAgentMessages(
+    auth: Authenticator,
+    {
+      agentMessageIds,
+      textContentOnly = false,
+    }: {
+      agentMessageIds: ModelId[];
+      textContentOnly?: boolean;
+    }
+  ): Promise<
+    Array<{
+      id: ModelId;
+      agentMessageId: ModelId;
+      step: number;
+      index: number;
+      version: number;
+      type: AgentStepContentModel["type"];
+    }>
+  > {
+    const owner = auth.getNonNullableWorkspace();
+    const chunks = chunk(agentMessageIds, FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE);
+
+    const batchResults = await concurrentExecutor(
+      chunks,
+      async (idsChunk) =>
+        this.model.findAll({
+          attributes: [...METADATA_ATTRIBUTES],
+          where: {
+            workspaceId: owner.id,
+            ...(textContentOnly ? { type: "text_content" } : {}),
+            agentMessageId: {
+              [Op.any]: Sequelize.literal("$agentMessageIds::bigint[]"),
+            },
+          },
+          order: [
+            ["step", "ASC"],
+            ["index", "ASC"],
+            ["version", "DESC"],
+          ],
+          bind: {
+            agentMessageIds: idsChunk,
+          },
+        }),
+      { concurrency: FETCH_BY_AGENT_MESSAGES_CONCURRENCY }
+    );
+
+    return this.filterLatestVersions(batchResults.flat(), [
+      "agentMessageId",
+      "step",
+      "index",
+    ]).map((row) => ({
+      id: row.id,
+      agentMessageId: row.agentMessageId,
+      step: row.step,
+      index: row.index,
+      version: row.version,
+      type: row.type,
+    }));
+  }
+
+  static async fetchByAgentMessages(
+    auth: Authenticator,
+    {
+      agentMessageIds,
+      transaction,
+      textContentOnly = false,
+    }: {
+      agentMessageIds: ModelId[];
+      transaction?: Transaction;
+      textContentOnly?: boolean;
+    }
+  ): Promise<AgentStepContentResource[]> {
+    if (agentMessageIds.length === 0) {
+      return [];
+    }
+
+    // Skip cache inside a transaction: Redis is not transactional with PG, and
+    // callers may be reading uncommitted rows.
+    if (transaction) {
+      return this.fetchByAgentMessagesFromPostgres(auth, {
+        agentMessageIds,
+        transaction,
+        textContentOnly,
+      });
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const latestMetadata = await this.fetchLatestMetadataByAgentMessages(auth, {
+      agentMessageIds,
+      textContentOnly,
+    });
+
+    const cacheResult = await tryHydrateAgentStepContentsFromCache({
+      workspaceId: owner.id,
+      agentMessageIds,
+      latestMetadata,
+    });
+
+    if (!cacheResult) {
+      getStatsDClient().increment(
+        "agent_step_content.fetch.count",
+        agentMessageIds.length,
+        ["source:postgres", "cache:error"]
+      );
+      return this.fetchByAgentMessagesFromPostgres(auth, {
+        agentMessageIds,
+        textContentOnly,
+      });
+    }
+
+    const { hitsByAgentMessageId, missAgentMessageIds } = cacheResult;
+
+    getStatsDClient().increment(
+      "agent_step_content.fetch.count",
+      hitsByAgentMessageId.size,
+      ["source:cache"]
+    );
+    getStatsDClient().increment(
+      "agent_step_content.fetch.count",
+      missAgentMessageIds.length,
+      ["source:postgres"]
+    );
+
+    const hitResources = [...hitsByAgentMessageId.values()].flatMap((cached) =>
+      cached.map((c) => this.fromCached(c))
+    );
+
+    if (missAgentMessageIds.length === 0) {
+      return hitResources.toSorted(
+        (a, b) =>
+          a.agentMessageId - b.agentMessageId ||
+          a.step - b.step ||
+          a.index - b.index
+      );
+    }
+
+    const missResources = await this.fetchByAgentMessagesFromPostgres(auth, {
+      agentMessageIds: missAgentMessageIds,
+      textContentOnly,
+    });
+
+    // Re-warm so the next fetch within the TTL can skip TOAST.
+    void warmAgentStepContentCacheMany(
+      missResources.map((r) => r.toCachedJSON())
+    );
+
+    return [...hitResources, ...missResources].toSorted(
+      (a, b) =>
+        a.agentMessageId - b.agentMessageId ||
+        a.step - b.step ||
+        a.index - b.index
     );
   }
 
@@ -300,47 +499,75 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
   }
 
-  static async createNewVersion({
-    agentMessageId,
-    workspaceId,
-    step,
-    index,
-    type,
-    value,
-  }: Omit<
-    CreationAttributes<AgentStepContentModel>,
-    "version"
-  >): Promise<AgentStepContentResource> {
-    return withTransaction(async (transaction: Transaction) => {
-      const existingContent = await this.model.findAll({
-        where: {
-          agentMessageId,
-          step,
-          index,
-          workspaceId,
-        },
-        order: [["version", "DESC"]],
-        attributes: ["version"],
-        limit: 1,
-        transaction,
-      });
+  static async createNewVersion(
+    blob: Omit<CreationAttributes<AgentStepContentModel>, "version">
+  ): Promise<AgentStepContentResource> {
+    const [resource] = await this.createNewVersions([blob]);
+    return resource;
+  }
 
-      const currentMaxVersion =
-        existingContent.length > 0 ? existingContent[0].version + 1 : 0;
+  /**
+   * Bulk-insert step contents with correct per-(step, index) versioning
+   * (one version lookup + one INSERT). Prefer this over looping
+   * `createNewVersion` when persisting multiple contents for a step.
+   */
+  static async createNewVersions(
+    blobs: Omit<CreationAttributes<AgentStepContentModel>, "version">[]
+  ): Promise<AgentStepContentResource[]> {
+    if (blobs.length === 0) {
+      return [];
+    }
 
-      return this.makeNew(
-        {
-          agentMessageId,
-          workspaceId,
-          step,
-          index,
-          version: currentMaxVersion,
-          type,
-          value,
-        },
-        transaction
-      );
+    const { workspaceId, agentMessageId, step } = blobs[0];
+    assert(
+      blobs.every(
+        (blob) =>
+          blob.workspaceId === workspaceId &&
+          blob.agentMessageId === agentMessageId &&
+          blob.step === step
+      ),
+      "createNewVersions requires all blobs to share the same workspaceId, agentMessageId, and step"
+    );
+
+    const indexes = [...new Set(blobs.map((blob) => blob.index))];
+    const existingContent = await this.model.findAll({
+      where: {
+        workspaceId,
+        agentMessageId,
+        step,
+        index: { [Op.in]: indexes },
+      },
+      attributes: ["index", "version"],
     });
+
+    const maxVersionByIndex = new Map<number, number>();
+    for (const row of existingContent) {
+      const current = maxVersionByIndex.get(row.index);
+      if (current === undefined || row.version > current) {
+        maxVersionByIndex.set(row.index, row.version);
+      }
+    }
+
+    const rowsToCreate = blobs.map((blob) => {
+      const maxVersion = maxVersionByIndex.get(blob.index);
+      const version = maxVersion !== undefined ? maxVersion + 1 : 0;
+      // Advance so duplicate indexes in the same batch get consecutive versions.
+      maxVersionByIndex.set(blob.index, version);
+      return { ...blob, version };
+    });
+
+    const created = await this.model.bulkCreate(rowsToCreate, {
+      validate: true,
+      returning: true,
+    });
+
+    const resources = created.map(
+      (row) => new AgentStepContentResource(this.model, row.get())
+    );
+
+    await warmAgentStepContentCacheMany(resources.map((r) => r.toCachedJSON()));
+
+    return resources;
   }
 
   get sId(): string {

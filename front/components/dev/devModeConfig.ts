@@ -9,7 +9,7 @@ export interface ColorToken {
   cssName?: string;
 }
 
-export interface ColorGroup {
+interface ColorGroup {
   label: string;
   tokens: Record<string, ColorToken>;
 }
@@ -233,8 +233,6 @@ for (const group of COLOR_GROUPS) {
     ALL_TOKENS[key] = token;
   }
 }
-export const ALL_TOKEN_NAMES = Object.keys(ALL_TOKENS);
-
 export type TypoProp =
   | "fontWeight"
   | "fontSize"
@@ -275,7 +273,7 @@ export interface TypoToken {
   defaults: TypoTokenDefaults;
 }
 
-export interface TypoGroup {
+interface TypoGroup {
   label: string;
   tokens: TypoToken[];
 }

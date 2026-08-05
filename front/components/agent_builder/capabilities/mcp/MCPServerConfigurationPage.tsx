@@ -14,7 +14,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import { useMemo } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
-export interface MCPServerConfigurationPageProps {
+interface MCPServerConfigurationPageProps {
   form: UseFormReturn<MCPFormData>;
   action: BuilderAction;
   mcpServerView: MCPServerViewTypeWithLabel;

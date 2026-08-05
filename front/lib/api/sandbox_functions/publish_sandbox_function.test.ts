@@ -15,6 +15,17 @@ import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { emitAuditLogEventMock } = vi.hoisted(() => ({
+  emitAuditLogEventMock: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+
+  return { ...actual, emitAuditLogEvent: emitAuditLogEventMock };
+});
+
 vi.mock(
   "@app/lib/api/sandbox_functions/build_on_sandbox",
   async (importOriginal) => {
@@ -26,6 +37,13 @@ vi.mock(
     return { ...actual, buildSandboxFunctionOnSandbox: vi.fn() };
   }
 );
+
+vi.mock("@app/lib/lock", () => ({
+  executeWithLock: async (
+    _lockName: string,
+    callback: () => Promise<unknown>
+  ) => callback(),
+}));
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -66,7 +84,12 @@ describe("publishSandboxFunction", () => {
   it("publishes a new function with one bundle file under the dedicated prefix", async () => {
     const { workspace, space, auth } = await setupPod();
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "export default {};", inputSchema, outputSchema })
+      new Ok({
+        bundleCode: "export default {};",
+        userIdentity: "interactive_workspace_user_required",
+        inputSchema,
+        outputSchema,
+      })
     );
 
     const result = await publishSandboxFunction(auth, {
@@ -83,6 +106,7 @@ describe("publishSandboxFunction", () => {
     const fn = result.value;
     expect(fn.slug).toBe("greet");
     expect(fn.description).toBe("Greet someone.");
+    expect(fn.userIdentity).toBe("interactive_workspace_user_required");
     expect(fn.inputSchema).toEqual(inputSchema);
     expect(fn.outputSchema).toEqual(outputSchema);
 
@@ -108,13 +132,38 @@ describe("publishSandboxFunction", () => {
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed.map(({ id }) => id)).toEqual([fn.id]);
+
+    // A first publish has no prior policy, so `previous_user_identity` is absent rather than
+    // reported as the default.
+    expect(emitAuditLogEventMock).toHaveBeenCalledTimes(1);
+    expect(emitAuditLogEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "pod_function.published",
+        targets: [
+          { type: "workspace", id: workspace.sId, name: workspace.name },
+          { type: "space", id: space.sId, name: space.name },
+          { type: "pod_function", id: fn.sId, name: "greet" },
+        ],
+        metadata: {
+          operation: "created",
+          pod_function_slug: "greet",
+          user_identity: "interactive_workspace_user_required",
+          file_id: fn.file.sId,
+        },
+      })
+    );
   });
 
   it("overwrites the bundle in place on re-publish, keeping one row and the same file", async () => {
     const { workspace, space, auth } = await setupPod();
 
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "v1", inputSchema, outputSchema })
+      new Ok({
+        bundleCode: "v1",
+        userIdentity: "workspace_user_required",
+        inputSchema,
+        outputSchema,
+      })
     );
     const first = await publishSandboxFunction(auth, {
       space,
@@ -138,7 +187,12 @@ describe("publishSandboxFunction", () => {
       required: ["text"],
     };
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "v2", inputSchema, outputSchema: newOutputSchema })
+      new Ok({
+        bundleCode: "v2",
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema: newOutputSchema,
+      })
     );
     const second = await publishSandboxFunction(auth, {
       space,
@@ -153,6 +207,7 @@ describe("publishSandboxFunction", () => {
 
     expect(second.value.id).toBe(first.value.id);
     expect(second.value.description).toBe("v2");
+    expect(second.value.userIdentity).toBe("optional");
     expect(second.value.outputSchema).toEqual(newOutputSchema);
     // The bundle file is reused in place, not replaced: same row, canonical mount path retained, and
     // its version bumped by the re-upload.
@@ -168,6 +223,23 @@ describe("publishSandboxFunction", () => {
       `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
     );
     expect(files[0].version).toBeGreaterThan(firstVersion ?? 0);
+
+    // The re-publish widened who may call the function. `previous_user_identity` must be the policy
+    // in force before the update, which only holds because it is captured before `updateContent`
+    // assigns the new values onto the resource instance.
+    expect(emitAuditLogEventMock).toHaveBeenCalledTimes(2);
+    expect(emitAuditLogEventMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        action: "pod_function.published",
+        metadata: {
+          operation: "updated",
+          pod_function_slug: "greet",
+          user_identity: "optional",
+          previous_user_identity: "workspace_user_required",
+          file_id: second.value.file.sId,
+        },
+      })
+    );
   });
 
   it("rejects a path that escapes the pod mount", async () => {

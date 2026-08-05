@@ -20,14 +20,14 @@ export const MAX_RESULTS = 1000;
 export const DEFAULT_CREDIT_GROUPS = 5;
 export const MAX_CREDIT_GROUPS = 10;
 
-export const ANALYTICS_PERIODS = [
+const ANALYTICS_PERIODS = [
   "this_month",
   "last_7_days",
   "last_30_days",
   "last_90_days",
   "this_quarter",
 ] as const;
-export type AnalyticsPeriod = (typeof ANALYTICS_PERIODS)[number];
+type AnalyticsPeriod = (typeof ANALYTICS_PERIODS)[number];
 
 // Shared time-window input fragment. Either a relative `period` or an explicit
 // startDate/endDate range; explicit dates win.
@@ -58,7 +58,7 @@ export const timeWindowSchemaShape = {
   ),
 };
 
-export const timeWindowInputSchema = z.object(timeWindowSchemaShape);
+const timeWindowInputSchema = z.object(timeWindowSchemaShape);
 
 // Shared filter fragment for message-based usage tools.
 export const usageFilterSchema = {
@@ -95,7 +95,7 @@ export const usageFilterSchema = {
     ),
 };
 
-export type TimeWindowInput = z.input<typeof timeWindowInputSchema>;
+type TimeWindowInput = z.input<typeof timeWindowInputSchema>;
 
 export type ResolvedTimeWindow = {
   startDate: string;

@@ -9,6 +9,7 @@ import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS } from "@app/types/credits";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Subscription } from "@metronome/sdk/resources";
@@ -231,7 +232,11 @@ describe("setDefaultUserSpendLimit", () => {
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    for (const awuCredits of [-1, 1_000_001, 1.5]) {
+    for (const awuCredits of [
+      -1,
+      MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS + 1,
+      1.5,
+    ]) {
       const result = await setDefaultUserSpendLimit(auth, {
         awuCredits,
         auditContext: AUDIT_CONTEXT,

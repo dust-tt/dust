@@ -6,7 +6,6 @@ import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   useCreatePersonalConnection,
   useMCPServer,
@@ -21,6 +20,9 @@ export type PersonalAuthResolutionOutcome = "completed" | "denied";
 
 interface PersonalAuthenticationCardProps {
   triggeringUser: UserType | null;
+  // The viewer looking at the card. Passed in rather than read from `AuthContext` because shared
+  // frames render this card outside of any AuthProvider.
+  currentUser: UserType;
   mcpServerId: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
@@ -32,6 +34,7 @@ interface PersonalAuthenticationCardProps {
 
 export function PersonalAuthenticationCard({
   triggeringUser,
+  currentUser,
   mcpServerId,
   owner,
   provider,
@@ -39,7 +42,6 @@ export function PersonalAuthenticationCard({
   isResolving,
   onResolve,
 }: PersonalAuthenticationCardProps) {
-  const { user } = useAuth();
   const { server: mcpServer } = useMCPServer({
     owner,
     serverId: mcpServerId,
@@ -74,9 +76,9 @@ export function PersonalAuthenticationCard({
     () =>
       canCurrentUserRespondToParentUserMessage({
         parentUserId: triggeringUser?.sId,
-        currentUserId: user?.sId,
+        currentUserId: currentUser.sId,
       }),
-    [triggeringUser, user?.sId]
+    [triggeringUser, currentUser.sId]
   );
 
   const onConnectClick = async (mcpServer: MCPServerType) => {

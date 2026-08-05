@@ -96,7 +96,7 @@ const NewTagButton = ({
   );
 };
 
-export type TagsManagerProps = {
+type TagsManagerProps = {
   open: boolean;
   setOpen: (open: boolean) => void;
   owner: WorkspaceType;

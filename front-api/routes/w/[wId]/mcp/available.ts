@@ -1,6 +1,7 @@
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { DefaultRemoteMCPServerInMemoryResource } from "@app/lib/resources/default_remote_mcp_server_in_memory_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -28,9 +29,21 @@ app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
     )
   ).map((r) => r.toJSON());
 
+  const systemMCPServerViews = await MCPServerViewResource.listForSystemSpace(
+    auth,
+    {
+      isRestrictedToSkills: true,
+    }
+  );
+  const restrictedServerIds = new Set(
+    systemMCPServerViews.map((view) => view.mcpServerId)
+  );
+
   return ctx.json({
     success: true,
-    servers: [...internalServers, ...defaultRemoteServers],
+    servers: [...internalServers, ...defaultRemoteServers].filter(
+      (server) => !restrictedServerIds.has(server.sId)
+    ),
   });
 });
 

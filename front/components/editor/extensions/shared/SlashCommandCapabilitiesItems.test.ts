@@ -10,6 +10,7 @@ import {
   type SlashCommandToolSuggestion,
   searchCapabilityIndex,
 } from "./SlashCommandCapabilitiesItems";
+import { buildCapabilitySlashCommandItems } from "./slash_suggestion/buildSlashCommandItems";
 
 function toolSuggestion({
   description = "Search data.",
@@ -51,6 +52,7 @@ function toolSuggestion({
     },
     oAuthUseCase: null,
     editedByUser: null,
+    isRestrictedToSkills: false,
     label,
   };
 }
@@ -123,16 +125,81 @@ describe("searchCapabilityIndex ranking", () => {
     expect(result.map((item) => item.id)).toEqual(["a", "z"]);
   });
 
-  it("breaks fuzzy ties alphabetically when a query is provided", () => {
+  it("ranks favorite capabilities first when no query is provided", () => {
     const result = searchCapabilityIndex({
+      query: "",
       items: [
-        { id: "testlonger", sortName: "testlonger" },
-        { id: "longtest", sortName: "longtest" },
+        { id: "a", sortName: "asana" },
+        { id: "z", isFavorite: true, sortName: "zendesk" },
       ],
-      query: "test",
     });
 
-    expect(result.map((item) => item.id)).toEqual(["longtest", "testlonger"]);
+    expect(result.map((item) => item.id)).toEqual(["z", "a"]);
+  });
+
+  it("ranks earlier substring matches first", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        { id: "later", sortName: "create detailed guide" },
+        { id: "earlier", sortName: "create guide" },
+      ],
+      query: "guide",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["earlier", "later"]);
+  });
+
+  it("normalizes query whitespace and casing before ranking", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        { id: "prefix", sortName: "guide builder" },
+        { id: "exact", sortName: "guide" },
+      ],
+      query: "  GUIDE  ",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["exact", "prefix"]);
+  });
+
+  it("ranks matches before applying the result limit", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "fuzzy",
+          sortName: "generate useful insights for data export",
+        },
+        { id: "substring", sortName: "create guide" },
+        { id: "prefix", sortName: "guide builder" },
+        { id: "exact", sortName: "guide" },
+      ],
+      limit: 2,
+      query: "guide",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["exact", "prefix"]);
+  });
+
+  it("does not mutate the search index", () => {
+    const items = [
+      { id: "substring", sortName: "create guide" },
+      { id: "exact", sortName: "guide" },
+    ];
+
+    searchCapabilityIndex({ items, query: "guide" });
+
+    expect(items.map((item) => item.id)).toEqual(["substring", "exact"]);
+  });
+
+  it("ranks title prefix matches above other fuzzy title matches", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        { id: "contains", sortName: "create guide" },
+        { id: "prefix", sortName: "guide builder" },
+      ],
+      query: "guide",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["prefix", "contains"]);
   });
 
   it("ranks title matches above description-only matches", () => {
@@ -153,6 +220,64 @@ describe("searchCapabilityIndex ranking", () => {
     });
 
     expect(result.map((item) => item.id)).toEqual(["title-match", "desc-only"]);
+  });
+
+  it("ranks favorites first within the same query match class", () => {
+    const result = searchCapabilityIndex({
+      query: "docs",
+      items: [
+        {
+          id: "non-favorite",
+          sortName: "docs assistant",
+        },
+        {
+          id: "favorite",
+          sortName: "docs writer",
+          isFavorite: true,
+        },
+      ],
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["favorite", "non-favorite"]);
+  });
+
+  it("allows exact aliases to rank normally", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "prefix",
+          sortName: "Deep Dive Assistant",
+        },
+        {
+          id: "alias",
+          searchAliases: ["Detailed Research", "Deep Dive"],
+          sortName: "Go Deep",
+        },
+      ],
+      query: "deep dive",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["alias", "prefix"]);
+  });
+
+  it("ranks partial alias matches below canonical names when favorite", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "canonical-fuzzy",
+          sortName: "Search And Navigate Data",
+        },
+        {
+          id: "alias",
+          isFavorite: true,
+          searchAliases: ["Sandbox"],
+          sortName: "Computer",
+        },
+      ],
+      query: "sand",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["canonical-fuzzy", "alias"]);
   });
 });
 
@@ -251,5 +376,29 @@ describe("getToolSlashCommandItem", () => {
       id: "mcp_server_view_linear",
       label: "Create ticket (Product)",
     });
+  });
+});
+
+describe("buildCapabilitySlashCommandItems", () => {
+  it("matches a global skill by its configured search aliases", () => {
+    const goDeep = skillSuggestion({
+      name: "Go Deep",
+      sId: "go-deep",
+    });
+    const deepDiveAssistant = skillSuggestion({
+      name: "Deep Dive Assistant",
+      sId: "skl_deep_dive_assistant",
+    });
+
+    const result = buildCapabilitySlashCommandItems({
+      query: "Deep Dive",
+      skills: [deepDiveAssistant, goDeep],
+      tools: [],
+    });
+
+    expect(result.map((item) => item.id)).toEqual([
+      "go-deep",
+      "skl_deep_dive_assistant",
+    ]);
   });
 });

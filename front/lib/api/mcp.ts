@@ -17,7 +17,10 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { MCPServersUsageByAgent } from "@app/lib/api/agent_actions";
+import type {
+  MCPServersUsage,
+  MCPServersUsageByAgent,
+} from "@app/lib/api/agent_actions";
 import type {
   PatchMCPServerBodySchema,
   PostRequestActionsAccessBodySchema,
@@ -110,6 +113,7 @@ export interface MCPServerViewType {
   server: MCPServerType;
   oAuthUseCase: MCPOAuthUseCase | null;
   editedByUser: EditedByUser | null;
+  isRestrictedToSkills: boolean;
   toolsMetadata?: {
     toolName: string;
     permission: MCPToolStakeLevelType;
@@ -228,6 +232,10 @@ export type DeleteMCPServerResponseBody = {
 
 export type GetMCPServersUsageResponseBody = {
   usage: MCPServersUsageByAgent;
+};
+
+export type GetMCPServersUsageWithSkillsResponseBody = {
+  usage: MCPServersUsage;
 };
 
 export type SyncMCPServerResponseBody = {

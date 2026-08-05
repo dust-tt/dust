@@ -1,0 +1,12 @@
+{
+  "action": "frame.email_grant_added",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" }
+  ],
+  "metadata": {
+    "frame_name": "string",
+    "emails": "string",
+    "actor_type": "string"
+  }
+}

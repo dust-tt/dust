@@ -1,5 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   getMcpServerDisplayName,
   getMcpServerViewDisplayName,
@@ -14,16 +13,13 @@ import type {
   GetMCPServerResponseBody,
   GetMCPServersResponseBody,
   GetMCPServersUsageResponseBody,
+  GetMCPServersUsageWithSkillsResponseBody,
   GetMCPServerViewsListResponseBody,
   GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
   MCPServerTypeWithViews,
   MCPServerViewType,
-  PatchMCPServerBody,
-  PatchMCPServerResponseBody,
-  PatchMCPServerToolsPermissionsResponseBody,
   SyncMCPServerResponseBody,
-  UpdateMCPToolSettingsBodyType,
 } from "@app/lib/api/mcp";
 import type {
   PatchMCPServerViewBody,
@@ -38,7 +34,7 @@ import type {
   PostConnectionResponseBody,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import type { GetMCPServerViewsResponseBody } from "@app/lib/resources/mcp_server_view_resource";
-import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -171,9 +167,11 @@ export function useAvailableMCPServers({
 export function useMCPServers({
   owner,
   disabled,
+  revalidateIfStale,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
+  revalidateIfStale?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
@@ -185,6 +183,7 @@ export function useMCPServers({
     configFetcher,
     {
       disabled,
+      ...(revalidateIfStale !== undefined ? { revalidateIfStale } : {}),
     }
   );
 
@@ -365,7 +364,7 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
   return { discoverOAuthMetadata };
 }
 
-export class MCPCreateServerError extends Error {
+class MCPCreateServerError extends Error {
   readonly isRemoteServerError: boolean;
   constructor(message: string, isRemoteServerError: boolean) {
     super(message);
@@ -516,67 +515,6 @@ export function useSyncRemoteMCPServer(
 /**
  * Hook to update an MCP server
  */
-export function useUpdateMCPServer(
-  owner: LightWorkspaceType,
-  // Using the view to get the proper name/description
-  mcpServerView: MCPServerViewType
-) {
-  const sendNotification = useSendNotification();
-  const { mutateMCPServer } = useMCPServer({
-    disabled: true,
-    owner,
-    serverId: mcpServerView.server.sId,
-  });
-
-  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
-
-  const updateServer = async (data: PatchMCPServerBody): Promise<boolean> => {
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
-    );
-
-    if (!response.ok) {
-      const body = await response.json();
-      sendNotification({
-        title: `Error updating server`,
-        type: "error",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: body.error?.message || "An error occurred",
-      });
-
-      return false;
-    }
-
-    const result: WithAPIErrorResponse<PatchMCPServerResponseBody> =
-      await response.json();
-    if (isAPIErrorResponse(result)) {
-      sendNotification({
-        title: `Error updating server`,
-        type: "error",
-        description: result.error?.message || "An error occurred",
-      });
-      return false;
-    }
-
-    sendNotification({
-      title: `${getMcpServerViewDisplayName(mcpServerView)} updated`,
-      type: "success",
-      description: `${getMcpServerViewDisplayName(mcpServerView)} has been successfully updated.`,
-    });
-
-    void mutateMCPServer();
-    void mutate();
-    return true;
-  };
-
-  return { updateServer };
-}
-
 /**
  * Hook to update an MCP serverView
  */
@@ -814,69 +752,6 @@ export function useDeleteMCPServerConnection({
   return { deleteMCPServerConnection };
 }
 
-export function useUpdateMCPServerToolsSettings({
-  owner,
-  mcpServerView,
-}: {
-  owner: LightWorkspaceType;
-  mcpServerView: MCPServerViewType;
-}) {
-  const space = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: mcpServerView.spaceId,
-  });
-  const { mutateMCPServerViews } = useMCPServerViews({
-    owner,
-    space: space.spaceInfo ?? undefined,
-    disabled: true,
-  });
-
-  const sendNotification = useSendNotification();
-
-  const updateToolSettings = async ({
-    toolName,
-    permission,
-    enabled,
-  }: {
-    toolName: string;
-    permission: MCPToolStakeLevelType;
-    enabled: boolean;
-  }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
-    const body: UpdateMCPToolSettingsBodyType = {
-      permission,
-      enabled,
-    };
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}/tools/${toolName}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        body.error?.message || "Failed to update MCP tool settings"
-      );
-    }
-
-    sendNotification({
-      type: "success",
-      title: "Settings updated",
-      description: `The settings for ${toolName} have been updated.`,
-    });
-
-    void mutateMCPServerViews();
-    return response.json();
-  };
-
-  return { updateToolSettings };
-}
-
 export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   const { createMCPServerConnection } = useCreateMCPServerConnection({
     owner,
@@ -1036,6 +911,7 @@ const getOptimisticDataForCreate = (
               serverType: "internal" as const,
               server,
               editedByUser: null,
+              isRestrictedToSkills: false,
               spaceId: space.sId,
               oAuthUseCase: null,
             },
@@ -1084,9 +960,11 @@ export function useMCPServersUsage({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const configFetcher: Fetcher<GetMCPServersUsageResponseBody> = fetcher;
+  const configFetcher: Fetcher<
+    GetMCPServersUsageResponseBody | GetMCPServersUsageWithSkillsResponseBody
+  > = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/mcp/usage`,
+    `/api/w/${owner.sId}/mcp/usage?withSkills=true`,
     configFetcher,
     {
       disabled,
@@ -1253,15 +1131,23 @@ function useMCPServerViewsFromSpacesBase(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
   availabilities: MCPServerAvailability[],
-  swrOptions?: SWRConfiguration
+  options?: SWRConfiguration & {
+    includeRestrictedToSkills?: boolean;
+  }
 ) {
   const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
+  const { includeRestrictedToSkills = false, ...swrOptions } = options ?? {};
 
-  const spaceIds = spaces.map((s) => s.sId).join(",");
-  const availabilitiesParam = availabilities.join(",");
+  const queryParams = new URLSearchParams({
+    spaceIds: spaces.map((s) => s.sId).join(","),
+    availabilities: availabilities.join(","),
+  });
+  if (includeRestrictedToSkills) {
+    queryParams.set("includeRestrictedToSkills", "true");
+  }
 
-  const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}`;
+  const url = `/api/w/${owner.sId}/mcp/views?${queryParams.toString()}`;
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     ...swrOptions,
     ...(!spaces.length ? { disabled: true } : {}),
@@ -1278,13 +1164,16 @@ function useMCPServerViewsFromSpacesBase(
 export function useMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  swrOptions?: SWRConfiguration & { disabled?: boolean }
+  options?: SWRConfiguration & {
+    disabled?: boolean;
+    includeRestrictedToSkills?: boolean;
+  }
 ) {
   return useMCPServerViewsFromSpacesBase(
     owner,
     spaces,
     ["manual", "auto"],
-    swrOptions
+    options
   );
 }
 

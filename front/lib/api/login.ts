@@ -26,7 +26,7 @@ import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { ONBOARDING_PROFILE_PENDING_METADATA_KEY } from "@app/types/onboarding";
 import type { LightWorkspaceType } from "@app/types/user";
 
-export interface PerformLoginOptions {
+interface PerformLoginOptions {
   inviteToken: string | null;
   wId: string | null;
   utmParams: UTMParams;
@@ -43,7 +43,7 @@ export interface PerformLoginOptions {
  * fields the login flow actually reads, so the Hono login route can call
  * into it.
  */
-export interface PerformLoginRequest {
+interface PerformLoginRequest {
   cookieHeader: string | undefined;
   forwardedFor: string | string[] | undefined;
   remoteAddress: string | undefined;
@@ -53,7 +53,7 @@ export interface PerformLoginRequest {
  * Result of `performLogin`. The handler at the transport boundary
  * (Next API route or Hono route) maps this to the actual HTTP response.
  */
-export type LoginOutcome =
+type LoginOutcome =
   | { kind: "redirect"; url: string }
   | { kind: "unauthorized" }
   | { kind: "apiError"; error: APIErrorWithContentfulStatusCode };

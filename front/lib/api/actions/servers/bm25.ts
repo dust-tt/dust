@@ -19,7 +19,7 @@ export function tokenize(text: string): string[] {
     .map((t) => (t.length > 3 && t.endsWith("s") ? t.slice(0, -1) : t));
 }
 
-export interface Bm25Index {
+interface Bm25Index {
   tokenized: string[][];
   avgdl: number;
   idf: Map<string, number>;
@@ -74,7 +74,7 @@ function scoreDocument(
   return score;
 }
 
-export interface RankedDocument {
+interface RankedDocument {
   name: string;
   score: number;
 }

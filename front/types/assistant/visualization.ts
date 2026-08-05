@@ -23,6 +23,31 @@ const CallFunctionParamsSchema = z.object({
 
 type CallFunctionParams = z.infer<typeof CallFunctionParamsSchema>;
 
+export interface WorkspaceUserIdentity {
+  sId: string;
+  firstName: string;
+  lastName: string | null;
+  fullName: string;
+  image: string | null;
+}
+
+export type UserIdentityState =
+  | {
+      isAuthenticated: true;
+      isWorkspaceMember: true;
+      user: WorkspaceUserIdentity;
+    }
+  | {
+      isAuthenticated: false;
+      isWorkspaceMember: false;
+      user: null;
+    };
+
+export interface ScopedWorkspaceUserIdentity {
+  workspaceId: string;
+  user: WorkspaceUserIdentity;
+}
+
 const SetContentHeightParamsSchema = z.object({
   height: z.number(),
 });
@@ -55,6 +80,11 @@ const GetFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
 const CallFunctionRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   command: z.literal("callFunction"),
   params: CallFunctionParamsSchema,
+});
+
+const GetUserIdentityRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("getUserIdentity"),
+  params: z.null(),
 });
 
 const GetCodeToExecuteRequestSchema = VisualizationRPCRequestBaseSchema.extend({
@@ -105,6 +135,7 @@ const EditTextRequestSchema = VisualizationRPCRequestBaseSchema.extend({
 
 const VisualizationRPCRequestSchema = z.union([
   CallFunctionRequestSchema,
+  GetUserIdentityRequestSchema,
   GetFileRequestSchema,
   GetCodeToExecuteRequestSchema,
   SetContentHeightRequestSchema,
@@ -124,6 +155,7 @@ export type VisualizationRPCCommand = VisualizationRPCRequest["command"];
 // Define a mapped type for backward compatibility.
 export type VisualizationRPCRequestMap = {
   callFunction: CallFunctionParams;
+  getUserIdentity: null;
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
@@ -136,6 +168,7 @@ export type VisualizationRPCRequestMap = {
 // Command results.
 export interface CommandResultMap {
   callFunction: unknown;
+  getUserIdentity: UserIdentityState;
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };
@@ -143,43 +176,6 @@ export interface CommandResultMap {
   setErrorMessage: void;
   displayCode: void;
   editText: { success: boolean; error?: string };
-}
-
-// Zod-based type guards.
-export function isGetFileRequest(
-  value: unknown
-): value is z.infer<typeof GetFileRequestSchema> {
-  return GetFileRequestSchema.safeParse(value).success;
-}
-
-export function isGetCodeToExecuteRequest(
-  value: unknown
-): value is z.infer<typeof GetCodeToExecuteRequestSchema> {
-  return GetCodeToExecuteRequestSchema.safeParse(value).success;
-}
-
-export function isSetContentHeightRequest(
-  value: unknown
-): value is z.infer<typeof SetContentHeightRequestSchema> {
-  return SetContentHeightRequestSchema.safeParse(value).success;
-}
-
-export function isSetErrorMessageRequest(
-  value: unknown
-): value is z.infer<typeof SetErrorMessageRequestSchema> {
-  return SetErrorMessageRequestSchema.safeParse(value).success;
-}
-
-export function isDownloadFileRequest(
-  value: unknown
-): value is z.infer<typeof DownloadFileRequestSchema> {
-  return DownloadFileRequestSchema.safeParse(value).success;
-}
-
-export function isDisplayCodeRequest(
-  value: unknown
-): value is z.infer<typeof DisplayCodeRequestSchema> {
-  return DisplayCodeRequestSchema.safeParse(value).success;
 }
 
 export function isVisualizationRPCRequest(

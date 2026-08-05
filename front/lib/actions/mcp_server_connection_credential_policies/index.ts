@@ -3,7 +3,7 @@ import type { CredentialsProvider } from "@app/types/oauth/lib";
 
 import { SNOWFLAKE_INTERNAL_SERVER_CREDENTIAL_POLICY } from "./snowflake";
 
-export interface InternalServerCredentialPolicy {
+interface InternalServerCredentialPolicy {
   provider: CredentialsProvider;
   validateContent: (content: unknown) => boolean;
   invalidContentMessage: string;

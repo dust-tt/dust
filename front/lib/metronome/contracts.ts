@@ -411,7 +411,7 @@ export async function provisionPaymentGatedActivationContract({
  * EUR); pass 0 when disabling. `billingFrequency` disambiguates the seat
  * product's subscription rate (monthly vs annual seats).
  */
-export interface SeatRateOverride {
+interface SeatRateOverride {
   productId: string;
   billingFrequency: "MONTHLY" | "ANNUAL";
   priceNative: number;

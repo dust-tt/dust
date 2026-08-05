@@ -19,7 +19,7 @@ const SANDBOX_ENV_MANIFEST_DIR = "/run/dust";
 // agent-proxied user inside the sandbox. NEVER add a value, encryptedValue,
 // or any field derived from a decrypted secret to these shapes. Names,
 // placeholders, and allowed-domain patterns ONLY.
-export type SandboxEnvManifest = {
+type SandboxEnvManifest = {
   version: 1;
   system: { name: string; description: string }[];
   config: { name: string }[];

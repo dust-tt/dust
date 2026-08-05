@@ -4,9 +4,7 @@ import { expandTiersUpTo } from "@app/lib/model_tiers/tier_order";
 import type { ModelsTierDefinition } from "@app/lib/resources/models_tier_resource";
 import { formatAsDisplayName } from "@app/types/shared/utils/string_utils";
 
-export type ResolvedModelTiersForUser = ReturnType<
-  typeof resolveAllowedModelTiers
->;
+type ResolvedModelTiersForUser = ReturnType<typeof resolveAllowedModelTiers>;
 
 export function resolveModelTiersForUser({
   userId,

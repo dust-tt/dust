@@ -36,6 +36,8 @@ const MEMBER_USAGE = {
   seatBalanceAwu: 100,
   spendLimitAlertId: null,
   spendLimitAwuCredits: null,
+  rateLimiterSpendAwuCredits: null,
+  metronomeConsumedAwuCredits: null,
   spendLimitSource: "default" as const,
   spendLimitWarningAlertId: null,
 };

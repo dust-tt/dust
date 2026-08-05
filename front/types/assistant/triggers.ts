@@ -45,12 +45,12 @@ const IntervalScheduleConfigSchema = z.object({
   timezone: z.string(),
 });
 
-export const ScheduleConfigSchema = z.union([
+const ScheduleConfigSchema = z.union([
   CronScheduleConfigSchema,
   IntervalScheduleConfigSchema,
 ]);
 
-export const WebhookConfigSchema = z.object({
+const WebhookConfigSchema = z.object({
   includePayload: z.boolean(),
   event: z.string().optional(),
   filter: z.string().optional(),
@@ -63,19 +63,6 @@ export type WebhookConfig = {
 };
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
-
-export type TriggerConfiguration =
-  | {
-      kind: "schedule";
-      configuration: ScheduleConfig;
-    }
-  | {
-      kind: "webhook";
-      configuration: WebhookConfig;
-      executionPerDayLimitOverride: number | null;
-      webhookSourceViewId: string | null;
-      executionMode: TriggerExecutionMode | null;
-    };
 
 export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 
@@ -103,11 +90,9 @@ export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
 export type WebhookRequestTriggerStatus =
   (typeof WEBHOOK_REQUEST_TRIGGER_STATUSES)[number];
 
-export type TriggerOrigin = "user" | "agent";
-
-export function isValidTriggerOrigin(origin: string): origin is TriggerOrigin {
-  return ["user", "agent"].includes(origin);
-}
+// Who created the trigger: the user themselves, an agent through the schedule
+// management tool, or Dust provisioning it on the user's behalf.
+export type TriggerOrigin = "user" | "agent" | "system";
 
 const TriggerStatusSchema = z.enum(TRIGGER_STATUSES);
 
@@ -146,7 +131,7 @@ const TriggerBaseSchema = z.object({
   status: z.enum(TRIGGER_STATUSES),
   createdAt: z.number(),
   naturalLanguageDescription: z.string().nullable(),
-  origin: z.enum(["user", "agent"]),
+  origin: z.enum(["user", "agent", "system"]),
   spaceId: z.string().nullable(),
 });
 

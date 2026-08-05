@@ -35,12 +35,10 @@ export async function validateAction(
     actionId,
     approvalState,
     messageId,
-    resumeAncestorConversations = false,
   }: {
     actionId: string;
     approvalState: ActionApprovalStateType;
     messageId: string;
-    resumeAncestorConversations?: boolean;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -66,7 +64,6 @@ export async function validateAction(
     userMessageVersion,
     userMessageUserId,
     userMessageOrigin,
-    branchId,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
@@ -172,15 +169,13 @@ export async function validateAction(
       // Resolved via the resource so the agent-message model lookup stays in
       // the resource layer (BACK3/BACK5).
       const auditAgentConfig = await action.getLightAgentConfiguration(auth);
-      if (!auditAgentConfig) {
-        return;
-      }
       void emitAuditLogEvent({
         auth,
         action: "tool.approval_resolved",
+        // The deciding user is the actor, so the agent travels in metadata: pod
+        // function tool calls share this action and have no agent.
         targets: [
           buildAuditLogTarget("workspace", owner),
-          buildAuditLogTarget("agent", auditAgentConfig),
           buildAuditLogTarget("tool", {
             sId: action.toolConfiguration.name,
             name: action.toolConfiguration.originalName,
@@ -192,6 +187,12 @@ export async function validateAction(
           tool_name: action.toolConfiguration.originalName,
           mcp_server_name: action.toolConfiguration.mcpServerName,
           stake_level: action.toolConfiguration.permission,
+          ...(auditAgentConfig
+            ? {
+                agent_id: auditAgentConfig.sId,
+                agent_name: auditAgentConfig.name,
+              }
+            : {}),
           conversation_id: conversationId,
           // The string sId of the agent message being validated (the numeric
           // DB id is `action.agentMessageId`); matches agent.executed's
@@ -231,7 +232,6 @@ export async function validateAction(
       agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        conversationBranchId: branchId,
         conversationId,
         conversationTitle,
         userMessageId,
@@ -273,7 +273,6 @@ export async function validateAction(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: branchId,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,
@@ -297,11 +296,12 @@ export async function validateAction(
     `Action ${approvalState === "approved" ? "approved" : "rejected"} by user`
   );
 
-  if (!resumeAncestorConversations) {
-    return new Ok(undefined);
-  }
-
-  return resumeAncestorConversationsHelper(auth, conversation, {
+  // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it, so
+  // this must run whatever the surface the approval came from (web, Slack, Teams, public API).
+  // The approval is already committed, so a failed wake-up is logged, never returned.
+  await resumeAncestorConversationsHelper(auth, conversation, {
     agentMessageId,
   });
+
+  return new Ok(undefined);
 }

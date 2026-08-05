@@ -119,10 +119,14 @@ export abstract class ResourceWithSpace<
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
+    // Resolve each blob's space through an index: `spaces` can hold thousands of rows and every
+    // Sequelize attribute read allocates, so the per-blob lookup has to stay O(1).
+    const spacesById = new Map(spaces.map((space) => [space.id, space]));
+
     return (
       blobs
         .map((b) => {
-          const space = spaces.find((space) => space.id === b.vaultId);
+          const space = spacesById.get(b.vaultId);
           if (!space) {
             throw new Error("Unreachable: space not found.");
           }

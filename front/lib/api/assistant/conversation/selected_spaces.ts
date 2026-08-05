@@ -67,7 +67,7 @@ export async function listSelectableSpaces(
   }
 
   const [spaces, selectedSpaces] = await Promise.all([
-    SpaceResource.listWorkspaceSpacesAsMember(auth),
+    SpaceResource.listWorkspaceSpacesAsMember(auth, { kinds: ["regular"] }),
     ConversationSelectedSpaceResource.listActiveSpacesByConversation(auth, {
       conversation,
     }),
@@ -376,7 +376,7 @@ export async function getEffectiveSpaceIdsForAgentRun(
  * Selector provenance is audit history, not an ongoing authorization grant;
  * system-key runs intentionally preserve selections materialized in the ACL.
  */
-export async function getValidSelectedSpaceIdsForAgentRun(
+async function getValidSelectedSpaceIdsForAgentRun(
   auth: Authenticator,
   {
     conversation,

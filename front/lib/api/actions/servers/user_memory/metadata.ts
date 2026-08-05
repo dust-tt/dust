@@ -5,6 +5,10 @@ export const USER_MEMORY_SERVER_NAME = "user_memory" as const;
 export const USER_MEMORY_READ_TOOL_NAME = "read";
 export const USER_MEMORY_EDIT_TOOL_NAME = "edit";
 
+// The tool descriptions deliberately name the user's "MEMORY.md": pointing the
+// model at a concrete markdown memory file is relatively industry-standard and
+// reinforces the expected recall/update behavior, even though the file itself is
+// an implementation detail on our end.
 export const USER_MEMORY_TOOLS_METADATA = [
   {
     name: USER_MEMORY_READ_TOOL_NAME,
@@ -27,7 +31,9 @@ export const USER_MEMORY_TOOLS_METADATA = [
       oldStr: z
         .string()
         .describe(
-          "The exact, contiguous text to find in the user's personal memory and replace. It must match a unique span of the current memory. Pass an empty string to initialize memory that is currently empty."
+          "The exact, contiguous text to find in the user's personal memory " +
+            "and replace. It must match a unique span of the current memory. " +
+            "Pass an empty string to initialize memory that is currently empty."
         ),
       newStr: z
         .string()
@@ -50,7 +56,7 @@ export const USER_MEMORY_SERVER = {
     name: USER_MEMORY_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Store and retrieve the current user's personal memory in a single MEMORY.md file, shared across the user's agents.",
+      "Store and retrieve the current user's personal memory, shared across the user's agents.",
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,

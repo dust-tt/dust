@@ -59,7 +59,7 @@ import {
   SandboxModel,
   SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -102,16 +102,12 @@ describe("SandboxResource.updateStatus", () => {
       statusChangedAt: new Date(Date.now() - 60_000),
     });
 
-    const ctx = { workspaceId: authenticator.getNonNullableWorkspace().sId };
-    await sandbox.updateStatus("sleeping", { ctx });
+    await sandbox.updateStatus("sleeping");
 
     expect(mockDistribution).toHaveBeenCalledWith(
       "sandbox.lifecycle.duration",
       expect.any(Number),
-      expect.arrayContaining([
-        `workspace_id:${ctx.workspaceId}`,
-        "status:running",
-      ])
+      [expect.stringMatching(/^region:/), "status:running"]
     );
 
     const durationArg = mockDistribution.mock.calls[0][1];
@@ -125,8 +121,7 @@ describe("SandboxResource.updateStatus", () => {
       statusChangedAt: null,
     });
 
-    const ctx = { workspaceId: authenticator.getNonNullableWorkspace().sId };
-    await sandbox.updateStatus("sleeping", { ctx });
+    await sandbox.updateStatus("sleeping");
 
     expect(mockDistribution).not.toHaveBeenCalled();
   });
@@ -138,8 +133,7 @@ describe("SandboxResource.updateStatus", () => {
     });
 
     const originalStatusChangedAt = sandbox.statusChangedAt;
-    const ctx = { workspaceId: authenticator.getNonNullableWorkspace().sId };
-    await sandbox.updateStatus("running", { ctx });
+    await sandbox.updateStatus("running");
 
     expect(mockDistribution).not.toHaveBeenCalled();
 
@@ -159,9 +153,8 @@ describe("SandboxResource.updateStatus", () => {
       statusChangedAt: originalTime,
     });
 
-    const ctx = { workspaceId: authenticator.getNonNullableWorkspace().sId };
     const beforeTransition = Date.now();
-    await sandbox.updateStatus("sleeping", { ctx });
+    await sandbox.updateStatus("sleeping");
     const afterTransition = Date.now();
 
     const reloaded = await ConversationSandboxAdapter.fetchSandbox(
@@ -504,6 +497,86 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
     expect(secondPage).toHaveLength(1);
     expect(secondPage[0]?.id).not.toBe(firstSandbox.id);
   });
+
+  it("filters by statuses when provided", async () => {
+    const secondConversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const runningSandbox = await SandboxFactory.create(
+      authenticator,
+      conversation,
+      {
+        status: "running",
+        killRequestedAt: new Date(),
+      }
+    );
+    const sleepingSandbox = await SandboxFactory.create(
+      authenticator,
+      secondConversation,
+      {
+        status: "sleeping",
+        killRequestedAt: new Date(),
+      }
+    );
+
+    const awakeRows =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 10,
+        statuses: ["running", "pending_approval"],
+      });
+    expect(awakeRows.map((r) => r.id)).toEqual([runningSandbox.id]);
+
+    const sleepingRows =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 10,
+        statuses: ["sleeping"],
+      });
+    expect(sleepingRows.map((r) => r.id)).toEqual([sleepingSandbox.id]);
+  });
+
+  it("orders by lastActivityAt descending and paginates when requested", async () => {
+    const secondConversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const olderActivityAt = new Date(Date.now() - 60 * 60 * 1000);
+    const recentActivityAt = new Date();
+    const older = await SandboxFactory.create(authenticator, conversation, {
+      status: "sleeping",
+      killRequestedAt: new Date(),
+      lastActivityAt: olderActivityAt,
+    });
+    const recent = await SandboxFactory.create(
+      authenticator,
+      secondConversation,
+      {
+        status: "sleeping",
+        killRequestedAt: new Date(),
+        lastActivityAt: recentActivityAt,
+      }
+    );
+
+    const firstPage =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 1,
+        statuses: ["sleeping"],
+        order: "lastActivityAtDesc",
+      });
+    expect(firstPage.map((r) => r.id)).toEqual([recent.id]);
+
+    const secondPage =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 1,
+        statuses: ["sleeping"],
+        order: "lastActivityAtDesc",
+        after: {
+          sandboxModelId: recent.id,
+          timestamp: recentActivityAt,
+        },
+      });
+    expect(secondPage.map((r) => r.id)).toEqual([older.id]);
+  });
 });
 
 describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
@@ -790,7 +863,7 @@ describe("SandboxResource.ensureActive", () => {
     // Bypass resource validation via direct bulkCreate to verify layer
     // precedence: image and system layers must win over workspace rows after
     // the runtime prefix is composed.
-    await WorkspaceSandboxEnvVarModel.bulkCreate([
+    await SandboxEnvVarModel.bulkCreate([
       {
         workspaceId: workspace.id,
         name: "API_TOKEN",

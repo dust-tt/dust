@@ -10,7 +10,6 @@ import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
-import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -28,6 +27,8 @@ import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { SubscriptionModel } from "@app/lib/models/plan";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -257,15 +258,23 @@ export async function scrubSpaceActivity({
     },
   });
 
-  // Delete the activation pod record for this space. The FK to spaces is
-  // `onDelete: "RESTRICT"`, so this row must be removed before the space
-  // can be hard-deleted.
-  await ActivationPodModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      spaceId: space.id,
-    },
-  });
+  // Delete recommendations made in this Pod before deleting the activation
+  // pod record itself. The FK from activation_recommendations to
+  // activation_pods is `onDelete: "RESTRICT"`, so the recommendations must
+  // be removed first or the destroy below fails. The FK from spaces to
+  // activation_pods is `onDelete: "RESTRICT"` too, so this row must be
+  // removed before the space can be hard-deleted.
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+  if (activationPod) {
+    await ActivationRecommendationResource.deleteAllForActivationPod(
+      auth,
+      activationPod
+    );
+    const deletePodRes = await activationPod.delete(auth, {});
+    if (deletePodRes.isErr()) {
+      throw deletePodRes.error;
+    }
+  }
 
   // Detach triggers from this Pod before hard-deleting the space. The trigger
   // FK is `onDelete: "RESTRICT"`, so references must be cleared first; the

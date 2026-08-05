@@ -5,7 +5,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type PdfOrientation = "portrait" | "landscape";
 
-export interface RenderTarget {
+interface RenderTarget {
   url: string;
   waitForExpression: string;
 }
@@ -27,9 +27,9 @@ export interface ScreenshotOptions {
   width?: number;
 }
 
-export type DocumentRendererErrorCode = "render_failed" | "network_error";
+type DocumentRendererErrorCode = "render_failed" | "network_error";
 
-export class DocumentRendererError extends Error {
+class DocumentRendererError extends Error {
   readonly code: DocumentRendererErrorCode;
   readonly status?: number;
 

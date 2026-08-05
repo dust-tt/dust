@@ -11,7 +11,10 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
 /**
@@ -25,9 +28,9 @@ export interface ReinforcedToolActionInfo {
     agentMessageVersion: number;
     conversationId: string;
     conversationTitle: string | null;
-    conversationBranchId: string | null;
     userMessageId: string;
     userMessageVersion: number;
+    userMessageOrigin: UserMessageOrigin;
     initialStartTime: number;
   };
   actionIds: ModelId[];
@@ -45,7 +48,7 @@ async function fetchStepContentByCallId(
 > {
   const stepContents = await AgentStepContentResource.fetchByAgentMessages(
     auth,
-    { agentMessageIds: [agentMessageModelId], latestVersionsOnly: true }
+    { agentMessageIds: [agentMessageModelId] }
   );
 
   const functionCallStepContents = stepContents.filter(
@@ -185,9 +188,9 @@ export async function prepareReinforcedToolActions(
       agentMessageVersion: 0,
       conversationId: conversation.sId,
       conversationTitle: null,
-      conversationBranchId: null,
       userMessageId: userMessageId,
       userMessageVersion: 0,
+      userMessageOrigin: "reinforcement",
       initialStartTime: Date.now(),
     },
     actionIds,

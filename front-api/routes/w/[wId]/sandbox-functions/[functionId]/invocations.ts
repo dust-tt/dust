@@ -1,4 +1,5 @@
 import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
+import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { resolveSandboxFunctionActionAuthentication } from "@app/lib/api/sandbox_functions/resolve_authentication";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -119,8 +120,20 @@ app.post(
       });
     }
 
-    const invocationResult = await sandboxFunction.invoke(auth, body);
+    const invocationResult = await sandboxFunction.invoke(auth, body, {
+      origin:
+        auth.authMethod() === "session" ? "interactive_session" : "delegated",
+    });
     if (invocationResult.isErr()) {
+      if (isSandboxFunctionInvocationError(invocationResult.error)) {
+        return apiError(ctx, {
+          status_code: 401,
+          api_error: {
+            type: invocationResult.error.code,
+            message: invocationResult.error.message,
+          },
+        });
+      }
       return apiError(
         ctx,
         {

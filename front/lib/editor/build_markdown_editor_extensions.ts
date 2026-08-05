@@ -25,7 +25,7 @@ const rawMarkdownBlockParsersForUnhandledTokens =
       )
   );
 
-export interface BuildMarkdownEditorExtensionsOptions {
+interface BuildMarkdownEditorExtensionsOptions {
   placeholder?: string;
   maxCharacterCount?: number;
 }

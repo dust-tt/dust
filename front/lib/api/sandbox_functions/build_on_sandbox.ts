@@ -6,6 +6,10 @@ import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/er
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  SANDBOX_FUNCTION_USER_IDENTITY_POLICIES,
+  type SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -17,8 +21,9 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const BUILD_STAGING_ROOT = "/tmp/dust-sandbox-function-builds";
 const BUILD_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
 
-export interface SandboxFunctionBuildResult {
+interface SandboxFunctionBuildResult {
   bundleCode: string;
+  userIdentity: SandboxFunctionUserIdentityPolicy;
   inputSchema: JSONSchema;
   outputSchema: JSONSchema;
 }
@@ -42,6 +47,7 @@ const jsonSchemaValue = z.custom<JSONSchema>(
 const functionSchemaFileSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
+  userIdentity: z.enum(SANDBOX_FUNCTION_USER_IDENTITY_POLICIES),
   input_schema: jsonSchemaValue.nullable(),
   output_schema: jsonSchemaValue.nullable(),
 });
@@ -205,8 +211,11 @@ function parseSchemaFile(
     );
   }
 
-  const { input_schema: inputSchema, output_schema: outputSchema } =
-    parsed.data;
+  const {
+    userIdentity,
+    input_schema: inputSchema,
+    output_schema: outputSchema,
+  } = parsed.data;
   if (inputSchema === null || outputSchema === null) {
     return new Err(
       new SandboxFunctionError(
@@ -216,5 +225,5 @@ function parseSchemaFile(
     );
   }
 
-  return new Ok({ bundleCode, inputSchema, outputSchema });
+  return new Ok({ bundleCode, userIdentity, inputSchema, outputSchema });
 }

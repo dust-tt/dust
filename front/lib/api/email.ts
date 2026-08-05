@@ -16,7 +16,7 @@ import { escape } from "html-escaper";
 
 let sgMailClient: typeof sgMail | null = null;
 
-export function getSgMailClient(): any {
+function getSgMailClient(): any {
   if (!sgMailClient) {
     sgMail.setApiKey(config.getSendgridApiKey());
     sgMailClient = sgMail;

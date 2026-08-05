@@ -7,10 +7,6 @@ import type { RegionType } from "@app/types/region";
 import type { ConnectorsAPIError } from "@dust-tt/client";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-export type InternalErrorWithStatusCode = {
-  status_code: number;
-};
-
 const API_ERROR_TYPES = [
   "not_authenticated",
   "sso_enforced",
@@ -168,6 +164,7 @@ const API_ERROR_TYPES = [
   "skill_not_found",
   "skill_github_repository_not_found",
   "sandbox_function_not_found",
+  "sandbox_function_invocation_not_found",
   // Projects
   "project_metadata_not_found",
   // Suggestions

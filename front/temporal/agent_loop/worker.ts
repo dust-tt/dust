@@ -24,10 +24,17 @@ import {
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
-import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
+import {
+  BATCH_QUEUE_NAME,
+  INTERACTIVE_QUEUE_NAME,
+  PROGRAMMATIC_QUEUE_NAME,
+  QUEUE_NAME,
+  SCHEDULES_QUEUE_NAME,
+} from "@app/temporal/agent_loop/config";
 import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import { isDevelopment } from "@app/types/shared/env";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Context } from "@temporalio/activity";
 import {
@@ -44,7 +51,38 @@ const SHUTDOWN_ABORT_BUFFER_MS = 10 * 1_000;
 const SHUTDOWN_TOOL_ABORT_DELAY_MS =
   SHUTDOWN_GRACE_TIME_MS - SHUTDOWN_ABORT_BUFFER_MS;
 
+const MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS = 40;
+
 export async function runAgentLoopWorker() {
+  return runAgentLoopWorkerForQueue({
+    taskQueue: QUEUE_NAME,
+    maxConcurrentActivityTaskExecutions: 75,
+  });
+}
+
+export async function runAgentLoopBatchWorker() {
+  return runAgentLoopWorkerForQueue({ taskQueue: BATCH_QUEUE_NAME });
+}
+
+export async function runAgentLoopInteractiveWorker() {
+  return runAgentLoopWorkerForQueue({ taskQueue: INTERACTIVE_QUEUE_NAME });
+}
+
+export async function runAgentLoopProgrammaticWorker() {
+  return runAgentLoopWorkerForQueue({ taskQueue: PROGRAMMATIC_QUEUE_NAME });
+}
+
+export async function runAgentLoopSchedulesWorker() {
+  return runAgentLoopWorkerForQueue({ taskQueue: SCHEDULES_QUEUE_NAME });
+}
+
+async function runAgentLoopWorkerForQueue({
+  taskQueue,
+  maxConcurrentActivityTaskExecutions = MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS,
+}: {
+  taskQueue: string;
+  maxConcurrentActivityTaskExecutions?: number;
+}) {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
   // Initialize LLMs instrumentation for the worker.
@@ -54,6 +92,8 @@ export async function runAgentLoopWorker() {
 
   const worker = await Worker.create({
     ...getWorkflowConfig({
+      // All agent-loop pools run the same workflow code and share the agent_loop bundle
+      // (build-temporal-bundles dedupes by workflows directory).
       workerName: "agent_loop",
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
@@ -72,14 +112,14 @@ export async function runAgentLoopWorker() {
       runModelAndCreateActionsActivity,
       runToolActivity,
     },
-    taskQueue: QUEUE_NAME,
+    taskQueue,
     connection,
     namespace,
     shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     // This also bounds the time until an activity may receive a cancellation signal.
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
-    maxConcurrentActivityTaskExecutions: 75,
+    maxConcurrentActivityTaskExecutions,
     interceptors: {
       workflowModules: removeNulls([
         !isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true"
@@ -126,7 +166,10 @@ export async function runAgentLoopWorker() {
   try {
     await worker.run(); // this resolves after shutdown completes
   } catch (error) {
-    logger.error({ error }, "Agent loop worker error");
+    logger.error(
+      { err: normalizeError(error), taskQueue },
+      "Agent loop worker error"
+    );
   } finally {
     await connection.close();
     process.exit(0);

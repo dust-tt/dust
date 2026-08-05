@@ -8,7 +8,7 @@ import {
 import { QUEUE_NAME } from "./config";
 import { creditAlertWorkflow } from "./workflows";
 
-export interface LaunchCreditAlertWorkflowArgs {
+interface LaunchCreditAlertWorkflowArgs {
   workspaceId: string;
   creditAlertThresholdKey: string;
   totalInitialMicroUsd: number;

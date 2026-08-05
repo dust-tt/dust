@@ -8,7 +8,6 @@ import {
   ROLES_DATA,
 } from "@app/components/members/Roles";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import assert from "@app/lib/utils/assert";
 import type { MembershipOriginType } from "@app/types/memberships";
 import type { RoleType, UserType } from "@app/types/user";
@@ -34,6 +33,7 @@ type RowData = {
   status: "Active" | "Unregistered";
   groups: string[];
   isCurrentUser: boolean;
+  canRemove: boolean;
   onClick: () => void;
   onRemoveMemberClick?: () => void;
   origin?: MembershipOriginType;
@@ -42,13 +42,8 @@ type RowData = {
 type Info = CellContext<RowData, string>;
 
 function RoleCell({ role }: { role: RoleType }) {
-  const { hasFeature } = useFeatureFlags();
-  // `builder` is deprecated under admin governance: display it as a regular
-  // member.
-  const displayedRole = normalizeDisplayRole(
-    role,
-    hasFeature("admin_governance")
-  );
+  // `builder` is deprecated: display it as a regular member.
+  const displayedRole = normalizeDisplayRole(role);
 
   return (
     <DataTable.CellContent>
@@ -69,14 +64,18 @@ function getTableRows({
   onClick,
   onRemoveMemberClick,
   currentUserId,
+  allowRemoveSelfAndProvisionedUsers,
 }: {
   allUsers: SearchMemberWithWorkspaceType[];
   onClick: (user: SearchMemberWithWorkspaceType) => void;
   onRemoveMemberClick?: (user: SearchMemberWithWorkspaceType) => void;
   currentUserId: string;
+  allowRemoveSelfAndProvisionedUsers: boolean;
 }): RowData[] {
   return allUsers.map((user) => {
     const fullUser = isFullUserType(user);
+    const isCurrentUser = user.sId === currentUserId;
+    const origin = fullUser ? user.origin : undefined;
     return {
       icon: user.image ?? "",
       name: user.fullName,
@@ -85,10 +84,13 @@ function getTableRows({
       role: user.workspace.role ?? "none",
       status: fullUser && user.lastLoginAt === null ? "Unregistered" : "Active",
       groups: user.workspace.groups ?? [],
-      isCurrentUser: user.sId === currentUserId,
+      isCurrentUser,
+      canRemove:
+        allowRemoveSelfAndProvisionedUsers ||
+        (!isCurrentUser && origin !== "provisioned"),
       onClick: () => onClick(user),
       onRemoveMemberClick: () => onRemoveMemberClick?.(user),
-      origin: fullUser ? user.origin : undefined,
+      origin,
     };
   });
 }
@@ -138,10 +140,7 @@ const memberColumns = [
     header: "",
     cell: (info: Info) => (
       <DataTable.CellContent>
-        {info.row.original.isCurrentUser ||
-        info.row.original.origin === "provisioned" ? (
-          <></>
-        ) : (
+        {info.row.original.canRemove && (
           <IconButton
             icon={XClose}
             onClick={info.row.original.onRemoveMemberClick}
@@ -179,6 +178,7 @@ const memberColumns = [
 ];
 
 interface MembersListProps {
+  allowRemoveSelfAndProvisionedUsers?: boolean;
   currentUser: UserType | null;
   membersData: MembersData;
   onRowClick: (user: SearchMemberWithWorkspaceType) => void;
@@ -189,6 +189,7 @@ interface MembersListProps {
 }
 
 export function MembersList({
+  allowRemoveSelfAndProvisionedUsers = false,
   currentUser,
   membersData,
   onRowClick,
@@ -213,8 +214,15 @@ export function MembersList({
       onClick: onRowClick,
       onRemoveMemberClick,
       currentUserId: currentUser?.sId ?? "current-user-not-loaded",
+      allowRemoveSelfAndProvisionedUsers,
     });
-  }, [members, onRowClick, onRemoveMemberClick, currentUser?.sId]);
+  }, [
+    members,
+    onRowClick,
+    onRemoveMemberClick,
+    currentUser?.sId,
+    allowRemoveSelfAndProvisionedUsers,
+  ]);
 
   return (
     <>

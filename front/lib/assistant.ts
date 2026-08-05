@@ -10,12 +10,17 @@ import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
-export function isAdvancedModel(m: ModelConfigurationType): boolean {
+function isAdvancedModel(m: ModelConfigurationType): boolean {
   return m.availableIfOneOf?.plansWithAdvancedModels === true;
 }
 
 export function getAdvancedModels(): ModelConfigurationType[] {
   return SUPPORTED_MODEL_CONFIGS.filter(isAdvancedModel);
+}
+
+// False if the model requires an on-demand/dust-only feature flag (not GA).
+export function isModelReleased(m: ModelConfigurationType): boolean {
+  return !m.availableIfOneOf?.featureFlag;
 }
 
 // Returns true if the model is available to the workspace for build.

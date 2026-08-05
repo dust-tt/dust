@@ -13,7 +13,6 @@ const ParamsSchema = z.object({
 const ValidateActionSchema = z.object({
   actionId: z.string(),
   approved: z.enum(["approved", "rejected", "always_approved"]),
-  resumeAncestorConversations: z.boolean().optional(),
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/validate-action.
@@ -39,14 +38,12 @@ app.post(
       });
     }
 
-    const { actionId, approved, resumeAncestorConversations } =
-      ctx.req.valid("json");
+    const { actionId, approved } = ctx.req.valid("json");
 
     const result = await validateAction(auth, conversation, {
       actionId,
       approvalState: approved,
       messageId: mId,
-      resumeAncestorConversations,
     });
 
     if (result.isErr()) {

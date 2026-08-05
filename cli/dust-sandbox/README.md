@@ -51,8 +51,23 @@ Functions are self-contained Bun bundles in `$DUST_FUNCTIONS_DIR`, named
 
 - `dsbx function run <name>` — request envelope JSON on stdin → parsed output or error envelope
   on stdout (`{ok, response}` / `{ok:false, error}`).
-- `dsbx function get <name>` — prints `{name, description, input_schema,
-  output_schema}` (JSON Schema).
+- `dsbx function get <name>` — prints `{name, description, userIdentity,
+  input_schema, output_schema}` (JSON Schema).
+
+Functions may require a current member of their Pod's workspace:
+
+```ts
+export const schema = {
+  userIdentity: "workspace_user_required",
+  input: z.object({}),
+  output: z.object({}),
+};
+```
+
+Omitting `userIdentity` keeps the function callable without a user.
+Use `interactive_workspace_user_required` when the function must be called
+directly from a logged-in member's live Dust session, rather than by an agent,
+schedule, or API client acting on that member's behalf.
 
 ### Unprivileged execution
 

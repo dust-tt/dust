@@ -29,12 +29,14 @@ describe("getFunctionSchema", () => {
     const s = await getFunctionSchema(fx("greet.ts"));
     expect(s.name).toBe("greet");
     expect(s.description).toBe("Greet a user by name");
+    expect(s.userIdentity).toBe("interactive_workspace_user_required");
     expect(s.input_schema).toMatchObject({ required: ["name"] });
     expect(s.output_schema).toMatchObject({ required: ["greeting"] });
   });
 
   test("nulls a malformed (non-Zod) schema field", async () => {
     const s = await getFunctionSchema(fx("bad-schema.ts"));
+    expect(s.userIdentity).toBe("optional");
     expect(s.input_schema).toBeNull();
     expect(s.output_schema).toBeNull();
   });
@@ -47,5 +49,11 @@ describe("getFunctionSchema", () => {
 
   test("throws when the file cannot be imported", async () => {
     await expect(getFunctionSchema(fx("nope.ts"))).rejects.toThrow();
+  });
+
+  test("rejects an unknown user identity policy", async () => {
+    await expect(
+      getFunctionSchema(fx("invalid-user-identity.ts"))
+    ).rejects.toThrow(/schema.userIdentity/);
   });
 });

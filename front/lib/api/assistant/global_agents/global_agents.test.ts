@@ -1,8 +1,14 @@
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { CLAUDE_SONNET_5_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_OPUS_5_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
+} from "@app/types/assistant/models/anthropic";
+import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
   GPT_5_6_LUNA_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
@@ -355,5 +361,146 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
         reasoningEffort: "high",
       },
     ]);
+  });
+});
+
+describe("getGlobalAgents Deep Dive model routing", () => {
+  it("uses Sol with medium reasoning as the Deep Dive primary model", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["anthropic", "openai"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DEEP_DIVE],
+      "light"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].model).toMatchObject({
+      modelId: GPT_5_6_SOL_MODEL_ID,
+      reasoningEffort: "medium",
+    });
+  });
+
+  it("uses Sol medium for Deep Dive while using Sol high for planning and Luna high for tasks", async () => {
+    const workspace = await WorkspaceFactory.enterprise({
+      whiteListedProviders: ["openai"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DEEP_DIVE,
+        GLOBAL_AGENTS_SID.DUST_TASK,
+        GLOBAL_AGENTS_SID.DUST_PLANNING,
+      ],
+      "light"
+    );
+
+    expect(
+      agents.map((agent) => ({
+        sId: agent.sId,
+        modelId: agent.model.modelId,
+        reasoningEffort: agent.model.reasoningEffort,
+      }))
+    ).toEqual([
+      {
+        sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        reasoningEffort: "medium",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_TASK,
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        reasoningEffort: "high",
+      },
+    ]);
+  });
+
+  it("falls back to Opus 5 light for enterprise Deep Dive", async () => {
+    const workspace = await WorkspaceFactory.enterprise({
+      whiteListedProviders: ["anthropic"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DEEP_DIVE,
+        GLOBAL_AGENTS_SID.DUST_TASK,
+        GLOBAL_AGENTS_SID.DUST_PLANNING,
+      ],
+      "light"
+    );
+
+    expect(
+      agents.map((agent) => ({
+        sId: agent.sId,
+        modelId: agent.model.modelId,
+        reasoningEffort: agent.model.reasoningEffort,
+      }))
+    ).toEqual([
+      {
+        sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+        modelId: CLAUDE_OPUS_5_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_TASK,
+        modelId: CLAUDE_SONNET_5_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
+        modelId: CLAUDE_OPUS_5_MODEL_ID,
+        reasoningEffort: "high",
+      },
+    ]);
+  });
+
+  it("falls back to Sonnet 5 light for non-enterprise Deep Dive", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["anthropic"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DEEP_DIVE],
+      "light"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].model).toMatchObject({
+      modelId: CLAUDE_SONNET_5_MODEL_ID,
+      reasoningEffort: "light",
+    });
+  });
+
+  it("uses the generic large fallback when preferred Deep Dive models are unavailable", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["google_ai_studio"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DEEP_DIVE],
+      "light"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].model).toMatchObject({
+      modelId: GEMINI_3_1_PRO_MODEL_ID,
+      reasoningEffort: "light",
+    });
   });
 });

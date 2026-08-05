@@ -137,7 +137,7 @@ export const authorizedFileAccessEntrySchema = z.discriminatedUnion("kind", [
   authorizedUnverifiableAccessEntrySchema,
 ]);
 
-export type AuthorizedFileAccessEntry = z.infer<
+type AuthorizedFileAccessEntry = z.infer<
   typeof authorizedFileAccessEntrySchema
 >;
 
@@ -273,15 +273,10 @@ export type FileTypeWithMetadata = FileType & {
   useCaseMetadata: FileUseCaseMetadata;
 };
 
-export type FileFormatCategory =
-  | "image"
-  | "data"
-  | "code"
-  | "delimited"
-  | "audio";
+type FileFormatCategory = "image" | "data" | "code" | "delimited" | "audio";
 
 // Define max sizes for each category.
-export const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
+const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
   data: 50 * 1024 * 1024, // 50MB.
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
@@ -294,10 +289,7 @@ export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
 // Conversations: large delimited files (CSV/XLSX) are mounted into the sandbox and read as-is by
 // the agent's code rather than loaded into its context, so they can be much larger than regular
 // uploads.
-export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
-  FileFormatCategory,
-  number
-> = {
+const MAX_FILE_SIZES_LARGE_DELIMITED: Record<FileFormatCategory, number> = {
   ...MAX_FILE_SIZES_DEFAULT,
   delimited: 350 * 1024 * 1024,
 };
@@ -305,7 +297,7 @@ export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
 // Skill attachments: tabular files (CSV/XLSX -> delimited) AND documents (PDF/DOCX/PPTX -> data)
 // are mounted into the sandbox and read as-is, so both categories can be much larger than regular
 // uploads.
-export const MAX_FILE_SIZES_LARGE_SKILL: Record<FileFormatCategory, number> = {
+const MAX_FILE_SIZES_LARGE_SKILL: Record<FileFormatCategory, number> = {
   ...MAX_FILE_SIZES_DEFAULT,
   delimited: 350 * 1024 * 1024,
   data: 350 * 1024 * 1024,
@@ -741,7 +733,7 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
 export type InteractiveContentFileContentType =
   keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
 
-export const SANDBOX_FUNCTION_FILE_FORMATS = {
+const SANDBOX_FUNCTION_FILE_FORMATS = {
   [sandboxFunctionContentType]: {
     cat: "code",
     exts: [".ts"],
@@ -777,7 +769,7 @@ export type SupportedImageContentType = {
     : never;
 }[keyof typeof FILE_FORMATS];
 
-export type SupportedDelimitedTextContentType = {
+type SupportedDelimitedTextContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
     cat: "delimited";
   }
@@ -793,7 +785,7 @@ export type SupportedNonImageContentType = {
     : K;
 }[keyof typeof FILE_FORMATS];
 
-export type SupportedAudioContentType = {
+type SupportedAudioContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
     cat: "audio";
   }
@@ -894,7 +886,7 @@ export function isSupportedAudioContentType(
   return false;
 }
 
-export type SupportedFontContentType =
+type SupportedFontContentType =
   | "font/woff"
   | "font/woff2"
   | "font/otf"
@@ -1022,6 +1014,14 @@ const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
 
 export function stripMimeParameters(contentType: string): string {
   return contentType.split(";")[0];
+}
+
+/**
+ * MIME types are case-insensitive per RFC 2045. Use this at every upload and
+ * serving boundary so mixed-case values like TEXT/HTML cannot bypass content-type safety gating.
+ */
+export function normalizeMimeType(contentType: string): string {
+  return stripMimeParameters(contentType).toLowerCase();
 }
 
 export function stripFileExtension(fileName: string): string {

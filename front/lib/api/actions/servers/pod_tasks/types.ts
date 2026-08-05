@@ -7,7 +7,7 @@ const PodTasksDustPodInputSchema =
     INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
   ].optional();
 
-export const PodTasksCreateTaskSourceInputSchema = z.object({
+const PodTasksCreateTaskSourceInputSchema = z.object({
   url: z
     .string()
     .url()
@@ -17,7 +17,7 @@ export const PodTasksCreateTaskSourceInputSchema = z.object({
   title: z.string().describe("Human-readable title for the source"),
 });
 
-export const PodTasksCreateTaskInputSchema = z.object({
+const PodTasksCreateTaskInputSchema = z.object({
   text: z
     .string()
     .min(16)

@@ -43,7 +43,3 @@ export const CreditUsageConfigurationSchema = z.object({
   topUpEnabled: z.boolean().default(false),
   autoInvoiceFinalizationEnabled: z.boolean().default(true),
 });
-
-export type CreditUsageConfigurationFormValues = z.infer<
-  typeof CreditUsageConfigurationSchema
->;

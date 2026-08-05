@@ -226,7 +226,7 @@ function makeEmailThreadConversationKey(
  * Map an inbound email Message-ID to a conversation sId so later replies in the same email
  * thread can continue the conversation.
  */
-export async function storeEmailThreadConversation({
+async function storeEmailThreadConversation({
   workspaceId,
   messageId,
   conversationId,
@@ -280,7 +280,7 @@ export function getThreadingLookupMessageIds(
 /**
  * Find the conversation associated with the email thread an inbound email belongs to, if any.
  */
-export async function findConversationIdFromThreadingHeaders(
+async function findConversationIdFromThreadingHeaders(
   workspaceId: string,
   threadingHeaders: EmailThreadingHeaders
 ): Promise<string | null> {
@@ -353,8 +353,7 @@ export type EmailTriggerError = {
   message: string;
 };
 
-export const EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY =
-  "emailBlacklistedAgentIds";
+const EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY = "emailBlacklistedAgentIds";
 
 // Error factories shared between the local lookup and the cross-region relay
 // reply resolution, so both paths reply with the same message for a given type.

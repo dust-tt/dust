@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { REDIS_CACHE_CONCURRENCY } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -36,31 +37,21 @@ function getActionOutputGcsPrefix(
 function getGcsPath(
   auth: Authenticator,
   action: AgentMCPActionResource,
-  itemId: ModelId
+  objectName: string
 ): string {
-  return `${getActionOutputGcsPrefix(auth, action.id)}${itemId}.json`;
+  return `${getActionOutputGcsPrefix(auth, action.id)}${objectName}.json`;
 }
 
-/**
- * Writes multiple output items to GCS concurrently.
- * Returns Ok with a map of itemId -> gcsPath, or Err on failure.
- */
-export async function batchWriteContentsToGcs(
-  auth: Authenticator,
+async function batchWriteContentsToGcsAtPaths(
   action: AgentMCPActionResource,
-  items: Array<{
-    itemId: ModelId;
-    content: OutputContent;
-  }>
-): Promise<Result<Map<ModelId, string>, Error>> {
-  const results = new Map<ModelId, string>();
-
+  itemsWithPaths: Array<{ content: OutputContent; gcsPath: string }>
+): Promise<Result<string[], Error>> {
   let firstError: Error | null = null;
+  let successCount = 0;
 
   await concurrentExecutor(
-    items,
-    async ({ itemId, content }) => {
-      const gcsPath = getGcsPath(auth, action, itemId);
+    itemsWithPaths,
+    async ({ content, gcsPath }) => {
       const bucket = getPrivateUploadBucket();
       const file = bucket.file(gcsPath);
       const json = JSON.stringify(content);
@@ -77,7 +68,8 @@ export async function batchWriteContentsToGcs(
         }
         return;
       }
-      results.set(itemId, gcsPath);
+
+      successCount += 1;
     },
     { concurrency: GCS_CONCURRENCY }
   );
@@ -86,16 +78,63 @@ export async function batchWriteContentsToGcs(
     logger.error(
       {
         err: firstError,
-        itemCount: items.length,
-        successCount: results.size,
+        itemCount: itemsWithPaths.length,
+        successCount,
       },
       "Failed to write MCP output items to GCS"
     );
 
+    // A failed save may still have persisted its object before returning an error. Delete every
+    // attempted path so callers never have to reason about partial GCS writes.
+    const cleanupResult = await deleteContentsFromGcs(
+      itemsWithPaths.map(({ gcsPath }) => gcsPath)
+    );
+    if (cleanupResult.isErr()) {
+      logger.error(
+        { err: cleanupResult.error, actionId: action.sId },
+        "Failed to clean up partially written MCP output items"
+      );
+    }
+
     return new Err(firstError);
   }
 
-  return new Ok(results);
+  return new Ok(itemsWithPaths.map(({ gcsPath }) => gcsPath));
+}
+
+/**
+ * Writes new output contents to UUID-backed GCS objects concurrently.
+ * Paths are returned in the same order as the provided contents.
+ */
+export async function batchWriteContentsToGcs(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  contents: OutputContent[]
+): Promise<Result<string[], Error>> {
+  return batchWriteContentsToGcsAtPaths(
+    action,
+    contents.map((content) => ({
+      content,
+      gcsPath: getGcsPath(auth, action, randomUUID()),
+    }))
+  );
+}
+
+/**
+ * Rewrites existing output items at deterministic paths so backfill retries are idempotent.
+ */
+export async function batchRewriteContentsToGcs(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  items: Array<{ itemId: ModelId; content: OutputContent }>
+): Promise<Result<string[], Error>> {
+  return batchWriteContentsToGcsAtPaths(
+    action,
+    items.map(({ itemId, content }) => ({
+      content,
+      gcsPath: getGcsPath(auth, action, itemId.toString()),
+    }))
+  );
 }
 
 /**
@@ -294,10 +333,6 @@ export async function deleteActionOutputsFromGcs(
   actionIds: ModelId[],
   gcsPaths: string[]
 ): Promise<Result<void, Error>> {
-  if (gcsPaths.length === 0) {
-    return new Ok(undefined);
-  }
-
   const prefixResult = await deleteActionOutputPrefixesFromGcs(auth, actionIds);
   if (prefixResult.isErr()) {
     return prefixResult;

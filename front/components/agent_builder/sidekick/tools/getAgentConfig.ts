@@ -4,7 +4,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-export interface GetAgentConfigCallbacks {
+interface GetAgentConfigCallbacks {
   getFormValues: () => AgentBuilderFormData;
   getPendingSuggestions?: () => AgentSuggestionType[];
   getCommittedInstructionsHtml?: () => string;

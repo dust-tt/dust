@@ -1,6 +1,5 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
-import type { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import type { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -8,14 +7,12 @@ import {
   DANGEROUSLY_UNBOUNDED_TEXT,
   DataTypes,
   literal,
-  Op,
 } from "@app/lib/resources/storage/data_types";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
 import type {
   AgentMessageStatus,
   CompactionMessageStatus,
@@ -205,6 +202,11 @@ ConversationParticipantModel.init(
       {
         fields: ["conversationId"],
         name: "conversation_participants_conversation_id",
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "conversationId", "actionRequired"],
+        name: "conversation_participants_workspace_conversation_action_idx",
         concurrently: true,
       },
     ],
@@ -820,7 +822,6 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare visibility: CreationOptional<MessageVisibility>;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
-  declare branchId: ForeignKey<ConversationBranchModel["id"]> | null;
 
   declare parentId: ForeignKey<MessageModel["id"]> | null;
   declare userMessageId: ForeignKey<UserMessageModel["id"]> | null;
@@ -835,16 +836,6 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare reactions?: NonAttribute<MessageReactionModel[]>;
 
   declare conversation?: NonAttribute<ConversationModel>;
-  declare branch?: NonAttribute<ConversationBranchModel>;
-
-  getBranchId(): string | null {
-    return this.branchId
-      ? makeSId("conversation_branch", {
-          id: this.branchId,
-          workspaceId: this.workspaceId,
-        })
-      : null;
-  }
 }
 
 MessageModel.init(
@@ -877,11 +868,6 @@ MessageModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    branchId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      defaultValue: null,
-    },
   },
   {
     modelName: "message",
@@ -891,45 +877,11 @@ MessageModel.init(
         unique: true,
         fields: ["sId"],
       },
-      // Index when the branchId criteria is not set in queries.
-      // No uniqueness constraint as uniqueness is enforced by the branchId null/not null indexes below.
-      {
-        fields: ["workspaceId", "conversationId", "rank", "version"],
-        name: "messages_workspace_id_conversation_id_rank_version",
-        concurrently: true,
-      },
-      // We need two separate indexes for the different cases of branchId being null or not.
-      // Because a null value is not considered distinct in an unique index.
+      // Unique index for rank and version.
       {
         unique: true,
         fields: ["workspaceId", "conversationId", "rank", "version"],
-        where: {
-          branchId: {
-            [Op.is]: null,
-          },
-        },
-        name: "messages_workspace_id_conversation_id_rank_version_branch_null",
-        concurrently: true,
-      },
-      {
-        unique: true,
-        fields: [
-          "workspaceId",
-          "conversationId",
-          "rank",
-          "version",
-          "branchId",
-        ],
-        where: {
-          branchId: {
-            [Op.ne]: null,
-          },
-        },
-        name: "messages_workspace_id_conversation_id_rank_version_branch_id",
-        concurrently: true,
-      },
-      {
-        fields: ["branchId"],
+        name: "messages_workspace_id_conversation_id_rank_version_unique",
         concurrently: true,
       },
       {

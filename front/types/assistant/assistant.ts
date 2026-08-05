@@ -1,20 +1,9 @@
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import SUPPORTED_MODEL_CONFIGS from "@app/types/assistant/models/models";
-import { O4_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
-  ModelConfigurationType,
   ModelIdType,
-  ModelProviderIdType,
   SupportedModel,
 } from "@app/types/assistant/models/types";
-
-export interface PrefetchedWhitelistedModels {
-  small: ModelConfigurationType | null;
-  large: ModelConfigurationType | null;
-  whitelistedProviders: Set<ModelProviderIdType>;
-}
-
-export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
 
@@ -168,12 +157,11 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
 // users, so usage they generate should be attributed to the parent agent that
 // spawned them rather than to the helper itself. Other sub-agents (real user
 // agents invoked via run_agent / agent_handover) keep their own attribution.
-export const HIDDEN_HELPER_SUB_AGENT_SIDS: ReadonlySet<string> =
-  new Set<string>([
-    GLOBAL_AGENTS_SID.DUST_TASK,
-    GLOBAL_AGENTS_SID.DUST_PLANNING,
-    GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
-  ]);
+const HIDDEN_HELPER_SUB_AGENT_SIDS: ReadonlySet<string> = new Set<string>([
+  GLOBAL_AGENTS_SID.DUST_TASK,
+  GLOBAL_AGENTS_SID.DUST_PLANNING,
+  GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+]);
 
 export function isHiddenHelperSubAgentId(sId: string): boolean {
   return HIDDEN_HELPER_SUB_AGENT_SIDS.has(sId);

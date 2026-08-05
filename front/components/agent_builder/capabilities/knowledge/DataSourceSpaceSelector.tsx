@@ -7,7 +7,7 @@ import type { SpaceType } from "@app/types/space";
 import { SPACE_KINDS } from "@app/types/space";
 import { useCallback, useContext, useMemo } from "react";
 
-export interface DataSourceSpaceSelectorProps {
+interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];
 }
 

@@ -21,7 +21,7 @@ import {
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
-export interface InstructionBlockAttributes {
+interface InstructionBlockAttributes {
   type: string;
 }
 

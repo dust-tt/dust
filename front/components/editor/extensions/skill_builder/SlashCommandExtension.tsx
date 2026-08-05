@@ -234,7 +234,7 @@ const SkillBuilderSlashCommandDropdown = forwardRef<
 SkillBuilderSlashCommandDropdown.displayName =
   "SkillBuilderSlashCommandDropdown";
 
-export interface SlashCommandExtensionOptions {
+interface SlashCommandExtensionOptions {
   currentSkillIdRef?: RefObject<string | null>;
   onSelectRef: RefObject<
     ((item: SlashCommand, editor: Editor, range: Range) => void) | undefined

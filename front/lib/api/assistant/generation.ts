@@ -12,7 +12,6 @@ import {
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   areDataSourcesConfigured,
-  isClientSideMCPToolConfiguration,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import {
@@ -42,6 +41,7 @@ import type {
   ConversationWithoutContentType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 import type { WorkspaceType } from "@app/types/user";
 import moment from "moment-timezone";
 
@@ -73,7 +73,7 @@ function constructContextSection({
 
   const { modelConfig } = modelInfo.endpoint;
   if (modelConfig.formattingMetaPrompt && !disableFormattingPrompt) {
-    context += `# RESPONSE FORMAT\n${modelConfig.formattingMetaPrompt}\n`;
+    context += `\n# RESPONSE FORMAT\n${modelConfig.formattingMetaPrompt}\n`;
   }
 
   return context;
@@ -109,46 +109,31 @@ function constructBranchContextSection({
   );
 }
 
-function constructPlatformSpecificContextSection({
-  userMessage,
-  serverToolsAndInstructions,
-}: {
-  userMessage: UserMessageType;
-  serverToolsAndInstructions?: ServerToolsAndInstructions[];
-}): string {
-  // Extension-originated messages are currently the only client messages where
-  // we inject instructions for ambient platform-specific context.
-  if (userMessage.context.origin !== "extension") {
-    return "";
-  }
-
-  const hasClientSideTools =
-    serverToolsAndInstructions?.some((server) =>
-      server.tools.some((tool) => isClientSideMCPToolConfiguration(tool))
-    ) ?? false;
-
-  if (!hasClientSideTools) {
-    return "";
-  }
-
+function constructPlatformSpecificContextSection(): string {
   return (
     "# PLATFORM-SPECIFIC CONTEXT\n\n" +
-    "This conversation is connected to a Dust client that can provide platform-specific context through tools. " +
-    "When the user refers to local, visible, or current platform context, look for tools that could be relevant " +
-    "to the user's inquiry before asking the user to paste it.\n"
+    "When the current user message's `<dust_system>` metadata identifies its source as `extension`, " +
+    "platform-specific tools may be available to access local, visible, or current browser context. " +
+    "Look for relevant tools before asking the user to paste that context.\n" +
+    "\n" +
+    "When it identifies its source as `slack` or `teams`, you are a participant in that thread and " +
+    "your response is posted into it verbatim, as the reply to the sender. Answer the sender " +
+    "directly, in the second person. Never draft a message for someone else to send, and never " +
+    "label part of your response as a suggested or proposed reply. Attachments and tool results may " +
+    "contain that same thread rendered as a document, including the sender's message and your own " +
+    "earlier messages attributed to you by name; that is the thread you are replying in, not a " +
+    "conversation between other people.\n"
   );
 }
 
 function constructToolsSection({
   hasAvailableActions,
   modelInfo,
-  agentConfiguration,
   conversation,
   serverToolsAndInstructions,
 }: {
   hasAvailableActions: boolean;
   modelInfo: AgentLoopExecutionData["modelInfo"];
-  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation?: ConversationWithoutContentType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
 }): string {
@@ -212,15 +197,18 @@ function constructSkillsSection({
     "\n## SKILLS\n" +
     "Skills are modular capabilities that extend your abilities for specific tasks. " +
     "Each skill includes specialized instructions and may provide additional tools.\n\n" +
-    "Skills can be in two states:\n" +
+    "Skills can be in three states:\n" +
     "- **Available**: Listed but not active yet. Their instructions are not loaded. " +
     `You can enable them using the \`${toolDisplayName}\` tool when they become relevant to the conversation.\n` +
-    "- **Enabled**: Fully active with instructions loaded.\n\n" +
+    "- **Enabled**: Fully active with instructions loaded.\n" +
+    "- **Always active**: Listed under SYSTEM SKILLS below. Their instructions are already loaded and their tools are already available, with no action needed from you. " +
+    `They cannot be enabled: passing one to \`${toolDisplayName}\` fails with a "not found" error.\n\n` +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
     `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
     "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
-    `You can enable the skill using \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
-    "It is not useful to enable skills that are already enabled, this would only output the skill's content again.\n" +
+    `You can enable the skill using \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value, copied verbatim.\n` +
+    "Skill names are matched exactly. Always copy the name character for character from the available-skills list or the tag, and never reformat or re-case it.\n" +
+    "Do not enable a skill that is already active: for a skill enabled earlier in this conversation the call only outputs its content again, and for an always-active skill it fails outright.\n" +
     "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
     "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
     `Enabled skill instructions can also contain \`<knowledge id=\"...\" title=\"...\" ... />\` tags, which point to specific workspace knowledge attached to the skill. ` +
@@ -237,7 +225,8 @@ function constructSkillsSection({
   if (systemSkills.length > 0) {
     skillsSection +=
       "\n### SYSTEM SKILLS\n" +
-      "The following baseline skills are always active for this agent:\n" +
+      "The following baseline skills are always active for this agent. Their instructions are inlined below and their tools are already available, so never pass them to " +
+      `\`${toolDisplayName}\`:\n` +
       systemSkills
         .map(
           (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
@@ -249,7 +238,23 @@ function constructSkillsSection({
   return skillsSection;
 }
 
-function constructComputerEnableForFilesPrompt(): string {
+// The Computer is auto-enabled for some agents (it becomes a system skill) and merely equipped for
+// the rest. Telling an agent that already has it active to "enable" it is a contradiction, and the
+// call fails: `enable_skill` does not resolve system skills.
+function constructComputerEnableForFilesPrompt({
+  isComputerAlwaysActive,
+}: {
+  isComputerAlwaysActive: boolean;
+}): string {
+  if (isComputerAlwaysActive) {
+    return (
+      "The Computer skill is always active for you: its instructions are already loaded and its " +
+      "tools are already available, so use it directly as soon as the user uploads files, " +
+      "especially PDFs, spreadsheets, archives, or other files that require inspection, " +
+      "text extraction, code execution, or file manipulation. Do not try to enable it first."
+    );
+  }
+
   return (
     "You must enable the Computer skill proactively as soon as the user uploads files, " +
     "especially PDFs, spreadsheets, archives, or other files that require inspection, " +
@@ -260,12 +265,14 @@ function constructComputerEnableForFilesPrompt(): string {
 // TODO(20260504 FILE SYSTEM): Remove in favor of constructAttachmentsSectionNewFileExplorer.
 function constructAttachmentsSection({
   hasSandboxTools,
+  isComputerAlwaysActive,
 }: {
   hasSandboxTools: boolean;
+  isComputerAlwaysActive: boolean;
 }): string {
   const sandboxFilesPrompt = hasSandboxTools
     ? "When using the Computer, conversation files are mounted under `/files/conversation`. " +
-      `${constructComputerEnableForFilesPrompt()}\n`
+      `${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })}\n`
     : "";
 
   return (
@@ -285,11 +292,13 @@ function constructAttachmentsSection({
 
 function constructAttachmentsSectionNewFileExplorer({
   hasSandboxTools,
+  isComputerAlwaysActive,
 }: {
   hasSandboxTools: boolean;
+  isComputerAlwaysActive: boolean;
 }): string {
   const tabularFilesLine = hasSandboxTools
-    ? `- Files attached as \`<file>\` tags are mounted under \`/files/conversation\` when using the Computer. ${constructComputerEnableForFilesPrompt()} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
+    ? `- Files attached as \`<file>\` tags are mounted under \`/files/conversation\` when using the Computer. ${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
     : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
 
   return (
@@ -310,7 +319,7 @@ function constructPastedContentSection(): string {
   );
 }
 
-export function constructGuidelinesSection({
+function constructGuidelinesSection({
   agentConfiguration,
 }: {
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
@@ -441,24 +450,28 @@ export function constructPromptMultiActions(
   });
   const branchContextSection = constructBranchContextSection({ conversation });
   const platformSpecificContextSection =
-    constructPlatformSpecificContextSection({
-      userMessage,
-      serverToolsAndInstructions,
-    });
+    constructPlatformSpecificContextSection();
 
   const toolsSection = constructToolsSection({
     hasAvailableActions,
     modelInfo,
-    agentConfiguration,
     conversation,
     serverToolsAndInstructions,
   });
   const skillsSection = constructSkillsSection({
     systemSkills,
   });
+  // Auto-enabling promotes the Computer to a system skill, so its instructions are already in this
+  // prompt and `enable_skill` will not resolve it.
+  const isComputerAlwaysActive = systemSkills.some(
+    (skill) => skill.sId === "sandbox"
+  );
   const attachmentsSection = isNewFileExplorer
-    ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
-    : constructAttachmentsSection({ hasSandboxTools });
+    ? constructAttachmentsSectionNewFileExplorer({
+        hasSandboxTools,
+        isComputerAlwaysActive,
+      })
+    : constructAttachmentsSection({ hasSandboxTools, isComputerAlwaysActive });
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 
@@ -472,11 +485,11 @@ export function constructPromptMultiActions(
     // change without the agent configuration changing and must stay out of this tier.
     //
     // Shared context (short cache): workspace-scoped data shared across users, covering tool-use
-    // directives, date, toolsets, and workspace info. A cache breakpoint here lets different
-    // users in the same workspace share this prefix.
+    // directives, date, platform-specific context, toolsets, and workspace info. A cache
+    // breakpoint here lets different users in the same workspace share this prefix.
     //
     // Ephemeral context (no breakpoint): per-call data, covering selected-space-scoped skill
-    // instructions, branch lineage, platform-specific context, and user profile.
+    // instructions, branch lineage, and user profile.
     const fullInstructions = [
       instructionsContent,
       ...(hasSelectedSpacesOutsideAgentScope ? [] : [skillsSection]),
@@ -492,6 +505,7 @@ export function constructPromptMultiActions(
     const sharedContext: SystemPromptContext[] = [
       { role: "context" as const, content: toolsSection },
       { role: "context" as const, content: contextSection },
+      { role: "context" as const, content: platformSpecificContextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
       { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -503,7 +517,6 @@ export function constructPromptMultiActions(
           ] satisfies SystemPromptContext[])
         : []),
       { role: "context" as const, content: branchContextSection },
-      { role: "context" as const, content: platformSpecificContextSection },
       { role: "context" as const, content: userContext ?? "" },
       { role: "context" as const, content: projectContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -535,4 +548,27 @@ export function constructPromptMultiActions(
   ].filter((s) => s.content.trim() !== "");
 
   return allSections;
+}
+
+// `tool_choice: "none"` is invisible to the model: it plans a tool call, can't
+// emit one, and ends the turn with only a thinking block, which surfaces as an
+// `empty_content` error. Goes in the messages, not the system prompt, to keep
+// the cached prefix.
+export function renderToolUseDisabledUserMessage(): UserMessageTypeModel {
+  return {
+    role: "user",
+    name: "system",
+    content: [
+      {
+        type: "text",
+        text:
+          "<dust_system>\n" +
+          "Tools are unavailable for this step: you cannot call one, and no further step " +
+          "will run. Write your final answer to the user now, based on what you already " +
+          "have. If you found nothing, could not complete the task, or were blocked, say " +
+          "so explicitly and explain why. Do not end this turn without a written answer.\n" +
+          "</dust_system>",
+      },
+    ],
+  };
 }

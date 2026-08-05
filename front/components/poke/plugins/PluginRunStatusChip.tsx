@@ -30,7 +30,7 @@ export function getStatusIcon(status: string, size: "sm" | "md" | "lg" = "sm") {
   }
 }
 
-export function getStatusColorClasses(
+function getStatusColorClasses(
   status: string,
   variant: "default" | "border" = "default"
 ) {

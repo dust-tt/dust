@@ -1,5 +1,4 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { hasFeatureFlag } from "@app/lib/auth";
 import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
@@ -18,11 +17,9 @@ function determineExpectedRoleFromGroups(
   provisioningGroupMembers: {
     adminUserIds: Set<ModelId>;
     managerUserIds: Set<ModelId>;
-    builderUserIds: Set<ModelId>;
   }
 ): ActiveRoleType {
-  const { adminUserIds, managerUserIds, builderUserIds } =
-    provisioningGroupMembers;
+  const { adminUserIds, managerUserIds } = provisioningGroupMembers;
 
   if (adminUserIds.has(userModelId)) {
     return "admin";
@@ -30,9 +27,8 @@ function determineExpectedRoleFromGroups(
   if (managerUserIds.has(userModelId)) {
     return "manager";
   }
-  if (builderUserIds.has(userModelId)) {
-    return "builder";
-  }
+  // The `dust-builders` group no longer grants the deprecated builder role; membership is
+  // mirrored into the manual "Builders" group instead (see the sync in `execute`).
   return "user";
 }
 
@@ -41,10 +37,11 @@ export const applyGroupRoles = createPlugin({
     id: "apply-roles-from-groups",
     name: "Apply group roles",
     description:
-      "Force resync roles using dust-admins, dust-managers and dust-builders groups",
+      "Force resync roles from dust-admins and dust-managers, and mirror dust-builders into the Builders group",
     resourceTypes: ["workspaces"],
     warning:
-      "This action will override the existing membership roles based on the dust-admins, dust-managers and dust-builders groups. " +
+      "This action will override the existing membership roles based on the dust-admins and dust-managers groups, " +
+      "and sync the manual Builders group from dust-builders (if it exists). " +
       "Make sure the user is aware of this and does not want to keep the roles assigned manually.",
     args: {},
     requiredRoles: ["engineering"],
@@ -73,13 +70,9 @@ export const applyGroupRoles = createPlugin({
       });
     }
 
-    const isManagerProvisioningEnabled = await hasFeatureFlag(
-      auth,
-      "admin_governance"
+    const [managerGroup] = provisioningGroups.filter(
+      (g) => g.name === MANAGER_GROUP_NAME
     );
-    const [managerGroup] = isManagerProvisioningEnabled
-      ? provisioningGroups.filter((g) => g.name === MANAGER_GROUP_NAME)
-      : [];
 
     const [builderGroup] = provisioningGroups.filter(
       (g) => g.name === BUILDER_GROUP_NAME
@@ -114,6 +107,11 @@ export const applyGroupRoles = createPlugin({
         : []
     );
 
+    // The manual "Builders" group is only reconciled when it already exists; this plugin never
+    // creates it (matching provisioning).
+    const hasManualBuildersGroup =
+      (await GroupResource.fetchManualBuildersGroup(workspace)) !== null;
+
     let updatedCount = 0;
     const errors: string[] = [];
 
@@ -128,7 +126,6 @@ export const applyGroupRoles = createPlugin({
       const expectedRole = determineExpectedRoleFromGroups(user.id, {
         adminUserIds,
         managerUserIds,
-        builderUserIds,
       });
 
       if (currentRole !== expectedRole) {
@@ -144,15 +141,19 @@ export const applyGroupRoles = createPlugin({
             `Failed to update role for user ${user.sId}: ${updateResult.error.type}`
           );
         } else {
-          // Per-changed-member queries, like the role update above: poke-only plugin,
-          // bounded by the number of role changes.
-          await GroupResource.syncBuilderGroupMembership({
-            workspace,
-            user,
-            isBuilder: expectedRole === "builder",
-          });
           updatedCount++;
         }
+      }
+
+      // Mirror `dust-builders` membership into the manual "Builders" group, same as provisioning.
+      // Per-member queries: poke-only plugin, bounded by the number of members.
+      if (hasManualBuildersGroup) {
+        await GroupResource.syncBuilderGroupMembership({
+          workspace,
+          user,
+          isBuilder: builderUserIds.has(user.id),
+          createIfMissing: false,
+        });
       }
     }
 

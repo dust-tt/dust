@@ -13,7 +13,17 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const executeWithLockMock = vi.hoisted(() =>
+  vi.fn(async (_lockName: string, callback: () => Promise<unknown>) =>
+    callback()
+  )
+);
+
+vi.mock("@app/lib/lock", () => ({
+  executeWithLock: executeWithLockMock,
+}));
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -32,6 +42,7 @@ const outputSchema: JSONSchema = {
 };
 
 beforeEach(() => {
+  vi.clearAllMocks();
   fileStorageMock.reset();
 });
 
@@ -433,6 +444,58 @@ describe("SandboxFunctionResource", () => {
     expect(fetched?.fileId).toBe(firstFile.id);
     expect(fetched?.description).toBe("Second.");
     expect(fetched?.outputSchema).toEqual(newOutputSchema);
+  });
+
+  it("locks re-publish and persists a stricter policy before replacing the bundle", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const file = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "greet.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    const sandboxFunction = await SandboxFunctionResource.makeNew(
+      authenticator,
+      {
+        space,
+        file,
+        slug: "greet",
+        description: "First.",
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema,
+      }
+    );
+    vi.spyOn(sandboxFunction.file, "uploadContent").mockRejectedValueOnce(
+      new Error("upload failed")
+    );
+
+    const result = await sandboxFunction.updateContent(authenticator, {
+      bundleCode: "v2",
+      description: "Second.",
+      userIdentity: "workspace_user_required",
+      inputSchema,
+      outputSchema,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(executeWithLockMock).toHaveBeenCalledWith(
+      `sandbox_function:publish:${sandboxFunction.sId}`,
+      expect.any(Function),
+      30_000,
+      { lockTtlMs: 300_000 }
+    );
+    const fetched = await SandboxFunctionResource.fetchById(
+      authenticator,
+      sandboxFunction.sId
+    );
+    expect(fetched?.userIdentity).toBe("workspace_user_required");
+    expect(fetched?.description).toBe("First.");
   });
 
   it("deletes all sandbox functions for a space", async () => {

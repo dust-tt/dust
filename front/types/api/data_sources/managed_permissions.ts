@@ -21,7 +21,3 @@ export type GetDataSourcePermissionsResponseBody<
 > = {
   resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
 };
-
-export type SetDataSourcePermissionsResponseBody = {
-  success: true;
-};

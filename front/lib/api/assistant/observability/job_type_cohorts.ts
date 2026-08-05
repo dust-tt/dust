@@ -7,7 +7,7 @@ import type { JobType } from "@app/types/job_type";
 // Result of resolving a job-type cohort. `cohort` carries the user sIds to scope
 // analytics queries by; `below_anonymity_floor` means the cohort is too small
 // to surface without risking de-anonymization.
-export type JobTypeCohort =
+type JobTypeCohort =
   | { kind: "cohort"; userIds: string[]; userCount: number }
   | { kind: "below_anonymity_floor"; userCount: number };
 

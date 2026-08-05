@@ -1,7 +1,6 @@
 // All styles for the dev console panel UI.
 
-export const FONT =
-  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
 
 export const S = {
   // Docked bottom bar

@@ -99,7 +99,9 @@ app.patch(
       });
     }
 
-    if (!agent.canEdit && !auth.isAdmin()) {
+    // Editors only, admins included: an admin who wants to change an agent has to add themselves
+    // as an editor first. Batch operations on agents are a separate, admin-only path.
+    if (!agent.canEdit) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

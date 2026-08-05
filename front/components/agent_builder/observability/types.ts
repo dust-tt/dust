@@ -24,7 +24,7 @@ export type ChartDatum = {
   total?: number;
 };
 
-export type ToolChartUsagePayload = {
+type ToolChartUsagePayload = {
   name?: string;
   value?: number;
   payload?: ChartDatum;
@@ -67,7 +67,7 @@ export function isSkillSourceItem(data: unknown): data is SkillSourceItem {
   );
 }
 
-export function isChartDatum(data: unknown): data is ChartDatum {
+function isChartDatum(data: unknown): data is ChartDatum {
   if (typeof data !== "object" || data === null) {
     return false;
   }

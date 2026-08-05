@@ -13,8 +13,6 @@ export const PatchSpaceRequestBodySchema = z.object({
   content: z.array(ContentSchema).optional(),
 });
 
-export const PostDataSourceViewSchema = ContentSchema;
-
 export const PostNotionSyncPayloadSchema = z.object({
   urls: z.array(z.string()),
   method: z.enum(["sync", "delete"]),

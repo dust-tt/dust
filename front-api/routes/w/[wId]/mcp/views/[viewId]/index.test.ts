@@ -1,9 +1,13 @@
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -67,7 +71,7 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     );
   });
 
-  it("should update oAuthUseCase for all views of the same MCP server when admin", async () => {
+  it("should update settings for all views of the same MCP server when admin", async () => {
     const { workspace, auth, globalSpace } = await setup("admin");
 
     const server = await RemoteMCPServerFactory.create(workspace);
@@ -78,7 +82,21 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
       );
     expect(systemView).toBeDefined();
 
-    await MCPServerViewFactory.create(workspace, server.sId, globalSpace);
+    const globalView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    const directConfiguration = await AgentMCPServerConfigurationFactory.create(
+      auth,
+      globalSpace,
+      {
+        mcpServerView: globalView,
+      }
+    );
+    const skill = await SkillFactory.create(auth, {
+      mcpServerViews: [globalView],
+    });
 
     const initialViews = await MCPServerViewResource.listByMCPServer(
       auth,
@@ -104,6 +122,38 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     for (const view of updatedViews) {
       expect(view.oAuthUseCase).toBe("platform_actions");
     }
+
+    const restrictionResponse = await patchView(
+      workspace.sId,
+      systemView!.sId,
+      {
+        isRestrictedToSkills: true,
+      }
+    );
+
+    expect(restrictionResponse.status).toBe(200);
+
+    const restrictedViews = await MCPServerViewResource.listByMCPServer(
+      auth,
+      server.sId
+    );
+    for (const view of restrictedViews) {
+      expect(view.isRestrictedToSkills).toBe(true);
+    }
+    const directConfigurationCount =
+      await AgentMCPServerConfigurationModel.count({
+        where: { id: directConfiguration.id },
+      });
+    expect(directConfigurationCount).toBe(0);
+
+    const skillConfigurationCount =
+      await SkillMCPServerConfigurationModel.count({
+        where: {
+          skillConfigurationId: skill.id,
+          mcpServerViewId: globalView.id,
+        },
+      });
+    expect(skillConfigurationCount).toBe(1);
   });
 
   it("should update name and description for all views of the same MCP server when admin", async () => {

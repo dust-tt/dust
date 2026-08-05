@@ -65,6 +65,8 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   }
 
   const query = queryValidation.data;
+  const includeRestrictedToSkills =
+    ctx.req.query("includeRestrictedToSkills") === "true";
 
   const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
     auth,
@@ -77,6 +79,7 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
         "lastError",
         "sharedSecret",
       ],
+      isRestrictedToSkills: includeRestrictedToSkills ? undefined : false,
     }
   );
 

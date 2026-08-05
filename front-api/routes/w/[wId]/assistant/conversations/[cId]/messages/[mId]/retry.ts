@@ -103,11 +103,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const branchId = messageModel.getBranchId() ?? null;
-  const conversation = {
-    ...conversationResource.toJSON(),
-    branchId,
-  };
+  const conversation = conversationResource.toJSON();
 
   const renderRes = await batchRenderMessages(
     auth,
@@ -175,7 +171,6 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
 
   const retriedMessageRes = await retryAgentMessage(auth, {
     conversationResource,
-    branchId,
     message,
   });
   if (retriedMessageRes.isErr()) {

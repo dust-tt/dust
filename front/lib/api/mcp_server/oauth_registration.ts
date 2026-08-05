@@ -1,8 +1,5 @@
 /** Grant types accepted by WorkOS AuthKit dynamic client registration. */
-export const WORKOS_DCR_GRANT_TYPES = [
-  "authorization_code",
-  "refresh_token",
-] as const;
+const WORKOS_DCR_GRANT_TYPES = ["authorization_code", "refresh_token"] as const;
 
 const WORKOS_DCR_GRANT_TYPE_SET = new Set<string>(WORKOS_DCR_GRANT_TYPES);
 

@@ -169,7 +169,7 @@ export function mockAction(params: {
   };
 }
 
-export type MockAgentMessageParams = {
+type MockAgentMessageParams = {
   agentName?: string;
   content: string | null;
   actions?: Parameters<typeof mockAction>[0][];
@@ -218,7 +218,7 @@ export function mockAgentMessage(
   };
 }
 
-export type MockFullAgentMessageParams = {
+type MockFullAgentMessageParams = {
   id?: ModelId;
   agentMessageId?: ModelId;
   sId?: string;
@@ -306,7 +306,6 @@ export function mockConversation(
     triggerId: null,
     depth: 0,
     metadata: {},
-    branchId: null,
     requestedSpaceIds: [],
     owner: {
       id: 0,

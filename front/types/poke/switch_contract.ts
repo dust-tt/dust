@@ -26,7 +26,7 @@ export const paymentScheduleSchema = z
 // `add_scheduled_charges` contract edit rather than a commit.
 // `invoiceAmount` is in the customer's billing currency major units
 // (e.g. dollars / euros).
-export const scheduledChargeSchema = z.object({
+const scheduledChargeSchema = z.object({
   name: z.string().min(1).optional(),
   invoiceAmount: z.number().min(0, "Amount must be zero or more"),
   paymentSchedule: paymentScheduleSchema,
@@ -35,7 +35,7 @@ export const scheduledChargeSchema = z.object({
 // One-off initial AWU credits granted alongside a contract switch as a
 // contract-level prepaid commit. `invoiceAmount` is in the customer's
 // billing currency major units (e.g. dollars / euros).
-export const initialCreditsSchema = z.object({
+const initialCreditsSchema = z.object({
   amountCredits: z
     .number()
     .int("Initial credits must be an integer number of credits")
@@ -48,7 +48,7 @@ export const initialCreditsSchema = z.object({
 // per month) — the body schema keeps this as a top-level number (no
 // wrapping object, since it has no other fields), while the dialog wraps it
 // in its own toggle-on/off union.
-export const recurringFreeCreditSchema = z
+const recurringFreeCreditSchema = z
   .number()
   .int("Recurring free credit must be an integer number of AWU credits")
   .min(1, "Recurring free credit must be at least 1 credit");
@@ -60,7 +60,7 @@ export const recurringFreeCreditSchema = z
 // Metronome's fiat unit via `metronomeAmount`. When `commitmentPrice` is set
 // (also in major units), a contract prepaid commit is created granting
 // `minSeats * rate` of contract credit, invoiced at `commitmentPrice`.
-export const seatEntrySchema = z.object({
+const seatEntrySchema = z.object({
   // Whether the seat is entitled on the new contract. `true` (the default,
   // for backward compatibility) entitles and configures the seat; `false`
   // disables a seat the package would otherwise sell. The dialog submits

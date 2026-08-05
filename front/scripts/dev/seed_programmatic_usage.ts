@@ -115,6 +115,7 @@ async function seedProgrammaticUsage(
         full_awu: awuFromMicroUsd(costMicroUsd),
         llm_awu: awuFromMicroUsd(costMicroUsd),
         tool_awu: 0,
+        billable_awu: awuFromMicroUsd(costMicroUsd),
       },
       context_origin: "api",
       latency_ms: randomInt(LATENCY_MS_RANGE.min, LATENCY_MS_RANGE.max),

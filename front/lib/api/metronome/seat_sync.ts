@@ -29,7 +29,7 @@ import type { LightWorkspaceType } from "@app/types/user";
  * nothing ran for the active contract (e.g. a pending contract was staged
  * but there's no active contract to sync yet).
  */
-export type SeatSyncOutcome =
+type SeatSyncOutcome =
   | {
       status: "synced";
       stagedPendingContract: boolean;

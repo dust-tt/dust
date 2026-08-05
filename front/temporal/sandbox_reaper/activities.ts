@@ -26,6 +26,7 @@ const REAPER_CONCURRENCY = 16;
 
 export type ReaperPhase =
   | "kill_requested"
+  | "kill_requested_sleeping"
   | "running"
   | "pending_approval"
   | "sleeping";
@@ -35,7 +36,7 @@ export type ReaperCursor = {
   timestampMs: number;
 };
 
-export interface ReapSandboxPhaseActivityInput {
+interface ReapSandboxPhaseActivityInput {
   cursor: ReaperCursor | null;
   phase: ReaperPhase;
 }
@@ -462,10 +463,13 @@ export async function reapSandboxPhaseActivity({
 
   switch (phase) {
     case "kill_requested": {
+      // Awake kill-requested sandboxes consume cluster capacity, so they are
+      // destroyed ahead of sleeping ones.
       const sandboxes =
         await SandboxResource.dangerouslyGetKillRequestedSandboxes({
           limit: BATCH_SIZE,
           after,
+          statuses: ["running", "pending_approval"],
         });
       return processReaperBatch(
         phase,
@@ -473,6 +477,30 @@ export async function reapSandboxPhaseActivity({
         (auth, owner) => owner.dangerouslyDestroySandboxIfKillRequested(auth),
         getKillRequestedAt,
         "Reaper: failed to destroy kill-requested sandbox — continuing."
+      );
+    }
+    case "kill_requested_sleeping": {
+      // Sleeping kill-requested sandboxes free no concurrency (already
+      // paused) and were flushed at pause time — runPreSleepCheck no-ops
+      // here. Destroying them in the reaper still helps: ensureActive would
+      // otherwise pay the provider destroy on the user's recreate path.
+      //
+      // Most recently active first: those are the most likely to be woken by
+      // a returning user, so the background destroy lands before they hit
+      // ensureActive.
+      const sandboxes =
+        await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+          limit: BATCH_SIZE,
+          after,
+          statuses: ["sleeping"],
+          order: "lastActivityAtDesc",
+        });
+      return processReaperBatch(
+        phase,
+        sandboxes,
+        (auth, owner) => owner.dangerouslyDestroySandboxIfKillRequested(auth),
+        (sandbox) => sandbox.lastActivityAt,
+        "Reaper: failed to destroy kill-requested sleeping sandbox — continuing."
       );
     }
     case "running": {
@@ -523,27 +551,4 @@ export async function reapSandboxPhaseActivity({
     default:
       return assertNever(phase);
   }
-}
-
-/**
- * Compatibility activity for sandbox reaper workflows started before the
- * phase-pagination patch. Keep its no-argument input and boolean output until
- * every pre-patch workflow execution has closed.
- */
-export async function reapStaleSandboxesActivity(): Promise<boolean> {
-  const phases: ReaperPhase[] = [
-    "kill_requested",
-    "running",
-    "pending_approval",
-    "sleeping",
-  ];
-  let hasMore = false;
-
-  for (const phase of phases) {
-    const result = await reapSandboxPhaseActivity({ cursor: null, phase });
-    hasMore ||=
-      result.processedCount >= BATCH_SIZE && result.succeededCount > 0;
-  }
-
-  return hasMore;
 }

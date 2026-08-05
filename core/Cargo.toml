@@ -178,7 +178,7 @@ reqwest = { version = "0.12", features = ["json"] }
 ring = "0.17.14"
 rsa = { version = "0.9.4", features = ["pem"] }
 rslock = { version = "0.4.0", default-features = false, features = ["tokio-comp"] }
-rusqlite = { version = "0.31", features = ["bundled", "csvtab"] }
+rusqlite = { version = "0.31", features = ["bundled", "csvtab", "hooks"] }
 rustc-hash = "1.1"
 sentencepiece = { version = "0.11", features = ["static"] }
 serde = { version = "1.0", features = ["rc", "derive"] }

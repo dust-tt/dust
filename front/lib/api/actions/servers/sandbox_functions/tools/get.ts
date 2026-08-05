@@ -10,6 +10,7 @@ import { Err, Ok } from "@app/types/shared/result";
 export function formatSandboxFunction(fn: SandboxFunctionResource): string {
   return [
     `${fn.slug}: ${fn.description}`,
+    `userIdentity: ${fn.userIdentity ?? "optional"}`,
     `input: ${JSON.stringify(fn.inputSchema)}`,
     `output: ${JSON.stringify(fn.outputSchema)}`,
   ].join("\n");

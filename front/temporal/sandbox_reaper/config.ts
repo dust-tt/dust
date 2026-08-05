@@ -11,13 +11,13 @@ const ONE_MINUTE_MS = 60 * 1_000;
 const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
 const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
-/** Sleep sandboxes that have been inactive for this long. Default: 10 min. */
+/** Sleep sandboxes that have been inactive for this long. Default: 5 min. */
 const sleepThresholdEnv = EnvironmentConfig.getOptionalEnvVariable(
   "SANDBOX_SLEEP_THRESHOLD_MS"
 );
 export const SLEEP_THRESHOLD_MS = sleepThresholdEnv
   ? Number(sleepThresholdEnv)
-  : 10 * ONE_MINUTE_MS;
+  : 5 * ONE_MINUTE_MS;
 
 /** Transition pending_approval sandboxes to sleeping after this long. Default: 30 min. */
 const pendingApprovalThresholdEnv = EnvironmentConfig.getOptionalEnvVariable(

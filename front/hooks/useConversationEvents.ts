@@ -2,7 +2,7 @@ import { useEventSource } from "@app/hooks/useEventSource";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
-export type ConversationEventCallback = (eventStr: string) => void;
+type ConversationEventCallback = (eventStr: string) => void;
 
 export function useConversationEvents({
   owner,

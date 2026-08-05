@@ -3,13 +3,13 @@ import { z } from "zod";
 
 export const MAX_QUERY_ROWS = 1000;
 
-export const SNOWFLAKE_LIST_DATABASES_TOOL_NAME = "list_databases" as const;
-export const SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME = "list_schemas" as const;
-export const SNOWFLAKE_LIST_TABLES_TOOL_NAME = "list_tables" as const;
-export const SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME = "describe_table" as const;
-export const SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME =
+const SNOWFLAKE_LIST_DATABASES_TOOL_NAME = "list_databases" as const;
+const SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME = "list_schemas" as const;
+const SNOWFLAKE_LIST_TABLES_TOOL_NAME = "list_tables" as const;
+const SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME = "describe_table" as const;
+const SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME =
   "describe_semantic_view" as const;
-export const SNOWFLAKE_QUERY_TOOL_NAME = "query" as const;
+const SNOWFLAKE_QUERY_TOOL_NAME = "query" as const;
 
 export const SNOWFLAKE_TOOLS_METADATA = [
   {

@@ -2,7 +2,6 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
-import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -105,11 +104,12 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
       },
     });
   }
-  const { aId: agentId, cId } = claims;
+  const { aId: agentId, aV: agentVersion, cId } = claims;
 
   // Fetch agent accessible servers.
   const agentConfig = await getAgentConfiguration(auth, {
     agentId,
+    agentVersion,
     variant: "full",
   });
   if (!agentConfig) {
@@ -141,13 +141,13 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   }
   const conversation = conversationResource.toJSON();
 
-  const attachments = await listAttachments(auth, {
-    conversation: conversationResource,
-  });
+  // No attachments: matches `createSandboxChildAction`, so the tools listed here are exactly
+  // the ones `/call` can resolve. Deriving them would also mean recomputing the conversation's
+  // attachment set on every poll.
   const jitServers = await getJITServers(auth, {
     agentConfiguration: agentConfig,
     conversation,
-    attachments,
+    attachments: [],
   });
   const { systemSkillServers, skillServers } = await resolveSkillMCPServers(
     auth,

@@ -12,11 +12,13 @@ import {
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationType,
@@ -28,12 +30,19 @@ import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 // In-memory GCS mock: writes persist content that reads can return.
 const gcsStore = new Map<string, Buffer>();
+let gcsSaveFailureMarker: string | null = null;
 
 vi.mock("@app/lib/file_storage", () => ({
   getPrivateUploadBucket: vi.fn(() => ({
     file: vi.fn((path: string) => ({
       copy: vi.fn().mockResolvedValue(undefined),
       save: vi.fn(async (data: Buffer) => {
+        if (
+          gcsSaveFailureMarker &&
+          data.toString("utf-8").includes(gcsSaveFailureMarker)
+        ) {
+          throw new Error("Simulated GCS write failure");
+        }
         gcsStore.set(path, data);
       }),
       download: vi.fn(async () => {
@@ -398,6 +407,7 @@ describe("Output items with GCS storage", () => {
 
   beforeEach(async () => {
     gcsStore.clear();
+    gcsSaveFailureMarker = null;
 
     const setup = await createResourceTest({});
     workspace = setup.workspace;
@@ -417,9 +427,7 @@ describe("Output items with GCS storage", () => {
     });
   });
 
-  const createActionWithOutputItems = async (
-    contents: Array<{ type: "text"; text: string }>
-  ) => {
+  const createAction = async () => {
     const { action } = await ConversationFactory.createAgentMessage(auth, {
       workspace,
       conversation,
@@ -427,9 +435,16 @@ describe("Output items with GCS storage", () => {
       mcpAction: { toolConfiguration },
     });
 
-    expect(action).toBeDefined();
+    assert(action, "Action should be defined.");
+    return action;
+  };
 
-    const outputRes = await action!.createOutputItems(
+  const createActionWithOutputItems = async (
+    contents: Array<{ type: "text"; text: string }>
+  ) => {
+    const action = await createAction();
+
+    const outputRes = await action.createOutputItems(
       auth,
       contents.map((c) => ({ content: c }))
     );
@@ -441,11 +456,11 @@ describe("Output items with GCS storage", () => {
     // createOutputItems returns the generic content view; fetch the created rows for assertions
     // on persistence-side fields.
     const outputItemRows = await AgentMCPActionOutputItemModel.findAll({
-      where: { workspaceId: workspace.id, agentMCPActionId: action!.id },
+      where: { workspaceId: workspace.id, agentMCPActionId: action.id },
       order: [["id", "ASC"]],
     });
 
-    return { action: action!, outputItems, outputItemRows };
+    return { action, outputItems, outputItemRows };
   };
 
   it("should create output items in both DB and GCS", async () => {
@@ -461,9 +476,92 @@ describe("Output items with GCS storage", () => {
 
     // contentGcsPath should be set (GCS write succeeded).
     expect(outputItemRows[0].contentGcsPath).toBeTruthy();
+    expect(outputItemRows[0].contentGcsPath).toMatch(
+      /\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.json$/
+    );
 
     // GCS store should have one entry.
     expect(gcsStore.size).toBe(1);
+  });
+
+  it("uses distinct GCS objects across multiple writes for the same action", async () => {
+    const action = await createAction();
+
+    const firstResult = await action.createOutputItems(auth, [
+      { content: { type: "text", text: "first" } },
+    ]);
+    const secondResult = await action.createOutputItems(auth, [
+      { content: { type: "text", text: "second" } },
+    ]);
+
+    expect(firstResult.isOk()).toBe(true);
+    expect(secondResult.isOk()).toBe(true);
+
+    const outputItemRows = await AgentMCPActionOutputItemModel.findAll({
+      where: { workspaceId: workspace.id, agentMCPActionId: action.id },
+    });
+    expect(outputItemRows).toHaveLength(2);
+    expect(
+      new Set(outputItemRows.map((item) => item.contentGcsPath)).size
+    ).toBe(2);
+    expect(gcsStore.size).toBe(2);
+  });
+
+  it("cleans up GCS and creates no rows when a batch GCS write fails", async () => {
+    const action = await createAction();
+    gcsSaveFailureMarker = "fail-this-write";
+
+    const result = await action.createOutputItems(auth, [
+      { content: { type: "text", text: "successful write" } },
+      { content: { type: "text", text: "fail-this-write" } },
+    ]);
+
+    expect(result.isErr()).toBe(true);
+    const outputItemRows = await AgentMCPActionOutputItemModel.findAll({
+      where: { workspaceId: workspace.id, agentMCPActionId: action.id },
+    });
+    expect(outputItemRows).toHaveLength(0);
+    expect(gcsStore.size).toBe(0);
+  });
+
+  it("retains ambiguous DB-failure objects until action-prefix cleanup", async () => {
+    const action = await createAction();
+    const namespace = getNamespace("test-namespace");
+    const parentTransaction = namespace?.get("transaction");
+    expect(parentTransaction).toBeDefined();
+
+    await expect(
+      frontSequelize.transaction(
+        { transaction: parentTransaction },
+        async () => {
+          const result = await action.createOutputItems(auth, [
+            {
+              content: { type: "text", text: "orphan candidate" },
+              fileId: -1,
+            },
+          ]);
+          expect(result.isErr()).toBe(true);
+
+          // Roll back the savepoint so the expected FK violation does not abort the test's
+          // enclosing transaction.
+          throw result.isErr()
+            ? result.error
+            : new Error("Expected output item creation to fail.");
+        }
+      )
+    ).rejects.toThrow();
+
+    const outputItemRows = await AgentMCPActionOutputItemModel.findAll({
+      where: { workspaceId: workspace.id, agentMCPActionId: action.id },
+    });
+    expect(outputItemRows).toHaveLength(0);
+    expect(gcsStore.size).toBe(1);
+
+    await AgentMCPActionResource.destroyOutputItemsByActionIds(auth, [
+      action.id,
+    ]);
+
+    expect(gcsStore.size).toBe(0);
   });
 
   it("should read content from GCS, not from DB", async () => {
@@ -509,6 +607,23 @@ describe("Output items with GCS storage", () => {
         { PX: GCS_CONTENT_CACHE_TTL_MS },
       ]);
     }
+  });
+
+  it("succeeds when Redis cache warming fails", async () => {
+    const action = await createAction();
+    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+    vi.mocked(redis.set).mockRejectedValueOnce(new Error("redis down"));
+
+    const result = await action.createOutputItems(auth, [
+      { content: { type: "text", text: "persisted" } },
+    ]);
+
+    expect(result.isOk()).toBe(true);
+    const outputItemRows = await AgentMCPActionOutputItemModel.findAll({
+      where: { workspaceId: workspace.id, agentMCPActionId: action.id },
+    });
+    expect(outputItemRows).toHaveLength(1);
+    expect(gcsStore.size).toBe(1);
   });
 
   it("should destroy output items from both DB and GCS", async () => {

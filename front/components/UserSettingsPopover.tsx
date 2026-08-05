@@ -1,4 +1,5 @@
 import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
+import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
 import {
   NotificationPreferences,
   useNotificationPreferencesForm,
@@ -9,6 +10,7 @@ import {
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
+import { UserTriggersTable } from "@app/components/me/UserTriggersTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { MyAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
@@ -17,7 +19,7 @@ import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -30,9 +32,14 @@ import {
   usePatchUser,
   usePendingInvitations,
   useUser,
+  useUserMemory,
   useWorkspaceUsageStatus,
 } from "@app/lib/swr/user";
 import { getConversationRoute } from "@app/lib/utils/router";
+import {
+  MAX_USER_MEMORY_CHARS,
+  MAX_USER_MEMORY_CONTENT_LENGTH,
+} from "@app/types/api/me/memory";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
@@ -41,6 +48,7 @@ import {
   Avatar,
   BarChart01,
   Bell01,
+  Brain,
   Button,
   ContentMessageInline,
   Dialog,
@@ -63,6 +71,7 @@ import {
   Separator,
   Settings01,
   ShapesPlus,
+  SliderToggle,
   Spinner,
   Stars02,
   Sun,
@@ -87,6 +96,7 @@ type SettingsSection =
   | "usage"
   | "customization"
   | "notifications"
+  | "memory"
   | "tools"
   | "invitations";
 
@@ -427,7 +437,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
   if (isUserLoading) {
     return (
-      <SectionContent title="Personal Informations">
+      <SectionContent title="Personal Information">
         <div className="flex justify-center p-6">
           <Spinner />
         </div>
@@ -437,7 +447,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
   return (
     <SectionContent
-      title="Personal Informations"
+      title="Personal Information"
       footer={
         <Button
           label="Save"
@@ -756,9 +766,7 @@ function ToolsSection({ owner }: { owner: WorkspaceType }) {
           <UserToolsTable owner={owner} />
         </TabsContent>
         <TabsContent value="triggers">
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Coming soon
-          </p>
+          <UserTriggersTable owner={owner} />
         </TabsContent>
       </Tabs>
     </SectionContent>
@@ -792,8 +800,119 @@ function InvitationsSection({
   );
 }
 
+// ─── Memory ───────────────────────────────────────────────────────────────────
+
+function MemorySection({ owner }: { owner: WorkspaceType }) {
+  const { content, isMemoryEnabled, isMemoryLoading, setMemory } =
+    useUserMemory({ owner });
+
+  const [draft, setDraft] = useState<string | null>(null);
+  const [enabledDraft, setEnabledDraft] = useState<boolean | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const value = draft ?? content;
+  const enabledValue = enabledDraft ?? isMemoryEnabled;
+
+  const isContentDirty = draft !== null && draft !== content;
+  const isEnabledDirty =
+    enabledDraft !== null && enabledDraft !== isMemoryEnabled;
+  const isDirty = isEnabledDirty || (enabledValue && isContentDirty);
+  // The editor shows the visible-character count; the Save gate uses the raw
+  // markdown length against the server cap so we never submit a rejected body.
+  const isOverLimit = value.length > MAX_USER_MEMORY_CONTENT_LENGTH;
+
+  const handleToggle = () => {
+    setEnabledDraft(!enabledValue);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const update: { content?: string; enabled?: boolean } = {};
+      if (isEnabledDirty) {
+        update.enabled = enabledValue;
+      }
+      if (enabledValue && isContentDirty) {
+        update.content = value;
+      }
+
+      const saved = await setMemory(update);
+      if (saved) {
+        setDraft(null);
+        setEnabledDraft(null);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <SectionContent
+      title="Memory"
+      footer={
+        <Button
+          label="Save"
+          variant="primary"
+          type="button"
+          onClick={handleSave}
+          disabled={!isDirty || isOverLimit || isSaving}
+        />
+      }
+    >
+      {isMemoryLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-4 rounded-2xl border border-border dark:border-border-dark p-4">
+            <div className="flex flex-col gap-1">
+              <span className="heading-base text-foreground">
+                Enable Memory
+              </span>
+              <span className="copy-sm text-muted-foreground">
+                Dust builds a personal memory from your conversations and uses
+                it to tailor future responses.
+              </span>
+            </div>
+            <SliderToggle selected={enabledValue} onClick={handleToggle} />
+          </div>
+
+          {enabledValue && (
+            <ContentMessageInline
+              variant="info"
+              icon={InfoCircle}
+              className="rounded-2xl p-4"
+            >
+              The content of your saved memory may appear in responses sent to
+              Slack and other external integrations.
+            </ContentMessageInline>
+          )}
+
+          {enabledValue && (
+            <div className="flex flex-col gap-2">
+              <span className="heading-base text-foreground">About you</span>
+              <MarkdownEditor
+                value={value}
+                onChange={(markdown) => setDraft(markdown)}
+                readOnly={isSaving}
+                maxCharacterCount={MAX_USER_MEMORY_CHARS}
+                showCharacterCount
+                editorClassName="min-h-96"
+              />
+            </div>
+          )}
+        </>
+      )}
+    </SectionContent>
+  );
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
+// Order only. "Memory" (user_memory feature flag) and "Invitations" (pending
+// invitations) keep their position here and are filtered out below when not
+// applicable.
 const NAV_ITEMS: Array<{
   section: SettingsSection;
   icon: React.ComponentType;
@@ -802,8 +921,10 @@ const NAV_ITEMS: Array<{
   { section: "personal", icon: User01, label: "Personal Information" },
   { section: "usage", icon: BarChart01, label: "Usage" },
   { section: "customization", icon: Settings01, label: "Customization" },
+  { section: "memory", icon: Brain, label: "Memory" },
   { section: "notifications", icon: Bell01, label: "Notifications" },
   { section: "tools", icon: ShapesPlus, label: "Tools and Triggers" },
+  { section: "invitations", icon: Mail01, label: "Invitations" },
 ];
 
 export function UserSettingsPopover({
@@ -814,21 +935,28 @@ export function UserSettingsPopover({
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("personal");
 
+  const { hasFeature } = useFeatureFlags();
+  const hasUserMemory = hasFeature("user_memory");
+
   // Only fetch while the popover is open: it is always mounted in the user menu.
   const { pendingInvitations, isPendingInvitationsLoading } =
     usePendingInvitations({ workspaceId: owner.sId, disabled: !open });
   const hasPendingInvitations = pendingInvitations.length > 0;
 
-  // The "Invitations" item only appears when the user has pending invitations.
-  const navItems = useMemo<typeof NAV_ITEMS>(
+  // "Memory" is gated on the user_memory feature flag; "Invitations" only
+  // appears when the user has pending invitations.
+  const navItems = useMemo(
     () =>
-      hasPendingInvitations
-        ? [
-            ...NAV_ITEMS,
-            { section: "invitations", icon: Mail01, label: "Invitations" },
-          ]
-        : NAV_ITEMS,
-    [hasPendingInvitations]
+      NAV_ITEMS.filter((item) => {
+        if (item.section === "memory") {
+          return hasUserMemory;
+        }
+        if (item.section === "invitations") {
+          return hasPendingInvitations;
+        }
+        return true;
+      }),
+    [hasUserMemory, hasPendingInvitations]
   );
 
   useEffect(() => {
@@ -910,6 +1038,7 @@ export function UserSettingsPopover({
             {activeSection === "notifications" && (
               <NotificationsSection owner={owner} />
             )}
+            {activeSection === "memory" && <MemorySection owner={owner} />}
             {activeSection === "tools" && <ToolsSection owner={owner} />}
             {activeSection === "invitations" && (
               <InvitationsSection

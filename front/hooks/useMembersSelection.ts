@@ -5,7 +5,7 @@ type MembersSelection =
   | { mode: "ids"; ids: Set<string> }
   | { mode: "all"; excludedIds: Set<string> };
 
-export type MembersSelectionDescriptor =
+type MembersSelectionDescriptor =
   | { mode: "ids"; userIds: string[] }
   | { mode: "all"; excludeUserIds: string[] };
 

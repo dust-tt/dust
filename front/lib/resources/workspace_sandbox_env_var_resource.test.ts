@@ -1,4 +1,4 @@
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
@@ -22,7 +22,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     }
     expect(upsertResult.value.created).toBe(true);
 
-    const row = await WorkspaceSandboxEnvVarModel.findOne({
+    const row = await SandboxEnvVarModel.findOne({
       where: {
         workspaceId: authenticator.getNonNullableWorkspace().id,
         name: "API_TOKEN",
@@ -74,7 +74,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const user = authenticator.getNonNullableUser();
 
-    await WorkspaceSandboxEnvVarModel.create({
+    await SandboxEnvVarModel.create({
       workspaceId: authenticator.getNonNullableWorkspace().id,
       name: "API_TOKEN",
       encryptedValue: "not-valid-ciphertext",

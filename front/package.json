@@ -11,6 +11,7 @@
     "./types/*": "./types/*"
   },
   "scripts": {
+    "build:migrate": "esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/migrate.js --sourcemap",
     "build:temporal-bundles": "tsx scripts/temporal-build/build-temporal-bundles.ts",
     "build:workers": "tsx esbuild.worker.ts",
     "start:worker": "USE_TEMPORAL_BUNDLES=true node dist/start_worker.js",
@@ -36,6 +37,7 @@
     "migration:mark:pre-deploy": "node ../scripts/db/run-migrate.cjs --command mark-pre-deploy --execute",
     "migration:mark:post-deploy": "node ../scripts/db/run-migrate.cjs --command mark-post-deploy --execute",
     "debug:profiler": "node ./scripts/debug/run_profiler.ts",
+    "generate:custom-models": "tsx scripts/fetch-custom-models.ts",
     "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
   },
   "dependencies": {

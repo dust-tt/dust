@@ -27,7 +27,7 @@ const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 
 type ProgrammaticUsageLimitErrorType = "credits_exhausted" | "rate_limit_error";
 
-export class ProgrammaticUsageLimitError extends Error {
+class ProgrammaticUsageLimitError extends Error {
   type: ProgrammaticUsageLimitErrorType;
 
   constructor(type: ProgrammaticUsageLimitErrorType, message: string) {
@@ -50,7 +50,7 @@ export function isProgrammaticUsage(
   return false;
 }
 
-export async function hasReachedProgrammaticUsageLimits(
+async function hasReachedProgrammaticUsageLimits(
   auth: Authenticator
 ): Promise<boolean> {
   return (await CreditResource.listActive(auth)).length === 0;

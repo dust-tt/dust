@@ -33,7 +33,7 @@ function toSlashCommandItem(
   };
 }
 
-export interface AttachContextSubMenuDropdownProps
+interface AttachContextSubMenuDropdownProps
   extends Pick<
     SuggestionProps<SlashCommand>,
     "clientRect" | "editor" | "query" | "range"
@@ -49,7 +49,7 @@ export interface AttachContextSubMenuDropdownProps
   useCase: ContextSlashSearchUseCase;
 }
 
-export interface AttachContextSubMenuDropdownRef {
+interface AttachContextSubMenuDropdownRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 

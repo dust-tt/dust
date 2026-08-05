@@ -96,6 +96,8 @@ export class ConversationFactory {
       requestedSpaceIds,
       spaceId,
       visibility = "unlisted",
+      depth,
+      triggerId,
       t,
     }: {
       agentConfigurationId: string;
@@ -104,6 +106,8 @@ export class ConversationFactory {
       requestedSpaceIds?: ModelId[];
       spaceId?: ModelId;
       visibility?: ConversationVisibility;
+      depth?: number;
+      triggerId?: ModelId | null;
       t?: Transaction;
     }
   ): Promise<ConversationType> {
@@ -113,6 +117,8 @@ export class ConversationFactory {
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
       visibility,
+      depth,
+      triggerId,
       spaceId: spaceId ?? null,
     });
 
@@ -247,6 +253,7 @@ export class ConversationFactory {
     rank = 0,
     agenticMessageType,
     agenticOriginMessageId,
+    authorless = false,
   }: {
     auth: Authenticator;
     workspace: WorkspaceType;
@@ -254,11 +261,13 @@ export class ConversationFactory {
     content: string;
     origin?: UserMessageOrigin;
     rank?: number;
+    // Posted by Dust on the user's behalf, so no author on the row.
+    authorless?: boolean;
     agenticMessageType?: "run_agent" | "agent_handover";
     agenticOriginMessageId?: string;
   }): Promise<{ messageRow: MessageModel; userMessage: UserMessageType }> {
     const userMessageRow = await UserMessageModel.create({
-      userId: auth.getNonNullableUser().id,
+      userId: authorless ? null : auth.getNonNullableUser().id,
       conversationId: conversation.id,
       workspaceId: workspace.id,
       content,
@@ -284,13 +293,13 @@ export class ConversationFactory {
 
     const userMessage: UserMessageType = {
       id: messageRow.id,
-      branchId: messageRow.getBranchId(),
       created: userMessageRow.createdAt.getTime(),
       sId: messageRow.sId,
       type: "user_message",
       visibility: messageRow.visibility,
       version: 0,
-      user: auth.getNonNullableUser().toJSON(),
+      branchId: null,
+      user: authorless ? null : auth.getNonNullableUser().toJSON(),
       mentions: [],
       richMentions: [],
       content: userMessageRow.content,
@@ -436,6 +445,7 @@ export class ConversationFactory {
       conversation,
       agentConfig,
       mcpAction,
+      runIds = null,
     }: {
       workspace: WorkspaceType;
       conversation:
@@ -446,6 +456,7 @@ export class ConversationFactory {
       mcpAction?: {
         toolConfiguration: LightServerSideMCPToolConfigurationType;
       };
+      runIds?: string[] | null;
     }
   ): Promise<{
     messageRow: MessageModel;
@@ -459,6 +470,7 @@ export class ConversationFactory {
       conversationId: conversation.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
+      runIds,
     });
 
     const messageRow = await MessageModel.create({
@@ -479,6 +491,7 @@ export class ConversationFactory {
       type: "agent_message",
       visibility: messageRow.visibility,
       version: messageRow.version,
+      branchId: null,
       parentMessageId: "",
       parentAgentMessageId: null,
       status: agentMessageRow.status,
@@ -493,7 +506,6 @@ export class ConversationFactory {
       modelInteractionDurationMs: null,
       completionDurationMs: null,
       rank: messageRow.rank,
-      branchId: messageRow.getBranchId(),
       richMentions: [],
       costCredits: null,
       resolvedModel: null,

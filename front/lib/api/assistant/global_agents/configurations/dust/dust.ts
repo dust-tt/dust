@@ -342,7 +342,10 @@ function _getDustLikeGlobalAgent(
       }
     : dummyModelConfiguration;
 
-  const hasAgentMemory = agentMemoryMCPServerView !== null;
+  // Once the workspace has the `user_memory` feature flag, personal memory is
+  // owned by user_memory, so we deprecate agent_memory for the dust global agent.
+  const hasAgentMemory =
+    agentMemoryMCPServerView !== null && !featureFlags.includes("user_memory");
 
   const instructions = buildInstructions({
     hasDeepDive,
@@ -1184,7 +1187,7 @@ type CustomModelDustGlobalAgentConfig = {
 // `customModelIndex` is a position into `CUSTOM_MODEL_CONFIGS`, which is generated
 // at build time from the infra custom-models config (GCS). It must stay in sync with
 // the ordering of models in that config: shifting the array silently rebinds agents.
-export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
+const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   GLOBAL_AGENTS_SID,
   CustomModelDustGlobalAgentConfig
 >([

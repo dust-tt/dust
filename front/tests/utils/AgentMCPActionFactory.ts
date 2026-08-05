@@ -2,7 +2,10 @@ import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
-import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import {
+  AgentMCPActionModel,
+  AgentMCPActionOutputItemModel,
+} from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -16,6 +19,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 export class AgentMCPActionFactory {
   // Monotonic counter: step content indexes only need to be unique within an agent message.
@@ -33,12 +37,16 @@ export class AgentMCPActionFactory {
       agentMessageModelId,
       status = "blocked_validation_required",
       step = 1,
+      dustRunId = null,
+      output = [],
     }: {
       workspace: WorkspaceType;
       conversationModelId: ModelId;
       agentMessageModelId: ModelId;
       status?: ToolExecutionStatus;
       step?: number;
+      dustRunId?: string | null;
+      output?: CallToolResult["content"];
     }
   ): Promise<{
     action: AgentMCPActionResource;
@@ -52,6 +60,7 @@ export class AgentMCPActionFactory {
       step,
       index: currentIndex,
       version: 0,
+      dustRunId,
       type: "function_call",
       value: {
         type: "function_call",
@@ -87,6 +96,10 @@ export class AgentMCPActionFactory {
       mcpServerName: "test_server",
     };
 
+    // TODO(Adrien): Drop column if not used anymore.
+    // The action's stepContentId column is left null on purpose, mirroring production: the action is
+    // tied to its step content through the tool execution row below, not through this column. Setting
+    // it here would hide code paths that resolve the step content the real way.
     const action = await AgentMCPActionModel.create({
       workspaceId: workspace.id,
       agentMessageId: agentMessageModelId,
@@ -95,7 +108,6 @@ export class AgentMCPActionFactory {
       citationsAllocated: 0,
       augmentedInputs: {},
       toolConfiguration,
-      stepContentId: stepContent.id,
       stepContext: {
         citationsCount: 0,
         citationsOffset: 0,
@@ -113,6 +125,18 @@ export class AgentMCPActionFactory {
       stepContentId: stepContent.id,
     });
 
+    if (output.length > 0) {
+      await AgentMCPActionOutputItemModel.bulkCreate(
+        output.map((content) => ({
+          workspaceId: workspace.id,
+          agentMCPActionId: action.id,
+          content,
+          contentGcsPath: null,
+          citations: null,
+        }))
+      );
+    }
+
     const actionResource = await AgentMCPActionResource.fetchById(
       auth,
       AgentMCPActionResource.modelIdToSId({
@@ -125,6 +149,32 @@ export class AgentMCPActionFactory {
     }
 
     return { action: actionResource };
+  }
+
+  /**
+   * Transitions an existing action to a new status, as happens once a blocked tool is approved
+   * (or denied) and then settles. The action resource passed in is not mutated, so callers that
+   * need the new status should re-fetch.
+   */
+  static async setStatus(
+    auth: Authenticator,
+    {
+      action,
+      status,
+    }: {
+      action: AgentMCPActionResource;
+      status: ToolExecutionStatus;
+    }
+  ): Promise<void> {
+    await AgentMCPActionModel.update(
+      { status },
+      {
+        where: {
+          id: action.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
   }
 
   /**

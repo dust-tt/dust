@@ -50,7 +50,8 @@ app.get(
     // light serialization ships no remote tools, so no heavy attribute is fetched.
     const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
       auth,
-      queryValidation.data.spaceIds
+      queryValidation.data.spaceIds,
+      { isRestrictedToSkills: false }
     );
 
     const serverViews = views

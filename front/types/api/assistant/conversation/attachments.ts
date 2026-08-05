@@ -27,6 +27,7 @@ export type BaseConversationAttachmentType = {
 export type FileAttachmentType = BaseConversationAttachmentType & {
   fileId: string;
   path: string | null;
+  processedPath?: string | null;
   source: "agent" | "user" | null;
   createdAt?: number;
   updatedAt?: number;
@@ -48,9 +49,6 @@ export type LargePasteType = {
 export type ConversationAttachmentType =
   | FileAttachmentType
   | ContentNodeAttachmentType;
-
-/** Same item shape as GET `/assistant/conversations/[cId]/attachments` and GET project context. */
-export type ContextAttachmentItem = ConversationAttachmentType;
 
 export type GetConversationAttachmentsResponseBody = {
   attachments: ConversationAttachmentType[];

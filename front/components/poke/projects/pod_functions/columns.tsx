@@ -1,16 +1,31 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type { PokePodFunction } from "@app/lib/api/poke/projects";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import { LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-export function makeColumnsForProjectPodFunction(): ColumnDef<PokePodFunction>[] {
+export function makeColumnsForProjectPodFunction({
+  owner,
+  projectId,
+}: {
+  owner: LightWorkspaceType;
+  projectId: string;
+}): ColumnDef<PokePodFunction>[] {
   return [
     {
       accessorKey: "slug",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Slug" />
       ),
-      cell: ({ row }) => row.original.slug,
+      cell: ({ row }) => (
+        <LinkWrapper
+          href={`/poke/${owner.sId}/spaces/${projectId}/pod_functions/${row.original.sId}`}
+          className="text-highlight-500"
+        >
+          {row.original.slug}
+        </LinkWrapper>
+      ),
     },
     {
       accessorKey: "description",

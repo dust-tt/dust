@@ -260,41 +260,6 @@ describe("GET /api/w/:wId/members/search", () => {
     expect(data.members[0].email).toBeDefined();
   });
 
-  it("allows non-admin users to filter with buildersOnly", async () => {
-    const { workspace } = await setup("builder");
-
-    const users = await Promise.all([
-      UserFactory.basic(),
-      UserFactory.basic(),
-      UserFactory.basic(),
-    ]);
-
-    await Promise.all([
-      MembershipFactory.associate(workspace, users[0], { role: "admin" }),
-      MembershipFactory.associate(workspace, users[1], { role: "builder" }),
-      MembershipFactory.associate(workspace, users[2], { role: "user" }),
-    ]);
-
-    const response = await honoApp.request(
-      searchUrl(workspace.sId, {
-        buildersOnly: "true",
-        offset: "0",
-        limit: "25",
-      })
-    );
-
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    // The caller (builder) + users[0] (admin) + users[1] (builder) = 3.
-    expect(data.total).toBe(3);
-    expect(data.members).toHaveLength(3);
-    // Non-admin receives minimal essential user data plus workspace info.
-    for (const member of data.members) {
-      expect(member.workspace).toBeDefined();
-      expect(member.email).toBeDefined();
-    }
-  });
-
   it("paginates correctly for non-admin users", async () => {
     const { workspace } = await setup("user");
 
@@ -323,40 +288,6 @@ describe("GET /api/w/:wId/members/search", () => {
     for (const member of data.members) {
       expect(member.workspace).toBeDefined();
       expect(member.email).toBeDefined();
-    }
-  });
-
-  it("filters to only builders and admins when buildersOnly=true", async () => {
-    const { workspace } = await setup();
-
-    const users = await Promise.all([
-      UserFactory.basic(),
-      UserFactory.basic(),
-      UserFactory.basic(),
-      UserFactory.basic(),
-    ]);
-
-    await Promise.all([
-      MembershipFactory.associate(workspace, users[0], { role: "admin" }),
-      MembershipFactory.associate(workspace, users[1], { role: "builder" }),
-      MembershipFactory.associate(workspace, users[2], { role: "user" }),
-      MembershipFactory.associate(workspace, users[3], { role: "user" }),
-    ]);
-
-    const response = await honoApp.request(
-      searchUrl(workspace.sId, {
-        buildersOnly: "true",
-        offset: "0",
-        limit: "25",
-      })
-    );
-
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.total).toBe(3);
-    expect(data.members).toHaveLength(3);
-    for (const member of data.members) {
-      expect(["admin", "builder"]).toContain(member.workspace.role);
     }
   });
 });

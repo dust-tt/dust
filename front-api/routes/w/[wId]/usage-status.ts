@@ -1,4 +1,6 @@
 import { getUpgradeRequestAvailabilityForUser } from "@app/lib/api/credits/upgrade_requests";
+import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend_limit";
+import { getFeatureFlags } from "@app/lib/auth";
 import type {
   GetWorkspaceUsageStatusResponseBody,
   ProgrammaticCreditStatus,
@@ -28,15 +30,21 @@ app.get(
     const plan = auth.plan();
 
     const isCreditPriced = plan && isCreditPricedPlan(plan);
-    // Workspaces not on Metronome billing have no usage status to report.
+    // Workspaces not on Metronome billing have no usage status to report,
+    // unless we've overriden their default per-user credit limit.
     if (!workspace.metronomeCustomerId || !isCreditPriced) {
+      const featureFlags = await getFeatureFlags(auth);
+      const isLimitReached =
+        featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
+        (await isNonCreditPricedUserSpendLimitReached(auth, { user }));
+
       return ctx.json({
         userNearCreditLimit: false,
         poolCreditState: "active",
         programmaticCreditStatus: "active",
         programmaticWarningReached: false,
         balanceThresholdReached: false,
-        userBlockedReason: null,
+        userBlockedReason: isLimitReached ? "user_cap_reached" : null,
         canRequestUpgrade: false,
         hasPendingUpgradeRequest: false,
         willAutoUpgrade: false,

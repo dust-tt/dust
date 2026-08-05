@@ -11,6 +11,7 @@ import type {
   PostUpgradeRequestResponseBody,
 } from "@app/types/api/credits/upgrade_requests";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import { MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -24,6 +25,14 @@ const ParamsSchema = z.object({
 
 const ResolveBodySchema = z.object({
   status: z.union([z.literal("approved"), z.literal("denied")]),
+});
+
+const CreateUpgradeRequestBodySchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS)
+    .optional(),
 });
 
 function upgradeRequestErrorToApiError(
@@ -79,16 +88,22 @@ app.get(
 
 // Member-initiated: request an upgrade of the current user's spend limit.
 /** @ignoreswagger */
-app.post("/", async (ctx): HandlerResult<PostUpgradeRequestResponseBody> => {
-  const auth = ctx.get("auth");
-  const result = await createUpgradeRequest(auth, {
-    auditContext: getAuditLogContext(auth),
-  });
-  if (result.isErr()) {
-    return apiError(ctx, upgradeRequestErrorToApiError(result.error));
+app.post(
+  "/",
+  validate("json", CreateUpgradeRequestBodySchema),
+  async (ctx): HandlerResult<PostUpgradeRequestResponseBody> => {
+    const auth = ctx.get("auth");
+    const { reason } = ctx.req.valid("json");
+    const result = await createUpgradeRequest(auth, {
+      reason: reason ?? null,
+      auditContext: getAuditLogContext(auth),
+    });
+    if (result.isErr()) {
+      return apiError(ctx, upgradeRequestErrorToApiError(result.error));
+    }
+    return ctx.json({ request: result.value });
   }
-  return ctx.json({ request: result.value });
-});
+);
 
 /** @ignoreswagger */
 app.patch(

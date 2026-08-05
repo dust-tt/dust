@@ -12,7 +12,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-export type EditFrameTextErrorCode =
+type EditFrameTextErrorCode =
   | "not_published"
   | "invalid_source"
   | "source_not_found"
@@ -22,7 +22,7 @@ export type EditFrameTextErrorCode =
   | "publish_failed"
   | "internal";
 
-export class EditFrameTextError extends Error {
+class EditFrameTextError extends Error {
   constructor(
     readonly code: EditFrameTextErrorCode,
     message: string

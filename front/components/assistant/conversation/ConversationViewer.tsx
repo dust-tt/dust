@@ -2,7 +2,6 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimitPopup";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
-import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
 import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
@@ -19,22 +18,25 @@ import {
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import { handlePlanUpdatedEvent } from "@app/components/assistant/conversation/plan_mode/handle_plan_updated";
 import type {
+  AgentMessageWithStreaming,
   ConversationForkNotice,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  areSameRankAndBranch,
+  areSameRank,
   convertLightMessageTypeToVirtuosoMessages,
-  getPredicateForRankAndBranch,
+  getPredicateForRank,
   isAgentMessageWithStreaming,
   isAtInitialStreamState,
   isCompactionMessage,
   isConversationForkNotice,
+  isPlaceholderMessage,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import {
+  requestConversationMarkAsRead,
   useConversation,
   useConversationContextUsage,
   useConversationFeedbacks,
@@ -44,7 +46,6 @@ import {
   useConversations,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
-import { useOpenConversationBranch } from "@app/hooks/conversations/useOpenConversationBranch";
 import { planFileKey } from "@app/hooks/conversations/usePlanFile";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
@@ -92,7 +93,6 @@ import {
   VirtuosoMessageList,
   VirtuosoMessageListLicense,
 } from "@virtuoso.dev/message-list";
-import debounce from "lodash/debounce";
 import type { MutableRefObject } from "react";
 import {
   useCallback,
@@ -167,54 +167,6 @@ function updateAutoScrollEnabledFromLocation({
   prevLocationRef.current = { scrollHeight, bottomOffset };
 }
 
-export function getBranchedInsertIndex(
-  data: VirtuosoMessage[],
-  newMessage: VirtuosoMessage
-): number {
-  // Branches (other than the new message's branch) that already contain
-  // a message with the same rank. We want to keep *all* messages from
-  // those branches contiguous and insert after their last message.
-  const blockingBranches = new Set<string>();
-  for (const m of data) {
-    if (
-      m.rank === newMessage.rank &&
-      m.branchId !== null &&
-      m.branchId !== undefined &&
-      m.branchId !== newMessage.branchId
-    ) {
-      blockingBranches.add(m.branchId);
-    }
-  }
-
-  let insertIndex = 0;
-
-  for (let i = 0; i < data.length; i += 1) {
-    const m = data[i];
-    const branchId = m.branchId;
-
-    const isBlockingBranchMessage =
-      branchId !== null &&
-      branchId !== undefined &&
-      blockingBranches.has(branchId);
-
-    const isSameBranchPriorOrEqualRank =
-      branchId === newMessage.branchId && m.rank <= newMessage.rank;
-
-    if (isBlockingBranchMessage || isSameBranchPriorOrEqualRank) {
-      insertIndex = i + 1;
-    }
-  }
-
-  if (insertIndex > 0) {
-    return insertIndex;
-  }
-
-  // Fallback: original behavior – insert before the first message
-  // with a strictly greater rank, or append if none.
-  const rankOffset = data.findIndex((m) => m.rank > newMessage.rank);
-  return rankOffset === -1 ? data.length : rankOffset;
-}
-
 function makeConversationForkNoticeMessage(
   sourceMessage: VirtuosoMessage,
   forkedChild: ConversationForkedChildType
@@ -224,7 +176,6 @@ function makeConversationForkNoticeMessage(
     sId: `conversation-fork-notice-${forkedChild.childConversationId}`,
     created: sourceMessage.created,
     rank: sourceMessage.rank,
-    branchId: null,
     visibility: "visible",
     sourceMessageId: forkedChild.sourceMessageId,
     childConversationId: forkedChild.childConversationId,
@@ -303,7 +254,6 @@ function buildFirstMessagePlaceholders(
     input,
     mentions,
     user,
-    branchId: null,
     rank,
     contentFragments,
     requestedModel: modelSelection ?? null,
@@ -318,7 +268,6 @@ function buildFirstMessagePlaceholders(
           userMessage,
           mention,
           rank,
-          branchId: null,
         })
       );
     }
@@ -358,13 +307,6 @@ export const ConversationViewer = ({
     options: { disabled: true },
   });
 
-  const [branchIdToApprove, setBranchIdToApprove] = useState<string | null>(
-    null
-  );
-
-  const { openBranch } = useOpenConversationBranch({ owner, conversationId });
-  const hasInjectedOpenBranchRef = useRef(false);
-
   const {
     conversation,
     conversationError,
@@ -387,7 +329,7 @@ export const ConversationViewer = ({
     disabled: !conversation?.spaceId,
   });
 
-  const { markAsRead } = useConversationMarkAsRead({
+  useConversationMarkAsRead({
     conversation,
     workspaceId: owner.sId,
   });
@@ -565,40 +507,6 @@ export const ConversationViewer = ({
     conversation?.lastReadMs,
   ]);
 
-  // Restore an open branch (and its messages) when the user reloads or
-  // navigates back to a conversation that has a pending open branch. The
-  // conversation fetch only returns the main thread, so without this the
-  // approval modal would never re-open.
-  useEffect(() => {
-    if (
-      initialListData === undefined ||
-      !openBranch ||
-      !virtuosoMessageListRef.current ||
-      hasInjectedOpenBranchRef.current
-    ) {
-      return;
-    }
-    hasInjectedOpenBranchRef.current = true;
-
-    const branchMessages = convertLightMessageTypeToVirtuosoMessages(
-      openBranch.messages
-    );
-    const existingMessageIds = new Set(
-      virtuosoMessageListRef.current.data.get().map((message) => message.sId)
-    );
-    for (const msg of branchMessages) {
-      if (existingMessageIds.has(msg.sId)) {
-        continue;
-      }
-      const insertIdx = getBranchedInsertIndex(
-        virtuosoMessageListRef.current.data.get(),
-        msg
-      );
-      virtuosoMessageListRef.current.data.insert([msg], insertIdx);
-    }
-    setBranchIdToApprove(openBranch.branchId);
-  }, [initialListData, openBranch]);
-
   // Sync the virtuoso ref with the side panel context.
   const {
     data: panelData,
@@ -729,11 +637,6 @@ export const ConversationViewer = ({
 
   // Hooks related to conversation events streaming.
 
-  const debouncedMarkAsRead = useMemo(
-    () => debounce(markAsRead, 2000),
-    [markAsRead]
-  );
-
   const eventIds = useRef<string[]>([]);
 
   // Only conversation related events are handled here.
@@ -751,7 +654,17 @@ export const ConversationViewer = ({
           case "user_message_new":
             if (virtuosoMessageListRef.current) {
               const userMessage = event.message;
-              const predicate = getPredicateForRankAndBranch(userMessage);
+              const predicate = getPredicateForRank(userMessage);
+
+              // Drop a leftover agent placeholder occupying this rank so it
+              // cannot swallow the update. The user's own optimistic
+              // placeholder must NOT be deleted here: it is replaced in place
+              // below, and delete+insert breaks Virtuoso's rank-based row
+              // identity, making subsequent rows overlap.
+              virtuosoMessageListRef.current.data.findAndDelete(
+                (m) =>
+                  predicate(m) && isPlaceholderMessage(m) && !isUserMessage(m)
+              );
 
               const exists =
                 virtuosoMessageListRef.current.data.find(predicate);
@@ -762,7 +675,12 @@ export const ConversationViewer = ({
                 const scroll = userMessage.user?.sId !== user.sId;
 
                 const currentData = virtuosoMessageListRef.current.data.get();
-                const offset = getBranchedInsertIndex(currentData, userMessage);
+
+                // Insert before the first message with a strictly greater rank, or append if none.
+                let offset = currentData.findIndex(
+                  (m) => m.rank > userMessage.rank
+                );
+                offset = offset === -1 ? currentData.length : offset;
 
                 if (offset < currentData.length) {
                   virtuosoMessageListRef.current.data.insert(
@@ -781,9 +699,45 @@ export const ConversationViewer = ({
                 // We only update if the version is greater or equals than the existing version.
                 if (exists.version <= event.message.version) {
                   virtuosoMessageListRef.current.data.map((m) =>
-                    areSameRankAndBranch(m, userMessage) ? userMessage : m
+                    areSameRank(m, userMessage) ? userMessage : m
                   );
                 }
+              } else {
+                // Same rank occupied by a real non-user message — fall back to
+                // sId so mention status still lands on the correct user row.
+                const bySId = virtuosoMessageListRef.current.data.find(
+                  (m) => isUserMessage(m) && m.sId === userMessage.sId
+                );
+                if (
+                  bySId &&
+                  isUserMessage(bySId) &&
+                  bySId.version <= userMessage.version
+                ) {
+                  virtuosoMessageListRef.current.data.map((m) =>
+                    m.sId === userMessage.sId ? userMessage : m
+                  );
+                }
+              }
+
+              // Restricted agents never emit agent_message_new. Drop their
+              // optimistic placeholders (including deferred first-message ones)
+              // so they cannot collide on rank or look like a running agent.
+              const restrictedAgentIds = new Set(
+                userMessage.richMentions
+                  .filter(
+                    (m) =>
+                      isRichAgentMention(m) &&
+                      m.status === "agent_restricted_by_space_usage"
+                  )
+                  .map((m) => m.id)
+              );
+              if (restrictedAgentIds.size > 0) {
+                virtuosoMessageListRef.current.data.findAndDelete(
+                  (m) =>
+                    isPlaceholderMessage(m) &&
+                    isAgentMessageWithStreaming(m) &&
+                    restrictedAgentIds.has(m.configuration.sId)
+                );
               }
 
               // Update the participants and the conversation list if the message is not from the current user.
@@ -804,7 +758,11 @@ export const ConversationViewer = ({
                   { revalidate: false }
                 );
               }
-              void debouncedMarkAsRead(conversationId);
+              requestConversationMarkAsRead({
+                workspaceId: owner.sId,
+                conversationId,
+                activityAtMs: event.created,
+              });
 
               if (userMessage.contentFragments.length > 0) {
                 void mutateConversationAttachments();
@@ -829,7 +787,7 @@ export const ConversationViewer = ({
               );
 
               // Replace the message in the exist list data, or append.
-              const predicate = getPredicateForRankAndBranch(agentMessage);
+              const predicate = getPredicateForRank(agentMessage);
               const exists =
                 virtuosoMessageListRef.current.data.find(predicate);
 
@@ -864,10 +822,11 @@ export const ConversationViewer = ({
                 }
               } else {
                 const currentData = virtuosoMessageListRef.current.data.get();
-                const offset = getBranchedInsertIndex(
-                  currentData,
-                  agentMessage
+                // Insert before the first message with a strictly greater rank, or append if none.
+                let offset = currentData.findIndex(
+                  (m) => m.rank > agentMessage.rank
                 );
+                offset = offset === -1 ? currentData.length : offset;
 
                 if (offset < currentData.length) {
                   virtuosoMessageListRef.current.data.insert(
@@ -877,10 +836,6 @@ export const ConversationViewer = ({
                 } else {
                   virtuosoMessageListRef.current.data.append([agentMessage]);
                 }
-              }
-
-              if (agentMessage.branchId) {
-                setBranchIdToApprove(agentMessage.branchId);
               }
 
               void mutateConversationParticipants(async (participants) =>
@@ -900,7 +855,11 @@ export const ConversationViewer = ({
             break;
 
           case "conversation_title":
-            void debouncedMarkAsRead(conversationId);
+            requestConversationMarkAsRead({
+              workspaceId: owner.sId,
+              conversationId,
+              activityAtMs: event.created,
+            });
             void mutateConversation(
               (current) => {
                 if (current) {
@@ -935,9 +894,11 @@ export const ConversationViewer = ({
             }
             break;
           case "agent_message_done":
-            // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
-            // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
-            void debouncedMarkAsRead(event.conversationId);
+            requestConversationMarkAsRead({
+              workspaceId: owner.sId,
+              conversationId: event.conversationId,
+              activityAtMs: event.created,
+            });
 
             // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
             void mutateContextUsage();
@@ -1007,16 +968,18 @@ export const ConversationViewer = ({
           case "compaction_message_new":
             if (virtuosoMessageListRef.current) {
               const compactionMessage = event.message;
-              const predicate = getPredicateForRankAndBranch(compactionMessage);
+              const predicate = getPredicateForRank(compactionMessage);
               const exists =
                 virtuosoMessageListRef.current.data.find(predicate);
 
               if (!exists) {
                 const currentData = virtuosoMessageListRef.current.data.get();
-                const offset = getBranchedInsertIndex(
-                  currentData,
-                  compactionMessage
+                // Insert before the first message with a strictly greater rank, or append if none.
+                let offset = currentData.findIndex(
+                  (m) => m.rank > compactionMessage.rank
                 );
+                offset = offset === -1 ? currentData.length : offset;
+
                 // Scroll to the bottom when the user compacts so the
                 // compaction message is in view.
                 const scrollToCompaction = () =>
@@ -1106,7 +1069,6 @@ export const ConversationViewer = ({
     [
       conversation?.forkingData?.forkedFrom?.fileCopyStatus,
       conversationId,
-      debouncedMarkAsRead,
       mutateContextUsage,
       mutateConversation,
       mutateConversationAttachments,
@@ -1195,7 +1157,6 @@ export const ConversationViewer = ({
             input,
             mentions,
             user,
-            branchId: null, // We can't know the branch id yet, it will be set when the message is created.
             rank,
             contentFragments,
             requestedModel: modelSelection ?? null,
@@ -1203,16 +1164,22 @@ export const ConversationViewer = ({
 
         // Skip placeholder agent messages if there's already a running agent in the conversation
         // (steering: the message will be pending, no new agent message is created until the running
-        // one gracefully stops).
+        // one gracefully stops). Optimistic placeholders must not count — e.g. a leftover
+        // restricted-agent placeholder from the deferred first message.
         const hasRunningAgent = virtuosoMessageListRef.current.data
           .get()
-          .some((m) => m.type === "agent_message" && m.status === "created");
+          .some(
+            (m) =>
+              m.type === "agent_message" &&
+              m.status === "created" &&
+              !isPlaceholderMessage(m)
+          );
 
         if (hasRunningAgent && conversationId) {
           incrementPendingSteeringCount(conversationId);
         }
 
-        const placeholderAgentMessages: VirtuosoMessage[] = [];
+        const placeholderAgentMessages: AgentMessageWithStreaming[] = [];
         if (!hasRunningAgent) {
           for (const mention of mentions) {
             if (isRichAgentMention(mention)) {
@@ -1223,7 +1190,6 @@ export const ConversationViewer = ({
                   userMessage: placeholderUserMsg,
                   mention,
                   rank,
-                  branchId: null, // We can't know the branch id yet, it will be set when the message is created.
                 })
               );
             }
@@ -1304,22 +1270,26 @@ export const ConversationViewer = ({
         const {
           message: messageFromBackend,
           contentFragments: contentFragmentsFromBackend,
+          agentMessages: agentMessagesFromBackend,
         } = result.value;
 
-        // If the message was created in a branch, we remove the placeholder user message and the placeholder agent messages from the list.
-        if (messageFromBackend.branchId) {
-          const placeHolderSids = [
-            placeholderUserMsg.sId,
-            ...placeholderAgentMessages.map((m) => m.sId),
-          ];
-          virtuosoMessageListRef.current.data.findAndDelete((m) =>
-            placeHolderSids.includes(m.sId)
-          );
-        }
+        // Restricted / mention-only agents: backend returns no agent message
+        // for that mention. Remove matching optimistic agent placeholders so
+        // they cannot collide on rank with later real messages.
+        const createdAgentConfigIds = new Set(
+          agentMessagesFromBackend.map((m) => m.configuration.sId)
+        );
+        virtuosoMessageListRef.current.data.findAndDelete((m) =>
+          placeholderAgentMessages.some(
+            (p) =>
+              p.sId === m.sId && !createdAgentConfigIds.has(p.configuration.sId)
+          )
+        );
 
-        // map() is how we update the state of virtuoso messages.
+        // Replace the optimistic user row by sId (not rank): FE lastMessageRank
+        // can disagree with the DB when stale placeholders inflated the client rank.
         virtuosoMessageListRef.current.data.map((m) =>
-          areSameRankAndBranch(m, placeholderUserMsg)
+          m.sId === placeholderUserMsg.sId
             ? {
                 ...messageFromBackend,
                 contentFragments: contentFragmentsFromBackend,
@@ -1333,7 +1303,8 @@ export const ConversationViewer = ({
         const hasPendingMentions = messageFromBackend.richMentions?.some(
           (m) =>
             m.status === "pending_conversation_access" ||
-            m.status === "pending_project_membership"
+            m.status === "pending_project_membership" ||
+            m.status === "agent_restricted_by_space_usage"
         );
         if (hasPendingMentions) {
           virtuosoMessageListRef.current.scrollToItem({
@@ -1413,7 +1384,7 @@ export const ConversationViewer = ({
       if (isConversationForkNotice(data)) {
         return `conversation-${context.conversation?.sId}-${data.sId}`;
       }
-      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}-message-branchId-${data.branchId}`;
+      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}`;
     },
     []
   );
@@ -1422,7 +1393,7 @@ export const ConversationViewer = ({
     if (isConversationForkNotice(item)) {
       return item.sId;
     }
-    return `message-rank-${item.rank}-message-branchId-${item.branchId}`;
+    return `message-rank-${item.rank}-message`;
   }, []);
 
   const feedbacksByMessageId = useMemo(() => {
@@ -1465,8 +1436,6 @@ export const ConversationViewer = ({
       isProjectArchived: !!spaceInfo?.archivedAt,
       projectId: conversation?.spaceId ?? undefined,
       projectSpaceName: spaceInfo?.name,
-      branchIdToApprove: branchIdToApprove ?? undefined,
-      setBranchIdToApprove,
       isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
@@ -1486,7 +1455,6 @@ export const ConversationViewer = ({
     spaceInfo?.isRestricted,
     spaceInfo?.archivedAt,
     spaceInfo?.name,
-    branchIdToApprove,
     limitReachedCode,
     setLimitReachedCode,
   ]);
@@ -1503,7 +1471,6 @@ export const ConversationViewer = ({
       >
         <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
           onRenderedDataChange={onRenderedDataChange}
-          StickyHeader={ConversationBranchApprovalModal}
           useWindowScroll={isMobile}
           data={{
             data: initialListData,

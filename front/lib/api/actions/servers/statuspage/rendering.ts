@@ -15,7 +15,7 @@ function formatDate(dateString: string | null | undefined): string {
   return new Date(dateString).toISOString();
 }
 
-export function renderPage(page: StatuspagePage): string {
+function renderPage(page: StatuspagePage): string {
   const lines = [`**${page.name}**`, `- ID: ${page.id}`];
 
   if (page.url) {
@@ -40,7 +40,7 @@ export function renderPagesList(pages: StatuspagePage[]): string {
   return header + pages.map(renderPage).join("\n\n---\n\n");
 }
 
-export function renderComponent(component: StatuspageComponent): string {
+function renderComponent(component: StatuspageComponent): string {
   const lines = [
     `**${component.name}**`,
     `- ID: ${component.id}`,
@@ -69,7 +69,7 @@ export function renderComponentsList(
   return header + components.map(renderComponent).join("\n\n---\n\n");
 }
 
-export function renderIncidentSummary(incident: StatuspageIncident): string {
+function renderIncidentSummary(incident: StatuspageIncident): string {
   const lines = [
     `**${incident.name}**`,
     `- ID: ${incident.id}`,

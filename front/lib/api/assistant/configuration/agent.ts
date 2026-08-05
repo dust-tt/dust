@@ -1,15 +1,8 @@
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import {
-  WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
-  WEB_SEARCH_BROWSE_SERVER_NAME,
-} from "@app/lib/api/actions/servers/web_search_browse/metadata";
-import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   enrichAgentConfigurations,
   getModelForAgentConfiguration,
   isSelfHostedImageWithValidContentType,
 } from "@app/lib/api/assistant/configuration/helpers";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
@@ -17,9 +10,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -37,9 +28,7 @@ import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
@@ -73,7 +62,6 @@ import {
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
-import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -413,7 +401,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   });
 }
 
-export type AgentLabel = {
+type AgentLabel = {
   sId: string;
   name: string;
   pictureUrl: string | null;
@@ -875,7 +863,7 @@ export async function createAgentConfiguration(
             }
           }
 
-          if (!group.canWrite(auth) && auth.user()) {
+          if (!group.canAdministrate(auth) && auth.user()) {
             logger.error(
               {
                 workspaceId: owner.sId,
@@ -1019,324 +1007,6 @@ export async function createAgentConfiguration(
     }
     throw error;
   }
-}
-
-export async function createGenericAgentConfiguration(
-  auth: Authenticator,
-  {
-    name,
-    description,
-    instructions,
-    pictureUrl,
-    model,
-    subAgent,
-  }: {
-    name: string;
-    description: string;
-    instructions: string;
-    pictureUrl: string;
-    model: AgentModelConfigurationType;
-    subAgent?: {
-      name: string;
-      description: string;
-      instructions: string;
-      pictureUrl: string;
-    };
-  }
-): Promise<
-  Result<
-    {
-      agentConfiguration: LightAgentConfigurationType;
-      subAgentConfiguration?: LightAgentConfigurationType;
-    },
-    Error
-  >
-> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return new Err(new Error("Unexpected `auth` without `workspace`."));
-  }
-
-  const user = auth.user();
-  if (!user) {
-    return new Err(new Error("Unexpected `auth` without `user`."));
-  }
-
-  async function cleanupAgentsOnError(
-    auth: Authenticator,
-    mainAgentId: string | null,
-    subAgentId: string | null
-  ): Promise<void> {
-    try {
-      if (mainAgentId) {
-        await archiveAgentConfiguration(auth, mainAgentId);
-      }
-      if (subAgentId) {
-        await archiveAgentConfiguration(auth, subAgentId);
-      }
-    } catch (error) {
-      logger.error(
-        {
-          error,
-          mainAgentId,
-          subAgentId,
-        },
-        "Failed to cleanup agents after error"
-      );
-    }
-  }
-
-  const result = await createAgentConfiguration(auth, {
-    name,
-    description,
-    instructions,
-    instructionsHtml: null,
-    pictureUrl,
-    status: "active",
-    scope: "hidden", // Unpublished
-    model,
-    templateId: null,
-    requestedSpaceIds: [],
-    tags: [],
-    editors: [user.toJSON()], // Only the current user as editor
-    authorId: user.id,
-  });
-
-  if (result.isErr()) {
-    return result;
-  }
-
-  const agentConfiguration = result.value;
-
-  const [webSearchMCPServerView, searchMCPServerView] = await Promise.all([
-    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "web_search_&_browse"
-    ),
-    MCPServerViewResource.getMCPServerViewForAutoInternalTool(auth, "search"),
-  ]);
-
-  if (!webSearchMCPServerView) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(new Error("Could not find web search MCP server view"));
-  }
-  if (!searchMCPServerView) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(new Error("Could not find search MCP server view"));
-  }
-
-  const webSearchResult = await createAgentActionConfiguration(
-    auth,
-    {
-      type: "mcp_server_configuration",
-      name: WEB_SEARCH_BROWSE_SERVER_NAME,
-      description: WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
-      mcpServerViewId: webSearchMCPServerView.sId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      dustAppConfiguration: null,
-      timeFrame: null,
-      jsonSchema: null,
-    } as ServerSideMCPServerConfigurationType,
-    agentConfiguration
-  );
-
-  if (webSearchResult.isErr()) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(
-      new Error("Could not create web search action configuration")
-    );
-  }
-
-  const dataSourceViews =
-    await DataSourceViewResource.listAssistantDefaultSelected(auth);
-
-  if (dataSourceViews.length > 0) {
-    const searchResult = await createAgentActionConfiguration(
-      auth,
-      {
-        type: "mcp_server_configuration",
-        name: "data_sources_file_system",
-        description: "Browse all workspace data sources as a file system.",
-        mcpServerViewId: searchMCPServerView.sId,
-        dataSources: dataSourceViews.map((dsView) => ({
-          dataSourceViewId: dsView.sId,
-          workspaceId: owner.sId,
-          filter: { parents: null, tags: null },
-        })),
-        tables: null,
-        childAgentId: null,
-        additionalConfiguration: {},
-        dustAppConfiguration: null,
-        timeFrame: null,
-        jsonSchema: null,
-      } as ServerSideMCPServerConfigurationType,
-      agentConfiguration
-    );
-
-    if (searchResult.isErr()) {
-      await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-      return new Err(new Error("Could not create search action configuration"));
-    }
-  }
-
-  // Add query_tables_v2 tools for data warehouses in global space.
-  const queryTablesV2View =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "query_tables_v2"
-    );
-
-  if (!queryTablesV2View) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(new Error("Could not find query_tables_v2 MCP server view"));
-  }
-
-  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-  const globalDataSourceViews = await DataSourceViewResource.listBySpace(
-    auth,
-    globalSpace
-  );
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  for (const dsView of globalDataSourceViews) {
-    if (
-      !isRemoteDatabase(dsView.dataSource) ||
-      !dsView.dataSource.connectorId
-    ) {
-      continue;
-    }
-
-    const tablesRes = await coreAPI.getTables({
-      projectId: dsView.dataSource.dustAPIProjectId,
-      dataSourceId: dsView.dataSource.dustAPIDataSourceId,
-      viewFilter: dsView.toViewFilter(),
-    });
-
-    if (tablesRes.isErr()) {
-      await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-      return new Err(
-        new Error(
-          `Failed to get tables for data warehouse "${dsView.dataSource.name}"`
-        )
-      );
-    }
-
-    const tables = tablesRes.value.tables;
-
-    if (tables.length > 0) {
-      const warehouseType =
-        dsView.dataSource.connectorProvider === "snowflake"
-          ? "Snowflake"
-          : "BigQuery";
-
-      const tableConfigs: TableDataSourceConfiguration[] = tables.map(
-        (table) => ({
-          workspaceId: owner.sId,
-          dataSourceViewId: dsView.sId,
-          tableId: table.table_id,
-        })
-      );
-
-      const tablesQueryResult = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "mcp_server_configuration",
-          name: `query_${dsView.dataSource.name}_data_warehouse`,
-          description: `Query any of the tables available in the "${dsView.dataSource.name}" ${warehouseType} data warehouse.`,
-          mcpServerViewId: queryTablesV2View.sId,
-          dataSources: null,
-          tables: tableConfigs,
-          childAgentId: null,
-          additionalConfiguration: {},
-          dustAppConfiguration: null,
-          timeFrame: null,
-          jsonSchema: null,
-        } as ServerSideMCPServerConfigurationType,
-        agentConfiguration
-      );
-
-      if (tablesQueryResult.isErr()) {
-        logger.error(
-          {
-            error: tablesQueryResult.error,
-            dataSourceName: dsView.dataSource.name,
-            workspaceId: owner.sId,
-          },
-          "Failed to create query tool for data warehouse"
-        );
-
-        await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-        return new Err(
-          new Error(
-            `Failed to create query tool for data warehouse "${dsView.dataSource.name}"`
-          )
-        );
-      }
-    }
-  }
-
-  if (!subAgent) {
-    return new Ok({ agentConfiguration });
-  }
-
-  const subAgentResult = await createGenericAgentConfiguration(auth, {
-    name: subAgent.name,
-    description: subAgent.description,
-    instructions: subAgent.instructions,
-    pictureUrl: subAgent.pictureUrl,
-    model,
-  });
-
-  if (subAgentResult.isErr()) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(
-      new Error(`Failed to create sub-agent: ${subAgentResult.error.message}`)
-    );
-  }
-
-  const subAgentConfiguration = subAgentResult.value.agentConfiguration;
-  const subAgentId = subAgentConfiguration.sId;
-
-  const runAgentMCPServerView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "run_agent"
-    );
-
-  if (!runAgentMCPServerView) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
-    return new Err(new Error("Could not find run_agent MCP server view"));
-  }
-
-  const runAgentActionResult = await createAgentActionConfiguration(
-    auth,
-    {
-      type: "mcp_server_configuration",
-      name: `run_${subAgentConfiguration.name}`,
-      description: `Run the ${subAgentConfiguration.name} sub-agent. The sub-agent has access to the same tools as the main agent, except for the ability to spawn sub-agents.`,
-      mcpServerViewId: runAgentMCPServerView.sId,
-      dataSources: null,
-      tables: null,
-      childAgentId: subAgentConfiguration.sId,
-      additionalConfiguration: {},
-      dustAppConfiguration: null,
-      timeFrame: null,
-      jsonSchema: null,
-    } as ServerSideMCPServerConfigurationType,
-    agentConfiguration
-  );
-
-  if (runAgentActionResult.isErr()) {
-    await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
-    return new Err(
-      new Error("Could not create run_agent action configuration")
-    );
-  }
-
-  return new Ok({ agentConfiguration, subAgentConfiguration });
 }
 
 // Cancels every still-scheduled wake-up targeting the given agent, deleting the
@@ -2117,37 +1787,4 @@ export async function filterAgentsByRequestedSpaces(
   );
 
   return allowedBySpaceIds;
-}
-
-export async function updateAgentReinforcementMode(
-  auth: Authenticator,
-  agentId: string,
-  reinforcement: AgentReinforcementMode
-): Promise<void> {
-  await AgentConfigurationModel.update(
-    { reinforcement },
-    {
-      where: {
-        sId: agentId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        status: "active",
-      },
-    }
-  );
-}
-
-export async function recordAgentReinforcementAnalysisCompletion(
-  auth: Authenticator,
-  agentId: string
-): Promise<void> {
-  await AgentConfigurationModel.update(
-    { lastReinforcementAnalysisAt: new Date() },
-    {
-      where: {
-        sId: agentId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        status: "active",
-      },
-    }
-  );
 }

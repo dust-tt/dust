@@ -22,7 +22,7 @@ import type { z } from "zod";
 
 const PRODUCTBOARD_API_V2_BASE_URL = "https://api.productboard.com/v2";
 
-export class ProductboardApiError extends Error {
+class ProductboardApiError extends Error {
   public readonly isInvalidInput: boolean;
   public readonly statusCode: number;
 
@@ -45,7 +45,7 @@ export function getProductboardClient(
   return new Ok(new ProductboardClient(apiToken));
 }
 
-export class ProductboardClient {
+class ProductboardClient {
   constructor(private apiToken: string) {}
 
   private async request<T extends z.Schema>(

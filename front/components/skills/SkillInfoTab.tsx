@@ -1,6 +1,7 @@
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import { SkillDescriptionReadOnlyEditor } from "@app/components/editor/SkillDescriptionEditor";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
 import {
   getMcpServerViewDescription,
@@ -9,6 +10,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -114,6 +116,17 @@ export function SkillInfoTab({
       ) : null}
 
       {showSeparator ? <Separator /> : null}
+
+      {skill.instructions && skill.agentFacingDescription && (
+        <div className="flex flex-col gap-4">
+          <div className="heading-lg text-foreground">
+            {SKILL_INVOCATION_LABEL}
+          </div>
+          <SkillDescriptionReadOnlyEditor
+            content={skill.agentFacingDescription}
+          />
+        </div>
+      )}
 
       {skill.instructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">

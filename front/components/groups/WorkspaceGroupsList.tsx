@@ -30,8 +30,10 @@ import {
   Trash01,
   Users01,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
+
+const DEFAULT_PAGE_SIZE = 25;
 
 type ChipColor = NonNullable<React.ComponentProps<typeof Chip>["color"]>;
 
@@ -142,6 +144,10 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const { featureFlags } = useFeatureFlags();
   const isScimAllowed = isSCIMEnabled(subscription.plan, featureFlags);
   const [searchTerm, setSearchTerm] = useState("");
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedGroupId, setEditedGroupId] = useState<string | null>(null);
 
@@ -229,6 +235,8 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               columns={columns}
               filter={searchTerm}
               filterColumn="name"
+              pagination={pagination}
+              setPagination={setPagination}
             />
           </>
         ) : (

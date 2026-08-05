@@ -53,7 +53,7 @@ import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -208,6 +208,10 @@ export interface InputBarContainerProps {
   space?: SpaceType;
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
+  // When true, agents cannot be mentioned or selected from the editor (no `@`
+  // suggestions, no agent switch on paste). Used to lock a conversation to a
+  // single agent (e.g. the agent builder sidekick).
+  disableAgentMentions?: boolean;
   fileUploaderService: FileUploaderService;
   getDraft: () => {
     text: string;
@@ -230,9 +234,7 @@ export interface InputBarContainerProps {
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewLightType) => void;
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
-  onModelSelectionChange?: (
-    modelSelection: ModelSelectionType | undefined
-  ) => void;
+  modelSelectionRef?: React.MutableRefObject<ModelSelectionType | undefined>;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetMCPServerViews: () => void;
@@ -279,6 +281,7 @@ const InputBarContainer = ({
   actions,
   disableAutoFocus,
   disableUserMentions,
+  disableAgentMentions,
   isSubmitting,
   fileUploaderService,
   getDraft,
@@ -292,7 +295,7 @@ const InputBarContainer = ({
   onNodeUnselect,
   attachedNodes,
   onMCPServerViewSelect,
-  onModelSelectionChange,
+  modelSelectionRef,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
   selectedSpaceIds = EMPTY_SPACE_IDS,
@@ -329,6 +332,7 @@ const InputBarContainer = ({
   );
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
+  const clientType = useClientType();
   const { selectedSingleAgent, setSelectedSingleAgent, isLoadingGoTemplate } =
     useContext(InputBarContext);
 
@@ -374,8 +378,7 @@ const InputBarContainer = ({
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
-  const clientType = useClientType();
-  const isWidthConstrained = isMobile || clientType === "extension";
+  const isWidthConstrained = useIsWidthConstrained();
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
 
   const [selectedNode, setSelectedNode] =
@@ -632,6 +635,9 @@ const InputBarContainer = ({
   );
 
   onFirstAgentMentionPasteRef.current = (agentId: string) => {
+    if (disableAgentMentions) {
+      return;
+    }
     const agent = agentsById.get(agentId);
     if (agent) {
       setSelectedSingleAgent(toRichAgentMentionType(agent));
@@ -741,6 +747,11 @@ const InputBarContainer = ({
     onEnterKeyDown: onEnterKeyDownWithShake,
     disableAutoFocus,
     disableUserMentions,
+    disableAgentMentions,
+    // In the input bar, disabling agent mentions means locking the
+    // conversation to its current agent, so also strip any agent mention that
+    // reaches the document (e.g. pasted content).
+    stripAgentMentions: disableAgentMentions,
     onUrlDetected: handleUrlDetected,
     onAgentSelect: onSingleAgentSelect,
     owner,
@@ -1806,7 +1817,7 @@ const InputBarContainer = ({
                       lastRequestedModel={lastRequestedModel}
                       onAgentRemove={handleAgentRemove}
                       onMCPServerViewSelect={onMCPServerViewSelect}
-                      onModelSelectionChange={onModelSelectionChange}
+                      modelSelectionRef={modelSelectionRef}
                       onNodeSelect={onNodeSelect}
                       onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}
@@ -1972,7 +1983,7 @@ const InputBarContainer = ({
                           buttonSize={buttonSize}
                           side={conversation ? "top" : "bottom"}
                           disabled={disableInput}
-                          onSelectionChange={onModelSelectionChange}
+                          selectionRef={modelSelectionRef}
                         />
                       )}
                     {conversation && (

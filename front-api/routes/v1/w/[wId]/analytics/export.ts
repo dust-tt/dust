@@ -84,17 +84,14 @@ import {
 } from "@app/lib/api/analytics/export_tables";
 import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted at /api/v1/w/:wId/analytics/export. publicApiAuth is applied by the
 // parent v1 workspace sub-app, so ctx.get("auth") is always available here.
 const app = publicApiApp();
 
-// TODO(api-key-scopes): tighten to admin-only once existing builder-scoped
-// integrations have been migrated to admin keys. Builder is temporarily
-// accepted to avoid breaking current callers.
-app.get("/", ensureIsBuilder(), async (ctx) => {
+app.get("/", ensureIsAdmin(), async (ctx) => {
   const auth = ctx.get("auth");
 
   if (!auth.isKey()) {

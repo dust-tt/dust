@@ -11,9 +11,9 @@ export class OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream extends WithOpen
   // Regional (data residency) endpoints are charged a 10% uplift for models
   // released on or after March 5, 2026.
   static readonly tokenPricing = {
-    cacheHit: 0.11,
-    standardInput: 1.1,
-    standardOutput: 6.6,
+    cacheHit: 0.022,
+    standardInput: 0.22,
+    standardOutput: 1.32,
   };
 
   static readonly region = EUROPE;

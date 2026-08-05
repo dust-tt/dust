@@ -38,30 +38,6 @@ export function useLabsTranscriptsConfiguration({
   };
 }
 
-export function useLabsTranscriptsDefaultConfiguration({
-  owner,
-  provider,
-}: {
-  owner: LightWorkspaceType;
-  provider: string;
-}) {
-  const { fetcher } = useFetcher();
-  const defaultConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
-    fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/labs/transcripts/default?provider=${provider}`,
-    defaultConfigurationFetcher
-  );
-
-  return {
-    defaultConfiguration: data ? data.configuration : null,
-    isDefaultConfigurationLoading: !error && !data,
-    isDefaultConfigurationError: error,
-    mutateDefaultConfiguration: mutate,
-  };
-}
-
 export function useLabsTranscriptsIsConnectorConnected({
   owner,
   provider,

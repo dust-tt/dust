@@ -218,6 +218,7 @@ export function getAttachmentFromFileContentFragment(
     ...baseAttachment,
     fileId,
     path: cf.path ?? null,
+    processedPath: cf.processedPath ?? null,
     source: "user",
     createdAt: cf.created,
   };

@@ -3,7 +3,6 @@ import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentCostStats } from "@app/types/api/assistant/observability/overview";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -135,10 +134,11 @@ export async function fetchAgentCostStats(
     bool: {
       filter: [
         baseQuery,
-        // Mirror the billed scope: failed messages carry a non-zero
-        // `cost.full_awu` in the index but are never billed by Metronome.
-        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
-        { range: { "cost.full_awu": { gt: 0 } } },
+        // Billed cost per execution: `cost.billable_awu` is already 0 for the
+        // non-billable (errored terminal) part, so no status filter is needed and
+        // failed multi-execution messages still contribute their non-error work.
+        // `> 0` keeps this to messages that actually incurred billed cost.
+        { range: { "cost.billable_awu": { gt: 0 } } },
       ],
     },
   };
@@ -148,10 +148,10 @@ export async function fetchAgentCostStats(
       by_agent: {
         terms: { field: "agent_id", size: agentIds.length },
         aggs: {
-          total_cost: { sum: { field: "cost.full_awu" } },
-          avg_cost: { avg: { field: "cost.full_awu" } },
+          total_cost: { sum: { field: "cost.billable_awu" } },
+          avg_cost: { avg: { field: "cost.billable_awu" } },
           median_cost: {
-            percentiles: { field: "cost.full_awu", percents: [50] },
+            percentiles: { field: "cost.billable_awu", percents: [50] },
           },
         },
       },

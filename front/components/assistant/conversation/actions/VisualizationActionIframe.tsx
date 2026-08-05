@@ -21,6 +21,8 @@ import type {
   CallFunctionRequest,
   CommandResultMap,
   EditTextFn,
+  ScopedWorkspaceUserIdentity,
+  UserIdentityState,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
@@ -32,6 +34,7 @@ import {
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   AlertCircle,
   Button,
@@ -74,7 +77,32 @@ type ProtectedVisualization = BaseVisualization & {
 
 export type Visualization = PublicVisualization | ProtectedVisualization;
 
-export type FrameAccess = "conversation" | "public-anonymous" | "public-member";
+export function getFrameRuntimeAccess(
+  workspaceId: string,
+  canInvokeFunctions: boolean,
+  scopedUserIdentity?: ScopedWorkspaceUserIdentity
+): {
+  canInvokeFunctions: boolean;
+  userIdentity: UserIdentityState;
+} {
+  const userIdentity: UserIdentityState =
+    scopedUserIdentity?.workspaceId === workspaceId
+      ? {
+          isAuthenticated: true,
+          isWorkspaceMember: true,
+          user: scopedUserIdentity.user,
+        }
+      : {
+          isAuthenticated: false,
+          isWorkspaceMember: false,
+          user: null,
+        };
+
+  return {
+    canInvokeFunctions: canInvokeFunctions && userIdentity.isWorkspaceMember,
+    userIdentity,
+  };
+}
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
@@ -134,10 +162,19 @@ const getExtensionFromBlob = (blob: Blob): string => {
   return mimeToExt[blob.type] || "txt"; // Default to 'txt' if mime type is unknown.
 };
 
+// Workspace-scoped viewer of the frame. Needed by the blocked-action cards, which are also
+// rendered on shared frames, outside of any AuthProvider. Null for anonymous viewers, who cannot
+// invoke functions and therefore never get a blocked action.
+export interface FrameViewer {
+  owner: LightWorkspaceType;
+  user: UserType;
+}
+
 interface SandboxFunctionInvocationProps {
   workspaceId: string;
   functionId: string;
   invocationId: string;
+  onBlocked: (eventId: string, event: SandboxFunctionBlockingEvent) => void;
   onSettle: (
     invocationId: string,
     result: Result<unknown, SandboxFunctionCallError>
@@ -156,39 +193,16 @@ type QueuedBlockingEvent = {
   event: SandboxFunctionBlockingEvent;
 };
 
-// Consumes one invocation's event stream, settles the pending iframe call, and renders the
-// approval or authentication card over the frame while a tool is blocked on user input.
+// Consumes one invocation's event stream: reports the tool executions it blocks on and settles the
+// pending iframe call. Renders nothing — the blocked-action card is owned by the parent, which sees
+// every in-flight invocation.
 function SandboxFunctionInvocation({
   workspaceId,
   functionId,
   invocationId,
+  onBlocked,
   onSettle,
 }: SandboxFunctionInvocationProps) {
-  const [blockedActions, setBlockedActions] = useState<QueuedBlockingEvent[]>(
-    []
-  );
-
-  const enqueueBlockedAction = useCallback(
-    (eventId: string, event: SandboxFunctionBlockingEvent) => {
-      setBlockedActions((prev) => {
-        // The stream can re-deliver or supersede an event after a reconnect or a resolution:
-        // replace by actionId, keeping the newest delivery.
-        const existingIndex = prev.findIndex(
-          (a) => a.event.actionId === event.actionId
-        );
-        const entry = { eventId, event };
-        return existingIndex === -1
-          ? [...prev, entry]
-          : prev.map((a, index) => (index === existingIndex ? entry : a));
-      });
-    },
-    []
-  );
-
-  const removeBlockedAction = useCallback((eventId: string) => {
-    setBlockedActions((prev) => prev.filter((a) => a.eventId !== eventId));
-  }, []);
-
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
@@ -222,7 +236,7 @@ function SandboxFunctionInvocation({
             break;
           case "tool_approve_execution":
           case "tool_personal_auth_required":
-            enqueueBlockedAction(eventPayload.eventId, eventPayload.data);
+            onBlocked(eventPayload.eventId, eventPayload.data);
             break;
           default:
             assertNeverAndIgnore(eventPayload.data);
@@ -239,7 +253,7 @@ function SandboxFunctionInvocation({
         );
       }
     },
-    [invocationId, onSettle, enqueueBlockedAction]
+    [invocationId, onSettle, onBlocked]
   );
 
   const onTerminalError = useCallback(() => {
@@ -259,44 +273,85 @@ function SandboxFunctionInvocation({
     { onTerminalError }
   );
 
-  const blockedAction = blockedActions.at(0);
-  if (!blockedAction) {
-    return null;
-  }
+  return null;
+}
+
+interface SandboxFunctionBlockedActionProps {
+  // The blocked actions the card resolves together, most often just one. A Frame can have several
+  // invocations in flight, and a single personal connection unblocks all of the ones waiting on it.
+  blockedActions: QueuedBlockingEvent[];
+  viewer: FrameViewer;
+  onResolved: () => void;
+}
+
+// Overlays the Frame while a tool is blocked on user input. Keyed by the delivery eventId of the
+// first entry so consecutive events of the same type never reuse local card state.
+function SandboxFunctionBlockedAction({
+  blockedActions,
+  viewer,
+  onResolved,
+}: SandboxFunctionBlockedActionProps) {
+  const [{ eventId, event }] = blockedActions;
 
   let blockedActionCard: React.ReactNode;
-  switch (blockedAction.event.type) {
+  switch (event.type) {
     case "tool_approve_execution":
       blockedActionCard = (
         <SandboxFunctionToolApprovalCard
-          key={blockedAction.eventId}
-          event={blockedAction.event}
-          onResolved={() => removeBlockedAction(blockedAction.eventId)}
+          key={eventId}
+          event={event}
+          viewer={viewer}
+          onResolved={onResolved}
         />
       );
       break;
     case "tool_personal_auth_required":
       blockedActionCard = (
         <SandboxFunctionPersonalAuthCard
-          key={blockedAction.eventId}
-          event={blockedAction.event}
-          onResolved={() => removeBlockedAction(blockedAction.eventId)}
+          key={eventId}
+          events={blockedActions
+            .map((a) => a.event)
+            .filter(
+              (e): e is SandboxFunctionToolPersonalAuthRequiredEvent =>
+                e.type === "tool_personal_auth_required"
+            )}
+          viewer={viewer}
+          onResolved={onResolved}
         />
       );
       break;
     default:
-      assertNeverAndIgnore(blockedAction.event);
+      assertNeverAndIgnore(event);
       blockedActionCard = null;
   }
 
-  // Overlays the frame while the tool is blocked on user input. Cards are keyed by the delivery
-  // eventId so consecutive events of the same type never reuse local card state.
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-muted-foreground/75 p-4">
       <div className="flex w-full max-w-xl justify-center">
         {blockedActionCard}
       </div>
     </div>
+  );
+}
+
+// The blocked actions the next card presents: the oldest one, plus everything waiting on the same
+// personal connection, which one trip through the authentication flow resolves at once. Approvals
+// are per tool call, so they are never grouped.
+function nextBlockedActionGroup(
+  blockedActions: QueuedBlockingEvent[]
+): QueuedBlockingEvent[] | null {
+  const [blockedAction] = blockedActions;
+  if (!blockedAction) {
+    return null;
+  }
+  if (blockedAction.event.type !== "tool_personal_auth_required") {
+    return [blockedAction];
+  }
+  const { mcpServerId } = blockedAction.event.authError;
+  return blockedActions.filter(
+    (a) =>
+      a.event.type === "tool_personal_auth_required" &&
+      a.event.authError.mcpServerId === mcpServerId
   );
 }
 
@@ -311,6 +366,7 @@ function useVisualizationDataHandler({
   setErrorMessage,
   visualization,
   vizIframeRef,
+  userIdentity,
   waitForSandboxFunctionInvocationResult,
   workspaceId,
 }: {
@@ -326,6 +382,7 @@ function useVisualizationDataHandler({
   setErrorMessage: (v: SetStateAction<string | null>) => void;
   visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
+  userIdentity: UserIdentityState;
   waitForSandboxFunctionInvocationResult: (params: {
     functionId: string;
     invocationId: string;
@@ -417,6 +474,10 @@ function useVisualizationDataHandler({
           break;
         }
 
+        case "getUserIdentity":
+          sendResponseToIframe(data, userIdentity, event.source);
+          break;
+
         case "getFile":
           const fileBlob = await getFileBlob(data.params.fileId);
 
@@ -491,13 +552,14 @@ function useVisualizationDataHandler({
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
+    userIdentity,
     sendNotification,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
   ]);
 }
 
-export function CodeDrawer({
+function CodeDrawer({
   isOpened,
   onClose,
   code,
@@ -527,14 +589,16 @@ export function CodeDrawer({
   );
 }
 
-interface VisualizationActionIframeProps {
+export interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
+  canInvokeFunctions: boolean;
   conversationId: string | null;
   isEditable?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
-  frameAccess?: FrameAccess;
+  scopedUserIdentity?: ScopedWorkspaceUserIdentity;
   spaceId?: string;
+  viewer: FrameViewer | null;
   visualization: Visualization;
   vizUrl: string;
   workspaceId: string;
@@ -568,6 +632,38 @@ export const VisualizationActionIframe = forwardRef<
   }
   const invocationResolvers = invocationResolversRef.current;
 
+  // Tool executions blocked on user input, across every in-flight invocation.
+  const [blockedActions, setBlockedActions] = useState<QueuedBlockingEvent[]>(
+    []
+  );
+
+  const enqueueBlockedAction = useCallback(
+    (eventId: string, event: SandboxFunctionBlockingEvent) => {
+      setBlockedActions((prev) => {
+        // The stream can re-deliver or supersede an event after a reconnect or a resolution:
+        // replace by actionId, keeping the newest delivery.
+        const existingIndex = prev.findIndex(
+          (a) => a.event.actionId === event.actionId
+        );
+        const entry = { eventId, event };
+        return existingIndex === -1
+          ? [...prev, entry]
+          : prev.map((a, index) => (index === existingIndex ? entry : a));
+      });
+    },
+    []
+  );
+
+  const removeBlockedActions = useCallback(
+    (resolved: QueuedBlockingEvent[]) => {
+      const resolvedEventIds = new Set(resolved.map((a) => a.eventId));
+      setBlockedActions((prev) =>
+        prev.filter((a) => !resolvedEventIds.has(a.eventId))
+      );
+    },
+    []
+  );
+
   const waitForSandboxFunctionInvocationResult = useCallback(
     ({
       functionId,
@@ -593,6 +689,10 @@ export const VisualizationActionIframe = forwardRef<
       setActiveInvocations((prev) =>
         prev.filter((invocation) => invocation.invocationId !== invocationId)
       );
+      // A settled invocation can no longer be unblocked: drop any card it was still waiting on.
+      setBlockedActions((prev) =>
+        prev.filter((a) => a.event.invocationId !== invocationId)
+      );
       resolve?.(result);
     },
     [invocationResolvers]
@@ -615,17 +715,32 @@ export const VisualizationActionIframe = forwardRef<
 
   const {
     agentConfigurationId,
+    canInvokeFunctions,
     conversationId,
     isEditable = false,
     isInDrawer = false,
     onEditText,
+    scopedUserIdentity,
     spaceId,
+    viewer,
     visualization,
     workspaceId,
-    frameAccess = "conversation",
   } = props;
 
-  const isPublic = frameAccess !== "conversation";
+  const blockedActionGroup = useMemo(
+    () => nextBlockedActionGroup(blockedActions),
+    [blockedActions]
+  );
+
+  const runtimeAccess = useMemo(() => {
+    return getFrameRuntimeAccess(
+      workspaceId,
+      canInvokeFunctions,
+      scopedUserIdentity
+    );
+  }, [canInvokeFunctions, scopedUserIdentity, workspaceId]);
+
+  const isPublic = visualization.accessToken !== undefined;
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
@@ -677,10 +792,10 @@ export const VisualizationActionIframe = forwardRef<
       Result<SandboxFunctionInvocationType, SandboxFunctionCallError>
     > => {
       try {
-        if (frameAccess === "public-anonymous") {
+        if (!runtimeAccess.canInvokeFunctions) {
           return new Err({
             code: "not_supported",
-            message: "Pod functions are not supported in shared frames.",
+            message: "Function calls are not available in this Frame.",
           });
         }
 
@@ -726,7 +841,7 @@ export const VisualizationActionIframe = forwardRef<
         });
       }
     },
-    [frameAccess, workspaceId]
+    [runtimeAccess.canInvokeFunctions, workspaceId]
   );
 
   useVisualizationDataHandler({
@@ -739,6 +854,7 @@ export const VisualizationActionIframe = forwardRef<
     setErrorMessage,
     visualization,
     vizIframeRef,
+    userIdentity: runtimeAccess.userIdentity,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
   });
@@ -806,9 +922,18 @@ export const VisualizationActionIframe = forwardRef<
           workspaceId={workspaceId}
           functionId={invocation.functionId}
           invocationId={invocation.invocationId}
+          onBlocked={enqueueBlockedAction}
           onSettle={settleSandboxFunctionInvocation}
         />
       ))}
+      {/* Anonymous viewers cannot invoke functions, so they never reach a blocked action. */}
+      {viewer && blockedActionGroup && (
+        <SandboxFunctionBlockedAction
+          blockedActions={blockedActionGroup}
+          viewer={viewer}
+          onResolved={() => removeBlockedActions(blockedActionGroup)}
+        />
+      )}
       <div
         className={cn(
           "relative w-full overflow-hidden",

@@ -2585,6 +2585,7 @@ describe("findPathsToConfiguration", () => {
       },
       oAuthUseCase: null,
       editedByUser: null,
+      isRestrictedToSkills: false,
       toolsMetadata: [
         {
           toolName: "tool_without_user_config",
@@ -2951,6 +2952,7 @@ describe("findPathsToConfiguration", () => {
       },
       oAuthUseCase: null,
       editedByUser: null,
+      isRestrictedToSkills: false,
       toolsMetadata: [{ toolName: "tool", permission: "high", enabled: true }],
     };
 
@@ -3057,6 +3059,7 @@ describe("findPathsToConfiguration", () => {
       },
       oAuthUseCase: null,
       editedByUser: null,
+      isRestrictedToSkills: false,
       toolsMetadata: [{ toolName: "tool", permission: "high", enabled: true }],
     };
 

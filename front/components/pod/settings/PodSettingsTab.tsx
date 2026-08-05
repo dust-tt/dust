@@ -98,9 +98,6 @@ export function PodSettingsTab({
   const { hasFeature } = useFeatureFlags();
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
-  const isDefaultAgentEnabled =
-    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgentFeature;
-  const isDefaultSkillsEnabled = hasFeature("pod_default_skills");
   // The pod sandbox network allowlist is workspace-admin only (matching the
   // API) and part of the Sandbox Functions surface.
   // Mirrors the API gate (workspace-admin + sandbox_functions FF; pod
@@ -133,7 +130,6 @@ export function PodSettingsTab({
     owner,
     podDefaultAgentId: podMetadata?.defaultAgentId,
     hasWorkspaceDefaultAgentFeature,
-    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
   });
   // Fall back to @dust when the default agent isn't available to the
   // current user (e.g. unpublished/deleted). This is the agent shown in the
@@ -180,7 +176,6 @@ export function PodSettingsTab({
   const { skills } = useSkills({
     owner,
     status: "active",
-    disabled: !isDefaultSkillsEnabled,
   });
   const [skillSearchText, setSkillSearchText] = useState("");
   const [isSkillPickerOpen, setIsSkillPickerOpen] = useState(false);
@@ -549,150 +544,144 @@ export function PodSettingsTab({
           </div>
         </div>
 
-        {isDefaultAgentEnabled && (
-          <div className="flex w-full flex-col gap-2">
-            <div className="heading-lg">Default agent</div>
-            <p className="text-sm text-muted-foreground">
-              The agent pre-selected when anyone starts a new conversation in
-              this Pod.{" "}
-              {hasWorkspaceDefaultAgentFeature &&
-                "When unset, it inherits the Workspace default agent."}
-            </p>
-            <div className="flex items-center gap-2">
-              {isPodEditor ? (
-                <>
-                  <AgentPicker
-                    owner={owner}
-                    agents={agentConfigurations}
-                    showFooterButtons={false}
-                    onItemClick={(agent) => saveDefaultAgent(agent.sId)}
-                    pickerButton={renderDefaultAgentPill(true)}
-                  />
-                  {/* Clearing the pod default reverts to inheriting the
-                      workspace default. Only shown when the workspace-default
-                      feature is on and an explicit pod default is set. */}
-                  {hasWorkspaceDefaultAgentFeature &&
-                    podMetadata?.defaultAgentId && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon={XCircle}
-                        tooltip="Reset to workspace default"
-                        onClick={() => void saveDefaultAgent(null)}
-                      />
-                    )}
-                </>
-              ) : (
-                renderDefaultAgentPill(false)
-              )}
-            </div>
-          </div>
-        )}
-
-        {isDefaultSkillsEnabled && (
-          <div className="flex w-full flex-col gap-2">
-            <div className="heading-lg">Default Skills</div>
-            <p className="text-sm text-muted-foreground">
-              The skills pre-selected when anyone starts a new conversation in
-              this Pod. Members can still edit the skills in each conversation.
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Selected skills, each rendered as a pill matching conversation styling.
-               Editors get an inline remove control. */}
-              {selectedDefaultSkills.map((skill) => (
-                <div
-                  key={skill.sId}
-                  aria-label={`Default skill: ${skill.name}`}
-                  className={cn(
-                    DEFAULT_PILL_BASE_CLASSNAME,
-                    !isPodEditor && "opacity-50"
-                  )}
-                >
-                  <Avatar size="xs" icon={getSkillAvatarIcon(skill)} />
-                  <span className="grow truncate notranslate">
-                    {skill.name}
-                  </span>
-                  {isPodEditor && (
-                    <button
-                      type="button"
-                      aria-label={`Remove ${skill.name}`}
-                      className="-mr-1 flex items-center text-faint hover:text-primary"
-                      onClick={() => void removeDefaultSkill(skill.sId)}
-                    >
-                      <Icon visual={XCircle} size="xs" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              {isPodEditor && (
-                <DropdownMenu
-                  open={isSkillPickerOpen}
-                  onOpenChange={(open) => {
-                    setIsSkillPickerOpen(open);
-                    if (open) {
-                      setSkillSearchText("");
-                    }
-                  }}
-                >
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Add a default skill"
-                      className={cn(
-                        DEFAULT_PILL_BASE_CLASSNAME,
-                        DEFAULT_PILL_INTERACTIVE_CLASSNAME
-                      )}
-                    >
-                      <Icon visual={ShapesPlus} size="xs" />
-                      <span className="grow truncate">Add skill</span>
-                      <Icon
-                        visual={ChevronDown}
-                        size="xs"
-                        className="-mr-1 text-faint"
-                      />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    className="w-80"
-                    align="start"
-                    dropdownHeaders={skillPickerDropdownHeaders}
-                  >
-                    <CapabilitiesPickerItemsList
-                      emptyMessage={
-                        normalizedSkillSearch.length > 0
-                          ? "No skills found"
-                          : "No more skills to add"
-                      }
-                      items={addableSkills.map((skill) => {
-                        const SkillAvatar = getSkillAvatarIcon(skill);
-
-                        return {
-                          kind: "skill" as const,
-                          skill,
-                          id: `pod-default-skills-picker-${skill.sId}`,
-                          icon: <SkillAvatar size="xs" />,
-                          label: skill.name,
-                          sortName: skill.name.toLowerCase(),
-                          description: skill.userFacingDescription ?? undefined,
-                        };
-                      })}
-                      onItemSelect={(item) => {
-                        if (item.kind === "skill") {
-                          void addDefaultSkill(item.skill.sId);
-                        }
-                      }}
+        <div className="flex w-full flex-col gap-2">
+          <div className="heading-lg">Default agent</div>
+          <p className="text-sm text-muted-foreground">
+            The agent pre-selected when anyone starts a new conversation in this
+            Pod.{" "}
+            {hasWorkspaceDefaultAgentFeature &&
+              "When unset, it inherits the Workspace default agent."}
+          </p>
+          <div className="flex items-center gap-2">
+            {isPodEditor ? (
+              <>
+                <AgentPicker
+                  owner={owner}
+                  agents={agentConfigurations}
+                  showFooterButtons={false}
+                  onItemClick={(agent) => saveDefaultAgent(agent.sId)}
+                  pickerButton={renderDefaultAgentPill(true)}
+                />
+                {/* Clearing the pod default reverts to inheriting the
+                    workspace default. Only shown when the workspace-default
+                    feature is on and an explicit pod default is set. */}
+                {hasWorkspaceDefaultAgentFeature &&
+                  podMetadata?.defaultAgentId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={XCircle}
+                      tooltip="Reset to workspace default"
+                      onClick={() => void saveDefaultAgent(null)}
                     />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              {!isPodEditor && selectedDefaultSkills.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No default skills configured.
-                </p>
-              )}
-            </div>
+                  )}
+              </>
+            ) : (
+              renderDefaultAgentPill(false)
+            )}
           </div>
-        )}
+        </div>
+
+        <div className="flex w-full flex-col gap-2">
+          <div className="heading-lg">Default Skills</div>
+          <p className="text-sm text-muted-foreground">
+            The skills pre-selected when anyone starts a new conversation in
+            this Pod. Members can still edit the skills in each conversation.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Selected skills, each rendered as a pill matching conversation styling.
+             Editors get an inline remove control. */}
+            {selectedDefaultSkills.map((skill) => (
+              <div
+                key={skill.sId}
+                aria-label={`Default skill: ${skill.name}`}
+                className={cn(
+                  DEFAULT_PILL_BASE_CLASSNAME,
+                  !isPodEditor && "opacity-50"
+                )}
+              >
+                <Avatar size="xs" icon={getSkillAvatarIcon(skill)} />
+                <span className="grow truncate notranslate">{skill.name}</span>
+                {isPodEditor && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${skill.name}`}
+                    className="-mr-1 flex items-center text-faint hover:text-primary"
+                    onClick={() => void removeDefaultSkill(skill.sId)}
+                  >
+                    <Icon visual={XCircle} size="xs" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {isPodEditor && (
+              <DropdownMenu
+                open={isSkillPickerOpen}
+                onOpenChange={(open) => {
+                  setIsSkillPickerOpen(open);
+                  if (open) {
+                    setSkillSearchText("");
+                  }
+                }}
+              >
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Add a default skill"
+                    className={cn(
+                      DEFAULT_PILL_BASE_CLASSNAME,
+                      DEFAULT_PILL_INTERACTIVE_CLASSNAME
+                    )}
+                  >
+                    <Icon visual={ShapesPlus} size="xs" />
+                    <span className="grow truncate">Add skill</span>
+                    <Icon
+                      visual={ChevronDown}
+                      size="xs"
+                      className="-mr-1 text-faint"
+                    />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="w-80"
+                  align="start"
+                  dropdownHeaders={skillPickerDropdownHeaders}
+                >
+                  <CapabilitiesPickerItemsList
+                    emptyMessage={
+                      normalizedSkillSearch.length > 0
+                        ? "No skills found"
+                        : "No more skills to add"
+                    }
+                    items={addableSkills.map((skill) => {
+                      const SkillAvatar = getSkillAvatarIcon(skill);
+
+                      return {
+                        kind: "skill" as const,
+                        skill,
+                        id: `pod-default-skills-picker-${skill.sId}`,
+                        icon: <SkillAvatar size="xs" />,
+                        label: skill.name,
+                        sortName: skill.name.toLowerCase(),
+                        description: skill.userFacingDescription ?? undefined,
+                      };
+                    })}
+                    onItemSelect={(item) => {
+                      if (item.kind === "skill") {
+                        void addDefaultSkill(item.skill.sId);
+                      }
+                    }}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {!isPodEditor && selectedDefaultSkills.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No default skills configured.
+              </p>
+            )}
+          </div>
+        </div>
 
         <div className="flex w-full flex-col gap-2">
           <div className="flex flex-col border-y border-border">

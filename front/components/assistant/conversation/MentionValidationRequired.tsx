@@ -1,30 +1,39 @@
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useMentionValidation } from "@app/lib/swr/mentions";
+import { useUserMemory } from "@app/lib/swr/user";
 import type {
   ConversationWithoutContentType,
   RichMentionWithStatus,
 } from "@app/types/assistant/conversation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   ActionCardBlock,
   Avatar,
   Button,
+  InfoCircle,
   MessageChatSquare,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+
+type ValidatableMention = Extract<
+  RichMentionWithStatus,
+  {
+    status:
+      | "pending_conversation_access"
+      | "pending_project_membership"
+      | "agent_restricted_by_space_usage";
+  }
+>;
 
 interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  mention: Extract<
-    RichMentionWithStatus,
-    {
-      status: "pending_conversation_access" | "pending_project_membership";
-    }
-  >;
+  mention: ValidatableMention;
   conversation: ConversationWithoutContentType;
   message: VirtuosoMessage;
 }
@@ -37,14 +46,19 @@ export function MentionValidationRequired({
   message,
 }: MentionValidationRequiredProps) {
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const hasUserMemory = hasFeature("user_memory");
+  const { isMemoryEnabled } = useUserMemory({
+    owner,
+    disabled: !hasUserMemory,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isProjectMembership = mention.status === "pending_project_membership";
 
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
     messageId: message.sId,
-    isProjectConversation: isProjectMembership,
+    isProjectConversation: mention.status === "pending_project_membership",
   });
 
   const canCurrentUserRespond = useMemo(
@@ -74,34 +88,116 @@ export function MentionValidationRequired({
     }
   };
 
-  if (!canCurrentUserRespond) {
+  if (!canCurrentUserRespond || mention.dismissed) {
     return null;
   }
 
-  const title = isProjectMembership
-    ? `Add ${mention.label} to this Pod?`
-    : `Invite ${mention.label} to this conversation?`;
+  const { status } = mention;
 
-  const description = isAgentMessageWithStreaming(message) ? (
-    <>
-      <span className="font-semibold">@{message.configuration.name}</span>{" "}
-      mentioned <span className="font-semibold">{mention.label}</span>.
-      {isProjectMembership
-        ? " Do you want to add them to this Pod?"
-        : " Do you want to invite them? They'll see the full history and be able to reply."}
-    </>
-  ) : isProjectMembership ? (
-    "They'll have access to all Pod conversations."
-  ) : (
-    "They'll see the full history and be able to reply."
-  );
+  let title: string;
+  switch (status) {
+    case "agent_restricted_by_space_usage":
+      title = `Run ${mention.label} in this Pod conversation?`;
+      break;
+    case "pending_project_membership":
+      title = `Add ${mention.label} to this Pod?`;
+      break;
+    case "pending_conversation_access":
+      title = `Invite ${mention.label} to this conversation?`;
+      break;
+    default:
+      assertNever(status);
+  }
+
+  let description: ReactNode;
+  switch (status) {
+    case "agent_restricted_by_space_usage":
+      description = (
+        <>
+          <span className="font-semibold">{mention.label}</span> uses at least
+          one private space. If you run it here, its outputs will be visible to
+          Pod members who may not have access to those spaces.
+        </>
+      );
+      break;
+    case "pending_project_membership":
+      description = isAgentMessageWithStreaming(message) ? (
+        <>
+          <span className="font-semibold">@{message.configuration.name}</span>{" "}
+          mentioned <span className="font-semibold">{mention.label}</span>. Do
+          you want to add them to this Pod?
+        </>
+      ) : (
+        "They'll have access to all Pod conversations."
+      );
+      break;
+    case "pending_conversation_access":
+      description = isAgentMessageWithStreaming(message) ? (
+        <>
+          <span className="font-semibold">@{message.configuration.name}</span>{" "}
+          mentioned <span className="font-semibold">{mention.label}</span>. Do
+          you want to invite them? They'll see the full history and be able to
+          reply.
+        </>
+      ) : (
+        "They'll see the full history and be able to reply."
+      );
+      break;
+    default:
+      assertNever(status);
+  }
+
+  // Inviting someone to a conversation or adding them to a Pod shows the
+  // conversation to other people, so we warn the inviter (if they have memory)
+  // before they confirm
+  const showMemoryWarning =
+    hasUserMemory &&
+    isMemoryEnabled &&
+    (status === "pending_conversation_access" ||
+      status === "pending_project_membership");
+
+  const memoryWarning = showMemoryWarning ? (
+    <span className="mt-2 flex items-start gap-1.5 text-muted-foreground">
+      <InfoCircle className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>
+        The content of your personal memory may be disclosed to invited users.
+      </span>
+    </span>
+  ) : null;
+
+  let approveLabel: string;
+  switch (status) {
+    case "agent_restricted_by_space_usage":
+      approveLabel = "Run agent";
+      break;
+    case "pending_project_membership":
+      approveLabel = "Add to Pod";
+      break;
+    case "pending_conversation_access":
+      approveLabel = "Invite";
+      break;
+    default:
+      assertNever(status);
+  }
+
+  const visual =
+    mention.type === "agent" ? (
+      <Avatar visual={mention.pictureUrl} size="sm" />
+    ) : (
+      <Avatar icon={MessageChatSquare} size="sm" />
+    );
 
   return (
     <div className="my-3">
       <ActionCardBlock
         title={title}
-        visual={<Avatar icon={MessageChatSquare} size="sm" />}
-        description={description}
+        visual={visual}
+        description={
+          <>
+            {description}
+            {memoryWarning}
+          </>
+        }
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             <Button
@@ -114,7 +210,7 @@ export function MentionValidationRequired({
             <Button
               variant="highlight"
               size="sm"
-              label={isProjectMembership ? "Add to Pod" : "Invite"}
+              label={approveLabel}
               disabled={isSubmitting}
               isLoading={isSubmitting}
               onClick={handleApprove}

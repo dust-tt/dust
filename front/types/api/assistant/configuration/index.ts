@@ -10,7 +10,7 @@ export type GetAgentConfigurationsResponseBody = z.infer<
   typeof GetAgentConfigurationsResponseBodySchema
 >;
 
-export const PostAgentConfigurationResponseBodySchema = z.object({
+const PostAgentConfigurationResponseBodySchema = z.object({
   agentConfiguration: LightAgentConfigurationSchema,
 });
 export type PostAgentConfigurationResponseBody = z.infer<

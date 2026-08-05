@@ -9,7 +9,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
  * the Dust app configuration. The "run_dust_app" tool here is used for the
  * configuration flow where users select which Dust app to run.
  */
-export const RUN_DUST_APP_TOOLS_METADATA = [
+const RUN_DUST_APP_TOOLS_METADATA = [
   {
     name: "run_dust_app",
     description: "Run a Dust App with specified parameters.",

@@ -1,14 +1,18 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
+import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   computeRunKey,
   getToolBillingInfo,
+  getUsageType,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
@@ -16,6 +20,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
 import {
   addRateLimiterCount,
   getTimeframeSecondsFromLiteral,
@@ -147,7 +152,9 @@ export function buildAgentMessageCreditsBreakdownFromAnalytics({
       toolName: action.toolName,
       internalMCPServerName: action.internalMCPServerName,
       toolCostCategory,
-      free: matched.cost_awu === 0 && isToolExecutionStatusFinal(action.status),
+      // "Free" means the tool ran and its category priced it at zero, not that it never ran.
+      free:
+        matched.cost_awu === 0 && isToolExecutionStatusBillable(action.status),
       awu: matched.cost_awu,
     });
   }
@@ -169,11 +176,13 @@ export function computeAgentMessageCredits({
   actions: CreditActionMinimalInput[];
   contextOrigin: UserMessageOrigin | null;
 }): number | null {
-  const finalActions = actions.filter((a) =>
-    isToolExecutionStatusFinal(a.status)
+  // Unbillable actions already price at 0 through toolAwuFromAction. Filtering them here settles
+  // the other question, whether the message has anything to bill at all.
+  const billableActions = actions.filter((a) =>
+    isToolExecutionStatusBillable(a.status)
   );
 
-  if (runUsages.length === 0 && finalActions.length === 0) {
+  if (runUsages.length === 0 && billableActions.length === 0) {
     return null;
   }
 
@@ -182,7 +191,7 @@ export function computeAgentMessageCredits({
   // action), so it is grouping-invariant and stays message-level.
   return (
     intelligenceAwuFromRunUsagesGroupedByRunKey(runUsages, contextOrigin) +
-    toolAwuFromActions(finalActions, contextOrigin)
+    toolAwuFromActions(billableActions, contextOrigin)
   );
 }
 
@@ -224,8 +233,13 @@ export async function computeAndStoreAgentMessageCredits(
     return null;
   }
 
-  const { agentMessageModelId, status, runIds, triggeringUserMessageOrigin } =
-    creditContext;
+  const {
+    agentMessageModelId,
+    status,
+    runIds,
+    triggeringUserMessageOrigin,
+    previousCostCredits,
+  } = creditContext;
 
   if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
     return null;
@@ -242,8 +256,25 @@ export async function computeAndStoreAgentMessageCredits(
     });
   }
 
+  // Fetch the message's runs once — reused to compute cost and to tag usage type.
+  const runs = await RunResource.listByDustRunIds(auth, {
+    dustRunIds: [...new Set(runIds ?? [])],
+  });
+
+  // Persist the billing usage type on the run usages so free/user/programmatic
+  // consumption can be queried directly (e.g. free-usage monitoring). Reuses the
+  // same origin-based classification as the Metronome events.
+  const messageOrigin = triggeringUserMessageOrigin ?? "web";
+  await RunResource.setUsageTypeForRuns(auth, {
+    runs,
+    usageType: getUsageType(
+      isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin }),
+      messageOrigin
+    ),
+  });
+
   const [runUsages, actions] = await Promise.all([
-    fetchRunUsagesForAgentMessage(auth, runIds),
+    RunResource.listRunUsagesForRuns(auth, { runs }),
     AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessageModelId]),
   ]);
 
@@ -262,21 +293,28 @@ export async function computeAndStoreAgentMessageCredits(
     costCredits,
   });
 
+  // `costCredits` is the message-level running total (recomputed from all
+  // accumulated runIds + actions), and a message can be finalized multiple
+  // times (agent-loop early exit, tool confirmation, authentication resume,
+  // Temporal retry). The stored column is overwritten with the total, but the
+  // usage counters are additive — so only the newly-accrued delta since the
+  // last finalize (`total − previouslyStored`) may be recorded, or repeated
+  // finalizes would over-count. A retry with no new usage yields a 0 delta.
+  const recordedCostDelta =
+    costCredits !== null ? costCredits - (previousCostCredits ?? 0) : 0;
+
   const user = auth.user();
   const plan = auth.plan();
   const assistantLimits = plan?.limits.assistant;
   if (
     user &&
     assistantLimits &&
-    costCredits !== null &&
-    costCredits > 0 &&
+    recordedCostDelta > 0 &&
     assistantLimits.maxAwuCredits !== -1
   ) {
-    // Always record the credit cost unconditionally. The limit guard lives in
-    // isMessagesLimitReached (pre-message), which reads the count via getRateLimiterCount and
-    // blocks the next message once the total reaches maxAwuCredits. Using rateLimiter here was
-    // incorrect: its Lua script silently drops the write when count + costCredits > limit,
-    // causing the counter to stall below the limit and never trigger enforcement.
+    // The limit guard lives in isMessagesLimitReached (pre-message), which reads
+    // the count via getRateLimiterCount and blocks the next message once the
+    // total reaches maxAwuCredits.
     await addRateLimiterCount({
       key: makeFairUseAwuCreditsRateLimitKeyForUser(
         auth.getNonNullableWorkspace(),
@@ -286,25 +324,29 @@ export async function computeAndStoreAgentMessageCredits(
       timeframeSeconds: getTimeframeSecondsFromLiteral(
         assistantLimits.maxAwuCreditsTimeframe
       ),
-      incrementBy: costCredits,
+      incrementBy: recordedCostDelta,
       logger,
     });
   }
 
-  return costCredits;
-}
-
-async function fetchRunUsagesForAgentMessage(
-  auth: Authenticator,
-  runIds: string[] | null
-): Promise<(RunUsageType & { runKey: string | null })[]> {
-  const dustRunIds = [...new Set(runIds ?? [])];
-  if (dustRunIds.length === 0) {
-    return [];
+  // Record against the per-user spend-cap backup (Redis fixed-window counter
+  // over the contract billing cycle). Independent of the plan-level fair-use
+  // limiter above. Gated behind the same feature flag as enforcement so the
+  // counter only accrues where the backup is active; enforcement happens
+  // pre-message in `checkMessagesLimit`.
+  // The cycle override keeps the counter on the same window
+  // enforcement reads: the contract billing period on credit-priced plans, the
+  // UTC calendar month elsewhere (no contract to anchor on).
+  if (user && recordedCostDelta > 0) {
+    const featureFlags = await getFeatureFlags(auth);
+    if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
+      await recordUserSpendLimitUsage(auth, {
+        user,
+        incrementBy: recordedCostDelta,
+        cycle: spendLimitCycleOverrideForAuth(auth),
+      });
+    }
   }
 
-  // All runs are fetched from this message's own runIds, so every usage they
-  // produce belongs to this message.
-  const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
-  return RunResource.listRunUsagesForRuns(auth, { runs });
+  return costCredits;
 }

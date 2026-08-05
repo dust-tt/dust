@@ -16,7 +16,7 @@ export type SelfImprovingSkillsUsageCreateBlob = Omit<
   "workspaceId"
 >;
 
-export type SelfImprovingSkillsSpend = {
+type SelfImprovingSkillsSpend = {
   // Raw provider cost. Includes the markup only when returned by a
   // `WithMarkup` method.
   priceMicroUsd: number;

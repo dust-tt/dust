@@ -30,7 +30,7 @@ type Metrics = {
 
 export type MessageMetricsPoint = BaseMetricsPoint & Metrics;
 
-export type MetricName = keyof Metrics;
+type MetricName = keyof Metrics;
 
 export type KeyedTDigestPercentiles = Omit<
   estypes.AggregationsTDigestPercentilesAggregate,
@@ -214,13 +214,6 @@ export async function fetchMessageMetrics<K extends readonly (keyof Metrics)[]>(
 
   return new Ok(points);
 }
-
-export type GetErrorRateResponse = {
-  points: Pick<
-    MessageMetricsPoint,
-    "timestamp" | "count" | "failedMessages" | "errorRate"
-  >[];
-};
 
 export type GetLatencyResponse = {
   points: Pick<

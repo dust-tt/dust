@@ -20,7 +20,7 @@ export function PodTasksPanelMain() {
     normalizePodTaskSearchNeedle(debouncedTaskSearchQuery) !== "";
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6 mt-4">
       {isTasksLoading || frozenLastReadAt === undefined ? (
         <div className="flex justify-center py-4">
           <Spinner size="sm" />

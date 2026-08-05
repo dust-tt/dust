@@ -40,7 +40,7 @@ import { ConversationError } from "./conversation";
  * Error types for getAgentLoopData that indicate deleted or unavailable resources.
  * These are safe to ignore in callers since retrying won't make the data available.
  */
-export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
+const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "conversation_deleted",
   "agent_message_deleted",
   "user_message_deleted",
@@ -49,10 +49,10 @@ export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
 // Cache for 200 seconds, which maps to P95 execution time of the agent loop.
 const AGENT_CONFIGURATION_CACHE_TTL_MS = 200 * 1000;
 
-export type AgentLoopDataSoftDeleteErrorType =
+type AgentLoopDataSoftDeleteErrorType =
   (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
 
-export class AgentLoopDataError extends Error {
+class AgentLoopDataError extends Error {
   readonly type: AgentLoopDataSoftDeleteErrorType;
 
   constructor(type: AgentLoopDataSoftDeleteErrorType) {
@@ -79,7 +79,6 @@ export type ConversationCaching =
 async function getConversationForAgentLoop(
   auth: Authenticator,
   conversationId: string,
-  conversationBranchId: string | null,
   // These params are only used for cache key uniqueness.
   _workspaceId: string,
   _unicitySuffix: string
@@ -89,7 +88,6 @@ async function getConversationForAgentLoop(
     auth,
     conversationId,
     false,
-    conversationBranchId,
     PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
   );
   if (res.isErr()) {
@@ -101,8 +99,8 @@ async function getConversationForAgentLoop(
 function getCachedGetConversation(ttlMs: number) {
   return cacheWithRedis(
     getConversationForAgentLoop,
-    (_auth, conversationId, conversationBranchId, workspaceId, unicitySuffix) =>
-      `${workspaceId}:${conversationId}:${conversationBranchId}:${unicitySuffix}`,
+    (_auth, conversationId, workspaceId, unicitySuffix) =>
+      `${workspaceId}:${conversationId}:${unicitySuffix}`,
     {
       ttlMs,
       useDistributedLock: true,
@@ -115,12 +113,13 @@ export type AgentLoopArgs = {
   agentMessageVersion: number;
   conversationId: string;
   conversationTitle: string | null;
-  conversationBranchId: string | null;
 
   // Note that the original user message may not be the same as the parent message as agent might mention other agents.
   userMessageId: string;
   userMessageVersion: number;
-  userMessageOrigin?: UserMessageOrigin | null;
+  // Always set at launch time (the column is NOT NULL); consumers reading Temporal-serialized
+  // args from old workflow histories must still tolerate a missing value at runtime.
+  userMessageOrigin: UserMessageOrigin;
 
   caching?: ConversationCaching;
 
@@ -193,7 +192,6 @@ export async function getAgentLoopDataWithAuth(
     agentMessageVersion,
     caching,
     conversationId,
-    conversationBranchId,
     userMessageId,
     userMessageVersion,
   } = agentLoopArgs;
@@ -205,7 +203,6 @@ export async function getAgentLoopDataWithAuth(
       conversation = await cachedGetConversation(
         auth,
         conversationId,
-        conversationBranchId,
         auth.getNonNullableWorkspace().sId,
         caching.unicitySuffix
       );
@@ -235,7 +232,6 @@ export async function getAgentLoopDataWithAuth(
       auth,
       conversationId,
       false,
-      conversationBranchId,
       PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
     );
 

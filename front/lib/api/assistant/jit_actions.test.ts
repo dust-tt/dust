@@ -190,7 +190,7 @@ describe("getJITServers", () => {
         await FeatureFlagFactory.basic(auth, "disable_computer_feature");
       });
 
-      it("should not include skill_management server when agent has no skills", async () => {
+      it("should include skill_management server when agent has no skills", async () => {
         await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
         const jitServers = await getJITServers(auth, {
@@ -203,26 +203,138 @@ describe("getJITServers", () => {
           (server) => server.name === "skill_management"
         );
 
-        expect(skillManagementServer).toBeUndefined();
+        expect(skillManagementServer).toBeDefined();
       });
 
-      it("should not include skill_management server when agent only has system skills", async () => {
-        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+      it("does not equip favorite skills when the feature flag is disabled", async () => {
         await SkillFactory.linkGlobalSkillToAgent(auth, {
-          globalSkillId: "discover_tools",
+          globalSkillId: "discover_skills",
           agentConfigurationId: agentConfig.id,
         });
+
+        const skill = await SkillFactory.create(auth, {
+          name: "Disabled Favorite Skill",
+        });
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { equippedSkills, favoriteSkills } =
+          await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration: agentConfig,
+            conversation: {
+              ...conversation,
+              spaceId: conversationsSpace.sId,
+            },
+          });
+        expect(equippedSkills.map((s) => s.sId)).not.toContain(skill.sId);
+        expect(favoriteSkills.map((s) => s.sId)).not.toContain(skill.sId);
+      });
+
+      it("does not equip favorite skills without discover_skills", async () => {
+        await FeatureFlagFactory.basic(auth, "skill_favorites");
+
+        const skill = await SkillFactory.create(auth, {
+          name: "Favorite Skill Without Discovery",
+        });
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { equippedSkills, favoriteSkills } =
+          await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration: agentConfig,
+            conversation: {
+              ...conversation,
+              spaceId: conversationsSpace.sId,
+            },
+          });
+        expect(equippedSkills.map((s) => s.sId)).not.toContain(skill.sId);
+        expect(favoriteSkills.map((s) => s.sId)).not.toContain(skill.sId);
+      });
+
+      it("equips favorite skills when discovery and favorites are enabled", async () => {
+        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+        await FeatureFlagFactory.basic(auth, "skill_favorites");
+        await SkillFactory.linkGlobalSkillToAgent(auth, {
+          globalSkillId: "discover_skills",
+          agentConfigurationId: agentConfig.id,
+        });
+
+        const skill = await SkillFactory.create(auth, {
+          name: "Favorite Skill",
+        });
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { equippedSkills, favoriteSkills } =
+          await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration: agentConfig,
+            conversation: {
+              ...conversation,
+              spaceId: conversationsSpace.sId,
+            },
+          });
+        expect(equippedSkills.map((s) => s.sId)).not.toContain(skill.sId);
+        expect(favoriteSkills.map((s) => s.sId)).toContain(skill.sId);
+
         const jitServers = await getJITServers(auth, {
           agentConfiguration: agentConfig,
           conversation: { ...conversation, spaceId: conversationsSpace.sId },
           attachments: [],
         });
 
-        const skillManagementServer = jitServers.find(
-          (server) => server.name === "skill_management"
-        );
+        expect(
+          jitServers.some((server) => server.name === "skill_management")
+        ).toBe(true);
+      });
 
-        expect(skillManagementServer).toBeUndefined();
+      it("keeps discoverable favorites in the shared equipped skills", async () => {
+        await FeatureFlagFactory.basic(auth, "skill_favorites");
+        await SkillFactory.linkGlobalSkillToAgent(auth, {
+          globalSkillId: "discover_skills",
+          agentConfigurationId: agentConfig.id,
+        });
+
+        const [skill] = await SkillResource.fetchByIds(auth, ["mention_users"]);
+        if (!skill) {
+          throw new Error("Expected Mention Users skill to be available");
+        }
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { userMessage } = await ConversationFactory.createUserMessage({
+          auth,
+          workspace,
+          conversation,
+          content: "Mention someone.",
+          rank: -1,
+        });
+        const { agentMessage } = await ConversationFactory.createAgentMessage(
+          auth,
+          {
+            workspace,
+            conversation,
+            agentConfig,
+          }
+        );
+        const { model: agentModel, ...agentConfiguration } = agentConfig;
+
+        const { equippedSkills, favoriteSkills } =
+          await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration,
+            modelInfo: {
+              endpoint: getTestStreamEndpoint(agentModel.modelId),
+              ...agentModel,
+            },
+            agentMessage,
+            conversation: {
+              ...conversation,
+              spaceId: conversationsSpace.sId,
+            },
+            userMessage,
+          });
+
+        expect(equippedSkills.map((s) => s.sId)).toContain(skill.sId);
+        expect(favoriteSkills.map((s) => s.sId)).not.toContain(skill.sId);
       });
     });
 
@@ -608,7 +720,7 @@ describe("getJITServers", () => {
         projectSpace,
         { description: "d" }
       );
-      await metadata.setDefaultSkills(auth, [
+      await metadata.setDefaultSkills([
         podDefaultSkill,
         enabledPodDefaultSkill,
       ]);

@@ -41,7 +41,7 @@ export interface CouponRedemptionType {
   status: CouponRedemptionStatus;
 }
 
-export const CouponDiscountTypeSchema = z.enum(["seat", "credit_pool_top_up"]);
+const CouponDiscountTypeSchema = z.enum(["seat", "credit_pool_top_up"]);
 
 export const CreateCouponBodySchema = z.object({
   code: z.string().min(1).max(64),

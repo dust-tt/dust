@@ -1,18 +1,20 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
-export const FRONT_API_BASE_URL = "https://api2.frontapp.com";
+const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 
 export const MAX_RETRIES = 3;
-export const INITIAL_RETRY_DELAY_MS = 1000;
-export const MAX_RETRY_DELAY_MS = 10000;
+const INITIAL_RETRY_DELAY_MS = 1000;
+const MAX_RETRY_DELAY_MS = 10000;
+const FRONT_API_CONCURRENCY = 5;
 
-export interface FrontAPIOptions {
+interface FrontAPIOptions {
   method: string;
   endpoint: string;
   apiToken: string;
@@ -134,25 +136,81 @@ export function getFrontAPITokenFromExtra(extra: ToolHandlerExtra): string {
   return apiToken;
 }
 
-interface FrontConversation {
-  id: string;
-  status: string;
-  subject?: string;
-  assignee?: { email: string };
-  inbox?: { name: string; address?: string };
-  tags?: Array<{ name: string }>;
-  created_at?: number;
-  last_message?: { received_at?: number };
-  recipient?: { handle?: string; name?: string };
+const FrontConversationSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  subject: z.string().optional(),
+  assignee: z.object({ email: z.string() }).nullable().optional(),
+  inbox: z
+    .object({ name: z.string(), address: z.string().optional() })
+    .optional(),
+  tags: z.array(z.object({ name: z.string() })).optional(),
+  created_at: z.number().optional(),
+  last_message: z
+    .object({ received_at: z.number().optional() })
+    .nullable()
+    .optional(),
+  recipient: z
+    .object({ handle: z.string(), name: z.string().nullable() })
+    .nullable()
+    .optional(),
+});
+
+const FrontConversationsResponseSchema = z.object({
+  _results: z.array(FrontConversationSchema),
+});
+
+export type FrontConversation = z.infer<typeof FrontConversationSchema>;
+
+export function parseFrontConversation(data: unknown): FrontConversation {
+  return FrontConversationSchema.parse(data);
+}
+
+export function parseFrontConversations(data: unknown): FrontConversation[] {
+  return FrontConversationsResponseSchema.parse(data)._results;
+}
+
+const FrontInboxesResponseSchema = z.object({
+  _results: z.array(z.object({ name: z.string() })),
+});
+
+export async function getConversationInboxes(
+  apiToken: string,
+  conversationId: string
+) {
+  let data: unknown;
+  try {
+    data = await makeFrontAPIRequest({
+      method: "GET",
+      endpoint: `conversations/${conversationId}/inboxes`,
+      apiToken,
+    });
+  } catch (error) {
+    if (error instanceof MCPError && error.code === 403) {
+      return null;
+    }
+    throw error;
+  }
+
+  return FrontInboxesResponseSchema.parse(data)._results;
 }
 
 export function formatConversationForLLM(
-  conversation: FrontConversation
+  conversation: FrontConversation,
+  inboxes: Array<{ name: string }> | null | undefined
 ): string {
   const assigneeEmail = conversation.assignee
     ? conversation.assignee.email
     : "Unassigned";
-  const inboxName = conversation.inbox?.name ?? "Unknown";
+  let inboxNames: string;
+  if (inboxes === null) {
+    inboxNames = "Unknown (Front token needs inboxes:read)";
+  } else if (inboxes === undefined) {
+    inboxNames = "Unknown (Front inboxes could not be loaded)";
+  } else {
+    inboxNames =
+      inboxes.length > 0 ? inboxes.map(({ name }) => name).join(", ") : "None";
+  }
   const tagNames = conversation.tags?.map((t) => t.name).join(", ") ?? "None";
   const createdAt = conversation.created_at
     ? new Date(conversation.created_at * 1000).toISOString()
@@ -168,7 +226,7 @@ export function formatConversationForLLM(
   SUBJECT: ${conversation.subject ?? "(No subject)"}
   STATUS: ${conversation.status}
   ASSIGNEE: ${assigneeEmail}
-  INBOX: ${inboxName}
+  INBOX: ${inboxNames}
   TAGS: ${tagNames}
   CREATED: ${createdAt}
   LAST_MESSAGE: ${lastMessageAt}
@@ -176,6 +234,53 @@ export function formatConversationForLLM(
   </conversation>`;
 
   return metadata;
+}
+
+async function loadInboxes(apiToken: string, conversation: FrontConversation) {
+  try {
+    return await getConversationInboxes(apiToken, conversation.id);
+  } catch (error) {
+    logger.warn(
+      {
+        conversationId: conversation.id,
+        error: normalizeError(error),
+      },
+      "[FrontMCP] Failed to load conversation inboxes"
+    );
+    return undefined;
+  }
+}
+
+export async function formatConversationsForLLM(
+  apiToken: string,
+  conversations: FrontConversation[]
+) {
+  const [firstConversation, ...remainingConversations] = conversations;
+  if (!firstConversation) {
+    return [];
+  }
+
+  const firstInboxes = await loadInboxes(apiToken, firstConversation);
+  if (firstInboxes === null) {
+    return conversations.map((conversation) =>
+      formatConversationForLLM(conversation, null)
+    );
+  }
+
+  const remainingFormatted = await concurrentExecutor(
+    remainingConversations,
+    async (conversation) =>
+      formatConversationForLLM(
+        conversation,
+        await loadInboxes(apiToken, conversation)
+      ),
+    { concurrency: FRONT_API_CONCURRENCY }
+  );
+
+  return [
+    formatConversationForLLM(firstConversation, firstInboxes),
+    ...remainingFormatted,
+  ];
 }
 
 interface FrontRecipient {
@@ -259,7 +364,7 @@ const FrontDraftSchema = z.object({
   attachments: z.array(z.object({ filename: z.string() })).optional(),
 });
 
-export type FrontDraft = z.infer<typeof FrontDraftSchema>;
+type FrontDraft = z.infer<typeof FrontDraftSchema>;
 
 const FrontDraftsResponseSchema = z.object({
   _results: z.array(FrontDraftSchema.passthrough()).optional(),

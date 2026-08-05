@@ -5,11 +5,11 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillAvailability,
   SkillUsageType,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
@@ -19,6 +19,7 @@ import {
   DataTable,
   Edit04,
   Eye,
+  Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
 import type {
@@ -38,6 +39,7 @@ type RowData = {
   availability: SkillAvailability;
   editors: UserType[] | null;
   usage: SkillUsageType;
+  messageCount: number | null;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
@@ -46,11 +48,23 @@ type RowData = {
 
 export const SKILL_AVAILABILITY_DISPLAY: Record<
   SkillAvailability,
-  { label: string; color: "primary" | "success" | "highlight" }
+  { label: string; color: "primary" | "success" | "highlight"; tooltip: string }
 > = {
-  editors: { label: "Editor only", color: "primary" },
-  workspace_users: { label: "Workspace members", color: "success" },
-  users_and_agents: { label: "Auto-discoverable", color: "highlight" },
+  editors: {
+    label: "Editors only",
+    color: "primary",
+    tooltip: "Only editors can find it via the input bar and agent builder",
+  },
+  workspace_users: {
+    label: "All members",
+    color: "success",
+    tooltip: "All members can find it via the input bar and agent builder",
+  },
+  users_and_agents: {
+    label: "Members and agents",
+    color: "highlight",
+    tooltip: "Available to all members and agents with Discover Skills",
+  },
 };
 
 const nameColumn = {
@@ -89,13 +103,17 @@ const availabilityColumn = {
     const display = SKILL_AVAILABILITY_DISPLAY[info.getValue()];
     return (
       <DataTable.CellContent>
-        <Chip size="xs" color={display.color} label={display.label} />
+        <Tooltip
+          label={display.tooltip}
+          trigger={
+            <Chip size="xs" color={display.color} label={display.label} />
+          }
+        />
       </DataTable.CellContent>
     );
   },
   meta: {
-    // Wide enough for the longest chip label ("Workspace members").
-    className: "hidden @sm:w-44 @sm:table-cell",
+    className: "hidden @sm:w-40 @sm:table-cell",
   },
 };
 
@@ -146,6 +164,30 @@ const usedByColumn = (
   },
 });
 
+const usageColumn: ColumnDef<RowData, number | null> = {
+  header: "Usage",
+  accessorKey: "messageCount",
+  cell: (info: CellContext<RowData, number | null>) => {
+    const messageCount = info.getValue();
+
+    return (
+      <DataTable.BasicCellContent
+        className="font-mono"
+        label={messageCount === null ? "-" : messageCount.toLocaleString()}
+        tooltip={
+          messageCount === null
+            ? "System skills are always active, so message usage does not apply."
+            : undefined
+        }
+      />
+    );
+  },
+  meta: {
+    className: "hidden @sm:w-20 @sm:table-cell",
+    tooltip: "All-time messages",
+  },
+};
+
 const lastEditedColumn = {
   header: "Last Edited",
   accessorKey: "updatedAt",
@@ -175,20 +217,19 @@ const menuColumn = {
 const getTableColumns = ({
   onAgentClick,
   onUsedBySkillClick,
-  showAvailability,
   enableRowSelection,
 }: {
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
-  showAvailability: boolean;
   enableRowSelection: boolean;
 }) => {
   /**
    * Columns order:
    * - Selection (batch edition only)
    * - Name (always)
-   * - Access (skill publication governance only, hidden on mobile)
+   * - Access (hidden on mobile)
    * - Used by (hidden on mobile)
+   * - Usage (hidden on mobile)
    * - Editors (hidden on mobile)
    * - Last Edited (hidden on mobile)
    * - Actions (always)
@@ -197,8 +238,9 @@ const getTableColumns = ({
   return [
     ...(enableRowSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
-    ...(showAvailability ? [availabilityColumn] : []),
+    availabilityColumn,
     usedByColumn(onAgentClick, onUsedBySkillClick),
+    usageColumn,
     editorsColumn,
     lastEditedColumn,
     menuColumn,
@@ -206,14 +248,14 @@ const getTableColumns = ({
 };
 
 type SkillsTableProps = {
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
+  skills: GetSkillsWithRelationsResponseBody["skills"];
   owner: LightWorkspaceType;
   onSkillClick: (
-    skill: SkillWithoutInstructionsAndToolsWithRelationsType
+    skill: GetSkillsWithRelationsResponseBody["skills"][number]
   ) => void;
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
-  showAvailability?: boolean;
+  canMakeSkillAutoDiscoverable?: boolean;
   rowSelection?: RowSelectionState;
   setRowSelection?: (selection: RowSelectionState) => void;
 };
@@ -224,14 +266,15 @@ export function SkillsTable({
   onSkillClick,
   onAgentClick,
   onUsedBySkillClick,
-  showAvailability = false,
+  canMakeSkillAutoDiscoverable = false,
   rowSelection,
   setRowSelection,
 }: SkillsTableProps) {
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
-  const [skillToArchive, setSkillToArchive] =
-    useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
+  const [skillToArchive, setSkillToArchive] = useState<
+    GetSkillsWithRelationsResponseBody["skills"][number] | null
+  >(null);
 
   const isSelectionEnabled = rowSelection !== undefined;
 
@@ -242,10 +285,9 @@ export function SkillsTable({
       getTableColumns({
         onAgentClick,
         onUsedBySkillClick,
-        showAvailability,
         enableRowSelection: isSelectionEnabled,
       }),
-    [onAgentClick, onUsedBySkillClick, showAvailability, isSelectionEnabled]
+    [onAgentClick, onUsedBySkillClick, isSelectionEnabled]
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -260,6 +302,7 @@ export function SkillsTable({
         availability: skill.availability,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
+        messageCount: skill.messageCount === undefined ? 0 : skill.messageCount,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {
@@ -309,7 +352,7 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [skills, onSkillClick, onUsedBySkillClick, owner.sId, isSelectionEnabled]
+    [skills, onSkillClick, owner.sId, isSelectionEnabled]
   );
 
   if (rows.length === 0) {
@@ -338,10 +381,10 @@ export function SkillsTable({
           ? {
               rowSelection,
               setRowSelection,
-              // Dust-provided (code-defined) skills have a fixed availability and
-              // cannot be batch-edited.
               enableRowSelection: (row: Row<RowData>) =>
-                !isDustProvidedSkill(row.original),
+                !isDustProvidedSkill(row.original) &&
+                (canMakeSkillAutoDiscoverable ||
+                  row.original.availability !== "users_and_agents"),
               getRowId: (row: RowData) => row.sId,
             }
           : {})}

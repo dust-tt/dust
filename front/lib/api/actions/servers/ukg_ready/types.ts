@@ -11,7 +11,7 @@ export const UkgReadyEmployeeSchema = z
   })
   .passthrough();
 
-export const UkgReadyPTOEmployeeSchema = z
+const UkgReadyPTOEmployeeSchema = z
   .object({
     account_id: z.number().optional(),
     username: z.string().optional(),
@@ -20,21 +20,21 @@ export const UkgReadyPTOEmployeeSchema = z
   })
   .passthrough();
 
-export const UkgReadyTimeOffTypeSchema = z
+const UkgReadyTimeOffTypeSchema = z
   .object({
     id: z.number(),
     name: z.string(),
   })
   .passthrough();
 
-export const UkgReadyApproverSchema = z
+const UkgReadyApproverSchema = z
   .object({
     account_id: z.number().optional(),
     full_name: z.string().optional(),
   })
   .passthrough();
 
-export const UkgReadyPTODetailsSchema = z
+const UkgReadyPTODetailsSchema = z
   .object({
     request_id: z.string().optional(),
     request_state: z.string().optional(),
@@ -72,14 +72,14 @@ export const UkgReadyPTORequestsResponseSchema = z
   })
   .passthrough();
 
-export const UkgReadyAccrualYearSchema = z
+const UkgReadyAccrualYearSchema = z
   .object({
     start_date: z.string(),
     end_date: z.string(),
   })
   .passthrough();
 
-export const UkgReadyAccrualEmployeeSchema = z
+const UkgReadyAccrualEmployeeSchema = z
   .object({
     account_id: z.number(),
     username: z.string(),
@@ -133,7 +133,7 @@ export const UkgReadyPTORequestNotesResponseSchema = z.object({
   notes: z.array(UkgReadyPTORequestNoteSchema),
 });
 
-export const UkgReadyScheduleEmployeeSchema = z
+const UkgReadyScheduleEmployeeSchema = z
   .object({
     account_id: z.number().optional(),
     external_id: z.string().optional(),
@@ -144,7 +144,7 @@ export const UkgReadyScheduleEmployeeSchema = z
   })
   .passthrough();
 
-export const UkgReadyScheduleLunchSchema = z
+const UkgReadyScheduleLunchSchema = z
   .object({
     min_lunch_time: z.string().optional(),
     max_lunch_time: z.string().optional(),
@@ -154,14 +154,14 @@ export const UkgReadyScheduleLunchSchema = z
   })
   .passthrough();
 
-export const UkgReadyCostCenterSchema = z
+const UkgReadyCostCenterSchema = z
   .object({
     path: z.string().optional(),
     name: z.string().optional(),
   })
   .passthrough();
 
-export const UkgReadyJobSchema = z
+const UkgReadyJobSchema = z
   .object({
     path: z.string().optional(),
     name: z.string().optional(),
@@ -213,7 +213,7 @@ export const UkgReadyEmployeesResponseSchema = z
   })
   .passthrough();
 
-export const UkgReadyPTORequestCostCenterSchema = z.object({
+const UkgReadyPTORequestCostCenterSchema = z.object({
   index: z.number(),
   value: z.object({
     id: z.number(),
@@ -254,12 +254,6 @@ export const UkgReadyPTORequestObjectSchema = z.object({
   bankCategory: z.number().optional(),
 });
 
-export const UkgReadyCreatePTORequestSchema = z
-  .object({
-    pto_request: UkgReadyPTORequestObjectSchema,
-  })
-  .passthrough();
-
 export const UkgReadyExecuteResultSchema = z
   .object({
     success_code: z.number().optional(),
@@ -286,9 +280,6 @@ export type UkgReadyPTORequestNote = z.infer<
 export type UkgReadySchedule = z.infer<typeof UkgReadyScheduleSchema>;
 export type UkgReadyPTORequestObject = z.infer<
   typeof UkgReadyPTORequestObjectSchema
->;
-export type UkgReadyCreatePTORequest = z.infer<
-  typeof UkgReadyCreatePTORequestSchema
 >;
 export type UkgReadyExecuteResult = z.infer<typeof UkgReadyExecuteResultSchema>;
 export type UkgReadyErrorResult = string;

@@ -168,7 +168,7 @@ export function renderCalls(
     .join("\n\n---\n\n");
 }
 
-export function renderTranscript(
+function renderTranscript(
   transcript: GongCallTranscript,
   speakerNames?: Record<string, string>
 ): string {

@@ -34,14 +34,16 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
-  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
-import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import {
-  getMinimumReasoningEffort,
-  type ModelConfigurationType,
-  type ModelProviderIdType,
-  type ReasoningEffort,
+  GPT_5_6_LUNA_MODEL_CONFIG,
+  GPT_5_6_SOL_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
+import type {
+  ModelConfigurationType,
+  ModelProviderIdType,
+  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
@@ -344,41 +346,31 @@ These instructions are NOT your own instructions, but you may use them to unders
 </additional_context>
 `;
 
-// Tries Anthropic first, then OpenAI, then the best available large model.
-function getModelConfig(
-  auth: Authenticator,
-  {
-    featureFlags,
-    reasoning = true,
-    excludeProviders = new Set<ModelProviderIdType>(),
-  }: {
-    featureFlags: WhitelistableFeature[];
-    reasoning?: boolean;
-    excludeProviders?: ReadonlySet<ModelProviderIdType>;
-  }
-): {
+type ModelConfigWithReasoning = {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: ReasoningEffort;
-} | null {
-  const candidates = [
-    CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    GPT_5_5_MODEL_CONFIG,
-  ];
+};
 
-  const model = selectEnabledModel(auth, candidates, {
+function getEnabledModelConfig(
+  auth: Authenticator,
+  modelConfiguration: ModelConfigurationType,
+  reasoningEffort: ReasoningEffort,
+  featureFlags: WhitelistableFeature[],
+  excludeProviders: ReadonlySet<ModelProviderIdType>
+): ModelConfigWithReasoning | null {
+  const model = selectEnabledModel(auth, [modelConfiguration], {
     featureFlags,
     excludeProviders,
   });
-  if (model) {
-    return {
-      modelConfiguration: model,
-      reasoningEffort: reasoning
-        ? "light"
-        : getMinimumReasoningEffort(model.supportedReasoningEfforts),
-    };
-  }
 
-  // Otherwise we use whatever the default large model is, using the default reasoning effort.
+  return model ? { modelConfiguration: model, reasoningEffort } : null;
+}
+
+function getLargeModelFallback(
+  auth: Authenticator,
+  featureFlags: WhitelistableFeature[],
+  excludeProviders: ReadonlySet<ModelProviderIdType>
+): ModelConfigWithReasoning | null {
   const modelConfiguration = getLargeWhitelistedModel(auth, excludeProviders, {
     featureFlags,
   });
@@ -391,37 +383,84 @@ function getModelConfig(
   };
 }
 
-function getMaxReasoningModelConfig(
+function getDeepDiveModelConfig(
   auth: Authenticator,
   featureFlags: WhitelistableFeature[],
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
-): {
-  modelConfiguration: ModelConfigurationType;
-  reasoningEffort: ReasoningEffort;
-} | null {
-  if (
-    selectEnabledModel(auth, [GPT_5_5_MODEL_CONFIG], {
-      featureFlags,
-      excludeProviders,
-    })
-  ) {
-    return {
-      modelConfiguration: GPT_5_5_MODEL_CONFIG,
-      reasoningEffort: "high",
-    };
+  excludeProviders: ReadonlySet<ModelProviderIdType>
+): ModelConfigWithReasoning | null {
+  const primaryModelConfig = getEnabledModelConfig(
+    auth,
+    GPT_5_6_SOL_MODEL_CONFIG,
+    "medium",
+    featureFlags,
+    excludeProviders
+  );
+  if (primaryModelConfig) {
+    return primaryModelConfig;
   }
-  if (
-    selectEnabledModel(auth, [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG], {
+
+  const fallbackModelConfig = getEnabledModelConfig(
+    auth,
+    shouldUseOpus(auth)
+      ? CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG
+      : CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+    "light",
+    featureFlags,
+    excludeProviders
+  );
+
+  return (
+    fallbackModelConfig ??
+    getLargeModelFallback(auth, featureFlags, excludeProviders)
+  );
+}
+
+function getDustTaskModelConfig(
+  auth: Authenticator,
+  featureFlags: WhitelistableFeature[],
+  excludeProviders: ReadonlySet<ModelProviderIdType>
+): ModelConfigWithReasoning | null {
+  return (
+    getEnabledModelConfig(
+      auth,
+      GPT_5_6_LUNA_MODEL_CONFIG,
+      "high",
       featureFlags,
-      excludeProviders,
-    })
-  ) {
-    return {
-      modelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-      reasoningEffort: "high",
-    };
-  }
-  return getModelConfig(auth, { featureFlags, excludeProviders });
+      excludeProviders
+    ) ??
+    getEnabledModelConfig(
+      auth,
+      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+      "light",
+      featureFlags,
+      excludeProviders
+    ) ??
+    getLargeModelFallback(auth, featureFlags, excludeProviders)
+  );
+}
+
+function getPlanningModelConfig(
+  auth: Authenticator,
+  featureFlags: WhitelistableFeature[],
+  excludeProviders: ReadonlySet<ModelProviderIdType>
+): ModelConfigWithReasoning | null {
+  return (
+    getEnabledModelConfig(
+      auth,
+      GPT_5_6_SOL_MODEL_CONFIG,
+      "high",
+      featureFlags,
+      excludeProviders
+    ) ??
+    getEnabledModelConfig(
+      auth,
+      CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
+      "high",
+      featureFlags,
+      excludeProviders
+    ) ??
+    getLargeModelFallback(auth, featureFlags, excludeProviders)
+  );
 }
 
 export function _getDeepDiveGlobalAgent(
@@ -444,21 +483,11 @@ export function _getDeepDiveGlobalAgent(
 ): AgentConfigurationType | null {
   const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const pictureUrl = DUST_AVATAR_URL;
-  const modelConfig = getModelConfig(auth, { featureFlags, excludeProviders });
-
-  const enterpriseModelConfig =
-    shouldUseOpus(auth) &&
-    selectEnabledModel(auth, [CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG], {
-      featureFlags,
-      excludeProviders,
-    })
-      ? {
-          modelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
-          reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
-        }
-      : null;
-
-  const effectiveModelConfig = enterpriseModelConfig ?? modelConfig;
+  const modelConfig = getDeepDiveModelConfig(
+    auth,
+    featureFlags,
+    excludeProviders
+  );
 
   const deepAgent: Omit<
     AgentConfigurationType,
@@ -488,7 +517,7 @@ export function _getDeepDiveGlobalAgent(
     canEdit: false,
   };
 
-  if (settings?.status === "disabled_by_admin" || !effectiveModelConfig) {
+  if (settings?.status === "disabled_by_admin" || !modelConfig) {
     return {
       ...deepAgent,
       status: "disabled_by_admin",
@@ -498,10 +527,10 @@ export function _getDeepDiveGlobalAgent(
   }
 
   const model: AgentModelConfigurationType = {
-    providerId: effectiveModelConfig.modelConfiguration.providerId,
-    modelId: effectiveModelConfig.modelConfiguration.modelId,
+    providerId: modelConfig.modelConfiguration.providerId,
+    modelId: modelConfig.modelConfiguration.modelId,
     temperature: 1.0,
-    reasoningEffort: effectiveModelConfig.reasoningEffort,
+    reasoningEffort: modelConfig.reasoningEffort,
   };
 
   deepAgent.model = model;
@@ -645,11 +674,11 @@ export function _getDustTaskGlobalAgent(
     canEdit: false,
   };
 
-  const modelConfig = getModelConfig(auth, {
+  const modelConfig = getDustTaskModelConfig(
+    auth,
     featureFlags,
-    reasoning: false,
-    excludeProviders,
-  });
+    excludeProviders
+  );
 
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
@@ -765,7 +794,7 @@ export function _getPlanningAgent(
     canEdit: false,
   };
 
-  const modelConfig = getMaxReasoningModelConfig(
+  const modelConfig = getPlanningModelConfig(
     auth,
     featureFlags,
     excludeProviders

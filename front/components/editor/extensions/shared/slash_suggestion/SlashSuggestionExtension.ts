@@ -9,11 +9,11 @@ import { ReactRenderer } from "@tiptap/react";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 import type { ComponentType } from "react";
 
-export interface SlashSuggestionBaseStorage {
+interface SlashSuggestionBaseStorage {
   hasBeenFocused: boolean;
 }
 
-export interface SlashSuggestionAllowContext<
+interface SlashSuggestionAllowContext<
   Options,
   Storage extends SlashSuggestionBaseStorage,
 > {
@@ -25,7 +25,7 @@ export interface SlashSuggestionAllowContext<
   storage: Storage;
 }
 
-export interface SlashSuggestionShouldShowContext<
+interface SlashSuggestionShouldShowContext<
   Options,
   Storage extends SlashSuggestionBaseStorage,
 > {
@@ -36,7 +36,7 @@ export interface SlashSuggestionShouldShowContext<
   transaction: Transaction;
 }
 
-export interface SlashSuggestionCommandContext<
+interface SlashSuggestionCommandContext<
   Options,
   Storage extends SlashSuggestionBaseStorage,
   Item,
@@ -48,7 +48,7 @@ export interface SlashSuggestionCommandContext<
   storage: Storage;
 }
 
-export interface SlashSuggestionDropdownContext<
+interface SlashSuggestionDropdownContext<
   Options,
   Storage extends SlashSuggestionBaseStorage,
   Item,
@@ -65,7 +65,7 @@ export interface SlashSuggestionDropdownContext<
   storage: Storage;
 }
 
-export interface CreateSlashSuggestionExtensionConfig<
+interface CreateSlashSuggestionExtensionConfig<
   Options extends object,
   Storage extends SlashSuggestionBaseStorage,
   Item,

@@ -90,9 +90,7 @@ const UserQuestionResumeStateSchema = z.object({
   answer: UserQuestionAnswerSchema.optional(),
 });
 
-export type UserQuestionResumeState = z.infer<
-  typeof UserQuestionResumeStateSchema
->;
+type UserQuestionResumeState = z.infer<typeof UserQuestionResumeStateSchema>;
 
 export function isUserQuestionResumeState(
   value: unknown
@@ -104,7 +102,7 @@ const SandboxResumeStateSchema = z.object({
   execId: z.string(),
 });
 
-export type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;
+type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;
 
 export function isSandboxResumeState(
   value: unknown
@@ -187,6 +185,10 @@ export type AgentLoopListToolsContext = {
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
+  // Needed at listing time to know whether a person wrote the message this run
+  // answers: servers an admin scoped to personal credentials are not listed for
+  // a message nobody wrote (see `tryListMCPTools`).
+  userMessage: UserMessageType;
 };
 
 // Context available to tool handlers at execution time: tools only ever run on a connection

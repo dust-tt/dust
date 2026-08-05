@@ -47,7 +47,7 @@ export const providerCredentialsHealthUpdatedWorkflow = workflow(
   }
 );
 
-export const triggerProviderCredentialsHealthUpdatedNotifications = async (
+const triggerProviderCredentialsHealthUpdatedNotifications = async (
   auth: Authenticator
 ): Promise<Result<void, DustError<"internal_error">>> => {
   const workspace = auth.getNonNullableWorkspace();

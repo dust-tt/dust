@@ -55,11 +55,15 @@ import uniqBy from "lodash/uniqBy";
 import type { Transaction } from "sequelize";
 import { getConversation } from "./fetch";
 
+export type MentionTargetMessage =
+  | Pick<UserMessageTypeWithoutMentions, "type">
+  | Pick<AgentMessageTypeWithoutMentions, "type" | "configuration">;
+
 export async function getMentionStatus(
   auth: Authenticator,
   data: {
     conversation: ConversationWithoutContentType;
-    message: UserMessageTypeWithoutMentions | AgentMessageTypeWithoutMentions;
+    message: MentionTargetMessage;
     isParticipant: boolean;
     mentionedUser: UserResource;
   }
@@ -125,22 +129,24 @@ export async function getMentionStatus(
   return "pending_conversation_access";
 }
 
-export const createUserMentions = async (
+export interface ResolvedUserMention {
+  user: UserType;
+  isParticipant: boolean;
+  status: MentionStatusType;
+}
+
+export async function resolveUserMentions(
   auth: Authenticator,
   {
     mentions,
-    message,
     conversation,
-    transaction,
+    message,
   }: {
     mentions: MentionType[];
-    message: AgentMessageTypeWithoutMentions | UserMessageTypeWithoutMentions;
     conversation: ConversationWithoutContentType;
-    transaction?: Transaction;
+    message: MentionTargetMessage;
   }
-): Promise<RichMentionWithStatus[]> => {
-  const usersById = new Map<ModelId, UserType>();
-
+): Promise<ResolvedUserMention[]> {
   // Deduplicate mentions before processing
   const uniqueMentions = uniqBy(
     mentions.filter(isUserMention),
@@ -151,8 +157,7 @@ export const createUserMentions = async (
     return [];
   }
 
-  // Store user mentions in the database with bounded concurrency.
-  const mentionModels = await concurrentExecutor(
+  const resolvedMentions = await concurrentExecutor(
     uniqueMentions,
     async (mention) => {
       // check if the user exists in the workspace before creating the mention
@@ -162,8 +167,6 @@ export const createUserMentions = async (
       if (!user) {
         return undefined;
       }
-
-      usersById.set(user.id, user.toJSON());
 
       const isParticipant =
         await ConversationResource.isConversationParticipant(auth, {
@@ -182,7 +185,36 @@ export const createUserMentions = async (
         mentionedUser: user,
       });
 
-      const mentionModel = await MentionModel.create(
+      return { user: user.toJSON(), isParticipant, status };
+    },
+    { concurrency: 4 }
+  );
+
+  return removeNulls(resolvedMentions);
+}
+
+export const createUserMentions = async (
+  auth: Authenticator,
+  {
+    resolvedMentions,
+    message,
+    conversation,
+    transaction,
+  }: {
+    resolvedMentions: ResolvedUserMention[];
+    message: AgentMessageTypeWithoutMentions | UserMessageTypeWithoutMentions;
+    conversation: ConversationWithoutContentType;
+    transaction?: Transaction;
+  }
+): Promise<RichMentionWithStatus[]> => {
+  const usersById = new Map<ModelId, UserType>();
+  const mentionModels: MentionModel[] = [];
+
+  for (const { user, isParticipant, status } of resolvedMentions) {
+    usersById.set(user.id, user);
+
+    mentionModels.push(
+      await MentionModel.create(
         {
           messageId: message.id,
           userId: user.id,
@@ -190,25 +222,23 @@ export const createUserMentions = async (
           status,
         },
         { transaction }
-      );
+      )
+    );
 
-      if (!isParticipant && status === "approved") {
-        await ConversationResource.upsertParticipation(auth, {
-          conversation,
-          action: "subscribed",
-          user: user.toJSON(),
-          lastReadAt: null,
-          transaction,
-        });
-      }
-      return mentionModel;
-    },
-    { concurrency: 4 }
-  );
+    if (!isParticipant && status === "approved") {
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "subscribed",
+        user,
+        lastReadAt: null,
+        transaction,
+      });
+    }
+  }
 
   return getRichMentionsWithStatusForMessage(
     message.id,
-    removeNulls(mentionModels),
+    mentionModels,
     usersById,
     new Map() // No agent configurations in the users mentions.
   );
@@ -614,19 +644,29 @@ export async function dismissMention(
       !isCompactionMessageType(latestMessage) &&
       latestMessage.richMentions.some(predicate)
     ) {
-      const mentionModel = await MentionModel.findOne({
+      const mentionModels = await MentionModel.findAll({
         where: {
           workspaceId: conversation.owner.id,
           messageId: latestMessage.id,
           ...(type === "user"
-            ? { userId: userIdForQuery }
-            : { agentConfigurationId: id }),
+            ? {
+                userId: userIdForQuery,
+                status: "user_restricted_by_conversation_access",
+              }
+            : {
+                agentConfigurationId: id,
+                status: "agent_restricted_by_space_usage",
+              }),
         },
       });
-      if (!mentionModel) {
+      if (mentionModels.length === 0) {
         continue;
       }
-      await mentionModel.update({ dismissed: true });
+      // Instance updates avoid Sequelize bulk-update validation that requires
+      // userId/agentConfigurationId on the partial payload.
+      await Promise.all(
+        mentionModels.map((m) => m.update({ dismissed: true }))
+      );
       const newRichMentions = latestMessage.richMentions.map((m) =>
         predicate(m)
           ? {

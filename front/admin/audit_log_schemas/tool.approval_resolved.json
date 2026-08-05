@@ -5,9 +5,6 @@
       "type": "workspace"
     },
     {
-      "type": "agent"
-    },
-    {
       "type": "tool"
     }
   ],
@@ -19,6 +16,13 @@
     "conversation_id": "string",
     "agent_message_id": "string",
     "action_id": "string",
+    "agent_id": "string",
+    "agent_name": "string",
+    "pod_id": "string",
+    "pod_function_id": "string",
+    "pod_function_slug": "string",
+    "invocation_id": "string",
+    "invocation_origin": "string",
     "deciding_user_id": "string",
     "deciding_user_email": "string",
     "actor_type": "string"

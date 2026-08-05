@@ -33,7 +33,7 @@ export const JiraProjectsResponseSchema = z.object({
   values: z.array(JiraProjectSchema),
 });
 
-export const JiraWebhookRegistrationResultSchema = z.object({
+const JiraWebhookRegistrationResultSchema = z.object({
   createdWebhookId: z.number().optional(),
   errors: z.array(z.string()).optional(),
 });

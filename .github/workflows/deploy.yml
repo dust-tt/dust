@@ -88,16 +88,16 @@ jobs:
     needs: [check-branch]
     runs-on: ubuntu-latest
     outputs:
-      short_sha: ${{ steps.short_sha.outputs.short_sha }}
-      long_sha: ${{ steps.short_sha.outputs.long_sha }}
+      short_sha: ${{ steps.commit_sha.outputs.short_sha }}
+      long_sha: ${{ steps.commit_sha.outputs.long_sha }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Get short sha
-        id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-      - name: Get long sha
-        id: long_sha
-        run: echo "long_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Get commit SHAs
+        id: commit_sha
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          echo "short_sha=${COMMIT_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "long_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
 
   notify-start:
     needs: [prepare]
@@ -106,6 +106,12 @@ jobs:
       thread_ts: ${{ steps.build_message.outputs.thread_ts }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: |
+            /.authors
+            /.github/actions/slack-notify/
+            /.github/actions/slack-check-deployment-blocked/
+          sparse-checkout-cone-mode: false
 
       - name: Notify Build And Deploy Start
         id: build_message
@@ -226,6 +232,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/actions/slack-notify
 
       - name: Generate token
         id: generate-token

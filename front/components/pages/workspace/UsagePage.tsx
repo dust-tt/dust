@@ -142,6 +142,8 @@ function memberFromUpgradeRequest(
     scheduledSeatType: null,
     scheduledSeatChangeAt: null,
     spendLimitAwuCredits: null,
+    rateLimiterSpendAwuCredits: null,
+    metronomeConsumedAwuCredits: null,
     spendLimitSource: "none",
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,

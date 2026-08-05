@@ -1,12 +1,11 @@
-import { ConfirmContext } from "@app/components/Confirm";
+import { SkillBuilderAvailabilityMessage } from "@app/components/skill_builder/SkillBuilderAvailabilityMessage";
 import { SkillBuilderEnableSuggestionsSection } from "@app/components/skill_builder/SkillBuilderEnableSuggestionsSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
-import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/SkillBuilderIsDefaultSection";
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/SkillEditorsSheetWithButton";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type {
@@ -16,30 +15,37 @@ import type {
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Hoverable,
   Icon,
+  InfoCircle,
   Label,
   LinkExternal01,
   LinkWrapper,
 } from "@dust-tt/sparkle";
-import { useContext } from "react";
 import { useController } from "react-hook-form";
 
-const AVAILABILITY_OPTIONS: { label: string; values: SkillAvailability[] }[] = [
+const AVAILABILITY_OPTIONS: {
+  label: string;
+  value: SkillAvailability;
+  description?: string;
+}[] = [
   {
     label: "Editors only",
-    values: ["editors"],
+    value: "editors",
   },
   {
-    label: "All workspace members",
-    values: ["workspace_users", "users_and_agents"],
+    label: "All members",
+    value: "workspace_users",
+  },
+  {
+    label: "Members and agents",
+    value: "users_and_agents",
+    description: "Available to all members and agents with Discover Skills",
   },
 ];
 
@@ -66,48 +72,44 @@ export function SkillBuilderSettingsSection({
     name: "availability",
   });
 
-  const confirm = useContext(ConfirmContext);
-
-  const { hasFeature } = useFeatureFlags();
-  const isSkillPublicationEnabled = hasFeature(
-    "admin_governance_skill_publication"
-  );
   const { hasPermission } = useWorkspacePermissions();
+
+  // Even if you have permission to make skills discoverable, if you don't have permission to manage skill availabilty
+  // you cannot perform the action, so we disable the dropdown.
   const canUpdateAvailability = hasPermission("publish", "skill");
+  const canMakeSkillAutoDiscoverable = hasPermission(
+    "make_discoverable",
+    "skill"
+  );
   const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
-  const currentOption = AVAILABILITY_OPTIONS.find((option) =>
-    option.values.includes(availability)
+  const { nonGlobalSpacesWithRestrictions } =
+    useSkillSpaceRestrictionsContext();
+
+  const currentOption = AVAILABILITY_OPTIONS.find(
+    (option) => option.value === availability
   );
 
   const isAutoDiscoverableOn = availability === "users_and_agents";
 
-  const onAvailabilityChange = async (
-    option: (typeof AVAILABILITY_OPTIONS)[0]
-  ) => {
-    const isWorkspaceMembersOption = option.values.includes("workspace_users");
-    // we don't allow to turn off discoverable from here
-    if (isWorkspaceMembersOption && isAutoDiscoverableOn) {
-      return;
-    }
+  const hasSpaceRestrictions = nonGlobalSpacesWithRestrictions.length > 0;
 
-    // Switching an auto-discoverable skill to "Editors only" turns off
-    // auto-discovery, so confirm first.
-    if (isAutoDiscoverableOn) {
-      const confirmed = await confirm({
-        title: "Auto-discovery will be off",
-        message:
-          "An editors-only skill cannot be auto-discoverable. Are you sure you want to change the availability?",
-        validateLabel: "Confirm",
-        validateVariant: "warning",
-      });
-      if (!confirmed) {
-        return;
-      }
-    }
+  // Auto-discoverable, workspace-wide skills get a dedicated "workspace-wide
+  // effects" message instead of the generic "who can use this skill?" one, so
+  // the two are mutually exclusive.
+  const showWorkspaceWideEffectsMessage =
+    isAutoDiscoverableOn && !hasSpaceRestrictions;
 
-    onChange(isWorkspaceMembersOption ? "workspace_users" : option.values[0]);
-  };
+  // Without the make-discoverable permission, an editor can neither turn a skill
+  // auto-discoverable nor change an already auto-discoverable skill's availability.
+  const isAvailabilityLocked =
+    isAutoDiscoverableOn && !canMakeSkillAutoDiscoverable;
+
+  const availabilityTooltip = !canUpdateAvailability
+    ? "You don’t have permission to change this skill’s availability"
+    : isAvailabilityLocked
+      ? "You don’t have permission to change the availability of an auto-discoverable skill"
+      : undefined;
 
   return (
     <div className="space-y-4">
@@ -136,7 +138,7 @@ export function SkillBuilderSettingsSection({
         <SkillBuilderIconSection />
       </div>
       <SkillBuilderUserFacingDescriptionSection />
-      <div className="flex gap-5">
+      <div className="flex flex-col gap-5">
         <div className="flex flex-col">
           <h3 className="text-base font-semibold text-foreground mb-2">
             Editors
@@ -149,57 +151,74 @@ export function SkillBuilderSettingsSection({
             />
           </div>
         </div>
-        {isSkillPublicationEnabled && (
-          <div>
-            <h3 className="text-base font-semibold text-foreground mb-2">
-              Availability
-            </h3>
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <Button
-                  label={currentOption?.label}
-                  variant="outline"
-                  isSelect
-                  disabled={!canUpdateAvailability}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-60" align="start">
-                {AVAILABILITY_OPTIONS.map((option) => (
+        <div>
+          <h3 className="text-base font-semibold text-foreground mb-2">
+            Availability
+          </h3>
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button
+                label={currentOption?.label}
+                variant="outline"
+                isSelect
+                disabled={!canUpdateAvailability || isAvailabilityLocked}
+                tooltip={availabilityTooltip}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {AVAILABILITY_OPTIONS.map((option) => {
+                const isOptionDisabled =
+                  option.value === "users_and_agents" &&
+                  !canMakeSkillAutoDiscoverable;
+                return (
                   <DropdownMenuItem
                     key={option.label}
                     label={option.label}
-                    onClick={async () => {
-                      await onAvailabilityChange(option);
+                    onClick={() => {
+                      onChange(option.value);
                     }}
+                    description={option.description}
+                    disabled={isOptionDisabled}
+                    tooltip={
+                      isOptionDisabled
+                        ? "You don’t have permission to make skills auto-discoverable"
+                        : undefined
+                    }
                   />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </div>
-      {isSkillPublicationEnabled && canUpdateAvailability && (
-        <div className="text-muted-foreground text-sm">
-          <p className="mb-1">
-            <span className="font-semibold">
-              Auto-discovery is {isAutoDiscoverableOn ? "on" : "off"}.{" "}
-            </span>
-            Agents with the Discover Skills tool{" "}
-            {isAutoDiscoverableOn ? "can use" : "won’t find"} this skill
-            automatically.
-            <br />
-          </p>
-          <p>
-            Edit in{" "}
-            <Hoverable
-              href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
-              target="_blank"
-              className="inline-flex items-center gap-1 underline"
-            >
-              Manage Skills <Icon visual={LinkExternal01} size="xs" />
-            </Hoverable>
-          </p>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+      </div>
+      {showWorkspaceWideEffectsMessage ? (
+        <ContentMessage
+          icon={InfoCircle}
+          title="This skill has workspace-wide effects"
+          size="lg"
+        >
+          <ul className="list-disc space-y-1 pl-5">
+            <li>All members can find it via the input bar and agent builder</li>
+            <li>
+              Any agent with Discover Skills, including Dust, can use it
+              automatically. See other skills available to agents in{" "}
+              <Hoverable
+                href={`/w/${owner.sId}/builder/skills?availability=users_and_agents`}
+                target="_blank"
+                className="inline-flex items-center gap-1 underline"
+              >
+                Manage Skills
+                <Icon visual={LinkExternal01} size="xs" />
+              </Hoverable>
+            </li>
+          </ul>
+        </ContentMessage>
+      ) : (
+        <SkillBuilderAvailabilityMessage
+          availability={availability}
+          owner={owner}
+          restrictedSpaces={nonGlobalSpacesWithRestrictions}
+        />
       )}
 
       {hasSelfImprovingSkills && (
@@ -211,20 +230,6 @@ export function SkillBuilderSettingsSection({
             selfImprovementLock={skill?.selfImprovementLock ?? false}
           />
         </div>
-      )}
-      {skill && !isSkillPublicationEnabled && (
-        <>
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger variant="secondary">
-              Advanced
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="space-y-3 pt-3">
-                <SkillBuilderIsDefaultSection />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </>
       )}
     </div>
   );

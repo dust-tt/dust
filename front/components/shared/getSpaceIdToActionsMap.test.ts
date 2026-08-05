@@ -59,6 +59,7 @@ const createMockMCPServerView = (
   },
   oAuthUseCase: null,
   editedByUser: null,
+  isRestrictedToSkills: false,
 });
 
 const createMockDataSourceView = (spaceId: string, name: string) => ({

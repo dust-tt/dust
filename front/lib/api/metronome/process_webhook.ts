@@ -143,7 +143,7 @@ function programmaticEventFromAlertName(
   return null;
 }
 
-export class ProcessMetronomeWebhookError extends Error {
+class ProcessMetronomeWebhookError extends Error {
   constructor(
     readonly type: "processing_failed",
     message: string

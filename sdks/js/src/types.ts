@@ -90,6 +90,7 @@ export type KnownModelLLMId =
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
+  | "accounts/fireworks/models/deepseek-v4-flash-0731" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
@@ -400,7 +401,7 @@ const USER_MESSAGE_ORIGINS = [
   "project_kickoff",
   "reinforced_skill_notification",
   "reinforcement",
-  "branch_anchor",
+  "system_activation",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
@@ -737,6 +738,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "anthropic_cache_diagnostics"
+  | "agent_loop_qos_routing"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
@@ -748,7 +750,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_computer_feature"
   | "disable_formatting_prompt"
   | "disable_run_logs"
-  | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
   | "dust_agent_gpt_5_6_luna_default"
@@ -775,11 +776,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
-  | "pod_default_agent"
-  | "pod_default_skills"
+  | "skill_favorites"
   | "poke_mcp"
-  | "restrict_agents_publishing"
-  | "restrict_agents_publishing_to_admins"
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
@@ -797,17 +795,18 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "xai_feature"
   | "conversations_slack_notifications"
   | "collapsible_messages"
+  | "conversation_consumption_details"
   | "use_dust_keys"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
-  | "admin_governance"
-  | "admin_governance_skill_publication"
   | "live_speech_to_text"
   | "workspace_default_agent"
   | "whitelabel_frames"
   | "workday_mcp"
   | "user_memory"
+  | "similar_agents_check"
+  | "enforce_user_spend_limit_rate_cap"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2331,6 +2330,14 @@ export type GetWorkspaceVerifiedDomainsResponseType = z.infer<
   typeof GetWorkspaceVerifiedDomainsResponseSchema
 >;
 
+export const GetWorkspaceExistsResponseSchema = z.object({
+  exists: z.literal(true),
+});
+
+export type GetWorkspaceExistsResponseType = z.infer<
+  typeof GetWorkspaceExistsResponseSchema
+>;
+
 export const GetWorkspaceFeatureFlagsResponseSchema = z.object({
   feature_flags: WhitelistableFeaturesSchema.array(),
 });
@@ -3405,6 +3412,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MicrosoftOutlookLogo"
   | "MicrosoftTeamsLogo"
   | "MiroLogo"
+  | "ModjoLogo"
   | "MondayLogo"
   | "NaptaLogo"
   | "NetSuiteLogo"
@@ -3610,6 +3618,7 @@ const MCPServerViewTypeSchema = z.object({
   server: MCPServerTypeSchema,
   oAuthUseCase: z.enum(["personal_actions", "platform_actions"]).nullable(),
   editedByUser: EditedByUserSchema.nullable(),
+  isRestrictedToSkills: z.boolean(),
 });
 
 export type MCPServerViewType = z.infer<typeof MCPServerViewTypeSchema>;

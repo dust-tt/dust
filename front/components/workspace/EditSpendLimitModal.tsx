@@ -23,7 +23,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 const MIN_AWU_CREDITS = 0;
-const MAX_AWU_CREDITS = 1_000_000;
+const MAX_AWU_CREDITS = 2_000_000;
 
 type SpendLimitKind = "default" | "override";
 

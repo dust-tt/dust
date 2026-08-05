@@ -9,7 +9,6 @@ import type { GetDatasourceRetrievalResponse } from "@app/lib/api/assistant/obse
 import type { GetDatasourceRetrievalDocumentsResponse } from "@app/lib/api/assistant/observability/datasource_retrieval_documents";
 import type { GetFeedbackDistributionResponse } from "@app/lib/api/assistant/observability/feedback_distribution";
 import type {
-  GetErrorRateResponse,
   GetLatencyResponse,
   GetUsageMetricsResponse,
 } from "@app/lib/api/assistant/observability/messages_metrics";
@@ -39,6 +38,7 @@ import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_u
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
 import { BatchUpdateAgentModelResponseBodySchema } from "@app/types/api/assistant/configuration";
+import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
@@ -50,9 +50,10 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -203,6 +204,30 @@ export function useAgentConfigurations({
     mutateRegardlessOfQueryParams,
     isAgentConfigurationsValidating: isValidating,
   };
+}
+
+export function useSimilarAgents({ owner }: { owner: LightWorkspaceType }) {
+  const { fetcher } = useFetcher();
+  const getSimilarAgents = useCallback(
+    async (
+      naturalDescription: string,
+      options: { signal?: AbortSignal } = {}
+    ) => {
+      const response: GetSimilarAgentsResponseBody = await fetcher(
+        `/api/w/${owner.sId}/assistant/agent_configurations/similar`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ naturalDescription }),
+          signal: options?.signal,
+        }
+      );
+      return new Ok(response.similar_agents);
+    },
+    [owner.sId, fetcher]
+  );
+
+  return { getSimilarAgents };
 }
 
 // This is the call that is required for the new conversation page to load all views on that page.
@@ -402,30 +427,6 @@ export function useAgentConfigurationHistory({
     isAgentConfigurationHistoryLoading: !error && !data,
     isAgentConfigurationHistoryError: error,
     mutateAgentConfigurationHistory: mutate,
-  };
-}
-
-export function useAgentConfigurationLastAuthor({
-  workspaceId,
-  agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string | null;
-}) {
-  const { fetcher } = useFetcher();
-  const userFetcher: Fetcher<{
-    user: UserType;
-  }> = fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/last_author`,
-    userFetcher
-  );
-
-  return {
-    agentLastAuthor: data ? data.user : null,
-    isLoading: !error && !data,
-    isError: error,
   };
 }
 
@@ -1022,37 +1023,6 @@ export function useAgentLatency({
     isLatencyLoading: !error && !data && !disabled,
     isLatencyError: error,
     isLatencyValidating: isValidating,
-  };
-}
-
-export function useAgentErrorRate({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  version,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetErrorRateResponse> = fetcher;
-  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/error_rate?days=${days}${versionParam}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    errorRate: data?.points ?? emptyArray(),
-    isErrorRateLoading: !error && !data && !disabled,
-    isErrorRateError: error,
-    isErrorRateValidating: isValidating,
   };
 }
 

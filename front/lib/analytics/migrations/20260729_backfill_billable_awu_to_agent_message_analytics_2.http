@@ -1,0 +1,35 @@
+POST /front.agent_message_analytics_2/_update_by_query?wait_for_completion=false&slices=auto&scroll_size=5000&requests_per_second=10000
+{
+  "conflicts": "proceed",
+  "script": {
+    "lang": "painless",
+    "source": "if (ctx._source.cost == null) { return; } int full = ctx._source.cost.full_awu != null ? (int) ctx._source.cost.full_awu : 0; boolean tracked = ctx._source.status != null && params.tracked_statuses.contains(ctx._source.status); ctx._source.cost.billable_awu = tracked ? full : 0;",
+    "params": {
+      "tracked_statuses": [
+        "created",
+        "succeeded",
+        "cancelled",
+        "interrupted",
+        "gracefully_stopped"
+      ]
+    }
+  },
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "exists": {
+            "field": "cost.full_awu"
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "exists": {
+            "field": "cost.billable_awu"
+          }
+        }
+      ]
+    }
+  }
+}

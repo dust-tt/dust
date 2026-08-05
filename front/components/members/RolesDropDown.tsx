@@ -4,9 +4,9 @@ import {
   normalizeDisplayRole,
   ROLES_DATA,
 } from "@app/components/members/Roles";
-import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ActiveRoleType } from "@app/types/user";
-import { ACTIVE_ROLES, isAdmin } from "@app/types/user";
+import { ASSIGNABLE_ROLES, isAdmin } from "@app/types/user";
 import {
   Button,
   ChevronDown,
@@ -28,28 +28,13 @@ export function RoleDropDown({
   selectedRole,
   disabled = false,
 }: RoleDropDownProps) {
-  const { hasFeature } = useFeatureFlags();
   const workspace = useWorkspace();
   const canManageAdminRole = isAdmin(workspace);
-  const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
-  // `builder` is deprecated under admin governance: display it as a regular
-  // member.
-  const displayedRole = normalizeDisplayRole(
-    selectedRole,
-    isAdminGovernanceEnabled
-  );
+  // `builder` is deprecated: display it as a regular member.
+  const displayedRole = normalizeDisplayRole(selectedRole);
 
-  const availableRoles = ACTIVE_ROLES.filter((role) => {
-    // `builder` can no longer be assigned once admin governance is enabled.
-    if (role === "builder" && isAdminGovernanceEnabled) {
-      return false;
-    }
-    // `manager` can only be assigned when the workspace has the
-    // `admin_governance` feature flag.
-    if (role === "manager" && !isAdminGovernanceEnabled) {
-      return false;
-    }
+  const availableRoles = ASSIGNABLE_ROLES.filter((role) => {
     // `admin` can only be assigned by those allowed to manage the admin role
     // (matches the server-side escalation guard).
     if (role === "admin" && !canManageAdminRole) {

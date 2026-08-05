@@ -556,6 +556,7 @@ describe("tryCallMCPTool", () => {
         editedAt: new Date(),
         editedByUserId: auth.user()?.id ?? null,
         oAuthUseCase: null,
+        isRestrictedToSkills: false,
       });
       systemView = new MCPServerViewResource(
         MCPServerViewModel,
@@ -631,7 +632,7 @@ describe("tryCallMCPTool", () => {
       modelInteractionDurationMs: null,
       completionDurationMs: null,
       rank: messageRow.rank,
-      branchId: messageRow.getBranchId(),
+      branchId: null,
       richMentions: [],
       costCredits: null,
       resolvedModel: null,

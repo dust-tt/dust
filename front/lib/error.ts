@@ -12,11 +12,6 @@ export type DustErrorCode =
   | "data_source_view_not_found"
   | "space_not_found"
   | "invalid_request_error"
-  // Conversation branch errors
-  | "branch_not_found"
-  | "branch_not_open"
-  | "branch_write_not_authorized"
-  | "branch_has_no_user_message"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"
@@ -59,6 +54,8 @@ export type DustErrorCode =
   | "conversation_not_found"
   | "failed_to_copy_files"
   | "no_unread_messages_found"
+  | "no_blocked_actions"
+  | "agent_message_not_resumable"
   | "no_whitelisted_model_found"
   | "generation_failed"
   | "invalid_conversation"

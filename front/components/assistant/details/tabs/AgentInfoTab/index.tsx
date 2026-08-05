@@ -98,7 +98,10 @@ export function AgentInfoTab({
               icon={getModelProviderLogo(model.providerId, isDark)}
               size="xs"
             />
-            <div>{model.displayName}</div>
+            <div className="whitespace-nowrap mr-2">{model.displayName}</div>
+            <div className="text-sm text-muted-foreground">
+              {model.description}
+            </div>
           </div>
         </div>
       )}

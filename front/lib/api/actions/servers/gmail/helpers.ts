@@ -75,7 +75,7 @@ export function isGmailMessage(data: unknown): data is GmailMessage {
   return typeof obj.id === "string";
 }
 
-export interface DecodedMessageBody {
+interface DecodedMessageBody {
   body: string;
   mimeType: "text/plain" | "text/html";
 }
@@ -204,7 +204,7 @@ export function findAttachmentIdByPartId(
 /**
  * Create HTML quote section for replies with original message
  */
-export function createQuoteSection(
+function createQuoteSection(
   originalBody: string,
   originalMimeType: "text/plain" | "text/html",
   originalDate: string | undefined,

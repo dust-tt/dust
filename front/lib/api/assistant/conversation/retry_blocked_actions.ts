@@ -2,11 +2,19 @@ import { isBlockedActionEvent } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
-import { MessageModel } from "@app/lib/models/agent/conversation";
+import { DustError } from "@app/lib/error";
+// TODO(2026-07-31 QOS): move these message fetches behind a resource method instead of using
+// models directly in lib/api.
+import {
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -19,10 +27,10 @@ async function findUserMessageForRetry(
     {
       agentMessageId: string;
       agentMessageVersion: number;
-      branchId: string | null;
       lastStep: number;
       userMessageId: string;
       userMessageVersion: number;
+      userMessageOrigin: UserMessageOrigin;
     },
     Error
   >
@@ -36,14 +44,7 @@ async function findUserMessageForRetry(
       sId: messageId,
       workspaceId,
     },
-    attributes: [
-      "agentMessageId",
-      "parentId",
-      "version",
-      "sId",
-      "branchId",
-      "workspaceId",
-    ],
+    attributes: ["agentMessageId", "parentId", "version", "sId", "workspaceId"],
   });
 
   if (!agentMessage || !agentMessage.parentId || !agentMessage.agentMessageId) {
@@ -58,6 +59,14 @@ async function findUserMessageForRetry(
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     attributes: ["sId", "version"],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        attributes: ["userContextOrigin"],
+        required: true,
+      },
+    ],
   });
 
   if (!parentMessage) {
@@ -70,14 +79,23 @@ async function findUserMessageForRetry(
     });
 
   if (blockedActions.length === 0) {
-    return new Err(new Error("No blocked actions found"));
+    // Not a failure: the message simply has nothing waiting on user input (already resumed, or
+    // reached here through a handover whose caller was never blocked).
+    return new Err(
+      new DustError("no_blocked_actions", "No blocked actions found")
+    );
   }
 
   // Blocked actions of a message that can no longer resume are stale leftovers: retrying them
   // would relaunch an agent loop that was already terminated. All blocked actions belong to the
   // same agent message, so checking the first one is enough.
   if (!(await blockedActions[0].canAgentMessageResume(auth))) {
-    return new Err(new Error("Agent message can no longer resume"));
+    return new Err(
+      new DustError(
+        "agent_message_not_resumable",
+        "Agent message can no longer resume"
+      )
+    );
   }
 
   // Purge blocked actions event message from the stream:
@@ -92,10 +110,11 @@ async function findUserMessageForRetry(
   return new Ok({
     agentMessageId: agentMessage.sId,
     agentMessageVersion: agentMessage.version,
-    branchId: agentMessage.getBranchId(),
     lastStep: blockedActions[blockedActions.length - 1].stepContent.step,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
+    // The `required: true` include guarantees userMessage is set.
+    userMessageOrigin: parentMessage.userMessage!.userContextOrigin,
   });
 }
 
@@ -127,10 +146,10 @@ export async function retryBlockedActions(
   const {
     agentMessageId,
     agentMessageVersion,
-    branchId: conversationBranchId,
     lastStep,
     userMessageId,
     userMessageVersion,
+    userMessageOrigin,
   } = getUserMessageIdRes.value;
 
   return launchAgentLoopWorkflow({
@@ -140,9 +159,9 @@ export async function retryBlockedActions(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId,
       userMessageId,
       userMessageVersion,
+      userMessageOrigin,
     },
     startStep: lastStep,
     waitForCompletion,

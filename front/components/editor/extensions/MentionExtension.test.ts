@@ -62,6 +62,60 @@ describe("MentionExtension", () => {
     expect(attrs?.type).toBe("agent");
   });
 
+  describe("with stripAgentMentions", () => {
+    let strippingEditor: Editor;
+
+    beforeEach(() => {
+      strippingEditor = EditorFactory([
+        MentionExtension.configure({ stripAgentMentions: true }),
+      ]);
+    });
+
+    afterEach(() => {
+      strippingEditor.destroy();
+    });
+
+    it("should convert agent mentions to plain text", () => {
+      strippingEditor.commands.setContent(
+        "hello :mention[Code Assistant]{sId=agent-123} world",
+        {
+          contentType: "markdown",
+        }
+      );
+
+      const json = strippingEditor.getJSON();
+      expect(json.content).toEqual([
+        {
+          content: [
+            {
+              text: "hello @Code Assistant world",
+              type: "text",
+            },
+          ],
+          type: "paragraph",
+        },
+      ]);
+    });
+
+    it("should keep user mentions", () => {
+      strippingEditor.commands.setContent(
+        ":mention_user[John Doe]{sId=user-456} and :mention[Code Assistant]{sId=agent-123}",
+        {
+          contentType: "markdown",
+        }
+      );
+
+      const json = strippingEditor.getJSON();
+      const nodes = json.content?.[0]?.content ?? [];
+      const mentionNodes = nodes.filter((n) => n.type === "mention");
+      expect(mentionNodes).toHaveLength(1);
+      const attrs =
+        "attrs" in mentionNodes[0] ? mentionNodes[0].attrs : undefined;
+      expect(attrs?.type).toBe("user");
+      expect(strippingEditor.getText()).toContain("@Code Assistant");
+    });
+  });
+
   it("should handle user mention", () => {
     editor.commands.setContent(":mention_user[John Doe]{sId=user-456}", {
       contentType: "markdown",

@@ -96,8 +96,7 @@ export const RESOURCES_PREFIX = {
   // Takeaways.
   takeaways: "tka",
 
-  // Conversation branches.
-  conversation_branch: "cbr",
+  // Conversation forks.
   conversation_fork: "cfk",
 
   // Provider credentials (BYOK).

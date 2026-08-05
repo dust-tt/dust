@@ -539,7 +539,7 @@ function dhb {
 
   base="$(_dust_hive_base_port "$query")" || return
   port=$((base + offset))
-  url="http://localhost:${port}"
+  url="http://localhost:${port}/w/DevWkSpace/"
 
   echo "Opening $url"
   open "$url"
@@ -611,7 +611,7 @@ function _dhd  { local words=("dust-hive" "destroy" "${(@)words[2,-1]}"); local 
 function _dhw  { local words=("dust-hive" "warm" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
 function _dhc  { local words=("dust-hive" "cool" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
 function _dhx  { local words=("dust-hive" "spawn" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
-function _dhb  { _arguments '1::worktree:_dust_hive_envs'; }
+function _dhb  { _arguments '1::worktree:_dust_hive_warm_envs'; }
 function _dhdb_database {
   local cur="${words[CURRENT]}"
   local use_unmatched=0

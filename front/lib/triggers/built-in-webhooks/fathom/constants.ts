@@ -1,6 +1,6 @@
 // All recording types, including legacy ones. Used for labels and validation
 // to support existing webhooks.
-export const RECORDING_TYPE_OPTIONS = [
+const RECORDING_TYPE_OPTIONS = [
   {
     value: "my_recordings",
     label: "My Recordings",

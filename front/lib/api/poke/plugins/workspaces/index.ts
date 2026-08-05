@@ -1,3 +1,4 @@
+export * from "./activation_recommendation_history";
 export * from "./add_user_to_workos_organization";
 export * from "./apply_coupon";
 export * from "./apply_group_roles";
@@ -33,10 +34,12 @@ export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
 export * from "./reset_provisioned_members_not_in_directory";
 export * from "./restore_conversation";
+export * from "./resync_spend_limit_counters";
 export * from "./revoke_coupon";
 export * from "./revoke_users";
 export * from "./run_reinforcement_workflow";
 export * from "./send_onboarding_conversation";
+export * from "./set_default_user_credit_limit";
 export * from "./set_web_providers";
 export * from "./soft_delete_conversation";
 export * from "./sync_api_key_cap_alerts";

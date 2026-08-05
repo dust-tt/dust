@@ -8,7 +8,7 @@ import logger from "@app/logger/logger";
  */
 export const ENTERPRISE_THRESHOLD = 100;
 
-export interface CompanyEnrichment {
+interface CompanyEnrichment {
   size: number | null;
   name: string | null;
   region: string | null;
@@ -241,9 +241,7 @@ const AFRICA_COUNTRIES = [
  * Parse employee count from Apollo's employee range strings.
  * e.g., "11-20", "51-100", "1,001-5,000", "10,001+".
  */
-export function parseEmployeeCount(
-  employeeRange: string | null
-): number | null {
+function parseEmployeeCount(employeeRange: string | null): number | null {
   if (!employeeRange) {
     return null;
   }
@@ -256,7 +254,7 @@ export function parseEmployeeCount(
 }
 
 /** Map an Apollo country string to a HubSpot headquarters region. */
-export function mapCountryToRegion(country: string | null): string | null {
+function mapCountryToRegion(country: string | null): string | null {
   if (!country) {
     return null;
   }

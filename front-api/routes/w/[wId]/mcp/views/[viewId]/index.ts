@@ -67,6 +67,14 @@ app.patch(
       if (updateResult.isErr()) {
         return respondToUpdateError(ctx, updateResult.error.code);
       }
+    } else if ("isRestrictedToSkills" in body) {
+      const updateResult = await systemView.updateIsRestrictedToSkills(
+        auth,
+        body.isRestrictedToSkills
+      );
+      if (updateResult.isErr()) {
+        return respondToUpdateError(ctx, updateResult.error.code);
+      }
     } else if ("name" in body && "description" in body) {
       const updateResult = await updateNameAndDescriptionForMCPServerViews(
         auth,

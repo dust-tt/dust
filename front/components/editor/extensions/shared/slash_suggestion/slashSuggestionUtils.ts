@@ -31,14 +31,6 @@ export function isAllowedSlashQuery(state: EditorState, range: Range) {
   return !text.slice(1).startsWith(" ");
 }
 
-export function shouldInsertSlashBoundarySpace(state: EditorState) {
-  const textBefore = state.selection.$from.nodeBefore?.isText
-    ? state.selection.$from.nodeBefore.text
-    : null;
-
-  return !!textBefore && !textBefore.endsWith(" ");
-}
-
 /** Keeps slash dropdown height stable so Radix placement does not jump with few items. */
 export const SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME = "min-h-48 max-h-96";
 

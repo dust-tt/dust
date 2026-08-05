@@ -276,6 +276,8 @@ function AgentBuilderForm({
       name: skill.name,
       description: skill.userFacingDescription,
       icon: skill.icon,
+      availability: skill.availability,
+      canWrite: skill.canWrite,
     }));
   }, [skills]);
 

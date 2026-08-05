@@ -9,7 +9,7 @@ import { z } from "zod";
 export const SEARCH_SERVER_NAME = "search";
 export const SEARCH_TOOL_NAME = "semantic_search";
 
-export const SEARCH_TOOL_DESCRIPTION =
+const SEARCH_TOOL_DESCRIPTION =
   "Search the data sources specified by the user." +
   " The search is based on semantic similarity between the query and chunks of information" +
   " from the data sources.";

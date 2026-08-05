@@ -18,6 +18,7 @@ export const GRANT_VERBS = [
   "publish",
   "invite",
   "use",
+  "make_discoverable",
 ] as const;
 export type GrantVerb = (typeof GRANT_VERBS)[number];
 
@@ -32,6 +33,7 @@ export const GRANT_TYPES = [
   "publish",
   "invite",
   "use",
+  "make_discoverable",
   "*",
 ] as const;
 export type GrantType = (typeof GRANT_TYPES)[number];
@@ -155,6 +157,7 @@ export const GOVERNANCE_CAPABILITIES = {
   skill: [
     { grantType: "create", resourceType: "skill" },
     { grantType: "publish", resourceType: "skill" },
+    { grantType: "make_discoverable", resourceType: "skill" },
   ],
   frame: [
     { grantType: "invite", resourceType: "frame" },

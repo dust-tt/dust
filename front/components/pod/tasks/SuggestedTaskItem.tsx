@@ -15,7 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { memo, useState } from "react";
 
-export interface SuggestedTaskItemProps {
+interface SuggestedTaskItemProps {
   task: PodTaskType;
   viewerUserId: string | null;
   onApproveAgentSuggestion: (task: PodTaskType) => void | Promise<void>;

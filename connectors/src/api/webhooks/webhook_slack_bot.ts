@@ -238,7 +238,8 @@ const _webhookSlackBotAPIHandler = async (
         case "channel_created": {
           if (isChannelCreatedEvent(event)) {
             const onChannelCreationRes = await onChannelCreation({
-              event,
+              channelId: event.channel.id,
+              contextTeamId: event.channel.context_team_id,
               logger,
               provider: "slack_bot",
             });

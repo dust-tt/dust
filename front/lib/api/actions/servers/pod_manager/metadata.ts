@@ -21,6 +21,7 @@ export const SEMANTIC_SEARCH_TOOL_NAME = "semantic_search" as const;
 export const EDIT_INFORMATION_TOOL_NAME = "edit_information" as const;
 export const SET_PINNED_FRAME_TOOL_NAME = "set_pinned_frame" as const;
 export const MOVE_CONVERSATION_TOOL_NAME = "move_conversation" as const;
+export const SET_DEFAULT_AGENT_TOOL_NAME = "set_default_agent" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = [
   {
@@ -139,6 +140,34 @@ export const POD_MANAGER_TOOLS_METADATA = [
     displayLabels: {
       running: "Updating pinned frame",
       done: "Update pinned frame",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SET_DEFAULT_AGENT_TOOL_NAME,
+    description:
+      "Set or clear the Pod default agent: the agent that handles new conversations started in this Pod when no agent is picked explicitly. " +
+      "Provide agentName to set it, or pass null to reset to the default (Dust).",
+    schema: {
+      agentName: z
+        .string()
+        .nullable()
+        .describe(
+          "Name of the agent to set as the Pod default. The tool searches matching agent configurations and uses the best match. Pass null to reset to the default (Dust)."
+        ),
+      dustPod: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
+      ]
+        .optional()
+        .describe(
+          "Optional Pod to update, will fallback to the conversation's Pod."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Setting Pod default agent",
+      done: "Set Pod default agent",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -413,7 +442,7 @@ export const POD_MANAGER_TOOLS_METADATA = [
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
-    stake: "medium",
+    stake: "never_ask",
     displayLabels: {
       running: "Creating conversation",
       done: "Create conversation",

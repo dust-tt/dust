@@ -2,6 +2,7 @@ import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayou
 import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
 const AnalyticsPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/AnalyticsPage"),
@@ -68,11 +69,6 @@ const SubscriptionPage = withSuspense(
     ),
   "SubscriptionPage"
 );
-const WorkspaceSettingsPage = withSuspense(
-  () =>
-    import("@dust-tt/front/components/pages/workspace/WorkspaceSettingsPage"),
-  "WorkspaceSettingsPage"
-);
 const WorkspaceBrandingPage = withSuspense(
   () =>
     import("@dust-tt/front/components/pages/workspace/WorkspaceBrandingPage"),
@@ -110,6 +106,8 @@ export const adminRoutes: RouteObject[] = [
       { path: "analytics", element: <AnalyticsPage /> },
       { path: "usage", element: <UsagePage /> },
       { path: "governance", element: <GovernancePage /> },
+      // Legacy Workspace Settings page, merged into Settings & Governance.
+      { path: "workspace", element: <Navigate to="../governance" replace /> },
     ],
   },
   {
@@ -117,7 +115,6 @@ export const adminRoutes: RouteObject[] = [
     element: <RequireRoleLayout requiredRole="admin" />,
     children: [
       { path: "model-providers", element: <ModelProvidersPage /> },
-      { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "branding", element: <WorkspaceBrandingPage /> },
       { path: "developers/api-keys", element: <APIKeysPage /> },
       {

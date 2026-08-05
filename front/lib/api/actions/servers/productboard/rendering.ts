@@ -80,45 +80,6 @@ export function renderNotesList(
   return lines.join("\n");
 }
 
-export function renderEntity(entity: ProductboardEntity): string {
-  const lines: string[] = [];
-
-  lines.push(`## Entity ${entity.id}`);
-  lines.push(`**Type:** ${entity.type}`);
-  if (entity.createdAt) {
-    lines.push(`*Created at: ${new Date(entity.createdAt).toISOString()}*`);
-  }
-  if (entity.updatedAt) {
-    lines.push(`*Updated at: ${new Date(entity.updatedAt).toISOString()}*`);
-  }
-
-  if (entity.fields && Object.keys(entity.fields).length > 0) {
-    lines.push("### Fields");
-    const fieldsMarkdown = jsonToMarkdown(entity.fields);
-    lines.push(fieldsMarkdown);
-  }
-
-  if (entity.relationships && entity.relationships.data.length > 0) {
-    lines.push("### Relationships");
-    for (const rel of entity.relationships.data) {
-      const linkText = rel.target.links?.self
-        ? ` (API endpoint: ${rel.target.links.self})`
-        : "";
-      lines.push(
-        `- **${rel.type}:** ${rel.target.type} (${rel.target.id})${linkText}`
-      );
-    }
-  }
-
-  if (entity.links.self) {
-    lines.push(
-      `**API Endpoint:** ${entity.links.self} (Note: This is an API endpoint for programmatic access, not a user-facing link)`
-    );
-  }
-
-  return lines.join("\n");
-}
-
 export function renderEntitiesList(
   entities: ProductboardEntity[],
   options?: { pageCursor?: string | null }
@@ -179,9 +140,7 @@ function renderConfigField(
   return `### Field: ${fieldId}\n${markdown}`;
 }
 
-export function renderNoteConfiguration(
-  config: ProductboardConfiguration
-): string {
+function renderNoteConfiguration(config: ProductboardConfiguration): string {
   const lines: string[] = [];
 
   lines.push(`## Note Type: ${config.type}`);
@@ -227,9 +186,7 @@ export function renderNoteConfigurationsList(
   return lines.join("\n").trim();
 }
 
-export function renderEntityConfiguration(
-  config: ProductboardConfiguration
-): string {
+function renderEntityConfiguration(config: ProductboardConfiguration): string {
   const lines: string[] = [];
 
   lines.push(`## Entity Type: ${config.type}`);
@@ -275,44 +232,7 @@ export function renderEntityConfigurationsList(
   return lines.join("\n").trim();
 }
 
-export function renderConfigurationsList(
-  notesConfigs: ProductboardConfiguration[],
-  entitiesConfigs: ProductboardConfiguration[]
-): string {
-  const lines: string[] = [];
-
-  if (notesConfigs.length > 0) {
-    lines.push("### Notes Configurations");
-    for (const config of notesConfigs) {
-      lines.push(`- Type: **${config.type}**`);
-      if (config.fields) {
-        const fieldCount = Object.keys(config.fields).length;
-        lines.push(`  Fields: ${fieldCount}`);
-      }
-    }
-    lines.push("");
-  }
-
-  if (entitiesConfigs.length > 0) {
-    lines.push("### Entities Configurations");
-    for (const config of entitiesConfigs) {
-      lines.push(`- Type: **${config.type}**`);
-      if (config.fields) {
-        const fieldCount = Object.keys(config.fields).length;
-        lines.push(`  Fields: ${fieldCount}`);
-      }
-    }
-    lines.push("");
-  }
-
-  if (notesConfigs.length === 0 && entitiesConfigs.length === 0) {
-    return "No configurations found.";
-  }
-
-  return lines.join("\n");
-}
-
-export function renderRelationship(rel: ProductboardRelationship): string {
+function renderRelationship(rel: ProductboardRelationship): string {
   const lines: string[] = [];
   lines.push(`- **${rel.type}**`);
   lines.push(`  Target: ${rel.target.type} (${rel.target.id})`);

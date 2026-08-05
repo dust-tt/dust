@@ -20,6 +20,9 @@ const EXTENSION_WHITELIST = [
   ".hpp",
   ".php",
   ".scala",
+  ".clj", // Clojure
+  ".cljc", // Clojure cross-platform source
+  ".cljs", // ClojureScript
   ".kt", // Kotlin
   ".neon", // PHP configuration
   ".phtml", // PHP template

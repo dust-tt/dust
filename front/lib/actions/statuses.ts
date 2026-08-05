@@ -42,18 +42,8 @@ export const TOOL_EXECUTION_BLOCKED_STATUSES = [
   "blocked_user_answer_required",
 ] as const satisfies readonly ToolExecutionStatus[];
 
-export type ToolExecutionBlockedStatus =
+type ToolExecutionBlockedStatus =
   (typeof TOOL_EXECUTION_BLOCKED_STATUSES)[number];
-
-const TOOL_EXECUTION_TRANSIENT_STATUSES = [
-  "ready_allowed_explicitly",
-  "ready_allowed_implicitly",
-  ...TOOL_EXECUTION_BLOCKED_STATUSES,
-  "running",
-] as const satisfies readonly ToolExecutionStatus[];
-
-type ToolExecutionTransientStatus =
-  (typeof TOOL_EXECUTION_TRANSIENT_STATUSES)[number];
 
 export function isToolExecutionStatusFinal(
   state: ToolExecutionStatus
@@ -63,11 +53,24 @@ export function isToolExecutionStatusFinal(
   );
 }
 
-export function isToolExecutionStatusTransient(
+// The final statuses the tool actually ran under. `denied` is final but never executed: the user
+// rejected the approval, declined the authentication, or ended the message while the call sat
+// blocked. Charges are per invocation, so none of those are charged, while the model tokens spent
+// emitting the call are still billed as intelligence through the run usage. `errored` stays
+// billable, since the tool was invoked and failed on its own terms.
+const TOOL_EXECUTION_BILLABLE_STATUSES = [
+  "succeeded",
+  "errored",
+] as const satisfies readonly ToolExecutionFinalStatus[];
+
+type ToolExecutionBillableStatus =
+  (typeof TOOL_EXECUTION_BILLABLE_STATUSES)[number];
+
+export function isToolExecutionStatusBillable(
   state: ToolExecutionStatus
-): state is ToolExecutionTransientStatus {
-  return TOOL_EXECUTION_TRANSIENT_STATUSES.includes(
-    state as ToolExecutionTransientStatus
+): state is ToolExecutionBillableStatus {
+  return TOOL_EXECUTION_BILLABLE_STATUSES.includes(
+    state as ToolExecutionBillableStatus
   );
 }
 

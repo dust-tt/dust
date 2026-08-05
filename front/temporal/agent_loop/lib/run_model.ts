@@ -16,7 +16,10 @@ import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
-import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import {
+  constructPromptMultiActions,
+  renderToolUseDisabledUserMessage,
+} from "@app/lib/api/assistant/generation";
 import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   globalAgentInjectsToolsets,
@@ -31,7 +34,10 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import {
+  renderEquippedSkillsUserMessage,
+  renderFavoriteSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -124,7 +130,6 @@ const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
   "onboarding_conversation",
   "reinforced_skill_notification",
   "reinforcement",
-  "branch_anchor",
 ];
 
 // Builds the JSON blob whose token count estimates how many tokens the tool
@@ -365,6 +370,7 @@ export async function runModel(
     functionCallStepContentIds,
     durationRecorder,
     activityTimeoutDeadlineMs,
+    forceDisableToolUse = false,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
@@ -372,12 +378,17 @@ export async function runModel(
     functionCallStepContentIds: Record<string, ModelId>;
     durationRecorder: DurationRecorder;
     activityTimeoutDeadlineMs: number;
+    // Set when the previous step came back empty: force the final generation.
+    forceDisableToolUse?: boolean;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
   stepContexts: StepContext[];
+  // The step produced nothing at all: the loop should run one more step with
+  // tool use disabled to force a final answer.
+  retryWithoutTools?: boolean;
 } | null> {
   const {
     agentConfiguration,
@@ -480,6 +491,7 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
+    favoriteSkills,
     serverToolsAndInstructions: mcpActions,
     hasSelectedSpacesOutsideAgentScope,
   } = await startActiveObservation("resolve-tools", async () => {
@@ -505,6 +517,7 @@ export async function runModel(
       enabledSkills,
       systemSkills,
       equippedSkills,
+      favoriteSkills,
       hasSelectedSpacesOutsideAgentScope,
     } = await SkillResource.listForAgentLoop(auth, runAgentData);
 
@@ -523,6 +536,7 @@ export async function runModel(
             agentConfiguration,
             conversation,
             agentMessage,
+            userMessage,
             clientSideActionConfigurations: clientSideMCPActionConfigurations,
           },
           { jitServers, skillServers, systemSkillServers }
@@ -533,6 +547,7 @@ export async function runModel(
       hasSelectedSpacesOutsideAgentScope,
       enabledSkills,
       equippedSkills,
+      favoriteSkills,
       systemSkills,
       serverToolsAndInstructions,
     };
@@ -555,8 +570,8 @@ export async function runModel(
   // still sent, so the request keeps the same shape as previous steps (stable
   // tool definitions preserve prompt caching and keep tool references in the
   // replayed history resolvable), but the model is forbidden from calling them
-  // (tool choice "none").
-  const disableToolUse = isLastStep;
+  // (tool choice "none"). Same treatment after an empty step.
+  const disableToolUse = isLastStep || forceDisableToolUse;
   const availableActions = filteredMcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
@@ -631,8 +646,10 @@ export async function runModel(
     disableFormattingPrompt,
     hasSelectedSpacesOutsideAgentScope,
   });
+  // Only the shared skills message receives the leading skills cache breakpoint.
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
+    renderFavoriteSkillsUserMessage(favoriteSkills),
   ]);
 
   const modelConfig = modelInfo.endpoint.modelConfig;
@@ -697,6 +714,14 @@ export async function runModel(
     });
 
     return null;
+  }
+
+  if (disableToolUse) {
+    // Tool choice "none" alone leaves the model with nothing to do; spell it out
+    // so it writes an answer. Its tokens sit outside the render budget.
+    modelConversationRes.value.modelConversation.messages.push(
+      renderToolUseDisabledUserMessage()
+    );
   }
 
   const { specifications, missingReplayedToolNames } =
@@ -952,7 +977,7 @@ export async function runModel(
     }
   }
 
-  const { dustRunId, nativeChainOfThought, output } =
+  const { dustRunId, nativeChainOfThought, output, stopReason } =
     getOutputFromActionResponse.value;
 
   // Create a new object to avoid mutation
@@ -987,19 +1012,24 @@ export async function runModel(
 
   // Create AgentStepContent for each content item (reasoning, text, function calls)
   // This replaces the original agent_step_content event emission
-  for (const [index, content] of output.contents.entries()) {
-    const stepContent = await AgentStepContentResource.createNewVersion({
+  const stepContents = await AgentStepContentResource.createNewVersions(
+    output.contents.map((content, index) => ({
       workspaceId: conversation.owner.id,
       agentMessageId: agentMessage.agentMessageId,
       step,
       index,
       type: content.type,
       value: content,
-    });
+      // Same run id appended to AgentMessage.runIds below. Lets consumption attribution join a
+      // RunUsage (RunModel.dustRunId) to the contents this run emitted.
+      dustRunId,
+    }))
+  );
 
+  for (const [i, content] of output.contents.entries()) {
     // If this is a function call content, track the step content ID
     if (content.type === "function_call") {
-      updatedFunctionCallStepContentIds[content.value.id] = stepContent.id;
+      updatedFunctionCallStepContentIds[content.value.id] = stepContents[i].id;
     }
   }
 
@@ -1010,14 +1040,62 @@ export async function runModel(
     // Successful generation.
     const processedContent = contentParser.getContent() ?? "";
 
-    // No tool call and no text: the model produced no answer, either because it
-    // ran out of iterations or because the turn came back empty. Surface a
-    // retryable error, since publishing a success would silently end the run.
-    if (!processedContent.length) {
+    // The answer may have been streamed in an earlier step (text emitted before
+    // a tool call), so an empty step is not an empty message.
+    const answerSoFar = concatWithNewlineBoundary(
+      agentMessage.content,
+      processedContent
+    );
+
+    // No tool call and no text at all: the model produced no answer, either
+    // because it ran out of iterations or because the turn came back empty.
+    // Surface a retryable error, since publishing a success would silently end
+    // the run.
+    if (!answerSoFar.length) {
+      // The provider ended the turn with nothing usable: no tool call, no text
+      // here, no text in an earlier step. The stop reason and the block shape
+      // are the only way to tell the causes apart (a turn cut mid-thinking, an
+      // empty text block, or no content block at all), so log both.
+      const emptyTurnLogFields = {
+        stopReason: stopReason ?? "unknown",
+        contentCount: output.contents.length,
+        contentTypes: output.contents.map((c) => c.type),
+        reasoningEffort: modelInfo.reasoningEffort,
+        chainOfThoughtLength: (
+          nativeChainOfThought ||
+          contentParser.getChainOfThought() ||
+          ""
+        ).length,
+        prunedContext: modelConversationRes.value.prunedContext,
+        inputTokens: modelConversationRes.value.tokensUsed,
+        toolSearchEnabled,
+        toolCount: specifications.length,
+      };
+
+      // Nothing at all came back: no tool call, no text here, no text in an
+      // earlier step. Rather than failing the message, run one more step with
+      // tool use disabled to force a final answer. The retry is a new step so
+      // it gets its own trace and run id.
+      if (!disableToolUse) {
+        localLogger.warn(
+          { modelId: modelConfig.modelId, ...emptyTurnLogFields },
+          "Empty model turn, retrying in a new step without tool use."
+        );
+
+        return {
+          actions: [],
+          runId: dustRunId,
+          functionCallStepContentIds: updatedFunctionCallStepContentIds,
+          stepContexts: [],
+          retryWithoutTools: true,
+        };
+      }
+
       localLogger.warn(
         {
           modelId: modelConfig.modelId,
           isLastStep,
+          ...emptyTurnLogFields,
         },
         "No content generated by the agent."
       );
@@ -1057,10 +1135,7 @@ export async function runModel(
     const updatedAgentMessage = {
       ...agentMessage,
       chainOfThought: (agentMessage.chainOfThought ?? "") + chainOfThought,
-      content: concatWithNewlineBoundary(
-        agentMessage.content,
-        processedContent
-      ),
+      content: answerSoFar,
       completedTs,
       status: "succeeded",
       completionDurationMs: getCompletionDuration(
@@ -1221,6 +1296,7 @@ export async function runModel(
         internalMCPServerId: mcpServerView.internalMCPServerId,
         inputSchema: {},
         availability: "auto_hidden_builder",
+
         permission: "never_ask",
         toolServerId: mcpServerView.internalMCPServerId,
         mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,

@@ -143,11 +143,7 @@ describe("ProjectMetadataResource", () => {
         { description: "d" }
       );
 
-      await metadata.setDefaultSkills(authenticator, [
-        skillA,
-        skillB,
-        globalSkill,
-      ]);
+      await metadata.setDefaultSkills([skillA, skillB, globalSkill]);
 
       const reloaded = await ProjectMetadataResource.fetchBySpace(
         authenticator,
@@ -162,7 +158,7 @@ describe("ProjectMetadataResource", () => {
       );
 
       // Full replacement drops the omitted skills (keep only the global one).
-      await metadata.setDefaultSkills(authenticator, [globalSkill]);
+      await metadata.setDefaultSkills([globalSkill]);
       const afterReplace = await ProjectMetadataResource.fetchBySpace(
         authenticator,
         space
@@ -170,7 +166,7 @@ describe("ProjectMetadataResource", () => {
       expect(afterReplace!.defaultSkillIds).toEqual([globalSkill.sId]);
 
       // Empty set clears everything and stores null.
-      await metadata.setDefaultSkills(authenticator, []);
+      await metadata.setDefaultSkills([]);
       const afterClear = await ProjectMetadataResource.fetchBySpace(
         authenticator,
         space
@@ -179,18 +175,17 @@ describe("ProjectMetadataResource", () => {
       expect(afterClear!.defaultSkillsIds).toBeNull();
     });
 
-    it("drops skills that are not usable in the global space", async () => {
+    it("persists space-scoped skills as is, trusting the caller to have validated access", async () => {
       const { workspace: skillWorkspace, authenticator } =
         await createResourceTest({ role: "admin" });
       const space = await SpaceFactory.project(skillWorkspace);
-      const restrictedSpace = await SpaceFactory.regular(skillWorkspace);
 
       const globalSkill = await SkillFactory.create(authenticator, {
         name: "global",
       });
-      const restrictedSkill = await SkillFactory.create(authenticator, {
-        name: "restricted",
-        requestedSpaceIds: [restrictedSpace.id],
+      const podScopedSkill = await SkillFactory.create(authenticator, {
+        name: "pod-scoped",
+        requestedSpaceIds: [space.id],
       });
 
       const metadata = await ProjectMetadataResource.makeNew(
@@ -199,16 +194,15 @@ describe("ProjectMetadataResource", () => {
         { description: "d" }
       );
 
-      await metadata.setDefaultSkills(authenticator, [
-        globalSkill,
-        restrictedSkill,
-      ]);
+      await metadata.setDefaultSkills([globalSkill, podScopedSkill]);
 
       const reloaded = await ProjectMetadataResource.fetchBySpace(
         authenticator,
         space
       );
-      expect(reloaded!.defaultSkillIds).toEqual([globalSkill.sId]);
+      expect([...reloaded!.defaultSkillIds].sort()).toEqual(
+        [globalSkill.sId, podScopedSkill.sId].sort()
+      );
     });
 
     it("de-duplicates skills", async () => {
@@ -225,7 +219,7 @@ describe("ProjectMetadataResource", () => {
 
       // The (workspace, project, skill) unique index would reject a duplicate;
       // setDefaultSkills de-dupes before inserting.
-      await metadata.setDefaultSkills(authenticator, [skill, skill]);
+      await metadata.setDefaultSkills([skill, skill]);
 
       const reloaded = await ProjectMetadataResource.fetchBySpace(
         authenticator,
@@ -245,7 +239,7 @@ describe("ProjectMetadataResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills(authenticator, [skill]);
+      await metadata.setDefaultSkills([skill]);
 
       const result = await metadata.delete(authenticator, {});
       expect(result.isOk()).toBe(true);
@@ -268,7 +262,7 @@ describe("ProjectMetadataResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills(authenticator, [skill]);
+      await metadata.setDefaultSkills([skill]);
 
       const result = await skill.delete(authenticator);
       expect(result.isOk()).toBe(true);

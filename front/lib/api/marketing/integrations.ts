@@ -159,6 +159,7 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   guru: "productivity",
   granola: "transcripts",
   praiz: "transcripts",
+  modjo: "transcripts",
   intercom: "support",
   attio: "crm",
   gitlab: "development",

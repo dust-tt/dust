@@ -122,7 +122,7 @@ export type LLMClientMetadata = {
   modelId: ModelIdType;
 };
 
-export type ForceToolCall = string;
+type ForceToolCall = string;
 
 // A forced tool call and forbidden tool use are contradictory instructions, so
 // the type makes them mutually exclusive: setting both is a compile error.

@@ -16,10 +16,7 @@ export interface SourceReader {
   read(relPath: string): Promise<string | null>;
 }
 
-export type BundleErrorCode =
-  | "build_failed"
-  | "entry_not_found"
-  | "read_failed";
+type BundleErrorCode = "build_failed" | "entry_not_found" | "read_failed";
 
 export class BundleError extends Error {
   constructor(
@@ -43,7 +40,7 @@ export interface BundleEsbuildOptions {
   minify: boolean;
 }
 
-export interface BundleModuleParams {
+interface BundleModuleParams {
   // Root-relative path of the entry file (e.g. `index.ts`, `dashboard.tsx`).
   entryRelPath: string;
   reader: SourceReader;

@@ -5,10 +5,9 @@ import { ACTIVATION_POD_FRAME_TEMPLATE } from "./activation_pod_frame_template";
 describe("ACTIVATION_POD_FRAME_TEMPLATE", () => {
   it("is a single-state frame: a collapsible explainer plus recommendation tiles", () => {
     expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("const TILES");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function AboutSection");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function PodIntro");
     expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function Tiles");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("What is this pod?");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("HOW_IT_WORKS");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("const WHY_THIS_POD");
     // No day1/grown state machine, no tabbed dashboard.
     expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("const LEVEL");
     expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("function DayOneView");
@@ -28,8 +27,7 @@ describe("ACTIVATION_POD_FRAME_TEMPLATE", () => {
   });
 
   it("uses anonymized placeholder data", () => {
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain('name: "User"');
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain('role: "Marketing"');
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain('company: "Acme"');
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("Acme");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("Marketing");
   });
 });

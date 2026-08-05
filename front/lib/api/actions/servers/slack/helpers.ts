@@ -36,14 +36,14 @@ interface CanvasCreateResult extends WebAPICallResult {
 
 // Constants for Slack API limits and pagination.
 export const MAX_CHANNEL_SEARCH_RESULTS = 20;
-export const MAX_THREAD_MESSAGES = 200;
+const MAX_THREAD_MESSAGES = 200;
 export const SLACK_API_PAGE_SIZE = 200; // Slack recommendation 100 to 200 and max 1000 per request.
-export const MAX_PUBLIC_CHANNELS_LIMIT = 4000; // conversations.list is Tier 2 (20 req/min) => max 20 request plus cache TTL.
-export const DEFAULT_THREAD_MESSAGES = 20;
+const MAX_PUBLIC_CHANNELS_LIMIT = 4000; // conversations.list is Tier 2 (20 req/min) => max 20 request plus cache TTL.
+const DEFAULT_THREAD_MESSAGES = 20;
 export const SLACK_THREAD_LISTING_LIMIT = 100;
-export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000;
+const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000;
 export const MAX_USER_SEARCH_RESULTS = 20;
-export const USER_CACHE_TTL_MS = 60 * 10 * 1000;
+const USER_CACHE_TTL_MS = 60 * 10 * 1000;
 
 export function isSlackMissingScope(error: unknown): boolean {
   return (
@@ -83,7 +83,7 @@ type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
 type UserWithId = Member & { id: string };
 
 // Minimal channel information returned to reduce context window usage.
-export type MinimalChannelInfo = {
+type MinimalChannelInfo = {
   id: string;
   name: string;
   created: number;
@@ -105,7 +105,7 @@ export type MinimalChannelInfo = {
 };
 
 // Clean channel payload to keep only essential fields.
-export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
+function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
   const typeFlags: Array<[boolean | undefined, string]> = [
     [channel.is_channel, "public channel"],
     [channel.is_group, "private group"],
@@ -149,7 +149,7 @@ export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
 }
 
 // Minimal user information returned to reduce context window usage.
-export type MinimalUserInfo = {
+type MinimalUserInfo = {
   id: string;
   name: string;
   real_name: string;
@@ -184,7 +184,7 @@ export function cleanUserPayload(user: Partial<Member>): MinimalUserInfo {
 }
 
 // Minimal user group information returned to reduce context window usage.
-export type MinimalUserGroupInfo = {
+type MinimalUserGroupInfo = {
   id: string;
   handle: string;
   name: string;
@@ -193,9 +193,7 @@ export type MinimalUserGroupInfo = {
 };
 
 // Clean user group payload to keep only essential fields.
-export function cleanUserGroupPayload(
-  usergroup: Usergroup
-): MinimalUserGroupInfo {
+function cleanUserGroupPayload(usergroup: Usergroup): MinimalUserGroupInfo {
   return {
     id: usergroup.id ?? "",
     handle: usergroup.handle ?? "",
@@ -258,7 +256,7 @@ export const getChannels = async (
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const getCachedPublicChannels = cacheWithRedis(
+const getCachedPublicChannels = cacheWithRedis(
   async ({
     slackClient,
   }: {
@@ -321,7 +319,7 @@ const getAllUsers = async ({
     });
 };
 
-export const getCachedWorkspaceUsers = cacheWithRedis(
+const getCachedWorkspaceUsers = cacheWithRedis(
   async ({
     slackClient,
   }: {
@@ -500,7 +498,7 @@ function formatUsersAsMarkdown(users: MinimalUserInfo[]): string {
 }
 
 // Helper function to build filtered list responses.
-export async function hasSlackScope(
+async function hasSlackScope(
   accessToken: string,
   scope: string
 ): Promise<boolean> {
@@ -1234,7 +1232,7 @@ function hasChannelTabs(
   );
 }
 
-export type ChannelCanvasInfo = {
+type ChannelCanvasInfo = {
   canvas_id: string;
   type: "canvas";
   label?: string;
@@ -1450,30 +1448,6 @@ export async function executeWriteCanvas({
     {
       type: "text" as const,
       text: `Canvas "${canvas_id}" updated successfully (operation: ${op}).`,
-    },
-  ]);
-}
-
-export async function executeDeleteCanvas({
-  canvas_id,
-  accessToken,
-}: {
-  canvas_id: string;
-  accessToken: string;
-}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
-  const slackClient = await getSlackClient(accessToken);
-
-  const res = await slackClient.apiCall("canvases.delete", { canvas_id });
-  if (!res.ok) {
-    return new Err(
-      new MCPError(`Failed to delete canvas: ${res.error ?? "unknown error"}`)
-    );
-  }
-
-  return new Ok([
-    {
-      type: "text" as const,
-      text: `Canvas "${canvas_id}" has been permanently deleted.`,
     },
   ]);
 }

@@ -89,11 +89,10 @@ describe("resumeAncestorConversations", () => {
       )
     );
 
-    const res = await resumeAncestorConversations(auth, child.conversation, {
+    await resumeAncestorConversations(auth, child.conversation, {
       agentMessageId: child.agentMessageId,
     });
 
-    expect(res.isOk()).toBe(true);
     // Starting the parent is a no-op (a sibling won the race), but we still walk
     // up and attempt to resume the grandparent so it is not stranded.
     expect(retryBlockedActions).toHaveBeenCalledTimes(2);
@@ -109,31 +108,54 @@ describe("resumeAncestorConversations", () => {
     );
   });
 
-  it("returns Err when retrying blocked actions fails for another reason", async () => {
+  it("keeps walking up when an ancestor has nothing to resume", async () => {
+    const grandParent = await createAgenticConversation(auth, workspace);
+    const parent = await createAgenticConversation(auth, workspace, {
+      agenticParentMessageId: grandParent.agentMessageId,
+    });
+    const child = await createAgenticConversation(auth, workspace, {
+      agenticParentMessageId: parent.agentMessageId,
+    });
+
+    // Benign for the caller (handover parent, or already resumed by a sibling validation): the
+    // grandparent may still be parked, so the walk must not stop here.
+    vi.mocked(retryBlockedActions).mockResolvedValue(
+      new Err(new DustError("no_blocked_actions", "No blocked actions found"))
+    );
+
+    await resumeAncestorConversations(auth, child.conversation, {
+      agentMessageId: child.agentMessageId,
+    });
+
+    expect(retryBlockedActions).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not surface a failed wake-up to the caller", async () => {
     const parent = await createAgenticConversation(auth, workspace);
     const child = await createAgenticConversation(auth, workspace, {
       agenticParentMessageId: parent.agentMessageId,
     });
 
+    // The user's decision is already committed by the time we get here, so an unexpected failure
+    // must be logged, never thrown or returned.
     vi.mocked(retryBlockedActions).mockResolvedValue(
-      new Err(new Error("No blocked actions found"))
+      new Err(new Error("Temporal is down"))
     );
 
-    const res = await resumeAncestorConversations(auth, child.conversation, {
-      agentMessageId: child.agentMessageId,
-    });
-
-    expect(res.isErr()).toBe(true);
+    await expect(
+      resumeAncestorConversations(auth, child.conversation, {
+        agentMessageId: child.agentMessageId,
+      })
+    ).resolves.toBeUndefined();
   });
 
-  it("returns Ok without retrying when there is no agentic parent", async () => {
+  it("does not retry when there is no agentic parent", async () => {
     const root = await createAgenticConversation(auth, workspace);
 
-    const res = await resumeAncestorConversations(auth, root.conversation, {
+    await resumeAncestorConversations(auth, root.conversation, {
       agentMessageId: root.agentMessageId,
     });
 
-    expect(res.isOk()).toBe(true);
     expect(retryBlockedActions).not.toHaveBeenCalled();
   });
 
@@ -148,11 +170,10 @@ describe("resumeAncestorConversations", () => {
 
     vi.mocked(retryBlockedActions).mockResolvedValue(new Ok(undefined));
 
-    const res = await resumeAncestorConversations(auth, child.conversation, {
+    await resumeAncestorConversations(auth, child.conversation, {
       agentMessageId: child.agentMessageId,
     });
 
-    expect(res.isOk()).toBe(true);
     expect(retryBlockedActions).toHaveBeenCalledTimes(2);
   });
 });

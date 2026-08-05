@@ -75,7 +75,7 @@ async function setupSandboxFunctionInvocation({
     input: undefined,
   });
 
-  return { workspace, sandboxFunction, invocation };
+  return { workspace, auth, space, sandboxFunction, invocation };
 }
 
 function getEvents({
@@ -143,6 +143,26 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
       workspaceId: workspace.sId,
       functionId: sandboxFunction.sId,
       invocationId: "sfi_unknown",
+    });
+
+    expect(response.status).toBe(404);
+    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+  });
+
+  it("hides another member's invocation from a Pod reader", async () => {
+    const { workspace, auth, space, sandboxFunction, invocation } =
+      await setupSandboxFunctionInvocation();
+    const { user } = await createPrivateApiMockRequest({
+      role: "user",
+      workspace,
+    });
+    const addResult = await space.addMembers(auth, { userIds: [user.sId] });
+    expect(addResult.isOk()).toBe(true);
+
+    const response = await getEvents({
+      workspaceId: workspace.sId,
+      functionId: sandboxFunction.sId,
+      invocationId: invocation.sId,
     });
 
     expect(response.status).toBe(404);

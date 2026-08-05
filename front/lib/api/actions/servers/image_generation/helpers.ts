@@ -35,7 +35,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-export type ImageGenerationErrorCode =
+type ImageGenerationErrorCode =
   | "api_error"
   | "safety_blocked"
   | "empty_response";
@@ -51,11 +51,10 @@ export class ImageGenerationError extends Error {
   }
 }
 
-export const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
-export const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
+const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
+const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
 
-export const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
-export const DEFAULT_IMAGE_MIME_TYPE = "image/png";
+const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 
 // Token pricing is expressed as cost per million tokens (micro-USD per token)
 const MICRO_USD_PER_USD = 1_000_000;

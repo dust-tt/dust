@@ -1,15 +1,39 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { Input } from "@dust-tt/sparkle";
-import { useFormContext } from "react-hook-form";
+import { CheckBoxWithTextAndDescription, Input } from "@dust-tt/sparkle";
+import { useController, useFormContext } from "react-hook-form";
 
 interface MCPServerViewFormProps {
   mcpServerView: MCPServerViewType;
+  confirmSkillsRestrictionChange?: (
+    isRestrictedToSkills: boolean
+  ) => Promise<boolean>;
 }
 
-export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
+export function MCPServerViewForm({
+  mcpServerView,
+  confirmSkillsRestrictionChange,
+}: MCPServerViewFormProps) {
   const form = useFormContext<MCPServerFormValues>();
+  const { field: isRestrictedToSkillsField } = useController({
+    name: "isRestrictedToSkills",
+    control: form.control,
+  });
+
+  const handleSkillsRestrictionChange = async (
+    isRestrictedToSkills: boolean
+  ) => {
+    if (confirmSkillsRestrictionChange) {
+      const confirmed =
+        await confirmSkillsRestrictionChange(isRestrictedToSkills);
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    isRestrictedToSkillsField.onChange(isRestrictedToSkills);
+  };
 
   return (
     <div className="space-y-5 text-foreground">
@@ -34,10 +58,16 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
           message={form.formState.errors.description?.message}
           placeholder={getMcpServerViewDescription(mcpServerView)}
         />
-        <p className="text-xs text-primary-500">
-          This is only for internal reference and is not shown to the model.
-        </p>
       </div>
+
+      <CheckBoxWithTextAndDescription
+        text="Restrict this tool to skills"
+        description="Use this when the tool should always be accompanied by workspace context or safety rules from a skill."
+        checked={isRestrictedToSkillsField.value}
+        onCheckedChange={(checked) => {
+          void handleSkillsRestrictionChange(checked === true);
+        }}
+      />
     </div>
   );
 }

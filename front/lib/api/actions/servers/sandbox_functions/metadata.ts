@@ -26,7 +26,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
   {
     name: "get",
     description:
-      "Get a pod function's input and output JSON schemas by its slug.",
+      "Get a pod function's user identity policy and input and output JSON schemas by its slug.",
     schema: {
       slug: z
         .string()
@@ -46,9 +46,10 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
     description:
       "Publish a pod function from a TypeScript source file in the current pod. The source " +
       "must default-export a `fetch(request: Request): Promise<Response>` handler and export a " +
-      "`schema` with zod `input` and `output`. It is bundled on the pod sandbox (only `zod` is " +
-      "available to import) and its input and output JSON schemas are extracted from the `schema` " +
-      "export. Re-publishing the same slug replaces the previous version.",
+      "`schema` with zod `input` and `output`. Set `schema.userIdentity` to `optional`, " +
+      "`workspace_user_required`, or `interactive_workspace_user_required`. It is bundled on the " +
+      "pod sandbox (only `zod` is available to import), and its contract is extracted from the " +
+      "`schema` export. Re-publishing the same slug replaces the previous version.",
     schema: {
       slug: z
         .string()

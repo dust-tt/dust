@@ -283,6 +283,11 @@ const config = {
         permanent: true,
       },
       {
+        source: "/credits",
+        destination: "/home/credits",
+        permanent: true,
+      },
+      {
         source: "/security",
         destination: "/home/security",
         permanent: true,
@@ -342,6 +347,12 @@ const config = {
         destination:
           "/landing/skip?utm_source=podcast&utm_medium=audio&utm_campaign=skip&utm_content=listener",
         permanent: false,
+      },
+      {
+        // Page removed, see https://github.com/dust-tt/dust/pull/29781.
+        source: "/home/api-pricing",
+        destination: "/home/pricing",
+        permanent: true,
       },
     ];
   },

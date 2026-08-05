@@ -11,7 +11,7 @@ import { Op } from "sequelize";
 // If it is a problem, let's add caching
 const DISABLE_QUERIES = false;
 
-export type WebhookSourcesUsage = Record<ModelId, AgentsUsageType>;
+type WebhookSourcesUsage = Record<ModelId, AgentsUsageType>;
 
 type AgentInfo = { sId: string; name: string; pictureUrl: string };
 

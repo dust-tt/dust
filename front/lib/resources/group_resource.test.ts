@@ -1022,5 +1022,38 @@ describe("GroupResource", () => {
         await provisionedGroup.getActiveMembers(authenticator);
       expect(provisionedMembers).toEqual([]);
     });
+
+    it("does not create the group when createIfMissing is false", async () => {
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+        createIfMissing: false,
+      });
+
+      const group = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      expect(group).toBeNull();
+    });
+
+    it("adds the user to an existing group when createIfMissing is false", async () => {
+      const group = await GroupResource.makeNew({
+        name: MANUAL_BUILDERS_GROUP_NAME,
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+        createIfMissing: false,
+      });
+
+      const members = await group.getActiveMembers(authenticator);
+      expect(members.map((m) => m.id)).toEqual([user.id]);
+    });
   });
 });

@@ -19,12 +19,8 @@ export const RealTimeIncidentStatusSchema = z.enum([
   "resolved",
 ]);
 
-export type RealTimeIncidentStatus = z.infer<
-  typeof RealTimeIncidentStatusSchema
->;
-
 // All possible incident status values (including scheduled maintenance and postmortem)
-export const IncidentStatusSchema = z.enum([
+const IncidentStatusSchema = z.enum([
   "investigating",
   "identified",
   "monitoring",
@@ -86,7 +82,7 @@ export const StatuspageComponentSchema = z
 export type StatuspageComponent = z.infer<typeof StatuspageComponentSchema>;
 
 // Incident update schema
-export const StatuspageIncidentUpdateSchema = z
+const StatuspageIncidentUpdateSchema = z
   .object({
     id: z.string(),
     incident_id: z.string(),
@@ -98,10 +94,6 @@ export const StatuspageIncidentUpdateSchema = z
     deliver_notifications: z.boolean().optional(),
   })
   .passthrough();
-
-export type StatuspageIncidentUpdate = z.infer<
-  typeof StatuspageIncidentUpdateSchema
->;
 
 // Incident schema
 export const StatuspageIncidentSchema = z
@@ -140,8 +132,6 @@ export const ListIncidentsResponseSchema = z.array(StatuspageIncidentSchema);
 export type ListIncidentsResponse = z.infer<typeof ListIncidentsResponseSchema>;
 
 export const GetIncidentResponseSchema = StatuspageIncidentSchema;
-
-export type GetIncidentResponse = z.infer<typeof GetIncidentResponseSchema>;
 
 // Request types for creating/updating incidents
 export interface CreateIncidentRequest {

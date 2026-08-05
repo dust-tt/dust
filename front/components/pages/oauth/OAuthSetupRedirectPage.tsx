@@ -1,5 +1,6 @@
 import { useAppRouter, usePathParam, useSearchParam } from "@app/lib/platform";
 import { useOAuthSetup } from "@app/lib/swr/oauth";
+import { isAPIErrorResponse } from "@app/types/error";
 import type {
   OAuthCredentials,
   OAuthProvider,
@@ -71,7 +72,13 @@ export function OAuthSetupRedirectPage() {
             ? "Invalid OAuth provider."
             : !useCase
               ? "Invalid OAuth use case."
-              : "Failed to initialize OAuth connection."}
+              : // Only `mcp_server_connection_not_found` messages are written for end users;
+                // other API errors can carry raw upstream details.
+                isAPIErrorResponse(isOAuthSetupError) &&
+                  isOAuthSetupError.error.type ===
+                    "mcp_server_connection_not_found"
+                ? isOAuthSetupError.error.message
+                : "Failed to initialize OAuth connection."}
         </p>
       </div>
     );

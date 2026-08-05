@@ -1,10 +1,10 @@
-import type { WorkspaceSandboxEnvVarType } from "@app/types/sandbox/env_var";
+import type { SandboxEnvVarType } from "@app/types/sandbox/env_var";
 
-export type GetWorkspaceSandboxEnvVarsResponseBody = {
-  envVars: WorkspaceSandboxEnvVarType[];
+export type GetSandboxEnvVarsResponseBody = {
+  envVars: SandboxEnvVarType[];
 };
 
-export type PostWorkspaceSandboxEnvVarsResponseBody = {
-  envVar: WorkspaceSandboxEnvVarType;
+export type PostSandboxEnvVarsResponseBody = {
+  envVar: SandboxEnvVarType;
   created: boolean;
 };

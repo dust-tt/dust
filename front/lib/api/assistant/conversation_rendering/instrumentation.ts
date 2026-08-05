@@ -14,9 +14,9 @@ import type {
 
 export type { ConversationPruningStats } from "@app/lib/api/assistant/conversation_rendering/window_types";
 
-export type ConversationRenderingOutcome = "fits" | "pruned";
+type ConversationRenderingOutcome = "fits" | "pruned";
 
-export type ConversationRenderingMetrics = {
+type ConversationRenderingMetrics = {
   outcome: ConversationRenderingOutcome;
   // True when the rendered context remains above the proactive pruning budget. This can happen
   // because the remaining tool results are pending, less than one pruning checkpoint is eligible,

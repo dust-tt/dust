@@ -55,6 +55,10 @@ export function useMentionSuggestions({
 
   const searchParams = new URLSearchParams({ query: debouncedSearchQuery });
 
+  // Without any select param the endpoint returns both agents and users, so
+  // skip the fetch entirely when nothing is selectable.
+  const nothingSelectable = !select.agents && !select.users;
+
   if (select.agents) {
     searchParams.append("select", "agents");
   }
@@ -84,12 +88,12 @@ export function useMentionSuggestions({
     revalidateOnReconnect: false,
     // Cache suggestions for 5 minutes
     dedupingInterval: 5 * 60 * 1000,
-    disabled,
+    disabled: disabled || nothingSelectable,
   });
 
   return {
     suggestions: data?.suggestions ?? [],
-    isLoading: !error && !data,
+    isLoading: !error && !data && !(disabled || nothingSelectable),
     isError: !!error,
     mutate,
   };
@@ -196,9 +200,12 @@ export function useMentionValidation({
           sendNotification({
             type: "success",
             title: "Success",
-            description: isProjectConversation
-              ? `${mention.label} has been added to the Pod, and added to the conversation`
-              : `${mention.label} has been invited to the conversation.`,
+            description:
+              mention.type === "agent"
+                ? `${mention.label} will run in this conversation.`
+                : isProjectConversation
+                  ? `${mention.label} has been added to the Pod, and added to the conversation`
+                  : `${mention.label} has been invited to the conversation.`,
           });
         }
 

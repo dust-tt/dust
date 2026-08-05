@@ -25,7 +25,7 @@ export function ProjectPodFunctionDataTable({
     >
       {(items) => (
         <PokeDataTable
-          columns={makeColumnsForProjectPodFunction()}
+          columns={makeColumnsForProjectPodFunction({ owner, projectId })}
           data={items}
         />
       )}

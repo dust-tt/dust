@@ -1,13 +1,17 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConfirmContext } from "@app/components/Confirm";
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useWorkspaceDefaultAgent } from "@app/hooks/useWorkspaceDefaultAgent";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { WorkspaceType } from "@app/types/user";
-import { Avatar, Button, ContextItem, Robot } from "@dust-tt/sparkle";
+import { Avatar, Button, Robot } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
-const ROBOT_VISUAL = <Robot className="h-6 w-6" />;
+const LABEL = "Default agent";
+const DESCRIPTION =
+  "The agent pre-selected when anyone starts a new conversation in this workspace";
 
 interface WorkspaceDefaultAgentPickerProps {
   owner: WorkspaceType;
@@ -16,6 +20,16 @@ interface WorkspaceDefaultAgentPickerProps {
 export function WorkspaceDefaultAgentPicker({
   owner,
 }: WorkspaceDefaultAgentPickerProps) {
+  const { hasFeature } = useFeatureFlags();
+
+  if (!hasFeature("workspace_default_agent")) {
+    return null;
+  }
+
+  return <DefaultAgentRow owner={owner} />;
+}
+
+function DefaultAgentRow({ owner }: WorkspaceDefaultAgentPickerProps) {
   const confirm = useContext(ConfirmContext);
   const { workspaceDefaultAgentId, isChanging, doUpdateWorkspaceDefaultAgent } =
     useWorkspaceDefaultAgent({ owner });
@@ -57,11 +71,9 @@ export function WorkspaceDefaultAgentPicker({
   };
 
   return (
-    <ContextItem
-      title="Default agent"
-      subElement="The agent pre-selected when anyone starts a new conversation in this workspace."
-      visual={ROBOT_VISUAL}
-      hasSeparatorIfLast={true}
+    <GovernanceSettingRowLayout
+      label={LABEL}
+      description={DESCRIPTION}
       action={
         <AgentPicker
           owner={owner}

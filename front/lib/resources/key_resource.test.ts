@@ -76,11 +76,12 @@ vi.mock("@app/lib/utils/cache", () => ({
 }));
 
 import type { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import {
-  GroupResource,
-  MANUAL_BUILDERS_GROUP_NAME,
-} from "@app/lib/resources/group_resource";
-import { KeyResource } from "@app/lib/resources/key_resource";
+  KeyResource,
+  MARK_AS_USED_MIN_INTERVAL_MS,
+} from "@app/lib/resources/key_resource";
+import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -187,34 +188,6 @@ describe("KeyResource", () => {
       expect(fetched).not.toBeNull();
       expect(fetched!.role).toBe("admin");
     });
-
-    it("adds the key to the Builders group when the new role is builder", async () => {
-      const key = await KeyFactory.readOnly(globalGroup); // role: "user"
-
-      await key.updateRole({ newRole: "builder" });
-
-      const group = await GroupResource.fetchManualBuildersGroup(workspace);
-      expect(group).not.toBeNull();
-      const fetched = await KeyResource.fetchByWorkspaceAndId({
-        workspace,
-        id: key.id,
-      });
-      expect(fetched!.groupIds).toContain(group!.id);
-    });
-
-    it("removes the key from the Builders group when the role changes away from builder", async () => {
-      const key = await KeyFactory.regular(globalGroup); // role: "builder"
-      await key.updateRole({ newRole: "builder" }); // creates + adds
-
-      await key.updateRole({ newRole: "user" });
-
-      const group = await GroupResource.fetchManualBuildersGroup(workspace);
-      const fetched = await KeyResource.fetchByWorkspaceAndId({
-        workspace,
-        id: key.id,
-      });
-      expect(fetched!.groupIds).not.toContain(group!.id);
-    });
   });
 
   describe("setGroupMembership", () => {
@@ -237,39 +210,6 @@ describe("KeyResource", () => {
 
       await key.setGroupMembership({ group: otherGroup, isMember: false });
 
-      const fetched = await KeyResource.fetchByWorkspaceAndId({
-        workspace,
-        id: key.id,
-      });
-      expect(fetched!.groupIds).toEqual([globalGroup.id]);
-    });
-  });
-
-  describe("syncBuilderGroupMembership", () => {
-    it("creates the Builders group lazily and adds the key when isBuilder is true", async () => {
-      const key = await KeyFactory.regular(globalGroup); // role: "builder"
-      const before = await GroupResource.fetchManualBuildersGroup(workspace);
-      expect(before).toBeNull();
-
-      await key.syncBuilderGroupMembership({ isBuilder: true });
-
-      const group = await GroupResource.fetchManualBuildersGroup(workspace);
-      expect(group).not.toBeNull();
-      expect(group!.name).toBe(MANUAL_BUILDERS_GROUP_NAME);
-      const fetched = await KeyResource.fetchByWorkspaceAndId({
-        workspace,
-        id: key.id,
-      });
-      expect(fetched!.groupIds).toContain(group!.id);
-    });
-
-    it("does not create the Builders group when isBuilder is false and none exists", async () => {
-      const key = await KeyFactory.regular(globalGroup);
-
-      await key.syncBuilderGroupMembership({ isBuilder: false });
-
-      const group = await GroupResource.fetchManualBuildersGroup(workspace);
-      expect(group).toBeNull();
       const fetched = await KeyResource.fetchByWorkspaceAndId({
         workspace,
         id: key.id,
@@ -351,5 +291,71 @@ describe("KeyResource.keyCacheKeyResolver", () => {
     expect(KeyResource.keyCacheKeyResolver("secret-a")).toBe(
       "key:secret:6d0bd572a4f30536d6ad11b514678cb41703fdef30d395f4ecb207a6d2bd2fd3"
     );
+  });
+});
+
+describe("KeyResource.markAsUsed", () => {
+  let globalGroup: GroupResource;
+
+  beforeEach(async () => {
+    inMemoryCache.clear();
+    const testSetup = await createResourceTest({ role: "admin" });
+    globalGroup = testSetup.globalGroup;
+  });
+
+  it("writes lastUsedAt when it has never been set", async () => {
+    const key = await KeyFactory.regular(globalGroup);
+    expect(key.lastUsedAt).toBeNull();
+
+    await key.markAsUsed();
+
+    expect(key.lastUsedAt).not.toBeNull();
+  });
+
+  it("skips the DB write when lastUsedAt is within the throttle window", async () => {
+    const key = await KeyFactory.regular(globalGroup);
+    await key.markAsUsed();
+    const firstLastUsedAt = key.lastUsedAt;
+
+    const updateSpy = vi.spyOn(KeyModel, "update");
+    await key.markAsUsed();
+
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(key.lastUsedAt).toEqual(firstLastUsedAt);
+    updateSpy.mockRestore();
+  });
+
+  it("writes again when lastUsedAt is older than the throttle window", async () => {
+    const key = await KeyFactory.regular(globalGroup);
+    const staleDate = new Date(Date.now() - MARK_AS_USED_MIN_INTERVAL_MS - 1);
+    await KeyModel.update(
+      { lastUsedAt: staleDate },
+      { where: { id: key.id, workspaceId: key.workspaceId } }
+    );
+
+    const reloaded = await KeyResource.fetchBySecret(key.secret);
+    expect(reloaded).not.toBeNull();
+
+    await reloaded!.markAsUsed();
+
+    expect(reloaded!.lastUsedAt).not.toBeNull();
+    expect(reloaded!.lastUsedAt!.getTime()).toBeGreaterThan(
+      staleDate.getTime()
+    );
+  });
+
+  it("invalidates the secret cache so subsequent fetches see the new lastUsedAt", async () => {
+    const key = await KeyFactory.regular(globalGroup);
+    await KeyResource.fetchBySecret(key.secret); // populate cache with null lastUsedAt
+
+    await key.markAsUsed();
+
+    const fetched = await KeyResource.fetchBySecret(key.secret);
+    expect(fetched?.lastUsedAt).not.toBeNull();
+
+    const updateSpy = vi.spyOn(KeyModel, "update");
+    await fetched!.markAsUsed();
+    expect(updateSpy).not.toHaveBeenCalled();
+    updateSpy.mockRestore();
   });
 });

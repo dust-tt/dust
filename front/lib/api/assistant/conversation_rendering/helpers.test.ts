@@ -1,5 +1,8 @@
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import {
+  renderEquippedSkillsUserMessage,
+  renderFavoriteSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -218,8 +221,35 @@ describe("skill rendering helpers", () => {
           text: `<dust_system>
 The following skills are available for use with the skill_management__enable_skill tool:
 
-- **commit**: Create a git commit with a descriptive message.
-- **review-pr**: Review a pull request for code quality and correctness.
+- \`commit\`: Create a git commit with a descriptive message.
+- \`review-pr\`: Review a pull request for code quality and correctness.
+
+Pass \`skillName\` exactly as written between backticks above, character for character: same case, same spacing, same punctuation, same prefixes and suffixes. Copy the name rather than retyping it, and do not adjust it to match how other skills in the list are named. Names are matched exactly, so a modified name will not be found.
+</dust_system>`,
+        },
+      ],
+    });
+  });
+
+  it("renders favorite skills as a separate non-cacheable user message", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const favoriteSkill = await SkillFactory.create(authenticator, {
+      name: "favorite-skill",
+      agentFacingDescription: "Use my favorite skill.",
+    });
+
+    const message = renderFavoriteSkillsUserMessage([favoriteSkill]);
+
+    expect(message).toEqual({
+      role: "user",
+      name: "user",
+      content: [
+        {
+          type: "text",
+          text: `<dust_system>
+The following skills were set as favorites by the user and are also available for use with the skill_management__enable_skill tool:
+
+- \`favorite-skill\`: Use my favorite skill.
 </dust_system>`,
         },
       ],

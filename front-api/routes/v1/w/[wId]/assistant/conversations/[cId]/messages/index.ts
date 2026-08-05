@@ -191,7 +191,8 @@ app.post(
 
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
-        context.selectedMCPServerViewIds
+        context.selectedMCPServerViewIds,
+        { isRestrictedToSkills: false }
       );
 
       const upsertRes = await ConversationResource.upsertMCPServerViews(auth, {

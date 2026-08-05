@@ -12,7 +12,7 @@ export const FILE_PREVIEW_NODE_TYPE = "filePreview";
 export const FILE_PREVIEW_DIRECTIVE_EXAMPLE =
   ':preview_file{path="conversation-<id>/report.pdf" title="report.pdf" contentType="application/pdf"}';
 
-export type ParsedFilePreviewDirective = {
+type ParsedFilePreviewDirective = {
   contentType?: string;
   path: string;
   raw: string;

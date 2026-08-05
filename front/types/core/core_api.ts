@@ -62,7 +62,7 @@ export type CoreAPIError = {
   code: string;
 };
 
-export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
+function isCoreAPIError(obj: unknown): obj is CoreAPIError {
   return (
     typeof obj === "object" &&
     obj !== null &&
@@ -73,9 +73,9 @@ export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
   );
 }
 
-export type CoreAPIResponse<T> = Result<T, CoreAPIError>;
+type CoreAPIResponse<T> = Result<T, CoreAPIError>;
 
-export type CoreAPIDatasetVersion = {
+type CoreAPIDatasetVersion = {
   hash: string;
   created: number;
 };
@@ -89,7 +89,7 @@ export type CoreAPIDataset = CoreAPIDatasetWithoutData & {
   data: { [key: string]: any }[];
 };
 
-export type CoreAPIRun = {
+type CoreAPIRun = {
   run_id: string;
   created: number;
   run_type: RunRunType;
@@ -148,19 +148,19 @@ export type CoreAPITable = {
   remote_database_secret_id: string | null;
 };
 
-export type CoreAPIRowValue =
+type CoreAPIRowValue =
   | number
   | string
   | boolean
   | { type: "datetime"; epoch: number; string_value?: string }
   | null;
 
-export type CoreAPIRow = {
+type CoreAPIRow = {
   row_id: string;
   value: Record<string, CoreAPIRowValue>;
 };
 
-export type CoreAPIQueryResult = {
+type CoreAPIQueryResult = {
   value: Record<string, string | number | boolean | null | undefined>;
 };
 
@@ -184,7 +184,7 @@ export type CoreAPISortSpec = {
   direction: "asc" | "desc";
 };
 
-export type CoreAPISearchOptions = {
+type CoreAPISearchOptions = {
   cursor?: string;
   limit?: number;
   search_source_urls?: boolean;
@@ -262,7 +262,7 @@ export type CoreAPINodesSearchFilter = t.TypeOf<
   typeof CoreAPINodesSearchFilterSchema
 >;
 
-export interface CoreAPIDataSourceStatsResponse {
+interface CoreAPIDataSourceStatsResponse {
   data_sources: {
     data_source_id: string;
     data_source_internal_id: string;
@@ -274,7 +274,7 @@ export interface CoreAPIDataSourceStatsResponse {
   overall_total_size: number;
 }
 
-export interface CoreAPIUpsertDataSourceDocumentPayload {
+interface CoreAPIUpsertDataSourceDocumentPayload {
   projectId: string;
   dataSourceId: string;
   documentId: string;

@@ -43,23 +43,19 @@ export async function fetchPrecedingContentFragments(
   {
     conversationResource,
     targetRank,
-    branchId,
     transaction,
   }: {
     conversationResource: ConversationResource;
     targetRank: number;
-    branchId?: string | null;
     transaction?: Transaction;
   }
 ): Promise<ContentFragmentType[]> {
-  const scopeWhere = await conversationResource.getMessageScopeWhere(auth, {
-    branchId,
-    transaction,
-  });
+  const owner = auth.getNonNullableWorkspace();
 
   const messages = await MessageModel.findAll({
     where: {
-      ...scopeWhere,
+      workspaceId: owner.id,
+      conversationId: conversationResource.id,
       rank: { [Op.lt]: targetRank },
       visibility: { [Op.ne]: "deleted" },
     },
@@ -120,7 +116,6 @@ function collectConsecutivePrecedingContentFragments(
  * Fetch content fragments for a conversation without loading full conversation content.
  * Returns the latest message version per rank, only fragments with
  * `contentFragmentVersion === "latest"`, optionally limited to `rank <= upToRank`.
- * Main branch only (`branchId` null).
  */
 export async function fetchContentFragmentsForConversation(
   auth: Authenticator,
@@ -137,7 +132,6 @@ export async function fetchContentFragmentsForConversation(
   const where: WhereOptions<MessageModel> = {
     conversationId: conversation.id,
     workspaceId: owner.id,
-    branchId: null,
     visibility: { [Op.ne]: "deleted" },
     ...(upToRank !== undefined ? { rank: { [Op.lte]: upToRank } } : {}),
   };

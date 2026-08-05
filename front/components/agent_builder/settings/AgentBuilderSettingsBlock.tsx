@@ -1,4 +1,5 @@
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { AgentBuilderSimilarAgentsSection } from "@app/components/agent_builder/AgentBuilderSimilarAgentsSection";
 import { AccessSection } from "@app/components/agent_builder/settings/AccessSection";
 import { AgentBuilderAvatarSection } from "@app/components/agent_builder/settings/AgentBuilderAvatarSection";
 import { AgentBuilderDescriptionSection } from "@app/components/agent_builder/settings/AgentBuilderDescriptionSection";
@@ -29,6 +30,9 @@ export function AgentBuilderSettingsBlock({
           <AgentBuilderAvatarSection isCreatingNew={isCreatingNew} />
         </div>
         <AgentBuilderDescriptionSection isCreatingNew={isCreatingNew} />
+        <AgentBuilderSimilarAgentsSection
+          agentConfigurationId={agentConfigurationId}
+        />
         <AccessSection
           isEditorGateVisible={isEditorGateVisible}
           isAddingSelfAsEditor={isAddingSelfAsEditor}

@@ -36,7 +36,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 /**
  * Renders agent message steps into model messages
  */
-export function renderAgentSteps(
+function renderAgentSteps(
   steps: Step[],
   message: AgentMessageType,
   conversation: ConversationType,

@@ -19,7 +19,6 @@ import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -28,7 +27,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import { extractToolTags, serializeToolTag } from "@app/lib/tools/format";
 import logger from "@app/logger/logger";
-import { getDefaultSkillAvailability } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -311,8 +310,6 @@ export async function createSkill(
     }
   }
 
-  const featureFlags = await getFeatureFlags(auth);
-
   const skill = await SkillResource.makeNew(
     auth,
     {
@@ -327,7 +324,7 @@ export async function createSkill(
       icon: resolvedIcon,
       source: "agent",
       sourceMetadata: null,
-      availability: getDefaultSkillAvailability(featureFlags),
+      availability: DEFAULT_SKILL_AVAILABILITY,
       reinforcement: "on",
     },
     {

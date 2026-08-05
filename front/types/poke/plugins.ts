@@ -2,7 +2,7 @@ import type { PokeRole } from "@app/lib/poke/roles";
 import { z } from "zod";
 import type { LightWorkspaceType } from "../user";
 
-export interface DependsOnCondition {
+interface DependsOnCondition {
   field: string;
   // The value the dependency field must hold for this field to render. For a
   // boolean field this is the toggle state; for an enum field it's the value
@@ -112,10 +112,6 @@ export type PluginArgDefinition =
   | AsyncBooleanArgDefinition
   | FileArgDefinition
   | DateArgDefinition;
-
-export type StrictPluginArgs = {
-  [key: string]: PluginArgDefinition;
-};
 
 export type PluginArgs = Record<string, PluginArgDefinition>;
 

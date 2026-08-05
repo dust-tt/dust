@@ -3,8 +3,7 @@ import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { PokeListSkillSuggestions } from "@app/types/api/poke/skills";
 import type { Fetcher } from "swr";
 
-export interface PokeSkillSuggestionsFetchProps
-  extends PokeConditionalFetchProps {
+interface PokeSkillSuggestionsFetchProps extends PokeConditionalFetchProps {
   skillId: string;
 }
 

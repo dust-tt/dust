@@ -3,9 +3,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import ts from "typescript";
 
-export type EditSourceTextErrorCode = "parse_failed" | "text_not_found";
+type EditSourceTextErrorCode = "parse_failed" | "text_not_found";
 
-export class EditSourceTextError extends Error {
+class EditSourceTextError extends Error {
   constructor(
     readonly code: EditSourceTextErrorCode,
     message: string
@@ -20,7 +20,7 @@ export class EditSourceTextError extends Error {
  * bundler stamps on every element (see `injectSourceLocationTags`): `<relPath>:<line>:<col>`,
  * all 1-based, where (line, col) point at the element's tag-name start.
  */
-export interface SourceLocation {
+interface SourceLocation {
   relPath: string;
   line: number;
   col: number;

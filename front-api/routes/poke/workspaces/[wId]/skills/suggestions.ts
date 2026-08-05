@@ -1,12 +1,11 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   SKILL_INSTRUCTIONS_LABEL,
   SKILL_INVOCATION_LABEL,
 } from "@app/lib/skills/labels";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import { getDefaultSkillAvailability } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -66,7 +65,7 @@ app.post(
         agentFacingDescription,
         instructions,
         icon: skillIcon,
-        availability: getDefaultSkillAvailability(await getFeatureFlags(auth)),
+        availability: DEFAULT_SKILL_AVAILABILITY,
       },
       {
         mcpServerViewIds,

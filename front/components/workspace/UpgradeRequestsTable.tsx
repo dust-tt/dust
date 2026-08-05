@@ -59,11 +59,22 @@ const reasonColumn: ColumnDef<RowData, string> = {
   id: "reason" as const,
   header: "",
   enableSorting: false,
-  cell: () => (
-    <DataTable.CellContent>
-      <span className="text-sm text-muted-foreground">{REASON_LABEL}</span>
-    </DataTable.CellContent>
-  ),
+  cell: (info: Info) => {
+    const { reason } = info.row.original.request;
+    return (
+      <DataTable.CellContent>
+        <span
+          className="line-clamp-2 text-sm text-muted-foreground"
+          title={reason ?? undefined}
+        >
+          {reason || REASON_LABEL}
+        </span>
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "max-w-64",
+  },
 };
 
 const requestedColumn: ColumnDef<RowData, string> = {

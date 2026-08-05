@@ -1,4 +1,4 @@
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import type { LightWorkspaceType } from "@app/types/user";
 import { MarkdownContentContext } from "@dust-tt/sparkle";
 import { useContext, useMemo } from "react";
@@ -8,7 +8,7 @@ const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
 type PositionType = { start: { line: number }; end: { line: number } };
 
-export type CustomRenderers = {
+type CustomRenderers = {
   visualization: (
     code: string,
     complete: boolean,
@@ -61,7 +61,7 @@ export function getVisualizationPlugin(
   const customRenderer = {
     visualization: (code: string, complete: boolean, lineStart: number) => {
       return (
-        <VisualizationActionIframe
+        <AuthenticatedVisualizationActionIframe
           workspaceId={owner.sId}
           vizUrl={vizUrl}
           visualization={{

@@ -77,7 +77,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  * /api/w/{wId}/files/{fileId}:
  *   get:
  *     summary: Get or download a file
- *     description: View or download a file. Use query parameters `version` (original, processed, public) and `action` (view, download).
+ *     description: View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).
  *     tags:
  *       - Private Files
  *     parameters:
@@ -169,7 +169,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *         description: File not found
  *   delete:
  *     summary: Delete a file
- *     description: Delete a file from the workspace.
+ *     description: Delete a file from the workspace. Files referenced by a skill or its version history cannot be deleted.
  *     tags:
  *       - Private Files
  *     parameters:
@@ -190,6 +190,8 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *     responses:
  *       204:
  *         description: File deleted
+ *       400:
+ *         description: File is referenced by a skill or its version history
  *       403:
  *         description: Permission denied
  *       404:
@@ -211,6 +213,16 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const accessCheck = await checkFileAccess(ctx, file);
   if (accessCheck) {
     return accessCheck;
+  }
+
+  if (
+    file.useCase === "skill_attachment" &&
+    !(await canReadSkillFile(auth, file))
+  ) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
   }
 
   const action = getSecureFileAction(ctx.req.query("action"), file);
@@ -259,8 +271,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
-    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
-    !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+    !((isFileAuthor && canWriteInSpace) || auth.isManager())
   ) {
     return apiError(ctx, {
       status_code: 403,
@@ -270,11 +281,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
       },
     });
   } else if (file.useCase === "skill_attachment") {
-    const skillResource = await SkillResource.fetchById(
-      auth,
-      file.useCaseMetadata?.skillId ?? ""
-    );
-    if (!skillResource || !skillResource.canWrite(auth)) {
+    if (!(await canWriteSkillFile(auth, file))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -283,14 +290,24 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
         },
       });
     }
-    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
-  } else if (!auth.isBuilder() && file.useCase !== "conversation") {
+    const { isReferenced } = await SkillResource.fetchFileSkills(auth, file);
+    if (isReferenced) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Files referenced by a skill or its version history cannot be deleted.",
+        },
+      });
+    }
+  } else if (!auth.isManager() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   }
@@ -334,8 +351,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
-    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
-    !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+    !((isFileAuthor && canWriteInSpace) || auth.isManager())
   ) {
     return apiError(ctx, {
       status_code: 403,
@@ -344,10 +360,19 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
         message: "You cannot edit files in that space.",
       },
     });
+  } else if (file.useCase === "skill_attachment") {
+    if (!(await canWriteSkillFile(auth, file))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only skill editors can modify files attached to a skill.",
+        },
+      });
+    }
   } else if (
     !space &&
-    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
-    !auth.isBuilder() &&
+    !auth.isManager() &&
     file.useCase !== "conversation" &&
     file.useCase !== "avatar"
   ) {
@@ -356,7 +381,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   }
@@ -492,6 +517,46 @@ app.route("/rename", rename);
 app.route("/save-in-project", saveInProject);
 app.route("/share", shareApp);
 app.route("/signed-url", signedUrl);
+
+async function canWriteSkillFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<boolean> {
+  const { isReferenced, skills } = await SkillResource.fetchFileSkills(
+    auth,
+    file
+  );
+  if (isReferenced) {
+    return skills.some((skill) => skill.canWrite(auth));
+  }
+
+  const skillId = file.useCaseMetadata?.skillId;
+  if (skillId) {
+    const skill = await SkillResource.fetchById(auth, skillId);
+    return skill !== null && skill.canWrite(auth);
+  }
+
+  const isFileAuthor = file.userId === auth.user()?.id;
+  return isFileAuthor && (await auth.hasWorkspacePermission("create", "skill"));
+}
+
+async function canReadSkillFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<boolean> {
+  const { isReferenced, skills } = await SkillResource.fetchFileSkills(
+    auth,
+    file
+  );
+  if (isReferenced) {
+    return skills.length > 0;
+  }
+
+  const skillId = file.useCaseMetadata?.skillId;
+  return skillId
+    ? (await SkillResource.fetchById(auth, skillId)) !== null
+    : false;
+}
 
 async function getSpaceForFile(
   auth: Authenticator,

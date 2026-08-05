@@ -28,6 +28,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
     stage: "dust_only",
   },
+  agent_loop_qos_routing: {
+    description:
+      "Route agent loop workflows to per-surface QoS task queues (schedules/interactive/programmatic/batch) instead of the single default queue. Requires the per-queue worker deployments to be running.",
+    stage: "rolling_out",
+  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
@@ -95,19 +100,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   disable_computer_feature: {
     description: "Disable all Computer sandbox features for this workspace",
-    stage: "on_demand",
-  },
-  disallow_agent_creation_to_users: {
-    description:
-      "Prevent users from creating agents, allowing only admins and builders",
-    stage: "on_demand",
-  },
-  restrict_agents_publishing: {
-    description: "Restrict publishing agents to builders and admins",
-    stage: "on_demand",
-  },
-  restrict_agents_publishing_to_admins: {
-    description: "Restrict publishing agents to admins only",
     stage: "on_demand",
   },
   google_sheets_tool: {
@@ -236,6 +228,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable collapsible messages in conversations",
     stage: "dust_only",
   },
+  conversation_consumption_details: {
+    description:
+      "Show the detailed credit attribution for agent messages in conversations",
+    stage: "dust_only",
+  },
   poke_mcp: {
     description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
@@ -248,6 +245,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   plan_mode: {
     description:
       "Enable the Plan Mode skill: agents maintain a live plan.md for genuinely multi-step tasks, with an optional human-approval checkpoint.",
+    stage: "dust_only",
+  },
+  skill_favorites: {
+    description:
+      "Enable user favorites for skills, including favorite controls and runtime skill availability.",
     stage: "dust_only",
   },
   allow_old_notion_mcp: {
@@ -285,26 +287,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
-  admin_governance: {
-    description:
-      "Access to admin governance features, including assigning the manager role from the UI",
-    stage: "dust_only",
-  },
-  admin_governance_skill_publication: {
-    description:
-      "Admin Governance: govern skill publication. Shows the skill state (availability) dropdown in the UI, defaults new skills to unpublished (editors-only), and allows unpublishing a skill.",
-    stage: "dust_only",
-  },
-  pod_default_agent: {
-    description:
-      "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
-    stage: "dust_only",
-  },
-  pod_default_skills: {
-    description:
-      "Per-pod default skills: pre-insert skills into new conversations started in a pod.",
-    stage: "dust_only",
-  },
   workspace_default_agent: {
     description:
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
@@ -338,6 +320,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the user_memory internal MCP server: agents can store and retrieve per-user memory in a user-scoped filesystem.",
     stage: "dust_only",
   },
+  similar_agents_check: {
+    description:
+      "Warn users about similar existing agents before they create a duplicate in the agent builder.",
+    stage: "dust_only",
+  },
+  enforce_user_spend_limit_rate_cap: {
+    description:
+      "Enable the per-user spend-cap backup: record per-user AWU usage into the Redis fixed-window counter and enforce it at message send (blocks with user_cap_reached). When off, usage is neither recorded nor enforced.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
@@ -359,7 +351,7 @@ export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
 
-export const DISABLE_COMPUTER_FEATURE =
+const DISABLE_COMPUTER_FEATURE =
   "disable_computer_feature" as const satisfies WhitelistableFeature;
 
 export function isComputerFeatureEnabled(

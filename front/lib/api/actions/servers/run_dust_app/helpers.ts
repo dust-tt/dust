@@ -37,7 +37,7 @@ import { z } from "zod";
 
 const MIN_GENERATION_TOKENS = 2048;
 
-export interface DustFileOutput {
+interface DustFileOutput {
   __dust_file?: {
     type: string;
     content: unknown;
@@ -45,7 +45,7 @@ export interface DustFileOutput {
   [key: string]: unknown;
 }
 
-export function getDustAppRunResultsFileTitle({
+function getDustAppRunResultsFileTitle({
   appName,
   resultsFileContentType,
 }: {

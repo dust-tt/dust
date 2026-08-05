@@ -9,34 +9,33 @@ import { Ok } from "@app/types/shared/result";
 
 const DEFAULT_LIMIT = 10;
 
-export const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> =
-  {
-    engineering: ["ENGINEERING"],
-    design: ["DESIGN", "UX_DESIGN", "UX_RESEARCH"],
-    data: ["DATA"],
-    finance: ["FINANCE"],
-    legal: ["LEGAL"],
-    marketing: ["MARKETING", "CONTENT", "WRITING"],
-    operations: ["OPERATIONS"],
-    product: ["PRODUCT", "PRODUCT_MANAGEMENT"],
-    sales: ["SALES"],
-    people: ["HIRING", "RECRUITING"],
-    customer_success: ["SUPPORT"],
-    customer_support: ["SUPPORT"],
-    it: ["IT"],
-    revops: ["SALES"],
-    procurement: ["FINANCE", "OPERATIONS"],
-    other: [],
-  };
+const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> = {
+  engineering: ["ENGINEERING"],
+  design: ["DESIGN", "UX_DESIGN", "UX_RESEARCH"],
+  data: ["DATA"],
+  finance: ["FINANCE"],
+  legal: ["LEGAL"],
+  marketing: ["MARKETING", "CONTENT", "WRITING"],
+  operations: ["OPERATIONS"],
+  product: ["PRODUCT", "PRODUCT_MANAGEMENT"],
+  sales: ["SALES"],
+  people: ["HIRING", "RECRUITING"],
+  customer_success: ["SUPPORT"],
+  customer_support: ["SUPPORT"],
+  it: ["IT"],
+  revops: ["SALES"],
+  procurement: ["FINANCE", "OPERATIONS"],
+  other: [],
+};
 
-export async function getPublishedTemplatesWithSidekick(): Promise<
+async function getPublishedTemplatesWithSidekick(): Promise<
   TemplateResource[]
 > {
   const all = await TemplateResource.listAll({ visibility: "published" });
   return all.filter((t) => t.sidekickInstructions !== null);
 }
 
-export type GetTemplatesForSidekickOptions = {
+type GetTemplatesForSidekickOptions = {
   auth: Authenticator;
   jobType?: JobType;
   query?: string;

@@ -5,6 +5,10 @@ import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import { useUser } from "@app/lib/swr/user";
+import type {
+  ScopedWorkspaceUserIdentity,
+  WorkspaceUserIdentity,
+} from "@app/types/assistant/visualization";
 import { Spinner } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
@@ -19,6 +23,35 @@ interface PublicFrameRendererProps {
   shareToken: string;
   workspaceId: string;
   vizUrl: string;
+}
+
+interface PublicFrameViewer extends WorkspaceUserIdentity {
+  workspaces: { sId: string }[];
+}
+
+export function getPublicFrameUserIdentity(
+  user: PublicFrameViewer | null,
+  isAuthenticatedMember: boolean,
+  workspaceId: string
+): ScopedWorkspaceUserIdentity | undefined {
+  if (
+    !isAuthenticatedMember ||
+    !user ||
+    !user.workspaces.some((workspace) => workspace.sId === workspaceId)
+  ) {
+    return undefined;
+  }
+
+  return {
+    workspaceId,
+    user: {
+      sId: user.sId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      image: user.image,
+    },
+  };
 }
 
 export function PublicFrameRenderer({
@@ -42,20 +75,34 @@ export function PublicFrameRenderer({
     shareToken,
   });
 
-  // Members can call functions on shared frames; anonymous viewers cannot.
-  // Real authorization still happens server-side on invocation.
-  const access = isAuthenticatedMember ? "public-member" : "public-anonymous";
-
   const [cookies] = useCookies([DUST_HAS_SESSION]);
   const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
 
-  const { user } = useUser({
+  const { user, isUserLoading } = useUser({
     revalidateOnFocus: false,
     revalidateIfStale: false,
     disabled: !hasSession,
+    redirectOnUnauthenticated: false,
   });
+  const publicUserIdentity = getPublicFrameUserIdentity(
+    user,
+    isAuthenticatedMember,
+    workspaceId
+  );
+  // The shared frame has no AuthProvider, so the viewer context the blocked-action cards need is
+  // built from the workspace the viewer is a member of.
+  const viewerWorkspace = user?.workspaces.find(
+    (workspace) => workspace.sId === workspaceId
+  );
+  const viewer =
+    publicUserIdentity && user && viewerWorkspace
+      ? { owner: viewerWorkspace, user }
+      : null;
 
-  if (isFrameLoading) {
+  if (
+    isFrameLoading ||
+    (isAuthenticatedMember && hasSession && isUserLoading)
+  ) {
     return (
       <CenteredState>
         <Spinner size="sm" />
@@ -99,7 +146,9 @@ export function PublicFrameRenderer({
               identifier: `viz-${fileId}`,
             }}
             key={`viz-${fileId}`}
-            frameAccess={access}
+            canInvokeFunctions={publicUserIdentity !== undefined}
+            scopedUserIdentity={publicUserIdentity}
+            viewer={viewer}
             isInDrawer
           />
         </div>

@@ -9,7 +9,7 @@ import type {
   Webhook,
 } from "fathom-typescript/sdk/models/shared";
 
-export type FathomWebhookConfig = {
+type FathomWebhookConfig = {
   destinationUrl: string;
   triggeredFor: TriggeredFor[];
   includeTranscript?: boolean;

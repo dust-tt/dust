@@ -188,7 +188,7 @@ export async function getPod(
  * Checks if the user has write permissions for the space.
  * Returns an error if they don't.
  */
-export function checkWritePermission(
+function checkWritePermission(
   auth: Authenticator,
   space: SpaceResource
 ): Result<void, MCPError> {

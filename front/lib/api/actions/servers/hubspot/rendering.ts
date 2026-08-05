@@ -1,7 +1,7 @@
 import type { listOwners } from "@app/lib/api/actions/servers/hubspot/client";
 import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObject";
 
-export interface HubSpotObjectSummary {
+interface HubSpotObjectSummary {
   id: string;
   type: string;
   title: string;
@@ -9,15 +9,6 @@ export interface HubSpotObjectSummary {
   properties: Record<string, string>;
   created_at?: string;
   updated_at?: string;
-}
-
-export interface HubSpotPropertySummary {
-  name: string;
-  label: string;
-  type: string;
-  description?: string;
-  required?: boolean;
-  options?: Array<{ label: string; value: string }>;
 }
 
 const IMPORTANT_DATE_FIELDS: Record<string, string[]> = {
@@ -57,7 +48,7 @@ const HS_CONTENT_FIELDS = new Set([
   "hs_resolution",
 ]);
 
-export function formatHubSpotObject(
+function formatHubSpotObject(
   object: SimplePublicObject,
   objectType: string,
   portalId?: string
@@ -148,29 +139,6 @@ export function formatHubSpotSearchResults(
   });
 }
 
-export function formatHubSpotObjectsAsText(
-  objects: SimplePublicObject[],
-  objectType: string,
-  portalId?: string
-): string {
-  if (objects.length === 0) {
-    return `No ${objectType} found.`;
-  }
-
-  const formatted = objects
-    .map((object, index) => {
-      const summary = formatHubSpotObject(object, objectType, portalId);
-      const propertiesText = Object.entries(summary.properties)
-        .map(([key, value]) => `  ${key}: ${value}`)
-        .join("\n");
-
-      return `${index + 1}. ${summary.title} (ID: ${summary.id})${summary.url ? `\n   URL: ${summary.url}` : ""}${propertiesText ? `\n${propertiesText}` : ""}`;
-    })
-    .join("\n\n");
-
-  return `Found ${objects.length} ${objectType}:\n\n${formatted}`;
-}
-
 export function formatTransformedPropertiesAsText(
   properties: Array<{
     name: string;
@@ -246,19 +214,6 @@ export function formatHubSpotUpdateSuccess(
 
   return {
     message: `${objectType.slice(0, -1)} updated successfully: ${formatted.title}`,
-    result: formatted,
-  };
-}
-
-export function formatHubSpotGetSuccess(
-  object: SimplePublicObject,
-  objectType: string,
-  portalId?: string
-): { message: string; result: HubSpotObjectSummary } {
-  const formatted = formatHubSpotObject(object, objectType, portalId);
-
-  return {
-    message: `${objectType.slice(0, -1)} retrieved successfully: ${formatted.title}`,
     result: formatted,
   };
 }

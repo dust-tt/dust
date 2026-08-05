@@ -35,9 +35,9 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export const MIN_GROUP_SPEND_LIMIT_AWU_CREDITS = 0;
-export const MAX_GROUP_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
+export const MAX_GROUP_SPEND_LIMIT_AWU_CREDITS = 2_000_000;
 
-export type GroupSpendLimitErrorType =
+type GroupSpendLimitErrorType =
   | "group_not_found"
   | "invalid_group_kind"
   | "unauthorized"

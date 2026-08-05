@@ -34,11 +34,7 @@ export type ConfluenceSearchRequest = z.infer<
   typeof ConfluenceSearchRequestSchema
 >;
 
-export type ConfluenceListPagesResult = z.infer<
-  typeof ConfluenceListPagesResultSchema
->;
-
-export const ConfluencePageBodySchema = z.object({
+const ConfluencePageBodySchema = z.object({
   storage: z
     .object({
       value: z.string(),
@@ -130,16 +126,6 @@ export type ConfluenceV1SearchResult = z.infer<
   typeof ConfluenceV1SearchResultSchema
 >;
 
-export const ConfluenceListPagesResultSchema = z.object({
-  results: z.array(ConfluencePageSchema),
-  _links: z
-    .object({
-      next: z.string().optional(),
-      base: z.string(),
-    })
-    .optional(),
-});
-
 export const ConfluenceCreatePageRequestSchema = z.object({
   spaceId: z
     .string()
@@ -176,8 +162,6 @@ export const CreatePagePayloadSchema = z.object({
     })
     .optional(),
 });
-
-export type CreatePagePayload = z.infer<typeof CreatePagePayloadSchema>;
 
 export const ConfluenceUpdatePageRequestSchema = z.object({
   id: z.string().describe("The page ID"),
@@ -277,21 +261,6 @@ export const ConfluenceListSpacesResultSchema = z.object({
 
 export type ConfluenceListSpacesResult = z.infer<
   typeof ConfluenceListSpacesResultSchema
->;
-
-export const ConfluenceListSpacesRequestSchema = z.object({
-  limit: z
-    .number()
-    .optional()
-    .describe("Number of results per page (default 25)"),
-  cursor: z
-    .string()
-    .optional()
-    .describe("Pagination cursor from previous response for next page"),
-});
-
-export type ConfluenceListSpacesRequest = z.infer<
-  typeof ConfluenceListSpacesRequestSchema
 >;
 
 export type ConfluenceAncestor = {

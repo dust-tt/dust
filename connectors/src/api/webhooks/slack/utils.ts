@@ -84,6 +84,8 @@ export type SlackWebhookReqBody = {
   type: string;
   challenge?: string;
   team_id: string;
+  // Slack's own id for the event, stable across its retries.
+  event_id?: string;
 };
 
 export type SlackWebhookEventReqBody = SlackWebhookReqBody & {

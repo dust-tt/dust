@@ -31,38 +31,43 @@ const GOVERNANCE_SETTING_METADATA: Partial<
 > = {
   "create:agent": {
     label: "Create agents",
-    description: "Who can create agents in the Agent Builder.",
+    description: "Who can create agents in the Agent Builder",
   },
   "publish:agent": {
     label: "Publish agents",
-    description: "Who can publish agents to the whole workspace.",
+    description: "Who can publish agents to the whole workspace",
   },
   "create:skill": {
     label: "Create skills",
-    description: "Who can create custom skills.",
+    description: "Who can create custom skills",
   },
   "publish:skill": {
     label: "Manage skill availability",
-    description: "Who can share skills across the workspace.",
+    description: "Who can make skills available across the workspace",
+  },
+  "make_discoverable:skill": {
+    label: "Make skills discoverable to agents",
+    description:
+      "Who can make skills discoverable to @Dust and agents with Discover Skills",
   },
   "invite:frame": {
     label: "Invite people by email",
     description:
-      "Who can share frames by email with people outside your organization.",
+      "Who can share frames by email with people outside your organization",
   },
   "publish:frame": {
     label: "Share by public link",
-    description: "Who can create public links to frames.",
+    description: "Who can create public links to frames",
   },
   "admin:billing": {
     label: "Access billing features",
     description:
-      "Who can manage billing settings, invoices, and payment methods.",
+      "Who can manage billing settings, invoices, and payment methods",
     isGroupsOnly: true,
   },
   "admin:security": {
     label: "Access security features",
-    description: "Who can manage user access, identities, and provisioning.",
+    description: "Who can manage user access, identities, and provisioning",
     isGroupsOnly: true,
   },
 };

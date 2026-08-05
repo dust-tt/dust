@@ -2,7 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { md5 } from "@app/types/shared/utils/encryption";
@@ -19,7 +18,7 @@ export async function getConversationRankVersionLock(
   conversation: ConversationWithoutContentType | ConversationResource,
   t: Transaction
 ) {
-  const now = new Date();
+  const startMs = performance.now();
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
@@ -29,15 +28,29 @@ export async function getConversationRankVersionLock(
     replacements: { key: lockKey },
   });
 
+  const acquiredAtMs = performance.now();
+
   logger.info(
     {
       workspaceId: auth.getNonNullableWorkspace().sId,
       conversationId: conversation.sId,
-      duration: new Date().getTime() - now.getTime(),
+      waitMs: acquiredAtMs - startMs,
       lockKey,
     },
     "[ASSISTANT_TRACE] Advisory lock acquired"
   );
+
+  t.afterCommit(() => {
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        conversationId: conversation.sId,
+        heldMs: performance.now() - acquiredAtMs,
+        lockKey,
+      },
+      "[ASSISTANT_TRACE] Advisory lock released"
+    );
+  });
 }
 
 export async function getNextConversationMessageRank(
@@ -57,9 +70,6 @@ export async function getNextConversationMessageRank(
       where: {
         workspaceId: owner.id,
         conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
       },
       transaction,
     })) ?? -1) + 1

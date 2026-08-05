@@ -11,6 +11,7 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import type {
   GetSkillResponseBody,
+  GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
 } from "@app/types/api/skills";
@@ -114,7 +115,7 @@ export function useSkills({
   bypassEditorVisibility?: boolean;
   swrOptions?: SWRConfiguration;
 }): {
-  skills: SkillWithoutInstructionsAndToolsType[];
+  skills: GetSkillsResponseBody["skills"];
   isSkillsError: boolean;
   isSkillsLoading: boolean;
   mutateSkills: () => void;
@@ -141,14 +142,16 @@ export function useSkills({
   }
   const queryString = queryParams.toString();
 
+  const skillsFetcher: Fetcher<GetSkillsResponseBody> = fetcher;
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills${queryString ? `?${queryString}` : ""}`,
-    fetcher,
+    skillsFetcher,
     { ...swrOptions, disabled }
   );
 
   return {
-    skills: data?.skills ?? emptyArray<SkillWithoutInstructionsAndToolsType>(),
+    skills:
+      data?.skills ?? emptyArray<GetSkillsResponseBody["skills"][number]>(),
     isSkillsError: !!error,
     isSkillsLoading: isLoading,
     mutateSkills: mutate,
@@ -160,11 +163,17 @@ export function useSkillsWithRelations({
   disabled,
   status,
   onlyCustom,
+  bypassEditorVisibility,
+  withMessageCount,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status: SkillStatus;
   onlyCustom?: boolean;
+  // Admin-only: bypass the editor-visibility rule and also list unpublished
+  // (editors-only) skills the caller does not edit.
+  bypassEditorVisibility?: boolean;
+  withMessageCount?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
@@ -176,17 +185,26 @@ export function useSkillsWithRelations({
   if (onlyCustom) {
     queryParams.set("onlyCustom", "true");
   }
+  if (bypassEditorVisibility) {
+    queryParams.set("bypassEditorVisibility", "true");
+  }
+  if (withMessageCount) {
+    queryParams.set("withMessageCount", "true");
+  }
 
-  const { data, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
-    skillsFetcher,
-    { disabled }
-  );
+  const { data, isLoading, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
+      skillsFetcher,
+      { disabled }
+    );
 
   return {
     skillsWithRelations: data?.skills ?? emptyArray(),
     isSkillsWithRelationsLoading: isLoading,
     mutateSkillsWithRelations: mutate,
+    mutateSkillsWithRelationsRegardlessOfQueryParams:
+      mutateRegardlessOfQueryParams,
   };
 }
 
@@ -198,12 +216,13 @@ export function useUpdateSkillsAvailability({
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
 
-  const { mutateSkillsWithRelations: mutateActiveSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      disabled: true,
-    });
+  const {
+    mutateSkillsWithRelationsRegardlessOfQueryParams: mutateActiveSkills,
+  } = useSkillsWithRelations({
+    owner,
+    status: "active",
+    disabled: true,
+  });
 
   const doUpdateAvailability = async (
     skillIds: string[],
@@ -328,6 +347,62 @@ export function useArchiveSkill({
   };
 
   return doArchive;
+}
+
+export function useUpdateSkillFavorite({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+
+  const { mutateSkills: mutateActiveSkills } = useSkills({
+    owner,
+    status: "active",
+    disabled: true,
+  });
+  const { mutateSkillsWithRelations: mutateActiveSkillsWithRelations } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+      disabled: true,
+    });
+
+  const updateSkillFavorite = useCallback(
+    async (
+      skill: SkillWithoutInstructionsAndToolsType,
+      isFavorite: boolean
+    ) => {
+      try {
+        await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}/favorite`, {
+          method: isFavorite ? "POST" : "DELETE",
+        });
+
+        void mutateActiveSkills();
+        void mutateActiveSkillsWithRelations();
+        return true;
+      } catch (err) {
+        sendNotification({
+          type: "error",
+          title: `Failed to ${isFavorite ? "favorite" : "unfavorite"} ${skill.name}`,
+          description: isAPIErrorResponse(err)
+            ? err.error.message
+            : "An unexpected error occurred.",
+        });
+        return false;
+      }
+    },
+    [
+      fetcher,
+      mutateActiveSkills,
+      mutateActiveSkillsWithRelations,
+      owner.sId,
+      sendNotification,
+    ]
+  );
+
+  return { updateSkillFavorite };
 }
 
 type SkillReinforcementUpdate = {

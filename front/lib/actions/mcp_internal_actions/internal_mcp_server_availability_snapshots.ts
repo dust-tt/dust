@@ -4,10 +4,10 @@ import { fileURLToPath } from "node:url";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 
-export const INTERNAL_MCP_SERVER_AVAILABILITY_SNAPSHOT_FILE =
+const INTERNAL_MCP_SERVER_AVAILABILITY_SNAPSHOT_FILE =
   "internal_mcp_server_availability.snapshot.json";
 
-export const UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_ENV =
+const UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_ENV =
   "UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT";
 
 export const UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_COMMAND =
@@ -15,7 +15,7 @@ export const UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_COMMAND =
 
 const SNAPSHOT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
-export type InternalToolSnapshot = {
+type InternalToolSnapshot = {
   name: InternalMCPServerNameType | string;
   id: number;
 };
@@ -55,7 +55,7 @@ export function collectInternalToolsByAvailability(servers: {
   return { auto, manual };
 }
 
-export function getInternalToolAvailabilitySnapshotPath(): string {
+function getInternalToolAvailabilitySnapshotPath(): string {
   return path.join(
     SNAPSHOT_DIR,
     INTERNAL_MCP_SERVER_AVAILABILITY_SNAPSHOT_FILE

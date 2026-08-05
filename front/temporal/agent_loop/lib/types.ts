@@ -89,6 +89,7 @@ export type GetOutputResponse = Result<
     dustRunId: string;
     nativeChainOfThought: string;
     timeToFirstEvent?: number;
+    stopReason?: string;
   },
   | { type: "shouldRetryMessage"; content: LLMErrorInfo }
   | { type: "shouldReturnNull" }

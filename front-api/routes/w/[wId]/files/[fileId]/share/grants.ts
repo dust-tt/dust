@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -125,6 +130,24 @@ app.post(
     }
 
     const grants = await file.addSharingGrants(auth, { emails: rawEmails });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "frame.email_grant_added",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("frame", {
+          sId: file.sId,
+          name: file.fileName ?? file.sId,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        frame_name: file.fileName ?? file.sId,
+        emails: rawEmails.join(","),
+      },
+    });
+
     return ctx.json({ grants });
   }
 );
@@ -154,6 +177,23 @@ app.delete(
         },
       });
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "frame.email_grant_revoked",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("frame", {
+          sId: file.sId,
+          name: file.fileName ?? file.sId,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        frame_name: file.fileName ?? file.sId,
+        email: result.value.email,
+      },
+    });
 
     return ctx.body(null, 204);
   }

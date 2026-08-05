@@ -320,6 +320,11 @@ export interface CustomEditorProps {
   onInlineText?: (fileId: string, textContent: string) => void;
   // When true, agent suggestions are fully disabled (e.g. edit mode).
   disableAgentMentions?: boolean;
+  // When true, agent mention nodes are stripped from the document (converted
+  // back to plain text). Combined with disableAgentMentions, this locks the
+  // editor to a single agent. Do not set in edit mode, where the original
+  // message's agent mentions must be preserved.
+  stripAgentMentions?: boolean;
   onFirstAgentMentionPasteRef?: React.RefObject<
     ((agentId: string) => void) | undefined
   >;
@@ -352,6 +357,7 @@ export const buildEditorExtensions = ({
   spaceId,
   disableUserMentions,
   disableAgentMentions,
+  stripAgentMentions,
   onInlineText,
   onUrlDetected,
   onAgentSelect,
@@ -365,6 +371,7 @@ export const buildEditorExtensions = ({
   spaceId?: string;
   disableUserMentions?: boolean;
   disableAgentMentions?: boolean;
+  stripAgentMentions?: boolean;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   onAgentSelect?: (mention: RichMention) => void;
@@ -440,6 +447,7 @@ export const buildEditorExtensions = ({
     MentionExtension.configure({
       owner,
       onFirstAgentMentionPasteRef,
+      stripAgentMentions,
       HTMLAttributes: {
         class:
           "min-w-0 px-0 py-0 border-none outline-hidden focus:outline-hidden focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
@@ -520,6 +528,7 @@ const useCustomEditor = ({
   longTextPasteCharsThreshold,
   onInlineText,
   disableAgentMentions,
+  stripAgentMentions,
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
@@ -534,6 +543,7 @@ const useCustomEditor = ({
         spaceId,
         disableUserMentions,
         disableAgentMentions,
+        stripAgentMentions,
         onInlineText,
         onUrlDetected,
         onAgentSelect,

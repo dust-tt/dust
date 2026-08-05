@@ -7,8 +7,10 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
+import { storeAgentMessageConsumptionAttributionV2Signal } from "@app/temporal/analytics_queue/signals";
 import {
   storeAgentAnalyticsWorkflow,
+  storeAgentMessageConsumptionAttributionV2Workflow,
   storeAgentMessageFeedbackWorkflow,
 } from "@app/temporal/analytics_queue/workflows";
 import type {
@@ -92,6 +94,64 @@ export async function launchStoreAgentAnalyticsWorkflow({
         "Failed starting agent analytics workflow"
       );
     }
+
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
+  authType,
+  agentLoopArgs,
+}: {
+  authType: AuthenticatorType;
+  agentLoopArgs: AgentLoopArgs;
+}): Promise<Result<undefined, Error>> {
+  const { workspaceId } = authType;
+
+  const { agentMessageId, conversationId } = agentLoopArgs;
+
+  const client = await getTemporalClientForFrontNamespace();
+
+  const workflowId =
+    makeAgentMessageAnalyticsWorkflowId({
+      agentMessageId,
+      conversationId,
+      workspaceId,
+    }) + "-consumption-attribution-v2";
+
+  try {
+    // signalWithStart, not start: a message settles across several finalizes (pause for approval,
+    // resume, retries) and each must recompute. start would drop every pass after the first as
+    // already-started, freezing a tool that was still blocked when the first pass ran. The signal
+    // instead reruns a workflow already in flight and starts one otherwise.
+    await client.workflow.signalWithStart(
+      storeAgentMessageConsumptionAttributionV2Workflow,
+      {
+        args: [authType, { agentLoopArgs }],
+        taskQueue: QUEUE_NAME,
+        workflowId,
+        signal: storeAgentMessageConsumptionAttributionV2Signal,
+        signalArgs: undefined,
+        searchAttributes: {
+          conversationId: [conversationId],
+          workspaceId: [workspaceId],
+        },
+        memo: {
+          agentMessageId,
+          workspaceId,
+        },
+      }
+    );
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        agentMessageId,
+        error: e,
+      },
+      "Failed starting agent message consumption attribution workflow"
+    );
 
     return new Err(normalizeError(e));
   }

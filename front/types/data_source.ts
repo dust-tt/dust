@@ -1,6 +1,4 @@
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
-
-import type { DataSourceViewType } from "./data_source_view";
 import type { ModelId } from "./shared/model_id";
 import type { Result } from "./shared/result";
 import { Err, Ok } from "./shared/result";
@@ -84,12 +82,6 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
 
   return new Ok(undefined);
 }
-
-export type TagSearchParams = {
-  query: string;
-  queryType: string;
-  dataSourceViews: DataSourceViewType[];
-};
 
 export type DataSourceTag = {
   tag: string;

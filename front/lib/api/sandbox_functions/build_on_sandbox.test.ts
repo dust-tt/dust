@@ -18,6 +18,7 @@ const okEnvelope = JSON.stringify({ ok: true });
 const validSchemaFile = JSON.stringify({
   name: "greet",
   description: "Greet someone.",
+  userIdentity: "interactive_workspace_user_required",
   input_schema: { type: "object", properties: { name: { type: "string" } } },
   output_schema: {
     type: "object",
@@ -78,6 +79,9 @@ describe("buildSandboxFunctionOnSandbox", () => {
       return;
     }
     expect(result.value.bundleCode).toBe("export default {/*bundle*/};");
+    expect(result.value.userIdentity).toBe(
+      "interactive_workspace_user_required"
+    );
     expect(result.value.inputSchema).toEqual({
       type: "object",
       properties: { name: { type: "string" } },
@@ -182,6 +186,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
             JSON.stringify({
               name: "greet",
               description: null,
+              userIdentity: "optional",
               input_schema: null,
               output_schema: { type: "object" },
             })
@@ -199,6 +204,38 @@ describe("buildSandboxFunctionOnSandbox", () => {
       return;
     }
     expect(result.error.code).toBe("invalid_contract");
+  });
+
+  it("rejects an older sandbox image that omits user identity", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
+    );
+    vi.spyOn(sandbox, "readFile")
+      .mockResolvedValueOnce(new Ok(Buffer.from("bundle")))
+      .mockResolvedValueOnce(
+        new Ok(
+          Buffer.from(
+            JSON.stringify({
+              name: "greet",
+              description: null,
+              input_schema: { type: "object" },
+              output_schema: { type: "object" },
+            })
+          )
+        )
+      );
+
+    const result = await buildSandboxFunctionOnSandbox(authenticator, {
+      space,
+      srcSandboxPath: SRC,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("schema_extraction_failed");
   });
 
   it("returns an internal error when the exec itself fails", async () => {
