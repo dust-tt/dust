@@ -178,16 +178,13 @@
  *             $ref: '#/components/schemas/PrivateConversationConsumptionModelDetails'
  *     PrivateConversationConsumptionDetails:
  *       type: object
- *       description: Additive attribution reconciled to the authoritative bill exclusively through model input rows. Null when any billed message lacks complete attribution for the active version.
+ *       description: Additive attribution reconciled to the authoritative bill exclusively through model input rows. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.
  *       required:
- *         - attributionVersion
  *         - agentWorkCredits
  *         - tools
  *         - models
  *         - agents
  *       properties:
- *         attributionVersion:
- *           type: integer
  *         agentWorkCredits:
  *           type: number
  *           description: Agent work after assigning billing reconciliation exclusively to model input rows.

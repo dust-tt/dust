@@ -32,7 +32,6 @@ export type ConversationConsumptionAgentDetails = {
  * @swaggerschema PrivateConversationConsumptionDetails (swagger_private_schemas.ts)
  */
 export type ConversationConsumptionDetails = {
-  attributionVersion: number;
   agentWorkCredits: number;
   tools: ConversationConsumptionToolDetails[];
   models: ConversationConsumptionModelDetails[];

@@ -1,6 +1,6 @@
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import {
-  buildMessageConsumptionDetails,
+  buildLatestAvailableMessageConsumptionDetails,
   type MessageConsumptionDetails,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
@@ -78,7 +78,6 @@ function aggregateMessageDetails(
   details: MessageConsumptionDetails[]
 ): Omit<ConversationConsumptionDetails, "agents"> {
   return {
-    attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     agentWorkCredits: details.reduce(
       (total, detail) => total + detail.agentWorkCredits,
       0
@@ -89,10 +88,10 @@ function aggregateMessageDetails(
 }
 
 /**
- * Aggregates the latest stable bill and active-version attribution for messages belonging directly
- * to a conversation. In-progress messages are ignored until they reach a terminal state. If any
- * completed billed message lacks a complete attribution, the stable total remains available while
- * the detailed breakdown is withheld.
+ * Aggregates the latest stable bill and newest complete attribution available for each message
+ * belonging directly to a conversation. In-progress messages are ignored until they reach a
+ * terminal state. If any completed billed message lacks a complete attribution, the stable total
+ * remains available while the detailed breakdown is withheld.
  */
 export async function getConversationConsumption(
   auth: Authenticator,
@@ -106,7 +105,7 @@ export async function getConversationConsumption(
     auth,
     {
       conversation,
-      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     }
   );
   const completedMessages = facts.messages.filter((message) =>
@@ -132,7 +131,7 @@ export async function getConversationConsumption(
   const messageDetails: MessageDetailsEntry[] = billedMessages.map(
     (message) => ({
       message,
-      details: buildMessageConsumptionDetails({
+      details: buildLatestAvailableMessageConsumptionDetails({
         actions: message.actions,
         billedCredits: message.billedCredits,
         dustRunIds: message.dustRunIds,

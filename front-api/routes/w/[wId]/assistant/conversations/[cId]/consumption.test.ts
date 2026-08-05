@@ -10,6 +10,8 @@ import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 const BILLED_CREDITS = 7;
+const PREVIOUS_ATTRIBUTION_VERSION =
+  AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
 
 async function setupConversation() {
   const { auth, workspace } = await createPrivateApiMockRequest({
@@ -91,7 +93,7 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/consumption", () => {
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
       agentMessageModelId: agentMessage.agentMessageId,
-      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      attributionVersion: PREVIOUS_ATTRIBUTION_VERSION,
       records: [
         {
           itemType: "input",

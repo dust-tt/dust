@@ -97,7 +97,7 @@ async function listTools(
   const items =
     await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
       agentMessageModelIds: [agentMessageModelId],
-      attributionVersion: ATTRIBUTION_VERSION,
+      maxAttributionVersion: ATTRIBUTION_VERSION,
     });
   return items.filter((item) => item.itemType === "tool");
 }
@@ -178,7 +178,7 @@ describe("AgentMessageConsumptionItemResource", () => {
         auth,
         {
           agentMessageModelIds: [context.agentMessageModelId],
-          attributionVersion: ATTRIBUTION_VERSION,
+          maxAttributionVersion: ATTRIBUTION_VERSION,
         }
       );
     expect(items).toHaveLength(1);
@@ -399,13 +399,13 @@ describe("AgentMessageConsumptionItemResource", () => {
     await expect(
       AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
         agentMessageModelIds: [first.agentMessageModelId],
-        attributionVersion: ATTRIBUTION_VERSION,
+        maxAttributionVersion: ATTRIBUTION_VERSION,
       })
     ).resolves.toHaveLength(0);
     await expect(
       AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
         agentMessageModelIds: [second.agentMessageModelId],
-        attributionVersion: ATTRIBUTION_VERSION,
+        maxAttributionVersion: ATTRIBUTION_VERSION,
       })
     ).resolves.toHaveLength(1);
   });

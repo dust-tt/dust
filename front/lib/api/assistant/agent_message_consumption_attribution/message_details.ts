@@ -1,6 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getToolAggregateDisplayLabel } from "@app/lib/actions/tool_display_labels";
-import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
@@ -16,6 +15,7 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 
 const MICRO_CREDITS_PER_CREDIT = 1_000_000;
+const FIRST_ATTRIBUTION_VERSION_WITH_TOOL_ROWS = 2;
 
 export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
   models: AgentMessageConsumptionModelDetails[];
@@ -353,8 +353,9 @@ function buildModelDetails({
   );
 }
 
-export function buildMessageConsumptionDetails({
+function buildMessageConsumptionDetails({
   actions,
+  attributionVersion,
   billedCredits,
   dustRunIds,
   items,
@@ -362,6 +363,7 @@ export function buildMessageConsumptionDetails({
   usages,
 }: {
   actions: AgentMCPActionResource[];
+  attributionVersion: number;
   billedCredits: number | null;
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
@@ -395,11 +397,12 @@ export function buildMessageConsumptionDetails({
 
   if (
     !hasCompleteModelAttribution(items, messageUsages) ||
-    !hasCompleteToolAttribution({
-      actions,
-      items,
-      dustRunIdsWithUsage,
-    })
+    (attributionVersion >= FIRST_ATTRIBUTION_VERSION_WITH_TOOL_ROWS &&
+      !hasCompleteToolAttribution({
+        actions,
+        items,
+        dustRunIdsWithUsage,
+      }))
   ) {
     return null;
   }
@@ -422,7 +425,7 @@ export function buildMessageConsumptionDetails({
   }
 
   return {
-    attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+    attributionVersion,
     ...buildConsumptionTotals({
       items,
       reconciledCreditAmounts,
@@ -434,4 +437,52 @@ export function buildMessageConsumptionDetails({
       reconciledCreditAmounts,
     }),
   };
+}
+
+/** Selects the newest self-consistent attribution stored for a message. */
+export function buildLatestAvailableMessageConsumptionDetails({
+  actions,
+  billedCredits,
+  dustRunIds,
+  items,
+  runs,
+  usages,
+}: {
+  actions: AgentMCPActionResource[];
+  billedCredits: number | null;
+  dustRunIds: string[];
+  items: AgentMessageConsumptionItemResource[];
+  runs: RunResource[];
+  usages: RunUsageWithRunKeyType[];
+}): MessageConsumptionDetails | null {
+  const itemsByAttributionVersion = new Map<
+    number,
+    AgentMessageConsumptionItemResource[]
+  >();
+  for (const item of items) {
+    const versionItems =
+      itemsByAttributionVersion.get(item.attributionVersion) ?? [];
+    versionItems.push(item);
+    itemsByAttributionVersion.set(item.attributionVersion, versionItems);
+  }
+
+  const attributionVersions = [...itemsByAttributionVersion.keys()].sort(
+    (left, right) => right - left
+  );
+  for (const attributionVersion of attributionVersions) {
+    const details = buildMessageConsumptionDetails({
+      actions,
+      attributionVersion,
+      billedCredits,
+      dustRunIds,
+      items: itemsByAttributionVersion.get(attributionVersion) ?? [],
+      runs,
+      usages,
+    });
+    if (details) {
+      return details;
+    }
+  }
+
+  return null;
 }

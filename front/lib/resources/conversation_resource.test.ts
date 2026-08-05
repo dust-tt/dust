@@ -855,7 +855,7 @@ describe("destroyConversation", () => {
     await expect(
       AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
         agentMessageModelIds: [agentMessageId],
-        attributionVersion: 1,
+        maxAttributionVersion: 1,
       })
     ).resolves.toHaveLength(0);
   });
