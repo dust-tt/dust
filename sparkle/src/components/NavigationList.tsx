@@ -514,8 +514,13 @@ const NavigationListCollapsibleSection = React.forwardRef<
           className={cn(
             "group/menu-item relative",
             "text-muted-foreground font-semibold",
-            "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
-            "items-center outline-hidden rounded-lg text-sm p-2 transition-colors duration-150 motion-reduce:transition-none",
+            // No gap: it would be dead space between the trigger and the
+            // action slot. The trigger's own pr-2 does the separating.
+            "box-border flex items-center w-full select-none",
+            // The row's own padding lives on the trigger below, so the whole
+            // row height is clickable rather than just the label's line box.
+            // pr-2 keeps the action slot off the right edge.
+            "items-center outline-hidden rounded-lg text-sm pr-2 transition-colors duration-150 motion-reduce:transition-none",
             "hover:bg-hover hover:text-primary",
             // Hold the hover styling while a menu opened from one of the row's
             // actions is still open. Scoped to the action slot so the
@@ -523,7 +528,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
             "has-[[data-nav=section-action]_[data-state=open]]:bg-hover has-[[data-nav=section-action]_[data-state=open]]:text-primary"
           )}
         >
-          <CollapsibleTrigger hideChevron>
+          <CollapsibleTrigger hideChevron className="p-2">
             <span className="flex min-w-0 items-center gap-1">
               {labelElement}
               <Icon
