@@ -194,6 +194,7 @@ export const getTopNavigationTabs = (
         "/w/[wId]/conversation/new",
         "/w/[wId]/conversation/[cId]",
         "/w/[wId]/conversation/space/[spaceId]",
+        "/w/[wId]/get-started",
       ]),
   });
 
