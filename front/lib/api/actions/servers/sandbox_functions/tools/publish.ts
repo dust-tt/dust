@@ -18,7 +18,7 @@ export async function publishHandler(
     slug,
   }: {
     description: string;
-    executionMode?: SandboxFunctionExecutionMode;
+    executionMode: SandboxFunctionExecutionMode;
     path: string;
     slug: string;
   },
