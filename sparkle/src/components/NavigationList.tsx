@@ -295,7 +295,7 @@ const NavigationListCompactLabel = React.forwardRef<
     className={cn(
       // px-2 matches NavigationListItem's p-2 so the label's text aligns with
       // the item labels underneath it.
-      "flex px-2 py-1 text-[10px] font-semibold text-faint pt-3 uppercase whitespace-nowrap overflow-hidden text-ellipsis",
+      "flex px-2 py-1 text-xs font-semibold text-faint pt-3 uppercase whitespace-nowrap overflow-hidden text-ellipsis",
       isSticky && "sticky top-0 z-10 bg-muted-background border-border",
       className
     )}
