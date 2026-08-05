@@ -8,7 +8,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
 
-function topUpsErrorToApi(ctx: Context, err: AwuTopUpsHistoryError) {
+export function topUpsErrorToApi(ctx: Context, err: AwuTopUpsHistoryError) {
   switch (err.type) {
     case "not_configured":
       return apiError(ctx, {
