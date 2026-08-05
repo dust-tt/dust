@@ -1498,15 +1498,13 @@ const ConversationList = ({
 
   return (
     <ConversationListContainer>
-      {dateLabel !== "Today" && (
-        // Compact overline so date groups read as a level below the
-        // (semibold) section titles rather than competing with them.
-        <NavigationListCompactLabel
-          label={dateLabel}
-          isSticky
-          className="bg-app-background"
-        />
-      )}
+      {/* Compact overline so date groups read as a level below the
+       * (semibold) section titles rather than competing with them. */}
+      <NavigationListCompactLabel
+        label={dateLabel}
+        isSticky
+        className="bg-app-background"
+      />
 
       {conversations.map((conversation) => (
         <ConversationListItem
