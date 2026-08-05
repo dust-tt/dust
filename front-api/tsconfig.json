@@ -13,6 +13,7 @@
   },
   "include": [
     "**/*.ts",
+    "../front/css.d.ts",
     "../front/global.d.ts"
   ],
   "exclude": [
