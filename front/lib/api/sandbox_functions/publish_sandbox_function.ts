@@ -1,7 +1,6 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import { withSandboxFunctionMutationLock } from "@app/lib/api/sandbox_functions/mutation_lock";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -59,56 +58,46 @@ export async function publishSandboxFunction(
   const { bundleCode, userIdentity, inputSchema, outputSchema } =
     buildResult.value;
 
-  return withSandboxFunctionMutationLock(auth, {
+  // Re-publish overwrites the existing bundle in place so its mount path (<prefix>/<slug>.ts) stays
+  // stable; only a first publish creates the backing file.
+  const existing = await SandboxFunctionResource.fetchBySpaceAndSlug(
+    auth,
     space,
-    slug,
-    mutate: async () => {
-      // Re-publish overwrites the existing bundle in place so its mount path
-      // (<prefix>/<slug>.ts) stays stable; only a first publish creates the backing file.
-      const existing = await SandboxFunctionResource.fetchBySpaceAndSlug(
-        auth,
-        space,
-        slug
+    slug
+  );
+  if (existing) {
+    const updateResult = await existing.updateContent(auth, {
+      bundleCode,
+      description,
+      userIdentity,
+      inputSchema,
+      outputSchema,
+    });
+    if (updateResult.isErr()) {
+      return new Err(
+        new SandboxFunctionError("internal", updateResult.error.message)
       );
-      if (existing) {
-        const updateResult = await existing.updateContent(auth, {
-          bundleCode,
-          description,
-          userIdentity,
-          inputSchema,
-          outputSchema,
-        });
-        if (updateResult.isErr()) {
-          return new Err(
-            new SandboxFunctionError("internal", updateResult.error.message)
-          );
-        }
+    }
 
-        return new Ok(existing);
-      }
+    return new Ok(existing);
+  }
 
-      const fileResult = await createBundleFile(auth, {
-        space,
-        slug,
-        bundleCode,
-      });
-      if (fileResult.isErr()) {
-        return fileResult;
-      }
+  const fileResult = await createBundleFile(auth, { space, slug, bundleCode });
+  if (fileResult.isErr()) {
+    return fileResult;
+  }
 
-      const created = await SandboxFunctionResource.makeNew(auth, {
-        space,
-        file: fileResult.value,
-        slug,
-        description,
-        userIdentity,
-        inputSchema,
-        outputSchema,
-      });
-
-      return new Ok(created);
-    },
+  const created = await SandboxFunctionResource.makeNew(auth, {
+    space,
+    file: fileResult.value,
+    slug,
+    description,
+    userIdentity,
+    inputSchema,
+    outputSchema,
   });
+
+  return new Ok(created);
 }
 
 async function createBundleFile(

@@ -1,6 +1,5 @@
 import { unpublishSandboxFunction } from "@app/lib/api/sandbox_functions/unpublish_sandbox_function";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { LockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -105,15 +104,8 @@ describe("unpublishSandboxFunction", () => {
 
     expect(result.isOk()).toBe(true);
     expect(result.isOk() ? result.value : null).toEqual({ slug: "greet" });
-    expect(executeWithLockMock).toHaveBeenNthCalledWith(
-      1,
-      `sandbox_function:mutation:${workspace.sId}:${pod.sId}:greet`,
-      expect.any(Function),
-      30_000,
-      { lockTtlMs: 300_000 }
-    );
-    expect(executeWithLockMock).toHaveBeenNthCalledWith(
-      2,
+    expect(executeWithLockMock).toHaveBeenCalledTimes(1);
+    expect(executeWithLockMock).toHaveBeenCalledWith(
       `sandbox_function:publish:${sandboxFunction.sId}`,
       expect.any(Function),
       30_000,
@@ -154,14 +146,31 @@ describe("unpublishSandboxFunction", () => {
     expect(result.isErr() ? result.error.code : null).toBe("not_found");
   });
 
-  it("returns a retryable conflict when the mutation lock times out", async () => {
+  it("returns an internal error when the publish lock cannot be acquired", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
     const pod = await SpaceFactory.project(workspace);
-    executeWithLockMock.mockRejectedValueOnce(
-      new LockAcquisitionTimeoutError("sandbox_function:mutation:test")
+    const bundle = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "greet.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+    });
+    const sandboxFunction = await SandboxFunctionResource.makeNew(
+      authenticator,
+      {
+        space: pod,
+        file: bundle,
+        slug: "greet",
+        description: "Greet someone.",
+        inputSchema,
+        outputSchema,
+      }
     );
+    executeWithLockMock.mockRejectedValueOnce(new Error("lock timed out"));
 
     const result = await unpublishSandboxFunction(authenticator, {
       space: pod,
@@ -169,6 +178,9 @@ describe("unpublishSandboxFunction", () => {
     });
 
     expect(result.isErr()).toBe(true);
-    expect(result.isErr() ? result.error.code : null).toBe("publish_conflict");
+    expect(result.isErr() ? result.error.code : null).toBe("internal");
+    await expect(
+      SandboxFunctionResource.fetchById(authenticator, sandboxFunction.sId)
+    ).resolves.toMatchObject({ id: sandboxFunction.id });
   });
 });
