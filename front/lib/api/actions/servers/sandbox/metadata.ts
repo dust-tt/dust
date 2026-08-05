@@ -8,7 +8,7 @@ export const SANDBOX_TOOL_NAME = "sandbox" as const;
 // `wrapCommandWithCapture`), which kills the command and returns the captured
 // output when it overruns.
 export const SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS = 60000;
-const SANDBOX_MAX_COMMAND_TIMEOUT_MS = 120000;
+const SANDBOX_MAX_COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
 
 // Extra time we add on top of a command's in-container timeout to set the
 // timeout we give the sandbox provider. The in-container `timeout`
@@ -23,7 +23,10 @@ export const SANDBOX_EXEC_TIMEOUT_BUFFER_MS = 10000;
 // greater than the max in-container command timeout so the graceful
 // in-container timeout (which returns partial output) always fires before the
 // MCP layer hard-aborts the call. The buffer covers process teardown, output
-// flushing, and the host round-trip.
+// flushing, and the host round-trip. It must also stay small enough that the
+// resulting deadline stays under the tool activity `startToCloseTimeout` in
+// `temporal/agent_loop/workflows.ts`, which Temporal derives from
+// RUN_AGENT_CALL_TOOL_TIMEOUT_MS plus a minute.
 const SANDBOX_MCP_TIMEOUT_BUFFER_MS = 30000;
 export const SANDBOX_MCP_REQUEST_TIMEOUT_MS =
   SANDBOX_MAX_COMMAND_TIMEOUT_MS + SANDBOX_MCP_TIMEOUT_BUFFER_MS;
