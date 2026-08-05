@@ -320,7 +320,10 @@ interface RecentConversationRowProps {
   owner: WorkspaceType;
 }
 
-function RecentConversationRow({ conversation, owner }: RecentConversationRowProps) {
+function RecentConversationRow({
+  conversation,
+  owner,
+}: RecentConversationRowProps) {
   const router = useAppRouter();
   const unread = conversation.unreadMessageCount > 0;
 
