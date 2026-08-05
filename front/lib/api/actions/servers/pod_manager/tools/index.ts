@@ -1241,7 +1241,6 @@ export function createProjectManagerTools(
         let origin: UserMessageOrigin = "web";
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         // Sub-conversations created on behalf of an agent are nested one level below their parent
-        let parentConversationDepth = 0;
         let originMessageId: string | null = null;
 
         if (isAgentLoopRunContext(toolContext?.runContext)) {
@@ -1252,7 +1251,6 @@ export function createProjectManagerTools(
             origin = userMessage.context.origin ?? origin;
             timezone = userMessage.context.timezone ?? timezone;
           }
-          parentConversationDepth = toolContext.runContext.conversation.depth;
           originMessageId = toolContext.runContext.agentMessage.sId;
         }
         if (isSandboxFunctionRunContext(toolContext?.runContext)) {
@@ -1293,11 +1291,7 @@ export function createProjectManagerTools(
         const conversationResource = await createConversation(auth, {
           title: params.title,
           visibility: "unlisted",
-          // We keep the same depth here to prevent sub agent conversations from flooding the pod list view (fine for
-          // them to use the pod, but they have no right to add something visible there).
-          // We must not increment the depth here (i.e. do parentConversationDepth + 1), otherwise this would hide any
-          // conversation created this way.
-          depth: parentConversationDepth,
+          depth: 0,
           spaceId: pod.id,
         });
 
