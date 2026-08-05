@@ -10,6 +10,7 @@ import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
+import { CONNECTOR_METADATA } from "@app/lib/connector_metadata";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import type { PlanType } from "@app/types/plan";
@@ -135,13 +136,11 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   ConnectorProviderUIDetails
 > = {
   confluence: {
+    ...CONNECTOR_METADATA.confluence,
     hide: false,
-    description:
-      "Grant tailored access to your organization's Confluence shared spaces.",
     limitations:
       "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.",
     mismatchError: `You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
-    guideLink: "https://docs.dust.tt/docs/confluence-connection",
     selectLabel: "Select pages",
     getLogoComponent: () => {
       return ConfluenceLogo;
@@ -153,12 +152,10 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   notion: {
+    ...CONNECTOR_METADATA.notion,
     hide: false,
-    description:
-      "Authorize granular access to your company's Notion workspace, by top-level pages.",
     limitations: "External files and content behind links are not indexed.",
     mismatchError: `You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
-    guideLink: "https://docs.dust.tt/docs/notion-connection",
     selectLabel: "Synchronized content",
     getLogoComponent: () => {
       return NotionLogo;
@@ -170,13 +167,11 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   google_drive: {
+    ...CONNECTOR_METADATA.google_drive,
     hide: false,
-    description:
-      "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files. Email us for .pdf indexing.",
     limitations:
       "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing.",
     mismatchError: `You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.`,
-    guideLink: "https://docs.dust.tt/docs/google-drive-connection",
     selectLabel: "Select folders and files",
     getLogoComponent: () => {
       return DriveLogo;
@@ -191,13 +186,11 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   slack: {
+    ...CONNECTOR_METADATA.slack,
     // TODO(slack 2025-06-19): Hide the Slack connector until we publish the new app.
     hide: true,
-    description:
-      "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
     mismatchError: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
-    guideLink: "https://docs.dust.tt/docs/slack-connection",
     selectLabel: "Select channels",
     getLogoComponent: () => {
       return SlackLogo;
@@ -253,13 +246,11 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     isHiddenAsDataSource: true,
   },
   github: {
+    ...CONNECTOR_METADATA.github,
     hide: false,
-    description:
-      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexing can be controlled on-demand.",
     limitations:
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB. Please contact support@dust.tt if you need to sync larger repositories.",
     mismatchError: `You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
-    guideLink: "https://docs.dust.tt/docs/github-connection",
     selectLabel: "Authorized content",
     getLogoComponent: (isDark?: boolean) => {
       return isDark ? GithubWhiteLogo : GithubLogo;
@@ -272,13 +263,11 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   intercom: {
+    ...CONNECTOR_METADATA.intercom,
     hide: false,
-    description:
-      "Authorize granular access to your Intercom workspace. Access your Conversations at the Team level and Help Center Articles at the main Collection level.",
     limitations:
       "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.",
     mismatchError: `You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
-    guideLink: "https://docs.dust.tt/docs/intercom-connection",
     selectLabel: "Select pages",
     getLogoComponent: () => {
       return IntercomLogo;
@@ -291,13 +280,11 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   microsoft: {
+    ...CONNECTOR_METADATA.microsoft,
     hide: false,
-    description:
-      "Authorize Dust to access a Microsoft account and index shared documents stored in SharePoint, OneDrive, and Office365.",
     limitations:
       "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported (Sharepoint). At the time, OneDrive cannot be synced.",
     mismatchError: `You cannot select another Microsoft account.\nPlease contact us at support@dust.tt if you initially selected a wrong account.`,
-    guideLink: "https://docs.dust.tt/docs/microsoft-connection",
     selectLabel: "Select folders and files",
     emptyNodeLabel: "Select the folder to enable file synchronization.",
     getLogoComponent: () => {
@@ -335,11 +322,10 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     isHiddenAsDataSource: true,
   },
   webcrawler: {
+    ...CONNECTOR_METADATA.webcrawler,
     hide: false,
-    description: "Crawl a website.",
     limitations: null,
     mismatchError: `You cannot change the URL. Please add a new Public URL instead.`,
-    guideLink: "https://docs.dust.tt/docs/website-connection",
     getLogoComponent: () => {
       return Globe01;
     },
@@ -350,15 +336,14 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   snowflake: {
+    ...CONNECTOR_METADATA.snowflake,
     hide: false,
-    description: "Query a Snowflake database.",
     limitations: null,
     mismatchError: `You cannot change the Snowflake account. Please add a new Snowflake connection instead.`,
     getLogoComponent: () => {
       return SnowflakeLogo;
     },
     isNested: true,
-    guideLink: "https://docs.dust.tt/docs/snowflake-connection",
     selectLabel: "Select tables",
     permissions: {
       selected: "read",
@@ -366,13 +351,11 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   zendesk: {
+    ...CONNECTOR_METADATA.zendesk,
     hide: false,
-    description:
-      "Authorize access to Zendesk for indexing tickets from your support center and articles from your help center.",
     limitations:
       "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
     mismatchError: `You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
-    guideLink: "https://docs.dust.tt/docs/zendesk-connection",
     getLogoComponent: (isDark?: boolean) => {
       return isDark ? ZendeskWhiteLogo : ZendeskLogo;
     },
@@ -385,8 +368,8 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   bigquery: {
+    ...CONNECTOR_METADATA.bigquery,
     hide: false,
-    description: "Query a BigQuery database.",
     limitations: null,
     mismatchError: `You cannot change the BigQuery project. Please add a new BigQuery connection instead.`,
     getLogoComponent: () => {
@@ -394,7 +377,6 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
     optionsComponent: BigQueryUseMetadataForDBMLView,
     isNested: true,
-    guideLink: "https://docs.dust.tt/docs/bigquery",
     selectLabel: "Select tables",
     permissions: {
       selected: "read",
@@ -402,9 +384,8 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   salesforce: {
+    ...CONNECTOR_METADATA.salesforce,
     hide: true,
-    description:
-      "Authorize access to your Salesforce organization, in order to query your Salesforce data from Dust.",
     limitations: null,
     mismatchError: `You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead.`,
     getLogoComponent: () => {
@@ -416,14 +397,12 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
       selected: "read",
       unselected: "none",
     },
-    guideLink: "https://docs.dust.tt/docs/salesforce",
   },
   gong: {
+    ...CONNECTOR_METADATA.gong,
     isResourceSelectionDisabled: true,
     optionsComponent: GongOptionComponent,
     hide: false,
-    description: "Authorize access to Gong for indexing call transcripts.",
-    guideLink: "https://docs.dust.tt/docs/gong-connection",
     getLogoComponent: () => {
       return GongLogo;
     },

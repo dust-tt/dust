@@ -5,8 +5,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getConnectorMetadata } from "@app/lib/connector_metadata";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import type { ConnectorProvider } from "@app/types/data_source";
 
 export type IntegrationType = "mcp_server" | "connector" | "both";
@@ -368,7 +368,11 @@ export function buildPublicIntegrationRegistry(): IntegrationBase[] {
       continue;
     }
 
-    const uiConfig = CONNECTOR_UI_CONFIGURATIONS[connectorProvider];
+    const connectorMetadata = getConnectorMetadata(connectorProvider);
+
+    if (!connectorMetadata) {
+      continue;
+    }
 
     const displayName =
       CONNECTOR_DISPLAY_NAMES[connectorProvider] ?? config.name;
@@ -379,17 +383,17 @@ export function buildPublicIntegrationRegistry(): IntegrationBase[] {
     if (existingIntegration) {
       // Merge: This integration has both MCP tools and connector capabilities
       existingIntegration.type = "both";
-      existingIntegration.connectorDescription = uiConfig.description;
-      existingIntegration.connectorGuideUrl = uiConfig.guideLink;
+      existingIntegration.connectorDescription = connectorMetadata.description;
+      existingIntegration.connectorGuideUrl = connectorMetadata.guideLink;
     } else {
       // New connector-only integration
       integrationMap.set(provider, {
         slug: provider,
         name: displayName,
         type: "connector",
-        description: uiConfig.description,
+        description: connectorMetadata.description,
         icon: getConnectorIcon(connectorProvider),
-        documentationUrl: uiConfig.guideLink,
+        documentationUrl: connectorMetadata.guideLink,
         authorizationRequired: true,
         tools: [], // Connectors don't expose tools the same way
         category: CONNECTOR_CATEGORY_MAP[connectorProvider] ?? "productivity",

@@ -1,4 +1,4 @@
-import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
+import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import {
