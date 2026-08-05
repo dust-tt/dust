@@ -445,6 +445,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       )
         ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
         : null;
+      const editableArguments = isLightServerSideMCPToolConfiguration(
+        action.toolConfiguration
+      )
+        ? action.toolConfiguration.editableArguments
+        : undefined;
 
       const authorizationInfo = mcpServerView?.getAuthorization() ?? null;
 
@@ -622,6 +627,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         blockedActionsList.push({
           ...baseActionParams,
           status: action.status,
+          editableArguments,
           metadata: {
             ...baseActionParams.metadata,
           },
