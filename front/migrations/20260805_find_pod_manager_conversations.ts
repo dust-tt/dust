@@ -3,6 +3,7 @@ import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/gu
 import { POD_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { makeScript } from "@app/scripts/helpers";
@@ -97,62 +98,6 @@ async function mapConversationIdsToActions(
   return actionByConversationId;
 }
 
-async function processWorkspace(
-  workspaceId: string,
-  logger: Logger
-): Promise<void> {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-
-  const actions = await listPodManagerCreateConversationActions(auth);
-  if (actions.length === 0) {
-    return;
-  }
-
-  const actionByConversationId = await mapConversationIdsToActions(
-    auth,
-    actions
-  );
-
-  const conversations = await ConversationResource.fetchByIds(auth, [
-    ...actionByConversationId.keys(),
-  ]);
-  const conversationById = new Map(
-    conversations.map((conversation) => [conversation.sId, conversation])
-  );
-
-  for (const [conversationId, action] of actionByConversationId) {
-    const conversation = conversationById.get(conversationId);
-    if (!conversation) {
-      logger.warn(
-        {
-          actionId: action.id,
-          conversationId,
-        },
-        "Conversation from pod_manager output not found"
-      );
-      continue;
-    }
-
-    logger.info(
-      {
-        actionId: action.id,
-        conversationId: conversation.sId,
-        conversationCreatedAt: conversation.createdAt,
-      },
-      "Found conversation created via pod_manager.create_conversation"
-    );
-  }
-
-  logger.info(
-    {
-      actionCount: actions.length,
-      actionWithConversationOutputCount: actionByConversationId.size,
-      conversationCount: conversations.length,
-    },
-    "Done finding pod_manager conversations"
-  );
-}
-
 makeScript(
   {
     workspaceId: {
@@ -162,7 +107,85 @@ makeScript(
       type: "string" as const,
     },
   },
-  async ({ workspaceId }, logger) => {
-    await processWorkspace(workspaceId, logger.child({ workspaceId }));
+  async ({ workspaceId, execute }, logger) => {
+    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+    const actions = await listPodManagerCreateConversationActions(auth);
+    if (actions.length === 0) {
+      return;
+    }
+
+    const actionByConversationId = await mapConversationIdsToActions(
+      auth,
+      actions
+    );
+
+    const conversations = await ConversationResource.fetchByIds(auth, [
+      ...actionByConversationId.keys(),
+    ]);
+    const conversationById = new Map(
+      conversations.map((conversation) => [conversation.sId, conversation])
+    );
+
+    for (const [conversationId, action] of actionByConversationId) {
+      const conversation = conversationById.get(conversationId);
+      if (!conversation) {
+        logger.warn(
+          {
+            actionId: action.id,
+            conversationId,
+          },
+          "Conversation from pod_manager output not found"
+        );
+        continue;
+      }
+
+      logger.info(
+        {
+          actionId: action.id,
+          conversationId: conversation.sId,
+          conversationCreatedAt: conversation.createdAt,
+          depth: conversation.depth,
+        },
+        "Found conversation created via pod_manager.create_conversation"
+      );
+    }
+
+    const conversationsToUpdate = conversations.filter(
+      (conversation) => conversation.depth !== 0
+    );
+    let updatedConversationCount = 0;
+    if (execute && conversationsToUpdate.length > 0) {
+      [updatedConversationCount] = await ConversationModel.update(
+        { depth: 0 },
+        {
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            id: { [Op.in]: conversationsToUpdate.map(({ id }) => id) },
+          },
+          silent: true,
+        }
+      );
+    }
+
+    logger.info(
+      {
+        execute,
+        conversationToUpdateCount: conversationsToUpdate.length,
+        updatedConversationCount,
+      },
+      execute
+        ? "Updated pod_manager conversation depths to 0"
+        : "Would update pod_manager conversation depths to 0"
+    );
+
+    logger.info(
+      {
+        actionCount: actions.length,
+        actionWithConversationOutputCount: actionByConversationId.size,
+        conversationCount: conversations.length,
+      },
+      "Done finding pod_manager conversations"
+    );
   }
 );
