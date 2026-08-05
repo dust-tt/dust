@@ -6,15 +6,15 @@ import { useEffect, useState } from "react";
 // Set to null when there's nothing to promote.
 // =============================================================================
 const CURRENT_PROMO: PromoConfig | null = {
-  id: "dust-for-gtm-engineers-aug5",
-  image: "/static/landing/GTM_Engineers_Webinar_Banner.png",
-  link: "https://watch.getcontrast.io/register/dust-dust-for-gtm-engineers-2?utm_source=website",
+  id: "the-governance-of-ai-aug10",
+  image: "/static/landing/Webinar_Banner.jpeg",
+  link: "https://watch.getcontrast.io/register/dust-the-governance-of-ai?utm_source=website",
   badge: "Online Event",
-  title: "Dust for GTM Engineers",
-  time: "August 5 · 9:00am PT / 6:00pm CET",
+  title: "The Governance of AI",
+  time: "August 10 · 9:00am PT / 6:00pm CET",
   linkLabel: "Register Now",
-  // Banner auto-hides after this date (a few hours after the August 5th event).
-  expiresAt: new Date("2026-08-05T13:00:00-07:00"),
+  // Banner auto-hides after this date (a few hours after the August 10th event).
+  expiresAt: new Date("2026-08-10T13:00:00-07:00"),
 };
 // =============================================================================
 
