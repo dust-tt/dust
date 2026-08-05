@@ -1,8 +1,4 @@
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
-import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
-import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useAppRouter } from "@app/lib/platform";
-import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { setQueryParam } from "@app/lib/utils/router";
 import {
   Button,
@@ -47,11 +43,6 @@ export function WebAgentBrowser({
   setSortType,
 }: WebAgentBrowserProps) {
   const router = useAppRouter();
-  const { createAgentButtonRef } = useWelcomeTourGuide();
-  const { hasPermission } = useWorkspacePermissions();
-
-  const canCreate =
-    hasPermission("create", "agent") || hasPermission("create", "skill");
 
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {
@@ -93,17 +84,6 @@ export function WebAgentBrowser({
           }
           trackAgentBrowserEvents
         />
-
-        <div className="hidden sm:block">
-          <div className="flex gap-2">
-            {canCreate && (
-              <div ref={createAgentButtonRef}>
-                <CreateDropdown owner={owner} dataGtmLocation="homepage" />
-              </div>
-            )}
-            <ManageDropdownMenu owner={owner} />
-          </div>
-        </div>
       </div>
 
       {/* Agent tabs */}
