@@ -41,7 +41,7 @@ export async function createFrameSession(
  * Returns the session's verified email, or null if invalid/expired.
  */
 export async function getFrameSessionEmail(
-  workspace: WorkspaceResource,
+  workspace: LightWorkspaceType | WorkspaceResource,
   {
     token,
   }: {

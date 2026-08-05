@@ -3192,6 +3192,7 @@ export const PublicFrameResponseBodySchema = z.object({
   projectUrl: z.string().nullable(),
   file: FileTypeSchema,
   isAuthenticatedMember: z.boolean().optional(),
+  isEmailViewer: z.boolean().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<
@@ -3203,6 +3204,7 @@ export const PublicVizContentResponseBodySchema = z.object({
   contentType: z.string(),
   metadata: z.record(z.unknown()).optional(),
   isAuthenticatedMember: z.boolean().optional(),
+  isEmailViewer: z.boolean().optional(),
 });
 
 export type PublicVizContentResponseBodyType = z.infer<
