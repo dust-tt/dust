@@ -724,7 +724,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
           `/me/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content`
         )
         .query({ $format: "text/vtt" })
-        .responseType("text" as any)
+        // The SDK infers the response type from Content-Type, preserving messages
+        // in JSON error bodies and returning successful text/vtt bodies as
+        // ReadableStreams handled below.
         .get();
 
       let text: string;
