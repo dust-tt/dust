@@ -5,7 +5,8 @@ import { ActivationRecommendationResource } from "@app/lib/resources/activation_
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 const NEXT_STEPS_WINDOW_DAYS = 30;
-const NEXT_STEPS_LIMIT = 5;
+const SUGGESTED_LIMIT = 5;
+const EXECUTED_LIMIT = 20;
 
 export interface ActivationRecommendationForUserType {
   sId: string;
@@ -67,7 +68,7 @@ export async function listActivationRecommendationsForUser(
     auth,
     {
       status,
-      limit: NEXT_STEPS_LIMIT,
+      limit: status === "executed" ? EXECUTED_LIMIT : SUGGESTED_LIMIT,
       sinceDaysAgo: NEXT_STEPS_WINDOW_DAYS,
       spaceModelId,
     }
