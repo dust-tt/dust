@@ -4,6 +4,7 @@ import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   getInternalMCPServerInfo,
+  getInternalMCPServerMetadata,
   isInternalMCPServerName,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -15,6 +16,7 @@ import type {
   MCPServerType,
   MCPServerTypeWithViews,
   MCPServerViewType,
+  MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -164,7 +166,11 @@ export async function createRemoteMCPServer(
   }
 
   if (includeGlobal) {
-    const conflict = await checkNameConflictInGlobalSpace(auth, name);
+    const conflict = await checkNameConflictInGlobalSpace(
+      auth,
+      name,
+      metadata.tools
+    );
     if (conflict.isErr()) {
       return conflict;
     }
@@ -281,7 +287,8 @@ export async function createInternalMCPServer(
   if (includeGlobal) {
     const conflict = await checkNameConflictInGlobalSpace(
       auth,
-      nameForConflictCheck
+      nameForConflictCheck,
+      getInternalMCPServerMetadata(name).tools
     );
     if (conflict.isErr()) {
       return conflict;
@@ -360,14 +367,16 @@ export async function createInternalMCPServer(
 
 async function checkNameConflictInGlobalSpace(
   auth: Authenticator,
-  name: string
+  name: string,
+  tools: readonly MCPToolType[]
 ): Promise<Result<void, Error>> {
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const { hasConflict } =
     await MCPServerViewResource.hasNameConflictInSpaceByName(
       auth,
       name,
-      globalSpace
+      globalSpace,
+      tools
     );
   if (hasConflict) {
     return new Err(

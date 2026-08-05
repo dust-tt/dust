@@ -26,6 +26,7 @@ import {
   isValidInternalMCPServerId,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type {
   MCPServerLightType,
@@ -241,18 +242,43 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   /**
-   * Check whether a view with the given name already exists in the target
-   * space. This variant can be called before the server/view is created.
+   * Check whether the given name conflicts with an existing view in the target
+   * space. When the candidate tools are known before creation, also compare the
+   * model-facing names generated after the server-name prefix is truncated.
    */
   static async hasNameConflictInSpaceByName(
     auth: Authenticator,
     name: string,
-    space: SpaceResource
+    space: SpaceResource,
+    tools: readonly MCPToolType[] = []
   ): Promise<{ hasConflict: boolean; name: string }> {
-    const existingViews = await this.listBySpace(auth, space);
-    const hasConflict = existingViews.some(
-      (v) => (v.name ?? v.getServerDisplayMetadata().name) === name
+    const candidateToolNames = removeNulls(
+      tools.map((tool) => {
+        const toolName = tryGetPrefixedToolName(name, tool.name);
+        return toolName.isOk()
+          ? { originalName: tool.name, prefixedName: toolName.value }
+          : null;
+      })
     );
+    const existingViews = await this.listBySpace(auth, space);
+    const hasConflict = existingViews.some((view) => {
+      const existingName = view.name ?? view.getServerDisplayMetadata().name;
+      if (existingName === name) {
+        return true;
+      }
+
+      // Use the candidate tool names for both prefixes: this check is about the
+      // server-name crop and does not require loading existing tool payloads.
+      return candidateToolNames.some(({ originalName, prefixedName }) => {
+        const existingToolName = tryGetPrefixedToolName(
+          existingName,
+          originalName
+        );
+        return (
+          existingToolName.isOk() && existingToolName.value === prefixedName
+        );
+      });
+    });
 
     return { hasConflict, name };
   }

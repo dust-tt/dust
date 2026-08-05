@@ -1,8 +1,13 @@
+import {
+  DEFAULT_MCP_ACTION_VERSION,
+  DEFAULT_MCP_SERVER_ICON,
+} from "@app/lib/actions/constants";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -252,24 +257,50 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
 });
 
 describe("POST /api/w/:wId/mcp/ — name conflict", () => {
-  it("returns 400 when creating a remote server with includeGlobal and name conflicts in global space", async () => {
+  it("returns 400 when distinct names generate the same cropped tool name", async () => {
     const { workspace, auth } = await setup();
+    const sharedPrefix = "a".repeat(80);
+    const existingName = `${sharedPrefix}-existing`;
+    const candidateName = `${sharedPrefix}-candidate`;
+    const tools = [
+      {
+        name: "test-tool",
+        description: "Test tool description",
+        inputSchema: undefined,
+      },
+    ];
 
     const existingServer = await RemoteMCPServerFactory.create(workspace, {
-      name: "Test Server",
+      name: existingName,
       url: "https://existing.example.com",
+      tools,
     });
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
         existingServer.sId
       );
-    expect(systemView).not.toBeNull();
+    expect(systemView).toBeDefined();
+
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     await MCPServerViewResource.create(auth, {
       systemView: systemView!,
       space: globalSpace,
     });
+
+    vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
+      new Ok({
+        name: candidateName,
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: "Test description",
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        tools,
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+      })
+    );
 
     const response = await postMcp(workspace, {
       serverType: "remote",
@@ -279,7 +310,7 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error.message).toContain("Test Server");
+    expect(body.error.message).toContain(candidateName);
   });
 
   it("succeeds when creating a remote server with includeGlobal and no name conflict", async () => {
