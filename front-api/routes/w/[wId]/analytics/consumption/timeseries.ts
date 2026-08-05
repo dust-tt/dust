@@ -4,9 +4,11 @@ import {
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import {
-  CONSUMPTION_BREAKDOWN_DIMENSIONS,
-  DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
-} from "@app/lib/api/analytics/consumption/series";
+  CONSUMPTION_METRICS,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+  DEFAULT_CONSUMPTION_METRIC,
+} from "@app/lib/api/analytics/consumption/scope";
+import { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/series";
 import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
 import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -20,8 +22,13 @@ export type { GetConsumptionTimeseriesResponse };
 const QuerySchema = ConsumptionQuerySchema.extend({
   granularity: z.enum(["day", "week", "month"]).optional().default("day"),
   mode: z.enum(["daily", "cumulative"]).optional().default("daily"),
-  // Absent means a single total series.
-  breakdownBy: z.enum(CONSUMPTION_BREAKDOWN_DIMENSIONS).optional(),
+  metric: z
+    .enum(CONSUMPTION_METRICS)
+    .optional()
+    .default(DEFAULT_CONSUMPTION_METRIC),
+  // Absent means a single total series. Every dimension the query can be
+  // filtered on can also be broken down by.
+  breakdownBy: z.enum(CONSUMPTION_SCOPE_DIMENSIONS).optional(),
   breakdownCount: z.coerce
     .number()
     .int()
@@ -40,6 +47,7 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const {
     granularity,
     mode,
+    metric,
     breakdownBy,
     breakdownCount,
     filter,
@@ -55,6 +63,7 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
     period,
     granularity,
     mode,
+    metric,
     breakdownBy,
     breakdownCount,
     filter,

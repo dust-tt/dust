@@ -1,10 +1,12 @@
-import { buildConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { resolveConsumptionGroupNames } from "@app/lib/api/analytics/consumption/labels";
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import { CONSUMPTION_DIMENSION_FIELDS } from "@app/lib/api/analytics/consumption/scope";
 import {
   OTHERS_GROUP_KEY,
   TOTAL_GROUP_KEY,
 } from "@app/lib/api/analytics/consumption/series";
 import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
-import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -19,26 +21,28 @@ vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
   };
 });
 
-vi.mock(
-  import("@app/lib/api/assistant/observability/agent_labels"),
-  async (orig) => {
-    const mod = await orig();
-    return { ...mod, resolveAnalyticsAgentLabels: vi.fn() };
-  }
-);
+vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
+  const mod = await orig();
+  return { ...mod, resolveConsumptionGroupNames: vi.fn() };
+});
 
-const CYCLE_START_MS = Date.UTC(2026, 6, 1);
-const CYCLE_END_MS = Date.UTC(2026, 7, 1);
+const PERIOD_START_MS = Date.UTC(2026, 6, 1);
+const PERIOD_END_MS = Date.UTC(2026, 7, 1);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Jul 1 through Jul 4, 08:00 on Jul 3 being "now": Jul 3 is in progress and
 // Jul 4 has not happened yet.
 const NOW_MS = Date.UTC(2026, 6, 3, 8);
 
-function dayBucket(dayIndex: number, creditMicro: number) {
+const PERIOD: ConsumptionPeriod = {
+  startDate: new Date(PERIOD_START_MS).toISOString(),
+  endDate: new Date(PERIOD_END_MS).toISOString(),
+};
+
+function dayBucket(dayIndex: number, microCredits: number) {
   return {
-    key: CYCLE_START_MS + dayIndex * DAY_MS,
-    credit_micro: { value: creditMicro },
+    key: PERIOD_START_MS + dayIndex * DAY_MS,
+    metric: { value: microCredits },
   };
 }
 
@@ -73,16 +77,16 @@ function mockBreakdown({
     .mockResolvedValueOnce(esResponse({ by_date: { buckets } }));
 }
 
+function mockGroupNames(names: Record<string, string>) {
+  vi.mocked(resolveConsumptionGroupNames).mockResolvedValue(
+    new Map(Object.entries(names))
+  );
+}
+
 async function setup() {
   const workspace = await WorkspaceFactory.basic();
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const period = buildConsumptionPeriod({
-    kind: "cycle",
-    cycleStartMs: CYCLE_START_MS,
-    cycleEndMs: CYCLE_END_MS,
-    nowMs: NOW_MS,
-  });
-  return { auth, period };
+  return { auth, period: PERIOD };
 }
 
 describe("fetchConsumptionTimeseries", () => {
@@ -93,11 +97,39 @@ describe("fetchConsumptionTimeseries", () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.mocked(resolveAnalyticsAgentLabels).mockReset();
+    vi.mocked(resolveConsumptionGroupNames).mockReset();
     vi.mocked(searchConsumptionAnalytics).mockReset();
   });
 
-  it("converts micro-credits and flags the bucket in progress", async () => {
+  it("sums gross credits by default and converts micro-credits", async () => {
+    const { auth, period } = await setup();
+    mockBuckets([dayBucket(0, 2_000_000), dayBucket(1, 1_500_000)]);
+
+    const result = await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity: "day",
+      mode: "daily",
+    });
+
+    const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(options?.aggregations?.by_date?.aggs?.metric).toEqual({
+      sum: { field: "gross_credit_micro.total" },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.metric).toBe("gross_credits");
+    expect(
+      result.value.points.map((point) => point.values[TOTAL_GROUP_KEY])
+    ).toEqual([2, 1.5]);
+    expect(result.value.groups).toEqual([
+      { groupKey: TOTAL_GROUP_KEY, name: "Total" },
+    ]);
+  });
+
+  it("flags the bucket in progress and leaves future buckets alone", async () => {
     const { auth, period } = await setup();
     mockBuckets([
       dayBucket(0, 2_000_000),
@@ -116,34 +148,15 @@ describe("fetchConsumptionTimeseries", () => {
     if (!result.isOk()) {
       return;
     }
-    expect(result.value.points).toEqual([
-      {
-        timestamp: dayBucket(0, 0).key,
-        values: { total: 2 },
-        isPartial: false,
-      },
-      {
-        timestamp: dayBucket(1, 0).key,
-        values: { total: 1.5 },
-        isPartial: false,
-      },
-      {
-        timestamp: dayBucket(2, 0).key,
-        values: { total: 0.5 },
-        isPartial: true,
-      },
-      {
-        timestamp: dayBucket(3, 0).key,
-        values: { total: 0 },
-        isPartial: false,
-      },
-    ]);
-    expect(result.value.groups).toEqual([
-      { groupKey: TOTAL_GROUP_KEY, name: "Total" },
+    expect(result.value.points.map((point) => point.isPartial)).toEqual([
+      false,
+      false,
+      true,
+      false,
     ]);
   });
 
-  it("requests buckets through the end of the cycle, not through now", async () => {
+  it("requests buckets through the end of the period, not through now", async () => {
     const { auth, period } = await setup();
     mockBuckets([dayBucket(0, 1_000_000)]);
 
@@ -159,8 +172,31 @@ describe("fetchConsumptionTimeseries", () => {
       calendar_interval: "day",
       time_zone: "UTC",
       min_doc_count: 0,
-      extended_bounds: { min: CYCLE_START_MS, max: CYCLE_END_MS },
+      // The window is half-open, so the last instant covered is one ms short of
+      // the end — an inclusive bound would open an empty extra bucket.
+      extended_bounds: { min: PERIOD_START_MS, max: PERIOD_END_MS - 1 },
     });
+  });
+
+  it("scopes the query to the requested dimension filters", async () => {
+    const { auth, period } = await setup();
+    mockBuckets([]);
+
+    await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity: "day",
+      mode: "daily",
+      filter: { agent: ["a1"], source: ["web", "slack"], skill: ["s1"] },
+    });
+
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query.bool?.filter).toEqual(
+      expect.arrayContaining([
+        { term: { "agent.id": "a1" } },
+        { term: { "tool.attributed_skill_ids": "s1" } },
+        { terms: { context_origin: ["web", "slack"] } },
+      ])
+    );
   });
 
   it("accumulates up to the bucket in progress and drops future buckets", async () => {
@@ -187,15 +223,12 @@ describe("fetchConsumptionTimeseries", () => {
     ).toEqual([2, 3.5, 4]);
   });
 
-  it("marks no bucket partial once the cycle is over", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const endedPeriod = buildConsumptionPeriod({
-      kind: "cycle",
-      cycleStartMs: Date.UTC(2026, 5, 1),
-      cycleEndMs: Date.UTC(2026, 6, 1),
-      nowMs: NOW_MS,
-    });
+  it("marks no bucket partial once the period is over", async () => {
+    const { auth } = await setup();
+    const endedPeriod: ConsumptionPeriod = {
+      startDate: new Date(Date.UTC(2026, 5, 1)).toISOString(),
+      endDate: new Date(Date.UTC(2026, 6, 1)).toISOString(),
+    };
     mockBuckets([dayBucket(0, 1_000_000), dayBucket(1, 1_000_000)]);
 
     const result = await fetchConsumptionTimeseries(auth, {
@@ -211,50 +244,77 @@ describe("fetchConsumptionTimeseries", () => {
     expect(result.value.points.every((point) => !point.isPartial)).toBe(true);
   });
 
-  describe("agent breakdown", () => {
-    function mockAgentNames(names: Record<string, string>) {
-      vi.mocked(resolveAnalyticsAgentLabels).mockResolvedValue(
-        new Map(
-          Object.entries(names).map(([agentId, name]) => [
-            agentId,
-            {
-              name,
-              pictureUrl: null,
-              modelDisplayName: "Claude",
-              description: "",
-            },
-          ])
-        )
-      );
-    }
-
-    function agentDayBucket(
+  describe("breakdown", () => {
+    function groupDayBucket(
       dayIndex: number,
-      totalMicro: number,
-      perAgentMicro: Record<string, number>
+      totalMicroCredits: number,
+      perGroupMicroCredits: Record<string, number>
     ) {
       return {
-        ...dayBucket(dayIndex, totalMicro),
+        ...dayBucket(dayIndex, totalMicroCredits),
         by_group: {
-          buckets: Object.entries(perAgentMicro).map(([key, value]) => ({
+          buckets: Object.entries(perGroupMicroCredits).map(([key, value]) => ({
             key,
-            credit_micro: { value },
+            metric: { value },
           })),
         },
       };
     }
 
-    it("returns one series per ranked agent, named and in rank order", async () => {
+    it.each([
+      "agent",
+      "user",
+      "model",
+      "tool",
+      "skill",
+      "source",
+    ] as ConsumptionScopeDimension[])("ranks %s on its index field and restricts the histogram to the top N", async (dimension) => {
       const { auth, period } = await setup();
-      mockAgentNames({ agent1: "@dust", agent2: "@deep-dive" });
+      mockGroupNames({ k1: "First" });
+      mockBreakdown({ rankedKeys: ["k1"], buckets: [] });
+
+      await fetchConsumptionTimeseries(auth, {
+        period,
+        granularity: "day",
+        mode: "daily",
+        breakdownBy: dimension,
+        breakdownCount: 10,
+      });
+
+      const field = CONSUMPTION_DIMENSION_FIELDS[dimension];
+
+      const [, rankingOptions] = vi.mocked(searchConsumptionAnalytics).mock
+        .calls[0];
+      expect(rankingOptions?.aggregations?.by_group?.terms).toMatchObject({
+        field,
+        size: 10,
+        order: { metric: "desc" },
+      });
+
+      const [, histogramOptions] = vi.mocked(searchConsumptionAnalytics).mock
+        .calls[1];
+      expect(
+        histogramOptions?.aggregations?.by_date?.aggs?.by_group?.terms
+      ).toMatchObject({ field, include: ["k1"] });
+
+      expect(vi.mocked(resolveConsumptionGroupNames)).toHaveBeenCalledWith(
+        auth,
+        dimension,
+        ["k1"]
+      );
+    });
+
+    it("returns one series per ranked group, named and in rank order", async () => {
+      const { auth, period } = await setup();
+      mockGroupNames({ agent1: "@dust", agent2: "@deep-dive" });
       mockBreakdown({
         rankedKeys: ["agent1", "agent2"],
         buckets: [
-          agentDayBucket(0, 3_000_000, {
+          groupDayBucket(0, 3_000_000, {
             agent1: 2_000_000,
             agent2: 1_000_000,
           }),
-          agentDayBucket(1, 1_000_000, { agent1: 1_000_000 }),
+          groupDayBucket(1, 1_000_000, { agent1: 1_000_000 }),
         ],
       });
 
@@ -274,24 +334,24 @@ describe("fetchConsumptionTimeseries", () => {
         { groupKey: "agent1", name: "@dust" },
         { groupKey: "agent2", name: "@deep-dive" },
       ]);
-      // An agent absent from a bucket still gets a 0, so the stack is complete.
+      // A group absent from a bucket still gets a 0, so the stack is complete.
       expect(result.value.points[1].values).toEqual({ agent1: 1, agent2: 0 });
     });
 
     it("folds consumption beyond the top N into an others series", async () => {
       const { auth, period } = await setup();
-      mockAgentNames({ agent1: "@dust" });
+      mockGroupNames({ user1: "Alice" });
       mockBreakdown({
-        rankedKeys: ["agent1"],
-        // Bucket total exceeds the ranked agent: the remainder is other agents.
-        buckets: [agentDayBucket(0, 5_000_000, { agent1: 2_000_000 })],
+        rankedKeys: ["user1"],
+        // Bucket total exceeds the ranked user: the remainder is other users.
+        buckets: [groupDayBucket(0, 5_000_000, { user1: 2_000_000 })],
       });
 
       const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
         mode: "daily",
-        breakdownBy: "agent",
+        breakdownBy: "user",
         breakdownCount: 1,
       });
 
@@ -300,41 +360,46 @@ describe("fetchConsumptionTimeseries", () => {
         return;
       }
       expect(result.value.groups).toEqual([
-        { groupKey: "agent1", name: "@dust" },
+        { groupKey: "user1", name: "Alice" },
         { groupKey: OTHERS_GROUP_KEY, name: "Others" },
       ]);
       expect(result.value.points[0].values).toEqual({
-        agent1: 2,
+        user1: 2,
         [OTHERS_GROUP_KEY]: 3,
       });
     });
 
-    it("ranks on the requested field and restricts the histogram to the top N", async () => {
+    it("keeps others at zero when a multi-valued dimension double-counts", async () => {
       const { auth, period } = await setup();
-      mockAgentNames({ agent1: "@dust" });
-      mockBreakdown({ rankedKeys: ["agent1"], buckets: [] });
+      mockGroupNames({ skill1: "Research", skill2: "Summarize" });
+      // One tool call attributed to both skills: each group carries the full
+      // bucket total, so the ranked sum overshoots it.
+      mockBreakdown({
+        rankedKeys: ["skill1", "skill2"],
+        buckets: [
+          groupDayBucket(0, 2_000_000, {
+            skill1: 2_000_000,
+            skill2: 2_000_000,
+          }),
+        ],
+      });
 
-      await fetchConsumptionTimeseries(auth, {
+      const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
         mode: "daily",
-        breakdownBy: "agent",
-        breakdownCount: 10,
+        breakdownBy: "skill",
       });
 
-      const [, rankingOptions] = vi.mocked(searchConsumptionAnalytics).mock
-        .calls[0];
-      expect(rankingOptions?.aggregations?.by_group?.terms).toMatchObject({
-        field: "agent.id",
-        size: 10,
-        order: { credit_micro: "desc" },
-      });
-
-      const [, histogramOptions] = vi.mocked(searchConsumptionAnalytics).mock
-        .calls[1];
-      expect(
-        histogramOptions?.aggregations?.by_date?.aggs?.by_group?.terms
-      ).toMatchObject({ field: "agent.id", include: ["agent1"] });
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      expect(result.value.groups.map((group) => group.groupKey)).toEqual([
+        "skill1",
+        "skill2",
+      ]);
+      expect(result.value.points[0].values).toEqual({ skill1: 2, skill2: 2 });
     });
 
     it("falls back to a total series when nothing was consumed", async () => {
@@ -345,7 +410,7 @@ describe("fetchConsumptionTimeseries", () => {
         period,
         granularity: "day",
         mode: "daily",
-        breakdownBy: "agent",
+        breakdownBy: "model",
       });
 
       expect(result.isOk()).toBe(true);
@@ -355,22 +420,22 @@ describe("fetchConsumptionTimeseries", () => {
       expect(result.value.groups).toEqual([
         { groupKey: TOTAL_GROUP_KEY, name: "Total" },
       ]);
-      expect(vi.mocked(resolveAnalyticsAgentLabels)).not.toHaveBeenCalled();
+      expect(vi.mocked(resolveConsumptionGroupNames)).not.toHaveBeenCalled();
     });
 
     it("accumulates each series independently in cumulative mode", async () => {
       const { auth, period } = await setup();
-      mockAgentNames({ agent1: "@dust", agent2: "@deep-dive" });
+      mockGroupNames({ agent1: "@dust", agent2: "@deep-dive" });
       mockBreakdown({
         rankedKeys: ["agent1", "agent2"],
         buckets: [
-          agentDayBucket(0, 3_000_000, {
+          groupDayBucket(0, 3_000_000, {
             agent1: 2_000_000,
             agent2: 1_000_000,
           }),
-          agentDayBucket(1, 1_000_000, { agent1: 1_000_000 }),
-          agentDayBucket(2, 2_000_000, { agent2: 2_000_000 }),
-          agentDayBucket(3, 0, {}),
+          groupDayBucket(1, 1_000_000, { agent1: 1_000_000 }),
+          groupDayBucket(2, 2_000_000, { agent2: 2_000_000 }),
+          groupDayBucket(3, 0, {}),
         ],
       });
 
