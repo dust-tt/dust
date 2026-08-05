@@ -277,10 +277,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   ): Promise<{ hasConflict: boolean; name: string }> {
     const candidateToolNames = new Set(
-      tools.flatMap((tool) => {
-        const toolName = tryGetPrefixedToolName(name, tool.name);
-        return toolName.isOk() ? [toolName.value] : [];
-      })
+      removeNulls(
+        tools.map((tool) => {
+          const toolName = tryGetPrefixedToolName(name, tool.name);
+          return toolName.isOk() ? toolName.value : null;
+        })
+      )
     );
     const existingViews = await this.listBySpace(auth, space, {
       includeHeavyAttributes: ["cachedTools"],
