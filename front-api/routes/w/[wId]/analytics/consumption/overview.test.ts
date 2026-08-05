@@ -27,13 +27,8 @@ const OVERVIEW = {
     endDate: "2026-07-13T00:00:00.000Z",
   },
   members: { active: 121, total: 130 },
-  credits: { usedCredits: 7248, capCredits: 20000, usedRatio: 0.3624 },
-  projection: {
-    projectedCredits: 18728,
-    projectedRatio: 0.9364,
-    pace: "on_pace" as const,
-  },
-  lastIndexedAt: "2026-07-12T23:58:00.000Z",
+  credits: { usedCredits: 7248 },
+  lastRecordAt: "2026-07-12T23:58:00.000Z",
 };
 
 async function setupTest({ role = "admin" as MembershipRoleType } = {}) {
