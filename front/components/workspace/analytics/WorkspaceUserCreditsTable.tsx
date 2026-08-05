@@ -16,6 +16,7 @@ import type {
 } from "@app/lib/api/assistant/observability/user_credits";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useWorkspaceUserCredits } from "@app/lib/swr/workspaces";
+import { isAdmin } from "@app/types/user";
 import { Avatar, DataTable, Hoverable, Tooltip } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
@@ -151,6 +152,7 @@ export function WorkspaceUserCreditsTable({
 }: WorkspaceUserCreditsTableProps) {
   const { user, workspace } = useAuth();
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
+  const canOpenAgentDetails = isAdmin(workspace);
 
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: 300,
@@ -167,7 +169,9 @@ export function WorkspaceUserCreditsTable({
 
   const rows: UserCreditRowData[] = userCredits.map((row) => ({
     ...row,
-    onAgentClick: (agentId) => setDetailedAgentId(agentId),
+    ...(canOpenAgentDetails
+      ? { onAgentClick: (agentId: string) => setDetailedAgentId(agentId) }
+      : {}),
     ...(onSelectUser
       ? { onClick: () => onSelectUser({ id: row.userId, name: row.name }) }
       : {}),
@@ -192,12 +196,14 @@ export function WorkspaceUserCreditsTable({
 
   return (
     <>
-      <AgentDetailsSheet
-        owner={workspace}
-        user={user}
-        agentId={detailedAgentId}
-        onClose={() => setDetailedAgentId(null)}
-      />
+      {canOpenAgentDetails && (
+        <AgentDetailsSheet
+          owner={workspace}
+          user={user}
+          agentId={detailedAgentId}
+          onClose={() => setDetailedAgentId(null)}
+        />
+      )}
       <CreditsTableCard<UserCreditRowData>
         actions={<CsvDownloadButton {...csvDownload} />}
         title="Users by credits"
