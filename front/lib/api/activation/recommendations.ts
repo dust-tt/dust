@@ -28,7 +28,7 @@ export interface GetActivationPodResponseBody {
   podId: string | null;
 }
 
-export async function getActivationPodSId(
+export async function getActivationPodId(
   auth: Authenticator
 ): Promise<string | null> {
   const activationPod = await ActivationPodResource.fetchByUser(auth);
