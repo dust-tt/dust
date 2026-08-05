@@ -320,6 +320,8 @@ export function buildToolUseEvents({
     }
   >();
   for (const billingLine of billingPlan.tools) {
+    // Metronome prices every emitted tool event. Actions that never reached the
+    // tool must therefore be omitted rather than represented as zero-cost.
     if (billingLine.disposition === "unbillable_status") {
       continue;
     }

@@ -17,8 +17,11 @@ export { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
 
 const MICRO_CREDITS_PER_CREDIT = 1_000_000;
 
+// Historical and non-agent-loop usages may not have a run key. Keep them in one
+// group to preserve the former message-level rounding behavior for those rows.
 export const LEGACY_RUN_KEY = "__legacy__";
 
+// Platform-assistive messages are metered for observability but not billed.
 export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>([
     "agent_sidekick",
@@ -28,6 +31,8 @@ export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
     "system_activation",
   ]);
 
+// Canonical tool prices used by runtime billing and Metronome rate-card setup.
+// A tool's `freeUsage` metadata can waive this rated price.
 export const TOOL_COST_CATEGORY_AWU_WEIGHTS: Record<ToolCostCategory, number> =
   {
     basic: 1,
@@ -93,6 +98,9 @@ export function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
   return origin !== null && FREE_ORIGINS.has(origin);
 }
 
+// A run key identifies one agent-loop execution. Retries with the same run IDs
+// deduplicate in Metronome, while interrupt/resume executions receive distinct
+// keys and are consequently rounded and billed independently.
 export function computeRunKey(dustRunIds: string[]): string {
   return createHash("sha256")
     .update([...dustRunIds].sort().join(","))
@@ -100,6 +108,8 @@ export function computeRunKey(dustRunIds: string[]): string {
     .slice(0, 8);
 }
 
+// Convert provider cost in micro-USD to credits, rounding up exactly as the
+// Metronome event does (1 credit = $0.0085).
 export function awuFromMicroUsd(microUsd: number): number {
   return Math.ceil(microUsd / MODEL_COST_MICRO_USD_PER_AWU_CREDIT);
 }
@@ -112,12 +122,14 @@ export function getToolBillingInfo(
   serverName: string | null,
   toolName: string
 ): { toolCostCategory: ToolCostCategory; freeUsage: boolean } {
+  // External servers default to the paid advanced category.
   if (!serverName || !isInternalMCPServerName(serverName)) {
     return { toolCostCategory: "advanced", freeUsage: false };
   }
 
   const metadata = getInternalMCPServerMetadata(serverName);
   const tool = metadata.tools.find((candidate) => candidate.name === toolName);
+  // Missing metadata must never make an unknown internal tool free by accident.
   if (!tool) {
     return { toolCostCategory: "advanced", freeUsage: false };
   }
@@ -128,6 +140,9 @@ export function getToolBillingInfo(
   };
 }
 
+// Split a rounded billing line across its raw usage rows with the largest
+// remainder method. Stable, unique keys make the result independent of DB
+// query order, and the allocated microcredits always reconcile to the line.
 function allocateBilledCreditMicro<TUsage extends AgentMessageBillingRunUsage>({
   billedCredits,
   getUsageAllocationKey,
@@ -195,8 +210,13 @@ function allocateBilledCreditMicro<TUsage extends AgentMessageBillingRunUsage>({
 /**
  * Produces the canonical billing plan for one agent message.
  *
- * LLM usage is billed once per (execution, provider, model). Tool actions are billed independently.
- * Callers should project this plan instead of rebuilding grouping, free-usage, rounding, or tool-pricing rules.
+ * LLM provider cost is grouped and rounded once per (execution, provider,
+ * model), then those groups are summed for the message. Tool actions are priced
+ * independently at their category's fixed rate.
+ *
+ * `ratedCredits` is the price before free-origin/tool waivers;
+ * `billedCredits` is the authoritative charge after those rules. Callers should
+ * project this plan instead of rebuilding grouping, rounding, or pricing rules.
  */
 export function buildAgentMessageBillingPlan<
   TUsage extends AgentMessageBillingRunUsage,

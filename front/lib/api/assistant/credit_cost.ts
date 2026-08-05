@@ -184,6 +184,8 @@ export function computeAgentMessageCredits({
     ({ disposition }) => disposition !== "unbillable_status"
   );
 
+  // A free tool or free-origin action is still tracked with a zero charge. Only
+  // actions that never reached execution are treated as no billable activity.
   if (runUsages.length === 0 && !hasBillableAction) {
     return null;
   }
