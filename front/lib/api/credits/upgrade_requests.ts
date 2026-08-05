@@ -257,9 +257,7 @@ export async function listResolvedUpgradeRequests(
   return { requests: requests.map((r) => r.toJSON()), total };
 }
 
-// Admin-only: every resolved request, for the History tab's CSV export.
-// Fetches page by page (rather than the whole table in one query) to bound
-// memory/DB load, stopping once a page comes back short of a full page.
+// Admin-only: every resolved request, paginated fetching
 export async function listAllResolvedUpgradeRequests(
   auth: Authenticator
 ): Promise<MembershipUpgradeRequestType[]> {

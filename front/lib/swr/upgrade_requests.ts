@@ -20,8 +20,7 @@ function upgradeRequestsUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/credits/upgrade-requests`;
 }
 
-// CSV download link for the resolved-requests History tab — consumed by
-// useDownloadCsv rather than SWR.
+// CSV download link for the resolved-requests
 export function upgradeRequestsHistoryCsvUrl(workspaceId: string): string {
   return `${upgradeRequestsUrl(workspaceId)}?status=resolved&format=csv`;
 }
