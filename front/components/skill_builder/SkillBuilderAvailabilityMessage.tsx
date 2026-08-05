@@ -64,6 +64,7 @@ export function SkillBuilderAvailabilityMessage({
   return (
     <ContentMessage
       size="lg"
+      variant="primary"
       title="Who is this skill available for?"
       icon={Users01}
     >
