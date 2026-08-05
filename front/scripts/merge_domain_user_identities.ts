@@ -3,8 +3,34 @@ import { Authenticator } from "@app/lib/auth";
 import { mergeUserIdentities } from "@app/lib/iam/users";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { parse } from "csv-parse/sync";
+import { promises as fs } from "fs";
+import { z } from "zod";
 
 import { makeScript } from "./helpers";
+
+const EmailSchema = z
+  .string()
+  .email()
+  .transform((email) => email.toLowerCase());
+const CsvMappingSchema = z.array(
+  z.object({
+    "From address": EmailSchema,
+    "To address": EmailSchema,
+  })
+);
+
+async function loadEmailMappings(filePath: string) {
+  const content = await fs.readFile(filePath, "utf-8");
+  return CsvMappingSchema.parse(
+    parse(content, {
+      bom: true,
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    })
+  );
+}
 
 makeScript(
   {
@@ -17,21 +43,40 @@ makeScript(
     oldDomain: {
       describe: "Old email domain (e.g. old.com) — secondary accounts",
       type: "string" as const,
-      demandOption: true,
     },
     newDomain: {
       describe: "New email domain (e.g. new.com) — primary accounts",
       type: "string" as const,
-      demandOption: true,
+    },
+    file: {
+      alias: "f",
+      describe: "CSV mapping From address to To address",
+      type: "string" as const,
     },
     userId: {
-      describe:
-        "Optional sId of a single old-domain (secondary) user to process",
+      describe: "Optional sId of a single secondary user to process",
       type: "string" as const,
     },
   },
-  async ({ workspaceId, oldDomain, newDomain, userId, execute }, logger) => {
-    if (oldDomain === newDomain) {
+  async (
+    { workspaceId, oldDomain, newDomain, file, userId, execute },
+    logger
+  ) => {
+    if (file && (oldDomain || newDomain)) {
+      logger.error(
+        { file, oldDomain, newDomain },
+        "Pass either --file or both --oldDomain and --newDomain"
+      );
+      return;
+    }
+    if (!file && (!oldDomain || !newDomain)) {
+      logger.error(
+        { oldDomain, newDomain },
+        "Pass either --file or both --oldDomain and --newDomain"
+      );
+      return;
+    }
+    if (oldDomain && newDomain && oldDomain === newDomain) {
       logger.error({ oldDomain, newDomain }, "Old and new domains must differ");
       return;
     }
@@ -50,6 +95,11 @@ makeScript(
 
     logger.info({ memberCount: members.length }, "Fetched workspace members");
 
+    const mappings = file ? await loadEmailMappings(file) : null;
+    const memberByEmail = new Map(
+      members.map((member) => [member.email.toLowerCase(), member])
+    );
+
     // Build a map local -> member for new-domain members (primary accounts).
     const primaryByLocal = new Map(
       members
@@ -63,23 +113,48 @@ makeScript(
         })
     );
 
-    // Secondary users have an email on the old domain.
-    let oldDomainMembers = members.filter((m) => {
-      const [, domain] = m.email.split("@");
-      return domain === oldDomain;
-    });
+    let targetEmailBySourceEmail: Map<string, string> | null = null;
+    let oldDomainMembers: typeof members;
+    if (mappings) {
+      targetEmailBySourceEmail = new Map(
+        mappings.map((mapping) => [
+          mapping["From address"],
+          mapping["To address"],
+        ])
+      );
+      oldDomainMembers = mappings.map((mapping) => {
+        const fromEmail = mapping["From address"];
+        const member = memberByEmail.get(fromEmail);
+        if (!member) {
+          throw new Error(
+            `No active workspace member found with email: ${fromEmail}`
+          );
+        }
+        return member;
+      });
+      logger.info(
+        { mappingCount: mappings.length },
+        "Loaded CSV identity mappings"
+      );
+    } else {
+      // Secondary users have an email on the old domain.
+      oldDomainMembers = members.filter((m) => {
+        const [, domain] = m.email.split("@");
+        return domain === oldDomain;
+      });
 
-    logger.info(
-      { oldDomainMemberCount: oldDomainMembers.length },
-      "Found old-domain members"
-    );
+      logger.info(
+        { oldDomainMemberCount: oldDomainMembers.length },
+        "Found old-domain members"
+      );
+    }
 
     if (userId) {
       oldDomainMembers = oldDomainMembers.filter((m) => m.sId === userId);
       if (oldDomainMembers.length === 0) {
         logger.error(
-          { userId, oldDomain },
-          "No old-domain member found with the provided userId"
+          { userId },
+          "No secondary member found with the provided userId"
         );
         return;
       }
@@ -98,8 +173,13 @@ makeScript(
 
     for (const secondaryMember of oldDomainMembers) {
       const [local] = secondaryMember.email.split("@");
-      const newEmail = `${local}@${newDomain}`;
-      const primaryMember = primaryByLocal.get(local);
+      const mappedEmail = targetEmailBySourceEmail?.get(
+        secondaryMember.email.toLowerCase()
+      );
+      const newEmail = mappedEmail ?? `${local}@${newDomain}`;
+      const primaryMember = mappedEmail
+        ? memberByEmail.get(mappedEmail)
+        : primaryByLocal.get(local);
 
       if (!primaryMember) {
         logger.info(
@@ -108,7 +188,7 @@ makeScript(
         );
         results.skipped.push({
           email: secondaryMember.email,
-          reason: `No primary member found for new-domain email ${newEmail}`,
+          reason: `No primary member found for target email ${newEmail}`,
         });
         continue;
       }
