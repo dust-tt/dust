@@ -9,11 +9,13 @@ import { getHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools
 import { inspectInvocationsHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/inspect_invocations";
 import { listHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/list";
 import { publishHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/publish";
+import { unpublishHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/unpublish";
 
 const HANDLERS = {
   list: listHandler,
   get: getHandler,
   publish: publishHandler,
+  unpublish: unpublishHandler,
   call: callHandler,
   inspect_invocations: inspectInvocationsHandler,
   db_list: dbListHandler,
