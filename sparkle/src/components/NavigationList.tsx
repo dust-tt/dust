@@ -17,6 +17,7 @@ import { TypingAnimation } from "@sparkle/components/TypingAnimation";
 import { Lock01 } from "@sparkle/icons";
 import {
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   DotsHorizontal,
 } from "@sparkle/icons/v2-stroke";
@@ -329,7 +330,7 @@ interface NavigationListCollapsibleSectionProps
 
 const collapseableStyles = cva(
   cn(
-    "w-full flex-1 text-left w-full",
+    "text-left",
     "text-muted-foreground",
     "text-sm whitespace-nowrap overflow-hidden text-ellipsis",
     "select-none",
@@ -339,15 +340,19 @@ const collapseableStyles = cva(
   {
     variants: {
       isCollapsible: {
-        true: cn(
-          "cursor-pointer mb-0.5"
-          // "hover:bg-primary-100"
-        ),
+        true: "cursor-pointer",
         false: "",
+      },
+      // Static headers fill the row; collapsible ones shrink-wrap so the
+      // chevron sits right next to the label instead of at the row's edge.
+      grow: {
+        true: "w-full flex-1",
+        false: "min-w-0",
       },
     },
     defaultVariants: {
       isCollapsible: false,
+      grow: true,
     },
   }
 );
@@ -393,7 +398,15 @@ const NavigationListCollapsibleSection = React.forwardRef<
     const isCollapsible = type !== "static";
     const counterValue = count && count > 0 ? count : undefined;
     const labelElement = (
-      <div className={cn("notranslate", collapseableStyles({ isCollapsible }))}>
+      <div
+        className={cn(
+          "notranslate",
+          collapseableStyles({ isCollapsible, grow: !isCollapsible }),
+          // The collapsible header row owns the text color (including its
+          // hover state), so the label inherits it instead of forcing its own.
+          isCollapsible && "text-inherit"
+        )}
+      >
         <span className="flex items-center gap-1.5">
           {icon && <Icon visual={icon} size="xs" />}
           <span className="overflow-hidden text-ellipsis">{label}</span>
@@ -485,11 +498,39 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <div className="group/menu-item relative flex flex-1 items-center text-sm font-medium justify-start gap-2 pl-2 py-1.5 text-muted-foreground">
-          <CollapsibleTrigger hideChevron>{label}</CollapsibleTrigger>
+        {/* Mirrors the NavigationListItem row, in semibold, so section titles
+         * sit in the same rhythm as the items they contain. */}
+        <div
+          className={cn(
+            "group/menu-item relative",
+            "text-muted-foreground font-semibold",
+            "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
+            "items-center outline-hidden rounded-lg text-sm p-2 transition-colors duration-150 motion-reduce:transition-none",
+            "hover:bg-hover hover:text-primary"
+          )}
+        >
+          <CollapsibleTrigger hideChevron>
+            <span className="flex min-w-0 items-center gap-1">
+              {labelElement}
+              <Icon
+                visual={ChevronRight}
+                size="xs"
+                className="block shrink-0 group-data-[state=open]/col:hidden"
+              />
+              <Icon
+                visual={ChevronDown}
+                size="xs"
+                className="hidden shrink-0 group-data-[state=open]/col:block"
+              />
+            </span>
+          </CollapsibleTrigger>
           {actionElement}
         </div>
-        <CollapsibleContent>{renderedContent}</CollapsibleContent>
+        {/* Sticky children (e.g. date labels) need a non-clipping ancestor
+         * once the section is open; the clip only matters while animating. */}
+        <CollapsibleContent className="data-[state=open]:overflow-visible">
+          {renderedContent}
+        </CollapsibleContent>
       </Collapsible>
     );
   }

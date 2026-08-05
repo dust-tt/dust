@@ -26,6 +26,7 @@ import {
 } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useActivePodId } from "@app/hooks/useActivePodId";
+import { useConversationsSectionCollapsed } from "@app/hooks/useConversationsSectionCollapsed";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
@@ -97,6 +98,7 @@ import {
   MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
+  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
@@ -104,7 +106,6 @@ import {
   Robot,
   ScrollArea,
   Spinner,
-  Star01,
   Trash01,
   XClose,
   Zap,
@@ -226,6 +227,8 @@ function SearchResults({
   toggleConversationSelection,
 }: SearchResultsProps) {
   const [podsSectionOpen, setPodsSectionOpen] = useState(true);
+  const [conversationsSectionOpen, setConversationsSectionOpen] =
+    useState(true);
 
   const allConversations = useMemo(() => {
     const seen = new Set<string>();
@@ -344,6 +347,9 @@ function SearchResults({
       <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label="Conversations"
+          type="collapse"
+          open={conversationsSectionOpen}
+          onOpenChange={setConversationsSectionOpen}
           action={
             <>
               <DropdownMenu modal={false}>
@@ -786,7 +792,6 @@ export function AgentSidebarMenu({
       <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
-          icon={Star01}
           type="collapse"
           visibleItems={VISIBLE_STARRED}
           overflowCount={hiddenOverflowCount}
@@ -1494,7 +1499,13 @@ const ConversationList = ({
   return (
     <ConversationListContainer>
       {dateLabel !== "Today" && (
-        <NavigationListLabel label={dateLabel} isSticky />
+        // Compact overline so date groups read as a level below the
+        // (semibold) section titles rather than competing with them.
+        <NavigationListCompactLabel
+          label={dateLabel}
+          isSticky
+          className="bg-app-background"
+        />
       )}
 
       {conversations.map((conversation) => (
@@ -1703,6 +1714,8 @@ function NavigationListWithInbox({
   const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
     null
   );
+  const { isConversationsSectionCollapsed, setConversationsSectionCollapsed } =
+    useConversationsSectionCollapsed();
   // Conversations opened from an activation recommendation are pinned into
   // their own highlighted "Recommendations for you" section at the top and
   // pulled out of the other sections so they only appear once. The recs are
@@ -1908,6 +1921,9 @@ function NavigationListWithInbox({
         <NavigationList className="mx-sidebar-side-spacing">
           <NavigationListCollapsibleSection
             label="Conversations"
+            type="collapse"
+            open={!isConversationsSectionCollapsed}
+            onOpenChange={(open) => setConversationsSectionCollapsed(!open)}
             action={
               <>
                 <DropdownMenu modal={false}>
