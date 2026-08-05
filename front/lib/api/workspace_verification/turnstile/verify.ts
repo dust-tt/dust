@@ -53,7 +53,7 @@ export async function verifyTurnstileToken({
 
   if (!response.ok) {
     logger.error(
-      { status: response.status },
+      { statusCode: response.status },
       "Turnstile siteverify returned non-200."
     );
     return new Err(new CaptchaError("network"));

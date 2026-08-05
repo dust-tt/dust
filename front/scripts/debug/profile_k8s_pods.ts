@@ -78,7 +78,7 @@ makeScript(
         "  Chrome DevTools → Performance → Load Profile → select files"
       );
     } catch (err) {
-      logger.error(err);
+      logger.error({ err }, "Failed to profile pods");
       throw err;
     }
   }

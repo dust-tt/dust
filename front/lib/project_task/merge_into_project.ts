@@ -43,11 +43,11 @@ import {
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Logger } from "@app/logger/logger";
 import type { PodTaskSourceInfo } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
-import type { Logger } from "pino";
 
 // Stable identifier used when recording the creating actor for butler-created
 // project tasks. This is not an actual agent configuration sId but a sentinel

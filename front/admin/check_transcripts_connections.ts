@@ -159,7 +159,7 @@ async function main() {
         configId: configuration.sId,
         userEmail: userEmail,
         provider: configuration.provider,
-        status: configuration.status,
+        configurationStatus: configuration.status,
         dataSourceViewId: configuration.dataSourceViewId,
         agentConfigurationId: configuration.agentConfigurationId,
         connectionId: configuration.connectionId,

@@ -56,7 +56,7 @@ export async function makeDiscordContentFragments({
     const errorText = await channelResponse.text();
     logger.error(
       {
-        status: channelResponse.status,
+        statusCode: channelResponse.status,
         statusText: channelResponse.statusText,
         error: errorText,
         channelId,
@@ -106,7 +106,7 @@ export async function makeDiscordContentFragments({
       const errorText = await response.text();
       logger.error(
         {
-          status: response.status,
+          statusCode: response.status,
           statusText: response.statusText,
           error: errorText,
           channelId,

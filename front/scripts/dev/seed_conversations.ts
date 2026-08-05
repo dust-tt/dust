@@ -353,7 +353,7 @@ async function seedConversations(
     throw new Error("This script can only be run in development.");
   }
 
-  logger.info(config, "Starting seed conversations script");
+  logger.info({ ...config }, "Starting seed conversations script");
 
   const { workspace, user, auth } = await fetchWorkspaceAndUser(
     config.workspaceId

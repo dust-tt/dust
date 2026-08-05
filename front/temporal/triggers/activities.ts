@@ -477,7 +477,7 @@ export async function runWakeUpActivity({
 
   if (wakeUp.status !== "scheduled") {
     logger.info(
-      { status: wakeUp.status, wakeUpId, workspaceId },
+      { wakeUpStatus: wakeUp.status, wakeUpId, workspaceId },
       "Skipping wake-up: wake-up is not scheduled."
     );
     return;
@@ -488,7 +488,7 @@ export async function runWakeUpActivity({
   ]);
   if (!c) {
     logger.info(
-      { status: wakeUp.status, wakeUpId, workspaceId },
+      { wakeUpStatus: wakeUp.status, wakeUpId, workspaceId },
       "Cancelling wake-up: conversation not found."
     );
     await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
@@ -502,7 +502,7 @@ export async function runWakeUpActivity({
   if (!conversationResource) {
     logger.info(
       {
-        status: wakeUp.status,
+        wakeUpStatus: wakeUp.status,
         wakeUpId,
         workspaceId,
         error: "Conversation not found",

@@ -330,7 +330,7 @@ export async function syncOneFile({
     if (axios.isAxiosError(error) && error.response?.status === 403) {
       localLogger.info(
         {
-          status: 403,
+          statusCode: 403,
           fileName: file.name,
           internalId: documentId,
           webUrl: file.webUrl,
@@ -365,7 +365,7 @@ export async function syncOneFile({
     if (axios.isAxiosError(error) && error.response?.status === 423) {
       localLogger.info(
         {
-          status: 423,
+          statusCode: 423,
           fileName: file.name,
           internalId: documentId,
           webUrl: file.webUrl,
@@ -606,7 +606,7 @@ export async function syncOneFile({
           ) {
             localLogger.info(
               {
-                status: 413,
+                statusCode: 413,
                 fileName: file.name,
                 internalId: documentId,
                 webUrl: file.webUrl,

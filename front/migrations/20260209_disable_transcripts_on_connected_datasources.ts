@@ -59,7 +59,7 @@ async function disableTranscriptsOnConnectedDataSources({
         configId: config.id,
         workspaceId: config.workspaceId,
         provider: config.provider,
-        status: config.status,
+        configurationStatus: config.status,
         dataSourceViewId: config.dataSourceViewId,
       },
       "Disabling transcript configuration on connected data source"

@@ -116,7 +116,7 @@ export const fetchDatabases = async ({
         .map((project) => project.projectId!),
     ];
   } catch (error) {
-    logger?.error(error, "Error listing accessible projects");
+    logger?.error({ error }, "Error listing accessible projects");
   }
 
   return Array.from(new Set(projectIds)).map((projectId) => ({

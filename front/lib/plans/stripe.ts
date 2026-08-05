@@ -1993,7 +1993,11 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
 
     if (invoice.status !== "draft") {
       logger.info(
-        { stripeInvoiceId: invoiceId, workspaceId, status: invoice.status },
+        {
+          stripeInvoiceId: invoiceId,
+          workspaceId,
+          invoiceStatus: invoice.status,
+        },
         "[Stripe] Skipping invoice clean: invoice is no longer a draft"
       );
       return new Ok({ outcome: "skipped" });

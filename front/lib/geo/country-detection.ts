@@ -30,7 +30,7 @@ export async function resolveCountryCode(ip: string): Promise<string> {
   if (!response.ok) {
     logger.error(
       {
-        status: response.status,
+        statusCode: response.status,
         statusText: response.statusText,
         ip,
       },

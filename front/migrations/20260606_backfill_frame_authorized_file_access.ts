@@ -1,5 +1,5 @@
 /*
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 import { Op, QueryTypes } from "sequelize";
 
 import { readFrameFileContent } from "@app/lib/api/viz/authorized_file_access";

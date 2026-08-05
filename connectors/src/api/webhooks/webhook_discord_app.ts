@@ -465,7 +465,7 @@ async function sendDiscordFollowUp(
       const errorText = await response.text();
       logger.error(
         {
-          status: response.status,
+          statusCode: response.status,
           statusText: response.statusText,
           error: errorText,
         },

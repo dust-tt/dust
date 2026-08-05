@@ -125,7 +125,7 @@ async function fixSegment({
   if (!finding.contractId) {
     finding.fixError = "no contract id on credit, cannot patch segment";
     logger.warn(
-      finding,
+      { ...finding },
       "[ZeroAmountFreeCredits] Skipping fix: no contract id"
     );
     return;
@@ -142,7 +142,7 @@ async function fixSegment({
     // human can investigate (zero eligible users? misconfigured override?).
     finding.fixError = "computed amount is 0, refusing to patch";
     logger.warn(
-      finding,
+      { ...finding },
       "[ZeroAmountFreeCredits] Computed amount is 0 — leaving segment as-is for manual review"
     );
     return;
@@ -150,7 +150,7 @@ async function fixSegment({
 
   if (!execute) {
     logger.info(
-      finding,
+      { ...finding },
       "[ZeroAmountFreeCredits] [DRY RUN] Would update segment amount and ensure DB credit"
     );
     return;
@@ -283,7 +283,7 @@ async function findZeroAmountSegments(
     };
     findings.push(finding);
     logger.warn(
-      finding,
+      { ...finding },
       execute
         ? "[ZeroAmountFreeCredits] Active segment has amount=0 — fixing"
         : "[ZeroAmountFreeCredits] Active segment has amount=0 (dry run)"

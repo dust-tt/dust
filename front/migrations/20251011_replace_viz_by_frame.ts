@@ -1,6 +1,6 @@
 import assert from "assert";
 import chunk from "lodash/chunk";
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";

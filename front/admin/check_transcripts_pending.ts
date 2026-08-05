@@ -77,7 +77,7 @@ async function main() {
       {
         configId: configuration.sId,
         userEmail,
-        status: configuration.status,
+        configurationStatus: configuration.status,
         pendingCount,
         pendingFileIds: res.value,
       },
