@@ -40,7 +40,7 @@ const AVAILABILITY_OPTIONS: {
     value: "editors",
   },
   {
-    label: "All members",
+    label: "Members",
     value: "workspace_users",
   },
   {

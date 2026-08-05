@@ -36,7 +36,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     },
   },
   {
-    label: "All members",
+    label: "Members",
     availability: "workspace_users",
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} available to all members`,
@@ -46,7 +46,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     },
   },
   {
-    label: "All members and agents",
+    label: "Members and agents",
     description: "Available to all members and agents with Discover Skills",
     availability: "users_and_agents",
     getDialogTitle: () => `This affects your entire workspace`,
