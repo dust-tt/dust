@@ -7,7 +7,6 @@ import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import Custom404 from "@app/components/pages/Custom404";
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import {
   useSetContentWidth,
@@ -93,11 +92,6 @@ export function ManageAgentsPage() {
   const { hasPermission } = useWorkspacePermissions();
 
   const canCreateAgent = hasPermission("create", "agent");
-  const canPublishAgent = hasPermission("publish", "agent");
-  // Users who can publish agents can view the page to discover existing agents
-  // and identify the ones they can edit, even without create permission.
-  const canManageAgents = canCreateAgent || canPublishAgent;
-  const shouldDisableAgentFetching = !canManageAgents;
   const isSearchActive = assistantSearch.trim() !== "";
 
   const activeTab = useMemo(() => {
@@ -114,7 +108,6 @@ export function ManageAgentsPage() {
     workspaceId: owner.sId,
     agentsGetView: "manage",
     includes: ["authors", "usage", "feedbacks", "editors"],
-    disabled: shouldDisableAgentFetching,
   });
 
   const selectedAgents = agentConfigurations.filter((a) =>
@@ -128,7 +121,7 @@ export function ManageAgentsPage() {
     workspaceId: owner.sId,
     agentsGetView: "archived",
     includes: ["usage", "feedbacks", "editors"],
-    disabled: shouldDisableAgentFetching || selectedTab !== "archived",
+    disabled: selectedTab !== "archived",
   });
 
   const agentsByTab = useMemo(() => {
@@ -256,9 +249,6 @@ export function ManageAgentsPage() {
   }, []);
 
   useEffect(() => {
-    if (!canManageAgents) {
-      return;
-    }
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === "/") {
         event.preventDefault();
@@ -270,7 +260,7 @@ export function ManageAgentsPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [canManageAgents]);
+  }, []);
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,
@@ -282,169 +272,158 @@ export function ManageAgentsPage() {
 
   return (
     <>
-      {!canManageAgents ? (
-        <Custom404 />
-      ) : (
-        <>
-          <AgentDetailsSheet
-            owner={owner}
-            user={user}
-            agentId={detailedAgentId}
-            onClose={() => setDetailedAgentId(null)}
-          />
-          <div className="flex w-full flex-col gap-8 pb-4">
-            <Page.Header title="Manage Agents" icon={ContactsRobot} />
-            <Page.Vertical gap="md" align="stretch">
-              <div className="flex flex-row gap-2">
-                <SearchInput
-                  ref={searchBarRef}
-                  className="flex-grow"
-                  name="search"
-                  placeholder="Search (Name, Editors)"
-                  value={assistantSearch}
-                  onChange={(s: string) => {
-                    setAssistantSearch(s);
-                  }}
-                />
-                {!isBatchEdit && (
-                  <div className="flex gap-2">
-                    {isAdmin(owner) && (
-                      <Button
-                        variant="outline"
-                        icon={ListSelect}
-                        label="Batch edit"
-                        onClick={() => {
-                          setIsBatchEdit(true);
-                        }}
-                      />
-                    )}
-
-                    <ModelsFilterMenu
-                      models={uniqueModels}
-                      selectedModels={selectedModels}
-                      setSelectedModels={setSelectedModels}
-                    />
-                    <TagsFilterMenu
-                      tags={uniqueTags}
-                      selectedTags={selectedTags}
-                      setSelectedTags={setSelectedTags}
-                      owner={owner}
-                    />
-                    {canCreateAgent && (
-                      <CreateDropdown
-                        owner={owner}
-                        dataGtmLocation="assistantsWorkspace"
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-              {(selectedModels.length > 0 || selectedTags.length > 0) && (
-                <div className="flex flex-row flex-wrap gap-2">
-                  {selectedModels.map((model) => (
-                    <Chip
-                      key={model.modelId}
-                      label={model.displayName}
-                      size="xs"
-                      color="primary"
-                      icon={getModelLogoByModelId(model.modelId, isDark)}
-                      onRemove={() =>
-                        setSelectedModels(
-                          selectedModels.filter(
-                            (m) => m.modelId !== model.modelId
-                          )
-                        )
-                      }
-                    />
-                  ))}
-                  {selectedTags.map((tag) => (
-                    <Chip
-                      key={tag.sId}
-                      label={tag.name}
-                      size="xs"
-                      color="info"
-                      onRemove={() =>
-                        setSelectedTags(selectedTags.filter((t) => t !== tag))
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-              <div className="flex flex-col pt-3">
-                {isBatchEdit ? (
-                  <AgentEditBar
-                    onClose={() => {
-                      setIsBatchEdit(false);
-                      setSelection([]);
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={detailedAgentId}
+        onClose={() => setDetailedAgentId(null)}
+      />
+      <div className="flex w-full flex-col gap-8 pb-4">
+        <Page.Header title="Manage Agents" icon={ContactsRobot} />
+        <Page.Vertical gap="md" align="stretch">
+          <div className="flex flex-row gap-2">
+            <SearchInput
+              ref={searchBarRef}
+              className="flex-grow"
+              name="search"
+              placeholder="Search (Name, Editors)"
+              value={assistantSearch}
+              onChange={(s: string) => {
+                setAssistantSearch(s);
+              }}
+            />
+            {!isBatchEdit && (
+              <div className="flex gap-2">
+                {isAdmin(owner) && (
+                  <Button
+                    variant="outline"
+                    icon={ListSelect}
+                    label="Batch edit"
+                    onClick={() => {
+                      setIsBatchEdit(true);
                     }}
-                    owner={owner}
-                    selectedAgents={selectedAgents}
-                    tags={uniqueTags}
-                    mutateAgentConfigurations={mutateAgentConfigurations}
                   />
-                ) : (
-                  <Tabs value={activeTab}>
-                    <TabsList>
-                      {AGENT_MANAGER_TABS.map((tab) => (
-                        <TabsTrigger
-                          key={tab.id}
-                          value={tab.id}
-                          label={tab.label}
-                          onClick={() => {
-                            setSelectedTab(tab.id);
-                          }}
-                          tooltip={
-                            AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
-                              ?.description
-                          }
-                          isCounter={tab.id !== "archived"}
-                          counterValue={`${agentsByTab[tab.id].length}`}
-                        />
-                      ))}
-                    </TabsList>
-                  </Tabs>
                 )}
-                {isAgentConfigurationsLoading ||
-                isArchivedAgentConfigurationsLoading ? (
-                  <div className="mt-8 flex justify-center">
-                    <Spinner size="lg" />
-                  </div>
-                ) : activeTab && agentsByTab[activeTab] ? (
-                  <AssistantsTable
-                    isBatchEdit={isBatchEdit}
-                    selection={selection}
-                    setSelection={setSelection}
+                <ModelsFilterMenu
+                  models={uniqueModels}
+                  selectedModels={selectedModels}
+                  setSelectedModels={setSelectedModels}
+                />
+                <TagsFilterMenu
+                  tags={uniqueTags}
+                  selectedTags={selectedTags}
+                  setSelectedTags={setSelectedTags}
+                  owner={owner}
+                />
+                {canCreateAgent && (
+                  <CreateDropdown
                     owner={owner}
-                    agents={agentsByTab[activeTab]}
-                    setDetailedAgentId={setDetailedAgentId}
-                    handleToggleAgentStatus={handleToggleAgentStatus}
-                    showDisabledFreeWorkspacePopup={
-                      showDisabledFreeWorkspacePopup
-                    }
-                    setShowDisabledFreeWorkspacePopup={
-                      setShowDisabledFreeWorkspacePopup
-                    }
-                    mutateAgentConfigurations={mutateAgentConfigurations}
+                    dataGtmLocation="assistantsWorkspace"
                   />
-                ) : (
-                  !assistantSearch &&
-                  canCreateAgent && (
-                    <div className="pt-2">
-                      <EmptyCallToAction
-                        href={`/w/${owner.sId}/builder/agents/create`}
-                        label="Create an agent"
-                        icon={Plus}
-                        data-gtm-label="assistantCreationButton"
-                        data-gtm-location="assistantsWorkspace"
-                      />
-                    </div>
-                  )
                 )}
               </div>
-            </Page.Vertical>
+            )}
           </div>
-        </>
-      )}
+          {(selectedModels.length > 0 || selectedTags.length > 0) && (
+            <div className="flex flex-row flex-wrap gap-2">
+              {selectedModels.map((model) => (
+                <Chip
+                  key={model.modelId}
+                  label={model.displayName}
+                  size="xs"
+                  color="primary"
+                  icon={getModelLogoByModelId(model.modelId, isDark)}
+                  onRemove={() =>
+                    setSelectedModels(
+                      selectedModels.filter((m) => m.modelId !== model.modelId)
+                    )
+                  }
+                />
+              ))}
+              {selectedTags.map((tag) => (
+                <Chip
+                  key={tag.sId}
+                  label={tag.name}
+                  size="xs"
+                  color="info"
+                  onRemove={() =>
+                    setSelectedTags(selectedTags.filter((t) => t !== tag))
+                  }
+                />
+              ))}
+            </div>
+          )}
+          <div className="flex flex-col pt-3">
+            {isBatchEdit ? (
+              <AgentEditBar
+                onClose={() => {
+                  setIsBatchEdit(false);
+                  setSelection([]);
+                }}
+                owner={owner}
+                selectedAgents={selectedAgents}
+                tags={uniqueTags}
+                mutateAgentConfigurations={mutateAgentConfigurations}
+              />
+            ) : (
+              <Tabs value={activeTab}>
+                <TabsList>
+                  {AGENT_MANAGER_TABS.map((tab) => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      label={tab.label}
+                      onClick={() => {
+                        setSelectedTab(tab.id);
+                      }}
+                      tooltip={
+                        AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
+                          ?.description
+                      }
+                      isCounter={tab.id !== "archived"}
+                      counterValue={`${agentsByTab[tab.id].length}`}
+                    />
+                  ))}
+                </TabsList>
+              </Tabs>
+            )}
+            {isAgentConfigurationsLoading ||
+            isArchivedAgentConfigurationsLoading ? (
+              <div className="mt-8 flex justify-center">
+                <Spinner size="lg" />
+              </div>
+            ) : activeTab && agentsByTab[activeTab] ? (
+              <AssistantsTable
+                isBatchEdit={isBatchEdit}
+                selection={selection}
+                setSelection={setSelection}
+                owner={owner}
+                agents={agentsByTab[activeTab]}
+                setDetailedAgentId={setDetailedAgentId}
+                handleToggleAgentStatus={handleToggleAgentStatus}
+                showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
+                setShowDisabledFreeWorkspacePopup={
+                  setShowDisabledFreeWorkspacePopup
+                }
+                mutateAgentConfigurations={mutateAgentConfigurations}
+              />
+            ) : (
+              !assistantSearch &&
+              canCreateAgent && (
+                <div className="pt-2">
+                  <EmptyCallToAction
+                    href={`/w/${owner.sId}/builder/agents/create`}
+                    label="Create an agent"
+                    icon={Plus}
+                    data-gtm-label="assistantCreationButton"
+                    data-gtm-location="assistantsWorkspace"
+                  />
+                </div>
+              )
+            )}
+          </div>
+        </Page.Vertical>
+      </div>
     </>
   );
 }
