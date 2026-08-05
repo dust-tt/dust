@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { CompactionMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
+import { withRetriedTransaction } from "@app/lib/utils/sql_utils";
 import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
@@ -93,7 +93,7 @@ export async function compactConversation(
     });
   }
 
-  const { compactionMessage } = await withTransaction(async (t) => {
+  const { compactionMessage } = await withRetriedTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     const inFlight = await conversationResource.getInFlightMessages(auth, {
@@ -178,7 +178,7 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
 
-  await withTransaction(async (t) => {
+  await withRetriedTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     await CompactionMessageModel.update(
