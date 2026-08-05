@@ -6,8 +6,6 @@ import type {
 
 export type GetUpgradeRequestsResponseBody = {
   requests: MembershipUpgradeRequestType[];
-  // Total count matching the current filter, for pagination — populated for
-  // both the pending queue and the resolved history view.
   total?: number;
 };
 

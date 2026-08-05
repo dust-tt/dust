@@ -291,10 +291,7 @@ export async function listUpgradeRequests(
   return { requests: requests.map((r) => r.toJSON()), total };
 }
 
-// Admin-only: every upgrade request matching the current status/decision/
-// search filters, for the pending queue's or History tab's CSV export.
-// Fetches page by page (rather than the whole table in one query) to bound
-// memory/DB load, stopping once a page comes back short of a full page.
+// Admin-only: every upgrade request matching the current filters
 export async function listAllUpgradeRequests(
   auth: Authenticator,
   {

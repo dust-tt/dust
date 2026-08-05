@@ -183,8 +183,6 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
   }
 
   // Admin-only, offset-paginated: the pending queue or the resolved history
-  // view. `decision` narrows the resolved view to a single outcome;
-  // `userModelIds`, when provided, restricts to matching requesters.
   static async listByWorkspace(
     auth: Authenticator,
     {

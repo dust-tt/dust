@@ -49,9 +49,6 @@ function usageStatusUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/usage-status`;
 }
 
-// Both the pending queue and the resolved history view share this key prefix
-// (only the query string differs), so a single prefix match revalidates
-// whichever of the two is currently mounted.
 async function invalidateUpgradeRequests(workspaceId: string): Promise<void> {
   await mutate(
     (key) =>
@@ -101,14 +98,9 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
   return { doRequestUpgrade };
 }
 
-// Server-enforced page size for both the pending queue and the History tab —
-// must match `UPGRADE_REQUESTS_PAGE_SIZE` in
-// `@app/lib/api/credits/upgrade_requests`.
+// Server-enforced page size
 export const UPGRADE_REQUESTS_PAGE_SIZE = 100;
 
-// Shared by `useUpgradeRequests` and `useUpgradeRequestsHistory` — both fetch
-// the same endpoint, offset-paginated at the same page size, differing only
-// in `status` and (history-only) `decision`.
 function useUpgradeRequestsList({
   workspaceId,
   status,
@@ -192,10 +184,7 @@ export function useUpgradeRequests({
   };
 }
 
-// Admin-only: resolved (approved/denied) upgrade requests, for the History
-// tab. Disabled until that tab is visible. `searchTerm` mirrors the Members
-// tab's search bar (debounced 300ms, same as `useMembersUsage`) and
-// `decision` mirrors its seat-type/group filters.
+// Admin-only: resolved (approved/denied) upgrade requests, applies filtering
 export function useUpgradeRequestsHistory({
   workspaceId,
   pageIndex,
