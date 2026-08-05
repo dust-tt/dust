@@ -46,7 +46,6 @@ export function ProjectPage({ details }: ProjectPageProps) {
               readonly
             />
           ))}
-          <ProjectConversationDataTable owner={owner} projectId={space.sId} />
           <PluginList
             pluginResourceTarget={{
               resourceId: space.sId,
@@ -54,6 +53,7 @@ export function ProjectPage({ details }: ProjectPageProps) {
               workspace: owner,
             }}
           />
+          <ProjectConversationDataTable owner={owner} projectId={space.sId} />
           <ViewProjectWorkflowTable owner={owner} projectId={space.sId} />
           <ProjectConnectorKnowledgeDataTable
             owner={owner}
