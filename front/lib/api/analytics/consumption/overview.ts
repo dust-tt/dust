@@ -7,8 +7,6 @@ import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/
 import {
   buildConsumptionScopeQuery,
   COMPLETED_AT_FIELD,
-  CREDIT_MICRO_FIELD,
-  creditsFromMicroCredits,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
@@ -19,24 +17,17 @@ import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
 export type ConsumptionOverview = {
-  // The resolved query window, echoed so the client renders the period header
-  // without re-deriving it.
   period: ConsumptionPeriod;
   members: {
     active: number;
     total: number;
   };
-  credits: {
-    usedCredits: number;
-  };
-  // Timestamp of the latest record taken into account for the overview.
   lastRecordAt: string | null;
 };
 
 export type GetConsumptionOverviewResponse = ConsumptionOverview;
 
 type OverviewAggs = {
-  used_credit_micro?: estypes.AggregationsSumAggregate;
   active_members?: estypes.AggregationsCardinalityAggregate;
   last_completed_at?: estypes.AggregationsMaxAggregate;
 };
@@ -70,7 +61,6 @@ export async function fetchConsumptionOverview(
   const [searchResult, totalMembers] = await Promise.all([
     searchConsumptionAnalytics<never, OverviewAggs>(query, {
       aggregations: {
-        used_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
         active_members: { cardinality: { field: "user.id" } },
         last_completed_at: { max: { field: COMPLETED_AT_FIELD } },
       },
@@ -84,18 +74,12 @@ export async function fetchConsumptionOverview(
   }
 
   const aggregations = searchResult.value.aggregations;
-  const usedCredits = creditsFromMicroCredits(
-    aggregations?.used_credit_micro?.value ?? 0
-  );
 
   return new Ok({
     period,
     members: {
       active: Math.round(aggregations?.active_members?.value ?? 0),
       total: totalMembers,
-    },
-    credits: {
-      usedCredits,
     },
     lastRecordAt: lastRecordAtFromAgg(aggregations?.last_completed_at),
   });

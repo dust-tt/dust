@@ -27,7 +27,6 @@ const OVERVIEW = {
     endDate: "2026-07-13T00:00:00.000Z",
   },
   members: { active: 121, total: 130 },
-  credits: { usedCredits: 7248 },
   lastRecordAt: "2026-07-12T23:58:00.000Z",
 };
 
