@@ -1,23 +1,29 @@
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 
 import type { SeedContext } from "./types";
 
 const RESTRICTED_SPACE_NAME = "Restricted Space";
 
+interface SeedSpaceOptions {
+  name?: string;
+  // Members to add on top of the context user, who is always a member.
+  members?: UserResource[];
+}
+
 export async function seedSpace(
-  ctx: SeedContext
+  ctx: SeedContext,
+  { name = RESTRICTED_SPACE_NAME, members = [] }: SeedSpaceOptions = {}
 ): Promise<SpaceResource | undefined> {
   const { auth, workspace, user, execute, logger } = ctx;
 
   const existingSpaces = await SpaceResource.listWorkspaceSpaces(auth);
-  const existingRestrictedSpace = existingSpaces.find(
-    (s) => s.name === RESTRICTED_SPACE_NAME
-  );
+  const existingRestrictedSpace = existingSpaces.find((s) => s.name === name);
 
   if (existingRestrictedSpace) {
     logger.info(
-      { sId: existingRestrictedSpace.sId, name: RESTRICTED_SPACE_NAME },
+      { sId: existingRestrictedSpace.sId, name },
       "Restricted space already exists, skipping"
     );
     return existingRestrictedSpace;
@@ -26,7 +32,7 @@ export async function seedSpace(
   if (execute) {
     // Create a group for the restricted space
     const group = await GroupResource.makeNew({
-      name: `Group for ${RESTRICTED_SPACE_NAME}`,
+      name: `Group for ${name}`,
       workspaceId: workspace.id,
       kind: "regular_auto",
     });
@@ -34,7 +40,7 @@ export async function seedSpace(
     // Create the restricted space
     const restrictedSpace = await SpaceResource.makeNew(
       {
-        name: RESTRICTED_SPACE_NAME,
+        name,
         kind: "regular",
         workspaceId: workspace.id,
       },
@@ -44,17 +50,17 @@ export async function seedSpace(
     if (!group.canWrite(auth)) {
       throw new Error("Only admins or group editors can change group members");
     }
-    // Add the user to the group so they can access the space
-    const addMemberResult = await group.dangerouslyAddMember(auth, {
-      user: user.toJSON(),
+    // Add the users to the group so they can access the space
+    const addMemberResult = await group.dangerouslyAddMembers(auth, {
+      users: [user, ...members].map((u) => u.toJSON()),
     });
     if (addMemberResult.isErr()) {
       throw new Error(
-        `Failed to add user to group: ${addMemberResult.error.message}`
+        `Failed to add users to group: ${addMemberResult.error.message}`
       );
     }
 
-    logger.info({ sId: restrictedSpace.sId }, "Restricted space created");
+    logger.info({ sId: restrictedSpace.sId, name }, "Restricted space created");
     return restrictedSpace;
   }
 

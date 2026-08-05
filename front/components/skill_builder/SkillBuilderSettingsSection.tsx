@@ -4,6 +4,7 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
+import { SkillEditorsAccessWarning } from "@app/components/skill_builder/SkillEditorsAccessWarning";
 import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/SkillEditorsSheetWithButton";
 import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
@@ -83,7 +84,7 @@ export function SkillBuilderSettingsSection({
   );
   const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
-  const { nonGlobalSpacesWithRestrictions } =
+  const { editorsWithoutSpaceAccess, nonGlobalSpacesWithRestrictions } =
     useSkillSpaceRestrictionsContext();
 
   const currentOption = AVAILABILITY_OPTIONS.find(
@@ -150,6 +151,14 @@ export function SkillBuilderSettingsSection({
               onAddSelfAsEditor={onAddSelfAsEditor}
             />
           </div>
+          {editorsWithoutSpaceAccess.length > 0 && (
+            <div className="mt-3">
+              <SkillEditorsAccessWarning
+                editorsWithoutSpaceAccess={editorsWithoutSpaceAccess}
+                owner={owner}
+              />
+            </div>
+          )}
         </div>
         <div>
           <h3 className="text-base font-semibold text-foreground mb-2">
