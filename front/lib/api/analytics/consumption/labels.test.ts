@@ -66,4 +66,20 @@ describe("resolveDimensionLabels", () => {
   it("returns nothing for an empty breakdown", async () => {
     expect(await resolveDimensionLabels(auth, "agent", [])).toEqual(new Map());
   });
+
+  it("carries a picture for the dimensions that have one, null for the rest", async () => {
+    const user = await UserFactory.basic();
+
+    const users = await resolveDimensionLabels(auth, "user", [user.sId]);
+    const sources = await resolveDimensionLabels(auth, "source", ["slack"]);
+
+    expect(users.get(user.sId)).toEqual({
+      name: user.fullName(),
+      pictureUrl: user.imageUrl,
+    });
+    expect(sources.get("slack")).toEqual({
+      name: "Slack",
+      pictureUrl: null,
+    });
+  });
 });

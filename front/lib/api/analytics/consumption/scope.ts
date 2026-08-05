@@ -3,6 +3,8 @@ import type { estypes } from "@elastic/elasticsearch";
 
 export const COMPLETED_AT_FIELD = "completed_at";
 
+export const AGENT_MESSAGE_ID_FIELD = "agent_message_id";
+
 export const CONSUMPTION_SCOPE_DIMENSIONS = [
   "agent",
   "user",
@@ -40,6 +42,12 @@ export const DEFAULT_CONSUMPTION_METRIC: ConsumptionMetric = "gross_credits";
 
 const MICRO_CREDITS_PER_CREDIT = 1_000_000;
 
+export function creditsFromMicroCredits(microCredits: number): number {
+  return microCredits / MICRO_CREDITS_PER_CREDIT;
+}
+
+export const GROSS_CREDIT_MICRO_FIELD = "gross_credit_micro.total";
+
 export const CONSUMPTION_METRIC_DEFINITIONS: Record<
   ConsumptionMetric,
   {
@@ -49,7 +57,7 @@ export const CONSUMPTION_METRIC_DEFINITIONS: Record<
   }
 > = {
   gross_credits: {
-    field: "gross_credit_micro.total",
+    field: GROSS_CREDIT_MICRO_FIELD,
     divisor: MICRO_CREDITS_PER_CREDIT,
   },
 };

@@ -1,19 +1,21 @@
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import {
   resolveAnalyticsAgentLabels,
   UNKNOWN_AGENT_LABEL,
 } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
+import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
-import type { ConsumptionBreakdownDimension } from "./timeseries";
 
 /**
- * Resolve display names / labels for a set of keys for a given dimension.
+ * Resolve display names / labels (and pictureUrl where applicable)
+ * for a set of keys for a given dimension.
+ *
  * The expected mapping is:
  * - "agent": agent sIds
  * - "user": user sIds
@@ -22,11 +24,26 @@ import type { ConsumptionBreakdownDimension } from "./timeseries";
  * - "skill": skill sIds
  * - "source": origin slugs
  */
+
+export type DimensionLabel = {
+  name: string;
+  // Only agents and users have one; null for every other dimension.
+  pictureUrl: string | null;
+};
+
+function labelsFromNames(
+  names: Map<string, string>
+): Map<string, DimensionLabel> {
+  return new Map(
+    [...names].map(([key, name]) => [key, { name, pictureUrl: null }])
+  );
+}
+
 export async function resolveDimensionLabels(
   auth: Authenticator,
-  dimension: ConsumptionBreakdownDimension,
+  dimension: ConsumptionScopeDimension,
   keys: string[]
-): Promise<Map<string, string>> {
+): Promise<Map<string, DimensionLabel>> {
   if (keys.length === 0) {
     return new Map();
   }
@@ -35,7 +52,10 @@ export async function resolveDimensionLabels(
     case "agent": {
       const labels = await resolveAnalyticsAgentLabels(auth, keys);
       return new Map(
-        keys.map((key) => [key, (labels.get(key) ?? UNKNOWN_AGENT_LABEL).name])
+        keys.map((key) => {
+          const label = labels.get(key) ?? UNKNOWN_AGENT_LABEL;
+          return [key, { name: label.name, pictureUrl: label.pictureUrl }];
+        })
       );
     }
 
@@ -43,35 +63,61 @@ export async function resolveDimensionLabels(
       const users = await UserResource.fetchByIds(keys);
       const usersById = new Map(users.map((user) => [user.sId, user]));
       return new Map(
-        keys.map((key) => [key, getUserDisplayName(usersById.get(key))])
+        keys.map((key) => {
+          const user = usersById.get(key);
+          return [
+            key,
+            {
+              name: getUserDisplayName(user),
+              pictureUrl: user?.imageUrl ?? null,
+            },
+          ];
+        })
       );
     }
 
     case "model":
-      return new Map(
-        keys.map((key) => [
-          key,
-          getModelConfigByModelId(key)?.displayName ?? key,
-        ])
+      return labelsFromNames(
+        new Map(
+          keys.map((key) => [
+            key,
+            getModelConfigByModelId(key)?.displayName ?? key,
+          ])
+        )
       );
 
-    case "tool":
-      // The key is the MCP server name, which already reads well enough on its
-      // own when the display mapping has nothing for it.
-      return new Map(keys.map((key) => [key, asDisplayToolName(key) || key]));
+    case "tool": {
+      // The key is the MCP server name. Internal servers get their display name
+      // from the name itself; remote ones are keyed by sId and need a lookup.
+      const displayNames = await resolveServerDisplayNames(auth, keys);
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, displayNames.get(key) || key]))
+      );
+    }
 
     case "skill": {
       const skills = await SkillResource.fetchByIds(auth, keys);
       const namesById = new Map(skills.map((skill) => [skill.sId, skill.name]));
-      return new Map(keys.map((key) => [key, namesById.get(key) ?? key]));
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
+      );
     }
 
     case "source":
-      return new Map(
-        keys.map((key) => [key, sourceLabelForOrigin(key) ?? key])
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, sourceLabelForOrigin(key) ?? key]))
       );
 
     default:
       assertNever(dimension);
   }
+}
+
+export async function resolveConsumptionGroupNames(
+  auth: Authenticator,
+  dimension: ConsumptionScopeDimension,
+  groupKeys: string[]
+): Promise<Map<string, string>> {
+  const labels = await resolveDimensionLabels(auth, dimension, groupKeys);
+  return new Map([...labels].map(([key, label]) => [key, label.name]));
 }
