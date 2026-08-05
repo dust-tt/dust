@@ -10,7 +10,13 @@ export interface ActivationRecommendationForUserType {
   sId: string;
   title: string;
   content: string;
+  body: string | null;
+  steps: string[] | null;
+  ctaLabel: string | null;
+  sourceIcon: string | null;
+  sourceLabel: string | null;
   conversationId: string | null;
+  createdAt: number;
 }
 
 export interface GetActivationRecommendationsResponseBody {
@@ -23,7 +29,10 @@ export interface UpdateActivationRecommendationResponseBody {
 
 export async function listActivationRecommendationsForUser(
   auth: Authenticator,
-  { podId }: { podId?: string } = {}
+  {
+    podId,
+    status = "suggested",
+  }: { podId?: string; status?: ActivationRecommendationStatus } = {}
 ): Promise<ActivationRecommendationForUserType[]> {
   let spaceModelId: number | undefined;
   if (podId !== undefined) {
@@ -34,9 +43,10 @@ export async function listActivationRecommendationsForUser(
     spaceModelId = space.id;
   }
 
-  const recs = await ActivationRecommendationResource.listSuggestedByUser(
+  const recs = await ActivationRecommendationResource.listByUserAndStatus(
     auth,
     {
+      status,
       limit: NEXT_STEPS_LIMIT,
       sinceDaysAgo: NEXT_STEPS_WINDOW_DAYS,
       spaceModelId,
@@ -47,7 +57,13 @@ export async function listActivationRecommendationsForUser(
     sId: resource.sId,
     title: resource.title,
     content: resource.content,
+    body: resource.body,
+    steps: resource.steps,
+    ctaLabel: resource.ctaLabel,
+    sourceIcon: resource.sourceIcon,
+    sourceLabel: resource.sourceLabel,
     conversationId: conversationSId,
+    createdAt: resource.createdAt.getTime(),
   }));
 }
 

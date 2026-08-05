@@ -47,6 +47,52 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
             "Bad: 'A useful HubSpot recommendation'. " +
             "Bad: 'Learn more about frames and agents'."
         ),
+      body: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe(
+          "Optional 1-3 sentence explanation of the recommendation. " +
+            "Explain the 'why' in more depth than content: what context makes this " +
+            "the right suggestion right now for this user. Omit if the title+content " +
+            "are already self-explanatory."
+        ),
+      steps: z
+        .array(z.string().max(500))
+        .optional()
+        .describe(
+          "Optional ordered list of concrete steps to complete the recommendation. " +
+            "Each step is a short imperative sentence (< 60 chars). " +
+            "Only include when the action needs more than one step to complete. " +
+            "Omit for single-action recommendations."
+        ),
+      ctaLabel: z
+        .string()
+        .max(40)
+        .optional()
+        .describe(
+          "Optional label for the primary call-to-action button on the recommendation card. " +
+            "Defaults to 'Get started' when omitted. Use when a more specific verb fits, " +
+            "e.g. 'Create agent', 'Set up trigger', 'Share frame'."
+        ),
+      sourceIcon: z
+        .string()
+        .optional()
+        .describe(
+          "Optional icon identifier for the source of this recommendation. " +
+            "Use a ConnectorProvider value (e.g. 'slack', 'github', 'notion') when the " +
+            "recommendation is driven by a specific data source. " +
+            "Use a Sparkle icon name (e.g. 'ActionBrainIcon') for internal Dust features. " +
+            "Omit if no specific source icon applies."
+        ),
+      sourceLabel: z
+        .string()
+        .max(40)
+        .optional()
+        .describe(
+          "Optional short label shown alongside the sourceIcon (e.g. 'Slack', 'GitHub'). " +
+            "Only set when sourceIcon is also set."
+        ),
     },
     stake: "never_ask",
     toolCostCategory: "basic",

@@ -17,6 +17,7 @@ const UpdateRecommendationBodySchema = z.object({
 
 const ListRecommendationsQuerySchema = z.object({
   podId: z.string().optional(),
+  status: z.enum(["suggested", "executed"]).optional(),
 });
 
 // Mounted at /api/w/:wId/action-recommendations.
@@ -28,10 +29,11 @@ app.get(
   validate("query", ListRecommendationsQuerySchema),
   async (ctx): HandlerResult<GetActivationRecommendationsResponseBody> => {
     const auth = ctx.get("auth");
-    const { podId } = ctx.req.valid("query");
+    const { podId, status } = ctx.req.valid("query");
 
     const recommendations = await listActivationRecommendationsForUser(auth, {
       podId,
+      status,
     });
 
     return ctx.json({ recommendations });
