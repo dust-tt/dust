@@ -17,6 +17,7 @@ import { TypingAnimation } from "@sparkle/components/TypingAnimation";
 import { Lock01 } from "@sparkle/icons";
 import {
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   DotsHorizontal,
 } from "@sparkle/icons/v2-stroke";
@@ -292,7 +293,10 @@ const NavigationListCompactLabel = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex px-2 py-1 pl-3 text-[10px] font-semibold text-faint pt-3 uppercase whitespace-nowrap overflow-hidden text-ellipsis",
+      // px-2 matches NavigationListItem's p-2 so the label's text aligns with
+      // the item labels underneath it. The lopsided pt-4/pb-1 groups the label
+      // with the items it heads, and breaks it away from the group above.
+      "flex px-2 py-1 text-xs font-semibold text-faint pt-4 uppercase whitespace-nowrap overflow-hidden text-ellipsis",
       isSticky && "sticky top-0 z-10 bg-muted-background border-border",
       className
     )}
@@ -329,7 +333,7 @@ interface NavigationListCollapsibleSectionProps
 
 const collapseableStyles = cva(
   cn(
-    "w-full flex-1 text-left w-full",
+    "text-left",
     "text-muted-foreground",
     "text-sm whitespace-nowrap overflow-hidden text-ellipsis",
     "select-none",
@@ -339,15 +343,19 @@ const collapseableStyles = cva(
   {
     variants: {
       isCollapsible: {
-        true: cn(
-          "cursor-pointer mb-0.5"
-          // "hover:bg-primary-100"
-        ),
+        true: "cursor-pointer",
         false: "",
+      },
+      // Static headers fill the row; collapsible ones shrink-wrap so the
+      // chevron sits right next to the label instead of at the row's edge.
+      grow: {
+        true: "w-full flex-1",
+        false: "min-w-0",
       },
     },
     defaultVariants: {
       isCollapsible: false,
+      grow: true,
     },
   }
 );
@@ -393,7 +401,15 @@ const NavigationListCollapsibleSection = React.forwardRef<
     const isCollapsible = type !== "static";
     const counterValue = count && count > 0 ? count : undefined;
     const labelElement = (
-      <div className={cn("notranslate", collapseableStyles({ isCollapsible }))}>
+      <div
+        className={cn(
+          "notranslate",
+          collapseableStyles({ isCollapsible, grow: !isCollapsible }),
+          // The collapsible header row owns the text color (including its
+          // hover state), so the label inherits it instead of forcing its own.
+          isCollapsible && "text-inherit"
+        )}
+      >
         <span className="flex items-center gap-1.5">
           {icon && <Icon visual={icon} size="xs" />}
           <span className="overflow-hidden text-ellipsis">{label}</span>
@@ -406,10 +422,18 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     const actionElement = action && (
       <div
+        // Lets the header row keep its active styling while a menu opened from
+        // one of these actions is still open (see the collapse header below).
+        data-nav="section-action"
         className={cn(
           "flex gap-1 transition-opacity",
           actionOnHover
-            ? "[@media(hover:hover)_and_(pointer:fine)]:opacity-0 hover:opacity-100 group-has-[:focus-visible]/menu-item:opacity-100 group-hover/menu-item:opacity-100"
+            ? cn(
+                "[@media(hover:hover)_and_(pointer:fine)]:opacity-0 hover:opacity-100 group-has-[:focus-visible]/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                // The pointer leaves the row to navigate the menu it just
+                // opened; keep the action visible until the menu closes.
+                "has-[[data-state=open]]:opacity-100"
+              )
             : "opacity-100"
         )}
         onClick={(e) => {
@@ -485,11 +509,62 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <div className="group/menu-item relative flex flex-1 items-center text-sm font-medium justify-start gap-2 pl-2 py-1.5 text-muted-foreground">
-          <CollapsibleTrigger hideChevron>{label}</CollapsibleTrigger>
+        {/* Mirrors the NavigationListItem row, in semibold, so section titles
+         * sit in the same rhythm as the items they contain. */}
+        <div
+          className={cn(
+            "group/menu-item relative",
+            "text-muted-foreground font-semibold",
+            // No gap: it would be dead space between the trigger and the
+            // action slot. The trigger's own pr-2 does the separating.
+            "box-border flex items-center w-full select-none",
+            // The row's own padding lives on the trigger below, so the whole
+            // row height is clickable rather than just the label's line box.
+            // pr-2 keeps the action slot off the right edge.
+            "items-center outline-hidden rounded-lg text-sm pr-2 transition-colors duration-150 motion-reduce:transition-none",
+            "hover:bg-hover hover:text-primary",
+            // Hold the hover styling while a menu opened from one of the row's
+            // actions is still open. Scoped to the action slot so the
+            // CollapsibleTrigger's own data-state=open never matches.
+            "has-[[data-nav=section-action]_[data-state=open]]:bg-hover has-[[data-nav=section-action]_[data-state=open]]:text-primary"
+          )}
+        >
+          <CollapsibleTrigger hideChevron className="p-2">
+            <span className="flex min-w-0 items-center gap-1">
+              {labelElement}
+              <Icon
+                visual={ChevronRight}
+                size="xs"
+                className="block shrink-0 group-data-[state=open]/col:hidden"
+              />
+              {/* An expanded section shows its own contents, so the chevron
+               * only appears on hover. It keeps its slot (opacity, not
+               * display) so the label doesn't shift, and stays visible where
+               * there is no hover to rely on: touch and keyboard focus. */}
+              <Icon
+                visual={ChevronDown}
+                size="xs"
+                className={cn(
+                  "hidden shrink-0 transition-opacity group-data-[state=open]/col:block",
+                  "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                  "group-hover/menu-item:opacity-100 group-has-[:focus-visible]/menu-item:opacity-100"
+                )}
+              />
+            </span>
+          </CollapsibleTrigger>
           {actionElement}
         </div>
-        <CollapsibleContent>{renderedContent}</CollapsibleContent>
+        {/* Toggling a sidebar section is a high-frequency action, and the
+         * shared height animation is layout-bound — on a long list it reads
+         * as lag rather than motion. Open/close instantly instead.
+         * With no animation to spill out of, the content can also stop
+         * clipping outright, so sticky children pin to the scroll viewport. */}
+        <CollapsibleContent
+          animated={false}
+          className="data-[state=open]:overflow-visible"
+        >
+          {renderedContent}
+        </CollapsibleContent>
       </Collapsible>
     );
   }

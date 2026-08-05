@@ -26,6 +26,7 @@ import {
 } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useActivePodId } from "@app/hooks/useActivePodId";
+import { useConversationsSectionCollapsed } from "@app/hooks/useConversationsSectionCollapsed";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
@@ -97,6 +98,7 @@ import {
   MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
+  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
@@ -104,7 +106,6 @@ import {
   Robot,
   ScrollArea,
   Spinner,
-  Star01,
   Trash01,
   XClose,
   Zap,
@@ -226,6 +227,8 @@ function SearchResults({
   toggleConversationSelection,
 }: SearchResultsProps) {
   const [podsSectionOpen, setPodsSectionOpen] = useState(true);
+  const [conversationsSectionOpen, setConversationsSectionOpen] =
+    useState(true);
 
   const allConversations = useMemo(() => {
     const seen = new Set<string>();
@@ -344,6 +347,9 @@ function SearchResults({
       <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label="Conversations"
+          type="collapse"
+          open={conversationsSectionOpen}
+          onOpenChange={setConversationsSectionOpen}
           action={
             <>
               <DropdownMenu modal={false}>
@@ -767,9 +773,6 @@ export function AgentSidebarMenu({
       return null;
     }
 
-    const showCount =
-      isStarredPodsSectionCollapsed && starredCountInSummary > 0;
-
     const VISIBLE_STARRED = 5;
     const hiddenStarredSummary = starredSummary.slice(VISIBLE_STARRED);
     const hiddenOverflowCount = hiddenStarredSummary.reduce(
@@ -785,8 +788,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
-          label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
-          icon={Star01}
+          label="Starred"
           type="collapse"
           visibleItems={VISIBLE_STARRED}
           overflowCount={hiddenOverflowCount}
@@ -815,8 +817,6 @@ export function AgentSidebarMenu({
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const podsSection = useMemo(() => {
     const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
-    const podCountInSummary = nonStarredSummary.length;
-    const showCount = isPodsSectionCollapsed && podCountInSummary > 0;
 
     const VISIBLE_PODS = 4;
     const hiddenSummary = nonStarredSummary.slice(VISIBLE_PODS);
@@ -833,7 +833,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
         <NavigationListCollapsibleSection
-          label={showCount ? `Pods (${podCountInSummary})` : "Pods"}
+          label="Pods"
           type="collapse"
           visibleItems={VISIBLE_PODS}
           overflowCount={hiddenOverflowCount}
@@ -1477,10 +1477,12 @@ function UnreadConversationsSection({
 const ConversationList = ({
   conversations,
   dateLabel,
+  isFirstGroup,
   ...props
 }: {
   conversations: ConversationListItemType[];
   dateLabel: string;
+  isFirstGroup: boolean;
   isMultiSelect: boolean;
   selectedConversations: ConversationListItemType[];
   toggleConversationSelection: (c: ConversationListItemType) => void;
@@ -1493,9 +1495,15 @@ const ConversationList = ({
 
   return (
     <ConversationListContainer>
-      {dateLabel !== "Today" && (
-        <NavigationListLabel label={dateLabel} isSticky />
-      )}
+      {/* Compact overline so date groups read as a level below the
+       * (semibold) section titles rather than competing with them. The top
+       * padding separates a group from the one above it, so the first group
+       * — which follows the section header — does without it. */}
+      <NavigationListCompactLabel
+        label={dateLabel}
+        isSticky
+        className={cn("bg-app-background", isFirstGroup && "pt-2")}
+      />
 
       {conversations.map((conversation) => (
         <ConversationListItem
@@ -1703,6 +1711,8 @@ function NavigationListWithInbox({
   const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
     null
   );
+  const { isConversationsSectionCollapsed, setConversationsSectionCollapsed } =
+    useConversationsSectionCollapsed();
   // Conversations opened from an activation recommendation are pinned into
   // their own highlighted "Recommendations for you" section at the top and
   // pulled out of the other sections so they only appear once. The recs are
@@ -1750,13 +1760,20 @@ function NavigationListWithInbox({
       })
     : ({} as Record<GroupLabel, ConversationListItemType[]>);
 
+  // Empty groups render nothing, so the first non-empty one is the first the
+  // user actually sees — that's the one that skips the top padding.
+  const nonEmptyDateLabels = Object.keys(conversationsByDate).filter(
+    (dateLabel) => conversationsByDate[dateLabel as GroupLabel].length > 0
+  );
+
   const conversationsContent = (
     <>
-      {Object.keys(conversationsByDate).map((dateLabel) => (
+      {nonEmptyDateLabels.map((dateLabel, index) => (
         <ConversationList
           key={dateLabel}
           conversations={conversationsByDate[dateLabel as GroupLabel]}
           dateLabel={dateLabel}
+          isFirstGroup={index === 0}
           isMultiSelect={isMultiSelect}
           selectedConversations={selectedConversations}
           toggleConversationSelection={toggleConversationSelection}
@@ -1908,6 +1925,9 @@ function NavigationListWithInbox({
         <NavigationList className="mx-sidebar-side-spacing">
           <NavigationListCollapsibleSection
             label="Conversations"
+            type="collapse"
+            open={!isConversationsSectionCollapsed}
+            onOpenChange={(open) => setConversationsSectionCollapsed(!open)}
             action={
               <>
                 <DropdownMenu modal={false}>

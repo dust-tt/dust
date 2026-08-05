@@ -133,17 +133,28 @@ const contentVariants = cva("overflow-hidden transition-all", {
 
 export interface CollapsibleContentProps
   extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>,
-    VariantProps<typeof contentVariants> {}
+    VariantProps<typeof contentVariants> {
+  /**
+   * Set to false to open and close instantly. Worth doing for high-frequency
+   * toggles, where the height animation reads as lag rather than motion.
+   * Note that no animation means no animationend event.
+   */
+  animated?: boolean;
+}
 
 const CollapsibleContent = React.forwardRef<
   React.ElementRef<typeof CollapsiblePrimitive.Content>,
   CollapsibleContentProps
->(({ children, className, variant, ...props }, ref) => (
+>(({ children, className, variant, animated = true, ...props }, ref) => (
   <CollapsiblePrimitive.Content
     ref={ref}
     className={cn(
       contentVariants({ variant }),
-      "data-[state=closed]:animate-collapse-up data-[state=open]:animate-collapse-down",
+      animated && [
+        "data-[state=closed]:animate-collapse-up data-[state=open]:animate-collapse-down",
+        // Open/close still works, it just snaps instead of sliding.
+        "motion-reduce:animate-none",
+      ],
       className
     )}
     {...props}
