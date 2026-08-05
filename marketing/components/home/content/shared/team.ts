@@ -630,6 +630,13 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/charlotte-comte-a1b891b1/",
     github: "",
   },
+  achilleburah: {
+    name: "Achille Burah",
+    title: "Software Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0BMT783V46-7eff3f871b4b-512",
+    linkedIn: "https://www.linkedin.com/in/achille-burah/",
+    github: "https://github.com/achilleburah",
+  },
 };
 
 export const TEAM_AVATAR_URLS: string[] = Object.values(PEOPLE).map(
