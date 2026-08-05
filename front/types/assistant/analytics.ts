@@ -117,8 +117,12 @@ export interface AgentMessageConsumptionAnalyticsAgent {
   id: string;
   version: string;
   tag_ids: string[];
-  // Agent that started the run; equals `id` for a top-level agent.
-  root_agent_id: string;
+  // IDs of the agent's ancestors, from the top-level agent down to the immediate parent. Empty for a top-level agent.
+  parent_ids: string[];
+  // The immediate parent of the agent. Null for a top-level agent.
+  direct_parent_id: string | null;
+  // The top-level agent of the run. Equals `id` when this agent is itself the root.
+  root_id: string;
   // 0 for a top-level agent, incremented once per level of sub-agent nesting.
   depth: number;
 }
@@ -130,9 +134,13 @@ export interface AgentMessageConsumptionAnalyticsUser {
 export interface AgentMessageConsumptionAnalyticsTool {
   name: string;
   server_name: string;
+  // Server that called this tool. Empty when the agent called this tool directly.
+  parent_server_name: string;
   action_id: string;
-  // Skills that made this tool available to the agent.
-  enabled_by_skill_ids: string[];
+  // Every skill that can be held responsible, directly or indirectly, for this
+  // tool call being made.
+  // When a tool call enables a skill, that skill is also reflected here.
+  attributed_skill_ids: string[];
 }
 
 export interface AgentMessageConsumptionAnalyticsTokens {
