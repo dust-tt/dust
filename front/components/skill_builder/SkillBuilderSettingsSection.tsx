@@ -24,7 +24,6 @@ import {
   Hoverable,
   Icon,
   InfoCircle,
-  Label,
   LinkExternal01,
   LinkWrapper,
 } from "@dust-tt/sparkle";
@@ -114,8 +113,10 @@ export function SkillBuilderSettingsSection({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="heading-lg text-foreground">Skill settings</h2>
+      <div className="space-y-1 pb-1">
+        <h2 className="heading-lg font-semibold text-foreground">
+          Skill settings
+        </h2>
         {githubSkillFolderUrl && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <span>This skill was originally imported from</span>
@@ -139,102 +140,98 @@ export function SkillBuilderSettingsSection({
         <SkillBuilderIconSection />
       </div>
       <SkillBuilderUserFacingDescriptionSection />
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col">
-          <h3 className="text-base font-semibold text-foreground mb-2">
-            Editors
-          </h3>
-          <div className="flex w-full flex-row flex-wrap items-center gap-2">
-            <SkillEditorsSheetWithButton
-              isEditorGateVisible={isEditorGateVisible}
-              isAddingSelfAsEditor={isAddingSelfAsEditor}
-              onAddSelfAsEditor={onAddSelfAsEditor}
-            />
-          </div>
-          {editorsWithoutSpaceAccess.length > 0 && (
-            <div className="mt-3">
-              <SkillEditorsAccessWarning
-                editorsWithoutSpaceAccess={editorsWithoutSpaceAccess}
-                owner={owner}
-              />
-            </div>
-          )}
+      <div className="space-y-2">
+        <h3 className="text-base font-semibold text-foreground">Editors</h3>
+        <div className="flex w-full flex-row flex-wrap items-center gap-2">
+          <SkillEditorsSheetWithButton
+            isEditorGateVisible={isEditorGateVisible}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={onAddSelfAsEditor}
+          />
         </div>
-        <div>
-          <h3 className="text-base font-semibold text-foreground mb-2">
-            Availability
-          </h3>
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button
-                label={currentOption?.label}
-                variant="outline"
-                isSelect
-                disabled={!canUpdateAvailability || isAvailabilityLocked}
-                tooltip={availabilityTooltip}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {AVAILABILITY_OPTIONS.map((option) => {
-                const isOptionDisabled =
-                  option.value === "users_and_agents" &&
-                  !canMakeSkillAutoDiscoverable;
-                return (
-                  <DropdownMenuItem
-                    key={option.label}
-                    label={option.label}
-                    onClick={() => {
-                      onChange(option.value);
-                    }}
-                    description={option.description}
-                    disabled={isOptionDisabled}
-                    tooltip={
-                      isOptionDisabled
-                        ? "You don’t have permission to make skills auto-discoverable"
-                        : undefined
-                    }
-                  />
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {editorsWithoutSpaceAccess.length > 0 && (
+          <SkillEditorsAccessWarning
+            editorsWithoutSpaceAccess={editorsWithoutSpaceAccess}
+            owner={owner}
+          />
+        )}
       </div>
-      {showWorkspaceWideEffectsMessage ? (
-        <ContentMessage
-          icon={InfoCircle}
-          title="This skill has workspace-wide effects"
-          size="lg"
-        >
-          <ul className="list-disc space-y-1 pl-5">
-            <li>All members can find it via the input bar and agent builder</li>
-            <li>
-              Any agent with Discover Skills, including Dust, can use it
-              automatically. See other skills available to agents in{" "}
-              <Hoverable
-                href={`/w/${owner.sId}/builder/skills?availability=users_and_agents`}
-                target="_blank"
-                className="inline-flex items-center gap-1 underline"
-              >
-                Manage Skills
-                <Icon visual={LinkExternal01} size="xs" />
-              </Hoverable>
-            </li>
-          </ul>
-        </ContentMessage>
-      ) : (
-        <SkillBuilderAvailabilityMessage
-          availability={availability}
-          owner={owner}
-          restrictedSpaces={nonGlobalSpacesWithRestrictions}
-        />
-      )}
+      <div className="space-y-2">
+        <h3 className="text-base font-semibold text-foreground">
+          Availability
+        </h3>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <Button
+              label={currentOption?.label}
+              variant="outline"
+              isSelect
+              disabled={!canUpdateAvailability || isAvailabilityLocked}
+              tooltip={availabilityTooltip}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {AVAILABILITY_OPTIONS.map((option) => {
+              const isOptionDisabled =
+                option.value === "users_and_agents" &&
+                !canMakeSkillAutoDiscoverable;
+              return (
+                <DropdownMenuItem
+                  key={option.label}
+                  label={option.label}
+                  onClick={() => {
+                    onChange(option.value);
+                  }}
+                  description={option.description}
+                  disabled={isOptionDisabled}
+                  tooltip={
+                    isOptionDisabled
+                      ? "You don’t have permission to make skills auto-discoverable"
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {showWorkspaceWideEffectsMessage ? (
+          <ContentMessage
+            icon={InfoCircle}
+            title="This skill has workspace-wide effects"
+            size="lg"
+          >
+            <ul className="list-disc space-y-1 pl-5">
+              <li>
+                All members can find it via the input bar and agent builder
+              </li>
+              <li>
+                Any agent with Discover Skills, including Dust, can use it
+                automatically. See other skills available to agents in{" "}
+                <Hoverable
+                  href={`/w/${owner.sId}/builder/skills?availability=users_and_agents`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 underline"
+                >
+                  Manage Skills
+                  <Icon visual={LinkExternal01} size="xs" />
+                </Hoverable>
+              </li>
+            </ul>
+          </ContentMessage>
+        ) : (
+          <SkillBuilderAvailabilityMessage
+            availability={availability}
+            owner={owner}
+            restrictedSpaces={nonGlobalSpacesWithRestrictions}
+          />
+        )}
+      </div>
 
       {hasSelfImprovingSkills && (
-        <div className="space-y-3">
-          <Label className="text-base font-semibold text-foreground">
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold text-foreground">
             Self Improvement
-          </Label>
+          </h3>
           <SkillBuilderEnableSuggestionsSection
             selfImprovementLock={skill?.selfImprovementLock ?? false}
           />

@@ -6,6 +6,7 @@ import { useController, useFormContext } from "react-hook-form";
 interface BaseFormFieldSectionProps<
   E extends HTMLInputElement | HTMLTextAreaElement,
 > {
+  className?: string;
   title?: string;
   titleClassName?: string;
   description?: string;
@@ -31,6 +32,7 @@ interface BaseFormFieldSectionProps<
 export function BaseFormFieldSection<
   E extends HTMLInputElement | HTMLTextAreaElement,
 >({
+  className,
   title,
   titleClassName,
   description,
@@ -51,7 +53,7 @@ export function BaseFormFieldSection<
   };
 
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", className)}>
       {(!!title || !!description || !!headerActions) && (
         <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-end">
           <div>

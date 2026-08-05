@@ -6,6 +6,7 @@ const NAME_FIELD_NAME = "name";
 export function SkillBuilderNameSection() {
   return (
     <BaseFormFieldSection
+      className="space-y-2"
       title="Name"
       fieldName={NAME_FIELD_NAME}
       triggerValidationOnChange={false}

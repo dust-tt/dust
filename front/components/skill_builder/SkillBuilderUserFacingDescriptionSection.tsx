@@ -108,6 +108,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
 
   return (
     <BaseFormFieldSection
+      className="space-y-2"
       title="Description"
       fieldName={USER_FACING_DESCRIPTION_FIELD_NAME}
       triggerValidationOnChange={false}
