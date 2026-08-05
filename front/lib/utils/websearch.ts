@@ -97,7 +97,7 @@ const serpapiSearch = async (
     }
   );
 
-  logger.debug({ ok: res.ok, status: res.status }, "get serpapi");
+  logger.debug({ ok: res.ok, statusCode: res.status }, "get serpapi");
 
   if (res.ok) {
     const json = await res.json();
@@ -125,7 +125,7 @@ const serpapiSearch = async (
 
   // TODO: Remove once we have a proper error handling.
   logger.error(
-    { status: res.status, statusText: res.statusText },
+    { statusCode: res.status, statusText: res.statusText },
     "Bad request on SerpAPI"
   );
 
@@ -156,7 +156,7 @@ const serperSearch = async (
 
   // TODO: Remove once we have a proper error handling.
   logger.error(
-    { status: res.status, statusText: res.statusText },
+    { statusCode: res.status, statusText: res.statusText },
     "Bad request on Serper"
   );
 

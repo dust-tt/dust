@@ -20,6 +20,7 @@ import {
   launchZendeskTicketReSyncWorkflow,
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import type { Logger } from "@connectors/logger/logger";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -40,7 +41,6 @@ import type {
 } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
 import { removeNulls } from "@connectors/types/shared/utils/general";
-import type { Logger } from "pino";
 
 function getTagsArgs(args: ZendeskCommandType["args"]) {
   const tag = args.tag;
@@ -398,7 +398,7 @@ export const zendesk = async ({
 
       if (!shouldSyncTicket) {
         logger.info(
-          { ticketId, brandId, status: ticket.status },
+          { ticketId, brandId, ticketStatus: ticket.status },
           "Ticket should not be synced based on status and configuration."
         );
         return { success: true };

@@ -14,7 +14,7 @@ import { hideBin } from "yargs/helpers";
 setupGlobalErrorHandler(logger);
 
 const pinoAdapter: Logger = {
-  log: (level: LogLevel, msg: string, meta: object) =>
+  log: (level: LogLevel, msg: string, meta: Record<string, unknown>) =>
     ({
       TRACE: logger.trace,
       DEBUG: logger.debug,
@@ -22,11 +22,16 @@ const pinoAdapter: Logger = {
       WARN: logger.warn,
       ERROR: logger.error,
     })[level](meta ?? {}, msg),
-  info: (msg: string, meta: object) => logger.info(meta ?? {}, msg),
-  warn: (msg: string, meta: object) => logger.warn(meta ?? {}, msg),
-  error: (msg: string, meta: object) => logger.error(meta ?? {}, msg),
-  debug: (msg: string, meta: object) => logger.debug(meta ?? {}, msg),
-  trace: (msg: string, meta: object) => logger.trace(meta ?? {}, msg),
+  info: (msg: string, meta: Record<string, unknown>) =>
+    logger.info(meta ?? {}, msg),
+  warn: (msg: string, meta: Record<string, unknown>) =>
+    logger.warn(meta ?? {}, msg),
+  error: (msg: string, meta: Record<string, unknown>) =>
+    logger.error(meta ?? {}, msg),
+  debug: (msg: string, meta: Record<string, unknown>) =>
+    logger.debug(meta ?? {}, msg),
+  trace: (msg: string, meta: Record<string, unknown>) =>
+    logger.trace(meta ?? {}, msg),
 };
 
 // Install once per process — before creating Worker/Client.

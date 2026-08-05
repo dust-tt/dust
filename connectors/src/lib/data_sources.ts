@@ -226,7 +226,7 @@ async function _upsertDataSourceDocument({
         );
         localLogger.error(
           {
-            status: dustRequestResult.status,
+            statusCode: dustRequestResult.status,
             elapsed,
           },
           "Error uploading document to Dust."
@@ -351,7 +351,7 @@ export async function deleteDataSourceDocument(
   } else {
     localLogger.error(
       {
-        status: dustRequestResult.status,
+        statusCode: dustRequestResult.status,
       },
       "Error deleting document from Dust."
     );
@@ -456,7 +456,7 @@ async function _updateDocumentOrTableParentsField({
   } else {
     localLogger.error(
       {
-        status: dustRequestResult.status,
+        statusCode: dustRequestResult.status,
         data: dustRequestResult.data,
       },
       `Error updating ${tableOrDocument} parents field.`
@@ -974,7 +974,7 @@ export async function upsertDataSourceRemoteTable({
     );
     localLogger.error(
       {
-        status: dustRequestResult.status,
+        statusCode: dustRequestResult.status,
         elapsed,
       },
       "Error upserting table to Dust."
@@ -1207,7 +1207,7 @@ export async function upsertDataSourceTableFromCsv({
     );
     localLogger.error(
       {
-        status: dustRequestResult.status,
+        statusCode: dustRequestResult.status,
         elapsed,
       },
       "Error uploading table to Dust."
@@ -1326,7 +1326,7 @@ export async function deleteDataSourceTableRow({
     );
     localLogger.error(
       {
-        status: dustRequestResult.status,
+        statusCode: dustRequestResult.status,
         elapsed,
       },
       "Error deleting table from Dust."
@@ -1465,7 +1465,7 @@ export async function deleteDataSourceTable({
     );
     localLogger.error(
       {
-        status: dustRequestResult.status,
+        statusCode: dustRequestResult.status,
         elapsed,
       },
       "Error deleting table from Dust."
@@ -1623,7 +1623,7 @@ export async function checkDataSourceUpsertQueueStatus({
     } else {
       localLogger.error(
         {
-          status: dustRequestResult.status,
+          statusCode: dustRequestResult.status,
         },
         "Error checking upsert queue for data source."
       );

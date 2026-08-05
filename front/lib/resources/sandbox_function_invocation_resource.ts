@@ -449,7 +449,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           workspaceId: auth.getNonNullableWorkspace().sId,
           sandboxFunctionId: this.sandboxFunction.sId,
           invocationId: this.sId,
-          status: this.status,
+          invocationStatus: this.status,
         },
         "Skipping execution of a terminal Pod function invocation"
       );

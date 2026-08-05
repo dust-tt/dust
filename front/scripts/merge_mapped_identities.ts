@@ -362,7 +362,7 @@ makeScript(
       }
       await verifyRevoked(auth, [currentPair]);
       logger.info(
-        currentPair,
+        { ...currentPair },
         "Successfully merged old identity into primary user"
       );
     }

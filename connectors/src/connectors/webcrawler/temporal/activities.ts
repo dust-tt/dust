@@ -28,6 +28,7 @@ import {
   syncStarted,
   syncSucceeded,
 } from "@connectors/lib/sync_status";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -50,7 +51,6 @@ import { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
 import { createHash, randomUUID } from "crypto";
 import path from "path";
-import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 export async function markAsCrawled(connectorId: ModelId) {
@@ -521,7 +521,7 @@ export async function firecrawlCrawlPage(
 
   if (res.status !== 200) {
     localLogger.error(
-      { status: res.status, scrapeId },
+      { statusCode: res.status, scrapeId },
       "Failed to fetch Firecrawl scrape details"
     );
     return;

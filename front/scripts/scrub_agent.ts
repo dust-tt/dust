@@ -50,7 +50,7 @@ makeScript(
           agentId,
           name: latest.name,
           scope: latest.scope,
-          status: latest.status,
+          agentStatus: latest.status,
           versionCount: versions.length,
           versions: versions.map((v) => v.version),
         },

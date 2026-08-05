@@ -16,7 +16,7 @@ import {
 } from "@app/lib/tools/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import * as cheerio from "cheerio";
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 
 const ASSOCIATED_TOOLS_LABEL = "Tools associated with this skill:";
 const TOOLS_SECTION_SEPARATOR = "----";

@@ -1,11 +1,11 @@
 import { makeMarkdownBlock } from "@connectors/connectors/slack/chat/blocks";
 import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { removeNulls } from "@connectors/types/shared/utils/general";
 import type { WebClient } from "@slack/web-api";
-import type { Logger } from "pino";
 
 async function sendSlackMessage(
   slackClient: WebClient,

@@ -78,7 +78,7 @@ makeScript(
         });
         logger.info(res, "readFrontTableChunk");
       } catch (err) {
-        logger.error(err);
+        logger.error({ err }, "readFrontTableChunk failed");
       }
     } else {
       logger.info("Nothing will be executed");

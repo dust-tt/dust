@@ -504,7 +504,7 @@ const browseUrlSpider = async (
       {
         error,
         url,
-        status: res.status,
+        statusCode: res.status,
       },
       "[Spider] Failed to parse JSON response"
     );
@@ -521,7 +521,7 @@ const browseUrlSpider = async (
     logger.error(
       {
         url,
-        status: res.status,
+        statusCode: res.status,
       },
       "[Spider] Empty scrape response"
     );
@@ -540,7 +540,7 @@ const browseUrlSpider = async (
     logger.error(
       {
         url,
-        status: effectiveStatus,
+        statusCode: effectiveStatus,
         error,
       },
       "[Spider] Scrape request failed"
@@ -556,7 +556,7 @@ const browseUrlSpider = async (
     logger.error(
       {
         url,
-        status: effectiveStatus,
+        statusCode: effectiveStatus,
       },
       "[Spider] No content field in scrape response"
     );

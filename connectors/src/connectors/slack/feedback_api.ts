@@ -105,7 +105,7 @@ export async function submitFeedbackToAPI({
           connectorWId,
           metadataWorkspaceId: workspaceId,
           slackUserId,
-          status: response.status,
+          statusCode: response.status,
           error: errorData,
         },
         "Failed to submit feedback to API"

@@ -1,5 +1,6 @@
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import type {
   PageObjectProperties,
@@ -31,7 +32,6 @@ import type {
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import { stringify } from "csv-stringify";
-import type { Logger } from "pino";
 
 const logger = mainLogger.child({ provider: "notion" });
 const NOTION_SEARCH_PAGE_SIZE = 90;
