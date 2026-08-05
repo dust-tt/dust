@@ -80,9 +80,14 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         .optional()
         .describe(
           "Optional icon identifier for the source of this recommendation. " +
-            "Use a ConnectorProvider value when the recommendation is driven by a specific " +
-            "data source. Common values: 'slack', 'github', 'notion', 'google_drive', " +
-            "'confluence', 'microsoft_teams', 'intercom', 'salesforce', 'hubspot'. " +
+            "Two namespaces are accepted. " +
+            "ConnectorProvider — use when the recommendation is driven by a specific " +
+            "data source: 'slack', 'github', 'notion', 'google_drive', 'confluence', " +
+            "'microsoft_teams', 'intercom', 'salesforce', 'hubspot'. " +
+            "Sparkle icon name — use for Dust-native features: 'Brain' (agents/AI), " +
+            "'Zap' (triggers/automation), 'PuzzlePiece01' (skills), " +
+            "'ActionFrame' (frames), 'Dataflow01' (workflows), " +
+            "'Database01' (knowledge bases). " +
             "Omit if no specific source applies."
         ),
       sourceLabel: z
