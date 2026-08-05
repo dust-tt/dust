@@ -529,7 +529,6 @@ export function GetStartedPage() {
         }}
       >
         <div className="mx-auto max-w-3xl px-8 py-14 md:px-16">
-          {/* Welcome header */}
           <h1 className="text-5xl font-bold tracking-tight text-foreground">
             Welcome back, {firstName}.
           </h1>
@@ -547,7 +546,6 @@ export function GetStartedPage() {
             and it is waiting for you.
           </p>
 
-          {/* Ideas card */}
           <div className="mt-10 rounded-2xl border border-border bg-background p-7 shadow-sm">
             <h2 className="text-xl font-bold text-foreground">
               Ideas for right now
@@ -590,7 +588,6 @@ export function GetStartedPage() {
             </div>
           </div>
 
-          {/* Or just ask */}
           <div className="mt-12">
             <h2 className="text-xl font-bold text-foreground">Or just ask</h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -601,7 +598,6 @@ export function GetStartedPage() {
             </div>
           </div>
 
-          {/* Recent conversations */}
           <RecentConversations owner={owner} podId={activationPodId} />
         </div>
       </div>
