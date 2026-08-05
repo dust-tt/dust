@@ -1,3 +1,4 @@
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
@@ -208,6 +209,109 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(
       (outputItem?.outputTokensCount ?? 0) + (toolItem?.outputTokensCount ?? 0)
     ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
+  });
+
+  it("stores a sandbox child Frame call as direct-charge-only", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+
+    const { action: computerAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId,
+        status: "succeeded",
+        dustRunId: run.dustRunId,
+        functionCallName: "sandbox__bash",
+        toolName: "bash",
+        mcpServerName: "sandbox",
+        toolServerId: autoInternalMCPServerNameToSId({
+          name: "sandbox",
+          workspaceId: workspace.id,
+        }),
+      }
+    );
+    const { action: frameAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "succeeded",
+      dustRunId: run.dustRunId,
+      functionCallName: "interactive_content__create_interactive_content_file",
+      toolName: "create_interactive_content_file",
+      mcpServerName: "interactive_content",
+      toolServerId: autoInternalMCPServerNameToSId({
+        name: "interactive_content",
+        workspaceId: workspace.id,
+      }),
+      inputs: {
+        file_name: "dashboard.tsx",
+        mode: "inline",
+        source: "export default function Dashboard() { return null; }",
+      },
+      sandboxChildActionInfo: { parentActionId: computerAction.sId },
+      // Production sandbox children reuse the parent's function-call step content. Their own CLI
+      // inputs are persisted on augmentedInputs, but functionCallArguments still resolves to the
+      // parent's sandbox arguments.
+      parentAction: computerAction,
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const [callTexts] = vi.mocked(tokenCountForTexts).mock.calls[0];
+    const [inputTexts] = vi.mocked(tokenCountForTexts).mock.calls[1];
+    expect(callTexts).toHaveLength(1);
+    expect(callTexts[0]).toContain("sandbox__bash");
+    expect(frameAction.augmentedInputs).toMatchObject({
+      file_name: "dashboard.tsx",
+      mode: "inline",
+    });
+    // Only the parent Computer call/result is model-visible. The child inputs are issued by dsbx,
+    // and the child result reaches the model inside the Computer output.
+    expect(inputTexts).toHaveLength(1);
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    const toolItemByActionId = new Map(
+      items
+        .filter((item) => item.itemType === "tool")
+        .map((item) => [item.agentMCPActionId, item])
+    );
+
+    expect(toolItemByActionId.get(computerAction.id)).toMatchObject({
+      outputTokensCount: TOKENS_PER_FOOTPRINT,
+      inputTokensCount: TOKENS_PER_FOOTPRINT,
+      directCreditAmountMicro: 0,
+    });
+    expect(toolItemByActionId.get(frameAction.id)).toMatchObject({
+      outputTokensCount: 0,
+      inputTokensCount: 0,
+      directCreditAmountMicro: 3_000_000,
+      grossAttributedCreditAmountMicro: 3_000_000,
+    });
+
+    // Only the parent call is carved from the outer model's output budget.
+    const outputItem = items.find((item) => item.itemType === "output");
+    expect(outputItem?.outputTokensCount).toBe(
+      OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT - TOKENS_PER_FOOTPRINT
+    );
   });
 
   it("attributes enabled skill instructions and tool definitions to the tool input", async () => {

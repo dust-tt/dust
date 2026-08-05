@@ -11,8 +11,10 @@ import assert from "assert";
 // Version 1 attributed the model token buckets only. Version 2 added per-tool rows and netted the
 // tool-call emission out of the assistant output bucket. Version 3 expands an enabled skill's tool
 // input footprint with the instructions and tool definitions that the action adds to later model
-// requests. Each version remains a separate, self-consistent set of rows.
-export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 3;
+// requests. Version 4 keeps sandbox-child actions as direct-charge-only rows because their calls
+// and results reach the outer model through their parent Computer action. Each version remains a
+// separate, self-consistent set of rows.
+export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 4;
 
 const CREDIT_AMOUNT_MICRO_PER_CREDIT = 1_000_000;
 
