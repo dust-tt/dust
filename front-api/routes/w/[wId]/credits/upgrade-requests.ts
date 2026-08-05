@@ -49,6 +49,11 @@ function upgradeRequestErrorToApiError(
         status_code: 403,
         api_error: { type: "plan_limit_error", message: error.message },
       };
+    case "reason_required":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: error.message },
+      };
     case "user_not_found":
       return {
         status_code: 404,

@@ -1,5 +1,6 @@
 export const DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS = true;
 export const DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED = true;
+export const DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON = false;
 export const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
 export const DEFAULT_TOP_UP_ENABLED = false;
 export const DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED = true;
@@ -31,6 +32,8 @@ import type { CreationOptional } from "sequelize";
  *   Defaults to true.
  * - upgradeRequestEmailEnabled: Whether workspace admins are emailed when a
  *   member requests an upgrade. Defaults to true.
+ * - requireUpgradeRequestReason: Whether a member submitting an upgrade
+ *   request must provide a non-empty reason. Defaults to false.
  * - defaultPoolCapAwuCredits: Workspace-wide default per-user cap on
  *   workspace-pool AWU consumption, in AWU credits, excluding the seat
  *   allowance. Non-nullable, defaults to 0: 0 removes pool access; a positive
@@ -70,6 +73,7 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare usageCapCredits: number | null;
   declare allowMemberUpgradeRequests: CreationOptional<boolean>;
   declare upgradeRequestEmailEnabled: CreationOptional<boolean>;
+  declare requireUpgradeRequestReason: CreationOptional<boolean>;
   declare defaultPoolCapAwuCredits: CreationOptional<number>;
   declare programmaticMonthlyCapAwuCredits: CreationOptional<number>;
   declare autoSeatUpgradeEnabled: CreationOptional<boolean>;
@@ -127,6 +131,11 @@ CreditUsageConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    },
+    requireUpgradeRequestReason: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     },
     defaultPoolCapAwuCredits: {
       type: DataTypes.INTEGER,
