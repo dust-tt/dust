@@ -1796,6 +1796,103 @@ describe("postUserMessage", () => {
     }
   });
 
+  describe("sub-agent message authorship", () => {
+    // Posts a message and returns the sId of the agent message it spawned, which is the origin
+    // message a sub-agent run points at.
+    async function postRootMessage({
+      doNotAssociateUser,
+    }: {
+      doNotAssociateUser: boolean;
+    }): Promise<string> {
+      const userJson = auth.getNonNullableUser().toJSON();
+
+      const result = await postUserMessage(auth, {
+        conversationResource,
+        content: `${serializeMention(agentConfig1)} root message`,
+        mentions: [{ configurationId: agentConfig1.sId }],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: doNotAssociateUser ? null : userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: doNotAssociateUser ? "system_activation" : "web",
+        },
+        skipToolsValidation: false,
+        skipDustAutoMention: true,
+        doNotAssociateUser,
+      });
+      if (result.isErr()) {
+        throw new Error("Failed to post the root message");
+      }
+      expect(result.value.userMessage.user).toEqual(
+        doNotAssociateUser
+          ? null
+          : expect.objectContaining({ sId: userJson.sId })
+      );
+
+      return result.value.agentMessages[0].sId;
+    }
+
+    // Sub-agent runs happen in their own conversation, so the message lands there.
+    async function postSubAgentMessage(
+      originMessageId: string
+    ): Promise<UserMessageType> {
+      const childConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig1.sId,
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      });
+
+      const result = await postUserMessage(auth, {
+        conversationResource: await fetchConversationResource(
+          auth,
+          childConversation.sId
+        ),
+        content: `${serializeMention(agentConfig1)} sub-agent query`,
+        mentions: [{ configurationId: agentConfig1.sId }],
+        context: {
+          username: agentConfig1.name,
+          timezone: "UTC",
+          fullName: `@${agentConfig1.name}`,
+          email: null,
+          profilePictureUrl: null,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+        skipDustAutoMention: true,
+        agenticMessageData: { type: "run_agent", originMessageId },
+      });
+      if (result.isErr()) {
+        throw new Error("Failed to post the sub-agent message");
+      }
+
+      return result.value.userMessage;
+    }
+
+    it("leaves the sub-agent message without an author when the run it answers has none", async () => {
+      const originMessageId = await postRootMessage({
+        doNotAssociateUser: true,
+      });
+
+      const subAgentMessage = await postSubAgentMessage(originMessageId);
+
+      expect(subAgentMessage.user).toBeNull();
+    });
+
+    it("keeps the author on the sub-agent message of an authored run", async () => {
+      const originMessageId = await postRootMessage({
+        doNotAssociateUser: false,
+      });
+
+      const subAgentMessage = await postSubAgentMessage(originMessageId);
+
+      expect(subAgentMessage.user?.sId).toBe(
+        auth.getNonNullableUser().toJSON().sId
+      );
+    });
+  });
+
   describe("compaction blocking", () => {
     it("should reject posting when a compaction message is running", async () => {
       const user = auth.getNonNullableUser();
