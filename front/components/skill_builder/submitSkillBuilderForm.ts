@@ -9,6 +9,19 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightUserType, WorkspaceType } from "@app/types/user";
 
+type SubmittedSkill =
+  | PostSkillResponseBody["skill"]
+  | PatchSkillResponseBody["skill"];
+
+export interface SubmitSkillBuilderFormResult {
+  skill: SubmittedSkill;
+  /**
+   * Set when the skill itself was saved but its editors could not be. Reported apart from the
+   * `Err` channel so callers do not present a saved skill as a failed save.
+   */
+  editorsError: Error | null;
+}
+
 export async function submitSkillBuilderForm({
   formData,
   owner,
@@ -18,13 +31,12 @@ export async function submitSkillBuilderForm({
   formData: SkillBuilderFormData;
   owner: Pick<WorkspaceType, "sId">;
   skillId?: string;
+  /**
+   * The editors the skill has before this save. On create the server seeds the editors group with
+   * the creator alone, so callers pass the creator rather than an empty list.
+   */
   currentEditors?: LightUserType[];
-}): Promise<
-  Result<
-    PostSkillResponseBody["skill"] | PatchSkillResponseBody["skill"],
-    Error
-  >
-> {
+}): Promise<Result<SubmitSkillBuilderFormResult, Error>> {
   try {
     const endpoint = skillId
       ? `/api/w/${owner.sId}/skills/${skillId}`
@@ -75,56 +87,48 @@ export async function submitSkillBuilderForm({
 
     const { skill } = result;
 
-    // Only sync editors for existing skills (updates), not for newly created skills
-    // When creating a skill, the backend automatically adds the creator to the editors group
-    if (skillId) {
-      const desiredEditorIds = new Set(formData.editors.map((e) => e.sId));
-      const currentEditorIds = new Set(currentEditors.map((e) => e.sId));
+    // Editors live behind their own endpoint, so they need a second request whether we just created
+    // the skill or updated it. `skill.sId` is used rather than `skillId` so this also addresses a
+    // skill that did not exist a moment ago.
+    const desiredEditorIds = new Set(formData.editors.map((e) => e.sId));
+    const currentEditorIds = new Set(currentEditors.map((e) => e.sId));
 
-      const addEditorIds: string[] = [];
-      const removeEditorIds: string[] = [];
+    const addEditorIds = formData.editors
+      .filter((editor) => !currentEditorIds.has(editor.sId))
+      .map((editor) => editor.sId);
+    const removeEditorIds = currentEditors
+      .filter((editor) => !desiredEditorIds.has(editor.sId))
+      .map((editor) => editor.sId);
 
-      // Add editors who are in desired but not in current
-      for (const editor of formData.editors) {
-        if (!currentEditorIds.has(editor.sId)) {
-          addEditorIds.push(editor.sId);
-        }
-      }
-
-      // Remove editors who are in current but not in desired
-      for (const editor of currentEditors) {
-        if (!desiredEditorIds.has(editor.sId)) {
-          removeEditorIds.push(editor.sId);
-        }
-      }
-
-      if (addEditorIds.length > 0 || removeEditorIds.length > 0) {
-        const editorsResponse = await clientFetch(
-          `/api/w/${owner.sId}/skills/${skill.sId}/editors`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              addEditorIds,
-              removeEditorIds,
-            }),
-          }
-        );
-
-        if (!editorsResponse.ok) {
-          const errorData = await editorsResponse.json();
-          return new Err(
-            new Error(
-              errorData.error?.message ?? "Failed to update skill editors"
-            )
-          );
-        }
-      }
+    if (addEditorIds.length === 0 && removeEditorIds.length === 0) {
+      return new Ok({ skill, editorsError: null });
     }
 
-    return new Ok(skill);
+    const editorsResponse = await clientFetch(
+      `/api/w/${owner.sId}/skills/${skill.sId}/editors`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          addEditorIds,
+          removeEditorIds,
+        }),
+      }
+    );
+
+    if (!editorsResponse.ok) {
+      const errorData = await editorsResponse.json();
+      return new Ok({
+        skill,
+        editorsError: new Error(
+          errorData.error?.message ?? "Failed to update skill editors"
+        ),
+      });
+    }
+
+    return new Ok({ skill, editorsError: null });
   } catch (error) {
     const normalizedError = normalizeError(error);
     return new Err(
