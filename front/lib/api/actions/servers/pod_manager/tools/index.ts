@@ -1293,7 +1293,11 @@ export function createProjectManagerTools(
         const conversationResource = await createConversation(auth, {
           title: params.title,
           visibility: "unlisted",
-          depth: parentConversationDepth + 1,
+          // We keep the same depth here to prevent sub agent conversations from flooding the pod list view (fine for
+          // them to use the pod, but they have no right to add something visible there).
+          // We must not increment the depth here (i.e. do parentConversationDepth + 1), otherwise this would hide any
+          // conversation created this way.
+          depth: parentConversationDepth,
           spaceId: pod.id,
         });
 
