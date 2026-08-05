@@ -16,7 +16,10 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionInvocationEvent,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -31,6 +34,9 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
   return {
     ...mod,
     publishSandboxFunctionInvocationEvent: vi.fn(),
+    // Defaults to a stream that ends without settling, which is what an invocation still running
+    // when the request returns looks like.
+    getSandboxFunctionInvocationEvents: vi.fn(async function* () {}),
   };
 });
 
@@ -58,7 +64,10 @@ vi.mock("@app/lib/actions/tool_status", async (importOriginal) => {
 });
 
 import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
-import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import {
+  getSandboxFunctionInvocationEvents,
+  publishSandboxFunctionInvocationEvent,
+} from "@app/lib/api/sandbox_functions/events";
 import {
   launchSandboxFunctionInvocationWorkflow,
   launchSandboxFunctionToolWorkflow,
@@ -89,10 +98,12 @@ afterEach(() => {
 async function setupSandboxFunction({
   addCallerToSpace = true,
   withSandboxFunctionsFeatureFlag = true,
+  withFastExecutionFeatureFlag = false,
   userIdentity = "optional",
 }: {
   addCallerToSpace?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
+  withFastExecutionFeatureFlag?: boolean;
   userIdentity?: SandboxFunctionUserIdentityPolicy;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
@@ -100,6 +111,12 @@ async function setupSandboxFunction({
   });
   if (withSandboxFunctionsFeatureFlag) {
     await FeatureFlagFactory.basic(adminAuth, "sandbox_functions");
+  }
+  if (withFastExecutionFeatureFlag) {
+    await FeatureFlagFactory.basic(
+      adminAuth,
+      "sandbox_function_fast_execution"
+    );
   }
 
   const space = await SpaceFactory.project(workspace);
@@ -277,6 +294,38 @@ function postInvocation({
   );
 }
 
+function mockInvocationEventStream(events: SandboxFunctionInvocationEvent[]) {
+  vi.mocked(getSandboxFunctionInvocationEvents).mockImplementation(
+    async function* () {
+      for (const [index, data] of events.entries()) {
+        yield { eventId: `event-${index}`, data };
+      }
+    }
+  );
+}
+
+function toolApprovalEvent({
+  invocationId,
+  sandboxFunctionId,
+}: {
+  invocationId: string;
+  sandboxFunctionId: string;
+}): SandboxFunctionInvocationEvent {
+  return {
+    type: "tool_approve_execution",
+    actionId: "act_blocked",
+    created: Date.now(),
+    invocationId,
+    sandboxFunctionId,
+    inputs: {},
+    metadata: {
+      toolName: "send_email",
+      mcpServerName: "gmail",
+      agentName: "agent",
+    },
+  };
+}
+
 describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () => {
   it("creates an invocation and starts its workflow", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
@@ -320,6 +369,101 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       },
       { invocationId: invocation.sId }
     );
+  });
+
+  it("returns the result inline when the invocation succeeds before the response", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      withFastExecutionFeatureFlag: true,
+    });
+    mockInvocationEventStream([
+      {
+        type: "sandbox_function_invocation_result",
+        created: Date.now(),
+        invocationId: "sfi_ignored",
+        functionId: sandboxFunction.sId,
+        result: { ok: true },
+      },
+    ]);
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.outcome).toEqual({ status: "succeeded", result: { ok: true } });
+  });
+
+  it("returns the error inline when the invocation fails before the response", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      withFastExecutionFeatureFlag: true,
+    });
+    mockInvocationEventStream([
+      {
+        type: "sandbox_function_invocation_error",
+        created: Date.now(),
+        invocationId: "sfi_ignored",
+        functionId: sandboxFunction.sId,
+        error: { code: "threw", message: "boom" },
+      },
+    ]);
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.outcome).toEqual({
+      status: "errored",
+      error: { code: "threw", message: "boom" },
+    });
+  });
+
+  // Holding the response until an invocation blocked on user input settles would deadlock: the
+  // approval card only renders once the client holds the invocation.
+  it("returns no outcome when the invocation blocks on a tool approval", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      withFastExecutionFeatureFlag: true,
+    });
+    mockInvocationEventStream([
+      toolApprovalEvent({
+        invocationId: "sfi_ignored",
+        sandboxFunctionId: sandboxFunction.sId,
+      }),
+      {
+        type: "sandbox_function_invocation_result",
+        created: Date.now(),
+        invocationId: "sfi_ignored",
+        functionId: sandboxFunction.sId,
+        result: { ok: true },
+      },
+    ]);
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.outcome).toBeUndefined();
+  });
+
+  it("does not wait for an outcome when fast execution is disabled", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.outcome).toBeUndefined();
+    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
   });
 
   it("allows a workspace member to invoke a workspace-user-required function", async () => {
