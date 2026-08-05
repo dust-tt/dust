@@ -6,10 +6,10 @@ import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { isTextContent } from "@app/types/assistant/generation";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import type { Logger } from "pino";
 import { Op } from "sequelize";
 import { z } from "zod";
 
