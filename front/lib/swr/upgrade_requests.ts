@@ -22,7 +22,7 @@ function upgradeRequestsUrl(workspaceId: string): string {
 
 // CSV download link for the resolved-requests
 export function upgradeRequestsHistoryCsvUrl(workspaceId: string): string {
-  return `${upgradeRequestsUrl(workspaceId)}?status=resolved&format=csv`;
+  return `${upgradeRequestsUrl(workspaceId)}?format=csv`;
 }
 
 function usageStatusUrl(workspaceId: string): string {

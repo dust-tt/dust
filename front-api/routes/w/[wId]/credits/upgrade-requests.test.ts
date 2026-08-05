@@ -396,7 +396,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       );
 
       const csvResponse = await honoApp.request(
-        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&format=csv`
+        `${upgradeRequestsUrl(workspace.sId)}?format=csv`
       );
 
       expect(csvResponse.status).toBe(200);
@@ -423,7 +423,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       });
 
       const response = await honoApp.request(
-        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&format=csv`
+        `${upgradeRequestsUrl(workspace.sId)}?format=csv`
       );
 
       expect(response.status).toBe(403);
@@ -460,7 +460,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       });
 
       const csvResponse = await honoApp.request(
-        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&format=csv`
+        `${upgradeRequestsUrl(workspace.sId)}?format=csv`
       );
       expect(csvResponse.status).toBe(200);
 
