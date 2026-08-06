@@ -257,6 +257,38 @@ describe("MembershipResource", () => {
 
         expect(seatType).toBeNull();
       });
+
+      it("returns the seat type held at `at`, not today's", async () => {
+        const user = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, user, {
+          role: "user",
+          seatType: "free",
+          startAt: new Date("2026-01-15T00:00:00Z"),
+        });
+        const revoked = await MembershipResource.revokeMembership({
+          user,
+          workspace,
+          endAt: new Date("2026-03-15T00:00:00Z"),
+        });
+        expect(revoked.isOk()).toBe(true);
+
+        // Mid-window: the seat the user actually held then.
+        expect(
+          await MembershipResource.getActiveSeatTypeForUserModelId({
+            workspace,
+            userModelId: user.id,
+            at: new Date("2026-02-15T00:00:00Z"),
+          })
+        ).toBe("free");
+
+        // Defaulting to now, after revocation: no membership.
+        expect(
+          await MembershipResource.getActiveSeatTypeForUserModelId({
+            workspace,
+            userModelId: user.id,
+          })
+        ).toBeNull();
+      });
     });
   });
 

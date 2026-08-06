@@ -50,6 +50,7 @@ type GetMembershipsOptions = RequireAtLeastOne<{
   roles?: MembershipRoleType[];
   seatTypes?: MembershipSeatType[];
   transaction?: Transaction;
+  at?: Date;
 };
 
 export type MembershipsPaginationParams = {
@@ -145,6 +146,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     seatTypes,
     transaction,
     paginationParams,
+    at = new Date(),
   }: GetMembershipsOptions & {
     paginationParams?: MembershipsPaginationParams;
   }): Promise<MembershipsWithTotal> {
@@ -154,10 +156,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
       startAt: {
-        [Op.lte]: new Date(),
+        [Op.lte]: at,
       },
       endAt: {
-        [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
+        [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: at }],
       },
     };
 
@@ -645,15 +647,18 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     user,
     workspace,
     transaction,
+    at,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
+    at?: Date;
   }): Promise<MembershipResource | null> {
     const { memberships, total } = await this.getActiveMemberships({
       users: [user],
       workspace,
       transaction,
+      at,
     });
     if (total === 0) {
       return null;
@@ -682,18 +687,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     userModelId,
     transaction,
+    at = new Date(),
   }: {
     workspace: LightWorkspaceType;
     userModelId: ModelId;
     transaction?: Transaction;
+    at?: Date;
   }): Promise<MembershipSeatType | null> {
     const row = await this.model.findOne({
       attributes: ["seatType"],
       where: {
         workspaceId: workspace.id,
         userId: userModelId,
-        startAt: { [Op.lte]: new Date() },
-        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+        startAt: { [Op.lte]: at },
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: at }] },
       },
       transaction,
     });
