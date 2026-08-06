@@ -38,12 +38,17 @@ import type { estypes } from "@elastic/elasticsearch";
  * chart. Filtered by any of the scope dimensions, optionally split along one of
  * them, aggregating whichever metric was asked for (gross credits by default).
  *
- * Points stop at the present. A billing cycle's period ends in the future, and
- * the response carries that `period` so a chart can lay out the rest of the
- * axis, but padding it with empty future buckets is a presentation choice and
- * belongs to whoever is drawing. The last point is therefore always the bucket
- * in progress, still filling — again something the caller can read off `period`
- * without being told.
+ * Points cover the whole period, including the part of it still to come when
+ * the period is a billing cycle. Bucketing stays here rather than moving to the
+ * chart because the boundaries are Elasticsearch's calendar rules — weeks start
+ * on Monday, months in UTC, the trailing bucket is kept whole — and a second
+ * implementation of those rules in the browser would drift from this one
+ * silently, one bar at a time.
+ *
+ * Buckets that have not started yet are zero in every mode. Empty is what they
+ * are in `daily`; in `cumulative` it is a deliberate break from the running
+ * total, which would otherwise plateau to the end of the cycle and read as
+ * consumption having stopped rather than as not having happened.
  */
 
 // Re-exported so server-side callers have one import for the whole timeseries
@@ -104,22 +109,6 @@ function metricValue(
   agg: estypes.AggregationsSumAggregate | undefined
 ): number {
   return (agg?.value ?? 0) / CONSUMPTION_METRIC_DEFINITIONS[metric].divisor;
-}
-
-function accumulate(
-  points: ConsumptionTimeseriesPoint[],
-  groupKeys: string[]
-): ConsumptionTimeseriesPoint[] {
-  const running = new Map(groupKeys.map((key) => [key, 0]));
-  return points.map((point) => {
-    const values: Record<string, number> = {};
-    for (const key of groupKeys) {
-      const next = (running.get(key) ?? 0) + (point.values[key] ?? 0);
-      running.set(key, next);
-      values[key] = next;
-    }
-    return { ...point, values };
-  });
 }
 
 /**
@@ -202,15 +191,6 @@ export async function fetchConsumptionTimeseries(
     topGroupKeys = rankingResult.value;
   }
 
-  // Last instant the histogram covers. The period's own end is exclusive, and
-  // for a billing cycle it sits in the future — where `min_doc_count: 0` would
-  // manufacture an empty bucket per remaining day. Clamping to now keeps the
-  // series to what has actually happened.
-  const lastBucketMs = Math.min(
-    new Date(period.endDate).getTime() - 1,
-    Date.now()
-  );
-
   const result = await searchConsumptionAnalytics<never, TimeseriesAggs>(
     query,
     {
@@ -225,7 +205,11 @@ export async function fetchConsumptionTimeseries(
             min_doc_count: 0,
             extended_bounds: {
               min: new Date(period.startDate).getTime(),
-              max: lastBucketMs,
+              // The period is half-open, so `endDate` itself belongs to the
+              // next bucket and must not open one of its own. `min_doc_count: 0`
+              // then fills the rest of the period with empty buckets, which is
+              // the point: the axis is the same whatever has happened so far.
+              max: new Date(period.endDate).getTime() - 1,
             },
           },
           aggs: {
@@ -349,10 +333,40 @@ export async function fetchConsumptionTimeseries(
   });
 }
 
+/**
+ * Zeroes the buckets that have not started yet and, in cumulative mode, carries
+ * the running total across the ones that have.
+ *
+ * One pass rather than two because the two rules are the same rule: a bucket
+ * that has not started has consumed nothing, so it neither reports a total nor
+ * advances one.
+ */
 function finalizePoints(
   points: ConsumptionTimeseriesPoint[],
   groupKeys: string[],
   mode: ConsumptionTimeseriesMode
 ): ConsumptionTimeseriesPoint[] {
-  return mode === "cumulative" ? accumulate(points, groupKeys) : points;
+  const nowMs = Date.now();
+  const running = new Map(groupKeys.map((key) => [key, 0]));
+
+  return points.map((point) => {
+    if (point.timestamp > nowMs) {
+      return {
+        ...point,
+        values: Object.fromEntries(groupKeys.map((key) => [key, 0])),
+      };
+    }
+
+    if (mode !== "cumulative") {
+      return point;
+    }
+
+    const values: Record<string, number> = {};
+    for (const key of groupKeys) {
+      const next = (running.get(key) ?? 0) + (point.values[key] ?? 0);
+      running.set(key, next);
+      values[key] = next;
+    }
+    return { ...point, values };
+  });
 }
