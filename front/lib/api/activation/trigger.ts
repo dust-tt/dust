@@ -41,8 +41,8 @@ export type ActivationNudgeContext = {
 
 // Filtering on both podId and userId ensures a given event only fires the target user.
 // Note, these filter values are visible to the user in the trigger's configuration.
-function activationTriggerFilter(podSId: string, userId: string): string {
-  return `(and (eq "${ACTIVATION_POD_ID_FIELD}" "${podSId}") (eq "${ACTIVATION_USER_ID_FIELD}" "${userId}"))`;
+function activationTriggerFilter(podId: string, userId: string): string {
+  return `(and (eq "${ACTIVATION_POD_ID_FIELD}" "${podId}") (eq "${ACTIVATION_USER_ID_FIELD}" "${userId}"))`;
 }
 
 // The webhook event body. podId/userId drive the trigger filter; the nudge
@@ -50,12 +50,12 @@ function activationTriggerFilter(podSId: string, userId: string): string {
 // payload content fragment (the trigger sets `includePayload: true`), so we
 // never mutate the shared trigger's prompt per-nudge.
 function activationEventBody(
-  podSId: string,
+  podId: string,
   userId: string,
   context?: ActivationNudgeContext
 ): Record<string, unknown> {
   return {
-    [ACTIVATION_POD_ID_FIELD]: podSId,
+    [ACTIVATION_POD_ID_FIELD]: podId,
     [ACTIVATION_USER_ID_FIELD]: userId,
     sessionGoal: context?.sessionGoal ?? null,
     pushedResourceType: context?.pushedResourceType ?? null,
