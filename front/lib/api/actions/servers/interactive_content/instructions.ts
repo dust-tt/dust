@@ -147,8 +147,6 @@ Give each Frame its own folder on the Pod file system, named after the Frame, an
     MyApp.tsx
 \`\`\`
 
-Do this even for a Frame that is a single file today. The folder is where everything the Frame grows later belongs, from extra components to the functions and database schema behind it, so nothing has to move a second time.
-
 \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` creates the Frame's source in the current conversation, so move it into its folder before publishing. Use \`${FILES_MOVE_TOOL}\` (copying does not work on Frame files), then publish it from its Pod path:
 
 \`\`\`
@@ -171,11 +169,9 @@ From then on, edit the source at its Pod path and publish it again. Anything the
 const podStorageSection = (podFunctionsSkillName: string) => `\
 ### Where The Frame's Data Lives
 
-Decide this before writing the Frame. A Frame is a browser component: a \`useState\` array is gone on reload and private to the one person who typed into it. That is right for a Frame that displays data already living somewhere else, and wrong for a Frame the user will come back to.
+If the Frame lets people add, edit, check off, reorder, delete, save, assign, comment, vote, or upload, its data has to survive the page: store it in a Pod database behind pod functions, and enable the \`${podFunctionsSkillName}\` skill to do it. That is the default for a task list, tracker, backlog, roster, inventory, log, queue, notes app, or any form that keeps its answers.
 
-If the Frame lets people add, edit, check off, reorder, delete, save, assign, comment, vote, or upload, its data has to survive the page: store it in a Pod database behind pod functions, and enable the \`${podFunctionsSkillName}\` skill to do it. That is the default for a task list, tracker, backlog, roster, inventory, log, queue, notes app, or any form that keeps its answers. The user does not have to say "persisted", "saved", or "shared" to mean it: those are simply what such a Frame is. Build it that way in the same turn as the Frame, rather than shipping an in-memory version and rebuilding it once the user notices their data disappeared.
-
-Keep in component state only what is genuinely throwaway: the selected tab, a filter, a sort order, an expanded row, a draft the user has not submitted.
+Keep in component state only what is genuinely throwaway. e.g. the selected tab, a filter, or a sort order.
 `;
 
 interface InstructionsVariant {
