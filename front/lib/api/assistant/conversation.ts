@@ -104,6 +104,7 @@ import {
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
+import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import {
@@ -155,6 +156,7 @@ import type {
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
 import {
+  ACTIVATION_NUDGE_ORIGIN,
   ConversationError,
   isAgentMessageType,
   isPodConversation,
@@ -592,6 +594,26 @@ export async function postUserMessage(
         message: "The conversation does not exist.",
       },
     });
+  }
+
+  // `system_activation` prices the message as free usage and renders it under
+  // the agent's identity, so it is only ever legitimate on a nudge Dust posted
+  // itself. Authorize it against the server-owned nudge row rather than trust
+  // the label: nothing else may claim it.
+  if (context.origin === ACTIVATION_NUDGE_ORIGIN) {
+    const nudge = await ActivationNudgeResource.fetchByConversation(
+      auth,
+      conversationResource
+    );
+    if (!nudge || doNotAssociateUser !== true) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "This conversation is not an activation nudge.",
+        },
+      });
+    }
   }
 
   const featureFlags = await getFeatureFlags(auth);

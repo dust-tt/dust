@@ -5,6 +5,7 @@ import {
   isEligibleForNudge,
   postActivationNudge,
 } from "@app/lib/api/activation/nudge";
+import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
@@ -511,6 +512,50 @@ describe("postActivationNudge", () => {
     );
     expect(nudge.status).toBe("posted");
     expect(conversation.sId).toBe(result.value.conversationId);
+  });
+
+  it("refuses the nudge origin on a conversation that is not a nudge", async () => {
+    const { workspace, user } = await createResourceTest({ role: "user" });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    // Rebuilt after the pod exists so the auth carries its editor group.
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      spaceId: pod.id,
+      messagesCreatedAt: [],
+    });
+    const conversationResource = await ConversationResource.fetchById(
+      userAuth,
+      conversation.sId
+    );
+    if (!conversationResource) {
+      throw new Error("Expected the conversation to be fetchable.");
+    }
+
+    const result = await postUserMessage(userAuth, {
+      conversationResource,
+      content: "Run the Dust Training workflow.",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "UTC",
+        username: "Dust",
+        fullName: "Dust",
+        email: null,
+        profilePictureUrl: null,
+        origin: "system_activation",
+      },
+      skipToolsValidation: false,
+      doNotAssociateUser: true,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the message to be refused.");
+    }
+    expect(result.error.api_error.type).toBe("invalid_request_error");
   });
 
   it("does not post to a pod the user is no longer a member of", async () => {

@@ -340,6 +340,10 @@ export async function postActivationNudge(
     spaceId: pod.id,
   });
 
+  // Linked before the message is posted: the link is what authorizes the nudge
+  // origin, and with it the free pricing and the agent identity on the message.
+  await nudge.attachConversation(conversation);
+
   const messageRes = await postUserMessage(userAuth, {
     conversationResource: conversation,
     content: buildActivationNudgeContent(agentConfiguration, context),
@@ -381,7 +385,7 @@ export async function postActivationNudge(
     );
   }
 
-  await nudge.markPosted(conversation);
+  await nudge.markPosted();
 
   void emitAuditLogEventDirect({
     workspace,

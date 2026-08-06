@@ -100,9 +100,10 @@ export function getToolBillingInfo(
 export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>([
     "agent_sidekick",
-    // Only the Activation Pod nudge ever carries this origin: it is server-only,
-    // and the nudge has no author so it can neither be edited nor retried. User
-    // replies come back as `web` and bill normally.
+    // Only the Activation Pod nudge ever carries this origin: `postUserMessage`
+    // refuses it unless the conversation has an activation nudge row, and the
+    // nudge has no author so it can neither be edited nor retried. User replies
+    // come back as `web` and bill normally.
     "system_activation",
   ]);
 

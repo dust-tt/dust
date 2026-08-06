@@ -65,8 +65,15 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
     return new this(this.model, nudge.get());
   }
 
-  async markPosted(conversation: ConversationResource): Promise<void> {
-    await this.update({ status: "posted", conversationId: conversation.id });
+  // Links the conversation the nudge is about to be posted into. Written before
+  // the message itself, since posting it authorizes the nudge origin against
+  // this link.
+  async attachConversation(conversation: ConversationResource): Promise<void> {
+    await this.update({ conversationId: conversation.id });
+  }
+
+  async markPosted(): Promise<void> {
+    await this.update({ status: "posted" });
   }
 
   async markFailed(errorMessage: string): Promise<void> {

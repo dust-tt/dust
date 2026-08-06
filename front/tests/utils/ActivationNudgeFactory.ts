@@ -26,7 +26,8 @@ export class ActivationNudgeFactory {
     });
 
     if (conversation) {
-      await nudge.markPosted(conversation);
+      await nudge.attachConversation(conversation);
+      await nudge.markPosted();
     }
 
     if (createdAt) {
