@@ -294,7 +294,7 @@
  *           type: string
  *           enum: [compact]
  *           nullable: true
- *           description: Server-resolved UI display hint for the conversation (currently derived from the conversation's activation pod, if any)
+ *           description: Server-resolved UI display hint for the conversation (currently only 'compact' for conversations in activation pods)
  *         forkingData:
  *           $ref: '#/components/schemas/PrivateConversationForkingData'
  *     PrivateConversationForkUser:
