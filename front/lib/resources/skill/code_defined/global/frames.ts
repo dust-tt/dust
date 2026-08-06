@@ -1,12 +1,13 @@
 import {
+  buildInteractiveContentInstructions,
   INTERACTIVE_CONTENT_INSTRUCTIONS,
-  INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST,
-  INTERACTIVE_CONTENT_INSTRUCTIONS_FILES_FIRST,
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { POD_FUNCTIONS_SKILL_NAME } from "@app/lib/resources/skill/code_defined/global/pod_functions";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 export const framesSkill = {
@@ -28,6 +29,10 @@ export const framesSkill = {
   // the Frame's source by path. Legacy conversations (created before the file system defaulted
   // on) keep the retrieve and file-id edit flow. Without a conversation at hand, assume the
   // file system is on since every new conversation has it.
+  //
+  // In a Pod, Frames are Pod apps: they live in the Pod's shared file system, and the ones holding
+  // data the user expects to keep are backed by pod functions. Both only make sense with a
+  // conversation to check, so a Pod-less agent loop keeps the conversation-scoped guidance.
   fetchInstructions: async (
     auth: Authenticator,
     params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
@@ -38,9 +43,12 @@ export const framesSkill = {
     }
 
     const flags = await getFeatureFlags(auth);
-    return isComputerFeatureEnabled(flags)
-      ? INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST
-      : INTERACTIVE_CONTENT_INSTRUCTIONS_FILES_FIRST;
+    return buildInteractiveContentInstructions({
+      hasComputer: isComputerFeatureEnabled(flags),
+      isPod: conversation ? isPodConversation(conversation) : false,
+      hasPodFunctions: flags.includes("sandbox_functions"),
+      podFunctionsSkillName: POD_FUNCTIONS_SKILL_NAME,
+    });
   },
   mcpServers: [{ name: "interactive_content" }],
   version: 3,
