@@ -5,6 +5,7 @@ import type {
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import { useSidebarSectionCollapsed } from "@app/hooks/useSidebarSectionCollapsed";
 import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -51,8 +52,8 @@ import {
   Button,
   CloudArrowLeftRight,
   NavigationList,
+  NavigationListCollapsibleSection,
   NavigationListItem,
-  NavigationListLabel,
   Plus,
   ShapesPlus,
   Terminal,
@@ -61,7 +62,7 @@ import {
 } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
-import type { ComponentType, ReactElement } from "react";
+import type { ComponentType, ReactElement, ReactNode } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 interface SpaceSideBarMenuProps {
@@ -159,35 +160,19 @@ export default function SpaceSideBarMenu({
               return null;
             }
 
-            const sectionDetails = getSpaceSectionDetails(section);
-
             return (
-              <Fragment key={`space-section-${index}`}>
-                <div className="flex items-center justify-between pr-1">
-                  <NavigationListLabel label={sectionDetails.label} />
-                  {sectionDetails.displayCreateSpaceButton &&
-                    isAdmin &&
-                    openSpaceCreationModal && (
-                      <Button
-                        className="mt-1"
-                        size="xs"
-                        variant="ghost"
-                        label="New"
-                        icon={Plus}
-                        onClick={() =>
-                          openSpaceCreationModal({
-                            defaultRestricted: sectionDetails.defaultRestricted,
-                          })
-                        }
-                      />
-                    )}
-                </div>
+              <SpaceSection
+                key={`space-section-${index}`}
+                section={section}
+                isAdmin={isAdmin}
+                openSpaceCreationModal={openSpaceCreationModal}
+              >
                 {renderSpaceItems(
                   spaces.toSorted(compareSpaces),
                   spacesAsUser,
                   owner
                 )}
-              </Fragment>
+              </SpaceSection>
             );
           })}
         </div>
@@ -203,7 +188,8 @@ type SpaceSectionStructureType =
       defaultRestricted: boolean;
     }
   | {
-      label: string;
+      // A null label renders the spaces on their own, with no section header.
+      label: string | null;
       displayCreateSpaceButton: false;
     };
 
@@ -226,13 +212,71 @@ const getSpaceSectionDetails = (
       };
 
     case "system":
-      return { label: "Administration", displayCreateSpaceButton: false };
+      return { label: null, displayCreateSpaceButton: false };
 
     default:
       assertNeverAndIgnore(kind);
       return { label: kind, displayCreateSpaceButton: false };
   }
 };
+
+interface SpaceSectionProps {
+  section: SpaceSectionGroupType;
+  isAdmin: boolean;
+  openSpaceCreationModal?: ({
+    defaultRestricted,
+  }: {
+    defaultRestricted: boolean;
+  }) => void;
+  children: ReactNode;
+}
+
+function SpaceSection({
+  section,
+  isAdmin,
+  openSpaceCreationModal,
+  children,
+}: SpaceSectionProps) {
+  const { isCollapsed, setCollapsed } = useSidebarSectionCollapsed(
+    `spacesSectionCollapsed:${section}`
+  );
+
+  const sectionDetails = getSpaceSectionDetails(section);
+
+  // The Administration section has no header, so there is nothing to collapse
+  // from — render its spaces directly.
+  if (sectionDetails.label === null) {
+    return <>{children}</>;
+  }
+
+  const defaultRestricted = sectionDetails.displayCreateSpaceButton
+    ? sectionDetails.defaultRestricted
+    : null;
+  const canCreateSpace =
+    defaultRestricted !== null && isAdmin && openSpaceCreationModal;
+
+  return (
+    <NavigationListCollapsibleSection
+      label={sectionDetails.label}
+      type="collapse"
+      open={!isCollapsed}
+      onOpenChange={(open) => setCollapsed(!open)}
+      action={
+        canCreateSpace ? (
+          <Button
+            size="xs"
+            variant="ghost-secondary"
+            label="New"
+            icon={Plus}
+            onClick={() => openSpaceCreationModal({ defaultRestricted })}
+          />
+        ) : null
+      }
+    >
+      {children}
+    </NavigationListCollapsibleSection>
+  );
+}
 
 // System space.
 
