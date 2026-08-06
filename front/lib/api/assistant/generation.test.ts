@@ -656,7 +656,13 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const text = systemPromptToText(sections);
 
     expect(text).toContain(
-      "Files attached as `<file>` tags are mounted under `/files/conversation` when using the Computer."
+      "Files attached as `<file>` tags are available under `/files/conversation`."
+    );
+    expect(text).toContain(
+      "When using the Computer, files are available under `/files/`."
+    );
+    expect(text).toContain(
+      "`/files/pod` is a symlink to a gcsfuse mount containing the current Pod's persistent files when a Pod is available."
     );
     expect(text).toContain(
       "You must enable the Computer skill proactively as soon as the user uploads files"
@@ -681,7 +687,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const text = systemPromptToText(sections);
 
     expect(text).toContain(
-      "When using the Computer, conversation files are mounted under `/files/conversation`."
+      "When using the Computer, files are available under `/files/`. `/files/conversation` is a symlink to a gcsfuse mount containing the current conversation's persistent files"
     );
     expect(text).toContain(
       "You must enable the Computer skill proactively as soon as the user uploads files"
