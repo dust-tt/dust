@@ -2,6 +2,7 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
+import { ActivationNudgesTile } from "@app/components/pod/settings/ActivationNudgesTile";
 import { AdminControlledPodTile } from "@app/components/pod/settings/AdminControlledPodTile";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
@@ -726,6 +727,8 @@ export function PodSettingsTab({
             <div className="border-t border-border py-4">
               <SuggestedTasksGenerationTile owner={owner} pod={pod} />
             </div>
+
+            <ActivationNudgesTile owner={owner} pod={pod} />
           </div>
         </div>
 

@@ -28,6 +28,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import uniqBy from "lodash/uniqBy";
 
+import activationNudges from "./activation_nudges";
 import apps from "./apps";
 import dataSourceViews from "./data_source_views";
 import dataSources from "./data_sources";
@@ -513,6 +514,7 @@ app.delete(
   }
 );
 
+app.route("/activation_nudges", activationNudges);
 app.route("/apps", apps);
 app.route("/data_source_views", dataSourceViews);
 app.route("/data_sources", dataSources);

@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetActivationNudgeSettingsResponseBody } from "@app/lib/api/activation/nudge_settings";
 import type { GetActivationRecommendationsResponseBody } from "@app/lib/api/activation/recommendations";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -39,6 +40,77 @@ export function useActivationRecommendations({
     isRecommendationsError: !!error,
     mutateRecommendations: mutate,
   };
+}
+
+export function useActivationNudgeSettings({
+  workspaceId,
+  podId,
+  disabled,
+}: {
+  workspaceId: string;
+  podId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const settingsFetcher: Fetcher<GetActivationNudgeSettingsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${podId}/activation_nudges`,
+    settingsFetcher,
+    { disabled }
+  );
+
+  return {
+    activationNudgeSettings: data?.activationNudgeSettings ?? null,
+    isActivationNudgeSettingsLoading: disabled ? false : isLoading,
+    isActivationNudgeSettingsError: !!error,
+    mutateActivationNudgeSettings: mutate,
+  };
+}
+
+export function useUpdateActivationNudgeSettings({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateActivationNudgeSettings } = useActivationNudgeSettings({
+    workspaceId,
+    podId,
+    disabled: true,
+  });
+
+  const updateNudgeSettings = useCallback(
+    async (nudgesEnabled: boolean): Promise<boolean> => {
+      const res = await clientFetch(
+        `/api/w/${workspaceId}/spaces/${podId}/activation_nudges`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nudgesEnabled }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to update Dust check-ins",
+          description: errorData.message,
+        });
+        return false;
+      }
+
+      void mutateActivationNudgeSettings();
+      return true;
+    },
+    [workspaceId, podId, sendNotification, mutateActivationNudgeSettings]
+  );
+
+  return { updateNudgeSettings };
 }
 
 export function useUpdateActivationRecommendation({
