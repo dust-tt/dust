@@ -64,7 +64,7 @@ the \`files\` MCP server under scoped paths like \`pod-{podId}/<rel>\`.`
 
   return `#### Sandbox File System
 
-Persistent files live under \`/files/\`, mounted read-write:
+${hasPod ? "Two paths are" : "One path is"} mounted read-write and ${hasPod ? "hold" : "holds"} persistent files:
 
 - \`/files/conversation\` — files uploaded by the user and files you write
   for the user. This is the canonical surface for navigating, inspecting,
@@ -78,13 +78,14 @@ ${
 }, so tools that do not follow symlinks by default need to be told to:
 \`find -L /files/conversation ...\`, \`rg --follow\`, \`ls -L\`.
 
-These directories are backed by GCS: their contents persist and are visible
+These mounts are backed by GCS: their contents persist and are visible
 to the user, but reads and writes are much slower than the local file
 system. For heavy or repeated I/O, copy what you need to a local path such
 as \`/tmp\`, work there, and write the result back.
 
-Everything outside \`/files/\` is temporary: it is deleted when the sandbox
-is recycled and never shown to the user.${podUsageSection}
+Everything outside ${hasPod ? "these two mounts" : "this mount"} is temporary, including other
+paths under \`/files/\`: it is deleted when the sandbox is recycled and is
+never shown to the user.${podUsageSection}
 
 Conversation layout:
 

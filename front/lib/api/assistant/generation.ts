@@ -238,13 +238,6 @@ function constructSkillsSection({
   return skillsSection;
 }
 
-const SANDBOX_FILE_MOUNTS_PROMPT =
-  "When using the Computer, files are available under `/files/`. `/files/conversation` is a " +
-  "symlink to a gcsfuse mount containing the current conversation's persistent files, and " +
-  "`/files/pod` is a symlink to a gcsfuse mount containing the current Pod's persistent files " +
-  "when a Pod is available. Files stored elsewhere are temporary, are deleted when the sandbox " +
-  "is recycled, and do not appear in user-visible outputs.";
-
 // The Computer is auto-enabled for some agents (it becomes a system skill) and merely equipped for
 // the rest. Telling an agent that already has it active to "enable" it is a contradiction, and the
 // call fails: `enable_skill` does not resolve system skills.
@@ -278,7 +271,7 @@ function constructAttachmentsSection({
   isComputerAlwaysActive: boolean;
 }): string {
   const sandboxFilesPrompt = hasSandboxTools
-    ? `${SANDBOX_FILE_MOUNTS_PROMPT} ` +
+    ? "When using the Computer, conversation files are mounted under `/files/conversation`. " +
       `${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })}\n`
     : "";
 
@@ -305,7 +298,7 @@ function constructAttachmentsSectionNewFileExplorer({
   isComputerAlwaysActive: boolean;
 }): string {
   const tabularFilesLine = hasSandboxTools
-    ? `- ${SANDBOX_FILE_MOUNTS_PROMPT} Files attached as \`<file>\` tags appear under \`/files/conversation\`. ${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
+    ? `- Files attached as \`<file>\` tags are mounted under \`/files/conversation\` when using the Computer. ${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
     : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
 
   return (
