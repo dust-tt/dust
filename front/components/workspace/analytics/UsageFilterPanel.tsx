@@ -1,3 +1,4 @@
+import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type {
   UsageFilter,
@@ -5,6 +6,7 @@ import type {
   UsageFilterEntity,
   UsageFilterGroup,
   UsageFilterScope,
+  UsageModelLab,
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
@@ -18,13 +20,13 @@ import {
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_FILTER_SCOPE_LABEL,
   USAGE_FILTER_SCOPES,
-  USAGE_MODEL_LAB_LABEL,
   USAGE_MODEL_LABS,
   USAGE_MODEL_TIER_LABEL,
   USAGE_MODEL_TIERS,
 } from "@app/components/workspace/analytics/usageFilter";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -32,6 +34,7 @@ import {
   BarHalf,
   BarLow,
   Button,
+  Check,
   Checkbox,
   ChevronDown,
   ChevronRight,
@@ -42,7 +45,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   FilterFunnel01,
@@ -59,7 +61,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 
 const MODEL_TIER_ICON: Record<UsageModelTier, ComponentType> = {
   fast: BarLow,
@@ -107,6 +109,10 @@ export function UsageFilterPanel({
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
   const [isMoreModelsOpen, setIsMoreModelsOpen] = useState(false);
   const [moreModelsSearch, setMoreModelsSearch] = useState("");
+  // "More models" opens collapsed to just the maker rows; picking one expands
+  // its model list. Cleared whenever the dropdown re-opens.
+  const [expandedModelLab, setExpandedModelLab] =
+    useState<UsageModelLab | null>(null);
   // Only used for the "member" category: narrows the displayed members down
   // to those belonging to at least one of these groups. Not currently backed
   // by real group-membership data (the search endpoint has no such concept
@@ -159,18 +165,32 @@ export function UsageFilterPanel({
   }, [activeEntities, searchText, activeScope, activeTier, activeCategory]);
 
   // "More models" browses every model grouped by maker, independent of the
-  // Fast/Standard/Complex quick filter above.
-  const moreModelsGroups = useMemo(() => {
-    const search = moreModelsSearch.trim().toLowerCase();
-    return USAGE_MODEL_LABS.flatMap((lab) => {
-      const models = categoryEntities.model.filter(
-        (entity) =>
-          entity.lab === lab &&
-          (!search || entity.name.toLowerCase().includes(search))
-      );
-      return models.length > 0 ? [{ lab, models }] : [];
-    });
-  }, [categoryEntities, moreModelsSearch]);
+  // Fast/Standard/Complex quick filter above. Groups start collapsed to just
+  // their maker row; a search bypasses grouping entirely and lists matches
+  // flat, mirroring the message composer's model picker.
+  const moreModelsQuery = moreModelsSearch.trim().toLowerCase();
+  const isSearchingMoreModels = moreModelsQuery !== "";
+
+  const moreModelsSearchResults = useMemo(
+    () =>
+      isSearchingMoreModels
+        ? categoryEntities.model.filter((entity) =>
+            entity.name.toLowerCase().includes(moreModelsQuery)
+          )
+        : [],
+    [categoryEntities, isSearchingMoreModels, moreModelsQuery]
+  );
+
+  const moreModelsGroups = useMemo(
+    () =>
+      USAGE_MODEL_LABS.flatMap((lab) => {
+        const models = categoryEntities.model.filter(
+          (entity) => entity.lab === lab
+        );
+        return models.length > 0 ? [{ lab, models }] : [];
+      }),
+    [categoryEntities]
+  );
 
   const availableGroups = useMemo(
     () =>
@@ -283,7 +303,7 @@ export function UsageFilterPanel({
         <Avatar
           name={entity.name}
           visual={entity.image ?? undefined}
-          size="xs"
+          size="xxs"
           isRounded
         />
       );
@@ -294,6 +314,9 @@ export function UsageFilterPanel({
         isDark,
       });
       return <Icon visual={logo} size="sm" />;
+    }
+    if (category === "model" && entity.lab) {
+      return <Icon visual={getModelMakerLogo(entity.lab, isDark)} size="sm" />;
     }
     return null;
   };
@@ -429,7 +452,13 @@ export function UsageFilterPanel({
                   action={
                     <DropdownMenu
                       open={isMoreModelsOpen}
-                      onOpenChange={setIsMoreModelsOpen}
+                      onOpenChange={(open) => {
+                        setIsMoreModelsOpen(open);
+                        if (open) {
+                          setMoreModelsSearch("");
+                          setExpandedModelLab(null);
+                        }
+                      }}
                     >
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -445,34 +474,97 @@ export function UsageFilterPanel({
                           value={moreModelsSearch}
                           onChange={setMoreModelsSearch}
                         />
-                        {moreModelsGroups.length > 0 ? (
-                          moreModelsGroups.map(({ lab, models }) => (
-                            <div key={lab}>
-                              <DropdownMenuLabel
-                                label={USAGE_MODEL_LAB_LABEL[lab]}
+                        {isSearchingMoreModels ? (
+                          moreModelsSearchResults.length > 0 ? (
+                            moreModelsSearchResults.map((model) => (
+                              <DropdownMenuItem
+                                key={model.id}
+                                label={model.name}
+                                icon={
+                                  model.lab
+                                    ? getModelMakerLogo(model.lab, isDark)
+                                    : undefined
+                                }
+                                endComponent={
+                                  selectedIdsForActiveCategory.has(model.id) ? (
+                                    <Icon
+                                      visual={Check}
+                                      size="sm"
+                                      className="text-muted-foreground"
+                                    />
+                                  ) : undefined
+                                }
+                                onClick={() =>
+                                  setDraftFilter(
+                                    toggleUsageFilterEntity(
+                                      draftFilter,
+                                      "model",
+                                      model
+                                    )
+                                  )
+                                }
+                                onSelect={(e) => e.preventDefault()}
                               />
-                              {models.map((model) => (
-                                <DropdownMenuItem
-                                  key={model.id}
-                                  label={model.name}
-                                  onClick={() => {
-                                    setDraftFilter(
-                                      toggleUsageFilterEntity(
-                                        draftFilter,
-                                        "model",
-                                        model
-                                      )
-                                    );
-                                    setIsMoreModelsOpen(false);
-                                  }}
-                                />
-                              ))}
+                            ))
+                          ) : (
+                            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                              No models found
                             </div>
-                          ))
+                          )
                         ) : (
-                          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                            No models found
-                          </div>
+                          moreModelsGroups.map(({ lab, models }) => (
+                            <Fragment key={lab}>
+                              <DropdownMenuItem
+                                label={getModelMakerDisplayName(lab)}
+                                icon={getModelMakerLogo(lab, isDark)}
+                                endComponent={
+                                  <Icon
+                                    visual={
+                                      expandedModelLab === lab
+                                        ? ChevronDown
+                                        : ChevronRight
+                                    }
+                                    size="xs"
+                                  />
+                                }
+                                onClick={() =>
+                                  setExpandedModelLab((current) =>
+                                    current === lab ? null : lab
+                                  )
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              />
+                              {expandedModelLab === lab &&
+                                models.map((model) => (
+                                  <DropdownMenuItem
+                                    key={model.id}
+                                    label={model.name}
+                                    className="pl-8"
+                                    endComponent={
+                                      selectedIdsForActiveCategory.has(
+                                        model.id
+                                      ) ? (
+                                        <Icon
+                                          visual={Check}
+                                          size="sm"
+                                          className="text-muted-foreground"
+                                        />
+                                      ) : undefined
+                                    }
+                                    onClick={() =>
+                                      setDraftFilter(
+                                        toggleUsageFilterEntity(
+                                          draftFilter,
+                                          "model",
+                                          model
+                                        )
+                                      )
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  />
+                                ))}
+                            </Fragment>
+                          ))
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
