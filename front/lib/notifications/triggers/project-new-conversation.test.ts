@@ -6,7 +6,6 @@ import {
 } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -14,7 +13,6 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
@@ -291,12 +289,13 @@ describe("notifyActivationConversationAgentReplied", () => {
   let user: UserResource;
   let pod: SpaceResource;
   let agent: LightAgentConfigurationType;
-  let activationTrigger: TriggerResource;
+  let workspace: LightWorkspaceType;
 
   beforeEach(async () => {
     const result = await createResourceTest({ role: "user" });
     user = result.user;
     auth = result.authenticator;
+    workspace = result.workspace;
 
     pod = await SpaceFactory.project(result.workspace, user.id);
 
@@ -305,26 +304,33 @@ describe("notifyActivationConversationAgentReplied", () => {
       description: "Test",
     });
 
-    activationTrigger = await TriggerFactory.webhook(auth, {
-      agentConfigurationId: agent.sId,
-      spaceId: pod.id,
-    });
-    await ActivationPodResource.makeNew(auth, {
-      pod,
-      user,
-      trigger: activationTrigger,
-    });
+    await ActivationPodResource.makeNew(auth, { pod, user });
 
     vi.mocked(getNovuClient).mockClear();
   });
 
-  test("triggers the activation email for the pod's nudge-created conversation", async () => {
+  // A conversation Dust opened with a nudge: its opening message carries the
+  // nudge origin and has no author.
+  async function createNudgeConversation() {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [],
       spaceId: pod.id,
-      triggerId: activationTrigger.id,
     });
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "Run the Dust Training workflow.",
+      origin: "system_activation",
+      authorless: true,
+    });
+
+    return conversation;
+  }
+
+  test("triggers the activation email for the pod's nudge-created conversation", async () => {
+    const conversation = await createNudgeConversation();
 
     await notifyActivationConversationAgentReplied(auth, {
       conversationId: conversation.sId,
