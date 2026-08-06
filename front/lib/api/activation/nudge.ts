@@ -8,6 +8,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { removeNulls } from "@app/types/shared/utils/general";
 import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
@@ -59,7 +60,7 @@ async function countUnansweredNudgeStreak(
   }
 
   const oldestNudge = recentNudges[recentNudges.length - 1];
-  const triggerIds = uniq(recentNudges.map((nudge) => nudge.triggerId));
+  const triggerIds = uniq(removeNulls(recentNudges.map((n) => n.triggerId)));
   const replyTimestamps =
     await ConversationResource.listUserMessageTimestampsForTriggers(auth, {
       triggerIds,

@@ -77,6 +77,7 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
     const created = await this.model.bulkCreate(
       nudges.map(({ pod, trigger }) => ({
         workspaceId,
+        status: "posted" as const,
         spaceId: pod.id,
         triggerId: trigger.id,
         userId: trigger.editor,

@@ -20,6 +20,9 @@ export class ActivationPodModel extends WorkspaceAwareModel<ActivationPodModel> 
   declare userId: ForeignKey<UserModel["id"]>;
   // The Pod's activation trigger. Null until provisioned.
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
+
+  // When the user turned nudges off for this Pod. Null while they are on.
+  declare nudgesDisabledAt: Date | null;
 }
 
 ActivationPodModel.init(
@@ -33,6 +36,11 @@ ActivationPodModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    nudgesDisabledAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
