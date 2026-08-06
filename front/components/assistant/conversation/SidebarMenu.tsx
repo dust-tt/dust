@@ -1166,7 +1166,18 @@ export function AgentSidebarMenu({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    ) : undefined
+                    ) : (
+                      <div className="absolute right-2 top-1.5 transition-opacity [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100">
+                        <Button
+                          size="xs"
+                          icon={Plus}
+                          label="New"
+                          variant="ghost-secondary"
+                          disabled
+                          tooltip="Ask an admin for permission to create agents."
+                        />
+                      </div>
+                    )
                   }
                 />
                 <NavigationListItem
@@ -1218,7 +1229,18 @@ export function AgentSidebarMenu({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    ) : undefined
+                    ) : (
+                      <div className="absolute right-2 top-1.5 transition-opacity [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100">
+                        <Button
+                          size="xs"
+                          icon={Plus}
+                          label="New"
+                          variant="ghost-secondary"
+                          disabled
+                          tooltip="Ask an admin for permission to create skills."
+                        />
+                      </div>
+                    )
                   }
                 />
               </NavigationList>
