@@ -1744,9 +1744,6 @@ function NavigationListWithInbox({
   const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
     null
   );
-  const { isConversationsSectionCollapsed, setConversationsSectionCollapsed } =
-    useConversationsSectionCollapsed();
-
   const {
     readConversations,
     inboxConversations,
