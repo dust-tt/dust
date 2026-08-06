@@ -30,6 +30,7 @@ import { validate } from "@front-api/middlewares/validator";
 import uniq from "lodash/uniq";
 import { z } from "zod";
 import skill from "./[sId]";
+import archive from "./archive";
 import availability from "./availability";
 import detect from "./detect";
 import importRoute from "./import";
@@ -108,6 +109,7 @@ function resolveRequestedAvailability({
 const app = workspaceApp();
 
 // Static sub-paths must be registered before the param sub-app.
+app.route("/archive", archive);
 app.route("/availability", availability);
 app.route("/detect", detect);
 app.route("/import", importRoute);
