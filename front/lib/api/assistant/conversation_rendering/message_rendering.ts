@@ -118,7 +118,7 @@ function renderAgentSteps(
         } satisfies AssistantContentMessageTypeModel);
       }
 
-      // Tool calls must be immediately followed by their results, skill messages come after.
+      // Tool calls must be immediately followed by their results; skill messages come after.
       for (const { result } of step.actions) {
         messages.push(result);
       }

@@ -256,6 +256,57 @@ The following skills were set as favorites by the user and are also available fo
     });
   });
 
+  it("folds user-edited tool inputs into the tool result content", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Test Agent",
+        description: "A test agent for editable tool input rendering",
+      }
+    );
+    const model = getSupportedModelConfig(agentConfig.model);
+    assert(model, "Expected a supported model configuration.");
+
+    const message = mockFullAgentMessage({
+      configuration: agentConfig,
+      actions: [
+        {
+          functionCallName: "gmail__send_mail",
+          functionCallId: "toolu_send_mail",
+          internalMCPServerName: "gmail",
+          toolName: "send_mail",
+          params: {
+            to: "recipient@example.com",
+            subject: "Old subject",
+            body: "Old body",
+          },
+          userEditedInputs: {
+            subject: "New subject",
+            body: "New body",
+          },
+          status: "succeeded",
+          output: "Email sent.",
+        },
+      ],
+    });
+
+    const steps = await getSteps(authenticator, {
+      enabledSkillById: new Map(),
+      model,
+      message,
+      workspaceId: "workspace_123",
+      conversationId: "conv_1",
+      onMissingAction: "skip",
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0].actions).toHaveLength(1);
+    expect(steps[0].actions[0].result.content).toBe(
+      `The tool was executed with these user-edited input values:\n- body: "New body"\n- subject: "New subject".\nEmail sent.`
+    );
+  });
+
   it("renders enabled skills as user messages", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agentConfig = await AgentConfigurationFactory.createTestAgent(
