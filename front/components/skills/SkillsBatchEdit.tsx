@@ -96,7 +96,7 @@ export function SkillsBatchEditBar({
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              size="sm"
+              size="xs"
               label="Set availability"
               isSelect
               isLoading={isUpdating}
