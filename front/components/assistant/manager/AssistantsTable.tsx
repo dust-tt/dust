@@ -343,7 +343,11 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
           disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
+          tooltip={
+            info.getValue()
+              ? formatTimestampToFriendlyDate(info.getValue(), "long")
+              : undefined
+          }
           label={
             info.getValue()
               ? formatTimestampToFriendlyDate(info.getValue(), "compact")
