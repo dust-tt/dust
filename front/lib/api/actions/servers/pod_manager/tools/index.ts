@@ -1518,17 +1518,21 @@ export function createProjectManagerTools(
         const user = auth.user();
         const owner = auth.getNonNullableWorkspace();
 
-        const conversationId =
-          params.conversationId ??
-          (isAgentLoopRunContext(toolContext?.runContext)
-            ? toolContext.runContext.conversation.sId
-            : null);
+        const conversationId = params.conversationId;
 
-        if (!conversationId) {
+        const currentConversationId = isAgentLoopRunContext(
+          toolContext?.runContext
+        )
+          ? toolContext.runContext.conversation.sId
+          : null;
+
+        if (conversationId === currentConversationId) {
           return new Err(
             new MCPError(
-              "No conversationId provided and no conversation in agent context; pass conversationId explicitly.",
-              { tracked: false }
+              "ConversationId cannot be the same as the current conversation",
+              {
+                tracked: false,
+              }
             )
           );
         }
