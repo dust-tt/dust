@@ -92,14 +92,21 @@ interface CreateRemoteMCPServerInput {
   useCase?: MCPOAuthUseCase;
   connectionId?: string;
   customHeaders?: CustomHeader[];
+  viewName?: string;
 }
 
 export async function createRemoteMCPServer(
   auth: Authenticator,
   input: CreateRemoteMCPServerInput
 ): Promise<Result<MCPServerType, Error>> {
-  const { url, sharedSecret, customHeaders, connectionId, includeGlobal } =
-    input;
+  const {
+    url,
+    sharedSecret,
+    customHeaders,
+    connectionId,
+    includeGlobal,
+    viewName,
+  } = input;
 
   if (!url) {
     return new Err(new Error("URL is required"));
@@ -110,6 +117,12 @@ export async function createRemoteMCPServer(
         `MCP server URL exceeds maximum length (${MAX_URL_LENGTH} characters).`
       )
     );
+  }
+  if (viewName !== undefined) {
+    const trimmed = viewName.trim();
+    if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) {
+      return new Err(new Error("viewName must be a non-empty string."));
+    }
   }
 
   // Default to the shared secret if it exists.
@@ -168,7 +181,7 @@ export async function createRemoteMCPServer(
   if (includeGlobal) {
     const conflict = await checkNameConflictInGlobalSpace(
       auth,
-      name,
+      viewName ?? name,
       metadata.tools
     );
     if (conflict.isErr()) {
@@ -193,6 +206,7 @@ export async function createRemoteMCPServer(
     customHeaders: headersArrayToRecord(customHeaders),
     authorization,
     oAuthUseCase: input.useCase ?? null,
+    viewName,
   });
 
   if (connectionId) {

@@ -398,6 +398,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       sharedSecret,
       oauthConnection,
       customHeaders,
+      viewName,
     }: {
       url: string;
       defaultServerId?: number;
@@ -405,6 +406,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       sharedSecret?: string;
       oauthConnection?: MCPConnectionType;
       customHeaders?: { key: string; value: string }[];
+      viewName?: string;
     }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
       const body: any = { url, serverType: "remote", includeGlobal };
       if (defaultServerId !== undefined) {
@@ -420,6 +422,9 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       }
       if (customHeaders) {
         body.customHeaders = customHeaders;
+      }
+      if (viewName !== undefined) {
+        body.viewName = viewName;
       }
       const response = await clientFetch(`/api/w/${owner.sId}/mcp`, {
         method: "POST",

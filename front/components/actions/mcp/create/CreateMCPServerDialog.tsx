@@ -178,14 +178,11 @@ export function CreateMCPServerDialog({
 
   // Client-side validation for the view name field.
   const viewNameError = useMemo(() => {
-    if (!needsCustomName) {
-      return null;
-    }
     const trimmed = (viewName ?? "").trim();
-    if (trimmed.length === 0) {
+    if (needsCustomName && trimmed.length === 0) {
       return "Name is required.";
     }
-    if (existingViewNames.includes(trimmed)) {
+    if (trimmed.length > 0 && existingViewNames.includes(trimmed)) {
       return "This name is already in use.";
     }
     return null;
@@ -552,16 +549,22 @@ export function CreateMCPServerDialog({
                   {serverError.message}
                 </ContentMessage>
               )}
-              {needsCustomName && (
+              {(needsCustomName || !internalMCPServer) && (
                 <div className="space-y-4">
                   <div className="heading-lg text-foreground">Tool name</div>
                   <Input
-                    placeholder="Enter a name for this instance"
+                    placeholder={
+                      needsCustomName
+                        ? "Enter a name for this instance"
+                        : "Enter a custom name"
+                    }
                     {...form.register("viewName")}
                     isError={!!viewNameError}
                     message={
                       viewNameError ??
-                      `${toolName} is already installed. This name tells them apart.`
+                      (needsCustomName
+                        ? `${toolName} is already installed. This name tells them apart.`
+                        : "Optional. Defaults to the name provided by the MCP server.")
                     }
                     messageStatus={viewNameError ? "error" : "info"}
                   />

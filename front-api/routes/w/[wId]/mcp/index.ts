@@ -42,6 +42,7 @@ const PostBodySchema = z.discriminatedUnion("serverType", [
     useCase: UseCaseSchema,
     connectionId: z.string().optional(),
     customHeaders: CustomHeadersSchema,
+    viewName: z.string().optional(),
   }),
   z.object({
     serverType: z.literal("internal"),
