@@ -1,6 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
 
-import { ACTIVATION_WEBHOOK_SOURCE_NAME } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -133,20 +132,6 @@ app.post(
     );
 
     if (!webhookSource) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "webhook_source_not_found",
-          message: `Webhook source ${webhookSourceId} not found in workspace ${wId}.`,
-        },
-      });
-    }
-
-    // Activation nudges are emitted in-process and have no external sender, so
-    // an HTTP fire can only be a forgery: it would post a message under the
-    // agent's identity, with a body the sender wrote, to whichever pod the
-    // payload names.
-    if (webhookSource.name === ACTIVATION_WEBHOOK_SOURCE_NAME) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

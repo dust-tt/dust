@@ -3,7 +3,6 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
-import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
@@ -524,11 +523,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     const triggerIds = triggers.map((trigger) => trigger.id);
-    await ActivationNudgeModel.destroy({
-      where: { triggerId: { [Op.in]: triggerIds }, workspaceId: owner.id },
-      transaction,
-    });
-
     await TriggerModel.destroy({
       where: {
         id: { [Op.in]: triggerIds },
