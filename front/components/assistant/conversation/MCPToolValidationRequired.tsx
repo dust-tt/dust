@@ -1,16 +1,21 @@
 import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidationCard";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import {
+  EditableToolValidation,
+  isEditableToolValidationSupported,
+} from "@app/components/assistant/conversation/editable_tool_validation/EditableToolValidation";
+import type { ValidationRequiredToolExecution } from "@app/components/assistant/conversation/editable_tool_validation/types";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useValidateAction } from "@app/lib/swr/tool_actions";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  blockedAction: AgentLoopBlockedToolExecution;
+  blockedAction: ValidationRequiredToolExecution;
   conversationId?: string | null;
 }
 
@@ -21,6 +26,7 @@ export function MCPToolValidationRequired({
   conversationId,
 }: MCPToolValidationRequiredProps) {
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const {
@@ -34,13 +40,27 @@ export function MCPToolValidationRequired({
     onError: setErrorMessage,
   });
 
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: blockedAction.userId,
+        currentUserId: user?.sId,
+      }),
+    [blockedAction.userId, user?.sId]
+  );
+
+  const isPulsing = isActionPulsing(blockedAction.actionId);
+
+  const handleValidationStart = () => {
+    // Stop pulsing immediately when the user takes an action.
+    stopPulsingAction(blockedAction.actionId);
+    setErrorMessage(null);
+  };
+
   const handleValidation = async (
     approved: MCPValidationOutputType
   ): Promise<boolean> => {
-    // Stop pulsing immediately when the user takes an action.
-    stopPulsingAction(blockedAction.actionId);
-
-    setErrorMessage(null);
+    handleValidationStart();
 
     const result = await validateAction({
       contextType: "agent_loop",
@@ -84,6 +104,34 @@ export function MCPToolValidationRequired({
     return true;
   };
 
+  const shouldUseEditableToolValidation =
+    canCurrentUserRespond &&
+    hasFeature("editable_tool_inputs") &&
+    isEditableToolValidationSupported(blockedAction);
+
+  if (shouldUseEditableToolValidation) {
+    return (
+      <>
+        <EditableToolValidation
+          blockedAction={blockedAction}
+          owner={owner}
+          isPulsing={isPulsing}
+          isValidating={isValidating}
+          onActionCompleted={() =>
+            removeCompletedAction(blockedAction.actionId)
+          }
+          onError={setErrorMessage}
+          onValidationStart={handleValidationStart}
+        />
+        {errorMessage && (
+          <div className="mt-2 text-sm font-medium text-warning-800">
+            {errorMessage}
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <ToolValidationCard
       validationRequest={blockedAction}
@@ -93,7 +141,7 @@ export function MCPToolValidationRequired({
       conversationId={conversationId}
       errorMessage={errorMessage}
       isValidating={isValidating}
-      isPulsing={isActionPulsing(blockedAction.actionId)}
+      isPulsing={isPulsing}
       onValidate={handleValidation}
     />
   );
