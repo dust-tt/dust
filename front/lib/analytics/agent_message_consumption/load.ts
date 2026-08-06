@@ -238,7 +238,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       workspace.id
     ),
     usages: billedUsages,
-    // The triggering message is the source of truth. Background auth may represent another user.
+    // userId is a nullable FK with ON DELETE SET NULL. Never substitute the worker identity.
     user:
       triggeringUserMessage.userId === null
         ? null
