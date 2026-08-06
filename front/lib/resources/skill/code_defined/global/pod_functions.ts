@@ -76,11 +76,12 @@ Pod file system rather than splitting it between the conversation and the Pod ro
 \`\`\`
 /files/pod-<podId>/
   MyApp/
-    MyApp.tsx        the Frame's source; its directory is the Frame's bundling root
-    list-notes.ts    one file per function, named after the function's slug
-    post-note.ts
+    MyApp.tsx          the Frame's source; its directory is the Frame's bundling root
+    functions/
+      list-notes.ts    one file per function, named after the function's slug
+      post-note.ts
     databases/
-      notes.db.ts    one shared drizzle schema file per database
+      notes.db.ts      one shared drizzle schema file per database
 \`\`\`
 
 Nothing the app owns stays in the conversation file system: a conversation file belongs to one
@@ -93,10 +94,10 @@ Functions that no Frame calls still get an app folder, named after what they do 
 
 #### Authoring a function
 
-Write the source as a TypeScript file directly in the app's folder, at
-\`pod-<podId>/<AppName>/<slug>.ts\` (the Computer mounts it at
-\`/files/pod-<podId>/<AppName>/<slug>.ts\`; the \`files\` MCP server reaches it under the same scoped
-path). The module must:
+Write the source as a TypeScript file in the app's \`functions\` folder, at
+\`pod-<podId>/<AppName>/functions/<slug>.ts\` (the Computer mounts it at
+\`/files/pod-<podId>/<AppName>/functions/<slug>.ts\`; the \`files\` MCP server reaches it under the
+same scoped path). The module must:
 
 - export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas,
 - default-export an object with a \`fetch(request: Request): Promise<Response>\` method (the Bun and
@@ -124,7 +125,8 @@ export default {
 \`\`\`
 
 You can split the implementation across several files in the app folder and import them with
-relative paths (e.g. \`import { parse } from "./lib/parse.ts"\`). Publishing bundles the entrypoint
+relative paths (e.g. \`import { parse } from "./lib/parse.ts"\` for a helper under
+\`functions/lib/\`). Publishing bundles the entrypoint
 and all of its relative imports into one module. The bundle is a snapshot taken at publish time, so
 editing an imported helper has no effect until you re-publish.
 
@@ -141,7 +143,7 @@ invocation.
 Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\`):
 - **One schema file per database** at \`<AppName>/databases/{db}.db.ts\`: the single source of truth
   declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every function imports
-  its table objects from it as \`./databases/{db}.db.ts\` (never hand-write tables in a function
+  its table objects from it as \`../databases/{db}.db.ts\` (never hand-write tables in a function
   file), so functions sharing a database belong to the same app. The database name itself is
   Pod-wide rather than app-scoped, so pick one that will not collide with another app's
   (\`${toolName("db_list")}\` shows what the Pod already has).
@@ -163,9 +165,9 @@ export const messages = sqliteTable("messages", {
   createdAt: integer("created_at", { mode: "timestamp" }),
 }, (t) => [index("messages_created_idx").on(t.createdAt)]);
 
-// MyApp/post-message.ts; declares schema.databases: ["chat"], then inside fetch:
+// MyApp/functions/post-message.ts; declares schema.databases: ["chat"], then inside fetch:
 import { db } from "@dust/pod";
-import { messages } from "./databases/chat.db.ts";
+import { messages } from "../databases/chat.db.ts";
 const row = db("chat").insert(messages)
   .values({ author, body, createdAt: new Date() })
   .returning({ id: messages.id }).get();
@@ -397,7 +399,7 @@ export const notes = sqliteTable("notes", {
   createdAt: integer("created_at", { mode: "timestamp" }),
 }, (t) => [index("notes_user_idx").on(t.userId)]);
 
-// MyApp/list-notes.ts, declared "workspace_user_required"
+// MyApp/functions/list-notes.ts, declared "workspace_user_required"
 const user = currentUser();
 const rows = db("notes").select().from(notes).where(eq(notes.userId, user.sId)).all();
 \`\`\`

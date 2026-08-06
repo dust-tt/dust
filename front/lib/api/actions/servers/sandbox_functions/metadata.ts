@@ -70,8 +70,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .min(1)
         .describe(
           "Scoped path to the function's TypeScript source in the pod, as shown by the files " +
-            "tools. It lives directly in its app's folder (e.g. " +
-            "`pod-<id>/MyApp/greet.ts`)."
+            "tools. It lives in its app's `functions` folder (e.g. " +
+            "`pod-<id>/MyApp/functions/greet.ts`)."
         ),
       executionMode: z
         .enum(SANDBOX_FUNCTION_EXECUTION_MODES)
