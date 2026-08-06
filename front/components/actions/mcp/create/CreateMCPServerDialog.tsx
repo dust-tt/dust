@@ -28,10 +28,7 @@ import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import {
-  MAX_MCP_SERVER_VIEW_NAME_LENGTH,
-  type MCPServerType,
-} from "@app/lib/api/mcp";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   useCreateInternalMCPServer,
@@ -202,9 +199,6 @@ export function CreateMCPServerDialog({
       if (trimmed === nameConflict.name) {
         return "This name conflicts with an existing Tool. Enter a different name.";
       }
-    }
-    if (trimmed.length > MAX_MCP_SERVER_VIEW_NAME_LENGTH) {
-      return `Name must be ${MAX_MCP_SERVER_VIEW_NAME_LENGTH} characters or fewer.`;
     }
     if (trimmed.length > 0 && existingViewNames.includes(trimmed)) {
       return "This name is already in use.";

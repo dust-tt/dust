@@ -12,13 +12,12 @@ import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_action
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_token";
-import {
-  MAX_MCP_SERVER_VIEW_NAME_LENGTH,
-  type MCPServerType,
-  type MCPServerTypeWithViews,
-  type MCPServerViewNameConflict,
-  type MCPServerViewType,
-  type MCPToolType,
+import type {
+  MCPServerType,
+  MCPServerTypeWithViews,
+  MCPServerViewNameConflict,
+  MCPServerViewType,
+  MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -35,6 +34,7 @@ import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 
 const MAX_URL_LENGTH = 2048;
 const MAX_NAME_LENGTH = 2048;
+const MAX_VIEW_NAME_LENGTH = 255;
 
 type CustomHeader = { key: string; value: string };
 
@@ -124,11 +124,11 @@ export async function createRemoteMCPServer(
   if (viewName !== undefined) {
     if (
       !normalizedViewName ||
-      normalizedViewName.length > MAX_MCP_SERVER_VIEW_NAME_LENGTH
+      normalizedViewName.length > MAX_VIEW_NAME_LENGTH
     ) {
       return new Err(
         new Error(
-          `viewName must be a non-empty string of at most ${MAX_MCP_SERVER_VIEW_NAME_LENGTH} characters.`
+          `viewName must be a non-empty string of at most ${MAX_VIEW_NAME_LENGTH} characters.`
         )
       );
     }

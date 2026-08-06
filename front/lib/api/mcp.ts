@@ -41,7 +41,6 @@ export type MCPToolRetryPolicyType =
 export const DEFAULT_MCP_TOOL_RETRY_POLICY =
   "no_retry" as const satisfies MCPToolRetryPolicyType;
 
-export const MAX_MCP_SERVER_VIEW_NAME_LENGTH = 255;
 export type MCPServerViewNameConflict = { nameConflict: string };
 
 export function getRetryPolicyFromToolConfiguration(
