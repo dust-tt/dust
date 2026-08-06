@@ -1,14 +1,10 @@
-import {
-  CreateMCPServerDialogSubmitError,
-  submitCreateMCPServerDialogForm,
-} from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
+import { submitCreateMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import {
   DEFAULT_MCP_ACTION_VERSION,
   DEFAULT_MCP_SERVER_ICON,
 } from "@app/lib/actions/constants";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import { MCPCreateServerError } from "@app/lib/swr/mcp_servers";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -73,14 +69,12 @@ describe("submitCreateMCPServerDialogForm", () => {
 
     const createWithURL = vi
       .fn()
-      .mockResolvedValueOnce(
-        new Err(new MCPCreateServerError("Name conflict", false, "Candidate"))
-      )
+      .mockResolvedValueOnce(new Err({ nameConflict: "Candidate" }))
       .mockResolvedValueOnce(new Ok({ success: true, server }));
 
     const submit = (
       submittedValues: CreateMCPServerDialogFormValues,
-      remoteMCPServerOAuthConnectionId: string | null
+      oauthConnectionId: string | null
     ) =>
       submitCreateMCPServerDialogForm({
         owner,
@@ -90,7 +84,7 @@ describe("submitCreateMCPServerDialogForm", () => {
           supported_use_cases: ["platform_actions", "personal_actions"],
         },
         remoteMCPServerOAuthDiscoveryDone: true,
-        remoteMCPServerOAuthConnectionId,
+        oauthConnectionId,
         discoverOAuthMetadata: vi.fn(),
         createWithURL,
         createInternalMCPServer: vi.fn(),
@@ -99,19 +93,16 @@ describe("submitCreateMCPServerDialogForm", () => {
       });
 
     const firstResult = await submit(values, null);
-    expect(firstResult.isErr()).toBe(true);
-    if (
-      firstResult.isOk() ||
-      !(firstResult.error instanceof CreateMCPServerDialogSubmitError)
-    ) {
-      throw new Error("Expected a create server error");
+    expect(firstResult.isOk()).toBe(true);
+    if (firstResult.isErr() || firstResult.value.type !== "name_conflict") {
+      throw new Error("Expected a name conflict");
     }
-    expect(firstResult.error.nameConflict).toBe("Candidate");
-    expect(firstResult.error.oauthConnectionId).toBe("connection-id");
+    expect(firstResult.value.name).toBe("Candidate");
+    expect(firstResult.value.oauthConnectionId).toBe("connection-id");
 
     const retryResult = await submit(
       { ...values, viewName: "Custom name" },
-      firstResult.error.oauthConnectionId
+      firstResult.value.oauthConnectionId
     );
 
     expect(retryResult.isOk()).toBe(true);

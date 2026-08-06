@@ -3,7 +3,6 @@ import type { GetMCPServersResponseBody } from "@app/lib/api/mcp";
 import {
   createInternalMCPServer,
   createRemoteMCPServer,
-  isMCPServerViewNameConflictError,
   listMCPServersWithViews,
 } from "@app/lib/api/mcp/servers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -79,19 +78,21 @@ app.post("/", validate("json", PostBodySchema), async (ctx) => {
       : await createInternalMCPServer(auth, body);
 
   if (result.isErr()) {
-    const message = result.error.message;
-    if (
-      body.serverType === "remote" &&
-      isMCPServerViewNameConflictError(result.error)
-    ) {
+    if ("nameConflict" in result.error) {
+      const { nameConflict } = result.error;
       return ctx.json(
         {
-          error: { type: "invalid_request_error", message },
-          nameConflict: { name: result.error.viewName },
+          error: {
+            type: "invalid_request_error",
+            message: `An existing Tool is already using the name "${nameConflict}"`,
+          },
+          nameConflict: { name: nameConflict },
         },
         400
       );
     }
+
+    const message = result.error.message;
     if (isRemoteMCPServerError(result.error)) {
       // Non-standard envelope: callers rely on the `isRemoteServerError` flag.
       return ctx.json(

@@ -18,6 +18,7 @@ import type {
   GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
   MCPServerTypeWithViews,
+  MCPServerViewNameConflict,
   MCPServerViewType,
   SyncMCPServerResponseBody,
 } from "@app/lib/api/mcp";
@@ -364,25 +365,13 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
   return { discoverOAuthMetadata };
 }
 
-export class MCPCreateServerError extends Error {
+class MCPCreateServerError extends Error {
   readonly isRemoteServerError: boolean;
-  readonly nameConflict: string | null;
-  constructor(
-    message: string,
-    isRemoteServerError: boolean,
-    nameConflict: string | null
-  ) {
+  constructor(message: string, isRemoteServerError: boolean) {
     super(message);
     this.isRemoteServerError = isRemoteServerError;
-    this.nameConflict = nameConflict;
   }
 }
-
-type MCPCreateServerErrorResponse = {
-  error?: { message?: string };
-  isRemoteServerError?: boolean;
-  nameConflict?: { name: string };
-};
 
 export function isMCPCreateServerError(
   error: Error
@@ -419,7 +408,9 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       oauthConnection?: MCPConnectionType;
       customHeaders?: { key: string; value: string }[];
       viewName?: string;
-    }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
+    }): Promise<
+      Result<CreateMCPServerResponseBody, Error | MCPServerViewNameConflict>
+    > => {
       const body: any = { url, serverType: "remote", includeGlobal };
       if (defaultServerId !== undefined) {
         body.defaultServerId = defaultServerId;
@@ -445,13 +436,15 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       });
 
       if (!response.ok) {
-        const body: MCPCreateServerErrorResponse = await response.json();
+        const body = await response.json();
+        if (body.nameConflict?.name) {
+          return new Err({ nameConflict: body.nameConflict.name });
+        }
         return new Err(
           new MCPCreateServerError(
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             body.error?.message || "Failed to create server",
-            body.isRemoteServerError === true,
-            body.nameConflict?.name ?? null
+            body.isRemoteServerError === true
           )
         );
       }

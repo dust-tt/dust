@@ -4,6 +4,7 @@ import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction
 import type {
   CreateMCPServerResponseBody,
   MCPServerType,
+  MCPServerViewNameConflict,
 } from "@app/lib/api/mcp";
 import {
   isMCPCreateServerError,
@@ -29,6 +30,12 @@ type CreateMCPServerDialogSubmitResult =
       type: "server_created";
       server: MCPServerType;
       remoteMCPServerOAuthDiscoveryDone: boolean;
+    }
+  | {
+      type: "name_conflict";
+      name: string;
+      oauthConnectionId: string | null;
+      remoteMCPServerOAuthDiscoveryDone: boolean;
     };
 
 type CreateMCPServerDialogSubmitErrorKind =
@@ -41,30 +48,22 @@ export class CreateMCPServerDialogSubmitError extends Error {
   readonly kind: CreateMCPServerDialogSubmitErrorKind;
   readonly remoteMCPServerOAuthDiscoveryDone: boolean;
   readonly isRemoteServerError: boolean;
-  readonly nameConflict: string | null;
-  readonly oauthConnectionId: string | null;
 
   constructor({
     kind,
     message,
     remoteMCPServerOAuthDiscoveryDone,
     isRemoteServerError = false,
-    nameConflict = null,
-    oauthConnectionId = null,
   }: {
     kind: CreateMCPServerDialogSubmitErrorKind;
     message: string;
     remoteMCPServerOAuthDiscoveryDone: boolean;
     isRemoteServerError?: boolean;
-    nameConflict?: string | null;
-    oauthConnectionId?: string | null;
   }) {
     super(message);
     this.kind = kind;
     this.remoteMCPServerOAuthDiscoveryDone = remoteMCPServerOAuthDiscoveryDone;
     this.isRemoteServerError = isRemoteServerError;
-    this.nameConflict = nameConflict;
-    this.oauthConnectionId = oauthConnectionId;
   }
 }
 
@@ -90,7 +89,9 @@ type CreateRemoteMCPServerFn = (args: {
   oauthConnection?: MCPConnectionType;
   customHeaders?: { key: string; value: string }[];
   viewName?: string;
-}) => Promise<Result<CreateMCPServerResponseBody, Error>>;
+}) => Promise<
+  Result<CreateMCPServerResponseBody, Error | MCPServerViewNameConflict>
+>;
 
 type CreateInternalMCPServerFn = (
   args: {
@@ -116,7 +117,7 @@ interface SubmitCreateMCPServerDialogFormParams {
   // These are server-derived values, not user input.
   authorization: AuthorizationInfo | null;
   remoteMCPServerOAuthDiscoveryDone: boolean;
-  remoteMCPServerOAuthConnectionId: string | null;
+  oauthConnectionId: string | null;
   discoverOAuthMetadata: DiscoverOAuthMetadataFn;
   createWithURL: CreateRemoteMCPServerFn;
   createInternalMCPServer: CreateInternalMCPServerFn;
@@ -131,7 +132,7 @@ export async function submitCreateMCPServerDialogForm({
   values,
   authorization,
   remoteMCPServerOAuthDiscoveryDone,
-  remoteMCPServerOAuthConnectionId,
+  oauthConnectionId,
   discoverOAuthMetadata,
   createWithURL,
   createInternalMCPServer,
@@ -218,10 +219,10 @@ export async function submitCreateMCPServerDialogForm({
       : authorization?.scope;
 
   if (authorization && oauthUseCase) {
-    if (remoteMCPServerOAuthConnectionId) {
+    if (oauthConnectionId) {
       oauthConnection = {
         useCase: oauthUseCase,
-        connectionId: remoteMCPServerOAuthConnectionId,
+        connectionId: oauthConnectionId,
       };
     } else {
       const cRes = await setupOAuthConnection({
@@ -329,7 +330,15 @@ export async function submitCreateMCPServerDialogForm({
 
     if (createRes.isErr()) {
       const err = createRes.error;
-      const mcpCreateServerError = isMCPCreateServerError(err) ? err : null;
+      if ("nameConflict" in err) {
+        return new Ok({
+          type: "name_conflict",
+          name: err.nameConflict,
+          oauthConnectionId: oauthConnection?.connectionId ?? null,
+          remoteMCPServerOAuthDiscoveryDone:
+            nextRemoteMCPServerOAuthDiscoveryDone,
+        });
+      }
       return new Err(
         new CreateMCPServerDialogSubmitError({
           kind: "create_server",
@@ -337,11 +346,7 @@ export async function submitCreateMCPServerDialogForm({
           remoteMCPServerOAuthDiscoveryDone:
             nextRemoteMCPServerOAuthDiscoveryDone,
           isRemoteServerError:
-            mcpCreateServerError?.isRemoteServerError ?? false,
-          nameConflict: mcpCreateServerError?.nameConflict,
-          oauthConnectionId: mcpCreateServerError?.nameConflict
-            ? (oauthConnection?.connectionId ?? null)
-            : null,
+            isMCPCreateServerError(err) && err.isRemoteServerError,
         })
       );
     }
