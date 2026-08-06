@@ -15,6 +15,7 @@ import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { joinMountRelativePath } from "@app/components/file_explorer/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
+import { EditPodFrameTabDialog } from "@app/components/pod/files/EditPodFrameTabDialog";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
@@ -46,6 +47,12 @@ import {
   getSupportedFileExtensions,
   isInteractiveContentType,
 } from "@app/types/files";
+import {
+  DEFAULT_POD_FRAME_TAB_ICON,
+  MAX_POD_FRAME_TAB_TITLE_LENGTH,
+  type PodFrameTab,
+  podFrameTabBasename,
+} from "@app/types/pod_frame_tab";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -266,13 +273,15 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     pinnedFramePath: pod.pinnedFramePath ?? null,
     isEditor,
   });
-  const { toggleFrameTab, isFrameTab } = usePodFrameTabs({
+  const { removeFrameTab, isFrameTab } = usePodFrameTabs({
     owner,
     podId: pod.sId,
     frameTabs: pod.frameTabs ?? [],
     tabsOrder: pod.tabsOrder ?? [],
     isEditor,
   });
+  const [createFrameTabDraft, setCreateFrameTabDraft] =
+    useState<PodFrameTab | null>(null);
 
   const getExtraFileMenuItems = useCallback(
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
@@ -304,7 +313,18 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           icon: LayoutAlt02,
           onClick: (e) => {
             e.stopPropagation();
-            void toggleFrameTab(entry.path, { fileName: entry.fileName });
+            if (asTab) {
+              void removeFrameTab(entry.path, { fileName: entry.fileName });
+              return;
+            }
+            setCreateFrameTabDraft({
+              path: entry.path,
+              title: podFrameTabBasename(entry.fileName).slice(
+                0,
+                MAX_POD_FRAME_TAB_TITLE_LENGTH
+              ),
+              icon: DEFAULT_POD_FRAME_TAB_ICON,
+            });
           },
         });
       }
@@ -317,7 +337,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       isEditor,
       isFrameTab,
       isPinned,
-      toggleFrameTab,
+      removeFrameTab,
       togglePin,
     ]
   );
@@ -744,6 +764,21 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         isOpen={framePreview !== null}
         onClose={() => setFramePreview(null)}
       />
+
+      {createFrameTabDraft && (
+        <EditPodFrameTabDialog
+          key={createFrameTabDraft.path}
+          owner={owner}
+          podId={pod.sId}
+          frameTabs={pod.frameTabs ?? []}
+          tabsOrder={pod.tabsOrder ?? []}
+          isEditor={isEditor}
+          tab={createFrameTabDraft}
+          mode="create"
+          isOpen
+          onClose={() => setCreateFrameTabDraft(null)}
+        />
+      )}
 
       <RenameFileDialog
         isOpen={showRenameDialog}
