@@ -55,6 +55,7 @@ import {
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
+import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
 import {
   ACTIVE_WAKE_UP_STATUSES,
   type WakeUpScheduleConfig,
@@ -109,6 +110,34 @@ export type RunningAgentMessageContext = {
   agentMessageId: number;
   agentConfigurationId: string;
   rank: number;
+};
+
+export type AgentMessageConsumptionAnalyticsContext = {
+  agentMessage: {
+    agentConfigurationId: string;
+    agentConfigurationVersion: number;
+    completedAt: Date | null;
+    costCredits: number | null;
+    agentMessageModelId: ModelId;
+    modelResolutionMethod: ModelResolutionMethodType | null;
+    resolvedModelId: string | null;
+    resolvedProviderId: string | null;
+    resolvedReasoningEffort: string | null;
+    runIds: string[] | null;
+    status: AgentMessageStatus;
+    version: number;
+  };
+  conversation: {
+    depth: number;
+    conversationId: string;
+    spaceModelId: ModelId | null;
+    triggerModelId: ModelId | null;
+  };
+  triggeringUserMessage: {
+    apiKeyModelId: ModelId | null;
+    origin: UserMessageOrigin;
+    userModelId: ModelId | null;
+  };
 };
 
 type RunningCompactionMessageContext = {
@@ -774,6 +803,77 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  /**
+   * Loads the message graph needed to build consumption analytics without exposing Sequelize rows
+   * outside the Resource layer.
+   *
+   * // TODO(2026-08-06 FLAV): I wish we had a MessageResource layer.
+   */
+  static async fetchAgentMessageConsumptionAnalyticsContext(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<AgentMessageConsumptionAnalyticsContext | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const messageRow = await MessageModel.findOne({
+      where: { sId: agentMessageId, workspaceId },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+        { model: ConversationModel, as: "conversation", required: true },
+      ],
+    });
+    const agentMessage = messageRow?.agentMessage;
+    const conversation = messageRow?.conversation;
+    if (!messageRow || !agentMessage || !conversation) {
+      return null;
+    }
+
+    const triggeringMessageRow =
+      messageRow.parentId === null
+        ? null
+        : await MessageModel.findOne({
+            where: {
+              id: messageRow.parentId,
+              conversationId: conversation.id,
+              workspaceId,
+            },
+            include: [
+              { model: UserMessageModel, as: "userMessage", required: true },
+            ],
+          });
+    const triggeringUserMessage = triggeringMessageRow?.userMessage;
+    if (!triggeringUserMessage) {
+      return null;
+    }
+
+    return {
+      agentMessage: {
+        agentConfigurationId: agentMessage.agentConfigurationId,
+        agentConfigurationVersion: agentMessage.agentConfigurationVersion,
+        completedAt: agentMessage.completedAt,
+        costCredits: agentMessage.costCredits,
+        agentMessageModelId: agentMessage.id,
+        modelResolutionMethod: agentMessage.modelResolutionMethod,
+        resolvedModelId: agentMessage.resolvedModelId,
+        resolvedProviderId: agentMessage.resolvedProviderId,
+        resolvedReasoningEffort: agentMessage.resolvedReasoningEffort,
+        runIds: agentMessage.runIds,
+        status: agentMessage.status,
+        version: messageRow.version,
+      },
+      conversation: {
+        depth: conversation.depth,
+        conversationId: conversation.sId,
+        spaceModelId: conversation.spaceId,
+        triggerModelId: conversation.triggerId,
+      },
+      triggeringUserMessage: {
+        apiKeyModelId: triggeringUserMessage.userContextApiKeyId,
+        origin: triggeringUserMessage.userContextOrigin,
+        userModelId: triggeringUserMessage.userId,
+      },
+    };
+  }
+
   static async updateAgentMessageCostCredits(
     auth: Authenticator,
     {
@@ -887,6 +987,89 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     return row.total_credits;
+  }
+
+  /**
+   * Returns an agent message's ancestor agent configuration IDs from the root agent to the direct
+   * parent. The recursive query follows persisted run-agent and handover origins across
+   * conversations in one database round trip.
+   */
+  static async listAgenticAncestorAgentConfigurationIds(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      maxDepth = 64,
+    }: { agentMessageId: string; maxDepth?: number }
+  ): Promise<string[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const query = `
+      WITH RECURSIVE agent_ancestors AS (
+        SELECT
+          origin."sId"                    AS agent_message_sid,
+          origin_am."agentConfigurationId" AS agent_configuration_id,
+          1                               AS depth
+        FROM messages current_message
+        JOIN messages parent_user_message
+          ON parent_user_message.id = current_message."parentId"
+         AND parent_user_message."workspaceId" = current_message."workspaceId"
+        JOIN user_messages parent_user
+          ON parent_user.id = parent_user_message."userMessageId"
+         AND parent_user."workspaceId" = current_message."workspaceId"
+        JOIN messages origin
+          ON origin."sId" = parent_user."agenticOriginMessageId"
+         AND origin."workspaceId" = current_message."workspaceId"
+        JOIN agent_messages origin_am
+          ON origin_am.id = origin."agentMessageId"
+         AND origin_am."workspaceId" = current_message."workspaceId"
+        WHERE current_message."workspaceId" = :workspaceId
+          AND current_message."sId" = :agentMessageId
+
+        UNION ALL
+
+        SELECT
+          origin."sId",
+          origin_am."agentConfigurationId",
+          ancestors.depth + 1
+        FROM agent_ancestors ancestors
+        JOIN messages current_message
+          ON current_message."sId" = ancestors.agent_message_sid
+         AND current_message."workspaceId" = :workspaceId
+        JOIN messages parent_user_message
+          ON parent_user_message.id = current_message."parentId"
+         AND parent_user_message."workspaceId" = :workspaceId
+        JOIN user_messages parent_user
+          ON parent_user.id = parent_user_message."userMessageId"
+         AND parent_user."workspaceId" = :workspaceId
+        JOIN messages origin
+          ON origin."sId" = parent_user."agenticOriginMessageId"
+         AND origin."workspaceId" = :workspaceId
+        JOIN agent_messages origin_am
+          ON origin_am.id = origin."agentMessageId"
+         AND origin_am."workspaceId" = :workspaceId
+        WHERE ancestors.depth < :maxDepth
+      )
+      SELECT agent_configuration_id, depth
+      FROM agent_ancestors
+      ORDER BY depth DESC
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: recursive ancestry has no Sequelize equivalent.
+    const rows = await frontSequelize.query<{
+      agent_configuration_id: string;
+      depth: number;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: { workspaceId, agentMessageId, maxDepth },
+    });
+
+    if (rows.some((row) => row.depth >= maxDepth)) {
+      logger.warn(
+        { workspaceId: auth.getNonNullableWorkspace().sId, agentMessageId },
+        "[ConsumptionAnalytics] Agent ancestry hit the depth cap."
+      );
+    }
+
+    return rows.map((row) => row.agent_configuration_id);
   }
 
   private static getOptions(
