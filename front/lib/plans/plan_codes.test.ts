@@ -1,11 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   CREDIT_PRICED_FREE_PLAN_CODE,
   FREE_NO_PLAN_CODE,
   isFreePlan,
 } from "@app/lib/plans/plan_codes";
+import { describe, expect, it } from "vitest";
 
 describe("isFreePlan", () => {
   it("is false for custom credit-priced business plans", () => {
