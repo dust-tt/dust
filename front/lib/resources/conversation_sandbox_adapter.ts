@@ -1,3 +1,4 @@
+import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
@@ -8,7 +9,6 @@ import {
   type SandboxLifecycleOwner,
   SandboxResource,
 } from "@app/lib/resources/sandbox_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -169,23 +169,23 @@ export class ConversationSandboxAdapter {
   ): Promise<Result<Record<string, string>, Error>> {
     const baseEnv = { CONVERSATION_ID: conversation.sId };
 
-    if (!conversation.spaceId) {
-      return new Ok(baseEnv);
+    const runtimeOwner = {
+      kind: "conversation" as const,
+      conversationId: conversation.sId,
+      spaceId: conversation.spaceId ?? null,
+    };
+    const podResult = await resolvePodForRuntimeOwner(auth, runtimeOwner);
+    if (podResult.isErr()) {
+      return podResult;
     }
-
-    const pod = await SpaceResource.fetchById(auth, conversation.spaceId);
-    if (!pod || !pod.isProject()) {
+    if (!podResult.value) {
       return new Ok(baseEnv);
     }
 
     const podScopedResult = await PodSandboxAdapter.buildPodScopedEnvVars(
       auth,
-      pod,
-      {
-        kind: "conversation",
-        conversationId: conversation.sId,
-        spaceId: pod.sId,
-      }
+      podResult.value,
+      runtimeOwner
     );
     if (podScopedResult.isErr()) {
       return podScopedResult;
