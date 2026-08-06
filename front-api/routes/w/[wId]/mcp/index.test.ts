@@ -10,6 +10,7 @@ import {
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -331,7 +332,7 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
       serverType: "remote",
       url: "https://new-server.example.com",
       includeGlobal: true,
-      viewName: customName,
+      viewName: ` ${customName} `,
     });
 
     expect(retryResponse.status).toBe(201);
@@ -352,6 +353,66 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
       globalViews.find((view) => view.mcpServerId === retryBody.server.sId)
         ?.name
     ).toBe(customName);
+  });
+
+  it("normalizes custom view names before checking exact conflicts", async () => {
+    const { workspace, auth } = await setup();
+    const existingName = "existing-name";
+    const existingServer = await RemoteMCPServerFactory.create(workspace, {
+      name: existingName,
+      url: "https://existing.example.com",
+      tools: [],
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        existingServer.sId
+      );
+    expect(systemView).toBeDefined();
+
+    await MCPServerViewResource.create(auth, {
+      systemView: systemView!,
+      space: await SpaceResource.fetchWorkspaceGlobalSpace(auth),
+    });
+
+    vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
+      new Ok({
+        name: "candidate-name",
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: "Test description",
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        tools: [],
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+      })
+    );
+
+    const response = await postMcp(workspace, {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+      viewName: ` ${existingName} `,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(existingName);
+  });
+
+  it("rejects custom view names longer than the database column", async () => {
+    const { workspace, auth } = await setup();
+
+    const response = await postMcp(workspace, {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+      viewName: "a".repeat(256),
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("255");
+    expect(await RemoteMCPServerResource.listByWorkspace(auth)).toHaveLength(0);
   });
 
   it("succeeds when creating a remote server with includeGlobal and no name conflict", async () => {
