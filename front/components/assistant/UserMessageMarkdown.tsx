@@ -59,7 +59,6 @@ export const UserMessageMarkdown = ({
       file_preview: getFilePreviewPlugin(),
       skill: ({ skillIcon, skillId, skillName }: SkillDirectiveProps) => (
         <SkillBlock
-          owner={owner}
           skillIcon={skillIcon ?? null}
           skillId={skillId}
           skillName={skillName}

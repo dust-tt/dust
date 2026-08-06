@@ -13,6 +13,7 @@ import {
   PLAN_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
+  SKILL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -41,6 +42,10 @@ type OpenPanelParams =
     }
   | {
       type: "plan";
+    }
+  | {
+      type: "skill";
+      skillId: string;
     };
 
 const isSupportedPanelType = (
@@ -51,7 +56,8 @@ const isSupportedPanelType = (
   type === "interactive_content" ||
   type === "file_preview" ||
   type === "files" ||
-  type === "plan";
+  type === "plan" ||
+  type === "skill";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -192,6 +198,15 @@ export function ConversationSidePanelProvider({
             return;
           }
           setData("plan");
+          break;
+
+        case SKILL_SIDE_PANEL_TYPE:
+          // A different skill switches content; only the same skill toggles closed.
+          if (toggle && params.skillId === data) {
+            closePanel();
+            return;
+          }
+          setData(params.skillId);
           break;
 
         default:
