@@ -33,6 +33,7 @@ import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 
 const MAX_URL_LENGTH = 2048;
 const MAX_NAME_LENGTH = 2048;
+const MAX_VIEW_NAME_LENGTH = 255;
 
 type CustomHeader = { key: string; value: string };
 
@@ -107,6 +108,7 @@ export async function createRemoteMCPServer(
     includeGlobal,
     viewName,
   } = input;
+  const normalizedViewName = viewName?.trim();
 
   if (!url) {
     return new Err(new Error("URL is required"));
@@ -119,9 +121,15 @@ export async function createRemoteMCPServer(
     );
   }
   if (viewName !== undefined) {
-    const trimmed = viewName.trim();
-    if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) {
-      return new Err(new Error("viewName must be a non-empty string."));
+    if (
+      !normalizedViewName ||
+      normalizedViewName.length > MAX_VIEW_NAME_LENGTH
+    ) {
+      return new Err(
+        new Error(
+          `viewName must be a non-empty string of at most ${MAX_VIEW_NAME_LENGTH} characters.`
+        )
+      );
     }
   }
 
@@ -181,7 +189,7 @@ export async function createRemoteMCPServer(
   if (includeGlobal) {
     const conflict = await checkNameConflictInGlobalSpace(
       auth,
-      viewName ?? name,
+      normalizedViewName ?? name,
       metadata.tools
     );
     if (conflict.isErr()) {
@@ -206,7 +214,7 @@ export async function createRemoteMCPServer(
     customHeaders: headersArrayToRecord(customHeaders),
     authorization,
     oAuthUseCase: input.useCase ?? null,
-    viewName,
+    viewName: normalizedViewName,
   });
 
   if (connectionId) {
