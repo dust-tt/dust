@@ -460,7 +460,7 @@ async function handleOrganizationDomainEvent(
   if (eventType !== "deleted") {
     assert(
       state === eventType,
-      `Domain state is not ${eventType} -- expected ${eventType} but got ${state}`
+      `Domain state mismatch: expected ${eventType} but got ${state}`
     );
   }
 
