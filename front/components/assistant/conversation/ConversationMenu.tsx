@@ -86,20 +86,12 @@ export function useConversationMenu() {
     { x: number; y: number } | undefined
   >();
 
-  // Tracks if the menu was just closed to prevent immediate reopening
-  // This flag creates a brief "cooldown" period after menu closure
+  // Tracks the closing animation so the menu stays stable and cannot reopen mid-exit.
   const [wasMenuJustClosed, setWasMenuJustClosed] = useState(false);
 
   const handleMenuOpenChange = useCallback((open: boolean) => {
     setIsMenuOpen(open);
-    if (!open) {
-      // When menu closes, set the "just closed" flag for 100ms
-      // This prevents right-click handlers from immediately reopening the menu
-      setWasMenuJustClosed(true);
-      setTimeout(() => {
-        setWasMenuJustClosed(false);
-      }, 100);
-    }
+    setWasMenuJustClosed(!open);
   }, []);
 
   const handleRightClick = useCallback(
@@ -120,18 +112,23 @@ export function useConversationMenu() {
     [isMenuOpen, wasMenuJustClosed]
   );
 
-  // Clear the trigger position when menu closes to allow animations to complete
-  // The 150ms delay ensures smooth closing animation before position reset
+  // Keep the menu data and trigger position until the closing animation completes.
   useEffect(() => {
-    if (!isMenuOpen) {
-      setTimeout(() => {
-        setMenuTriggerPosition(undefined);
-      }, 150);
+    if (!wasMenuJustClosed) {
+      return;
     }
-  }, [isMenuOpen]);
+
+    const closeAnimationTimeoutId = setTimeout(() => {
+      setWasMenuJustClosed(false);
+      setMenuTriggerPosition(undefined);
+    }, 150);
+
+    return () => clearTimeout(closeAnimationTimeoutId);
+  }, [wasMenuJustClosed]);
 
   return {
     isMenuOpen,
+    isMenuOpenOrClosing: isMenuOpen || wasMenuJustClosed,
     menuTriggerPosition,
     handleRightClick,
     handleMenuOpenChange,
@@ -147,6 +144,7 @@ interface ConversationMenuProps {
     | (({ isPendingAction }: { isPendingAction: boolean }) => ReactElement);
   isConversationDisplayed: boolean;
   isOpen: boolean;
+  isOpenOrClosing: boolean;
   onOpenChange: (open: boolean) => void;
   triggerPosition?: { x: number; y: number };
   displayOpenInBrowser?: boolean;
@@ -160,6 +158,7 @@ export function ConversationMenu({
   trigger,
   isConversationDisplayed,
   isOpen,
+  isOpenOrClosing,
   onOpenChange,
   triggerPosition,
   displayOpenInBrowser,
@@ -218,7 +217,9 @@ export function ConversationMenu({
   };
 
   const shouldWaitBeforeFetching =
-    activeConversationId === null || user?.sId === undefined || !isOpen;
+    activeConversationId === null ||
+    user?.sId === undefined ||
+    !isOpenOrClosing;
   const { mutateConversation } = useConversation({
     conversationId: isConversationDisplayed ? activeConversationId : null,
     workspaceId: owner.sId,

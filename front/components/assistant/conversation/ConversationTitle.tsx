@@ -51,6 +51,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
 
   const {
     isMenuOpen,
+    isMenuOpenOrClosing,
     menuTriggerPosition,
     handleRightClick,
     handleMenuOpenChange,
@@ -202,6 +203,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             )}
             isConversationDisplayed={true}
             isOpen={isMenuOpen}
+            isOpenOrClosing={isMenuOpenOrClosing}
             onOpenChange={handleMenuOpenChange}
             triggerPosition={menuTriggerPosition}
           />

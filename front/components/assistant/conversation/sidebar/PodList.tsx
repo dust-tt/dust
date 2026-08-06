@@ -41,8 +41,12 @@ const PodListItem = memo(
 
     const podPath = getPodRoute(owner.sId, pod.sId);
 
-    const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
-      usePodMenu();
+    const {
+      isMenuOpen,
+      isMenuOpenOrClosing,
+      menuTriggerPosition,
+      handleMenuOpenChange,
+    } = usePodMenu();
 
     const activeConversationId = useActiveConversationId();
     const { conversation } = useConversation({
@@ -168,6 +172,7 @@ const PodListItem = memo(
             trigger={<NavigationListItemAction />}
             isPodDisplayed={activeConversationId === pod.sId}
             isOpen={isMenuOpen}
+            isOpenOrClosing={isMenuOpenOrClosing}
             onOpenChange={handleMenuOpenChange}
             triggerPosition={menuTriggerPosition}
           />

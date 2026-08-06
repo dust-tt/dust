@@ -56,20 +56,12 @@ export function usePodMenu() {
     { x: number; y: number } | undefined
   >();
 
-  // Tracks if the menu was just closed to prevent immediate reopening
-  // This flag creates a brief "cooldown" period after menu closure
+  // Tracks the closing animation so the menu stays stable and cannot reopen mid-exit.
   const [wasMenuJustClosed, setWasMenuJustClosed] = useState(false);
 
   const handleMenuOpenChange = useCallback((open: boolean) => {
     setIsMenuOpen(open);
-    if (!open) {
-      // When menu closes, set the "just closed" flag for 100ms
-      // This prevents right-click handlers from immediately reopening the menu
-      setWasMenuJustClosed(true);
-      setTimeout(() => {
-        setWasMenuJustClosed(false);
-      }, 100);
-    }
+    setWasMenuJustClosed(!open);
   }, []);
 
   const handleRightClick = useCallback(
@@ -90,18 +82,23 @@ export function usePodMenu() {
     [isMenuOpen, wasMenuJustClosed]
   );
 
-  // Clear the trigger position when menu closes to allow animations to complete
-  // The 150ms delay ensures smooth closing animation before position reset
+  // Keep the menu data and trigger position until the closing animation completes.
   useEffect(() => {
-    if (!isMenuOpen) {
-      setTimeout(() => {
-        setMenuTriggerPosition(undefined);
-      }, 150);
+    if (!wasMenuJustClosed) {
+      return;
     }
-  }, [isMenuOpen]);
+
+    const closeAnimationTimeoutId = setTimeout(() => {
+      setWasMenuJustClosed(false);
+      setMenuTriggerPosition(undefined);
+    }, 150);
+
+    return () => clearTimeout(closeAnimationTimeoutId);
+  }, [wasMenuJustClosed]);
 
   return {
     isMenuOpen,
+    isMenuOpenOrClosing: isMenuOpen || wasMenuJustClosed,
     menuTriggerPosition,
     handleRightClick,
     handleMenuOpenChange,
@@ -116,6 +113,7 @@ interface PodMenuProps {
   trigger: ReactElement;
   isPodDisplayed: boolean;
   isOpen: boolean;
+  isOpenOrClosing: boolean;
   onOpenChange: (open: boolean) => void;
   triggerPosition?: { x: number; y: number };
 }
@@ -128,6 +126,7 @@ export function PodMenu({
   trigger,
   isPodDisplayed,
   isOpen,
+  isOpenOrClosing,
   onOpenChange,
   triggerPosition,
 }: PodMenuProps) {
@@ -143,7 +142,7 @@ export function PodMenu({
   };
 
   const shouldWaitBeforeFetching =
-    activePodId === null || user?.sId === undefined || !isOpen;
+    activePodId === null || user?.sId === undefined || !isOpenOrClosing;
 
   const { spaceInfo: podInfo } = useSpaceInfo({
     workspaceId: owner.sId,
