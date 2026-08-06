@@ -24,7 +24,15 @@ const RECONNECT_BACKOFF_CAP: Duration = Duration::from_secs(30);
 /// something reconnecting fixes: only a fresh install does.
 const MAX_CONSECUTIVE_AUTH_FAILURES: u32 = 3;
 
+/// Deadline for the short request/response calls: claiming a job and reporting its result.
 const HTTP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// The work channel is deliberately long-lived, so it gets a client with no total deadline. A
+/// total deadline follows the response body in reqwest, which would cut every connect short of the
+/// minute front holds it open, leaving the poller disconnected for a growing share of the time.
+/// Liveness comes from the read timeout instead: front sends at least the rotated token
+/// immediately and closes cleanly at the end.
+const CHANNEL_READ_TIMEOUT: Duration = Duration::from_secs(90);
 
 #[derive(clap::Args)]
 pub struct PollerArgs {
@@ -52,6 +60,10 @@ pub async fn cmd_poller(args: PollerArgs) -> anyhow::Result<()> {
         .timeout(HTTP_REQUEST_TIMEOUT)
         .build()
         .context("failed to build the poller HTTP client")?;
+    let channel_client = reqwest::Client::builder()
+        .read_timeout(CHANNEL_READ_TIMEOUT)
+        .build()
+        .context("failed to build the poller work channel client")?;
 
     let mut last_event_id: Option<String> = None;
     let mut consecutive_auth_failures = 0;
@@ -59,7 +71,16 @@ pub async fn cmd_poller(args: PollerArgs) -> anyhow::Result<()> {
 
     loop {
         let token = tokens.load()?;
-        match stream::run_connect(&client, &config, &tokens, &token, last_event_id.clone()).await {
+        match stream::run_connect(
+            &channel_client,
+            &client,
+            &config,
+            &tokens,
+            &token,
+            last_event_id.clone(),
+        )
+        .await
+        {
             Ok(resume_point) => {
                 consecutive_auth_failures = 0;
                 backoff = RECONNECT_BACKOFF;
@@ -73,6 +94,13 @@ pub async fn cmd_poller(args: PollerArgs) -> anyhow::Result<()> {
                     consecutive_auth_failures,
                     "Pod function work channel refused the poller's credential"
                 );
+                // A rotated token that no longer authenticates is not something retrying fixes, so
+                // fall back to the one root installed before giving up on it entirely. Without
+                // this, a token lost between front revoking the old one and this process storing
+                // the new one leaves the poller retrying a dead credential until the next wake.
+                if let Err(error) = tokens.forget() {
+                    warn!(error = %error, "Failed to clear the poller's stored credential");
+                }
                 if consecutive_auth_failures >= MAX_CONSECUTIVE_AUTH_FAILURES {
                     anyhow::bail!(
                         "the poller's credential was refused {MAX_CONSECUTIVE_AUTH_FAILURES} times"

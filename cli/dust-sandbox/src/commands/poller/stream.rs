@@ -33,6 +33,14 @@ pub enum ConnectError {
     Transport(anyhow::Error),
 }
 
+/// How many jobs this pod runs at once. The sandbox is a small VM and every run forks a runner
+/// plus a bun process, so this is what keeps a burst of doorbells from taking the pod down.
+const MAX_CONCURRENT_RUNS: usize = 4;
+
+/// A frame this large means the stream is not carrying frames. Bounded so a channel that never
+/// sends a newline cannot grow the buffer for the life of the pod.
+const MAX_BUFFERED_FRAME_BYTES: usize = 1024 * 1024;
+
 /// Read one `data:` frame from the channel.
 ///
 /// Returns `None` for the frames the channel uses for flow control rather than content: the open
@@ -49,13 +57,16 @@ pub fn parse_sse_payload(line: &str) -> Option<anyhow::Result<PollerStreamEvent>
 
 /// Hold one connect open, acting on what arrives, and return where to resume.
 pub async fn run_connect(
-    client: &reqwest::Client,
+    // Two clients: the channel one has no total deadline so a connect can last its full minute,
+    // the job one keeps the short deadline that a claim or a result callback should have.
+    channel_client: &reqwest::Client,
+    job_client: &reqwest::Client,
     config: &Arc<PollerConfig>,
     tokens: &TokenStore,
     token: &str,
     last_event_id: Option<String>,
 ) -> Result<Option<String>, ConnectError> {
-    let mut request = client
+    let mut request = channel_client
         .get(config.work_channel_url())
         .header("authorization", format!("Bearer {token}"))
         .header("accept", "text/event-stream");
@@ -80,16 +91,34 @@ pub async fn run_connect(
         )));
     }
 
+    let run_permits = Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_RUNS));
     let mut resume_point = last_event_id;
-    let mut buffer = String::new();
+    // The credential the claim endpoint will accept. Connecting is what revokes the one this
+    // connect was opened with, so every claim has to use what front hands down on the stream, not
+    // what got us here.
+    let mut current_token = token.to_string();
+    // Bytes, not a string: chunks arrive on arbitrary boundaries, and decoding each one on its own
+    // would turn a multi-byte character split across two chunks into replacement characters, which
+    // is a corrupted frame that only shows up as an unreadable event.
+    let mut buffer: Vec<u8> = Vec::new();
     let mut stream = response.bytes_stream();
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|error| ConnectError::Transport(error.into()))?;
-        buffer.push_str(&String::from_utf8_lossy(&chunk));
+        buffer.extend_from_slice(&chunk);
+        if buffer.len() > MAX_BUFFERED_FRAME_BYTES {
+            return Err(ConnectError::Transport(anyhow::anyhow!(
+                "work channel sent {} bytes without a frame boundary",
+                buffer.len()
+            )));
+        }
 
-        while let Some(newline) = buffer.find('\n') {
-            let line: String = buffer.drain(..=newline).collect();
+        while let Some(newline) = buffer.iter().position(|byte| *byte == b'\n') {
+            let line_bytes: Vec<u8> = buffer.drain(..=newline).collect();
+            let Ok(line) = String::from_utf8(line_bytes) else {
+                warn!("Skipping a Pod function channel frame that was not valid UTF-8");
+                continue;
+            };
             let Some(parsed) = parse_sse_payload(&line) else {
                 continue;
             };
@@ -111,17 +140,28 @@ pub async fn run_connect(
                     if let Err(error) = tokens.store(&rotated) {
                         return Err(ConnectError::Transport(error));
                     }
+                    current_token = rotated;
                 }
                 PollerEvent::Job { invocation_id } => {
+                    // Only a doorbell moves the resume point. The token event carries the id this
+                    // connect started from, and treating it as progress would rewind the poller.
                     if !event.event_id.is_empty() {
                         resume_point = Some(event.event_id.clone());
                     }
                     // Not awaited: a slow job must not stop the channel from delivering the next
                     // doorbell, and each one settles itself.
-                    let client = client.clone();
+                    let client = job_client.clone();
                     let config = Arc::clone(config);
-                    let token = token.to_string();
+                    let token = current_token.clone();
+                    let permits = Arc::clone(&run_permits);
                     tokio::spawn(async move {
+                        // Bounded because the pod is a small VM and each run forks a runner and a
+                        // bun process. The exec path was implicitly capped by the exec API; without
+                        // this the channel replaces that with nothing. A doorbell that waits here
+                        // long enough loses its claim to front, which is the fallback working.
+                        let Ok(_permit) = permits.acquire().await else {
+                            return;
+                        };
                         handle_doorbell(&client, &config, &token, &invocation_id).await;
                     });
                 }
@@ -181,5 +221,35 @@ mod tests {
         assert!(parse_sse_payload("data: {not json}\n")
             .expect("frame")
             .is_err());
+    }
+
+    #[test]
+    fn reads_a_frame_split_across_chunk_boundaries() {
+        // Chunks arrive on byte boundaries, so a frame is only readable once its newline has
+        // arrived. Decoding a partial chunk on its own would corrupt any multi-byte character it
+        // was cut through, and the frame would be dropped as unreadable.
+        let frame = r#"data: {"eventId":"5-0","data":{"type":"sandbox_function_poller_job","created":1,"invocationId":"caf\u00e9"}}"#;
+        let bytes = format!("{frame}\n").into_bytes();
+        let mut buffer: Vec<u8> = Vec::new();
+
+        let mut events = Vec::new();
+        for chunk in bytes.chunks(7) {
+            buffer.extend_from_slice(chunk);
+            while let Some(newline) = buffer.iter().position(|byte| *byte == b'\n') {
+                let line_bytes: Vec<u8> = buffer.drain(..=newline).collect();
+                let line = String::from_utf8(line_bytes).expect("utf8");
+                if let Some(parsed) = parse_sse_payload(&line) {
+                    events.push(parsed.expect("event"));
+                }
+            }
+        }
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(
+            events[0].data,
+            PollerEvent::Job {
+                invocation_id: "caf\u{e9}".to_string()
+            }
+        );
     }
 }
