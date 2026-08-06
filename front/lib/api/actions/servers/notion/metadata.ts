@@ -258,26 +258,40 @@ export const NOTION_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "retrieve_database_schema",
-    description:
-      "Retrieve the schema of a Notion database by its ID: the list of columns and property definitions and their types. Use to inspect a database's structure.",
+    name: "retrieve_database",
+    description: "Retrieve a Notion database by its ID.",
     schema: {
       databaseId: z.string().describe("The Notion database ID."),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving Notion database schema",
-      done: "Retrieve Notion database schema",
+      running: "Retrieving Notion database",
+      done: "Retrieve Notion database",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
   },
   {
-    name: "retrieve_database_content",
+    name: "retrieve_datasource_schema",
     description:
-      "List all entries (the rows and pages) contained in a Notion database by its ID, with optional filtering and sorting. Returns every page in the database.",
+      "Retrieve the schema of a Notion datasource by its ID: the list of columns and property definitions and their types. Use to inspect a datasource's structure.",
     schema: {
-      databaseId: z.string().describe("The Notion database ID."),
+      datasourceId: z.string().describe("The Notion datasource ID."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving Notion datasource schema",
+      done: "Retrieve Notion datasource schema",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "retrieve_datasource_content",
+    description:
+      "List all entries (the rows and pages) contained in a Notion datasource by its ID, with optional filtering and sorting. Returns every page in the datasource.",
+    schema: {
+      datasourceId: z.string().describe("The Notion datasource ID."),
       filter: dbFilterSchema.optional(),
       sorts: dbSortsArraySchema.optional(),
       start_cursor: z
@@ -288,17 +302,17 @@ export const NOTION_TOOLS_METADATA = [
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving Notion database content",
-      done: "Retrieve Notion database content",
+      running: "Retrieving Notion datasource content",
+      done: "Retrieve Notion datasource content",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
   },
   {
-    name: "query_database",
-    description: "Query a Notion database.",
+    name: "query_datasource",
+    description: "Query a Notion datasource.",
     schema: {
-      databaseId: z.string().describe("The Notion database ID."),
+      datasourceId: z.string().describe("The Notion datasource ID."),
       filter: dbFilterSchema.optional(),
       sorts: dbSortsArraySchema.optional(),
       start_cursor: z
@@ -309,8 +323,8 @@ export const NOTION_TOOLS_METADATA = [
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Querying Notion database",
-      done: "Query Notion database",
+      running: "Querying Notion datasource",
+      done: "Query Notion datasource",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
@@ -539,17 +553,17 @@ export const NOTION_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "update_schema_database",
+    name: "update_schema_datasource",
     description:
-      "Update the schema (columns/properties) of an existing Notion database.",
+      "Update the schema (columns/properties) of an existing Notion datasource.",
     schema: {
-      databaseId: z.string().describe("The Notion database ID."),
+      datasourceId: z.string().describe("The Notion datasource ID."),
       properties: propertiesSchema,
     },
     stake: "low",
     displayLabels: {
-      running: "Updating Notion database schema",
-      done: "Update Notion database schema",
+      running: "Updating Notion datasource schema",
+      done: "Update Notion datasource schema",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
@@ -586,7 +600,7 @@ export const NOTION_SERVER = {
   serverInfo: {
     name: "notion",
     version: "1.0.0",
-    description: "Access workspace pages and databases.",
+    description: "Access workspace pages, databases and datasources.",
     authorization: {
       provider: "notion",
       supported_use_cases: ["platform_actions", "personal_actions"],
