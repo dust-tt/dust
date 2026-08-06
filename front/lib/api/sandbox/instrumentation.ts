@@ -100,6 +100,31 @@ export function recordLifecycleOperation(
   ]);
 }
 
+/**
+ * Which transport ran a fast Pod function invocation, and why.
+ *
+ * The one number this rollout turns on: the share of invocations that reached a listening pod.
+ * Emitted for every routing decision including the ones that never touch the channel, so the
+ * warm share is a ratio rather than a count with no denominator.
+ */
+export function recordSandboxFunctionRouting({
+  route,
+  reason,
+  durationMs,
+}: {
+  route: "channel" | "exec";
+  reason: string;
+  durationMs: number;
+}): void {
+  const tags = [regionTag(), `route:${route}`, `reason:${reason}`];
+  getStatsDClient().increment("sandbox.functions.routing", 1, tags);
+  getStatsDClient().distribution(
+    "sandbox.functions.routing.duration",
+    durationMs,
+    tags
+  );
+}
+
 export function recordStateDuration(
   previousStatus: SandboxStatus,
   durationMs: number

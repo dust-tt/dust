@@ -41,6 +41,10 @@ export type PokeSpaceType = SpaceType & {
 export type PokeSandboxType = {
   providerId: string;
   status: SandboxStatus;
+  // Whether the pod holds an open Pod function work channel, and so whether its fast invocations
+  // reach it directly or fall back to the sandbox exec API. Absent for sandboxes that run no Pod
+  // functions.
+  pollerChannelOpen?: boolean;
 };
 
 export type PokeDataSourceType = DataSourceType &
