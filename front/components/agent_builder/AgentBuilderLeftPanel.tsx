@@ -80,6 +80,7 @@ export function AgentBuilderLeftPanel({
           />
           <AgentBuilderSettingsBlock
             agentConfigurationId={agentConfigurationId}
+            initialRequestedSpaceIds={initialRequestedSpaceIds}
             isEditorGateVisible={isEditorGateVisible}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={onAddSelfAsEditor}
