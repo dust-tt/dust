@@ -599,6 +599,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             : "",
         },
         stdin: JSON.stringify(inputEnvelope),
+        // The envelope is this function's own input, and the same exec already hands it a token
+        // through the environment, so there is nothing here that the environment newly exposes.
+        // Worth two fewer round trips to the sandbox on the latency-sensitive path.
+        allowStdinInEnvironment: true,
         timeoutMs: inline
           ? SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS
           : SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
