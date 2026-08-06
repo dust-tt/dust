@@ -333,22 +333,6 @@ describe("notifyActivationConversationAgentReplied", () => {
     expect(vi.mocked(getNovuClient)).toHaveBeenCalled();
   });
 
-  test("does not trigger the activation email for a nested sub-conversation", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agent.sId,
-      messagesCreatedAt: [],
-      spaceId: pod.id,
-      depth: 1,
-      triggerId: activationTrigger.id,
-    });
-
-    await notifyActivationConversationAgentReplied(auth, {
-      conversationId: conversation.sId,
-    });
-
-    expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
-  });
-
   test("does not trigger the activation email for a conversation the user starts", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,

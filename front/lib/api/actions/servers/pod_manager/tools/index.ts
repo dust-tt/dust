@@ -1240,7 +1240,6 @@ export function createProjectManagerTools(
         // Get origin and timezone from the current conversation
         let origin: UserMessageOrigin = "web";
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        // Sub-conversations created on behalf of an agent are nested one level below their parent
         let originMessageId: string | null = null;
 
         if (isAgentLoopRunContext(toolContext?.runContext)) {
@@ -1286,8 +1285,6 @@ export function createProjectManagerTools(
           mentions = [{ configurationId: matchedAgentId }];
         }
 
-        // Create conversation in the project space, nested under the parent so it
-        // stays hidden from the pod's conversation list and notifications.
         const conversationResource = await createConversation(auth, {
           title: params.title,
           visibility: "unlisted",
