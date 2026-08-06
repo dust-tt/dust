@@ -605,6 +605,24 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         user: "agent-proxied",
       });
       if (execResult.isErr()) {
+        if (inline) {
+          // An inline exec that fails is usually one that ran past its ceiling, but nothing in the
+          // provider result says so: the timeout is handed to the sandbox provider and comes back
+          // as an ordinary failure. Log the whole class rather than guess, so we can see how often
+          // a fast function is simply too slow before deciding whether that should move it to
+          // durable the way a refused tool call does.
+          logger.info(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              sandboxFunctionId: sandboxFunction.sId,
+              slug: sandboxFunction.slug,
+              invocationId: this.sId,
+              timeoutMs: SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS,
+              error: execResult.error.message,
+            },
+            "Inline Pod function execution failed"
+          );
+        }
         return execResult;
       }
 

@@ -434,6 +434,46 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return new Ok(sandboxFunctions.length);
   }
 
+  /**
+   * Make a fast function durable, after it did something only a durable function can do.
+   *
+   * A fast function is published on the promise that it does not call Dust tools. When it breaks
+   * that promise the invocation fails, and without this the next one fails the same way: the
+   * publisher's declaration is wrong and nothing on the platform knows it. Recording durable here
+   * costs that function its fast path and makes every later invocation work.
+   *
+   * The update is guarded on the mode still being fast, so concurrent invocations that each break
+   * the promise converge on one write, and a function whose publisher has already moved it is left
+   * alone. Returns whether this call is the one that moved it.
+   *
+   * A re-publish restates the mode, so this is an override the publisher can clear rather than a
+   * permanent verdict. If the republished bundle still calls tools, it is simply made durable
+   * again.
+   */
+  async makeDurable(auth: Authenticator): Promise<boolean> {
+    const [affectedCount, rows] = await this.model.update(
+      { executionMode: "durable" },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          executionMode: "fast",
+        },
+        returning: true,
+      }
+    );
+    if (affectedCount === 0) {
+      return false;
+    }
+
+    const row = rows[0];
+    if (row) {
+      Object.assign(this, row.get());
+    }
+
+    return true;
+  }
+
   async invoke(
     auth: Authenticator,
     body: PostSandboxFunctionInvocationRequestBody,
