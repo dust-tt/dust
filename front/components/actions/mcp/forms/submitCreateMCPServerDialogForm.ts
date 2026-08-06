@@ -1,10 +1,11 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type {
-  CreateMCPServerResponseBody,
-  MCPServerType,
-  MCPServerViewNameConflict,
+import {
+  type CreateMCPServerResponseBody,
+  isMCPServerViewNameConflict,
+  type MCPServerType,
+  type MCPServerViewNameConflict,
 } from "@app/lib/api/mcp";
 import {
   isMCPCreateServerError,
@@ -330,7 +331,7 @@ export async function submitCreateMCPServerDialogForm({
 
     if (createRes.isErr()) {
       const err = createRes.error;
-      if ("nameConflict" in err) {
+      if (isMCPServerViewNameConflict(err)) {
         return new Ok({
           type: "name_conflict",
           name: err.nameConflict,
