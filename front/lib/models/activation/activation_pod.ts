@@ -6,6 +6,8 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
+export type uiView = "compact";
+
 // One row = one Activation Pod: a Pod (project space) provisioned by the
 // activation flow. Canonical record for a pod's owner and activation trigger,
 // replacing the ProjectMetadata provisioningSource flag and the join through
