@@ -188,7 +188,7 @@ export async function createRemoteMCPServer(
   }
 
   if (includeGlobal) {
-    const nameConflict = await getNameConflictInGlobalSpace(
+    const nameConflict = await checkNameConflictInGlobalSpace(
       auth,
       normalizedViewName ?? name,
       metadata.tools
@@ -308,7 +308,7 @@ export async function createInternalMCPServer(
   // otherwise fall back to the internal server name.
   const nameForConflictCheck = viewName ?? name;
   if (includeGlobal) {
-    const nameConflict = await getNameConflictInGlobalSpace(
+    const nameConflict = await checkNameConflictInGlobalSpace(
       auth,
       nameForConflictCheck,
       getInternalMCPServerMetadata(name).tools
@@ -392,7 +392,7 @@ export async function createInternalMCPServer(
   return new Ok(newInternalMCPServer.toJSON());
 }
 
-async function getNameConflictInGlobalSpace(
+async function checkNameConflictInGlobalSpace(
   auth: Authenticator,
   name: string,
   tools: readonly MCPToolType[]
