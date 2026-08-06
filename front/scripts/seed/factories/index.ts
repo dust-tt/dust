@@ -5,6 +5,7 @@ export * from "./seedContext";
 export * from "./seedConversations";
 export * from "./seedDataSources";
 export * from "./seedFeedbacks";
+export * from "./seedGroup";
 export * from "./seedMCPTools";
 export * from "./seedSkill";
 export * from "./seedSkillSuggestions";
