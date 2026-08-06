@@ -2315,6 +2315,86 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok({ addedUsers: [], removedUsers: [] });
   }
 
+  /**
+   * Adds and/or removes members of a manually-managed group, leaving the other members untouched.
+   */
+  async updateRegularManualGroupMembers(
+    auth: Authenticator,
+    {
+      addUserIds,
+      removeUserIds,
+    }: { addUserIds: string[]; removeUserIds: string[] }
+  ): Promise<
+    Result<
+      { addedUsers: UserType[]; removedUsers: UserType[] },
+      DustError<
+        | "unauthorized"
+        | "group_not_found"
+        | "user_not_found"
+        | "user_not_member"
+        | "user_already_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (!auth.isManager()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
+        )
+      );
+    }
+
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
+    }
+
+    // Both sides are fetched at once, then split back by id.
+    const uniqueAddUserIds = [...new Set(addUserIds)];
+    const uniqueRemoveUserIds = [...new Set(removeUserIds)];
+    const users = await UserResource.fetchByIds([
+      ...new Set([...uniqueAddUserIds, ...uniqueRemoveUserIds]),
+    ]);
+    const usersById = new Map(users.map((u) => [u.sId, u.toJSON()]));
+
+    const addedUsers = removeNulls(
+      uniqueAddUserIds.map((userId) => usersById.get(userId))
+    );
+    const removedUsers = removeNulls(
+      uniqueRemoveUserIds.map((userId) => usersById.get(userId))
+    );
+    if (
+      addedUsers.length !== uniqueAddUserIds.length ||
+      removedUsers.length !== uniqueRemoveUserIds.length
+    ) {
+      return new Err(
+        new DustError("user_not_found", "Some users were not found.")
+      );
+    }
+
+    if (addedUsers.length > 0) {
+      const addRes = await this.dangerouslyAddMembers(auth, {
+        users: addedUsers,
+      });
+      if (addRes.isErr()) {
+        return addRes;
+      }
+    }
+
+    if (removedUsers.length > 0) {
+      const removeRes = await this.dangerouslyRemoveMembers(auth, {
+        users: removedUsers,
+      });
+      if (removeRes.isErr()) {
+        return removeRes;
+      }
+    }
+
+    return new Ok({ addedUsers, removedUsers });
+  }
+
   async deleteRegularManualGroup(
     auth: Authenticator
   ): Promise<
@@ -2843,5 +2923,24 @@ export class GroupResource extends BaseResource<GroupModel> {
       memberCount,
       poolCapAwuCredits: this.poolCapAwuCredits,
     };
+  }
+
+  /**
+   * Batched counterpart of `toJSONWithMemberCount`: resolves the member counts of all the groups in
+   * a single query instead of one per group.
+   */
+  static async toJSONWithMemberCounts(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<GroupType[]> {
+    const memberCounts = await GroupResource.getMemberCountsForGroups(
+      auth,
+      groups
+    );
+
+    return groups.map((group) => ({
+      ...group.toJSON(),
+      memberCount: memberCounts.get(group.id) ?? 0,
+    }));
   }
 }

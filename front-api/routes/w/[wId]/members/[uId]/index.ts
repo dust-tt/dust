@@ -23,6 +23,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import groups from "./groups";
 import seatType from "./seat-type";
 import spendLimit from "./spend_limit";
 
@@ -38,6 +39,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/members/:uId.
 const app = workspaceApp();
 
+app.route("/groups", groups);
 app.route("/seat-type", seatType);
 app.route("/spend_limit", spendLimit);
 

@@ -29,3 +29,19 @@ export type PatchGroupResponseBody = {
 export type DeleteGroupResponseBody = {
   success: true;
 };
+
+export type GetMemberGroupsResponseBody = {
+  groups: GroupType[];
+};
+
+export const PostMemberGroupBodySchema = z.object({
+  groupId: z.string(),
+});
+
+export type PostMemberGroupResponseBody = {
+  group: GroupType;
+};
+
+export type DeleteMemberGroupResponseBody = {
+  success: true;
+};
