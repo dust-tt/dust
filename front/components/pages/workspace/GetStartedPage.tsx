@@ -240,11 +240,10 @@ function JustAskComposer({
           mentions: mentions.map(toMentionType),
           contentFragments,
           selectedMCPServerViewIds,
-          // Scope the conversation to the pod space so it surfaces in recent conversations.
-          selectedSpaceIds: podId ? [podId] : selectedSpaceIds,
           richMentions: mentions,
           modelSelection,
         },
+        spaceId: podId,
         deferMessage: true,
       });
 
