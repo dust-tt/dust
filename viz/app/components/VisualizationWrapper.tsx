@@ -38,7 +38,7 @@ import * as lucideAll from "lucide-react";
 import * as motionAll from "motion/react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
@@ -413,6 +413,15 @@ export function VisualizationWrapper({
     [ref, downloadFile, identifier]
   );
 
+  // Keep latest callbacks in refs so the loadCode effect does not re-run (and
+  // re-transpile) when useResizeDetector's `ref` identity changes after mount.
+  const handleScreenshotDownloadRef = useRef(handleScreenshotDownload);
+  const memoizedDownloadFileRef = useRef(memoizedDownloadFile);
+  useEffect(() => {
+    handleScreenshotDownloadRef.current = handleScreenshotDownload;
+    memoizedDownloadFileRef.current = memoizedDownloadFile;
+  });
+
   // A rejected promise nothing catches never reaches the ErrorBoundary, which only sees throws
   // during render. Frame code is async throughout (a `callFunction` awaited without a `catch`, a
   // failed fetch), so without this the Frame shows a spinner forever and reports nothing.
@@ -436,9 +445,14 @@ export function VisualizationWrapper({
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadCode = async () => {
       try {
         const fetchedCode = await api.data.fetchCode();
+        if (cancelled) {
+          return;
+        }
         if (!fetchedCode) {
           setErrorMessage(
             new Error("No code provided to visualization component")
@@ -471,8 +485,11 @@ export function VisualizationWrapper({
             SandboxFunctionCallError,
             callFunction: (functionId: string, input?: unknown) =>
               api.data.callFunction(functionId, input),
-            captureScreenshot: handleScreenshotDownload,
-            triggerUserFileDownload: memoizedDownloadFile,
+            captureScreenshot: (...args: [string?]) =>
+              handleScreenshotDownloadRef.current(...args),
+            triggerUserFileDownload: (
+              ...args: Parameters<typeof memoizedDownloadFile>
+            ) => memoizedDownloadFileRef.current(...args),
             useFile: (fileId: string) => useFile(fileId, api.data),
             usePodFunction,
             usePodFunctionMutation,
@@ -497,7 +514,17 @@ export function VisualizationWrapper({
             ] as const;
           })
         );
+        if (cancelled) {
+          return;
+        }
         const fileImportScope = Object.fromEntries(fileEntries);
+
+        const generatedModule = importCode(codeToUse, {
+          import: {
+            ...fileImportScope,
+            ...baseImports,
+          },
+        });
 
         setRunnerParams({
           code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
@@ -510,16 +537,14 @@ export function VisualizationWrapper({
               "lucide-react": lucideAll,
               "@dust/slideshow/v1": dustSlideshowV1,
               "@dust/slideshow/v2": dustSlideshowV2,
-              "@dust/generated-code": importCode(codeToUse, {
-                import: {
-                  ...fileImportScope,
-                  ...baseImports,
-                },
-              }),
+              "@dust/generated-code": generatedModule,
             },
           },
         });
       } catch (error) {
+        if (cancelled) {
+          return;
+        }
         setErrorMessage(
           error instanceof Error
             ? error
@@ -528,8 +553,11 @@ export function VisualizationWrapper({
       }
     };
 
-    loadCode();
-  }, [memoizedDownloadFile, handleScreenshotDownload, api.data, isEditable]);
+    void loadCode();
+    return () => {
+      cancelled = true;
+    };
+  }, [api.data, isEditable, identifier]);
 
   const handleSVGDownload = useCallback(async () => {
     if (ref.current) {
