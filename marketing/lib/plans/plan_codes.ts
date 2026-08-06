@@ -55,9 +55,6 @@ export const isProPlanPrefix = (planCode: string) =>
 export const isFriendsAndFamilyPlan = (planCode: string) =>
   planCode === "FREE_FRIENDSAMILY";
 
-export const isCreditPricedBusinessPlan = (planCode: string) =>
-  planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE;
-
 export const isBusinessPlanPrefix = (planCode: string) =>
   planCode.startsWith("CP_BUSINESS_");
 
@@ -65,7 +62,7 @@ export const isBusinessPlanPrefix = (planCode: string) =>
 export const isFreePlan = (planCode: string) =>
   !isEnterprisePlanPrefix(planCode) &&
   !isProPlanPrefix(planCode) &&
-  !isCreditPricedBusinessPlan(planCode);
+  !isBusinessPlanPrefix(planCode);
 
 export const isFreeTrialPhonePlan = (planCode: string) =>
   planCode === FREE_TRIAL_PHONE_PLAN_CODE;
