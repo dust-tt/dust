@@ -3,6 +3,7 @@ import {
   ROLE_PROVISIONING_GROUPS_LABEL,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
+import { MemberGroupsSection } from "@app/components/workspace/MemberGroupsSection";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { handleMembersRoleChange } from "@app/lib/client/members";
@@ -153,6 +154,8 @@ export function ChangeMemberModal({
                   </div>
                   <Page.P>{roleMessage}</Page.P>
                 </div>
+
+                <MemberGroupsSection owner={workspace} userId={member.sId} />
 
                 {canRevokeMember && (
                   <div className="flex flex-none flex-col gap-2">
