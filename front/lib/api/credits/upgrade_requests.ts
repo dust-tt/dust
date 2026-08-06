@@ -257,6 +257,27 @@ export async function listResolvedUpgradeRequests(
   return { requests: requests.map((r) => r.toJSON()), total };
 }
 
+// Admin-only: every resolved request, paginated fetching
+export async function listAllResolvedUpgradeRequests(
+  auth: Authenticator
+): Promise<MembershipUpgradeRequestType[]> {
+  const allRequests: MembershipUpgradeRequestType[] = [];
+  let offset = 0;
+  while (true) {
+    const { requests } =
+      await MembershipUpgradeRequestResource.listResolvedByWorkspace(auth, {
+        limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+        offset,
+      });
+    allRequests.push(...requests.map((r) => r.toJSON()));
+    if (requests.length < RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE) {
+      break;
+    }
+    offset += RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE;
+  }
+  return allRequests;
+}
+
 // Admin-only: record the outcome of a request. The resolution is persisted
 // first (the source of truth for the request); an approval that carries a
 // `limit` then syncs the requester's spend limit, and is reverted back to
