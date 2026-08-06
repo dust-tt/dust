@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
 import { triggerActivationNewConversationEmail } from "@app/lib/notifications/workflows/activation-new-conversation";
+import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -271,13 +272,12 @@ export async function notifyActivationConversationAgentReplied(
     return;
   }
 
-  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
-  // Only the conversation created by the pod's own activation nudge trigger gets the notification
-  if (
-    activationPod === null ||
-    activationPod.triggerId === null ||
-    conversationResource.triggerId !== activationPod.triggerId
-  ) {
+  // Only a conversation opened by one of the pod's nudges gets the notification.
+  const nudge = await ActivationNudgeResource.fetchByConversation(
+    auth,
+    conversationResource
+  );
+  if (!nudge) {
     return;
   }
 

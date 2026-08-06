@@ -73,6 +73,21 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
     await this.update({ status: "failed", errorMessage });
   }
 
+  // The nudge that opened this conversation, if it is a nudge conversation.
+  static async fetchByConversation(
+    auth: Authenticator,
+    conversation: ConversationResource
+  ): Promise<ActivationNudgeResource | null> {
+    const nudge = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+      },
+    });
+
+    return nudge ? new this(this.model, nudge.get()) : null;
+  }
+
   // Fetches the most recent nudge that reached the user (or is on its way), if
   // any. Nudges that failed to post are excluded: they gate nothing, so the
   // pod can be nudged again at its next slot.

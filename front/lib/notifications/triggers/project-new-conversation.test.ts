@@ -5,16 +5,16 @@ import {
   notifyActivationConversationAgentReplied,
 } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { ActivationNudgeFactory } from "@app/tests/utils/ActivationNudgeFactory";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
@@ -291,7 +291,7 @@ describe("notifyActivationConversationAgentReplied", () => {
   let user: UserResource;
   let pod: SpaceResource;
   let agent: LightAgentConfigurationType;
-  let activationTrigger: TriggerResource;
+  let activationPod: ActivationPodResource;
 
   beforeEach(async () => {
     const result = await createResourceTest({ role: "user" });
@@ -305,26 +305,37 @@ describe("notifyActivationConversationAgentReplied", () => {
       description: "Test",
     });
 
-    activationTrigger = await TriggerFactory.webhook(auth, {
-      agentConfigurationId: agent.sId,
-      spaceId: pod.id,
-    });
-    await ActivationPodResource.makeNew(auth, {
-      pod,
-      user,
-      trigger: activationTrigger,
-    });
+    activationPod = await ActivationPodResource.makeNew(auth, { pod, user });
 
     vi.mocked(getNovuClient).mockClear();
   });
 
-  test("triggers the activation email for the pod's nudge-created conversation", async () => {
+  // A conversation opened by a nudge, i.e. one an ActivationNudge row points at.
+  async function createNudgeConversation({ depth }: { depth?: number } = {}) {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [],
       spaceId: pod.id,
-      triggerId: activationTrigger.id,
+      depth,
     });
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    if (!conversationResource) {
+      throw new Error("Expected the conversation to be fetchable.");
+    }
+    await ActivationNudgeFactory.create(auth, {
+      activationPod,
+      pod,
+      conversation: conversationResource,
+    });
+
+    return conversation;
+  }
+
+  test("triggers the activation email for the pod's nudge-created conversation", async () => {
+    const conversation = await createNudgeConversation();
 
     await notifyActivationConversationAgentReplied(auth, {
       conversationId: conversation.sId,
@@ -334,13 +345,7 @@ describe("notifyActivationConversationAgentReplied", () => {
   });
 
   test("does not trigger the activation email for a nested sub-conversation", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agent.sId,
-      messagesCreatedAt: [],
-      spaceId: pod.id,
-      depth: 1,
-      triggerId: activationTrigger.id,
-    });
+    const conversation = await createNudgeConversation({ depth: 1 });
 
     await notifyActivationConversationAgentReplied(auth, {
       conversationId: conversation.sId,
