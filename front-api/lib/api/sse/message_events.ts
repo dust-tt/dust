@@ -1,8 +1,12 @@
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { getRunOwnerUserId } from "@app/lib/api/assistant/conversation/messages";
 import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
+import { redactUserMemoryFromMessageStreamEvent } from "@app/lib/api/assistant/user_memory_redaction";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
@@ -67,11 +71,30 @@ export async function streamMessageEventsForRoute(
     });
   }
 
+  const runOwnerRes = await getRunOwnerUserId(auth, { messageId });
+  if (runOwnerRes.isErr()) {
+    logger.warn(
+      { conversationId, messageId, err: runOwnerRes.error },
+      "Could not resolve run owner; redacting user_memory from the stream."
+    );
+  }
+  const canViewUserMemory =
+    runOwnerRes.isOk() &&
+    canCurrentUserRespondToParentUserMessage({
+      parentUserId: runOwnerRes.value,
+      currentUserId: auth.user()?.id,
+    });
+
   return streamEvents({
     ctx,
     iterator: (signal) =>
       getMessagesEvents(auth, { messageId, lastEventId, signal }),
-    transform: (event) => opts.transformEvent(auth, event),
+    transform: (event) => {
+      const redacted = canViewUserMemory
+        ? event
+        : redactUserMemoryFromMessageStreamEvent(event);
+      return opts.transformEvent(auth, redacted);
+    },
     writeDoneSentinel: true,
   });
 }

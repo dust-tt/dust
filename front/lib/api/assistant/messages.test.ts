@@ -1,5 +1,6 @@
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MentionModel,
@@ -12,6 +13,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -1102,6 +1104,130 @@ describe("batchRenderMessages", () => {
           }
         }
       }
+    });
+  });
+
+  describe("user memory redaction", () => {
+    // Leaks through the tool output (the `read` tool result).
+    const MEMORY_OUTPUT_TEXT = "SECRET: user lives in Paris and loves sushi";
+    // Leaks through the function-call arguments (the `edit` tool params).
+    const MEMORY_ARGS_TEXT = "SECRET: user moved to Paris last year";
+
+    async function setupConversationWithUserMemoryAction() {
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const agentMessageModel = await MessageModel.findOne({
+        where: { conversationId: conversation.id, workspaceId: workspace.id },
+        include: [
+          { model: AgentMessageModel, as: "agentMessage", required: true },
+        ],
+        order: [["rank", "DESC"]],
+      });
+      expect(agentMessageModel).not.toBeNull();
+
+      await AgentMCPActionFactory.create(auth, {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: agentMessageModel!.agentMessageId!,
+        status: "succeeded",
+        step: 0,
+        output: [{ type: "text", text: MEMORY_OUTPUT_TEXT }],
+        functionCallArguments: JSON.stringify({
+          oldStr: MEMORY_ARGS_TEXT,
+          newStr: "SECRET: user now lives in Lyon",
+        }),
+        toolServerId: internalMCPServerNameToSId({
+          name: "user_memory",
+          workspaceId: workspace.id,
+          prefix: 0,
+        }),
+      });
+
+      return { conversation, agentMessageModel: agentMessageModel! };
+    }
+
+    async function renderAsUser(
+      renderAuth: Authenticator,
+      conversationId: string,
+      agentMessageModel: MessageModel
+    ): Promise<AgentMessageType> {
+      const conversationResource = await ConversationResource.fetchById(
+        renderAuth,
+        conversationId
+      );
+
+      const result = await batchRenderMessages(
+        renderAuth,
+        conversationResource!,
+        [agentMessageModel],
+        "full"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      const rendered = result.value.find((m) => m.type === "agent_message") as
+        | AgentMessageType
+        | undefined;
+      expect(rendered).toBeDefined();
+      return rendered!;
+    }
+
+    it("returns the memory content to the owner of the run", async () => {
+      const { conversation, agentMessageModel } =
+        await setupConversationWithUserMemoryAction();
+
+      const rendered = await renderAsUser(
+        auth,
+        conversation.sId,
+        agentMessageModel
+      );
+
+      const outputText = JSON.stringify(
+        rendered.actions.find((a) => a.internalMCPServerName === "user_memory")
+          ?.output ?? []
+      );
+      expect(outputText).toContain(MEMORY_OUTPUT_TEXT);
+      expect(JSON.stringify(rendered.contents)).toContain(MEMORY_ARGS_TEXT);
+    });
+
+    it("hides the memory content from a non-owner participant", async () => {
+      const { conversation, agentMessageModel } =
+        await setupConversationWithUserMemoryAction();
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const rendered = await renderAsUser(
+        otherUserAuth,
+        conversation.sId,
+        agentMessageModel
+      );
+
+      const action = rendered.actions.find(
+        (a) => a.internalMCPServerName === "user_memory"
+      );
+      expect(action).toBeDefined();
+      // The tool output is redacted.
+      expect(JSON.stringify(action?.output ?? [])).not.toContain(
+        MEMORY_OUTPUT_TEXT
+      );
+      // The tool params (both on the action and in the function-call step
+      // content) are redacted.
+      expect(JSON.stringify(action?.params ?? {})).not.toContain(
+        MEMORY_ARGS_TEXT
+      );
+      expect(JSON.stringify(rendered.contents)).not.toContain(MEMORY_ARGS_TEXT);
     });
   });
 });
