@@ -656,7 +656,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const text = systemPromptToText(sections);
 
     expect(text).toContain(
-      "Files attached as `<file>` tags are available under `/files/conversation`."
+      "Files attached as `<file>` tags appear under `/files/conversation`."
     );
     expect(text).toContain(
       "When using the Computer, files are available under `/files/`."

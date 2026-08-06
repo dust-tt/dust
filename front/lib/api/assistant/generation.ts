@@ -305,7 +305,7 @@ function constructAttachmentsSectionNewFileExplorer({
   isComputerAlwaysActive: boolean;
 }): string {
   const tabularFilesLine = hasSandboxTools
-    ? `- Files attached as \`<file>\` tags are available under \`/files/conversation\`. ${SANDBOX_FILE_MOUNTS_PROMPT} ${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
+    ? `- ${SANDBOX_FILE_MOUNTS_PROMPT} Files attached as \`<file>\` tags appear under \`/files/conversation\`. ${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
     : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
 
   return (
