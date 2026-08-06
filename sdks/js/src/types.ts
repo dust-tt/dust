@@ -811,6 +811,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "user_memory"
   | "similar_agents_check"
   | "enforce_user_spend_limit_rate_cap"
+  | "editable_tool_inputs"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
