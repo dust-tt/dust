@@ -599,6 +599,7 @@ export const InputBarAttachmentsPicker = ({
               className="text-muted-foreground"
             />
           }
+          disabled={disabled || isLoading || isAnyToolFileUploading}
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();

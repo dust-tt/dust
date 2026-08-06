@@ -496,6 +496,7 @@ export function CapabilitiesPicker({
                 className="text-muted-foreground"
               />
             }
+            disabled={disabled || isLoading}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
