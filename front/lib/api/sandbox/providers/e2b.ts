@@ -37,7 +37,12 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { CommandExitError, NotFoundError, Sandbox } from "e2b";
+import {
+  CommandExitError,
+  type CommandHandle,
+  NotFoundError,
+  Sandbox,
+} from "e2b";
 
 const ONE_HOUR_MS = 60 * 60 * 1_000;
 
@@ -52,6 +57,34 @@ const SANDBOX_LIFETIME_MS = 24 * ONE_HOUR_MS;
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
 const LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS = 120_000;
+
+/**
+ * How long a connected sandbox handle is reused before reconnecting.
+ *
+ * This is also the refresh interval for the sandbox's provider-side expiry: every connect passes
+ * `timeoutMs: SANDBOX_LIFETIME_MS`, so reconnecting on a fixed interval keeps any sandbox we are
+ * still working with from reaching its deadline, the way a connect on every operation used to.
+ */
+const CONNECTION_TTL_MS = 5 * 60 * 1_000;
+
+/**
+ * Cap on cached handles. A handle is small (connection config plus a fetch transport, no socket
+ * of its own), so this only needs to stay ahead of the sandboxes one process talks to.
+ */
+const MAX_CACHED_CONNECTIONS = 1_000;
+
+/**
+ * Environment variable carrying inline stdin. Unset by the wrapper below before the command runs,
+ * so the payload reaches the workload through the pipe and not through its environment.
+ */
+const INLINE_STDIN_ENV = "DUST_EXEC_STDIN";
+
+/**
+ * Cap on inline stdin, kept under a pipe's 64KiB buffer so `printf` writes the whole payload and
+ * exits rather than blocking on a command that never reads it. Also well under the kernel's
+ * per-environment-string limit (MAX_ARG_STRLEN, 128KiB). Larger payloads take the streamed path.
+ */
+const MAX_INLINE_STDIN_BYTES = 32 * 1_024;
 
 const ALL_TRAFFIC = "0.0.0.0/0";
 
@@ -156,22 +189,101 @@ interface E2BCommandOpts {
   user?: string;
 }
 
-// Send command stdin via the E2B Commands API rather than baking it into argv.
-// The command is started in the background with stdin open; if anything goes
-// wrong on the SDK round-trip, we kill the handle so we don't leak a running
-// command on the VM until the lifetime cap kicks in.
-async function runWithStdin(
-  sandbox: Sandbox,
+type StdinDelivery =
+  | { mode: "none" }
+  | { mode: "inline"; payload: string }
+  | { mode: "streamed"; payload: string | Uint8Array };
+
+/**
+ * How stdin reaches the command.
+ *
+ * envd has no way to carry stdin in the start request: it takes a boolean saying stdin will be
+ * open, after which `sendStdin` and `closeStdin` are two more sequential calls to the sandbox.
+ * Passing the payload through the environment and piping it in collapses all three into the
+ * single start call. Binary and oversized payloads keep the streamed path, because an environment
+ * value can hold neither NUL nor an unbounded string.
+ */
+function getStdinDelivery(
+  stdin: string | Uint8Array | undefined
+): StdinDelivery {
+  if (stdin === undefined) {
+    return { mode: "none" };
+  }
+  if (
+    typeof stdin !== "string" ||
+    stdin.includes("\0") ||
+    Buffer.byteLength(stdin, "utf8") > MAX_INLINE_STDIN_BYTES
+  ) {
+    return { mode: "streamed", payload: stdin };
+  }
+
+  return { mode: "inline", payload: stdin };
+}
+
+/**
+ * Feeds inline stdin to `command` from the environment.
+ *
+ * `printf` is a bash builtin, so this resolves nothing through PATH (SEC3), and passing the
+ * payload as an argument to `%s` keeps it out of the format string. The variable is unset before
+ * the command starts so the workload only ever sees the payload on its stdin. `printf`'s own
+ * stderr is dropped: the only thing it can report here is a write error against a command that
+ * exited without reading, which is not a failure of the command itself.
+ */
+function withInlineStdin(command: string): string {
+  return [
+    `printf '%s' "$${INLINE_STDIN_ENV}" 2>/dev/null | { unset ${INLINE_STDIN_ENV}`,
+    command,
+    "}",
+  ].join("\n");
+}
+
+/**
+ * The single start call that carries the command, its environment, and, when it fits, its stdin.
+ *
+ * Always started in the background: waiting is the caller's job, because only the start is safe
+ * to retry on a new connection.
+ */
+function buildStartRequest(
   command: string,
   commandOpts: E2BCommandOpts,
+  stdin: StdinDelivery
+) {
+  const opts = {
+    cwd: commandOpts.cwd,
+    envs: commandOpts.envs,
+    timeoutMs: commandOpts.timeoutMs,
+    user: commandOpts.user,
+    background: true as const,
+  };
+
+  switch (stdin.mode) {
+    case "none":
+      return { command, opts };
+    case "inline":
+      return {
+        command: withInlineStdin(command),
+        opts: {
+          ...opts,
+          envs: { ...commandOpts.envs, [INLINE_STDIN_ENV]: stdin.payload },
+        },
+      };
+    case "streamed":
+      // Passing `stdin: false` explicitly is rejected by envd versions that predate the option,
+      // so it is only ever set on the path that needs envd to hold stdin open.
+      return { command, opts: { ...opts, stdin: true as const } };
+    default:
+      return assertNever(stdin);
+  }
+}
+
+// Sends command stdin over the E2B Commands API for payloads that cannot be inlined. The command
+// is started with stdin open; if anything goes wrong on the SDK round-trip, we kill the handle so
+// we don't leak a running command on the VM until the lifetime cap kicks in.
+async function sendStdinAndWait(
+  sandbox: Sandbox,
+  handle: CommandHandle,
   stdin: string | Uint8Array
 ) {
-  const handle = await sandbox.commands.run(command, {
-    ...commandOpts,
-    background: true,
-    stdin: true,
-  });
-
   try {
     // Per-RPC timeout, not the command's total runtime — clamping to the
     // overall timeoutMs would block sendStdin/closeStdin for the entire
@@ -201,6 +313,12 @@ async function runWithStdin(
   }
 }
 
+interface CachedConnection {
+  // Held as a promise so concurrent operations on one sandbox share a single connect.
+  sandbox: Promise<Sandbox>;
+  expiresAtMs: number;
+}
+
 /**
  * E2B implementation of SandboxProvider.
  *
@@ -210,6 +328,17 @@ async function runWithStdin(
 export class E2BSandboxProvider implements SandboxProvider {
   private readonly apiKey: string;
   private readonly domain: string | undefined;
+
+  /**
+   * Connected sandbox handles, keyed by provider id.
+   *
+   * `Sandbox.connect` is a control-plane POST to E2B that every operation used to pay before it
+   * could address the sandbox at all — around 100ms from our region, on top of the call that does
+   * the actual work. The handle it returns stays valid for the sandbox's lifetime, so we keep it.
+   * The provider is a per-process singleton, which makes this cache per-process too: no handle,
+   * and therefore no sandbox access token, is shared or persisted anywhere.
+   */
+  private readonly connections = new Map<string, CachedConnection>();
 
   constructor(config: E2BConfig) {
     this.apiKey = config.apiKey;
@@ -221,6 +350,138 @@ export class E2BSandboxProvider implements SandboxProvider {
       apiKey: this.apiKey,
       ...(this.domain ? { domain: this.domain } : {}),
     };
+  }
+
+  private hasFreshConnection(providerId: string): boolean {
+    const existing = this.connections.get(providerId);
+
+    return existing !== undefined && existing.expiresAtMs > Date.now();
+  }
+
+  /**
+   * Returns a handle for `providerId`, reusing a cached one while it is fresh.
+   *
+   * `cached` reports whether the handle predates this call, which is what makes a retry worth
+   * attempting: a handle we just opened and that already failed will fail the same way again.
+   */
+  private async getConnection(
+    providerId: string
+  ): Promise<{ sandbox: Sandbox; cached: boolean }> {
+    const existing = this.connections.get(providerId);
+    if (existing && existing.expiresAtMs > Date.now()) {
+      try {
+        return { sandbox: await existing.sandbox, cached: true };
+      } catch (err) {
+        this.dropConnection(providerId, existing);
+        throw err;
+      }
+    }
+
+    return { sandbox: await this.openConnection(providerId), cached: false };
+  }
+
+  private async openConnection(providerId: string): Promise<Sandbox> {
+    const entry: CachedConnection = {
+      // Translated here rather than at each call site so that callers can tell a sandbox that is
+      // gone from a NotFoundError raised by the operation itself, such as reading a missing file.
+      sandbox: Sandbox.connect(providerId, {
+        ...this.connectionOpts(),
+        timeoutMs: SANDBOX_LIFETIME_MS,
+      }).catch((err: unknown) => {
+        throw err instanceof NotFoundError
+          ? new SandboxNotFoundError(providerId)
+          : normalizeError(err);
+      }),
+      expiresAtMs: Date.now() + CONNECTION_TTL_MS,
+    };
+    // Delete before setting so the entry moves to the end of the map's insertion order, which is
+    // what makes the eviction below drop the least recently opened connection.
+    this.connections.delete(providerId);
+    this.connections.set(providerId, entry);
+    this.evictConnections();
+
+    try {
+      return await entry.sandbox;
+    } catch (err) {
+      this.dropConnection(providerId, entry);
+      throw err;
+    }
+  }
+
+  // Only drops `entry` when it is still the cached one: a concurrent caller may already have
+  // replaced a failed handle with a working one.
+  private dropConnection(providerId: string, entry?: CachedConnection): void {
+    if (!entry || this.connections.get(providerId) === entry) {
+      this.connections.delete(providerId);
+    }
+  }
+
+  private evictConnections(): void {
+    if (this.connections.size <= MAX_CACHED_CONNECTIONS) {
+      return;
+    }
+
+    const nowMs = Date.now();
+    for (const [providerId, entry] of this.connections) {
+      if (entry.expiresAtMs <= nowMs) {
+        this.connections.delete(providerId);
+      }
+    }
+
+    // Map iterates in insertion order, so this drops the connections opened longest ago first.
+    for (const providerId of this.connections.keys()) {
+      if (this.connections.size <= MAX_CACHED_CONNECTIONS) {
+        break;
+      }
+      this.connections.delete(providerId);
+    }
+  }
+
+  /**
+   * Runs `op` against the sandbox, optionally retrying it once on a freshly connected handle.
+   *
+   * A handle does not survive the sandbox being paused or recreated. `sleep` and `destroy` drop
+   * it, so what is left is the sandbox disappearing underneath us; rather than probe for that on
+   * every call, the operation is allowed to fail and reconnect, and `Sandbox.connect` resumes a
+   * paused sandbox the way the connect-every-time path did.
+   *
+   * `retryOnStaleConnection` must only be set for an operation that is safe to run twice, which
+   * running a command is NOT: the SDK aborts `Commands.start` on its own request timeout, and
+   * that timeout can fire after envd has already forked the process, so a throw there does not
+   * prove the command never ran. Commands therefore drop the connection and surface the error,
+   * exactly as they did when every call connected first, and the next call reconnects.
+   */
+  private async withConnection<T>(
+    providerId: string,
+    op: (sandbox: Sandbox) => Promise<T>,
+    { retryOnStaleConnection }: { retryOnStaleConnection: boolean }
+  ): Promise<T> {
+    const { sandbox, cached } = await this.getConnection(providerId);
+
+    try {
+      return await op(sandbox);
+    } catch (err) {
+      // envd answering "not found" means the connection is healthy and the thing the operation
+      // named is what is missing, so there is nothing to reconnect for. A connect that hit a
+      // missing sandbox cannot land here: openConnection turns that into SandboxNotFoundError.
+      if (err instanceof NotFoundError) {
+        throw err;
+      }
+
+      // Otherwise stop handing this connection to the next caller. Reconnecting costs one round
+      // trip; continuing to use a handle that just failed can cost every call after it.
+      this.dropConnection(providerId);
+      if (!cached || !retryOnStaleConnection) {
+        throw err;
+      }
+
+      logger.info(
+        { providerId, err: normalizeError(err) },
+        "Cached E2B sandbox connection failed, reconnecting"
+      );
+
+      return op(await this.openConnection(providerId));
+    }
   }
 
   private async killSandboxAfterLocalAccountHardeningFailure(
@@ -247,34 +508,36 @@ export class E2BSandboxProvider implements SandboxProvider {
     commandOpts: E2BCommandOpts,
     tracingOpts: { workspaceId: string }
   ): Promise<Result<ExecResult, Error>> {
+    const stdin = getStdinDelivery(commandOpts.stdin);
+    const start = buildStartRequest(command, commandOpts, stdin);
+
     return traceSandboxOperation(
       "exec",
       async () => {
         let sandbox: Sandbox;
+        let handle: CommandHandle;
         try {
-          sandbox = await Sandbox.connect(providerId, {
-            ...this.connectionOpts(),
-            timeoutMs: SANDBOX_LIFETIME_MS,
-          });
+          ({ sandbox, handle } = await this.withConnection(
+            providerId,
+            async (connected) => ({
+              sandbox: connected,
+              handle: await connected.commands.run(start.command, start.opts),
+            }),
+            // A command may have started even when starting it reported failure.
+            { retryOnStaleConnection: false }
+          ));
         } catch (err) {
-          if (err instanceof NotFoundError) {
-            return new Err(new SandboxNotFoundError(providerId));
+          if (err instanceof SandboxNotFoundError) {
+            return new Err(err);
           }
           return new Err(normalizeError(err));
         }
 
         try {
-          const stdin = commandOpts.stdin;
-          const e2bCommandOpts = {
-            cwd: commandOpts.cwd,
-            envs: commandOpts.envs,
-            timeoutMs: commandOpts.timeoutMs,
-            user: commandOpts.user,
-          };
           const result =
-            stdin === undefined
-              ? await sandbox.commands.run(command, e2bCommandOpts)
-              : await runWithStdin(sandbox, command, e2bCommandOpts, stdin);
+            stdin.mode === "streamed"
+              ? await sendStdinAndWait(sandbox, handle, stdin.payload)
+              : await handle.wait();
 
           return new Ok({
             exitCode: result.exitCode,
@@ -297,6 +560,10 @@ export class E2BSandboxProvider implements SandboxProvider {
       {
         provider_id: providerId,
         workspace_id: tracingOpts.workspaceId,
+        // Both known before the operation runs, and both are what a rollout needs to read: how
+        // often a command reuses a connection, and how often stdin still costs extra round trips.
+        connection: this.hasFreshConnection(providerId) ? "cached" : "fresh",
+        stdin_mode: stdin.mode,
       }
     );
   }
@@ -418,15 +685,14 @@ export class E2BSandboxProvider implements SandboxProvider {
       async () => {
         logger.info({ providerId }, "Waking E2B sandbox");
 
-        // Sandbox.connect auto-resumes paused sandboxes.
+        // Sandbox.connect auto-resumes paused sandboxes. Always a real connect, never a cached
+        // handle — a handle from before the pause is exactly what cannot be trusted here — and
+        // it leaves the fresh one cached for the commands that follow the wake.
         try {
-          await Sandbox.connect(providerId, {
-            ...this.connectionOpts(),
-            timeoutMs: SANDBOX_LIFETIME_MS,
-          });
+          await this.openConnection(providerId);
         } catch (err) {
-          if (err instanceof NotFoundError) {
-            return new Err(new SandboxNotFoundError(providerId));
+          if (err instanceof SandboxNotFoundError) {
+            return new Err(err);
           }
           return new Err(normalizeError(err));
         }
@@ -468,6 +734,10 @@ export class E2BSandboxProvider implements SandboxProvider {
             return new Err(new SandboxNotFoundError(providerId));
           }
           return new Err(normalizeError(err));
+        } finally {
+          // Whether or not the pause reported success, any cached handle for this sandbox may now
+          // point at a suspended VM.
+          this.dropConnection(providerId);
         }
 
         logger.info({ providerId }, "E2B sandbox paused");
@@ -497,6 +767,8 @@ export class E2BSandboxProvider implements SandboxProvider {
             return new Err(new SandboxNotFoundError(providerId));
           }
           return new Err(normalizeError(err));
+        } finally {
+          this.dropConnection(providerId);
         }
 
         logger.info({ providerId }, "E2B sandbox killed");
@@ -575,23 +847,19 @@ export class E2BSandboxProvider implements SandboxProvider {
     return traceSandboxOperation(
       "writeFile",
       async () => {
-        let sandbox: Sandbox;
         try {
-          sandbox = await Sandbox.connect(providerId, {
-            ...this.connectionOpts(),
-            timeoutMs: SANDBOX_LIFETIME_MS,
-          });
+          // Note: this creates the necessary directories if missing. Safe to retry on a fresh
+          // connection: a repeat writes the same bytes to the same path.
+          await this.withConnection(
+            providerId,
+            (sandbox) => sandbox.files.write(path, data),
+            // A repeat writes the same bytes to the same path.
+            { retryOnStaleConnection: true }
+          );
         } catch (err) {
-          if (err instanceof NotFoundError) {
-            return new Err(new SandboxNotFoundError(providerId));
+          if (err instanceof SandboxNotFoundError) {
+            return new Err(err);
           }
-          return new Err(normalizeError(err));
-        }
-
-        try {
-          // Note: this creates the necessary directories if missing.
-          await sandbox.files.write(path, data);
-        } catch (err) {
           return new Err(normalizeError(err));
         }
 
@@ -612,20 +880,12 @@ export class E2BSandboxProvider implements SandboxProvider {
     return traceSandboxOperation(
       "readFile",
       async () => {
-        let sandbox: Sandbox;
-        try {
-          sandbox = await Sandbox.connect(providerId, {
-            ...this.connectionOpts(),
-            timeoutMs: SANDBOX_LIFETIME_MS,
-          });
-        } catch (err) {
-          if (err instanceof NotFoundError) {
-            throw new SandboxNotFoundError(providerId);
-          }
-          throw normalizeError(err);
-        }
+        const bytes = await this.withConnection(
+          providerId,
+          (sandbox) => sandbox.files.read(path, { format: "bytes" }),
+          { retryOnStaleConnection: true }
+        );
 
-        const bytes = await sandbox.files.read(path, { format: "bytes" });
         return Buffer.from(bytes);
       },
       {
@@ -644,22 +904,14 @@ export class E2BSandboxProvider implements SandboxProvider {
     return traceSandboxOperation(
       "listFiles",
       async () => {
-        let sandbox: Sandbox;
-        try {
-          sandbox = await Sandbox.connect(providerId, {
-            ...this.connectionOpts(),
-            timeoutMs: SANDBOX_LIFETIME_MS,
-          });
-        } catch (err) {
-          if (err instanceof NotFoundError) {
-            throw new SandboxNotFoundError(providerId);
-          }
-          throw normalizeError(err);
-        }
-
-        const entries = await sandbox.files.list(path, {
-          depth: opts?.recursive ? 10 : 1,
-        });
+        const entries = await this.withConnection(
+          providerId,
+          (sandbox) =>
+            sandbox.files.list(path, {
+              depth: opts?.recursive ? 10 : 1,
+            }),
+          { retryOnStaleConnection: true }
+        );
 
         return entries.map((e) => ({
           path: e.path,
