@@ -1,4 +1,3 @@
-import { applyActivationNudgeAuthorship } from "@app/lib/api/activation/trigger";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -26,7 +25,6 @@ import type {
   ConversationWithoutContentType,
   UserMessageContext,
 } from "@app/types/assistant/conversation";
-import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -85,14 +83,6 @@ async function createConversationForAgentConfiguration({
         : "triggered",
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,
   };
-
-  // Dust posts the Activation Pod nudge on the user's behalf, so it is authored
-  // by the system rather than by them. A no-op for every other trigger.
-  const baseContext = await applyActivationNudgeAuthorship(auth, {
-    trigger,
-    agentConfiguration,
-    context: triggeredContext,
-  });
 
   if (
     webhookRequest &&
@@ -164,12 +154,8 @@ async function createConversationForAgentConfiguration({
       serializeMention(agentConfiguration) +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
     mentions: [{ configurationId: agentConfiguration.sId }],
-    context: baseContext,
+    context: triggeredContext,
     skipToolsValidation: false,
-    // Leaves the nudge without an author. The run still executes under the
-    // target user's authenticator, so the agent sees exactly what they can see,
-    // and they stay a participant of the conversation.
-    doNotAssociateUser: baseContext.origin === ACTIVATION_NUDGE_ORIGIN,
   });
 
   if (messageRes.isErr()) {

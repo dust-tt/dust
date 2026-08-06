@@ -1,12 +1,12 @@
 import type {
   ActivationNudgeContext,
   ActivationNudgePushedResourceType,
-} from "@app/lib/api/activation/trigger";
+} from "@app/lib/api/activation/nudge";
+import { postActivationNudge } from "@app/lib/api/activation/nudge";
+import { listActivationPodsByUser } from "@app/lib/api/activation/pods";
 import {
   createActivationTrigger,
-  fireActivationNudge,
   getOrCreateActivationWebhookSourceView,
-  listActivationPodsByUser,
 } from "@app/lib/api/activation/trigger";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -154,7 +154,9 @@ async function provisionTrainingPod(
     otherUsers: UserResource[];
     podNameOverride: string | null;
   }
-): Promise<Result<{ pod: SpaceResource; trigger: TriggerResource }, Error>> {
+): Promise<
+  Result<{ pod: SpaceResource; activationPod: ActivationPodResource }, Error>
+> {
   const workspace = auth.getNonNullableWorkspace();
   const podName =
     podNameOverride && podNameOverride.length > 0
@@ -218,11 +220,10 @@ async function provisionTrainingPod(
     );
   }
 
-  // Record the canonical ActivationPod row now that the pod's owner and trigger
-  // are known. `isEligibleForNudge` and the activation scheduler rely on this
-  // row to find the pod and its trigger, so it must exist for the pod to ever
-  // be nudged.
-  await ActivationPodResource.makeNew(auth, {
+  // Record the canonical ActivationPod row now that the pod's owner is known.
+  // `isEligibleForNudge` and the activation scheduler rely on this row to find
+  // the pod, so it must exist for the pod to ever be nudged.
+  const activationPod = await ActivationPodResource.makeNew(auth, {
     pod,
     user: creator,
     trigger,
@@ -241,7 +242,7 @@ async function provisionTrainingPod(
     );
   }
 
-  return new Ok({ pod, trigger });
+  return new Ok({ pod, activationPod });
 }
 
 type TargetOutcome = {
@@ -506,19 +507,9 @@ export const activationManagementPlugin = createPlugin({
       // Reuse path: the user already has a Pod and we're not recreating it —
       // just nudge it. Never fails on an existing Pod.
       if (existing && !forceRecreate) {
-        if (!existing.trigger) {
-          outcomes.push({
-            name,
-            status: "failed",
-            message:
-              "Pod exists but trigger was deleted — use forceRecreate to rebuild it.",
-          });
-          continue;
-        }
-        const nudgeResult = await fireActivationNudge(adminAuth, {
+        const nudgeResult = await postActivationNudge(adminAuth, {
           pod: existing.pod,
-          trigger: existing.trigger,
-          targetUserId: user.sId,
+          activationPod: existing.activationPod,
           context,
         });
         if (nudgeResult.isErr()) {
@@ -573,11 +564,10 @@ export const activationManagementPlugin = createPlugin({
         continue;
       }
 
-      const { pod, trigger } = provisionResult.value;
-      const nudgeResult = await fireActivationNudge(adminAuth, {
+      const { pod, activationPod } = provisionResult.value;
+      const nudgeResult = await postActivationNudge(adminAuth, {
         pod,
-        trigger,
-        targetUserId: user.sId,
+        activationPod,
         context,
       });
       if (nudgeResult.isErr()) {
