@@ -51,6 +51,7 @@ import type {
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import {
+  ACTIVATION_NUDGE_ORIGIN,
   ConversationError,
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
@@ -1741,31 +1742,55 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Returns the timestamps of messages authored by `userId` in conversations
-   * created by any of `triggerIds`, created at or after `since`. Used by the
-   * activation scheduler to determine whether a user replied following a
-   * nudge (each nudge fires a trigger, which creates its own conversation).
+   * Returns the creation timestamps of the space's nudge conversations, newest
+   * first: the conversations Dust opened itself, identified by the origin their
+   * opening message carries. This is the activation nudge history.
    */
-  static async listUserMessageTimestampsForTriggers(
+  static async listNudgeConversationTimestamps(
     auth: Authenticator,
-    {
-      triggerIds,
-      userId,
-      since,
-    }: {
-      triggerIds: ModelId[];
-      userId: ModelId;
-      since: Date;
-    }
+    { spaceModelId, limit }: { spaceModelId: ModelId; limit: number }
   ): Promise<Date[]> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
     const messages = await MessageModel.findAll({
       attributes: ["createdAt"],
       where: {
-        workspaceId,
-        createdAt: { [Op.gte]: since },
+        workspaceId: auth.getNonNullableWorkspace().id,
+        rank: 0,
       },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: [],
+          where: { userContextOrigin: ACTIVATION_NUDGE_ORIGIN },
+        },
+        {
+          model: ConversationModel,
+          as: "conversation",
+          required: true,
+          attributes: [],
+          where: { spaceId: spaceModelId },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit,
+    });
+
+    return messages.map((m) => m.createdAt);
+  }
+
+  /**
+   * When `userId` last posted in one of the space's conversations, or null if
+   * they never did. Used by the activation scheduler to tell whether the user
+   * came back after a nudge.
+   */
+  static async latestUserMessageAtInSpace(
+    auth: Authenticator,
+    { spaceModelId, userId }: { spaceModelId: ModelId; userId: ModelId }
+  ): Promise<Date | null> {
+    const message = await MessageModel.findOne({
+      attributes: ["createdAt"],
+      where: { workspaceId: auth.getNonNullableWorkspace().id },
       include: [
         {
           model: UserMessageModel,
@@ -1779,12 +1804,41 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           as: "conversation",
           required: true,
           attributes: [],
-          where: { triggerId: { [Op.in]: triggerIds } },
+          where: { spaceId: spaceModelId },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    return message?.createdAt ?? null;
+  }
+
+  /**
+   * The origin of the conversation's opening user message, or null if it has
+   * none. Used to tell a conversation Dust opened (an activation nudge) from
+   * one the user started.
+   */
+  async openingUserMessageOrigin(
+    auth: Authenticator
+  ): Promise<UserMessageOrigin | null> {
+    const message = await MessageModel.findOne({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+        rank: 0,
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: ["userContextOrigin"],
         },
       ],
     });
 
-    return messages.map((m) => m.createdAt);
+    return message?.userMessage?.userContextOrigin ?? null;
   }
 
   static async fetchConversationWithParticipantState(
