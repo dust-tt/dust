@@ -312,6 +312,7 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error.message).toContain(candidateName);
+    expect(body.nameConflict).toEqual({ name: candidateName });
 
     vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
       new Ok({
@@ -397,7 +398,9 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain(existingName);
+    const body = await response.json();
+    expect(body.error.message).toContain(existingName);
+    expect(body.nameConflict).toEqual({ name: existingName });
   });
 
   it("rejects custom view names longer than the database column", async () => {

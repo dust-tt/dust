@@ -3,6 +3,7 @@ import type { GetMCPServersResponseBody } from "@app/lib/api/mcp";
 import {
   createInternalMCPServer,
   createRemoteMCPServer,
+  isMCPServerViewNameConflictError,
   listMCPServersWithViews,
 } from "@app/lib/api/mcp/servers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -79,6 +80,18 @@ app.post("/", validate("json", PostBodySchema), async (ctx) => {
 
   if (result.isErr()) {
     const message = result.error.message;
+    if (
+      body.serverType === "remote" &&
+      isMCPServerViewNameConflictError(result.error)
+    ) {
+      return ctx.json(
+        {
+          error: { type: "invalid_request_error", message },
+          nameConflict: { name: result.error.viewName },
+        },
+        400
+      );
+    }
     if (isRemoteMCPServerError(result.error)) {
       // Non-standard envelope: callers rely on the `isRemoteServerError` flag.
       return ctx.json(

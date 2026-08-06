@@ -28,7 +28,10 @@ import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import {
+  MAX_MCP_SERVER_VIEW_NAME_LENGTH,
+  type MCPServerType,
+} from "@app/lib/api/mcp";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   useCreateInternalMCPServer,
@@ -76,10 +79,14 @@ function generateUniqueViewName(
 function getSubmitButtonLabel(
   isLoading: boolean,
   authorization: AuthorizationInfo | null,
-  defaultServerConfig?: DefaultRemoteMCPServerConfig
+  defaultServerConfig: DefaultRemoteMCPServerConfig | undefined,
+  oauthConnectionId: string | null
 ): string {
   if (isLoading) {
     return "Loading...";
+  }
+  if (oauthConnectionId) {
+    return "Save";
   }
   if (authorization) {
     return "Setup connection";
@@ -140,7 +147,7 @@ export function CreateMCPServerDialog({
   const defaultValues = useMemo<CreateMCPServerDialogFormValues>(() => {
     return {
       ...getCreateMCPServerDialogDefaultValues(defaultServerConfig),
-      viewName: suggestedViewName,
+      viewName: suggestedViewName ?? "",
       // Pre-fill headers and store their keys so the form can lock them as non-removable.
       ...(predefinedHeaders && {
         useCustomHeaders: true,
@@ -177,17 +184,36 @@ export function CreateMCPServerDialog({
     name: "selectedScopes",
   });
 
+  const [remoteMCPServerViewNameConflict, setRemoteMCPServerViewNameConflict] =
+    useState<string | null>(null);
+
   // Client-side validation for the view name field.
   const viewNameError = useMemo(() => {
     const trimmed = (viewName ?? "").trim();
-    if (needsCustomName && trimmed.length === 0) {
+    if (needsCustomName && !trimmed) {
       return "Name is required.";
+    }
+    if (remoteMCPServerViewNameConflict) {
+      if (!trimmed) {
+        return `The default name "${remoteMCPServerViewNameConflict}" conflicts with an existing Tool. Enter a different name.`;
+      }
+      if (trimmed === remoteMCPServerViewNameConflict) {
+        return "This name conflicts with an existing Tool. Enter a different name.";
+      }
+    }
+    if (trimmed.length > MAX_MCP_SERVER_VIEW_NAME_LENGTH) {
+      return `Name must be ${MAX_MCP_SERVER_VIEW_NAME_LENGTH} characters or fewer.`;
     }
     if (trimmed.length > 0 && existingViewNames.includes(trimmed)) {
       return "This name is already in use.";
     }
     return null;
-  }, [needsCustomName, viewName, existingViewNames]);
+  }, [
+    needsCustomName,
+    remoteMCPServerViewNameConflict,
+    viewName,
+    existingViewNames,
+  ]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState<{
@@ -206,6 +232,10 @@ export function CreateMCPServerDialog({
     remoteMCPServerOAuthDiscoveryDone,
     setRemoteMCPServerOAuthDiscoveryDone,
   ] = useState(false);
+  const [
+    remoteMCPServerOAuthConnectionId,
+    setRemoteMCPServerOAuthConnectionId,
+  ] = useState<string | null>(null);
 
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
@@ -264,6 +294,8 @@ export function CreateMCPServerDialog({
     // Reset workflow state (useState).
     setAuthorization(null);
     setRemoteMCPServerOAuthDiscoveryDone(false);
+    setRemoteMCPServerOAuthConnectionId(null);
+    setRemoteMCPServerViewNameConflict(null);
     setIsStaticFormValid(false);
     setServerError(null);
     // Reset form state.
@@ -287,6 +319,7 @@ export function CreateMCPServerDialog({
       // Pass workflow state as separate params (not from form).
       authorization,
       remoteMCPServerOAuthDiscoveryDone,
+      remoteMCPServerOAuthConnectionId,
       discoverOAuthMetadata,
       createWithURL,
       createInternalMCPServer,
@@ -297,16 +330,22 @@ export function CreateMCPServerDialog({
     if (submitRes.isErr()) {
       const err = submitRes.error;
       if (isCreateServerError(err)) {
-        setServerError({
-          message: err.message,
-          domain: new URL(values.remoteServerUrl).hostname,
-          isRemoteServerError: err.isRemoteServerError,
-        });
         setIsLoading(false);
         setExternalIsLoading(false);
         setRemoteMCPServerOAuthDiscoveryDone(
           err.remoteMCPServerOAuthDiscoveryDone
         );
+        if (err.nameConflict) {
+          setRemoteMCPServerViewNameConflict(err.nameConflict);
+          setRemoteMCPServerOAuthConnectionId(err.oauthConnectionId);
+          setServerError(null);
+          return;
+        }
+        setServerError({
+          message: err.message,
+          domain: new URL(values.remoteServerUrl).hostname,
+          isRemoteServerError: err.isRemoteServerError,
+        });
         return;
       }
       handleCreateMCPServerDialogSubmitError({
@@ -550,7 +589,7 @@ export function CreateMCPServerDialog({
                   {serverError.message}
                 </ContentMessage>
               )}
-              {(needsCustomName || !internalMCPServer) && (
+              {(needsCustomName || remoteMCPServerViewNameConflict) && (
                 <div className="space-y-2">
                   <Label htmlFor="viewName">Tool name</Label>
                   <Input
@@ -558,7 +597,7 @@ export function CreateMCPServerDialog({
                     placeholder={
                       needsCustomName
                         ? "Enter a name for this instance"
-                        : "Enter a custom name"
+                        : "Enter a different name"
                     }
                     {...form.register("viewName")}
                     isError={!!viewNameError}
@@ -566,7 +605,7 @@ export function CreateMCPServerDialog({
                       viewNameError ??
                       (needsCustomName
                         ? `${toolName} is already installed. This name tells them apart.`
-                        : "Optional. Defaults to the name provided by the MCP server.")
+                        : "Choose a name that distinguishes this Tool.")
                     }
                     messageStatus={viewNameError ? "error" : "info"}
                   />
@@ -629,7 +668,8 @@ export function CreateMCPServerDialog({
                 : getSubmitButtonLabel(
                     isLoading,
                     authorization,
-                    defaultServerConfig
+                    defaultServerConfig,
+                    remoteMCPServerOAuthConnectionId
                   ),
               variant: "primary",
               disabled: isSubmitDisabled,

@@ -364,13 +364,25 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
   return { discoverOAuthMetadata };
 }
 
-class MCPCreateServerError extends Error {
+export class MCPCreateServerError extends Error {
   readonly isRemoteServerError: boolean;
-  constructor(message: string, isRemoteServerError: boolean) {
+  readonly nameConflict: string | null;
+  constructor(
+    message: string,
+    isRemoteServerError: boolean,
+    nameConflict: string | null
+  ) {
     super(message);
     this.isRemoteServerError = isRemoteServerError;
+    this.nameConflict = nameConflict;
   }
 }
+
+type MCPCreateServerErrorResponse = {
+  error?: { message?: string };
+  isRemoteServerError?: boolean;
+  nameConflict?: { name: string };
+};
 
 export function isMCPCreateServerError(
   error: Error
@@ -433,12 +445,13 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       });
 
       if (!response.ok) {
-        const body = await response.json();
+        const body: MCPCreateServerErrorResponse = await response.json();
         return new Err(
           new MCPCreateServerError(
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             body.error?.message || "Failed to create server",
-            body.isRemoteServerError === true
+            body.isRemoteServerError === true,
+            body.nameConflict?.name ?? null
           )
         );
       }
