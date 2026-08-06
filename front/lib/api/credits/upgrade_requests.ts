@@ -15,11 +15,13 @@ import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
+import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import logger from "@app/logger/logger";
 import type { UpgradeRequestResolution } from "@app/types/api/credits/upgrade_requests";
 import type { MembershipUpgradeRequestType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 type UpgradeRequestErrorType =
   | "workspace_not_metronome_billed"
@@ -271,17 +273,9 @@ export async function resolveUpgradeRequest(
     );
   }
 
-  if (resolution.status === "approved" && resolution.limit) {
-    const spendLimitResult = await setUserSpendLimit(auth, {
-      userId: request.requester.sId,
-      limit: resolution.limit,
-      auditContext: auditContext ?? { location: "internal" },
-    });
-    if (spendLimitResult.isErr()) {
-      return new Err(spendLimitResult.error);
-    }
-  }
-
+  // Persist the resolution first: it's the source of truth for the request.
+  // The Metronome sync below is a derived effect — if it fails, the
+  // resolution is reverted back to `pending` so the two don't drift apart.
   const resolvedByUser = auth.getNonNullableUser();
   const result = await request.markAsResolved(auth, {
     status: resolution.status,
@@ -291,6 +285,47 @@ export async function resolveUpgradeRequest(
     return new Err(
       new UpgradeRequestError("request_not_pending", result.error.message)
     );
+  }
+
+  if (resolution.status === "approved" && resolution.limit) {
+    const spendLimitResult = await revertOnSyncFailure(
+      await setUserSpendLimit(auth, {
+        userId: request.requester.sId,
+        limit: resolution.limit,
+        auditContext: auditContext ?? { location: "internal" },
+      }),
+      {
+        revert: async () => {
+          try {
+            await request.revertToPending();
+          } catch (err) {
+            // The rollback itself failed: the request is now stuck resolved
+            // without the spend limit actually applied in Metronome. Log
+            // loudly with enough context to reconcile manually, then rethrow
+            // so this still surfaces as a hard failure rather than a silent
+            // inconsistency.
+            logger.error(
+              {
+                err: normalizeError(err),
+                requestId: request.sId,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                resolutionStatus: resolution.status,
+              },
+              "[UpgradeRequest] Failed to revert request to pending after Metronome sync failure; request needs manual reconciliation"
+            );
+            throw err;
+          }
+        },
+        logContext: {
+          scope: "upgrade_request",
+          operation: "resolve",
+          requestId: request.sId,
+        },
+      }
+    );
+    if (spendLimitResult.isErr()) {
+      return new Err(spendLimitResult.error);
+    }
   }
 
   void emitAuditLogEvent({
