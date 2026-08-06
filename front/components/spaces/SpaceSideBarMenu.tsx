@@ -154,7 +154,9 @@ export default function SpaceSideBarMenu({
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
       <NavigationList className="w-full">
-        <div className="mx-sidebar-side-spacing">
+        {/* pt-3 because the first section (Administration) has no header to
+         * space it off the top of the sidebar. */}
+        <div className="mx-sidebar-side-spacing pt-3">
           {sortedGroupedSpaces.map(({ section, spaces }, index) => {
             if (section === "restricted" && !spaces.length && !isAdmin) {
               return null;

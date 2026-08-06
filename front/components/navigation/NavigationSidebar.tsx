@@ -23,8 +23,8 @@ import {
   cn,
   LayoutLeft,
   NavigationList,
+  NavigationListCompactLabel,
   NavigationListItem,
-  NavigationListLabel,
   NavTabPill,
   NavTabPillContent,
   NavTabPillList,
@@ -160,7 +160,9 @@ export const NavigationSidebar = React.forwardRef<
                     tab.isCurrent(activePath) &&
                     subNavigation.map((nav) => (
                       <React.Fragment key={`nav-${nav.label}`}>
-                        {nav.label && <NavigationListLabel label={nav.label} />}
+                        {nav.label && (
+                          <NavigationListCompactLabel label={nav.label} />
+                        )}
                         {nav.menus
                           .filter(
                             (menu) =>
