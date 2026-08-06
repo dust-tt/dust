@@ -2,6 +2,7 @@ import type { InternalAllowedIconType } from "@app/components/resources/resource
 import {
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
+  SANDBOX_MCP_REQUEST_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import type {
   ServerMetadata,
@@ -69,10 +70,7 @@ import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadat
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
-import {
-  SANDBOX_MCP_REQUEST_TIMEOUT_MS,
-  SANDBOX_SERVER,
-} from "@app/lib/api/actions/servers/sandbox/metadata";
+import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";

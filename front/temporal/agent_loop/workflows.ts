@@ -1,7 +1,6 @@
 import {
-  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
-  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
+  TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
@@ -35,6 +34,11 @@ import type {
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
+import {
+  OpenTelemetryInboundInterceptor,
+  OpenTelemetryInternalsInterceptor,
+  OpenTelemetryOutboundInterceptor,
+} from "@temporalio/interceptors-opentelemetry/lib/workflow";
 import type {
   ChildWorkflowHandle,
   WorkflowInterceptorsFactory,
@@ -47,16 +51,6 @@ import {
   startChild,
   workflowInfo,
 } from "@temporalio/workflow";
-
-const toolActivityStartToCloseTimeoutMs =
-  Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) +
-  60 * 1000;
-
-import {
-  OpenTelemetryInboundInterceptor,
-  OpenTelemetryInternalsInterceptor,
-  OpenTelemetryOutboundInterceptor,
-} from "@temporalio/interceptors-opentelemetry/lib/workflow";
 
 // Export an interceptors variable to add OpenTelemetry interceptors to the workflow.
 export const interceptors: WorkflowInterceptorsFactory = () => ({
@@ -77,8 +71,7 @@ const { runModelAndCreateActionsActivity } = proxyActivities<
 });
 
 const { runToolActivity } = proxyActivities<typeof runToolActivities>({
-  // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
-  startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
+  startToCloseTimeout: TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS,
   heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   retry: {
     // Do not retry tool activities. Those are not idempotent.
@@ -89,7 +82,7 @@ const { runToolActivity } = proxyActivities<typeof runToolActivities>({
 const { runToolActivity: runRetryableToolActivity } = proxyActivities<
   typeof runToolActivities
 >({
-  startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
+  startToCloseTimeout: TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS,
   heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   retry: {
     maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,

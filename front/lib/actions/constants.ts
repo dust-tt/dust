@@ -7,6 +7,42 @@ export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 
 export const RUN_AGENT_CALL_TOOL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
+// Default and maximum timeout the model can request for a single sandbox bash
+// command. The value is enforced in-container by the `timeout` wrapper (see
+// `wrapCommandWithCapture`), which kills the command and returns the captured
+// output when it overruns.
+export const SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS = 60 * 1000;
+export const SANDBOX_MAX_COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
+
+// Extra time we add on top of a command's in-container timeout to set the
+// timeout we give the sandbox provider. The in-container `timeout` wrapper
+// stops the command and returns whatever output it has; this extra time lets
+// that finish and reach us before the provider gives up. A few seconds is
+// plenty (it only covers stopping the command and sending its output back).
+export const SANDBOX_EXEC_TIMEOUT_BUFFER_MS = 10 * 1000;
+
+// Outer MCP request deadline for the sandbox server. It must be strictly
+// greater than the max in-container command timeout so the graceful
+// in-container timeout (which returns partial output) always fires before the
+// MCP layer hard-aborts the call. The buffer covers process teardown, output
+// flushing, and the host round-trip.
+const SANDBOX_MCP_TIMEOUT_BUFFER_MS = 30 * 1000;
+export const SANDBOX_MCP_REQUEST_TIMEOUT_MS =
+  SANDBOX_MAX_COMMAND_TIMEOUT_MS + SANDBOX_MCP_TIMEOUT_BUFFER_MS;
+
+// Start-to-close for the Temporal tool activities: the longest MCP deadline any
+// tool can hold, plus a short buffer for the work surrounding the MCP call
+// (action setup, tool result processing) and to detect worker restarts
+// promptly. The MCP deadlines above are inputs so the activity always outlives
+// the tool call it wraps.
+const TOOL_ACTIVITY_TIMEOUT_BUFFER_MS = 60 * 1000;
+export const TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS =
+  Math.max(
+    RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
+    DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+    SANDBOX_MCP_REQUEST_TIMEOUT_MS
+  ) + TOOL_ACTIVITY_TIMEOUT_BUFFER_MS;
+
 export const RETRY_ON_INTERRUPT_MAX_ATTEMPTS = 15;
 
 // Stored in a separate file to prevent a circular dependency issue.

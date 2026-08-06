@@ -1,32 +1,11 @@
+import {
+  SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
+  SANDBOX_MAX_COMMAND_TIMEOUT_MS,
+} from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
 export const SANDBOX_TOOL_NAME = "sandbox" as const;
-
-// Default and maximum timeout the model can request for a single bash command.
-// The value is enforced in-container by the `timeout` wrapper (see
-// `wrapCommandWithCapture`), which kills the command and returns the captured
-// output when it overruns.
-export const SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS = 60000;
-const SANDBOX_MAX_COMMAND_TIMEOUT_MS = 120000;
-
-// Extra time we add on top of a command's in-container timeout to set the
-// timeout we give the sandbox provider. The in-container `timeout`
-// wrapper stops the command and returns whatever output it has; this extra
-// time lets that finish and reach us before the provider gives up. A few
-// seconds is plenty (it only covers stopping the command and sending its
-// output back). It must stay small enough that the provider timeout
-// (max command timeout + this) stays under SANDBOX_MCP_REQUEST_TIMEOUT_MS.
-export const SANDBOX_EXEC_TIMEOUT_BUFFER_MS = 10000;
-
-// Outer MCP request deadline for the sandbox server. It must be strictly
-// greater than the max in-container command timeout so the graceful
-// in-container timeout (which returns partial output) always fires before the
-// MCP layer hard-aborts the call. The buffer covers process teardown, output
-// flushing, and the host round-trip.
-const SANDBOX_MCP_TIMEOUT_BUFFER_MS = 30000;
-export const SANDBOX_MCP_REQUEST_TIMEOUT_MS =
-  SANDBOX_MAX_COMMAND_TIMEOUT_MS + SANDBOX_MCP_TIMEOUT_BUFFER_MS;
 
 export const SANDBOX_TOOLS_METADATA = [
   {
@@ -54,6 +33,7 @@ export const SANDBOX_TOOLS_METADATA = [
         .describe("Working directory for command execution. Defaults to /tmp."),
       timeoutMs: z
         .number()
+        .min(1000)
         .max(SANDBOX_MAX_COMMAND_TIMEOUT_MS)
         .optional()
         .describe(

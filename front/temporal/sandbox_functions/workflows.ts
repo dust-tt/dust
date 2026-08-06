@@ -1,7 +1,4 @@
-import {
-  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
-} from "@app/lib/actions/constants";
+import { TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
 import type * as markSandboxFunctionInvocationFailedActivities from "@app/temporal/sandbox_functions/activities/mark_sandbox_function_invocation_failed";
@@ -9,14 +6,10 @@ import type * as runSandboxFunctionInvocationActivities from "@app/temporal/sand
 import type * as runSandboxFunctionToolActivities from "@app/temporal/sandbox_functions/activities/run_sandbox_function_tool";
 import { proxyActivities } from "@temporalio/workflow";
 
-const toolActivityStartToCloseTimeoutMs =
-  Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) +
-  60 * 1000;
-
 const { runSandboxFunctionToolActivity } = proxyActivities<
   typeof runSandboxFunctionToolActivities
 >({
-  startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
+  startToCloseTimeout: TOOL_ACTIVITY_START_TO_CLOSE_TIMEOUT_MS,
   heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   retry: {
     // Do not retry tool activities. Those are not idempotent.
