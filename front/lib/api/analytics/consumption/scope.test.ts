@@ -1,4 +1,5 @@
 import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 const WINDOW = {
@@ -7,13 +8,18 @@ const WINDOW = {
 };
 
 describe("buildConsumptionScopeQuery", () => {
-  it("scopes to the workspace over a half-open window", () => {
+  it("scopes to the workspace over a half-open window", async () => {
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
     expect(
-      buildConsumptionScopeQuery({ workspaceId: "w1", ...WINDOW })
+      buildConsumptionScopeQuery({ auth: authenticator, ...WINDOW })
     ).toEqual({
       bool: {
         filter: [
-          { term: { workspace_id: "w1" } },
+          {
+            term: { workspace_id: authenticator.getNonNullableWorkspace().sId },
+          },
           {
             range: {
               completed_at: { gte: WINDOW.startDate, lt: WINDOW.endDate },
@@ -24,9 +30,12 @@ describe("buildConsumptionScopeQuery", () => {
     });
   });
 
-  it("maps each dimension to its index field, single value as a term", () => {
+  it("maps each dimension to its index field, single value as a term", async () => {
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
     const query = buildConsumptionScopeQuery({
-      workspaceId: "w1",
+      auth: authenticator,
       ...WINDOW,
       filter: {
         agent: ["a1"],
@@ -39,7 +48,7 @@ describe("buildConsumptionScopeQuery", () => {
     });
 
     expect(query.bool?.filter).toEqual([
-      { term: { workspace_id: "w1" } },
+      { term: { workspace_id: authenticator.getNonNullableWorkspace().sId } },
       expect.objectContaining({ range: expect.anything() }),
       { term: { "agent.id": "a1" } },
       { terms: { "user.id": ["u1", "u2"] } },
@@ -50,9 +59,12 @@ describe("buildConsumptionScopeQuery", () => {
     ]);
   });
 
-  it("ignores empty selections", () => {
+  it("ignores empty selections", async () => {
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
     const query = buildConsumptionScopeQuery({
-      workspaceId: "w1",
+      auth: authenticator,
       ...WINDOW,
       filter: { agent: [], member: [""] },
     });
