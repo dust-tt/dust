@@ -75,7 +75,7 @@ ActivationRecommendationModel.init(
       allowNull: false,
     },
     body: {
-      type: DataTypes.STRING(2048),
+      type: DataTypes.STRING(1024),
       allowNull: true,
     },
     steps: {
