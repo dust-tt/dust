@@ -24,6 +24,7 @@ import {
 } from "@spa/app/routes/loginRoutes";
 import { onboardingRoutes } from "@spa/app/routes/onboardingRoutes";
 import { podsRoutes } from "@spa/app/routes/podsRoutes";
+import { previewRoutes } from "@spa/app/routes/previewRoutes";
 import {
   spacesRedirectRoutes,
   spacesRoutes,
@@ -65,6 +66,7 @@ export const routes: RouteObject[] = [
               ...conversationRoutes,
               ...adminRoutes,
               ...labsRoutes,
+              ...previewRoutes,
               ...spacesRoutes,
               ...appsRoutes,
               ...builderContentRoutes,
