@@ -32,7 +32,7 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
       <ConversationSidePanelHeader onClose={closePanel}>
         <span className="text-sm font-medium text-foreground">Skill</span>
       </ConversationSidePanelHeader>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         {isSkillError ? (
           <SkillLoadError onRetry={mutateSkill} />
         ) : !skill || !user ? (
@@ -46,9 +46,7 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
               owner={owner}
               onClose={closePanel}
             />
-            <div className="mt-4">
-              <SkillDetailsContent skill={skill} owner={owner} user={user} />
-            </div>
+            <SkillDetailsContent skill={skill} owner={owner} user={user} />
           </>
         )}
       </div>
