@@ -1588,7 +1588,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
-    "query_database": {
+    "query_datasource": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -1600,11 +1600,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
-    "retrieve_database_content": {
+    "retrieve_database": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
-    "retrieve_database_schema": {
+    "retrieve_datasource_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "retrieve_datasource_schema": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -1624,7 +1628,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
-    "update_schema_database": {
+    "update_schema_datasource": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -3080,16 +3084,17 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_about_user": "never_ask",
     "insert_row_into_database": "low",
     "list_users": "never_ask",
-    "query_database": "never_ask",
+    "query_datasource": "never_ask",
     "retrieve_block": "never_ask",
     "retrieve_block_children": "never_ask",
-    "retrieve_database_content": "never_ask",
-    "retrieve_database_schema": "never_ask",
+    "retrieve_database": "never_ask",
+    "retrieve_datasource_content": "never_ask",
+    "retrieve_datasource_schema": "never_ask",
     "retrieve_page": "never_ask",
     "search": "never_ask",
     "update_page": "low",
     "update_row_database": "low",
-    "update_schema_database": "low",
+    "update_schema_datasource": "low",
   },
   "openai_usage": {
     "get_completions_usage": "low",

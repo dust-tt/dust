@@ -32,8 +32,8 @@ import type {
 import { APIResponseError } from "@notionhq/client/build/src/errors";
 import { parseISO } from "date-fns";
 
-async function withNotionClient<T>(
-  fn: (notion: Client) => Promise<T>,
+async function withNotionClient<T, S extends string>(
+  fn: (notion: Client) => Promise<[T, S]>,
   authInfo?: AuthInfo
 ): Promise<ToolHandlerResult> {
   const accessToken = authInfo?.token;
@@ -44,11 +44,13 @@ async function withNotionClient<T>(
   try {
     const notion = new Client({ auth: accessToken });
 
-    const result = await fn(notion);
+    const [result, successMessage] = await fn(notion);
 
     return new Ok([
-      { type: "text" as const, text: "Success" },
-      { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      {
+        type: "text" as const,
+        text: successMessage + "\n\n" + JSON.stringify(result, null, 2),
+      },
     ]);
   } catch (e) {
     const tracked =
@@ -213,55 +215,80 @@ export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
 
     retrieve_page: async ({ pageId }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.pages.retrieve({ page_id: pageId }),
+        async (notion) => [
+          await notion.pages.retrieve({ page_id: pageId }),
+          "Page retrieved.",
+        ],
         authInfo
       );
     },
 
-    retrieve_database_schema: async ({ databaseId }, { authInfo }) => {
+    retrieve_database: async ({ databaseId }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.dataSources.retrieve({ data_source_id: databaseId }),
+        async (notion) => [
+          await notion.databases.retrieve({
+            database_id: databaseId,
+          }),
+          "Tables in the database are listed as datasources. Use the datasources id to retrieve the schema, content or query the datasource.",
+        ],
         authInfo
       );
     },
 
-    retrieve_database_content: async (
-      { databaseId, filter, sorts, start_cursor, page_size },
+    retrieve_datasource_schema: async ({ datasourceId }, { authInfo }) => {
+      return withNotionClient(
+        async (notion) => [
+          await notion.dataSources.retrieve({ data_source_id: datasourceId }),
+          "Schema of the datasource retrieved.",
+        ],
+        authInfo
+      );
+    },
+
+    retrieve_datasource_content: async (
+      { datasourceId, filter, sorts, start_cursor, page_size },
       { authInfo }
     ) => {
       return withNotionClient(
-        (notion) =>
-          notion.dataSources.query({
-            data_source_id: databaseId,
+        async (notion) => [
+          await notion.dataSources.query({
+            data_source_id: datasourceId,
             filter: filter as QueryDataSourceParameters["filter"],
             sorts,
             start_cursor,
             page_size,
           }),
+          "Content of the datasource retrieved.",
+        ],
         authInfo
       );
     },
 
-    query_database: async (
-      { databaseId, filter, sorts, start_cursor, page_size },
+    query_datasource: async (
+      { datasourceId, filter, sorts, start_cursor, page_size },
       { authInfo }
     ) => {
       return withNotionClient(
-        (notion) =>
-          notion.dataSources.query({
-            data_source_id: databaseId,
+        async (notion) => [
+          await notion.dataSources.query({
+            data_source_id: datasourceId,
             filter: filter as QueryDataSourceParameters["filter"],
             sorts,
             start_cursor,
             page_size,
           }),
+          "Results of the query.",
+        ],
         authInfo
       );
     },
 
     create_page: async ({ parent, properties, icon, cover }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.pages.create({ parent, properties, icon, cover }),
+        async (notion) => [
+          await notion.pages.create({ parent, properties, icon, cover }),
+          "Page created.",
+        ],
         authInfo
       );
     },
@@ -271,13 +298,15 @@ export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
       { authInfo }
     ) => {
       return withNotionClient(
-        (notion) =>
-          notion.pages.create({
+        async (notion) => [
+          await notion.pages.create({
             parent: { database_id: databaseId, type: "database_id" },
             properties,
             icon,
             cover,
           }),
+          "Row inserted into the database.",
+        ],
         authInfo
       );
     },
@@ -287,28 +316,36 @@ export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
       { authInfo }
     ) => {
       return withNotionClient(
-        (notion) =>
-          notion.databases.create({
+        async (notion) => [
+          await notion.databases.create({
             parent,
             title,
             initial_data_source: { properties },
             icon,
             cover,
           }),
+          "Database created.",
+        ],
         authInfo
       );
     },
 
     update_page: async ({ pageId, properties }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.pages.update({ page_id: pageId, properties }),
+        async (notion) => [
+          await notion.pages.update({ page_id: pageId, properties }),
+          "Page updated.",
+        ],
         authInfo
       );
     },
 
     retrieve_block: async ({ blockId }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.blocks.retrieve({ block_id: blockId }),
+        async (notion) => [
+          await notion.blocks.retrieve({ block_id: blockId }),
+          "Block retrieved.",
+        ],
         authInfo
       );
     },
@@ -318,24 +355,28 @@ export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
       { authInfo }
     ) => {
       return withNotionClient(
-        (notion) =>
-          notion.blocks.children.list({
+        async (notion) => [
+          await notion.blocks.children.list({
             block_id: blockId,
             start_cursor,
             page_size,
           }),
+          "Children of the block retrieved.",
+        ],
         authInfo
       );
     },
 
     add_page_content: async ({ after, blockId, children }, { authInfo }) => {
       return withNotionClient(
-        (notion) =>
-          notion.blocks.children.append({
+        async (notion) => [
+          await notion.blocks.children.append({
             after,
             block_id: blockId,
             children,
           }),
+          "Children of the block added.",
+        ],
         authInfo
       );
     },
@@ -344,7 +385,7 @@ export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
       { parent_page_id, discussion_id, comment },
       { authInfo }
     ) => {
-      return withNotionClient((notion) => {
+      return withNotionClient(async (notion) => {
         if (!parent_page_id && !discussion_id) {
           throw new Error(
             "Either parent_page_id or discussion_id must be provided."
@@ -362,59 +403,79 @@ export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
             rich_text: [{ type: "text", text: { content: comment } }],
           };
         }
-        return notion.comments.create(params);
+        return [await notion.comments.create(params), "Comment created."];
       }, authInfo);
     },
 
     delete_block: async ({ blockId }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.blocks.update({ block_id: blockId, archived: true }),
+        async (notion) => [
+          await notion.blocks.update({ block_id: blockId, archived: true }),
+          "Block deleted.",
+        ],
         authInfo
       );
     },
 
     delete_page: async ({ pageId }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.pages.update({ page_id: pageId, in_trash: true }),
+        async (notion) => [
+          await notion.pages.update({ page_id: pageId, in_trash: true }),
+          "Page deleted.",
+        ],
         authInfo
       );
     },
 
     fetch_comments: async ({ blockId }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.comments.list({ block_id: blockId }),
+        async (notion) => [
+          await notion.comments.list({ block_id: blockId }),
+          "Comments retrieved.",
+        ],
         authInfo
       );
     },
 
     update_row_database: async ({ pageId, properties }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.pages.update({ page_id: pageId, properties }),
+        async (notion) => [
+          await notion.pages.update({ page_id: pageId, properties }),
+          "Row updated.",
+        ],
         authInfo
       );
     },
 
-    update_schema_database: async (
-      { databaseId, properties },
+    update_schema_datasource: async (
+      { datasourceId, properties },
       { authInfo }
     ) => {
       return withNotionClient(
-        (notion) =>
-          notion.dataSources.update({
-            data_source_id: databaseId,
+        async (notion) => [
+          await notion.dataSources.update({
+            data_source_id: datasourceId,
             properties,
           }),
+          "Datasource schema updated.",
+        ],
         authInfo
       );
     },
 
     list_users: async (_params, { authInfo }) => {
-      return withNotionClient((notion) => notion.users.list({}), authInfo);
+      return withNotionClient(
+        async (notion) => [await notion.users.list({}), "Users retrieved."],
+        authInfo
+      );
     },
 
     get_about_user: async ({ userId }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.users.retrieve({ user_id: userId }),
+        async (notion) => [
+          await notion.users.retrieve({ user_id: userId }),
+          "User retrieved.",
+        ],
         authInfo
       );
     },
