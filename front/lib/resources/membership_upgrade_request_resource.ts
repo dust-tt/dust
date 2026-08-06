@@ -194,15 +194,28 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     });
   }
 
-  // Resolved requests, most recent first
+  // Resolved requests, most recent first.
   static async listResolvedByWorkspace(
     auth: Authenticator,
-    { limit, offset }: { limit: number; offset: number }
+    {
+      limit,
+      offset,
+      decision,
+      userModelIds,
+    }: {
+      limit: number;
+      offset: number;
+      decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
+      userModelIds?: ModelId[];
+    }
   ): Promise<{ requests: MembershipUpgradeRequestResource[]; total: number }> {
     if (!auth.isManager()) {
       return { requests: [], total: 0 };
     }
-    const where = { status: { [Op.ne]: "pending" } };
+    const where = {
+      status: decision ?? { [Op.ne]: "pending" },
+      ...(userModelIds ? { userId: { [Op.in]: userModelIds } } : {}),
+    };
     const requests = await this.baseFetch(auth, {
       where,
       order: [["resolvedAt", "DESC"]],

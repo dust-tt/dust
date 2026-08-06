@@ -15,10 +15,14 @@ import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import logger from "@app/logger/logger";
 import type { UpgradeRequestResolution } from "@app/types/api/credits/upgrade_requests";
-import type { MembershipUpgradeRequestType } from "@app/types/memberships";
+import type {
+  MembershipUpgradeRequestStatus,
+  MembershipUpgradeRequestType,
+} from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -245,22 +249,70 @@ export async function listPendingUpgradeRequests(
 // Admin-only: resolved requests, for the history view, paginated.
 export const RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
 
+// The requester isn't joined in SQL so a name/email search
+// resolves matching users via the user search index first, then restricts the
+// resource query to their ids. Returns `null` when the search matched no one,
+// meaning callers should return an empty result rather than an unfiltered one.
+async function resolveSearchUserModelIds(
+  auth: Authenticator,
+  search: string | undefined
+): Promise<number[] | undefined | null> {
+  if (!search || search.trim().length === 0) {
+    return undefined;
+  }
+  const searchResult = await UserResource.searchAllUsers(auth, {
+    searchTerm: search.trim(),
+  });
+  if (searchResult.isErr()) {
+    throw searchResult.error;
+  }
+  const userModelIds = searchResult.value.users.map((u) => u.id);
+  return userModelIds.length === 0 ? null : userModelIds;
+}
+
 export async function listResolvedUpgradeRequests(
   auth: Authenticator,
-  { offset }: { offset: number }
+  {
+    offset,
+    decision,
+    search,
+  }: {
+    offset: number;
+    decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
+    search?: string;
+  }
 ): Promise<{ requests: MembershipUpgradeRequestType[]; total: number }> {
+  const userModelIds = await resolveSearchUserModelIds(auth, search);
+  if (userModelIds === null) {
+    return { requests: [], total: 0 };
+  }
+
   const { requests, total } =
     await MembershipUpgradeRequestResource.listResolvedByWorkspace(auth, {
       limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
       offset,
+      decision,
+      userModelIds,
     });
   return { requests: requests.map((r) => r.toJSON()), total };
 }
 
 // Admin-only: every resolved request, paginated fetching
 export async function listAllResolvedUpgradeRequests(
-  auth: Authenticator
+  auth: Authenticator,
+  {
+    decision,
+    search,
+  }: {
+    decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
+    search?: string;
+  } = {}
 ): Promise<MembershipUpgradeRequestType[]> {
+  const userModelIds = await resolveSearchUserModelIds(auth, search);
+  if (userModelIds === null) {
+    return [];
+  }
+
   const allRequests: MembershipUpgradeRequestType[] = [];
   let offset = 0;
   while (true) {
@@ -268,6 +320,8 @@ export async function listAllResolvedUpgradeRequests(
       await MembershipUpgradeRequestResource.listResolvedByWorkspace(auth, {
         limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
         offset,
+        decision,
+        userModelIds,
       });
     allRequests.push(...requests.map((r) => r.toJSON()));
     if (requests.length < RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE) {
