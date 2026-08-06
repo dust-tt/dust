@@ -301,9 +301,7 @@ export async function resolveUpgradeRequest(
           } catch (err) {
             // The rollback itself failed: the request is now stuck resolved
             // without the spend limit actually applied in Metronome. Log
-            // loudly with enough context to reconcile manually, then rethrow
-            // so this still surfaces as a hard failure rather than a silent
-            // inconsistency.
+            // loudly with enough context.
             logger.error(
               {
                 err: normalizeError(err),
