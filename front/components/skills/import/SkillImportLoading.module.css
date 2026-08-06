@@ -7,7 +7,7 @@
 
 .base {
   fill: currentColor;
-  opacity: 0.24;
+  opacity: 0.16;
 }
 
 .waterCycle {
@@ -17,7 +17,7 @@
 
 .backWave {
   fill: currentColor;
-  opacity: 0.58;
+  opacity: 0.72;
   animation: wave-back 1.8s linear infinite;
   will-change: transform;
 }
@@ -31,7 +31,7 @@
 .outline {
   fill: none;
   stroke: currentColor;
-  stroke-width: 6;
+  stroke-width: 8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
