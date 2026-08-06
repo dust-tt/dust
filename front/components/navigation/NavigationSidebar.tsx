@@ -151,12 +151,11 @@ export const NavigationSidebar = React.forwardRef<
               </div>
             </NavTabPillList>
             {navs.map((tab) => (
-              <NavTabPillContent
-                key={tab.id}
-                value={tab.id}
-                className="mx-sidebar-side-spacing"
-              >
-                <NavigationList>
+              // NavTabPillContent is display:contents, so it generates no box
+              // and margins set on it do nothing — the side spacing has to go
+              // on the list itself, as the other tabs' menus already do.
+              <NavTabPillContent key={tab.id} value={tab.id}>
+                <NavigationList className="mx-sidebar-side-spacing">
                   {subNavigation &&
                     tab.isCurrent(activePath) &&
                     subNavigation.map((nav) => (
