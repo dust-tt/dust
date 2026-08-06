@@ -27,6 +27,11 @@ export class ActivationRecommendationModel extends WorkspaceAwareModel<Activatio
   declare status: ActivationRecommendationStatus;
   declare title: string;
   declare content: string;
+  declare body: string | null;
+  declare steps: string[] | null;
+  declare ctaLabel: string | null;
+  declare sourceIcon: string | null;
+  declare sourceLabel: string | null;
 
   // The conversation in which the recommendation was (originally) made
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
@@ -68,6 +73,26 @@ ActivationRecommendationModel.init(
     content: {
       type: DataTypes.STRING(4096),
       allowNull: false,
+    },
+    body: {
+      type: DataTypes.STRING(1024),
+      allowNull: true,
+    },
+    steps: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    ctaLabel: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    sourceIcon: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    sourceLabel: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     conversationId: {
       type: DataTypes.BIGINT,
