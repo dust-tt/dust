@@ -246,7 +246,7 @@ export function isUserMessageTypeWithContentFragments(
  * `doNotAssociateUser`). Such a message is nobody's to edit, its answer nobody's
  * to retry, and it never runs on anyone's personal tool credentials.
  */
-export function isSystemAuthoredUserMessage(
+export function isUserMessageWithoutConcreteUser(
   message: Pick<UserMessageType, "user">
 ): boolean {
   return message.user === null;
