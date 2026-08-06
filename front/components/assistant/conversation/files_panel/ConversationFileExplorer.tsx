@@ -92,7 +92,7 @@ export function ConversationFileExplorer({
       <AppLayoutTitle>
         <div className="flex h-full items-center justify-between gap-2">
           <span className="text-sm text-foreground">
-            {isPod ? "Files" : "Conversation Files"}
+            {isPod ? "Files" : "Conversation files"}
           </span>
           <Button
             variant="ghost"

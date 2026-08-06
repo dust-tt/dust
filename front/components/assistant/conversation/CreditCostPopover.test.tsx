@@ -1,4 +1,4 @@
-import { CreditCostSubmenu } from "@app/components/assistant/conversation/CreditCostSubmenu";
+import { CreditCostPopover } from "@app/components/assistant/conversation/CreditCostPopover";
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
@@ -23,29 +23,9 @@ vi.mock("@app/components/resources/resources_icons", () => ({
 }));
 
 vi.mock("@dust-tt/sparkle", () => ({
-  ChevronRight: () => null,
   ShapesPlus: () => null,
-  DropdownMenuItem: ({
-    label,
-    description,
-    endComponent,
-    disabled,
-  }: {
-    label: string;
-    description?: string;
-    endComponent?: ReactNode;
-    disabled?: boolean;
-  }) => (
-    <div data-disabled={disabled || undefined}>
-      <span>{label}</span>
-      {description && <span>{description}</span>}
-      {endComponent && <span>{endComponent}</span>}
-    </div>
-  ),
-  DropdownMenuLabel: ({ label }: { label: string }) => <div>{label}</div>,
-  DropdownMenuPortal: ({ children }: { children: ReactNode }) => children,
-  DropdownMenuSeparator: () => <hr />,
-  DropdownMenuSub: ({
+  Icon: () => null,
+  PopoverRoot: ({
     children,
     onOpenChange,
   }: {
@@ -59,12 +39,11 @@ vi.mock("@dust-tt/sparkle", () => ({
       {children}
     </div>
   ),
-  DropdownMenuSubContent: ({ children }: { children: ReactNode }) => (
+  PopoverContent: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
   ),
-  DropdownMenuSubTrigger: ({ children }: { children: ReactNode }) => (
-    <button type="button">{children}</button>
-  ),
+  PopoverTrigger: ({ children }: { children: ReactNode }) => children,
+  Tooltip: ({ trigger }: { trigger: ReactNode }) => trigger,
 }));
 
 const makeTool = (
@@ -83,16 +62,16 @@ const makeTool = (
   ...overrides,
 });
 
-const defaultProps: ComponentProps<typeof CreditCostSubmenu> = {
+const defaultProps: ComponentProps<typeof CreditCostPopover> = {
   credits: 10,
   subAgentCredits: 0,
   conversationId: "conversation_test",
   messageId: "message_test",
   workspaceId: "workspace_test",
-  isCostLoading: false,
+  trigger: <button type="button">Credit trigger</button>,
 };
 
-describe("CreditCostSubmenu", () => {
+describe("CreditCostPopover", () => {
   beforeEach(() => {
     mockUseAgentMessageConsumption.mockReset();
   });
@@ -117,7 +96,7 @@ describe("CreditCostSubmenu", () => {
       mutateConsumption: vi.fn(),
     });
 
-    render(<CreditCostSubmenu {...defaultProps} subAgentCredits={3} />);
+    render(<CreditCostPopover {...defaultProps} subAgentCredits={3} />);
 
     expect(screen.getByText("Calendar tool")).toBeInTheDocument();
     expect(screen.getByText("7.1 credits")).toBeInTheDocument();
@@ -134,10 +113,6 @@ describe("CreditCostSubmenu", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("This message")).toBeInTheDocument();
     expect(screen.getByText("Sub-agents")).toBeInTheDocument();
-    expect(screen.getByText("Calendar tool").parentElement).toHaveAttribute(
-      "data-disabled",
-      "true"
-    );
   });
 
   it("shows an additive breakdown without a separate savings adjustment", () => {
@@ -158,7 +133,7 @@ describe("CreditCostSubmenu", () => {
       mutateConsumption: vi.fn(),
     });
 
-    render(<CreditCostSubmenu {...defaultProps} />);
+    render(<CreditCostPopover {...defaultProps} />);
 
     expect(screen.getByText("Credit breakdown")).toBeInTheDocument();
     expect(screen.queryByText("Saved through reuse")).not.toBeInTheDocument();
@@ -173,7 +148,7 @@ describe("CreditCostSubmenu", () => {
       mutateConsumption: vi.fn(),
     });
 
-    render(<CreditCostSubmenu {...defaultProps} />);
+    render(<CreditCostPopover {...defaultProps} />);
 
     expect(screen.getByText("12 credits")).toBeInTheDocument();
     expect(
@@ -189,7 +164,7 @@ describe("CreditCostSubmenu", () => {
       mutateConsumption,
     });
 
-    render(<CreditCostSubmenu {...defaultProps} />);
+    render(<CreditCostPopover {...defaultProps} />);
 
     expect(mockUseAgentMessageConsumption).toHaveBeenLastCalledWith(
       expect.objectContaining({ disabled: true })

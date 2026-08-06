@@ -4,17 +4,14 @@ import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMes
 import { formatCredits } from "@app/lib/client/credits";
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import {
-  ChevronRight,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
+  Icon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  Tooltip,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
-import { useState } from "react";
+import type { ComponentType, ReactElement } from "react";
+import { useId, useState } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
 
@@ -34,67 +31,59 @@ function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
   return descriptions.join(" · ");
 }
 
-interface ReadonlyCostItemProps {
+interface CreditDetailRowProps {
   description?: string;
   icon?: ComponentType<{ className?: string }>;
   label: string;
   value: string;
 }
 
-function ReadonlyCostItem({
+function CreditDetailRow({
   description,
   icon,
   label,
   value,
-}: ReadonlyCostItemProps) {
+}: CreditDetailRowProps) {
   return (
-    <DropdownMenuItem
-      aria-label={`${label}, ${description ? `${description}, ` : ""}${value}`}
-      disabled
-      label={label}
-      description={description}
-      icon={icon}
-      endComponent={value}
-      className="cursor-default font-normal text-foreground data-[disabled]:text-foreground"
-    />
+    <div className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 rounded-lg px-2 py-1.5 text-sm">
+      <dt className="flex min-w-0 items-start gap-2 font-medium text-foreground">
+        {icon && (
+          <Icon
+            visual={icon}
+            size="xs"
+            className="mt-0.5 shrink-0 text-muted-foreground"
+          />
+        )}
+        <span>{label}</span>
+      </dt>
+      <dd className="shrink-0 text-muted-foreground">{value}</dd>
+      {description && (
+        <dd className="col-start-1 text-xs text-muted-foreground">
+          {description}
+        </dd>
+      )}
+    </div>
   );
 }
 
-interface ReadonlyNoticeProps {
-  description: string;
-  label: string;
-}
-
-function ReadonlyNotice({ description, label }: ReadonlyNoticeProps) {
-  return (
-    <DropdownMenuItem
-      aria-label={`${label}. ${description}`}
-      disabled
-      label={label}
-      description={description}
-      className="cursor-default font-normal data-[disabled]:text-muted-foreground"
-    />
-  );
-}
-
-interface CreditCostSubmenuProps {
+interface CreditCostPopoverProps {
   conversationId: string;
   credits: number | null | undefined;
-  isCostLoading: boolean;
   messageId: string;
   subAgentCredits: number | null | undefined;
+  trigger: ReactElement;
   workspaceId: string;
 }
 
-// TODO(2026-08-03 OBSERVABILITY) Temporary component, design and implementation will be improved in the future.
-export function CreditCostSubmenu({
+export function CreditCostPopover({
   conversationId,
   credits,
-  isCostLoading,
   messageId,
   subAgentCredits,
+  trigger,
   workspaceId,
-}: CreditCostSubmenuProps) {
+}: CreditCostPopoverProps) {
+  const headingId = useId();
   const [hasOpened, setHasOpened] = useState(false);
   const { consumption, isConsumptionLoading, mutateConsumption } =
     useAgentMessageConsumption({
@@ -109,7 +98,7 @@ export function CreditCostSubmenu({
   const totalCredits = ownCredits + childCredits;
   const details = consumption?.details;
 
-  if (!isCostLoading && totalCredits <= 0) {
+  if (totalCredits <= 0) {
     return null;
   }
 
@@ -130,7 +119,7 @@ export function CreditCostSubmenu({
   );
 
   return (
-    <DropdownMenuSub
+    <PopoverRoot
       onOpenChange={(open) => {
         if (!open) {
           return;
@@ -142,36 +131,51 @@ export function CreditCostSubmenu({
         }
       }}
     >
-      <DropdownMenuSubTrigger>
-        <span className="flex min-w-44 flex-1 items-center gap-2">
-          <span className="flex-1">Credit cost</span>
-          {isCostLoading ? (
-            <span className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
-          ) : (
-            <span className="font-normal text-muted-foreground">
-              {formatCredits(totalCredits)}
-            </span>
-          )}
-          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-        </span>
-      </DropdownMenuSubTrigger>
-      <DropdownMenuPortal>
-        <DropdownMenuSubContent className="w-80">
-          <DropdownMenuLabel label="Charged" />
-          <ReadonlyCostItem
-            label="This message"
-            value={isCostLoading ? "Updating" : formatCreditValue(ownCredits)}
-          />
-          {childCredits > 0 && (
-            <ReadonlyCostItem
-              label="Sub-agents"
-              value={
-                isCostLoading ? "Updating" : formatCreditValue(childCredits)
-              }
+      <Tooltip
+        label="View credit breakdown"
+        tooltipTriggerAsChild
+        trigger={<PopoverTrigger asChild>{trigger}</PopoverTrigger>}
+      />
+      <PopoverContent
+        role="dialog"
+        aria-labelledby={headingId}
+        align="start"
+        className="w-80 p-2"
+        preventAutoFocusOnClose={false}
+      >
+        <h2 id={headingId} className="px-2 py-1 text-sm font-semibold">
+          Credit usage
+        </h2>
+        <section aria-labelledby={`${headingId}-charged`}>
+          <h3
+            id={`${headingId}-charged`}
+            className="px-2 py-1 text-xs font-medium text-muted-foreground"
+          >
+            Charged
+          </h3>
+          <dl>
+            <CreditDetailRow
+              label="This message"
+              value={formatCreditValue(ownCredits)}
             />
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel label="Credit breakdown" />
+            {childCredits > 0 && (
+              <CreditDetailRow
+                label="Sub-agents"
+                value={formatCreditValue(childCredits)}
+              />
+            )}
+          </dl>
+        </section>
+
+        <hr className="my-1 border-t border-border" />
+
+        <section aria-labelledby={`${headingId}-breakdown`}>
+          <h3
+            id={`${headingId}-breakdown`}
+            className="px-2 py-1 text-xs font-medium text-muted-foreground"
+          >
+            Credit breakdown
+          </h3>
           {isConsumptionLoading && !consumption ? (
             <div
               aria-busy="true"
@@ -182,15 +186,15 @@ export function CreditCostSubmenu({
               <span className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
             </div>
           ) : details ? (
-            <>
-              <ReadonlyCostItem
+            <dl>
+              <CreditDetailRow
                 label="Agent work and context"
                 description="Longer conversations require more context to process"
                 value={formatCreditValue(details.agentWorkCredits)}
                 icon={InternalActionIcons.ActionBrainIcon}
               />
               {visibleTools.map((tool) => (
-                <ReadonlyCostItem
+                <CreditDetailRow
                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
                   label={tool.label}
                   description={toolDescription(tool)}
@@ -199,22 +203,26 @@ export function CreditCostSubmenu({
                 />
               ))}
               {remainingTools.length > 0 && (
-                <ReadonlyCostItem
+                <CreditDetailRow
                   label="Other tools"
                   description={`${remainingTools.length} ${remainingTools.length === 1 ? "tool" : "tools"}, ${remainingToolCallCount} ${remainingToolCallCount === 1 ? "use" : "uses"}`}
                   value={formatCreditValue(remainingToolCredits)}
                   icon={InternalActionIcons.ToolsIcon}
                 />
               )}
-            </>
+            </dl>
           ) : (
-            <ReadonlyNotice
-              label="Detailed explanation unavailable"
-              description="The exact charge above is authoritative."
-            />
+            <div className="px-2 py-1.5 text-sm">
+              <p className="font-medium text-foreground">
+                Detailed explanation unavailable
+              </p>
+              <p className="text-xs text-muted-foreground">
+                The exact charge above is authoritative.
+              </p>
+            </div>
           )}
-        </DropdownMenuSubContent>
-      </DropdownMenuPortal>
-    </DropdownMenuSub>
+        </section>
+      </PopoverContent>
+    </PopoverRoot>
   );
 }
