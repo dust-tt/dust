@@ -5,14 +5,18 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
 import { describe, expect, it } from "vitest";
 
 // Lists the tools an agent sees when answering `content`, from a server that mixes tools running
 // without approval with tools that ask for one.
 async function listedToolNames({
   authorless,
+  origin,
 }: {
   authorless: boolean;
+  origin: UserMessageOrigin;
 }): Promise<string[]> {
   const { authenticator, globalSpace, workspace } = await createResourceTest({
     role: "admin",
@@ -51,6 +55,7 @@ async function listedToolNames({
     // The agent message factory sits at rank 0.
     rank: 1,
     authorless,
+    origin,
   });
 
   const serverToolsAndInstructions = await tryListMCPTools(
@@ -78,14 +83,32 @@ async function listedToolNames({
 
 describe("tryListMCPTools approval-requiring tools", () => {
   it("lists them when a person wrote the message", async () => {
-    const toolNames = await listedToolNames({ authorless: false });
+    const toolNames = await listedToolNames({
+      authorless: false,
+      origin: "web",
+    });
 
     expect(toolNames).toContain("list_schedules");
     expect(toolNames).toContain("create_schedule");
   });
 
-  it("leaves them out for a message nobody wrote", async () => {
-    const toolNames = await listedToolNames({ authorless: true });
+  // An agent posting for someone leaves no author on the message, and the person it posts for still
+  // opens the conversation and answers the approval there.
+  it("lists them for a message nobody wrote outside of a nudge", async () => {
+    const toolNames = await listedToolNames({
+      authorless: true,
+      origin: "web",
+    });
+
+    expect(toolNames).toContain("list_schedules");
+    expect(toolNames).toContain("create_schedule");
+  });
+
+  it("leaves them out of a nudge", async () => {
+    const toolNames = await listedToolNames({
+      authorless: true,
+      origin: ACTIVATION_NUDGE_ORIGIN,
+    });
 
     expect(toolNames).toContain("list_schedules");
     expect(toolNames).not.toContain("create_schedule");
