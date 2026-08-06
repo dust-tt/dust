@@ -105,4 +105,5 @@ export type PendingCreditData = {
 export type GetCreditsResponseBody = {
   credits: CreditDisplayData[];
   pendingCredits?: PendingCreditData[];
+  freeCreditRenewalDateMs?: number;
 };

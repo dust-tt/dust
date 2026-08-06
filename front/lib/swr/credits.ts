@@ -88,6 +88,7 @@ export function useCredits({
   return {
     credits: data?.credits ?? emptyArray(),
     pendingCredits,
+    freeCreditRenewalDateMs: data?.freeCreditRenewalDateMs ?? null,
     isCreditsLoading: !error && !data && !disabled,
     isCreditsValidating: isValidating,
     isCreditsError: error,

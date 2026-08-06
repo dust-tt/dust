@@ -1,3 +1,4 @@
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getInvoicePaymentUrl } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -46,6 +47,38 @@ app.get("/", ensureIsAdmin(), async (ctx) => {
     .filter((credit) => credit.startDate !== null && credit.type !== "excess")
     .map((credit) => credit.toJSON());
 
+  const nowMs = Date.now();
+  const recurringFreeCreditRenewalDateMs = credits.reduce<number | null>(
+    (earliestExpirationDateMs, credit) => {
+      if (
+        credit.type !== "free" ||
+        !credit.invoiceOrLineItemId?.startsWith("free-renewal-") ||
+        !credit.startDate ||
+        credit.startDate.getTime() > nowMs ||
+        !credit.expirationDate ||
+        credit.expirationDate.getTime() <= nowMs
+      ) {
+        return earliestExpirationDateMs;
+      }
+
+      const expirationDateMs = credit.expirationDate.getTime();
+      return earliestExpirationDateMs === null ||
+        expirationDateMs < earliestExpirationDateMs
+        ? expirationDateMs
+        : earliestExpirationDateMs;
+    },
+    null
+  );
+
+  // Credit-priced plans renew AWU allocations, not legacy USD free credits.
+  // Migrated workspaces can retain active `free-renewal-*` rows, so only use
+  // those rows as the renewal source while the workspace is on a legacy plan.
+  const freeCreditRenewalDateMs = isCreditPricedPlanPrefix(
+    auth.getNonNullablePlan().code
+  )
+    ? null
+    : recurringFreeCreditRenewalDateMs;
+
   const pendingCommittedCredits = credits.filter(
     (credit) =>
       credit.startDate === null &&
@@ -74,6 +107,7 @@ app.get("/", ensureIsAdmin(), async (ctx) => {
     credits: creditsData,
     pendingCredits:
       pendingCreditsData.length > 0 ? pendingCreditsData : undefined,
+    freeCreditRenewalDateMs: freeCreditRenewalDateMs ?? undefined,
   };
   return ctx.json(body);
 });

@@ -88,6 +88,7 @@ interface UsageSectionProps {
   >;
   totalConsumed: number;
   totalCredits: number;
+  freeCreditRenewalDateMs: number | null;
   isLoading: boolean;
   setShowBuyCreditDialog: (show: boolean) => void;
 }
@@ -122,6 +123,7 @@ function UsageSection({
   creditsByType,
   totalConsumed,
   totalCredits,
+  freeCreditRenewalDateMs,
   isLoading,
   setShowBuyCreditDialog,
 }: UsageSectionProps) {
@@ -181,7 +183,7 @@ function UsageSection({
           consumed={creditsByType.free.consumed}
           total={creditsByType.free.total}
           renewalDate={formatRenewalDate(
-            billingCycle?.cycleEnd.getTime() ?? null
+            freeCreditRenewalDateMs ?? billingCycle?.cycleEnd.getTime() ?? null
           )}
         />
         <CreditCategoryBar
@@ -220,9 +222,8 @@ export function CreditsUsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
-  const { credits, pendingCredits, isCreditsLoading } = useCredits({
-    workspaceId: owner.sId,
-  });
+  const { credits, pendingCredits, freeCreditRenewalDateMs, isCreditsLoading } =
+    useCredits({ workspaceId: owner.sId });
   const {
     isEnterprise,
     currency,
@@ -426,6 +427,7 @@ export function CreditsUsagePage() {
           creditsByType={creditsByType}
           totalConsumed={totalConsumed}
           totalCredits={totalCredits}
+          freeCreditRenewalDateMs={freeCreditRenewalDateMs}
           isLoading={isCreditsLoading || isCreditPurchaseInfoLoading}
           setShowBuyCreditDialog={setShowBuyCreditDialog}
         />
