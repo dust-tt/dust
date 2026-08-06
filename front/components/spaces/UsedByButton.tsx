@@ -1,6 +1,6 @@
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type {
-  SkillUsageType,
+  AgentsAndSkillsUsageType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -25,7 +25,7 @@ import { useState } from "react";
 type UsedByDropdownItem =
   | {
       kind: "agent";
-      agent: SkillUsageType["agents"][number];
+      agent: AgentsAndSkillsUsageType["agents"][number];
     }
   | {
       kind: "skill";
@@ -108,7 +108,7 @@ const USED_BY_BUTTON_CLASSES =
   "w-auto border-0 px-2 hover:bg-muted-background hover:text-foreground";
 
 interface UsedByButtonProps {
-  usage: AgentsUsageType | SkillUsageType | null;
+  usage: AgentsUsageType | AgentsAndSkillsUsageType | null;
   onItemClick: (assistantSid: string) => void;
   onSkillClick?: (skillId: string) => void;
 }

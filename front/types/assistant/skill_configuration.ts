@@ -108,12 +108,12 @@ export type UsedBySkillType = {
   icon: string | null;
 };
 
-export type SkillUsageType = AgentsUsageType & {
+export type AgentsAndSkillsUsageType = AgentsUsageType & {
   skills: UsedBySkillType[];
 };
 
 export type SkillRelations = {
-  usage: SkillUsageType;
+  usage: AgentsAndSkillsUsageType;
   editors: UserType[] | null;
   editedByUser: UserType | null;
   childSkills: SkillWithoutInstructionsAndToolsType[];

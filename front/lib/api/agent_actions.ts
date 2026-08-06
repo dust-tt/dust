@@ -4,7 +4,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import type {
-  SkillUsageType,
+  AgentsAndSkillsUsageType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -16,7 +16,7 @@ import { QueryTypes } from "sequelize";
 const DISABLE_QUERIES = false;
 
 export type MCPServersUsageByAgent = Record<string, AgentsUsageType>;
-export type MCPServersUsage = Record<string, SkillUsageType>;
+export type MCPServersUsage = Record<string, AgentsAndSkillsUsageType>;
 
 interface MCPServerUsageRow {
   internalMCPServerId: string | null;

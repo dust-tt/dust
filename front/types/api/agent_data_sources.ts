@@ -1,5 +1,5 @@
-import type { AgentsUsageType } from "@app/types/data_source";
+import type { AgentsAndSkillsUsageType } from "@app/types/assistant/skill_configuration";
 
 export type GetDataSourceUsageResponseBody = {
-  usage: AgentsUsageType;
+  usage: AgentsAndSkillsUsageType;
 };

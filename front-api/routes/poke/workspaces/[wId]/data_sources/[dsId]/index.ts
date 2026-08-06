@@ -1,3 +1,4 @@
+import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -51,7 +52,9 @@ app.delete(
       [dataSource]
     );
     const viewsUsageByAgentsRes = await Promise.all(
-      dataSourceViews.map((view) => view.getUsagesByAgents(auth))
+      dataSourceViews.map((view) =>
+        getDataSourceViewUsage({ auth, dataSourceView: view })
+      )
     );
 
     const viewsUsedByAgentsName = viewsUsageByAgentsRes.reduce(
