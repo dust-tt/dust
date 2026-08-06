@@ -141,6 +141,7 @@ export function EditPodFrameTabDialog({
         <DialogContainer>
           <div className="flex items-center gap-2">
             <PopoverRoot
+              modal
               open={isIconPickerOpen}
               onOpenChange={(open) => {
                 if (isEditor) {
