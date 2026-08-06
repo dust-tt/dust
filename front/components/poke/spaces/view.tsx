@@ -77,6 +77,15 @@ export function ViewSpaceViewTable({ sandbox, space }: ViewSpaceTableProps) {
                     <PokeTableCell>{sandbox.status}</PokeTableCell>
                   </PokeTableRow>
                   <PokeTableRow>
+                    <PokeTableHead>Pod Function Channel</PokeTableHead>
+                    {/* The first thing to check when a pod's functions are
+                        unexpectedly slow: closed means every fast invocation
+                        is falling back to the sandbox exec API. */}
+                    <PokeTableCell>
+                      {sandbox.pollerChannelOpen ? "open" : "closed"}
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
                     <PokeTableHead>Sandbox Connect</PokeTableHead>
                     {/* The `e2b sandbox connect` command is too wide for the
                         Overview; the copy button is what matters here. */}

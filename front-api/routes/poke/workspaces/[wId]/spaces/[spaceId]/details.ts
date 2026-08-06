@@ -1,4 +1,5 @@
 import type { PokeGetSpaceDetails } from "@app/lib/api/poke/spaces";
+import { isPollerChannelOpen } from "@app/lib/api/sandbox_functions/poller_channel";
 import { getMembers } from "@app/lib/api/workspace";
 import { spaceToPokeJSON } from "@app/lib/poke/utils";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
@@ -63,11 +64,16 @@ app.get(
     const sandbox = space.isProject()
       ? await PodSandboxAdapter.fetchSandbox(auth, space)
       : null;
+    // Read here rather than in `toPokeJSON`, which is synchronous: whether a pod is listening
+    // lives in Redis, and it is the first thing to check when its functions are unexpectedly slow.
+    const pollerChannelOpen = sandbox
+      ? await isPollerChannelOpen({ sandboxId: sandbox.sId })
+      : false;
 
     return ctx.json({
       members,
       metadata: metadata ? metadata.toJSON() : null,
-      sandbox: sandbox ? sandbox.toPokeJSON() : null,
+      sandbox: sandbox ? { ...sandbox.toPokeJSON(), pollerChannelOpen } : null,
       space: await spaceToPokeJSON(auth, space),
     });
   }
