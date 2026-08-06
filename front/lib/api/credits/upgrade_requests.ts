@@ -242,7 +242,28 @@ export async function listPendingUpgradeRequests(
   return requests.map((r) => r.toJSON());
 }
 
-// Admin-only: record the outcome of a request.
+// Admin-only: resolved requests, for the history view, paginated.
+export const RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
+
+export async function listResolvedUpgradeRequests(
+  auth: Authenticator,
+  { offset }: { offset: number }
+): Promise<{ requests: MembershipUpgradeRequestType[]; total: number }> {
+  const { requests, total } =
+    await MembershipUpgradeRequestResource.listResolvedByWorkspace(auth, {
+      limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+      offset,
+    });
+  return { requests: requests.map((r) => r.toJSON()), total };
+}
+
+// Admin-only: record the outcome of a request. The resolution is persisted
+// first (the source of truth for the request); an approval that carries a
+// `limit` then syncs the requester's spend limit, and is reverted back to
+// `pending` if that sync fails, so the two can't drift apart. `grantedSeatType`,
+// when resolved via "Upgrade to max plan", and the spend-limit grant (recorded
+// inside `setUserSpendLimit`) are snapshotted onto the request for the history
+// view.
 export async function resolveUpgradeRequest(
   auth: Authenticator,
   {
@@ -293,6 +314,7 @@ export async function resolveUpgradeRequest(
         userId: request.requester.sId,
         limit: resolution.limit,
         auditContext: auditContext ?? { location: "internal" },
+        requestId: request.sId,
       }),
       {
         revert: async () => {
@@ -324,6 +346,10 @@ export async function resolveUpgradeRequest(
     if (spendLimitResult.isErr()) {
       return new Err(spendLimitResult.error);
     }
+  }
+
+  if (resolution.status === "approved" && resolution.grantedSeatType) {
+    await request.recordSeatUpgrade(resolution.grantedSeatType);
   }
 
   void emitAuditLogEvent({

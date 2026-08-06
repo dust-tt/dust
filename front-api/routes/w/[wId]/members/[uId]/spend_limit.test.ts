@@ -1,7 +1,9 @@
+import { Authenticator } from "@app/lib/auth";
 import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -496,6 +498,57 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
           workspace,
         });
       expect(updatedMembership?.poolCapOverrideAwuCredits).toBe(900);
+    });
+
+    it("records the grant on a linked upgrade request", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const requestResult =
+        await MembershipUpgradeRequestResource.createPending(adminAuth, {
+          user: targetUser,
+          reason: null,
+        });
+      if (requestResult.isErr()) {
+        throw requestResult.error;
+      }
+      const requestId = requestResult.value.sId;
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "admin",
+        workspace,
+      });
+
+      const response = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "limited",
+            awuCredits: 750,
+            expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+            expiryKind: "one_day",
+            requestId,
+          }),
+        }
+      );
+      expect(response.status).toBe(200);
+
+      const updatedRequest = await MembershipUpgradeRequestResource.fetchById(
+        adminAuth,
+        requestId
+      );
+      expect(updatedRequest?.grantedAwuCredits).toBe(750);
+      expect(updatedRequest?.grantedExpiryKind).toBe("one_day");
+      expect(updatedRequest?.grantedUnlimitedSpend).toBe(false);
+      expect(updatedRequest?.grantedSeatType).toBeNull();
     });
   });
 });
