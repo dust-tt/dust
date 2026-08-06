@@ -210,7 +210,9 @@ export async function storeAgentAnalytics(
     });
   }
 
-  // Seat type at index time, to stamp `is_free_seat`. Mirrors Metronome's
+  const messageCreatedAt = new Date(agentMessageRow.createdAt);
+
+  // Seat type as of the message time, to stamp `is_free_seat`. Mirrors Metronome's
   // free-seat user-id split: free-seat usage is dropped from a user's consumed
   // credits once they upgrade to a paid seat. Defaults to non-free when the
   // message has no associated user (system/doNotAssociateUser messages).
@@ -218,6 +220,7 @@ export async function storeAgentAnalytics(
     ? await MembershipResource.getActiveSeatTypeForUserModelId({
         workspace: auth.getNonNullableWorkspace(),
         userModelId: userModel.id,
+        at: messageCreatedAt,
       })
     : null;
   const isFreeSeat = seatType === "free";
@@ -328,7 +331,7 @@ export async function storeAgentAnalytics(
     skills_used: skillsUsed,
     status: agentAgentMessageRow.status,
     is_free_seat: isFreeSeat,
-    timestamp: new Date(agentMessageRow.createdAt).toISOString(),
+    timestamp: messageCreatedAt.toISOString(),
     tokens,
     tools_used: toolsUsed,
     // Fall back to the authenticated user when the UserMessage row has no

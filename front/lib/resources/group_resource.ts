@@ -1156,18 +1156,28 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
+  /**
+   * Group model ids the user was a member of at `at`, defaulting to now.
+   *
+   * Two caveats:
+   * - `global` groups are included regardless of `at` if requested (they are not historized).
+   * - `status` is mutated in place by suspend/restore, so a membership
+   *   suspended today is filtered out even for a past `at`.
+   */
   private static async listUserGroupModelIdsInWorkspace({
     user,
     workspace,
     groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
     transaction,
     dangerouslySkipMembershipCheck = false,
+    at = new Date(),
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
     dangerouslySkipMembershipCheck?: boolean;
+    at?: Date;
   }): Promise<ModelId[]> {
     if (!dangerouslySkipMembershipCheck) {
       const workspaceMembership =
@@ -1175,6 +1185,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           user,
           workspace,
           transaction,
+          at,
         });
       if (!workspaceMembership) {
         return [];
@@ -1209,7 +1220,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: workspace.id,
           groupKinds,
           userId: user.id,
-          now: new Date(),
+          now: at,
         },
         type: QueryTypes.SELECT,
         raw: true,
@@ -1231,17 +1242,20 @@ export class GroupResource extends BaseResource<GroupModel> {
     workspace,
     groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
     transaction,
+    at,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
+    at?: Date;
   }): Promise<GroupResource[]> {
     const groupIds = await this.listUserGroupModelIdsInWorkspace({
       user,
       workspace,
       groupKinds,
       transaction,
+      at,
     });
 
     const groups = await GroupModel.findAll({

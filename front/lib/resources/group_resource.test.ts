@@ -76,6 +76,7 @@ import {
   GroupResource,
   MANUAL_BUILDERS_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -210,6 +211,146 @@ describe("GroupResource", () => {
       );
 
       expect(result.size).toBe(0);
+    });
+  });
+
+  describe("listUserGroupsInWorkspace with `at`", () => {
+    const JANUARY = new Date("2026-01-15T00:00:00Z");
+    const FEBRUARY = new Date("2026-02-15T00:00:00Z");
+    const MARCH = new Date("2026-03-15T00:00:00Z");
+
+    // Group memberships are historized by startAt/endAt, but no resource method
+    // lets a caller choose those values, so the window is backdated directly.
+    async function setGroupMembershipWindow(
+      group: GroupResource,
+      member: UserResource,
+      { startAt, endAt }: { startAt: Date; endAt: Date | null }
+    ) {
+      await GroupMembershipModel.update(
+        { startAt, endAt },
+        {
+          where: {
+            workspaceId: workspace.id,
+            groupId: group.id,
+            userId: member.id,
+          },
+        }
+      );
+    }
+
+    it("returns the groups the user was in at `at`, not today's groups", async () => {
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, {
+        role: "user",
+        startAt: JANUARY,
+      });
+
+      const sales = await GroupResource.makeNew({
+        name: "Sales",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      await sales.dangerouslyAddMembers(authenticator, {
+        users: [member.toJSON()],
+      });
+      // In Sales from January until March.
+      await setGroupMembershipWindow(sales, member, {
+        startAt: JANUARY,
+        endAt: MARCH,
+      });
+
+      const inFebruary = await GroupResource.listUserGroupsInWorkspace({
+        user: member,
+        workspace,
+        groupKinds: ["regular_manual"],
+        at: FEBRUARY,
+      });
+      expect(inFebruary.map((g) => g.name)).toEqual(["Sales"]);
+
+      // Omitting `at` defaults to now, after the membership ended.
+      const today = await GroupResource.listUserGroupsInWorkspace({
+        user: member,
+        workspace,
+        groupKinds: ["regular_manual"],
+      });
+      expect(today).toEqual([]);
+    });
+
+    it("still resolves groups for a user who has since left the workspace", async () => {
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, {
+        role: "user",
+        startAt: JANUARY,
+      });
+
+      const sales = await GroupResource.makeNew({
+        name: "Sales",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      await sales.dangerouslyAddMembers(authenticator, {
+        users: [member.toJSON()],
+      });
+      await setGroupMembershipWindow(sales, member, {
+        startAt: JANUARY,
+        endAt: null,
+      });
+
+      const revoked = await MembershipResource.revokeMembership({
+        user: member,
+        workspace,
+        endAt: MARCH,
+      });
+      expect(revoked.isOk()).toBe(true);
+
+      // The workspace membership gate is evaluated at `at` too, so a member who
+      // left in March is still resolvable in February. This is what analytics
+      // reindexing of their past messages depends on.
+      const inFebruary = await GroupResource.listUserGroupsInWorkspace({
+        user: member,
+        workspace,
+        groupKinds: ["regular_manual"],
+        at: FEBRUARY,
+      });
+      expect(inFebruary.map((g) => g.name)).toEqual(["Sales"]);
+
+      // Today they are no longer a workspace member.
+      const today = await GroupResource.listUserGroupsInWorkspace({
+        user: member,
+        workspace,
+        groupKinds: ["regular_manual"],
+      });
+      expect(today).toEqual([]);
+    });
+
+    it("excludes memberships that had not started yet at `at`", async () => {
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, {
+        role: "user",
+        startAt: JANUARY,
+      });
+
+      const sales = await GroupResource.makeNew({
+        name: "Sales",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      await sales.dangerouslyAddMembers(authenticator, {
+        users: [member.toJSON()],
+      });
+      await setGroupMembershipWindow(sales, member, {
+        startAt: FEBRUARY,
+        endAt: null,
+      });
+
+      const inJanuary = await GroupResource.listUserGroupsInWorkspace({
+        user: member,
+        workspace,
+        groupKinds: ["regular_manual"],
+        at: JANUARY,
+      });
+
+      expect(inJanuary).toEqual([]);
     });
   });
 
