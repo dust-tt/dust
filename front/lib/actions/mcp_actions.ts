@@ -97,7 +97,10 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import { isUserMessageWithoutConcreteUser } from "@app/types/assistant/conversation";
+import {
+  ACTIVATION_NUDGE_ORIGIN,
+  isUserMessageWithoutConcreteUser,
+} from "@app/types/assistant/conversation";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -1082,6 +1085,9 @@ export async function tryListMCPTools(
   const isWithoutConcreteUser = isUserMessageWithoutConcreteUser(
     agentLoopListToolsContext.userMessage
   );
+  const isActivationNudge =
+    agentLoopListToolsContext.userMessage.context.origin ===
+    ACTIVATION_NUDGE_ORIGIN;
 
   // An admin scoping a server to `personal_actions` decided it runs on each
   // person's own credentials. A message nobody wrote (posted by Dust on the
@@ -1166,10 +1172,11 @@ export async function tryListMCPTools(
       const processedTools: MCPToolConfigurationType[] = [];
 
       for (const toolConfig of rawToolsFromServer) {
-        // Nobody wrote this message, so nobody is waiting on its answer: an approval prompt would
-        // be addressed to a person who never asked anything, and the run would sit blocked until
-        // they happen to open the conversation. Only `never_ask` tools run without one.
-        if (isWithoutConcreteUser && toolConfig.permission !== "never_ask") {
+        // A nudge is not something the user asked for, so nobody is waiting on its answer: an
+        // approval prompt would be addressed to a person who never asked anything, and the run
+        // would sit blocked until they happen to open the conversation. Only `never_ask` tools
+        // run there.
+        if (isActivationNudge && toolConfig.permission !== "never_ask") {
           continue;
         }
 
