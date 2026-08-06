@@ -12,6 +12,7 @@ import {
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
+import { startSandboxFunctionPoller } from "@app/lib/api/sandbox_functions/poller_runtime";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
@@ -191,6 +192,20 @@ async function ensureOwnerSandboxReady(
       if (ensureEgressResult.isErr()) {
         status = "error";
         return ensureEgressResult;
+      }
+
+      // After egress, since the poller's first act is to call front. Pods only: a conversation
+      // sandbox runs no Pod functions, so it has nothing to receive.
+      //
+      // Only on a new or woken sandbox, like telemetry above. Starting it installs a fresh
+      // credential and restarts the unit, and the routine five-minute refresh runs on the critical
+      // path of whatever invocation happened to trigger it: doing this then would restart the
+      // poller under its own in-flight runs, every five minutes, forever.
+      if (runtimeOwner.kind === "pod" && (freshlyCreated || wokeFromSleep)) {
+        await traceSandboxStartupPhase("poller_start", async () => {
+          await startSandboxFunctionPoller(auth, sandbox);
+          return new Ok(undefined);
+        });
       }
 
       await sandbox.updateLastRuntimeRefreshAt(new Date());

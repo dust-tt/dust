@@ -26,8 +26,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.66";
-const DSBX_CLI_VERSION = "0.1.41";
+const DUST_BASE_IMAGE_VERSION = "0.8.67";
+const DSBX_CLI_VERSION = "0.1.42";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
@@ -58,6 +58,7 @@ const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
 const LITESTREAM_VERSION = "0.5.13";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const LITESTREAM_LOCAL_DIR = path.resolve(__dirname, "litestream");
+const POLLER_LOCAL_DIR = path.resolve(__dirname, "poller");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
 const TOKEN_LOCAL_DIR = path.resolve(__dirname, "token");
@@ -635,6 +636,15 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.service"),
     "/etc/systemd/system/fluent-bit.service",
+    { user: "root" }
+  )
+  // Pod function poller unit. Deliberately NOT enabled: front starts it at runtime once it has
+  // installed the settings and the credential the poller needs, neither of which exists at build
+  // time. Ownership and mode are pinned by the service path hardening, since systemd reads this
+  // as root and a workload able to write it would own the sandbox.
+  .copy(
+    getLocalContent(POLLER_LOCAL_DIR, "dust-poller.service"),
+    "/etc/systemd/system/dust-poller.service",
     { user: "root" }
   )
   // Seed /etc/dust/ca-bundle.pem with the system roots so replace-style trust

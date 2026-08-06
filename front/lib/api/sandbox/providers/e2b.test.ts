@@ -76,12 +76,12 @@ vi.mock("e2b", () => {
 });
 
 import { CommandExitError, NotFoundError } from "e2b";
-
 import {
   SANDBOX_AGENT_PROXIED_SAFE_PATH,
   SANDBOX_AGENT_SAFE_PATH,
   SANDBOX_AGENT_SERVICE_HOME,
   SANDBOX_ROOT_SAFE_PATH,
+  SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
 } from "../hardening";
 import { rootCommand } from "../root_command";
 import { E2BSandboxProvider } from "./e2b";
@@ -166,7 +166,7 @@ describe("E2BSandboxProvider", () => {
       "sudo must not be installed in sandbox images"
     );
     expect(hardeningCommand).toContain(
-      "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin /usr/local/lib"
+      `install -d -o root -g root -m 755 ${SANDBOX_STATIC_ROOT_CONSUMED_DIRS.join(" ")}`
     );
     expect(hardeningCommand).toContain("/usr/bin/systemd-analyze unit-paths");
     expect(hardeningCommand).toContain("systemd unit path must be absolute");
