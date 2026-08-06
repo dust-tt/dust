@@ -1,6 +1,7 @@
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFilePreviewMarkdownDirective } from "@app/lib/markdown/file_preview";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -43,15 +44,35 @@ vi.mock("@app/lib/utils/router", () => ({
   setQueryParam: (...args: any[]) => setQueryParamMock(...args),
 }));
 
-// Mock workspace permissions so skill chips can be rendered without a
-// FetcherProvider / live permissions endpoint. Tests toggle the return value to
-// simulate whether the current user can create skills.
+// Mock workspace permissions so mention/directive components can be rendered
+// without a FetcherProvider / live permissions endpoint.
 const hasPermissionMock = vi.fn(() => false);
 vi.mock("@app/lib/swr/permissions", () => ({
   useWorkspacePermissions: () => ({
     hasPermission: hasPermissionMock,
   }),
 }));
+
+// Skill chips open the conversation side panel; the provider is not mounted here.
+const togglePanelMock = vi.fn();
+vi.mock(
+  import("@app/components/assistant/conversation/ConversationSidePanelContext"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    useConversationSidePanelContext: () => ({
+      currentPanel: undefined,
+      openPanel: vi.fn(),
+      togglePanel: togglePanelMock,
+      closePanel: vi.fn(),
+      onPanelClosed: vi.fn(),
+      setPanelRef: vi.fn(),
+      panelRef: { current: null },
+      setVirtuosoMsg: vi.fn(),
+      virtuosoMsg: null,
+      data: undefined,
+    }),
+  })
+);
 
 const mockOwner = {
   id: 1,
@@ -229,7 +250,6 @@ Quote text
     });
 
     it("renders inline skill tags as chips", () => {
-      hasPermissionMock.mockReturnValue(false);
       const content =
         'Please use <skill id="skill_123" name="commit" icon="book_open" />';
       const message = { ...mockMessage, content };
@@ -246,12 +266,12 @@ Quote text
       expect(container.textContent).not.toContain("<skill");
     });
 
-    it("links inline skill tags when the user can create skills", () => {
-      hasPermissionMock.mockReturnValue(true);
+    it("opens the skill side panel when an inline skill tag is clicked", async () => {
+      togglePanelMock.mockClear();
       const content =
         'Please use <skill id="skill_123" name="commit" icon="book_open" />';
       const message = { ...mockMessage, content };
-      const { container } = render(
+      render(
         <UserMessageMarkdown
           owner={mockOwner}
           message={message}
@@ -259,11 +279,12 @@ Quote text
         />
       );
 
-      const skillLink = container.querySelector("a[href]");
-      expect(skillLink).toHaveAttribute(
-        "href",
-        "/w/test-workspace/builder/skills#?skillId=skill_123"
-      );
+      await userEvent.click(screen.getByText("commit"));
+
+      expect(togglePanelMock).toHaveBeenCalledWith({
+        type: "skill",
+        skillId: "skill_123",
+      });
     });
 
     it("renders content node mentions", () => {

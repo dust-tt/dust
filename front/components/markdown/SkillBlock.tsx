@@ -1,7 +1,6 @@
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getSkillIcon } from "@app/lib/skill";
-import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import { getManageSkillsRoute } from "@app/lib/utils/router";
-import type { WorkspaceType } from "@app/types/user";
+import { SKILL_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import { AttachmentChip } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
@@ -11,29 +10,18 @@ export interface SkillDirectiveProps {
   skillName: string;
 }
 
-interface SkillBlockProps extends SkillDirectiveProps {
-  owner: WorkspaceType;
-}
-
 export function SkillBlock({
-  owner,
   skillId,
   skillIcon,
   skillName,
-}: SkillBlockProps) {
-  const { hasPermission } = useWorkspacePermissions();
-  const canCreateSkill = hasPermission("create", "skill");
-
-  const href = canCreateSkill
-    ? getManageSkillsRoute(owner.sId, skillId)
-    : undefined;
+}: SkillDirectiveProps) {
+  const { togglePanel } = useConversationSidePanelContext();
 
   return (
     <AttachmentChip
       label={skillName}
       icon={{ visual: getSkillIcon(skillIcon), size: "xs" }}
-      href={href}
-      target={href ? "_blank" : undefined}
+      onClick={() => togglePanel({ type: SKILL_SIDE_PANEL_TYPE, skillId })}
       color="primary"
       size="xs"
     />
