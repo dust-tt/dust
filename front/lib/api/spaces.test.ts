@@ -16,6 +16,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -1188,6 +1189,43 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           false
         );
         expect(deleteResult.isOk()).toBe(true);
+      }
+    });
+  });
+
+  describe("usage guard", () => {
+    it("blocks deletion and names the skill when only a skill uses the space's data, not an agent", async () => {
+      const spaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Skill Knowledge",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(spaceResult.isOk()).toBe(true);
+      const space = spaceResult.isOk() ? spaceResult.value : null;
+      expect(space).not.toBeNull();
+
+      const view = await DataSourceViewFactory.folder(workspace, space!);
+      const skill = await SkillFactory.create(adminAuth, {
+        name: "Space Knowledge Skill",
+        availability: "workspace_users",
+        attachedKnowledge: [{ dataSourceView: view, nodeId: "node-1" }],
+      });
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        space!,
+        false // do not force — the guard should block
+      );
+
+      expect(deleteResult.isErr()).toBe(true);
+      if (deleteResult.isErr()) {
+        expect(deleteResult.error.message).toContain(skill.name);
       }
     });
   });

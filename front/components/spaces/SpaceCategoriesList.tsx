@@ -1,7 +1,7 @@
-import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { useUsedByDetailsSheets } from "@app/components/spaces/useUsedByDetailsSheets";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -9,7 +9,7 @@ import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
-import type { AgentsUsageType } from "@app/types/data_source";
+import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
@@ -37,14 +37,17 @@ type RowData = {
   category: string;
   name: string;
   icon: ComponentType;
-  usage: AgentsUsageType;
+  usage: AgentsAndSkillsUsageType;
   count: number;
   onClick?: () => void;
 };
 
 type Info = CellContext<RowData, unknown>;
 
-const getTableColumns = (onAgentClick: (agentId: string) => void) => {
+const getTableColumns = (
+  onAgentClick: (agentId: string | null) => void,
+  onSkillClick: (skillId: string | null) => void
+) => {
   return [
     {
       header: "Name",
@@ -69,6 +72,7 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
           <UsedByButton
             usage={info.row.original.usage}
             onItemClick={onAgentClick}
+            onSkillClick={onSkillClick}
           />
         </DataTable.CellContent>
       ),
@@ -104,7 +108,10 @@ export const SpaceCategoriesList = ({
   const canAdministrateApps = hasPermission("admin", "dust_app");
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
-  const [assistantId, setAssistantId] = React.useState<string | null>(null);
+  const { onAgentClick, onSkillClick, sheets } = useUsedByDetailsSheets(
+    owner,
+    user
+  );
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
@@ -200,12 +207,7 @@ export const SpaceCategoriesList = ({
 
   return (
     <>
-      <AgentDetailsSheet
-        owner={owner}
-        user={user}
-        agentId={assistantId}
-        onClose={() => setAssistantId(null)}
-      />
+      {sheets}
       {isEmpty && (
         <div
           className={cn(
@@ -220,7 +222,7 @@ export const SpaceCategoriesList = ({
       {rows.length > 0 && (
         <DataTable
           data={rows}
-          columns={getTableColumns(setAssistantId)}
+          columns={getTableColumns(onAgentClick, onSkillClick)}
           className="pb-4"
           columnsBreakpoints={{
             usage: "md",

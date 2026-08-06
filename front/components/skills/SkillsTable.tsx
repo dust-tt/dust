@@ -7,10 +7,8 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import type {
-  SkillAvailability,
-  SkillUsageType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
+import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
@@ -38,7 +36,7 @@ type RowData = {
   description: string;
   availability: SkillAvailability;
   editors: UserType[] | null;
-  usage: SkillUsageType;
+  usage: AgentsAndSkillsUsageType;
   messageCount: number | null;
   updatedAt: number | null;
   createdAt: number | null;

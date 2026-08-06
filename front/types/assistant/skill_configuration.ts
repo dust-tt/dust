@@ -1,5 +1,5 @@
 import { MCPServerViewSchema } from "@app/lib/api/mcp_schemas";
-import type { AgentsUsageType } from "@app/types/data_source";
+import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
@@ -108,12 +108,8 @@ export type UsedBySkillType = {
   icon: string | null;
 };
 
-export type SkillUsageType = AgentsUsageType & {
-  skills: UsedBySkillType[];
-};
-
 export type SkillRelations = {
-  usage: SkillUsageType;
+  usage: AgentsAndSkillsUsageType;
   editors: UserType[] | null;
   editedByUser: UserType | null;
   childSkills: SkillWithoutInstructionsAndToolsType[];

@@ -1,3 +1,11 @@
+import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { getToolsUsage } from "@app/lib/api/agent_actions";
+import {
+  getDataSourceUsage,
+  getDataSourceViewsUsageByModelIds,
+  getDataSourceViewUsage,
+} from "@app/lib/api/agent_data_sources";
+import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
@@ -29,7 +37,8 @@ import {
   launchOrSignalProjectTodoWorkflow,
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
-import type { AgentsUsageType } from "@app/types/data_source";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import type { SpaceCategoryInfo } from "@app/types/api/spaces";
 import {
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
@@ -40,7 +49,124 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 import { Op, UniqueConstraintError } from "sequelize";
+
+/**
+ * Summarizes a Space's contents by category (Connected Data, Folders, Websites, Tools,
+ * Triggers, Apps) with a count and agent+skill usage per category. Space landing page read model.
+ *
+ * Apps are legacy (`legacy_dust_apps`) and left zeroed out — not worth computing.
+ *
+ * Perf: Tools/Triggers usage comes from `getToolsUsage`/`getWebhookSourcesUsage`, which are
+ * workspace-wide, not space-scoped; this function narrows after the fact. Fine at
+ * small-to-medium scale, but repeats the full-workspace query on every space visited. If it
+ * becomes hot, add view-id-scoped variants mirroring `getDataSourceViewsUsageByModelIds`.
+ *
+ * Known gap: `getToolsUsage` groups by MCP server, not by view, so a manually-added tool with
+ * views in two regular spaces will leak combined usage into both. Same fix as above resolves it.
+ */
+export async function getSpaceCategoriesWithUsage(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<Record<string, SpaceCategoryInfo>> {
+  // These three listings are mutually independent — fetch together rather than one at a time.
+  const [dataSourceViewsList, actions, webhookViews] = await Promise.all([
+    DataSourceViewResource.listBySpace(auth, space),
+    MCPServerViewResource.listBySpace(auth, space),
+    WebhookSourcesViewResource.listBySpace(auth, space),
+  ]);
+  // "auto" tools (e.g. Pods, Computer) get a view auto-provisioned into every space —
+  // they aren't meaningfully "this space's tools," so both the count and the usage below
+  // are scoped to manually-added tools only, matching `getSpaceIdToActionsMap`'s convention.
+  const manualActions = actions.filter(
+    (a) => a.getServerDisplayMetadata().availability === "manual"
+  );
+  const actionsCount = manualActions.length;
+
+  // Same here: each usage computation only needs one of the lists above, not each other's
+  // output, so they can all run together too.
+  const [usages, webhookUsages, toolsUsage] = await Promise.all([
+    getDataSourceViewsUsageByModelIds({
+      auth,
+      dataSourceViewModelIds: dataSourceViewsList.map((dsv) => dsv.id),
+    }),
+    getWebhookSourcesUsage({ auth }),
+    getToolsUsage(auth),
+  ]);
+
+  const categories: Record<string, SpaceCategoryInfo> = {};
+  for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
+    const dataSourceViewsInCategory = dataSourceViewsList.filter(
+      (view) => view.toJSON().category === category
+    );
+
+    const agents = uniqBy(
+      dataSourceViewsInCategory.flatMap(
+        (view) => usages[view.id]?.agents ?? []
+      ),
+      "sId"
+    );
+    const skills = uniqBy(
+      dataSourceViewsInCategory.flatMap(
+        (view) => usages[view.id]?.skills ?? []
+      ),
+      "sId"
+    );
+
+    categories[category] = {
+      count: dataSourceViewsInCategory.length,
+      usage: { count: agents.length + skills.length, agents, skills },
+    };
+  }
+
+  categories["actions"].count = actionsCount;
+  // Triggers aren't `DataSourceView`s, so the loop above leaves this at 0; patch it here.
+  categories["triggers"].count = webhookViews.length;
+
+  // Tools and Triggers aren't `DataSourceView`s, so the loop above never computes real usage
+  // for them. Reuse the same batched usage functions their own admin pages already rely on,
+  // narrowed down to this space's own tools/webhook sources.
+  //
+  // Skills never have triggers, so this stays agents-only.
+  const triggerAgents = uniqBy(
+    webhookViews.flatMap(
+      (view) => webhookUsages[view.webhookSourceId]?.agents ?? []
+    ),
+    "sId"
+  );
+  categories["triggers"].usage = {
+    count: triggerAgents.length,
+    agents: triggerAgents,
+    skills: [],
+  };
+
+  const getToolUsageKey = (view: MCPServerViewResource) =>
+    view.internalMCPServerId ??
+    remoteMCPServerNameToSId({
+      remoteMCPServerId: view.remoteMCPServerId!,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    });
+  const toolAgents = uniqBy(
+    manualActions.flatMap(
+      (view) => toolsUsage[getToolUsageKey(view)]?.agents ?? []
+    ),
+    "sId"
+  );
+  const toolSkills = uniqBy(
+    manualActions.flatMap(
+      (view) => toolsUsage[getToolUsageKey(view)]?.skills ?? []
+    ),
+    "sId"
+  );
+  categories["actions"].usage = {
+    count: toolAgents.length + toolSkills.length,
+    agents: toolAgents,
+    skills: toolSkills,
+  };
+
+  return categories;
+}
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -56,47 +182,61 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     "Only project editors or workspace admins can delete project spaces."
   );
 
-  const usages: AgentsUsageType[] = [];
-
+  // Fetched unconditionally: the delete transaction below reuses these lists either way.
   const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
-  for (const view of dataSourceViews) {
-    const usage = await view.getUsagesByAgents(auth);
-    if (usage.isErr()) {
-      throw usage.error;
-    } else if (usage.value.count > 0) {
-      usages.push(usage.value);
-    }
-  }
-
   const dataSources = await DataSourceResource.listBySpace(auth, space);
-  for (const ds of dataSources) {
-    const usage = await ds.getUsagesByAgents(auth);
-    if (usage.isErr()) {
-      throw usage.error;
-    } else if (usage.value.count > 0) {
-      usages.push(usage.value);
-    }
-  }
-
   const apps = await AppResource.listBySpace(auth, space);
-  for (const app of apps) {
-    const usage = await app.getUsagesByAgents(auth);
-    if (usage.isErr()) {
-      throw usage.error;
-    } else if (usage.value.count > 0) {
-      usages.push(usage.value);
-    }
-  }
 
-  if (!force && usages.length > 0) {
-    const agentNames = uniq(
-      usages.flatMap((u) => u.agents).map((agent) => agent.name)
-    );
-    return new Err(
-      new Error(
-        `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}. If you'd like to continue set the force query parameter to true.`
-      )
-    );
+  if (!force) {
+    let blockedByUsage = false;
+    const agentNames: string[] = [];
+    const skillNames: string[] = [];
+
+    for (const view of dataSourceViews) {
+      const usage = await getDataSourceViewUsage({
+        auth,
+        dataSourceView: view,
+      });
+      if (usage.isErr()) {
+        throw usage.error;
+      } else if (usage.value.count > 0) {
+        blockedByUsage = true;
+        agentNames.push(...usage.value.agents.map((agent) => agent.name));
+        skillNames.push(...usage.value.skills.map((skill) => skill.name));
+      }
+    }
+
+    for (const ds of dataSources) {
+      const usage = await getDataSourceUsage({ auth, dataSource: ds });
+      if (usage.isErr()) {
+        throw usage.error;
+      } else if (usage.value.count > 0) {
+        blockedByUsage = true;
+        agentNames.push(...usage.value.agents.map((agent) => agent.name));
+        skillNames.push(...usage.value.skills.map((skill) => skill.name));
+      }
+    }
+
+    for (const app of apps) {
+      const usage = await app.getUsagesByAgents(auth);
+      if (usage.isErr()) {
+        throw usage.error;
+      } else if (usage.value.count > 0) {
+        blockedByUsage = true;
+        agentNames.push(...usage.value.agents.map((agent) => agent.name));
+      }
+    }
+
+    if (blockedByUsage) {
+      // Apps are always agents-only (skills never reference them); data sources/views can be
+      // blocked by either, so the message names whichever actually uses the resource.
+      const names = uniq([...agentNames, ...skillNames]);
+      return new Err(
+        new Error(
+          `Cannot delete space with data source or app in use by: ${names.join(", ")}. If you'd like to continue set the force query parameter to true.`
+        )
+      );
+    }
   }
 
   const workspaceId = auth.getNonNullableWorkspace().sId;

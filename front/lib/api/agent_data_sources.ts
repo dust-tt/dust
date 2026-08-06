@@ -7,10 +7,12 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import type { UsedBySkillType } from "@app/types/assistant/skill_configuration";
 import type {
-  AgentsUsageType,
+  AgentsAndSkillsUsageType,
   ConnectorProvider,
 } from "@app/types/data_source";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
@@ -28,7 +30,12 @@ import { Op, Sequelize } from "sequelize";
 // If it is a problem, let's add caching
 const DISABLE_QUERIES = false;
 
-export type DataSourcesUsageByAgent = Record<ModelId, AgentsUsageType | null>;
+export type DataSourcesUsage = Record<ModelId, AgentsAndSkillsUsageType | null>;
+
+type AgentOnlyUsage = {
+  count: number;
+  agents: { sId: string; name: string; pictureUrl: string }[];
+};
 
 const AGENT_CONFIG_PATH =
   '"agent_mcp_server_configuration->agent_configuration"';
@@ -49,13 +56,105 @@ const agentAggregates: ProjectionAlias[] = (
   alias,
 ]);
 
+/**
+ * Skills can attach a data source view directly as "knowledge" (independently of any
+ * MCP server/tool configuration). Mirrors `fetchSkillsByMCPServer` in `agent_actions.ts`,
+ * but reads `skill.dataSourceConfigurations` instead of `skill.mcpServerViews`.
+ */
+async function fetchSkillsByDataSource(auth: Authenticator): Promise<{
+  byDataSourceViewId: Map<ModelId, UsedBySkillType[]>;
+  byDataSourceId: Map<ModelId, UsedBySkillType[]>;
+}> {
+  const workspaceSkills = await SkillResource.listByWorkspace(auth, {
+    status: "active",
+    withInstructions: false,
+    withTools: false,
+    withFileAttachments: false,
+  });
+  const skills = auth.isAdmin()
+    ? workspaceSkills
+    : workspaceSkills.filter(
+        (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+      );
+
+  const byDataSourceViewId = new Map<ModelId, UsedBySkillType[]>();
+  const byDataSourceId = new Map<ModelId, UsedBySkillType[]>();
+
+  const pushSkill = (
+    map: Map<ModelId, UsedBySkillType[]>,
+    id: ModelId,
+    usedBySkill: UsedBySkillType
+  ) => {
+    const usedBySkills = map.get(id) ?? [];
+    usedBySkills.push(usedBySkill);
+    map.set(id, usedBySkills);
+  };
+
+  for (const skill of skills) {
+    const usedBySkill: UsedBySkillType = {
+      sId: skill.sId,
+      name: skill.name,
+      icon: skill.icon,
+    };
+    for (const dataSourceViewId of new Set(
+      skill.dataSourceConfigurations.map((c) => c.dataSourceViewId)
+    )) {
+      pushSkill(byDataSourceViewId, dataSourceViewId, usedBySkill);
+    }
+    for (const dataSourceId of new Set(
+      skill.dataSourceConfigurations.map((c) => c.dataSourceId)
+    )) {
+      pushSkill(byDataSourceId, dataSourceId, usedBySkill);
+    }
+  }
+
+  for (const usedBySkills of [
+    ...byDataSourceViewId.values(),
+    ...byDataSourceId.values(),
+  ]) {
+    usedBySkills.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return { byDataSourceViewId, byDataSourceId };
+}
+
+/**
+ * Folds a skills-by-id map into an agent-only usage map, bumping `.count` for any id that
+ * gains skills. `allowedIds`, when passed, drops skill entries for ids outside the batch that
+ * was actually requested (skills are fetched workspace-wide, so this re-scopes the result).
+ */
+function mergeSkillsIntoUsage(
+  agentOnly: Record<ModelId, AgentOnlyUsage>,
+  skillsById: Map<ModelId, UsedBySkillType[]>,
+  allowedIds?: ModelId[]
+): DataSourcesUsage {
+  const result: DataSourcesUsage = {};
+  for (const key of Object.keys(agentOnly)) {
+    const id = Number(key);
+    result[id] = { ...agentOnly[id], skills: [] };
+  }
+  for (const [id, skills] of skillsById) {
+    if (allowedIds && !allowedIds.includes(id)) {
+      continue;
+    }
+    const usage = result[id];
+    if (usage) {
+      usage.skills = skills;
+      usage.count += skills.length;
+    } else {
+      result[id] = { count: skills.length, agents: [], skills };
+    }
+  }
+  return result;
+}
+
 export async function getDataSourceViewsUsageByModelIds({
   auth,
   dataSourceViewModelIds,
 }: {
   auth: Authenticator;
   dataSourceViewModelIds: ModelId[];
-}): Promise<DataSourcesUsageByAgent> {
+}): Promise<DataSourcesUsage> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -74,8 +173,13 @@ export async function getDataSourceViewsUsageByModelIds({
     return {};
   }
 
-  // Step 1 & 2: fetch the config links from both sources.
-  const [dataSourceConfigLinks, tableConfigLinks] = await Promise.all([
+  // Step 1 & 2: fetch the config links from both sources, plus skill usage — nothing here
+  // depends on anything else, so fetch them all together instead of sequentially.
+  const [
+    dataSourceConfigLinks,
+    tableConfigLinks,
+    { byDataSourceViewId: skillsByDataSourceViewId },
+  ] = await Promise.all([
     AgentDataSourceConfigurationModel.findAll({
       raw: true,
       attributes: ["dataSourceViewId", "mcpServerConfigurationId"],
@@ -92,6 +196,7 @@ export async function getDataSourceViewsUsageByModelIds({
         dataSourceViewId: { [Op.in]: uniqueDataSourceViewModelIds },
       },
     }),
+    fetchSkillsByDataSource(auth),
   ]);
 
   // Step 3: fetch the MCP server configuration -> agent configuration mappings
@@ -205,7 +310,7 @@ export async function getDataSourceViewsUsageByModelIds({
     tableAgents.map((agent) => [agent.id, agent])
   );
 
-  const result: DataSourcesUsageByAgent = {};
+  const result: Record<ModelId, AgentOnlyUsage> = {};
 
   const pushAgentForDataSourceView = ({
     dataSourceViewId,
@@ -271,7 +376,11 @@ export async function getDataSourceViewsUsageByModelIds({
     }
   });
 
-  return result;
+  return mergeSkillsIntoUsage(
+    result,
+    skillsByDataSourceViewId,
+    uniqueDataSourceViewModelIds
+  );
 }
 
 export async function getDataSourcesUsageByCategory({
@@ -280,7 +389,7 @@ export async function getDataSourcesUsageByCategory({
 }: {
   auth: Authenticator;
   category: DataSourceViewCategory;
-}): Promise<DataSourcesUsageByAgent> {
+}): Promise<DataSourcesUsage> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -306,7 +415,11 @@ export async function getDataSourcesUsageByCategory({
     };
   }
 
-  const res = (await Promise.all([
+  const [
+    dataSourceConfigRows,
+    tableConfigRows,
+    { byDataSourceId: skillsByDataSourceId },
+  ] = await Promise.all([
     AgentDataSourceConfigurationModel.findAll({
       raw: true,
       group: ["dataSource.id"],
@@ -387,41 +500,46 @@ export async function getDataSourcesUsageByCategory({
         },
       ],
     }),
-  ])) as unknown as {
-    dataSourceId: ModelId;
-    names: string[];
-    sIds: string[];
-    pictureUrls: string[];
-  }[][];
+    fetchSkillsByDataSource(auth),
+  ] as const);
 
-  const result = res.flat().reduce<DataSourcesUsageByAgent>((acc, dsConfig) => {
-    let usage = acc[dsConfig.dataSourceId];
+  const result = (
+    [dataSourceConfigRows, tableConfigRows] as unknown as {
+      dataSourceId: ModelId;
+      names: string[];
+      sIds: string[];
+      pictureUrls: string[];
+    }[][]
+  )
+    .flat()
+    .reduce<Record<ModelId, AgentOnlyUsage>>((acc, dsConfig) => {
+      let usage = acc[dsConfig.dataSourceId];
 
-    if (!usage) {
-      usage = {
-        count: 0,
-        agents: [],
-      };
-      acc[dsConfig.dataSourceId] = usage;
-    }
+      if (!usage) {
+        usage = {
+          count: 0,
+          agents: [],
+        };
+        acc[dsConfig.dataSourceId] = usage;
+      }
 
-    const newAgents = dsConfig.sIds
-      .map((sId, index) => ({
-        sId,
-        name: dsConfig.names[index],
-        pictureUrl: dsConfig.pictureUrls[index],
-      }))
-      .filter(
-        (agent) =>
-          agent.sId &&
-          agent.sId.length > 0 &&
-          agent.name &&
-          agent.name.length > 0
-      );
+      const newAgents = dsConfig.sIds
+        .map((sId, index) => ({
+          sId,
+          name: dsConfig.names[index],
+          pictureUrl: dsConfig.pictureUrls[index],
+        }))
+        .filter(
+          (agent) =>
+            agent.sId &&
+            agent.sId.length > 0 &&
+            agent.name &&
+            agent.name.length > 0
+        );
 
-    usage.agents.push(...newAgents);
-    return acc;
-  }, {});
+      usage.agents.push(...newAgents);
+      return acc;
+    }, {});
 
   Object.values(result).forEach((usage) => {
     if (usage) {
@@ -430,7 +548,7 @@ export async function getDataSourcesUsageByCategory({
     }
   });
 
-  return result;
+  return mergeSkillsIntoUsage(result, skillsByDataSourceId);
 }
 
 export async function getDataSourceUsage({
@@ -439,7 +557,7 @@ export async function getDataSourceUsage({
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
-}): Promise<Result<AgentsUsageType, Error>> {
+}): Promise<Result<AgentsAndSkillsUsageType, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -450,10 +568,14 @@ export async function getDataSourceUsage({
   }
 
   if (DISABLE_QUERIES) {
-    return new Ok({ count: 0, agents: [] });
+    return new Ok({ count: 0, agents: [], skills: [] });
   }
 
-  const res = (await Promise.all([
+  const [
+    dataSourceConfigRow,
+    tableConfigRow,
+    { byDataSourceId: skillsByDataSourceId },
+  ] = await Promise.all([
     AgentDataSourceConfigurationModel.findOne({
       raw: true,
       attributes: [...agentAggregates],
@@ -510,12 +632,16 @@ export async function getDataSourceUsage({
         },
       ],
     }),
-  ])) as unknown as
+    fetchSkillsByDataSource(auth),
+  ]);
+
+  const skills = skillsByDataSourceId.get(dataSource.id) ?? [];
+  const res = [dataSourceConfigRow, tableConfigRow] as unknown as
     | { names: string[]; sIds: string[]; pictureUrls: string[] }[]
     | null;
 
   if (!res) {
-    return new Ok({ count: 0, agents: [] });
+    return new Ok({ count: skills.length, agents: [], skills });
   } else {
     const agents = res
       .filter((r) => r && Array.isArray(r.sIds) && Array.isArray(r.names))
@@ -537,8 +663,9 @@ export async function getDataSourceUsage({
     const sortedAgents = sortBy(uniqBy(agents, "sId"), "name");
 
     return new Ok({
-      count: sortedAgents.length,
+      count: sortedAgents.length + skills.length,
       agents: sortedAgents,
+      skills,
     });
   }
 }
@@ -549,7 +676,7 @@ export async function getDataSourceViewUsage({
 }: {
   auth: Authenticator;
   dataSourceView: DataSourceViewResource;
-}): Promise<Result<AgentsUsageType, Error>> {
+}): Promise<Result<AgentsAndSkillsUsageType, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -560,10 +687,14 @@ export async function getDataSourceViewUsage({
   }
 
   if (DISABLE_QUERIES) {
-    return new Ok({ count: 0, agents: [] });
+    return new Ok({ count: 0, agents: [], skills: [] });
   }
 
-  const res = (await Promise.all([
+  const [
+    dataSourceConfigRow,
+    tableConfigRow,
+    { byDataSourceViewId: skillsByDataSourceViewId },
+  ] = await Promise.all([
     AgentDataSourceConfigurationModel.findOne({
       raw: true,
       attributes: [...agentAggregates],
@@ -620,12 +751,16 @@ export async function getDataSourceViewUsage({
         },
       ],
     }),
-  ])) as unknown as
+    fetchSkillsByDataSource(auth),
+  ]);
+
+  const skills = skillsByDataSourceViewId.get(dataSourceView.id) ?? [];
+  const res = [dataSourceConfigRow, tableConfigRow] as unknown as
     | { names: string[]; sIds: string[]; pictureUrls: string[] }[]
     | null;
 
   if (!res) {
-    return new Ok({ count: 0, agents: [] });
+    return new Ok({ count: skills.length, agents: [], skills });
   } else {
     const agents = res
       .filter((r) => r && Array.isArray(r.sIds) && Array.isArray(r.names))
@@ -647,8 +782,9 @@ export async function getDataSourceViewUsage({
     const sortedAgents = sortBy(uniqBy(agents, "sId"), "name");
 
     return new Ok({
-      count: sortedAgents.length,
+      count: sortedAgents.length + skills.length,
       agents: sortedAgents,
+      skills,
     });
   }
 }
