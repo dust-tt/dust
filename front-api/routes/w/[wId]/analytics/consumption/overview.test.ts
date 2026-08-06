@@ -1,17 +1,11 @@
+import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/overview";
+import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
-
-// devModeConstants reads localStorage at module load. jsdom does not always
-// have localStorage initialized when mock factories evaluate, which crashes
-// any test whose mocked lib transitively imports AuthContext. Stub it here.
-vi.mock("@app/components/dev/devModeConstants", () => ({
-  DEV_MODE_STORAGE_KEY: "dust_dev_mode",
-  DEV_MODE_ACTIVE: false,
-}));
 
 vi.mock(import("@app/lib/api/analytics/consumption/overview"), async (orig) => {
   const mod = await orig();
@@ -21,7 +15,7 @@ vi.mock(import("@app/lib/api/analytics/consumption/overview"), async (orig) => {
   };
 });
 
-const OVERVIEW = {
+const OVERVIEW: GetConsumptionOverviewResponse = {
   period: {
     startDate: "2026-07-01T00:00:00.000Z",
     endDate: "2026-07-13T00:00:00.000Z",
@@ -30,7 +24,11 @@ const OVERVIEW = {
   lastRecordAt: "2026-07-12T23:58:00.000Z",
 };
 
-async function setupTest({ role = "admin" as MembershipRoleType } = {}) {
+async function setupTest({
+  role = "admin",
+}: {
+  role?: MembershipRoleType;
+} = {}) {
   return createPrivateApiMockRequest({ role });
 }
 
@@ -104,9 +102,7 @@ describe("GET /api/w/:wId/analytics/consumption/overview", () => {
 
   it("returns 500 when the search fails", async () => {
     vi.mocked(fetchConsumptionOverview).mockResolvedValue(
-      new Err(
-        Object.assign(new Error("boom"), { type: "query_error" as const })
-      )
+      new Err(new ElasticsearchError("query_error", "boom"))
     );
     const { workspace } = await setupTest();
 

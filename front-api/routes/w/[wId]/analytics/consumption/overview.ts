@@ -4,6 +4,7 @@ import {
   ConsumptionQuerySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
+import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -28,11 +29,18 @@ app.get(
       filter: query.filter,
     });
     if (result.isErr()) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          err: result.error,
+        },
+        "[ConsumptionAnalytics] Failed to retrieve consumption overview."
+      );
       return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: `Failed to retrieve consumption overview: ${result.error.message}`,
+          message: "Failed to retrieve consumption overview.",
         },
       });
     }
