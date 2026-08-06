@@ -35,6 +35,7 @@ import type {
   PatchUserPodNotificationPreferenceResponseBody,
   PostUserPodStarResponseBody,
 } from "@app/types/api/projects/preferences";
+import type { GetPodRestrictionImpactResponseBody } from "@app/types/api/projects/restriction_impact";
 import type {
   GetPodTasksResponseBody,
   GetWorkspacePodTaskResponseBody,
@@ -1043,6 +1044,33 @@ export function usePodMetadata({
     isPodMetadataLoading: !error && !data && !disabled,
     isPodMetadataError: error,
     mutatePodMetadata: mutate,
+  };
+}
+
+export function usePodRestrictionImpact({
+  workspaceId,
+  podId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  podId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const restrictionImpactFetcher: Fetcher<GetPodRestrictionImpactResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${podId}/project_restriction_impact`,
+    restrictionImpactFetcher,
+    { disabled }
+  );
+
+  return {
+    restrictionImpact: data?.restrictionImpact ?? null,
+    isRestrictionImpactLoading: !error && !data && !disabled,
+    isRestrictionImpactError: error,
+    mutateRestrictionImpact: mutate,
   };
 }
 
