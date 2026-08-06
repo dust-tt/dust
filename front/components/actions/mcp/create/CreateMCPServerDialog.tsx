@@ -49,6 +49,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -550,9 +551,10 @@ export function CreateMCPServerDialog({
                 </ContentMessage>
               )}
               {(needsCustomName || !internalMCPServer) && (
-                <div className="space-y-4">
-                  <div className="heading-lg text-foreground">Tool name</div>
+                <div className="space-y-2">
+                  <Label htmlFor="viewName">Tool name</Label>
                   <Input
+                    id="viewName"
                     placeholder={
                       needsCustomName
                         ? "Enter a name for this instance"
