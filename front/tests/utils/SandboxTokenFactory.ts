@@ -207,6 +207,8 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext({
     file,
     slug: "greet",
     description: "Greet someone.",
+    // A token that denies tools only ever belongs to a function published as fast.
+    executionMode: noTools ? "fast" : "durable",
     inputSchema: {
       type: "object",
       properties: { message: { type: "string" } },
