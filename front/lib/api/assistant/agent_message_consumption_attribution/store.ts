@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import type { Authenticator } from "@app/lib/auth";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { toolAwuFromAction } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
@@ -20,10 +21,6 @@ import logger from "@app/logger/logger";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
-
-// AWU (the credit unit tool charges are denominated in) expressed in micro-credits, matching how the
-// model token buckets store their attributed credits.
-const CREDIT_AMOUNT_MICRO_PER_CREDIT = 1_000_000;
 
 /**
  * Records the per-run consumption attribution breakdown for one settled agent message.
@@ -249,7 +246,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
 
       // Zero for a denied call, which billing does not charge. Its emitted output tokens stay
       // attributed here.
-      const directCreditAmountMicro = Math.round(
+      const directCreditAmountMicro = roundCreditsToMicroCredits(
         toolAwuFromAction(
           {
             toolName: enrichedAction.toolName,
@@ -257,7 +254,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
             status: action.status,
           },
           triggeringUserMessageOrigin
-        ) * CREDIT_AMOUNT_MICRO_PER_CREDIT
+        )
       );
 
       const toolAttribution = buildToolAttribution({
@@ -292,7 +289,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
         continue;
       }
 
-      const directCreditAmountMicro = Math.round(
+      const directCreditAmountMicro = roundCreditsToMicroCredits(
         toolAwuFromAction(
           {
             toolName: enrichedAction.toolName,
@@ -300,7 +297,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
             status: action.status,
           },
           triggeringUserMessageOrigin
-        ) * CREDIT_AMOUNT_MICRO_PER_CREDIT
+        )
       );
 
       records.push({

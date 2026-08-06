@@ -1,5 +1,9 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getToolAggregateDisplayLabel } from "@app/lib/actions/tool_display_labels";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
@@ -14,16 +18,10 @@ import type {
 } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
 
-const MICRO_CREDITS_PER_CREDIT = 1_000_000;
 const FIRST_ATTRIBUTION_VERSION_WITH_TOOL_ROWS = 2;
-
 export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
   models: AgentMessageConsumptionModelDetails[];
 };
-
-function creditsFromMicroCredits(microCredits: number): number {
-  return microCredits / MICRO_CREDITS_PER_CREDIT;
-}
 
 type ReconciledCreditAmounts = {
   byItem: ReadonlyMap<AgentMessageConsumptionItemResource, number>;
@@ -49,9 +47,7 @@ function reconcileInputCredits({
   items: AgentMessageConsumptionItemResource[];
   billedCredits: number;
 }): ReconciledCreditAmounts | null {
-  const billedCreditAmountMicro = Math.round(
-    billedCredits * MICRO_CREDITS_PER_CREDIT
-  );
+  const billedCreditAmountMicro = roundCreditsToMicroCredits(billedCredits);
   const inputItems = items.filter((item) => item.itemType === "input");
   const nonInputCreditAmountMicro = items.reduce(
     (total, item) =>
@@ -149,7 +145,7 @@ function buildConsumptionTotals({
     0
   );
   return {
-    agentWorkCredits: creditsFromMicroCredits(
+    agentWorkCredits: microCreditsToCredits(
       reconciledAgentWorkCreditAmountMicro
     ),
   };
@@ -269,10 +265,10 @@ function buildToolDetails({
     const serialized = action.toJSON();
     const identity = toolIdentity(serialized);
     const current = groupedTools.get(identity);
-    const attributedCredits = creditsFromMicroCredits(
+    const attributedCredits = microCreditsToCredits(
       reconciledCreditAmounts.byItem.get(item) ?? 0
     );
-    const directCredits = creditsFromMicroCredits(
+    const directCredits = microCreditsToCredits(
       item.directCreditAmountMicro ?? 0
     );
 
@@ -330,7 +326,7 @@ function buildModelDetails({
     }
 
     const key = `${usage.providerId}:${usage.modelId}`;
-    const attributedCredits = creditsFromMicroCredits(
+    const attributedCredits = microCreditsToCredits(
       reconciledCreditAmounts.byItem.get(item) ?? 0
     );
     const existing = models.get(key);
