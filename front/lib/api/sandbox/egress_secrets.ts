@@ -37,28 +37,16 @@ export async function buildEgressSecretFileEntries(
     kind: "workspace" as const,
     workspace: auth.getNonNullableWorkspace(),
   };
-  const resources = await SandboxEnvVarResource.listHttpsSecretsForEgress(
+  const secretsResult = await SandboxEnvVarResource.listHttpsSecretsForEgress(
     auth,
     scope
   );
+  if (secretsResult.isErr()) {
+    return secretsResult;
+  }
 
   const entries: EgressSecretFileEntry[] = [];
-  for (const resource of resources) {
-    if (!resource.placeholderNonce) {
-      return new Err(
-        new Error(
-          `HTTPS secret sandbox environment variable ${resource.envName} is missing its placeholder nonce.`
-        )
-      );
-    }
-    if (!resource.allowedDomains) {
-      return new Err(
-        new Error(
-          `HTTPS secret sandbox environment variable ${resource.envName} is missing allowed domains.`
-        )
-      );
-    }
-
+  for (const resource of secretsResult.value) {
     let value: string;
     try {
       value = decrypt({
@@ -93,29 +81,17 @@ export async function buildPodEgressSecretEntries(
   runtimeOwner: SandboxRuntimeOwner
 ): Promise<Result<EgressSecretFileEntry[], Error>> {
   const scope = { kind: "pod" as const, pod };
-  const resources = await SandboxEnvVarResource.listHttpsSecretsForEgress(
+  const secretsResult = await SandboxEnvVarResource.listHttpsSecretsForEgress(
     auth,
     scope,
     runtimeOwner
   );
+  if (secretsResult.isErr()) {
+    return secretsResult;
+  }
 
   const entries: EgressSecretFileEntry[] = [];
-  for (const resource of resources) {
-    if (!resource.placeholderNonce) {
-      return new Err(
-        new Error(
-          `Pod HTTPS secret sandbox environment variable ${resource.envName} is missing its placeholder nonce.`
-        )
-      );
-    }
-    if (!resource.allowedDomains) {
-      return new Err(
-        new Error(
-          `Pod HTTPS secret sandbox environment variable ${resource.envName} is missing allowed domains.`
-        )
-      );
-    }
-
+  for (const resource of secretsResult.value) {
     let value: string;
     try {
       value = decrypt({

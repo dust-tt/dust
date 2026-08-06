@@ -8,6 +8,7 @@ import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { decrypt } from "@app/types/shared/utils/encryption";
+import { randomBytes } from "crypto";
 import { describe, expect, it } from "vitest";
 
 function wsScope(auth: Authenticator): SandboxEnvVarScope {
@@ -107,6 +108,27 @@ describe("SandboxEnvVarResource", () => {
     expect(envResult.isErr()).toBe(true);
     if (envResult.isErr()) {
       expect(envResult.error.message).toContain("DST_API_TOKEN");
+    }
+  });
+
+  it("fails closed on an https_secret row missing allowed domains", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    await SandboxEnvVarFactory.create(authenticator, {
+      name: "API_TOKEN",
+      kind: "https_secret",
+      placeholderNonce: randomBytes(16),
+    });
+
+    const result = await SandboxEnvVarResource.listHttpsSecretsForEgress(
+      authenticator,
+      wsScope(authenticator)
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "DSEC_API_TOKEN is missing allowed domains"
+      );
     }
   });
 

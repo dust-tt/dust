@@ -48,6 +48,15 @@ export type PatchSandboxEnvVarResponseBody = {
   envVar: SandboxEnvVarType;
 };
 
+// An https_secret row with its secret material present. The columns are
+// nullable at the table level (config rows have neither), so egress-path
+// readers narrow through `isHttpsSecretWithMaterial` instead of re-checking
+// each field.
+export type HttpsSecretSandboxEnvVar = SandboxEnvVarResource & {
+  placeholderNonce: Buffer;
+  allowedDomains: string[];
+};
+
 const USER_JOIN_INCLUDES: Includeable[] = [
   {
     association: "createdByUser",
@@ -155,6 +164,16 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
 
   private static maxVarsForScope(scope: SandboxEnvVarScope): number {
     return scope.kind === "pod" ? MAX_VARS_PER_POD : MAX_VARS_PER_WORKSPACE;
+  }
+
+  // Write paths guarantee https_secret rows carry a nonce and domains; this
+  // narrows the row-level nullable columns for readers of that kind.
+  isHttpsSecretWithMaterial(): this is HttpsSecretSandboxEnvVar {
+    return (
+      this.kind === "https_secret" &&
+      this.placeholderNonce !== null &&
+      this.allowedDomains !== null
+    );
   }
 
   // Whether this row belongs to the given scope. Fetches are scope-filtered
@@ -855,15 +874,35 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     auth: Authenticator,
     scope: SandboxEnvVarScope,
     owner?: SandboxRuntimeOwner
-  ): Promise<SandboxEnvVarResource[]> {
+  ): Promise<Result<HttpsSecretSandboxEnvVar[], Error>> {
     this.assertBootOwner(scope, owner);
 
-    return this.baseFetch(
+    const resources = await this.baseFetch(
       auth,
       scope,
       { kind: "https_secret" },
       { withUserJoins: false }
     );
+
+    // Fail closed on rows violating the write-time invariant, so callers
+    // get the narrowed type without re-checking per field.
+    const secrets: HttpsSecretSandboxEnvVar[] = [];
+    for (const resource of resources) {
+      if (!resource.isHttpsSecretWithMaterial()) {
+        const missing =
+          resource.placeholderNonce === null
+            ? "its placeholder nonce"
+            : "allowed domains";
+        return new Err(
+          new Error(
+            `HTTPS secret sandbox environment variable ${resource.envName} is missing ${missing}.`
+          )
+        );
+      }
+      secrets.push(resource);
+    }
+
+    return new Ok(secrets);
   }
 
   static async loadHttpsSecretPlaceholderEnv(
@@ -871,18 +910,17 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     scope: SandboxEnvVarScope,
     owner?: SandboxRuntimeOwner
   ): Promise<Result<Record<string, string>, Error>> {
-    const resources = await this.listHttpsSecretsForEgress(auth, scope, owner);
+    const secretsResult = await this.listHttpsSecretsForEgress(
+      auth,
+      scope,
+      owner
+    );
+    if (secretsResult.isErr()) {
+      return secretsResult;
+    }
 
     const env: Record<string, string> = {};
-    for (const resource of resources) {
-      if (!resource.placeholderNonce) {
-        return new Err(
-          new Error(
-            `HTTPS secret sandbox environment variable ${resource.envName} is missing its placeholder nonce.`
-          )
-        );
-      }
-
+    for (const resource of secretsResult.value) {
       env[resource.envName] = renderEgressSecretPlaceholder(
         resource.placeholderNonce
       );
