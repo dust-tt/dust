@@ -1,13 +1,10 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { SpaceSelectionSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
+import { useAgentRequestedSpaces } from "@app/components/agent_builder/hooks/useAgentRequestedSpaces";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
-import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import { Button, Planet } from "@dust-tt/sparkle";
@@ -25,27 +22,14 @@ export function AgentBuilderSpacesBlock({
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
-  const { spaces, owner, isSpacesLoading } = useSpacesContext();
 
-  // The agent might be linked to some open projects that the user is not
-  // a member of, so we fetch them here.
-  const missingSpaceIds = useMemo(() => {
-    if (isSpacesLoading || !initialRequestedSpaceIds?.length) {
-      return [];
-    }
-    const existingSpaceIds = new Set(spaces.map((s) => s.sId));
-
-    return initialRequestedSpaceIds.filter((id) => !existingSpaceIds.has(id));
-  }, [isSpacesLoading, initialRequestedSpaceIds, spaces]);
-
-  const { spaces: missingSpaces } = useSpaceProjectsLookup({
-    workspaceId: owner.sId,
-    spaceIds: missingSpaceIds,
-  });
-
-  const allSpaces = useMemo(() => {
-    return [...spaces, ...missingSpaces];
-  }, [spaces, missingSpaces]);
+  const {
+    actionsAndSkillsRequestedSpaceIds,
+    globalSpace,
+    missingSpaceIds,
+    nonGlobalSpacesUsedByAgent,
+    spaceIdToActions,
+  } = useAgentRequestedSpaces({ initialRequestedSpaceIds });
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);
@@ -64,44 +48,6 @@ export function AgentBuilderSpacesBlock({
     entityName: "agent",
     mcpServerViews,
   });
-
-  // Compute requested spaces from tools/knowledge (actions)
-  const spaceIdToActions = useMemo(() => {
-    return getSpaceIdToActionsMap(actions, mcpServerViews);
-  }, [actions, mcpServerViews]);
-
-  // Merge requested spaces from skills, actions, and additional spaces (from global skills)
-  const actionsAndSkillsRequestedSpaceIds = useMemo(() => {
-    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
-    const skillRequestedSpaceIds = new Set(
-      allSkills
-        .filter((skill) => selectedSkillIds.has(skill.sId))
-        .flatMap((skill) => skill.requestedSpaceIds)
-    );
-
-    const actionRequestedSpaceIds = new Set<string>();
-    for (const spaceId of Object.keys(spaceIdToActions)) {
-      if (spaceIdToActions[spaceId]?.length > 0) {
-        actionRequestedSpaceIds.add(spaceId);
-      }
-    }
-
-    return new Set([...skillRequestedSpaceIds, ...actionRequestedSpaceIds]);
-  }, [selectedSkills, allSkills, spaceIdToActions]);
-
-  const nonGlobalSpacesUsedByAgent = useMemo(() => {
-    const nonGlobalSpaces = allSpaces.filter((s) => s.kind !== "global");
-    const allRequestedSpaceIds = new Set([
-      ...actionsAndSkillsRequestedSpaceIds,
-      ...additionalSpaces,
-    ]);
-
-    return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
-  }, [allSpaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
-
-  const nonGlobalSpacesWithRestrictions = useMemo(() => {
-    return nonGlobalSpacesUsedByAgent.filter((s) => s.isRestricted);
-  }, [nonGlobalSpacesUsedByAgent]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
@@ -164,10 +110,6 @@ export function AgentBuilderSpacesBlock({
     handleCloseSheet();
   };
 
-  const globalSpace = useMemo(() => {
-    return allSpaces.find((s) => s.kind === "global");
-  }, [allSpaces]);
-
   const spacesToDisplay = useMemo(() => {
     return removeNulls([globalSpace, ...nonGlobalSpacesUsedByAgent]);
   }, [globalSpace, nonGlobalSpacesUsedByAgent]);
@@ -190,11 +132,6 @@ export function AgentBuilderSpacesBlock({
           onClick={handleOpenSheet}
         />
       </div>
-      <SpaceRestrictionMessage
-        entityName="agent"
-        owner={owner}
-        spaces={nonGlobalSpacesWithRestrictions}
-      />
       <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <SpaceSelectionSheet
