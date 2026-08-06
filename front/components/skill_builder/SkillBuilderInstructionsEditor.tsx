@@ -34,7 +34,7 @@ import {
   UNAVAILABLE_SKILL_TAG_NAME,
 } from "@app/lib/skills/format";
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
-import { isString } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { cn } from "@dust-tt/sparkle";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
@@ -340,12 +340,14 @@ export function SkillBuilderInstructionsEditor({
       const configuredToolIds = new Set(
         remainingTools.map((tool) => tool.configuration.mcpServerViewId)
       );
-      const addedTools = [...currentInlineToolIds]
-        .filter((toolId) => !configuredToolIds.has(toolId))
-        .flatMap((toolId) => {
-          const view = mcpServerViewsById.get(toolId);
-          return view ? [getDefaultMCPAction(view)] : [];
-        });
+      const addedTools = removeNulls(
+        [...currentInlineToolIds]
+          .filter((toolId) => !configuredToolIds.has(toolId))
+          .map((toolId) => {
+            const view = mcpServerViewsById.get(toolId);
+            return view ? getDefaultMCPAction(view) : null;
+          })
+      );
 
       previousInlineToolIdsRef.current = currentInlineToolIds;
 
