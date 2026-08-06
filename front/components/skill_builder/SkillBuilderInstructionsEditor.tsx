@@ -10,6 +10,7 @@ import {
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type {
@@ -33,7 +34,7 @@ import {
   UNAVAILABLE_SKILL_TAG_NAME,
 } from "@app/lib/skills/format";
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
-import { isString } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { cn } from "@dust-tt/sparkle";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
@@ -236,7 +237,7 @@ export function SkillBuilderInstructionsEditor({
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
-  const { resetField } = useFormContext<SkillBuilderFormData>();
+  const { resetField, setValue } = useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
   const instructionReferenceSummaryRef = useRef<HTMLDivElement | null>(null);
   const previousInlineToolIdsRef = useRef<Set<string>>(new Set());
@@ -252,6 +253,12 @@ export function SkillBuilderInstructionsEditor({
     selectedSuggestionId,
     setAcceptInstructionEdits,
   } = useSkillBuilderContext();
+  const { mcpServerViews, isMCPServerViewsLoading } =
+    useMCPServerViewsContext();
+  const mcpServerViewsById = useMemo(
+    () => new Map(mcpServerViews.map((view) => [view.sId, view])),
+    [mcpServerViews]
+  );
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -319,23 +326,46 @@ export function SkillBuilderInstructionsEditor({
     [attachedKnowledgeField.onChange]
   );
 
-  const syncInlineReferencesFromEditor = useCallback(
+  const reconcileInlineTools = useCallback(
     (editor: Editor) => {
       const currentInlineToolIds = collectToolReferenceIds(editor);
-      const removedToolIds = [...previousInlineToolIdsRef.current].filter(
-        (toolId) => !currentInlineToolIds.has(toolId)
+      const removedToolIds = new Set(
+        [...previousInlineToolIdsRef.current].filter(
+          (toolId) => !currentInlineToolIds.has(toolId)
+        )
+      );
+      const remainingTools = toolsRef.current.filter(
+        (tool) => !removedToolIds.has(tool.configuration.mcpServerViewId)
+      );
+      const configuredToolIds = new Set(
+        remainingTools.map((tool) => tool.configuration.mcpServerViewId)
+      );
+      const addedTools = removeNulls(
+        [...currentInlineToolIds]
+          .filter((toolId) => !configuredToolIds.has(toolId))
+          .map((toolId) => {
+            const view = mcpServerViewsById.get(toolId);
+            return view ? getDefaultMCPAction(view) : null;
+          })
       );
 
-      if (removedToolIds.length > 0) {
-        const removedToolIdsSet = new Set(removedToolIds);
-        const nextTools = toolsRef.current.filter(
-          (tool) => !removedToolIdsSet.has(tool.configuration.mcpServerViewId)
-        );
+      previousInlineToolIdsRef.current = currentInlineToolIds;
+
+      return remainingTools.length !== toolsRef.current.length ||
+        addedTools.length > 0
+        ? [...remainingTools, ...addedTools]
+        : null;
+    },
+    [mcpServerViewsById]
+  );
+
+  const syncInlineReferencesFromEditor = useCallback(
+    (editor: Editor) => {
+      const nextTools = reconcileInlineTools(editor);
+      if (nextTools) {
         toolsRef.current = nextTools;
         onToolsChange(nextTools);
       }
-
-      previousInlineToolIdsRef.current = currentInlineToolIds;
 
       const currentInlineSkillIds = collectSkillReferenceIds(editor);
       const removedSkillIds = [...previousInlineSkillIdsRef.current].filter(
@@ -353,7 +383,7 @@ export function SkillBuilderInstructionsEditor({
 
       previousInlineSkillIdsRef.current = currentInlineSkillIds;
     },
-    [onReferencedSkillsChange, onToolsChange]
+    [onReferencedSkillsChange, onToolsChange, reconcileInlineTools]
   );
 
   const syncInstructionsFromEditor = useCallback(
@@ -365,13 +395,11 @@ export function SkillBuilderInstructionsEditor({
         sanitizeSkillInstructionsHtml(editor.getHTML())
       );
       syncAttachedKnowledgeFromEditor(editor);
-      syncInlineReferencesFromEditor(editor);
     },
     [
       instructionsField.onChange,
       instructionsHtmlField.onChange,
       syncAttachedKnowledgeFromEditor,
-      syncInlineReferencesFromEditor,
     ]
   );
 
@@ -579,12 +607,18 @@ export function SkillBuilderInstructionsEditor({
       }
 
       syncInstructionsFromEditor(editor);
+      syncInlineReferencesFromEditor(editor);
     });
 
     return () => {
       setAcceptInstructionEdits(null);
     };
-  }, [editor, syncInstructionsFromEditor, setAcceptInstructionEdits]);
+  }, [
+    editor,
+    syncInlineReferencesFromEditor,
+    syncInstructionsFromEditor,
+    setAcceptInstructionEdits,
+  ]);
 
   useEffect(() => {
     if (
@@ -605,6 +639,28 @@ export function SkillBuilderInstructionsEditor({
     previousInlineToolIdsRef.current = collectToolReferenceIds(editor);
     previousInlineSkillIdsRef.current = collectSkillReferenceIds(editor);
   }, [editor, isContentReady, isDiffMode, resetField]);
+
+  useEffect(() => {
+    if (!editor || !isContentReady || isDiffMode || isMCPServerViewsLoading) {
+      return;
+    }
+
+    const nextTools = reconcileInlineTools(editor);
+    if (nextTools) {
+      toolsRef.current = nextTools;
+      setValue("tools", nextTools, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [
+    editor,
+    isContentReady,
+    isDiffMode,
+    isMCPServerViewsLoading,
+    reconcileInlineTools,
+    setValue,
+  ]);
 
   // Apply pending instruction suggestions as inline diff decorations.
   // "Reject all + re-apply current" on every change so that accepts and
