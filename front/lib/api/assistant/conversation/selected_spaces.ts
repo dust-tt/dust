@@ -142,11 +142,11 @@ export async function validateSelectableSpaces(
     );
   }
 
-  if (spaces.some((space) => !space.isRegular())) {
+  if (spaces.some((space) => !space.isRegular() && !space.isProject())) {
     return new Err(
       new SelectedConversationSpacesError(
         "space_not_selectable",
-        "Only regular Spaces can be selected from the input bar."
+        "Only regular or project Spaces can be selected from the input bar."
       )
     );
   }
