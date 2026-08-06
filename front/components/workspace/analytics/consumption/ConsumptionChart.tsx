@@ -26,8 +26,7 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-// The bucket in progress is drawn faded across every series: its total is still
-// growing, and at full strength it reads as a real drop in consumption.
+// The bucket in progress (if mapped to today) is drawn faded across every series.
 const PARTIAL_BAR_OPACITY = "opacity-40";
 
 // Recharts hands the tooltip its datum as `unknown`; the points go into the
@@ -39,15 +38,25 @@ function isConsumptionTimeseriesPoint(
     typeof data === "object" &&
     data !== null &&
     "timestamp" in data &&
-    "isPartial" in data &&
     "values" in data
   );
+}
+
+// The endpoint buckets the whole period, so the tail of the series is the part
+// of the cycle still to come. The bucket holding the present is the last one
+// that has started, which is all it takes to tell the two apart.
+function findPartialTimestamp(
+  points: ConsumptionTimeseriesPoint[]
+): number | undefined {
+  const nowMs = Date.now();
+  return points.findLast((point) => point.timestamp <= nowMs)?.timestamp;
 }
 
 interface ConsumptionChartTooltipProps
   extends TooltipContentProps<number, string> {
   groups: ConsumptionTimeseriesGroup[];
   colorByGroupKey: Map<string, string>;
+  partialTimestamp: number | undefined;
 }
 
 function ConsumptionChartTooltip({
@@ -55,14 +64,22 @@ function ConsumptionChartTooltip({
   payload,
   groups,
   colorByGroupKey,
+  partialTimestamp,
 }: ConsumptionChartTooltipProps) {
   const datum = payload?.[0]?.payload;
   if (!active || !isConsumptionTimeseriesPoint(datum)) {
     return null;
   }
 
+  // The partialTimestamp points to the bucket in progress (if mapped to today).
+  // So every buckets after that are in the future, and are expected to be empty,
+  // hence nothing to show.
+  if (partialTimestamp !== undefined && datum.timestamp > partialTimestamp) {
+    return null;
+  }
+
   // Only the series that actually consumed something on this day, largest
-  // first: with ten agents, listing the zeroes buries the ones that matter.
+  // first.
   const rows = groups
     .map((group) => ({
       key: group.groupKey,
@@ -74,6 +91,7 @@ function ConsumptionChartTooltip({
     .sort((a, b) => b.credits - a.credits);
 
   const totalCredits = rows.reduce((sum, row) => sum + row.credits, 0);
+  const isPartial = datum.timestamp === partialTimestamp;
 
   return (
     <ChartTooltipCard
@@ -85,7 +103,7 @@ function ConsumptionChartTooltip({
         colorClassName: row.colorClassName,
       }))}
       footer={
-        datum.isPartial
+        isPartial
           ? `${formatCredits(totalCredits)} so far today`
           : `${formatCredits(totalCredits)} total`
       }
@@ -127,15 +145,21 @@ export function ConsumptionChart({
 
   const chartData = useMemo(() => timeseries?.points ?? [], [timeseries]);
 
+  const partialTimestamp = useMemo(
+    () => findPartialTimestamp(chartData),
+    [chartData]
+  );
+
   const renderTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => (
       <ConsumptionChartTooltip
         {...props}
         groups={groups}
         colorByGroupKey={colorByGroupKey}
+        partialTimestamp={partialTimestamp}
       />
     ),
-    [groups, colorByGroupKey]
+    [groups, colorByGroupKey, partialTimestamp]
   );
 
   const legendItems: LegendItem[] = groups.map((group) => ({
@@ -144,9 +168,6 @@ export function ConsumptionChart({
     colorClassName: colorByGroupKey.get(group.groupKey) ?? "",
   }));
 
-  const partialTimestamp = chartData.find(
-    (datum) => datum.isPartial
-  )?.timestamp;
   const hasConsumption = chartData.some((datum) =>
     Object.values(datum.values).some((credits) => credits > 0)
   );
@@ -219,7 +240,7 @@ export function ConsumptionChart({
                 fill="currentColor"
                 className={cn(
                   colorByGroupKey.get(group.groupKey),
-                  datum.isPartial && PARTIAL_BAR_OPACITY
+                  datum.timestamp === partialTimestamp && PARTIAL_BAR_OPACITY
                 )}
               />
             ))}
