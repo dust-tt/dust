@@ -28,7 +28,11 @@ import {
 } from "@app/lib/resources/storage/models/sandbox";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -167,6 +171,22 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     workspaceId: ModelId;
   }): string {
     return makeSId("sandbox", { id, workspaceId });
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    sandboxId: string
+  ): Promise<SandboxResource | null> {
+    if (!isResourceSId("sandbox", sandboxId)) {
+      return null;
+    }
+
+    const sandboxModelId = getResourceIdFromSId(sandboxId);
+    if (sandboxModelId === null) {
+      return null;
+    }
+
+    return this.fetchByModelIdForWorkspace(auth, sandboxModelId);
   }
 
   static async fetchByModelIdForWorkspace(

@@ -178,3 +178,43 @@ export type PostSandboxFunctionInvocationResponseBody = {
   // everything published so far.
   outcome?: SandboxFunctionInvocationOutcome;
 };
+
+// A unit of work handed to whichever poller wins the claim for it, which runs it by spawning the
+// same runner the exec path spawns.
+//
+// Deliberately not what travels on the work channel. The channel's history is replayable by any
+// holder of a poller token, so anything sensitive published there would be readable long after the
+// invocation it belonged to: the credential, the caller's input and their identity are handed out
+// once, to the one poller that claimed the invocation, and never enter the stream.
+export type SandboxFunctionPollerJob = {
+  invocationId: string;
+  functionId: string;
+  slug: string;
+  // The invocation's own exec token. Doubles as the runner's credential for its result callback
+  // and as the bound on what the poller can settle: one job, one invocation.
+  execToken: string;
+  // Handed to the runner's stdin verbatim.
+  inputEnvelope: string;
+  envVars: Record<string, string>;
+  timeoutMs: number;
+};
+
+// The doorbell: tells a pod an invocation is waiting for it, and nothing more. The poller answers
+// by claiming the invocation, which is what hands it the job.
+export type SandboxFunctionPollerJobEvent = {
+  type: "sandbox_function_poller_job";
+  created: number;
+  invocationId: string;
+};
+
+// Sent first on every connect. The poller persists it and authenticates its next connect with it,
+// so a channel that keeps reconnecting never runs its credential to expiry.
+export type SandboxFunctionPollerTokenEvent = {
+  type: "sandbox_function_poller_token";
+  created: number;
+  token: string;
+};
+
+export type SandboxFunctionPollerEvent =
+  | SandboxFunctionPollerJobEvent
+  | SandboxFunctionPollerTokenEvent;

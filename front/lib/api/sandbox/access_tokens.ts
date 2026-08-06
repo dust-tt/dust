@@ -40,6 +40,16 @@ const SandboxTokenPayloadSchema = z
     // call can wait on the user for as long as they take, which a fast invocation has no way to
     // survive, so the token it runs under cannot make one.
     noTools: z.literal(true).optional(),
+    // Set only on the token a pod's Pod function poller authenticates with. The poller is a
+    // privileged process that receives work for the whole sandbox, so its token is a different
+    // principal from the ones workloads hold, not a workload token with extra claims: it names no
+    // invocation and grants no tool access, and the routes it may call accept nothing else.
+    purpose: z.literal("sandbox_function_poller").optional(),
+    // The sandbox incarnation the poller token was minted for. Destroying a sandbox revokes its
+    // tokens, but that revocation is fire-and-forget, so binding the token to the provider id
+    // makes a token that outlived its sandbox fail verification rather than authenticate a poller
+    // against the sandbox that replaced it.
+    providerId: z.string().optional(),
   })
   .superRefine((payload, ctx) => {
     const actionClaims = [payload.aId, payload.mId, payload.actionId];
@@ -48,9 +58,11 @@ const SandboxTokenPayloadSchema = z
       payload.sandboxFunctionId,
       payload.invocationId,
     ];
+    const pollerClaims = [payload.purpose, payload.providerId];
     const hasAction =
       payload.cId !== undefined && actionClaims.every(isDefined);
     const hasInvocation = invocationClaims.every(isDefined);
+    const hasPoller = pollerClaims.every(isDefined);
 
     if (actionClaims.some(isDefined) && !hasAction) {
       ctx.addIssue({
@@ -64,11 +76,36 @@ const SandboxTokenPayloadSchema = z
         message: "Incomplete sandbox function invocation token claims.",
       });
     }
-    if (!hasAction && !hasInvocation) {
+    if (pollerClaims.some(isDefined) && !hasPoller) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Incomplete sandbox function poller token claims.",
+      });
+    }
+    // A poller token carries nothing but its own claims. Every field below belongs to a workload
+    // token, and `uId` is the one that bites: the authenticator resolves it and adopts that user's
+    // role, so a poller token naming an admin would authenticate as an admin. The poller is a pod
+    // process, not a person, and it must stay unable to speak for one.
+    const workloadClaims = [
+      ...actionClaims,
+      ...invocationClaims,
+      payload.cId,
+      payload.uId,
+      payload.aV,
+      payload.noTools,
+    ];
+    if (hasPoller && workloadClaims.some(isDefined)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "Sandbox token payload must include action or function invocation claims.",
+          "A sandbox function poller token cannot carry workload claims.",
+      });
+    }
+    if (!hasAction && !hasInvocation && !hasPoller) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Sandbox token payload must include action, function invocation, or poller claims.",
       });
     }
   });
@@ -87,6 +124,11 @@ export type SandboxFunctionInvocationTokenPayload = SandboxTokenPayload & {
   spaceId: string;
   sandboxFunctionId: string;
   invocationId: string;
+};
+
+export type SandboxPollerTokenPayload = SandboxTokenPayload & {
+  purpose: "sandbox_function_poller";
+  providerId: string;
 };
 
 export function isSandboxExecTokenPayload(
@@ -172,6 +214,15 @@ export function isSandboxFunctionInvocationTokenPayload(
   );
 }
 
+export function isSandboxPollerTokenPayload(
+  payload: SandboxTokenPayload
+): payload is SandboxPollerTokenPayload {
+  return (
+    payload.purpose === "sandbox_function_poller" &&
+    payload.providerId !== undefined
+  );
+}
+
 const EXEC_TOKEN_REDIS_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 
 function sandboxTokenRedisKey(sbId: string, execId: string): string {
@@ -189,11 +240,12 @@ export function generateExecId(): string {
 }
 
 async function registerExecToken(
-  token: Pick<SandboxTokenPayload, "sbId" | "execId">
+  token: Pick<SandboxTokenPayload, "sbId" | "execId">,
+  { ttlSeconds = EXEC_TOKEN_REDIS_TTL_SECONDS }: { ttlSeconds?: number } = {}
 ): Promise<void> {
   await runOnRedis({ origin: REDIS_ORIGIN }, (client) =>
     client.set(sandboxTokenRedisKey(token.sbId, token.execId), "1", {
-      EX: EXEC_TOKEN_REDIS_TTL_SECONDS,
+      EX: ttlSeconds,
     })
   );
 }
@@ -312,6 +364,56 @@ export async function generateSandboxFunctionInvocationToken(
   };
 
   await registerExecToken(payload);
+
+  const secret = config.getSandboxJwtSecret();
+
+  const token = jwt.sign(payload, secret, {
+    algorithm: "HS256",
+    expiresIn: expiryMs / 1000, // expiresIn is in seconds
+  });
+
+  return `${SANDBOX_TOKEN_PREFIX}${token}`;
+}
+
+// The poller reconnects to its work channel about once a minute and gets a fresh token on every
+// connect, so this only has to outlive a run of failed reconnects. Kept short because the token
+// authenticates the pod's whole work channel rather than one invocation.
+export const SANDBOX_POLLER_TOKEN_EXPIRY_MS = 10 * 60 * 1000;
+
+export async function generateSandboxPollerToken(
+  auth: Authenticator,
+  {
+    sandbox,
+    supersedes,
+    expiryMs = SANDBOX_POLLER_TOKEN_EXPIRY_MS,
+  }: {
+    sandbox: SandboxResource;
+    // The token this one replaces, revoked once the replacement exists. Rotation only buys
+    // anything if the token being rotated out stops working: without this, a leaked poller token
+    // mints its own successor every minute and stays good for the life of the sandbox, which is
+    // days on a warm pod.
+    supersedes?: Pick<SandboxTokenPayload, "sbId" | "execId">;
+    expiryMs?: number;
+  }
+): Promise<string> {
+  const payload: SandboxPollerTokenPayload = {
+    wId: auth.getNonNullableWorkspace().sId,
+    sbId: sandbox.sId,
+    execId: generateExecId(),
+    purpose: "sandbox_function_poller",
+    providerId: sandbox.providerId,
+  };
+
+  // Registered for its own lifetime rather than the exec default of a day. A poller rotates every
+  // minute, so the default would leave ~1440 live credentials per sandbox per day, all of them
+  // usable and all of them to be scanned when the sandbox is destroyed.
+  await registerExecToken(payload, {
+    ttlSeconds: Math.ceil(expiryMs / 1000),
+  });
+
+  if (supersedes) {
+    await revokeExecToken(supersedes);
+  }
 
   const secret = config.getSandboxJwtSecret();
 
