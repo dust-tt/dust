@@ -67,7 +67,9 @@ export type AgentMessageLlmBillingLine<
   cachedTokensCount: number;
   cacheCreationTokensCount: number;
   providerCostMicroUsd: number;
+  // Rated credits are the computed price.
   ratedCredits: number;
+  // Billed credits are the actual charge after billing rules.
   billedCredits: number;
   billingDisposition: AgentMessageLlmBillingDisposition;
   usageAllocations: Array<{
@@ -81,7 +83,9 @@ export type AgentMessageToolBillingLine<
 > = {
   action: TAction;
   toolCostCategory: ToolCostCategory;
+  // Rated credits are the computed price.
   ratedCredits: number;
+  // Billed credits are the actual charge after billing rules.
   billedCredits: number;
   billingDisposition: AgentMessageToolBillingDisposition;
 };
@@ -224,12 +228,15 @@ function resolveToolBillingDisposition({
   if (!isToolExecutionStatusBillable(status)) {
     return "unbillable_status";
   }
+
   if (isMessageFree) {
     return "free_origin";
   }
+
   if (freeUsage) {
     return "free_tool";
   }
+
   return "billed";
 }
 
