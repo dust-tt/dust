@@ -84,6 +84,11 @@ export function InputBarPlusMenu({
   const [hasHovered, setHasHovered] = useState(false);
   const shouldPrefetch = isOpen || hasHovered;
 
+  const hasAnyEntry = !hideCapabilities || !hideAttachments || spaces != null;
+  if (!hasAnyEntry) {
+    return null;
+  }
+
   return (
     <DropdownMenu
       open={isOpen}
@@ -142,7 +147,6 @@ export function InputBarPlusMenu({
         )}
         {spaces != null && (
           <InputBarSpacesPicker
-            buttonSize={buttonSize}
             canDeselectSelectedSpaces={canDeselectSelectedSpaces ?? true}
             disabled={disabled}
             isLoading={!!isSpacesLoading}

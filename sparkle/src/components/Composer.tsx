@@ -39,9 +39,7 @@ export function Composer({
           isFocused
             ? "shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]"
             : "shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
-          isFocused
-            ? "bg-[oklch(0.994_0.001_106.423)]"
-            : "bg-[oklch(0.988_0_89.876)]",
+          isFocused ? "bg-stone-25" : "bg-[oklch(0.988_0_89.876)]",
           "dark:border-transparent",
           isFocused
             ? "dark:bg-[oklch(0.310_0.007_75)]"
@@ -53,9 +51,7 @@ export function Composer({
         variant === "flat" && [
           "border",
           "transition-colors duration-100 ease-emphasized motion-reduce:transition-none",
-          isFocused
-            ? "bg-[oklch(0.994_0.001_106.423)]"
-            : "bg-[oklch(0.988_0_89.876)]",
+          isFocused ? "bg-stone-25" : "bg-[oklch(0.988_0_89.876)]",
           isFocused
             ? "dark:bg-[oklch(0.310_0.007_75)]"
             : "dark:bg-[oklch(0.294_0.008_84.593)]",

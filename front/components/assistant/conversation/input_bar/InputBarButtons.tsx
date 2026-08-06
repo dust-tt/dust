@@ -212,7 +212,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             isRounded
             className={cn(
               INPUT_BAR_PILL_SURFACE_CLASSNAME,
-              "hover:bg-primary-100",
+              INPUT_BAR_PILL_HOVER_CLASSNAME,
               disableAgentSelector && "bg-primary-150"
             )}
           />
@@ -253,7 +253,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
     />
   );
 
-  const hiddenFileInput = (
+  // Only reachable through the `/upload-file` slash command, which is gated on
+  // the same action.
+  const hiddenFileInput = actions.includes("attachment") && (
     <input
       accept={getSupportedFileExtensions().join(",")}
       onChange={async (e) => {

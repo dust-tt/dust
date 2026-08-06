@@ -16,7 +16,6 @@ import {
 import { useMemo, useState } from "react";
 
 interface InputBarSpacesPickerProps {
-  buttonSize: "xs" | "sm";
   canDeselectSelectedSpaces: boolean;
   disabled: boolean;
   isLoading: boolean;
