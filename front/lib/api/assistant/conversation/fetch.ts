@@ -364,6 +364,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
+      uiView: conversation.uiView,
       ...(forkingData && { forkingData }),
     };
 
@@ -442,6 +443,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
+      uiView: conversation.uiView,
       ...(forkingData && { forkingData }),
     };
 

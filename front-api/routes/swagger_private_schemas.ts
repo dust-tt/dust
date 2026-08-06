@@ -290,6 +290,11 @@
  *           type: array
  *           items:
  *             type: string
+ *         uiView:
+ *           type: string
+ *           enum: [compact]
+ *           nullable: true
+ *           description: Server-resolved UI display hint for the conversation (currently derived from the conversation's activation pod, if any)
  *         forkingData:
  *           $ref: '#/components/schemas/PrivateConversationForkingData'
  *     PrivateConversationForkUser:

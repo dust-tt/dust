@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { uiView } from "@app/lib/models/activation/activation_pod";
 import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -51,15 +52,18 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     {
       pod,
       user,
+      uiView,
     }: {
       pod: SpaceResource;
       user: UserResource;
+      uiView?: uiView | null;
     }
   ): Promise<ActivationPodResource> {
     const model = await this.model.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       spaceId: pod.id,
       userId: user.id,
+      uiView: uiView ?? null,
     });
 
     return new this(this.model, model.get());

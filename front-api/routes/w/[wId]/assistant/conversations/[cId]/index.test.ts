@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { ActivationPodFactory } from "@app/tests/utils/ActivationPodFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -148,6 +149,84 @@ describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
     const response = await getConversation(workspace, conversation.sId);
 
     expect(response.status).toBe(200);
+  });
+
+  it("returns the activation pod's uiView on pod conversations, and null otherwise", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "GET",
+    });
+
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+
+    const projectSpace = await SpaceFactory.project(workspace, adminUser.id);
+    const addMemberResult = await projectSpace.addMembers(adminAuth, {
+      userIds: [adminUser.sId, user.sId],
+    });
+    assert(addMemberResult.isOk(), "Failed to add users to project space");
+    const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+
+    await ActivationPodFactory.create(refreshedAdminAuth, {
+      pod: projectSpace,
+      uiView: "compact",
+    });
+
+    const compactConversation = await ConversationFactory.create(
+      refreshedAdminAuth,
+      {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        requestedSpaceIds: [projectSpace.id],
+        spaceId: projectSpace.id,
+        messagesCreatedAt: [new Date()],
+      }
+    );
+
+    const compactResponse = await getConversation(
+      workspace,
+      compactConversation.sId
+    );
+    expect(compactResponse.status).toBe(200);
+    expect((await compactResponse.json()).conversation.uiView).toBe("compact");
+
+    const otherProjectSpace = await SpaceFactory.project(
+      workspace,
+      adminUser.id
+    );
+    const addOtherMemberResult = await otherProjectSpace.addMembers(
+      refreshedAdminAuth,
+      { userIds: [adminUser.sId, user.sId] }
+    );
+    assert(addOtherMemberResult.isOk(), "Failed to add users to project space");
+    const secondRefreshedAdminAuth =
+      await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+
+    const standardConversation = await ConversationFactory.create(
+      secondRefreshedAdminAuth,
+      {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        requestedSpaceIds: [otherProjectSpace.id],
+        spaceId: otherProjectSpace.id,
+        messagesCreatedAt: [new Date()],
+      }
+    );
+
+    const standardResponse = await getConversation(
+      workspace,
+      standardConversation.sId
+    );
+    expect(standardResponse.status).toBe(200);
+    expect((await standardResponse.json()).conversation.uiView).toBeNull();
   });
 
   it("returns 404 conversation_not_found for admins when private conversation URLs are enabled and they are not participants", async () => {
