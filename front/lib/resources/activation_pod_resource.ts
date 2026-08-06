@@ -5,7 +5,6 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
-import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -52,18 +51,16 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     {
       pod,
       user,
-      trigger,
     }: {
       pod: SpaceResource;
       user: UserResource;
-      trigger?: TriggerResource | null;
     }
   ): Promise<ActivationPodResource> {
     const model = await this.model.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       spaceId: pod.id,
       userId: user.id,
-      triggerId: trigger?.id ?? null,
+      triggerId: null,
     });
 
     return new this(this.model, model.get());
@@ -98,23 +95,6 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return activationPods.map((pod) => new this(this.model, pod.get()));
   }
 
-  // Fetches the ActivationPod whose nudge trigger this is, if any. The trigger
-  // link is written only by the provisioning path, which makes it the
-  // server-owned fact that identifies a firing as a nudge.
-  static async fetchByTriggerModelId(
-    auth: Authenticator,
-    triggerModelId: ModelId
-  ): Promise<ActivationPodResource | null> {
-    const activationPod = await this.model.findOne({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        triggerId: triggerModelId,
-      },
-    });
-
-    return activationPod ? new this(this.model, activationPod.get()) : null;
-  }
-
   // Lists every ActivationPod in the calling workspace.
   static async listForWorkspace(
     auth: Authenticator
@@ -143,11 +123,6 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     });
 
     return rows.map((row) => row.workspaceId);
-  }
-
-  // Sets the Pod's activation trigger once it has been provisioned.
-  async setTrigger(trigger: TriggerResource): Promise<void> {
-    await this.update({ triggerId: trigger.id });
   }
 
   async disableNudges(): Promise<void> {

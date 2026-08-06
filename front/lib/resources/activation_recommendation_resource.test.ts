@@ -2,12 +2,9 @@ import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
@@ -22,27 +19,13 @@ const makeRec = (
     activationPodId,
   });
 
-// Creates an ActivationPod for the given space, optionally with its own
-// dedicated (schedule) trigger — a webhook trigger would additionally require
-// a real webhook source view (see `createPodActivationTrigger` in
-// `lib/api/activation/nudge.test.ts`), which these tests don't need.
 async function makeActivationPod(
   auth: Authenticator,
-  pod: SpaceResource,
-  { withTrigger = true }: { withTrigger?: boolean } = {}
+  pod: SpaceResource
 ): Promise<ActivationPodResource> {
-  const trigger = withTrigger
-    ? await TriggerFactory.schedule(auth, {
-        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-        status: "enabled",
-        configuration: { cron: "0 9 * * 1", timezone: "UTC" },
-      })
-    : null;
-
   return ActivationPodResource.makeNew(auth, {
     pod,
     user: auth.getNonNullableUser(),
-    trigger,
   });
 }
 
@@ -200,11 +183,7 @@ describe("ActivationRecommendationResource", () => {
       const { authenticator, globalSpace } = await createResourceTest({
         role: "admin",
       });
-      const activationPod = await makeActivationPod(
-        authenticator,
-        globalSpace,
-        { withTrigger: false }
-      );
+      const activationPod = await makeActivationPod(authenticator, globalSpace);
       const rec = await makeRec(authenticator, {
         activationPodId: activationPod.id,
       });
@@ -224,15 +203,10 @@ describe("ActivationRecommendationResource", () => {
     it("does not delete recommendations linked to a different activation pod", async () => {
       const { authenticator, globalSpace, systemSpace } =
         await createResourceTest({ role: "admin" });
-      const activationPod = await makeActivationPod(
-        authenticator,
-        globalSpace,
-        { withTrigger: false }
-      );
+      const activationPod = await makeActivationPod(authenticator, globalSpace);
       const otherActivationPod = await makeActivationPod(
         authenticator,
-        systemSpace,
-        { withTrigger: false }
+        systemSpace
       );
       const otherRec = await makeRec(authenticator, {
         activationPodId: otherActivationPod.id,
@@ -254,11 +228,7 @@ describe("ActivationRecommendationResource", () => {
       const { authenticator, globalSpace } = await createResourceTest({
         role: "admin",
       });
-      const activationPod = await makeActivationPod(
-        authenticator,
-        globalSpace,
-        { withTrigger: false }
-      );
+      const activationPod = await makeActivationPod(authenticator, globalSpace);
       const unlinkedRec = await makeRec(authenticator);
 
       await ActivationRecommendationResource.deleteAllForActivationPod(
@@ -271,45 +241,6 @@ describe("ActivationRecommendationResource", () => {
         unlinkedRec.sId
       );
       expect(fetched).not.toBeNull();
-    });
-
-    it("deletes the pod's dedicated activation trigger", async () => {
-      const { authenticator, globalSpace } = await createResourceTest({
-        role: "admin",
-      });
-      const activationPod = await makeActivationPod(authenticator, globalSpace);
-      const triggerId = activationPod.triggerId;
-      if (triggerId === null) {
-        throw new Error("Expected the activation pod to have a trigger.");
-      }
-
-      await ActivationRecommendationResource.deleteAllForActivationPod(
-        authenticator,
-        activationPod
-      );
-
-      const triggers = await TriggerResource.fetchByModelIds(authenticator, [
-        triggerId,
-      ]);
-      expect(triggers).toHaveLength(0);
-    });
-
-    it("does not throw when the activation pod has no trigger", async () => {
-      const { authenticator, globalSpace } = await createResourceTest({
-        role: "admin",
-      });
-      const activationPod = await makeActivationPod(
-        authenticator,
-        globalSpace,
-        { withTrigger: false }
-      );
-
-      await expect(
-        ActivationRecommendationResource.deleteAllForActivationPod(
-          authenticator,
-          activationPod
-        )
-      ).resolves.toBeUndefined();
     });
   });
 });
