@@ -219,12 +219,9 @@ export const ComposerInput = React.forwardRef<
         }
       }
 
-      if (
-        e.key === "Enter" &&
-        !e.shiftKey &&
-        !e.nativeEvent.isComposing &&
-        !active
-      ) {
+      // Enter with the suggestion list showing is handled above; an active
+      // trigger with zero matches must not swallow the submit.
+      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
         e.preventDefault();
         onSubmit?.(value);
       }
@@ -244,7 +241,14 @@ export const ComposerInput = React.forwardRef<
   );
 
   return (
-    <PopoverRoot open={isOpen}>
+    <PopoverRoot
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          closeSuggestions();
+        }
+      }}
+    >
       <PopoverAnchor asChild>
         <textarea
           ref={textareaRef}

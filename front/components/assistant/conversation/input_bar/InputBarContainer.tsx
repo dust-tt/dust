@@ -1554,7 +1554,11 @@ const InputBarContainer = ({
     owner.metadata?.allowVoiceTranscription !== false &&
     actions.includes("voice") &&
     !isCompact;
-  const showMicInsteadOfSend = isEmpty || activeVoiceService.status !== "idle";
+  // Keep the send button (and its spinner) visible while a submit is in
+  // flight — the editor clears optimistically, which would otherwise swap in
+  // an actionable mic and hide the loading state.
+  const showMicInsteadOfSend =
+    (isEmpty && !isSubmitting) || activeVoiceService.status !== "idle";
 
   const isDefaultAgentUnavailable =
     !conversation &&
