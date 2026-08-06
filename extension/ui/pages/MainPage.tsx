@@ -31,8 +31,13 @@ export const MainPage = () => {
       workspaceId: workspace.sId,
     });
 
-  const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
-    useConversationMenu();
+  const {
+    isMenuOpen,
+    isMenuOpenOrClosing,
+    menuTriggerPosition,
+    handleMenuOpenChange,
+    handleMenuCloseComplete,
+  } = useConversationMenu();
 
   const headerTitle = useMemo(() => {
     if (!conversationId) {
@@ -79,7 +84,9 @@ export const MainPage = () => {
               }
               isConversationDisplayed={true}
               isOpen={isMenuOpen}
+              isOpenOrClosing={isMenuOpenOrClosing}
               onOpenChange={handleMenuOpenChange}
+              onCloseComplete={handleMenuCloseComplete}
               triggerPosition={menuTriggerPosition}
               displayOpenInBrowser
               openDetailsInNewTab
