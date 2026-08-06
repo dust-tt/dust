@@ -70,7 +70,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .min(1)
         .describe(
           "Scoped path to the function's TypeScript source in the pod, as shown by the files " +
-            "tools (e.g. `pod-<id>/greet.ts`)."
+            "tools. It lives directly in its app's folder (e.g. " +
+            "`pod-<id>/MyApp/greet.ts`)."
         ),
       executionMode: z
         .enum(SANDBOX_FUNCTION_EXECUTION_MODES)
@@ -236,7 +237,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .min(1)
         .describe(
           "Scoped path to the database's drizzle schema file in the pod, as shown by the " +
-            "files tools (e.g. `pod-<id>/databases/chat.db.ts`)."
+            "files tools (e.g. `pod-<id>/MyApp/databases/chat.db.ts`)."
         ),
     },
     stake: "never_ask",

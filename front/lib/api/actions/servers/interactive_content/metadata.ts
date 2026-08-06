@@ -284,11 +284,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = [
     name: PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     description:
       "Publish a Frame from its source files, applying source edits to the live rendered Frame. " +
-      "A Frame's source lives on the conversation file system at " +
+      "A Frame's source lives on the file system it currently belongs to: by default " +
       "`conversation-<conversationId>/<filename>` (mounted in the Computer at " +
-      "`/files/conversation-<conversationId>/<filename>` when the Computer is available), so " +
-      "edit it in place rather than copying it elsewhere, then call this to build it into the " +
-      "live Frame. It resolves the Frame's dependency tree from the entry file's directory " +
+      "`/files/conversation-<conversationId>/<filename>` when the Computer is available), or a " +
+      "Pod path such as `pod-<podId>/<AppName>/<AppName>.tsx` for a Frame that is part of a Pod " +
+      "app. Edit that file in place rather than duplicating it, then call this to build it into " +
+      "the live Frame. It resolves the Frame's dependency tree from the entry file's directory " +
       "(inlining relative imports), validates TypeScript and JSX, then updates the canonical " +
       "Frame so viewers and shares see the new version. A syntax error blocks publishing and is " +
       "reported back so you can fix it. Tailwind warnings are returned but do not block. Pass " +
@@ -305,10 +306,10 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = [
         .string()
         .describe(
           "Scoped path of the Frame's entry source file, not just its directory, e.g. " +
-            "`conversation-<conversationId>/<filename>`, or `pod-<id>/<filename>` for a Frame " +
-            "stored in a project's shared space. If the file was renamed, use its current " +
-            "name, listing the directory first if unsure. This path's directory becomes the " +
-            "bundling root."
+            "`conversation-<conversationId>/<filename>`, or " +
+            "`pod-<podId>/<AppName>/<AppName>.tsx` for a Frame stored in a Pod's shared space. " +
+            "If the file was renamed or moved, use its current path, listing the directory " +
+            "first if unsure. This path's directory becomes the bundling root."
         ),
     },
     enableAlerting: true,

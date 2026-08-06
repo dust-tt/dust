@@ -1,5 +1,14 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
+  FILES_MOVE_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import {
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  INTERACTIVE_CONTENT_SERVER_NAME,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
+import {
   SANDBOX_FUNCTIONS_SERVER_NAME,
   type SANDBOX_FUNCTIONS_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
@@ -14,16 +23,36 @@ function toolName(
   return getPrefixedToolName(SANDBOX_FUNCTIONS_SERVER_NAME, name);
 }
 
+const FILES_MOVE_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_MOVE_ACTION_NAME
+);
+const CREATE_FRAME_TOOL = getPrefixedToolName(
+  INTERACTIVE_CONTENT_SERVER_NAME,
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+);
+const PUBLISH_FRAME_TOOL = getPrefixedToolName(
+  INTERACTIVE_CONTENT_SERVER_NAME,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+);
+
+export const POD_FUNCTIONS_SKILL_NAME = "Pod Functions";
+
 export const podFunctionsSkill = {
   sId: "pod_functions",
   kind: "global",
-  name: "Pod Functions",
+  name: POD_FUNCTIONS_SKILL_NAME,
   userFacingDescription:
     "Run hosted functions on the Pod's Computer that can persist data and call other tools.",
   agentFacingDescription:
     "A pod function is a hosted function that runs on the Pod's own Computer, shared across " +
     "every conversation in the Pod, with the ability to persist data and call other tools. It's " +
-    "callable by slug from this conversation or from a Frame's own runtime.",
+    "callable by slug from this conversation or from a Frame's own runtime. This is how a Frame " +
+    "stores data: use it whenever a Frame's content must survive a reload and be the same for " +
+    "everyone who opens it (a task list, tracker, backlog, inventory, log, notes app, or any " +
+    "Frame whose entries users add and expect to find again), or whenever a Frame needs a " +
+    "server-side capability it cannot hold itself, such as calling another tool or using a " +
+    "workspace secret.",
   instructions: `Pod functions are versioned, typed functions published on the Pod's own
 Computer: a persistent environment shared across every conversation in the Pod, not the one
 scoped to this conversation. Each one is a TypeScript module with zod-typed input and output,
@@ -39,11 +68,35 @@ Reach for a pod function instead of inline code or an ad hoc tool call when any 
   there on the next call and visible to a Frame that always reflects the latest state (see
   "Persisting state across calls" below).
 
+#### Laying out a Pod app
+
+A Frame and the pod functions behind it are one app. Keep the whole app in a single folder on the
+Pod file system rather than splitting it between the conversation and the Pod root:
+
+\`\`\`
+/files/pod-<podId>/
+  MyApp/
+    MyApp.tsx        the Frame's source; its directory is the Frame's bundling root
+    list-notes.ts    one file per function, named after the function's slug
+    post-note.ts
+    databases/
+      notes.db.ts    one shared drizzle schema file per database
+\`\`\`
+
+Nothing the app owns stays in the conversation file system: a conversation file belongs to one
+conversation, while the app is shared by every conversation in the Pod, exactly like the functions
+it publishes. If the app's Frame does not exist yet, or still sits in the conversation, the Frames
+skill covers creating it and moving it into the app folder with \`${FILES_MOVE_TOOL}\` before
+\`${PUBLISH_FRAME_TOOL}\`; \`${CREATE_FRAME_TOOL}\` always creates it in the conversation first.
+
+Functions that no Frame calls still get an app folder, named after what they do together.
+
 #### Authoring a function
 
-Write the source as a TypeScript file on the Pod file system (the Computer's mount at
-\`/files/pod-<podId>\`, or through the \`files\` MCP server under a \`pod-<podId>/<rel>\` path). The module
-must:
+Write the source as a TypeScript file directly in the app's folder, at
+\`pod-<podId>/<AppName>/<slug>.ts\` (the Computer mounts it at
+\`/files/pod-<podId>/<AppName>/<slug>.ts\`; the \`files\` MCP server reaches it under the same scoped
+path). The module must:
 
 - export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas,
 - default-export an object with a \`fetch(request: Request): Promise<Response>\` method (the Bun and
@@ -70,10 +123,10 @@ export default {
 };
 \`\`\`
 
-You can split the implementation across several files on the Pod and import them with relative paths
-(e.g. \`import { parse } from "./lib/parse.ts"\`). Publishing bundles the entrypoint and all of its
-relative imports into one module. The bundle is a snapshot taken at publish time, so editing an
-imported helper has no effect until you re-publish.
+You can split the implementation across several files in the app folder and import them with
+relative paths (e.g. \`import { parse } from "./lib/parse.ts"\`). Publishing bundles the entrypoint
+and all of its relative imports into one module. The bundle is a snapshot taken at publish time, so
+editing an imported helper has no effect until you re-publish.
 
 The external packages you can import are \`zod\`, \`drizzle-orm\` and \`@dust/pod\`. Other npm packages
 are not available at build time.
@@ -86,10 +139,12 @@ written there persists across calls and conversations, not just for the duration
 invocation.
 
 Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\`):
-- **One schema file per database** at \`databases/{db}.db.ts\`, relative to the sources: the single
-  source of truth declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every
-  function imports its table objects from it (never hand-write tables in a function file), so
-  functions sharing a database must live in the same source directory.
+- **One schema file per database** at \`<AppName>/databases/{db}.db.ts\`: the single source of truth
+  declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every function imports
+  its table objects from it as \`./databases/{db}.db.ts\` (never hand-write tables in a function
+  file), so functions sharing a database belong to the same app. The database name itself is
+  Pod-wide rather than app-scoped, so pick one that will not collide with another app's
+  (\`${toolName("db_list")}\` shows what the Pod already has).
 - **Name functions that use this db.ts by writting a comment a the top** 
 - **Apply the schema file with \`${toolName("db_reconcile")}\`**; it creates the database and
   applies additive DDL after edits, and enforces the rules below. Publishing does not touch
@@ -98,7 +153,7 @@ Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\
   table objects.
 
 \`\`\`ts
-// databases/chat.db.ts; the full intended schema, shared by every chat function
+// MyApp/databases/chat.db.ts; the full intended schema, shared by every chat function
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const messages = sqliteTable("messages", {
@@ -108,7 +163,7 @@ export const messages = sqliteTable("messages", {
   createdAt: integer("created_at", { mode: "timestamp" }),
 }, (t) => [index("messages_created_idx").on(t.createdAt)]);
 
-// post-message.ts; declares schema.databases: ["chat"], then inside fetch:
+// MyApp/post-message.ts; declares schema.databases: ["chat"], then inside fetch:
 import { db } from "@dust/pod";
 import { messages } from "./databases/chat.db.ts";
 const row = db("chat").insert(messages)
@@ -205,7 +260,9 @@ return inline is written to a pod file whose path it reports), and \`${toolName(
 A Frame calls published functions through the injected \`@dust/react-hooks\` module, not the
 \`call\` tool. Always pass the fully qualified \`<podId>/<slug>\` reference reported by
 \`${toolName("get")}\`. Never pass a bare slug or infer the function from the Frame's current Pod.
-This keeps the reference stable if the Frame is moved.
+This keeps the reference stable if the Frame is moved. The app folder is only where the sources
+live: it does not namespace the slug, so the reference stays \`<podId>/<slug>\` and never includes
+the app name.
 
 ##### Designing functions for a Frame
 
@@ -332,7 +389,7 @@ Frames. That single column is what turns a shared Pod database into per-user sta
 you create the table rather than retrofitting it later (schema evolution is additive-only).
 
 \`\`\`ts
-// databases/notes.db.ts
+// MyApp/databases/notes.db.ts
 export const notes = sqliteTable("notes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id"),        // currentUser().sId
@@ -340,7 +397,7 @@ export const notes = sqliteTable("notes", {
   createdAt: integer("created_at", { mode: "timestamp" }),
 }, (t) => [index("notes_user_idx").on(t.userId)]);
 
-// list-notes.ts, declared "workspace_user_required"
+// MyApp/list-notes.ts, declared "workspace_user_required"
 const user = currentUser();
 const rows = db("notes").select().from(notes).where(eq(notes.userId, user.sId)).all();
 \`\`\`
