@@ -70,6 +70,16 @@ export interface ExecOptions {
   envVars?: Record<string, string>;
   /** Data to send to the command over stdin. Never encoded into argv. */
   stdin?: string | Uint8Array;
+  /**
+   * Allows a small `stdin` to be handed to the command through its environment instead of over
+   * separate calls to the sandbox, saving two round trips.
+   *
+   * Off by default, and it must stay off for anything secret. Delivering stdin out of band is how
+   * callers keep tokens and credentials out of process metadata, and a provider reports the
+   * environment of a running command in its process listing. Set this only where the payload is
+   * the command's own input and the latency is worth it.
+   */
+  allowStdinInEnvironment?: boolean;
   /** Optional non-root user to run the command as. Use execRoot for root. */
   user?: SandboxExecUser;
 }

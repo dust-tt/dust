@@ -74,8 +74,8 @@ const CONNECTION_TTL_MS = 5 * 60 * 1_000;
 const MAX_CACHED_CONNECTIONS = 1_000;
 
 /**
- * Environment variable carrying inline stdin. Unset by the wrapper below before the command runs,
- * so the payload reaches the workload through the pipe and not through its environment.
+ * Environment variable carrying inline stdin. The wrapper below unexports it before handing over
+ * to the command, so the payload reaches the workload on its stdin and not in its environment.
  */
 const INLINE_STDIN_ENV = "DUST_EXEC_STDIN";
 
@@ -185,6 +185,7 @@ interface E2BCommandOpts {
   cwd?: string;
   envs?: Record<string, string>;
   stdin?: string | Uint8Array;
+  allowStdinInEnvironment?: boolean;
   timeoutMs?: number;
   user?: string;
 }
@@ -199,17 +200,20 @@ type StdinDelivery =
  *
  * envd has no way to carry stdin in the start request: it takes a boolean saying stdin will be
  * open, after which `sendStdin` and `closeStdin` are two more sequential calls to the sandbox.
- * Passing the payload through the environment and piping it in collapses all three into the
- * single start call. Binary and oversized payloads keep the streamed path, because an environment
- * value can hold neither NUL nor an unbounded string.
+ * Handing the payload over through the environment collapses all three into the single start
+ * call, but only a caller that has opted in gets it: `Commands.list` reports the environment of
+ * every running command, so a secret has to keep the streamed path. Binary and oversized payloads
+ * do too, because an environment value can hold neither NUL nor an unbounded string.
  */
 function getStdinDelivery(
-  stdin: string | Uint8Array | undefined
+  stdin: string | Uint8Array | undefined,
+  allowStdinInEnvironment: boolean
 ): StdinDelivery {
   if (stdin === undefined) {
     return { mode: "none" };
   }
   if (
+    !allowStdinInEnvironment ||
     typeof stdin !== "string" ||
     stdin.includes("\0") ||
     Buffer.byteLength(stdin, "utf8") > MAX_INLINE_STDIN_BYTES
@@ -223,18 +227,26 @@ function getStdinDelivery(
 /**
  * Feeds inline stdin to `command` from the environment.
  *
- * `printf` is a bash builtin, so this resolves nothing through PATH (SEC3), and passing the
- * payload as an argument to `%s` keeps it out of the format string. The variable is unset before
- * the command starts so the workload only ever sees the payload on its stdin. `printf`'s own
- * stderr is dropped: the only thing it can report here is a write error against a command that
- * exited without reading, which is not a failure of the command itself.
+ * `exec` and the process substitution are both load bearing, and a pipeline is NOT a valid
+ * substitute. envd tracks the single pid it started and signals only that pid when a command
+ * exceeds its timeout. Piping into the command would leave envd holding the wrapper shell while
+ * the workload ran on as a grandchild, so a timed out command would keep running in the sandbox
+ * after we gave up on it (verified against a live sandbox). Replacing the wrapper with the
+ * command keeps the pid envd owns the pid that matters.
+ *
+ * `exec`, `unset` and `printf` are bash builtins, so nothing here resolves through PATH (SEC3),
+ * and passing the payload as an argument to `%s` keeps it out of the format string. The payload
+ * is copied to a shell variable and unexported before the `exec`, so it is absent from the
+ * environment of the command and of everything it spawns.
  */
 function withInlineStdin(command: string): string {
   return [
-    `printf '%s' "$${INLINE_STDIN_ENV}" 2>/dev/null | { unset ${INLINE_STDIN_ENV}`,
-    command,
-    "}",
-  ].join("\n");
+    `__dust_stdin="$${INLINE_STDIN_ENV}"`,
+    `unset ${INLINE_STDIN_ENV}`,
+    // printf's own stderr is dropped: the only thing it can report is a write error against a
+    // command that exited without reading its stdin, which is not a failure of that command.
+    `exec /bin/bash --noprofile --norc -c ${shellEscape(command)} < <(printf '%s' "$__dust_stdin" 2>/dev/null)`,
+  ].join("; ");
 }
 
 /**
@@ -508,7 +520,10 @@ export class E2BSandboxProvider implements SandboxProvider {
     commandOpts: E2BCommandOpts,
     tracingOpts: { workspaceId: string }
   ): Promise<Result<ExecResult, Error>> {
-    const stdin = getStdinDelivery(commandOpts.stdin);
+    const stdin = getStdinDelivery(
+      commandOpts.stdin,
+      commandOpts.allowStdinInEnvironment ?? false
+    );
     const start = buildStartRequest(command, commandOpts, stdin);
 
     return traceSandboxOperation(
@@ -812,6 +827,7 @@ export class E2BSandboxProvider implements SandboxProvider {
         envs: getNonRootOuterEnvironment(execOpts?.envVars),
         timeoutMs: execOpts?.timeoutMs,
         stdin: execOpts?.stdin,
+        allowStdinInEnvironment: execOpts?.allowStdinInEnvironment,
         user: execUser,
       },
       tracingOpts
@@ -832,6 +848,8 @@ export class E2BSandboxProvider implements SandboxProvider {
         envs: execOpts?.envVars,
         timeoutMs: execOpts?.timeoutMs,
         stdin: execOpts?.stdin,
+        // Deliberately not forwarded: every root command that carries stdin today is handing
+        // over a token or a secrets file, and those must not appear in a process listing.
         user: "root",
       },
       tracingOpts

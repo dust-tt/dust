@@ -419,20 +419,22 @@ describe("E2BSandboxProvider", () => {
     });
   });
 
-  it("pipes small stdin from the environment instead of extra round trips", async () => {
+  it("hands small stdin to the command through the environment when allowed", async () => {
     const provider = new E2BSandboxProvider({
       apiKey: "api-key",
       domain: undefined,
     });
-    const stdin = "super-secret-json";
-    const command = "install -m 600 /dev/stdin /run/dust/egress-secrets.json";
+    const stdin = '{"message":"hi"}';
+    const command = "/opt/bin/dsbx function run greet";
 
-    const result = await provider.execRoot(
+    const result = await provider.exec(
       "provider-id",
-      rootCommand.unsafeShell(command, "test legacy stdin root command"),
+      command,
       {
         stdin,
+        allowStdinInEnvironment: true,
         timeoutMs: 5_000,
+        user: "agent-proxied",
       },
       { workspaceId: "workspace-id" }
     );
@@ -442,22 +444,24 @@ describe("E2BSandboxProvider", () => {
     if (typeof wrappedCommand !== "string") {
       throw new Error("expected wrappedCommand to be a string");
     }
-    expect(wrappedCommand).toContain(`PATH='${SANDBOX_ROOT_SAFE_PATH}'`);
     expect(wrappedCommand).toContain("/bin/bash --noprofile --norc -c");
     expect(wrappedCommand).toContain(command);
-    // The payload travels in the environment, which is where this file already puts secrets such
-    // as DUST_SANDBOX_TOKEN, and is unset before the command runs. What it must never reach is
-    // argv, which is world-readable through /proc.
-    expect(wrappedCommand).toContain(`printf '%s' "$DUST_EXEC_STDIN"`);
+    // The payload travels in the environment and is unexported before the command starts. What it
+    // must never reach is argv, which is world-readable through /proc.
+    expect(wrappedCommand).toContain(`printf '%s' "$__dust_stdin"`);
     expect(wrappedCommand).toContain("unset DUST_EXEC_STDIN");
     expect(wrappedCommand).not.toContain(stdin);
+    // `exec` keeps the pid envd started as the pid running the workload. Without it envd holds a
+    // wrapper shell, and killing that on timeout leaves the workload running as a grandchild.
+    expect(wrappedCommand).toContain("exec /bin/bash");
+    expect(wrappedCommand).not.toContain("| {");
     expect(mockRun).toHaveBeenCalledWith(
       wrappedCommand,
       expect.objectContaining({
         background: true,
         envs: expect.objectContaining({ DUST_EXEC_STDIN: stdin }),
         timeoutMs: 5_000,
-        user: "root",
+        user: "agent-proxied",
       })
     );
     // Asking envd to hold stdin open is what costs the two extra calls, so the inline path must
@@ -478,7 +482,7 @@ describe("E2BSandboxProvider", () => {
     const result = await provider.exec(
       "provider-id",
       "/opt/bin/dsbx function run big",
-      { stdin, user: "agent-proxied" },
+      { stdin, allowStdinInEnvironment: true, user: "agent-proxied" },
       { workspaceId: "workspace-id" }
     );
 
@@ -506,7 +510,7 @@ describe("E2BSandboxProvider", () => {
     const result = await provider.exec(
       "provider-id",
       "/opt/bin/dsbx function run binary",
-      { stdin, user: "agent-proxied" },
+      { stdin, allowStdinInEnvironment: true, user: "agent-proxied" },
       { workspaceId: "workspace-id" }
     );
 
