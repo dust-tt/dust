@@ -9,7 +9,9 @@ import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard"
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
+import { TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -89,6 +91,9 @@ export function AgentBuilderTriggersBlock({
   );
 
   const { user } = useAgentBuilderContext();
+
+  const { hasPermission } = useWorkspacePermissions();
+  const canCreateTrigger = hasPermission("create", "trigger");
 
   // Combine triggers for display, excluding those marked for deletion
   const allTriggers = [
@@ -231,6 +236,12 @@ export function AgentBuilderTriggersBlock({
             type="button"
             icon={Zap}
             onClick={handleAddTrigger}
+            disabled={!canCreateTrigger}
+            tooltip={
+              !canCreateTrigger
+                ? TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE
+                : undefined
+            }
           />
         )
       }
@@ -248,6 +259,12 @@ export function AgentBuilderTriggersBlock({
                 type="button"
                 icon={Zap}
                 onClick={handleAddTrigger}
+                disabled={!canCreateTrigger}
+                tooltip={
+                  !canCreateTrigger
+                    ? TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE
+                    : undefined
+                }
               />
             }
             className="py-4"

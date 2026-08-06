@@ -84,6 +84,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     blob: CreationAttributes<TriggerModel>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<TriggerResource, Error>> {
+    assert(
+      blob.origin === "system" ||
+        (await auth.hasWorkspacePermission("create", "trigger")),
+      "User is not authorized to create triggers"
+    );
+
     const trigger = await TriggerModel.create(blob, {
       transaction,
     });

@@ -43,6 +43,7 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "space",
   "agent",
   "skill",
+  "trigger",
   "frame",
   "billing",
   "security",
@@ -126,6 +127,7 @@ export function emptyWorkspacePermissions(): WorkspacePermissions {
     space: [],
     agent: [],
     skill: [],
+    trigger: [],
     frame: [],
     billing: [],
     security: [],
@@ -153,6 +155,7 @@ export const GOVERNANCE_CAPABILITIES = {
   agent: [
     { grantType: "create", resourceType: "agent" },
     { grantType: "publish", resourceType: "agent" },
+    { grantType: "create", resourceType: "trigger" },
   ],
   skill: [
     { grantType: "create", resourceType: "skill" },

@@ -138,6 +138,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
       ...emptyWorkspacePermissions(),
       agent: ["create", "publish"],
       skill: ["create", "publish", "make_discoverable"],
+      trigger: ["create"],
       frame: ["invite", "publish"],
       billing: ["admin"],
       security: ["admin"],

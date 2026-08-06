@@ -64,6 +64,10 @@ const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
     capability: { grantType: "publish", resourceType: "agent" },
     resolveTarget: async (_auth) => "everyone",
   },
+  {
+    capability: { grantType: "create", resourceType: "trigger" },
+    resolveTarget: async (_auth) => "everyone",
+  },
 ];
 
 type ApplyCapabilityOutcome =

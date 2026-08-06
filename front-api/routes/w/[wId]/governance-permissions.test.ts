@@ -55,6 +55,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     expect(governancePermissions).toEqual({
       "create:agent": adminsOnly("create", "agent"),
       "publish:agent": adminsOnly("publish", "agent"),
+      "create:trigger": adminsOnly("create", "trigger"),
       "create:skill": adminsOnly("create", "skill"),
       "publish:skill": adminsOnly("publish", "skill"),
       "make_discoverable:skill": adminsOnly("make_discoverable", "skill"),
@@ -81,6 +82,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     expect(governancePermissions).toEqual({
       "create:agent": adminsOnly("create", "agent"),
       "publish:agent": adminsOnly("publish", "agent"),
+      "create:trigger": adminsOnly("create", "trigger"),
       "create:skill": adminsOnly("create", "skill"),
       "publish:skill": adminsOnly("publish", "skill"),
       "make_discoverable:skill": adminsOnly("make_discoverable", "skill"),

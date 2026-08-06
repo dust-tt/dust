@@ -7,8 +7,12 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { GetTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
-import { TriggerSchema } from "@app/types/assistant/triggers";
+import {
+  TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE,
+  TriggerSchema,
+} from "@app/types/assistant/triggers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -279,6 +283,11 @@ app.post(
   "/",
   validate("param", ParamsSchema),
   validate("json", PostTriggersRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "create",
+    "trigger",
+    TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE
+  ),
   async (ctx) => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");

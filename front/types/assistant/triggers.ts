@@ -66,6 +66,9 @@ export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
 
 export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 
+export const TRIGGER_CREATE_PERMISSION_ERROR_MESSAGE =
+  "You do not have permission to create triggers in this workspace.";
+
 export type TriggerExecutionMode = "fair_use" | "programmatic";
 
 export const TRIGGER_STATUSES = [
