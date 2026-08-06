@@ -33,8 +33,9 @@ export type ConsumptionTimeseriesGroup = {
   name: string;
 };
 
+// Points run from the start of the period up to the bucket in progress, never
+// past it. Where that sits relative to the period's end is `period`'s to say.
 export type ConsumptionTimeseriesPoint = {
   timestamp: number;
   values: Record<string, number>;
-  isPartial: boolean;
 };
