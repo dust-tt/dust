@@ -60,6 +60,7 @@ import type {
   DsyncUserUpdatedEvent,
   Event,
   OrganizationDomain,
+  OrganizationDomainDeletedEvent,
   OrganizationDomainVerificationFailedEvent,
   OrganizationDomainVerifiedEvent,
   OrganizationUpdatedEvent,
@@ -370,6 +371,14 @@ export async function processWorkOSEventActivity({
       );
       break;
 
+    case "organization_domain.deleted":
+      await verifyWorkOSWorkspace(
+        eventPayload.data.organizationId,
+        eventPayload,
+        handleOrganizationDomainDeleted
+      );
+      break;
+
     case "organization.updated":
       await verifyWorkOSWorkspace(
         eventPayload.data.id,
@@ -444,22 +453,32 @@ export async function processWorkOSEventActivity({
 async function handleOrganizationDomainEvent(
   workspace: LightWorkspaceType,
   eventData: OrganizationDomain,
-  expectedState: "verified" | "failed"
+  eventType: "verified" | "failed" | "deleted"
 ) {
   const { domain, state } = eventData;
 
-  assert(
-    state === expectedState,
-    `Domain state is not ${expectedState} -- expected ${expectedState} but got ${state}`
-  );
+  if (eventType !== "deleted") {
+    assert(
+      state === eventType,
+      `Domain state is not ${eventType} -- expected ${eventType} but got ${state}`
+    );
+  }
 
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
   if (!workspaceResource) {
     throw new Error(`Workspace not found: ${workspace.sId}`);
   }
 
+  if (eventType === "deleted") {
+    const existingDomains = await workspaceResource.getVerifiedDomains();
+    if (!existingDomains.some((existing) => existing.domain === domain)) {
+      logger.info({ domain }, "Domain already deleted");
+      return false;
+    }
+  }
+
   let domainResult: Result<any, Error>;
-  if (expectedState === "verified") {
+  if (eventType === "verified") {
     domainResult = await workspaceResource.upsertWorkspaceDomain({
       domain,
       // If a workspace has a verified domain, it means that they went through the DNS
@@ -480,6 +499,7 @@ async function handleOrganizationDomainEvent(
   }
 
   logger.info({ domain }, "Domain updated/deleted");
+  return true;
 }
 
 async function handleOrganizationDomainVerified(
@@ -509,6 +529,30 @@ async function handleOrganizationDomainVerificationFailed(
   void emitAuditLogEventDirect({
     workspace,
     action: "domain.verification_failed",
+    actor: { type: "system", id: "workos", name: "WorkOS" },
+    targets: [{ type: "workspace", id: workspace.sId, name: workspace.name }],
+    context: { location: "system" },
+    metadata: { domain: eventData.domain },
+  });
+}
+
+async function handleOrganizationDomainDeleted(
+  workspace: LightWorkspaceType,
+  event: OrganizationDomainDeletedEvent
+) {
+  const { data: eventData } = event;
+  const domainWasDeleted = await handleOrganizationDomainEvent(
+    workspace,
+    eventData,
+    "deleted"
+  );
+  if (!domainWasDeleted) {
+    return;
+  }
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "domain.removed",
     actor: { type: "system", id: "workos", name: "WorkOS" },
     targets: [{ type: "workspace", id: workspace.sId, name: workspace.name }],
     context: { location: "system" },
