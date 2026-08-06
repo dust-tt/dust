@@ -27,7 +27,7 @@ const chipVariants = cva("inline-flex box-border items-center", {
   variants: {
     size: {
       mini: "rounded-lg min-h-5 text-xs font-medium px-1.5 gap-1",
-      xs: "rounded-lg min-h-6 heading-xs px-[9px] gap-1",
+      xs: "rounded-[9px] min-h-6 heading-xs px-[9px] gap-1",
       sm: "rounded-xl min-h-8 heading-sm px-3 gap-1.5",
     },
     // Semantic scales (primary/highlight/info/warning) auto-flip in the `.dark`
