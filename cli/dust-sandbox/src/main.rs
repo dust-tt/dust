@@ -29,6 +29,8 @@ enum Commands {
         #[command(subcommand)]
         command: commands::function::FunctionCommand,
     },
+    /// Receive Pod function work for this sandbox and run it locally
+    Poller(commands::PollerArgs),
     /// Manage pod databases
     Db {
         #[command(subcommand)]
@@ -84,6 +86,7 @@ async fn run() -> anyhow::Result<()> {
                 out_schema,
             } => commands::cmd_function_build(&src, &out_bundle, &out_schema).await?,
         },
+        Commands::Poller(args) => commands::cmd_poller(args).await?,
         Commands::Db { command } => match command {
             commands::db::DbCommand::Reconcile { name, schema_file } => {
                 commands::cmd_db_reconcile(&name, &schema_file).await?

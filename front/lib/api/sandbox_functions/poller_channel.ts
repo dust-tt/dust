@@ -215,6 +215,24 @@ export async function claimPollerJob({
 }
 
 /**
+ * Drop a dispatched job that will not be picked up.
+ *
+ * Called once the exec fallback has the claim. The claim alone already stops a late poller from
+ * running it, but a job left behind keeps the invocation's credential and its caller's input in
+ * Redis for the rest of their window, and makes the safety of a late doorbell depend on the claim
+ * outliving the job rather than on the job being gone.
+ */
+export async function discardPollerJob({
+  invocationId,
+}: {
+  invocationId: string;
+}): Promise<void> {
+  await runOnRedis({ origin: SANDBOX_FUNCTION_POLLER_ORIGIN }, (client) =>
+    client.del(pollerJobRedisKey({ invocationId }))
+  );
+}
+
+/**
  * Claim an invocation for the exec fallback, so the poller cannot also run it.
  *
  * The other side of the same arbiter. Takes no job: the exec path already holds everything it

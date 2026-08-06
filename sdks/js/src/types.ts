@@ -785,6 +785,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "sandbox_function_fast_execution"
   | "sandbox_function_stdout_result"
+  | "sandbox_function_warm_channel"
   | "sandbox_functions"
   | "self_created_slack_app_connector_rollout"
   | "servicenow_tool"
