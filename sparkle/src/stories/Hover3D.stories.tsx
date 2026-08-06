@@ -31,7 +31,7 @@ export const Hover3DExample = () => (
     <div className="flex gap-4">
       <div>
         <Hover3D
-          className="rounded-[30px] bg-linear-to-r from-cyan-500 to-blue-500 p-10 shadow-xl"
+          className="rounded-4xl bg-linear-to-r from-cyan-500 to-blue-500 p-10 shadow-xl"
           depth={-30}
         >
           <Div3D depth={20}>Coucou</Div3D>
@@ -50,7 +50,7 @@ export const Hover3DExample = () => (
         </Hover3D>
       </div>
       <div>
-        <Hover3D className="rounded-[24px] bg-primary-800 p-8">
+        <Hover3D className="rounded-3xl bg-primary-800 p-8">
           <Div3D depth={60}>
             <Icon visual={DustLogoSquare} size="2xl" />
           </Div3D>
@@ -58,7 +58,7 @@ export const Hover3DExample = () => (
       </div>
       <div>
         <Hover3D
-          className="relative h-44 w-44 rounded-[32px] bg-linear-to-t from-stone-400 to-stone-300 p-2"
+          className="relative h-44 w-44 rounded-4xl bg-linear-to-t from-stone-400 to-stone-300 p-2"
           depth={-10}
         >
           <Div3D depth={25} className="absolute h-40 w-40">
@@ -74,7 +74,7 @@ export const Hover3DExample = () => (
     <div className="flex gap-4">
       <div>
         <Hover3D
-          className="rounded-[30px] bg-linear-to-r from-cyan-500 to-blue-500 p-10 shadow-xl"
+          className="rounded-4xl bg-linear-to-r from-cyan-500 to-blue-500 p-10 shadow-xl"
           perspective={1000}
           fullscreenSensible
         >
@@ -97,7 +97,7 @@ export const Hover3DExample = () => (
       </div>
       <div>
         <Hover3D
-          className="rounded-[24px] bg-primary-800 p-8"
+          className="rounded-3xl bg-primary-800 p-8"
           perspective={1000}
           fullscreenSensible
         >
@@ -108,7 +108,7 @@ export const Hover3DExample = () => (
       </div>
       <div>
         <Hover3D
-          className="relative h-44 w-44 rounded-[32px] bg-linear-to-t from-stone-400 to-stone-300 p-2"
+          className="relative h-44 w-44 rounded-4xl bg-linear-to-t from-stone-400 to-stone-300 p-2"
           depth={-10}
           perspective={1000}
           fullscreenSensible
