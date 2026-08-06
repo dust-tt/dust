@@ -1554,6 +1554,7 @@ const ConversationListItem = memo(
       menuTriggerPosition,
       handleRightClick,
       handleMenuOpenChange,
+      handleMenuCloseComplete,
     } = useConversationMenu();
 
     const [showTypingAnimation, setShowTypingAnimation] = useState(false);
@@ -1648,6 +1649,7 @@ const ConversationListItem = memo(
             isOpen={isMenuOpen}
             isOpenOrClosing={isMenuOpenOrClosing}
             onOpenChange={handleMenuOpenChange}
+            onCloseComplete={handleMenuCloseComplete}
             triggerPosition={menuTriggerPosition}
           />
         }

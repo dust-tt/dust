@@ -55,6 +55,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     menuTriggerPosition,
     handleRightClick,
     handleMenuOpenChange,
+    handleMenuCloseComplete,
   } = useConversationMenu();
 
   const currentTitle = conversation
@@ -205,6 +206,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             isOpen={isMenuOpen}
             isOpenOrClosing={isMenuOpenOrClosing}
             onOpenChange={handleMenuOpenChange}
+            onCloseComplete={handleMenuCloseComplete}
             triggerPosition={menuTriggerPosition}
           />
         </div>

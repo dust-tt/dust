@@ -46,6 +46,7 @@ const PodListItem = memo(
       isMenuOpenOrClosing,
       menuTriggerPosition,
       handleMenuOpenChange,
+      handleMenuCloseComplete,
     } = usePodMenu();
 
     const activeConversationId = useActiveConversationId();
@@ -174,6 +175,7 @@ const PodListItem = memo(
             isOpen={isMenuOpen}
             isOpenOrClosing={isMenuOpenOrClosing}
             onOpenChange={handleMenuOpenChange}
+            onCloseComplete={handleMenuCloseComplete}
             triggerPosition={menuTriggerPosition}
           />
         }

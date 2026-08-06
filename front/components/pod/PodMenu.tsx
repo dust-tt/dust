@@ -37,7 +37,7 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { PodNotificationMenu } from "./settings/PodNotificationMenu";
 
 /**
@@ -82,19 +82,10 @@ export function usePodMenu() {
     [isMenuOpen, wasMenuJustClosed]
   );
 
-  // Keep the menu data and trigger position until the closing animation completes.
-  useEffect(() => {
-    if (!wasMenuJustClosed) {
-      return;
-    }
-
-    const closeAnimationTimeoutId = setTimeout(() => {
-      setWasMenuJustClosed(false);
-      setMenuTriggerPosition(undefined);
-    }, 150);
-
-    return () => clearTimeout(closeAnimationTimeoutId);
-  }, [wasMenuJustClosed]);
+  const handleMenuCloseComplete = useCallback(() => {
+    setWasMenuJustClosed(false);
+    setMenuTriggerPosition(undefined);
+  }, []);
 
   return {
     isMenuOpen,
@@ -102,6 +93,7 @@ export function usePodMenu() {
     menuTriggerPosition,
     handleRightClick,
     handleMenuOpenChange,
+    handleMenuCloseComplete,
   };
 }
 
@@ -115,6 +107,7 @@ interface PodMenuProps {
   isOpen: boolean;
   isOpenOrClosing: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseComplete: () => void;
   triggerPosition?: { x: number; y: number };
 }
 
@@ -128,6 +121,7 @@ export function PodMenu({
   isOpen,
   isOpenOrClosing,
   onOpenChange,
+  onCloseComplete,
   triggerPosition,
 }: PodMenuProps) {
   const { user } = useAuth();
@@ -251,7 +245,10 @@ export function PodMenu({
         ) : (
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
-        <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
+        <DropdownMenuContent
+          onCloseAutoFocus={onCloseComplete}
+          onFocusOutside={(e) => e.preventDefault()}
+        >
           <DropdownMenuLabel label="My settings" />
           <DropdownMenuItem
             label={isStarred ? "Remove from starred" : "Add to starred"}

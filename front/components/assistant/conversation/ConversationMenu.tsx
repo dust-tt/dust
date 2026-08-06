@@ -68,7 +68,7 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -112,19 +112,10 @@ export function useConversationMenu() {
     [isMenuOpen, wasMenuJustClosed]
   );
 
-  // Keep the menu data and trigger position until the closing animation completes.
-  useEffect(() => {
-    if (!wasMenuJustClosed) {
-      return;
-    }
-
-    const closeAnimationTimeoutId = setTimeout(() => {
-      setWasMenuJustClosed(false);
-      setMenuTriggerPosition(undefined);
-    }, 150);
-
-    return () => clearTimeout(closeAnimationTimeoutId);
-  }, [wasMenuJustClosed]);
+  const handleMenuCloseComplete = useCallback(() => {
+    setWasMenuJustClosed(false);
+    setMenuTriggerPosition(undefined);
+  }, []);
 
   return {
     isMenuOpen,
@@ -132,6 +123,7 @@ export function useConversationMenu() {
     menuTriggerPosition,
     handleRightClick,
     handleMenuOpenChange,
+    handleMenuCloseComplete,
   };
 }
 
@@ -146,6 +138,7 @@ interface ConversationMenuProps {
   isOpen: boolean;
   isOpenOrClosing: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseComplete: () => void;
   triggerPosition?: { x: number; y: number };
   displayOpenInBrowser?: boolean;
   openDetailsInNewTab?: boolean;
@@ -160,6 +153,7 @@ export function ConversationMenu({
   isOpen,
   isOpenOrClosing,
   onOpenChange,
+  onCloseComplete,
   triggerPosition,
   displayOpenInBrowser,
   openDetailsInNewTab,
@@ -415,7 +409,10 @@ export function ConversationMenu({
         ) : (
           <DropdownMenuTrigger asChild>{menuTrigger}</DropdownMenuTrigger>
         )}
-        <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
+        <DropdownMenuContent
+          onCloseAutoFocus={onCloseComplete}
+          onFocusOutside={(e) => e.preventDefault()}
+        >
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
