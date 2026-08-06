@@ -1,10 +1,13 @@
 import {
+  EMPTY_ACTIVATION_NUDGE_CONTEXT,
   getActivationNudgeFrequencyCapDays,
   getActivationNudgeMaxUnansweredCount,
   isEligibleForNudge,
+  postActivationNudge,
 } from "@app/lib/api/activation/nudge";
-import { ACTIVATION_WEBHOOK_SOURCE_NAME } from "@app/lib/api/activation/trigger";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator } from "@app/lib/auth";
+import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -17,11 +20,9 @@ import {
 import { ActivationNudgeFactory } from "@app/tests/utils/ActivationNudgeFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
-import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
-import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { TriggerStatus } from "@app/types/assistant/triggers";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockIsUserBlocked } = vi.hoisted(() => ({
@@ -32,40 +33,57 @@ vi.mock("@app/lib/metronome/user_block", () => ({
   isUserBlocked: mockIsUserBlocked,
 }));
 
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/assistant/streaming/events", () => ({
+  publishAgentMessagesEvents: vi.fn(),
+  publishConversationEvent: vi.fn(),
+  publishMessageEventsOnMessagePostOrEdit: vi.fn(),
+}));
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Wires a trigger the same way `createActivationTrigger` does in production
-// (on the pod's own view of the shared Activation webhook source), plus the
-// ActivationPod row `activation_management.ts` creates alongside it. This is
-// required for `isEligibleForNudge`, which resolves the pod's trigger via
-// `ActivationPodResource` rather than the source/view/trigger join.
-async function createPodActivationTrigger(
+// The ActivationPod row is what makes a space a Pod the scheduler will nudge.
+async function createActivationPod(
   auth: Authenticator,
-  pod: SpaceResource,
-  options: { status?: TriggerStatus } = {}
-) {
-  const workspace = auth.getNonNullableWorkspace();
-  const source = await new WebhookSourceFactory(workspace).create({
-    name: ACTIVATION_WEBHOOK_SOURCE_NAME,
-  });
-  const podView = await new WebhookSourceViewFactory(workspace).create(pod, {
-    webhookSourceId: source.sId,
-  });
-
-  const trigger = await TriggerFactory.webhook(auth, {
-    agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-    status: options.status ?? "enabled",
-    spaceId: pod.id,
-    webhookSourceViewId: podView.id,
-  });
-
-  await ActivationPodResource.makeNew(auth, {
+  pod: SpaceResource
+): Promise<ActivationPodResource> {
+  return ActivationPodResource.makeNew(auth, {
     pod,
     user: auth.getNonNullableUser(),
-    trigger,
+  });
+}
+
+// A nudge, plus optionally a message the pod's user sent afterwards.
+async function createNudge(
+  auth: Authenticator,
+  {
+    activationPod,
+    pod,
+    createdAt,
+    replyAt,
+  }: {
+    activationPod: ActivationPodResource;
+    pod: SpaceResource;
+    createdAt: Date;
+    replyAt?: Date;
+  }
+) {
+  await ConversationFactory.create(auth, {
+    agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+    spaceId: pod.id,
+    messagesCreatedAt: replyAt ? [replyAt] : [],
+    conversationCreatedAt: createdAt,
   });
 
-  return trigger;
+  return ActivationNudgeFactory.create(auth, {
+    activationPod,
+    pod,
+    createdAt,
+  });
 }
 
 describe("getActivationNudgeFrequencyCapDays", () => {
@@ -118,10 +136,14 @@ describe("isEligibleForNudge", () => {
     const { authenticator, globalSpace } = await createResourceTest({
       role: "admin",
     });
-    await createPodActivationTrigger(authenticator, globalSpace);
+    const activationPod = await createActivationPod(authenticator, globalSpace);
 
     expect(
-      await isEligibleForNudge(authenticator, globalSpace, { user: null })
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+      })
     ).toBe(true);
   });
 
@@ -129,17 +151,34 @@ describe("isEligibleForNudge", () => {
     const { authenticator, globalSpace } = await createResourceTest({
       role: "admin",
     });
-    const trigger = await createPodActivationTrigger(
-      authenticator,
-      globalSpace
-    );
+    const activationPod = await createActivationPod(authenticator, globalSpace);
     await ActivationNudgeFactory.create(authenticator, {
+      activationPod,
       pod: globalSpace,
-      trigger,
     });
 
     expect(
-      await isEligibleForNudge(authenticator, globalSpace, { user: null })
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+      })
+    ).toBe(false);
+  });
+
+  it("is not eligible when the user turned nudges off", async () => {
+    const { authenticator, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+    await activationPod.disableNudges();
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+      })
     ).toBe(false);
   });
 
@@ -148,11 +187,15 @@ describe("isEligibleForNudge", () => {
     const { authenticator, user, globalSpace } = await createResourceTest({
       role: "admin",
     });
-    await createPodActivationTrigger(authenticator, globalSpace);
+    const activationPod = await createActivationPod(authenticator, globalSpace);
 
-    expect(await isEligibleForNudge(authenticator, globalSpace, { user })).toBe(
-      false
-    );
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user,
+      })
+    ).toBe(false);
   });
 
   it("is eligible when a user is provided but not blocked", async () => {
@@ -160,20 +203,28 @@ describe("isEligibleForNudge", () => {
     const { authenticator, user, globalSpace } = await createResourceTest({
       role: "admin",
     });
-    await createPodActivationTrigger(authenticator, globalSpace);
+    const activationPod = await createActivationPod(authenticator, globalSpace);
 
-    expect(await isEligibleForNudge(authenticator, globalSpace, { user })).toBe(
-      true
-    );
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user,
+      })
+    ).toBe(true);
   });
 
   it("does not check the credit gate when no user is provided", async () => {
     const { authenticator, globalSpace } = await createResourceTest({
       role: "admin",
     });
-    await createPodActivationTrigger(authenticator, globalSpace);
+    const activationPod = await createActivationPod(authenticator, globalSpace);
 
-    await isEligibleForNudge(authenticator, globalSpace, { user: null });
+    await isEligibleForNudge(authenticator, {
+      pod: globalSpace,
+      activationPod,
+      user: null,
+    });
 
     expect(mockIsUserBlocked).not.toHaveBeenCalled();
   });
@@ -189,25 +240,26 @@ describe("isEligibleForNudge", () => {
       user.sId,
       workspace.sId
     );
-    const trigger = await createPodActivationTrigger(
-      refreshedAuth,
-      globalSpace
-    );
+    const activationPod = await createActivationPod(refreshedAuth, globalSpace);
 
     // Two nudges, both outside the frequency cap window, with no reply.
-    await ActivationNudgeFactory.create(refreshedAuth, {
+    await createNudge(refreshedAuth, {
+      activationPod,
       pod: globalSpace,
-      trigger,
       createdAt: new Date(Date.now() - 10 * DAY_MS),
     });
-    await ActivationNudgeFactory.create(refreshedAuth, {
+    await createNudge(refreshedAuth, {
+      activationPod,
       pod: globalSpace,
-      trigger,
       createdAt: new Date(Date.now() - 5 * DAY_MS),
     });
 
     expect(
-      await isEligibleForNudge(refreshedAuth, globalSpace, { user: null })
+      await isEligibleForNudge(refreshedAuth, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+      })
     ).toBe(false);
   });
 
@@ -222,67 +274,35 @@ describe("isEligibleForNudge", () => {
       user.sId,
       workspace.sId
     );
-    const trigger = await createPodActivationTrigger(
-      refreshedAuth,
-      globalSpace
-    );
+    const activationPod = await createActivationPod(refreshedAuth, globalSpace);
 
-    await ActivationNudgeFactory.create(refreshedAuth, {
+    await createNudge(refreshedAuth, {
+      activationPod,
       pod: globalSpace,
-      trigger,
       createdAt: new Date(Date.now() - 10 * DAY_MS),
     });
-    await ActivationNudgeFactory.create(refreshedAuth, {
+    // The user said something in the pod after the most recent nudge.
+    await createNudge(refreshedAuth, {
+      activationPod,
       pod: globalSpace,
-      trigger,
       createdAt: new Date(Date.now() - 5 * DAY_MS),
+      replyAt: new Date(Date.now() - 4 * DAY_MS),
     });
-
-    // The user replied in the conversation created by the trigger firing.
-    const conversation = await ConversationFactory.create(refreshedAuth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      spaceId: globalSpace.id,
-      messagesCreatedAt: [new Date(Date.now() - 4 * DAY_MS)],
-    });
-    await ConversationFactory.setTriggerIdForTest(
-      conversation.id,
-      workspace.id,
-      trigger.id
-    );
 
     expect(
-      await isEligibleForNudge(refreshedAuth, globalSpace, { user: null })
+      await isEligibleForNudge(refreshedAuth, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+      })
     ).toBe(true);
-  });
-
-  it("is not eligible when the trigger was disabled by the user (opted out)", async () => {
-    const { authenticator, globalSpace } = await createResourceTest({
-      role: "admin",
-    });
-    await createPodActivationTrigger(authenticator, globalSpace, {
-      status: "disabled",
-    });
-
-    expect(
-      await isEligibleForNudge(authenticator, globalSpace, { user: null })
-    ).toBe(false);
-  });
-
-  it("is not eligible when the pod has no activation trigger", async () => {
-    const { authenticator, globalSpace } = await createResourceTest({
-      role: "admin",
-    });
-
-    expect(
-      await isEligibleForNudge(authenticator, globalSpace, { user: null })
-    ).toBe(false);
   });
 
   it("is not eligible when the pod is archived (dead)", async () => {
     const { authenticator, globalSpace } = await createResourceTest({
       role: "admin",
     });
-    await createPodActivationTrigger(authenticator, globalSpace);
+    const activationPod = await createActivationPod(authenticator, globalSpace);
 
     // biome-ignore lint/plugin/noRawSql: only way to backdate a paranoid model's deletedAt in tests.
     await frontSequelize.query(
@@ -305,7 +325,11 @@ describe("isEligibleForNudge", () => {
     }
 
     expect(
-      await isEligibleForNudge(authenticator, archivedPod, { user: null })
+      await isEligibleForNudge(authenticator, {
+        pod: archivedPod,
+        activationPod,
+        user: null,
+      })
     ).toBe(false);
   });
 
@@ -317,13 +341,136 @@ describe("isEligibleForNudge", () => {
       user.sId,
       workspace.sId
     );
-    await createPodActivationTrigger(authenticator, globalSpace);
+    const activationPod = await createActivationPod(authenticator, globalSpace);
 
     await MembershipResource.revokeMembership({ user, workspace });
 
     expect(
-      await isEligibleForNudge(authenticator, globalSpace, { user: null })
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+      })
     ).toBe(false);
+  });
+});
+
+describe("postActivationNudge", () => {
+  it("opens a conversation in the pod, authored by the agent rather than the user", async () => {
+    const { workspace, user } = await createResourceTest({ role: "user" });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId,
+      { dangerouslyRequestAllGroups: true }
+    );
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const activationPod = await ActivationPodResource.makeNew(adminAuth, {
+      pod,
+      user,
+    });
+
+    const result = await postActivationNudge(adminAuth, {
+      pod,
+      activationPod,
+      context: {
+        sessionGoal: "Automate the weekly report",
+        pushedResourceType: "skill",
+        pushedResourceName: "Notion",
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const conversationRes = await getConversation(
+      userAuth,
+      result.value.conversationId
+    );
+    if (conversationRes.isErr()) {
+      throw conversationRes.error;
+    }
+    const conversation = conversationRes.value;
+
+    expect(conversation.spaceId).toBe(pod.sId);
+
+    const [firstVersions] = conversation.content;
+    const [nudgeMessage] = firstVersions;
+    if (!isUserMessageType(nudgeMessage)) {
+      throw new Error("Expected the nudge to open with a user message.");
+    }
+
+    // No author: the nudge is Dust reaching out, not the user talking to
+    // themselves.
+    expect(nudgeMessage.user).toBeNull();
+    expect(nudgeMessage.context.origin).toBe("system_activation");
+    expect(nudgeMessage.context.email).toBeNull();
+    expect(nudgeMessage.content).toContain("Automate the weekly report");
+    expect(nudgeMessage.content).toContain("Featured skill: Notion");
+  });
+
+  it("records the nudge against the pod and links its conversation", async () => {
+    const { workspace, user } = await createResourceTest({ role: "user" });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId,
+      { dangerouslyRequestAllGroups: true }
+    );
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const activationPod = await ActivationPodResource.makeNew(adminAuth, {
+      pod,
+      user,
+    });
+
+    const result = await postActivationNudge(adminAuth, {
+      pod,
+      activationPod,
+      context: EMPTY_ACTIVATION_NUDGE_CONTEXT,
+    });
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const nudge = await ActivationNudgeResource.fetchLatestForActivationPod(
+      adminAuth,
+      { activationPod }
+    );
+    expect(nudge?.activationPodId).toBe(activationPod.id);
+    expect(nudge?.userId).toBe(user.id);
+  });
+
+  it("does not post to a pod the user is no longer a member of", async () => {
+    const { workspace, user } = await createResourceTest({ role: "user" });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId,
+      { dangerouslyRequestAllGroups: true }
+    );
+    // No creator id: the user belongs to none of the pod's groups.
+    const pod = await SpaceFactory.project(workspace);
+    const activationPod = await ActivationPodResource.makeNew(adminAuth, {
+      pod,
+      user,
+    });
+
+    const result = await postActivationNudge(adminAuth, {
+      pod,
+      activationPod,
+      context: EMPTY_ACTIVATION_NUDGE_CONTEXT,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the nudge to be refused.");
+    }
+    expect(result.error.retryable).toBe(false);
+    expect(
+      await ActivationNudgeResource.fetchLatestForActivationPod(adminAuth, {
+        activationPod,
+      })
+    ).toBeNull();
   });
 });
 

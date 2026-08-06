@@ -1741,19 +1741,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Returns the timestamps of messages authored by `userId` in conversations
-   * created by any of `triggerIds`, created at or after `since`. Used by the
-   * activation scheduler to determine whether a user replied following a
-   * nudge (each nudge fires a trigger, which creates its own conversation).
+   * Returns the timestamps of messages authored by `userId` in a space's
+   * conversations, created at or after `since`. Used by the activation
+   * scheduler to determine whether a user has said anything in their Pod since
+   * the last nudge.
    */
-  static async listUserMessageTimestampsForTriggers(
+  static async listUserMessageTimestampsInSpace(
     auth: Authenticator,
     {
-      triggerIds,
+      spaceModelId,
       userId,
       since,
     }: {
-      triggerIds: ModelId[];
+      spaceModelId: ModelId;
       userId: ModelId;
       since: Date;
     }
@@ -1779,12 +1779,40 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           as: "conversation",
           required: true,
           attributes: [],
-          where: { triggerId: { [Op.in]: triggerIds } },
+          where: { spaceId: spaceModelId },
         },
       ],
     });
 
     return messages.map((m) => m.createdAt);
+  }
+
+  /**
+   * The origin of the conversation's opening user message, or null if it has
+   * none. Used to tell a conversation Dust opened (an activation nudge) from
+   * one the user started.
+   */
+  async openingUserMessageOrigin(
+    auth: Authenticator
+  ): Promise<UserMessageOrigin | null> {
+    const message = await MessageModel.findOne({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+        rank: 0,
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: ["userContextOrigin"],
+        },
+      ],
+    });
+
+    return message?.userMessage?.userContextOrigin ?? null;
   }
 
   static async fetchConversationWithParticipantState(

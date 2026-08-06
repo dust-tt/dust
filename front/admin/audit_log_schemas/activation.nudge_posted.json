@@ -1,0 +1,18 @@
+{
+  "action": "activation.nudge_posted",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    },
+    {
+      "type": "space"
+    }
+  ],
+  "metadata": {
+    "agent_id": "string",
+    "conversation_id": "string"
+  }
+}

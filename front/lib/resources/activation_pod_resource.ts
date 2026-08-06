@@ -150,6 +150,14 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     await this.update({ triggerId: trigger.id });
   }
 
+  async disableNudges(): Promise<void> {
+    await this.update({ nudgesDisabledAt: new Date() });
+  }
+
+  async enableNudges(): Promise<void> {
+    await this.update({ nudgesDisabledAt: null });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}

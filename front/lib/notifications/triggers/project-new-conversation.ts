@@ -11,7 +11,10 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isPodConversation } from "@app/types/assistant/conversation";
+import {
+  ACTIVATION_NUDGE_ORIGIN,
+  isPodConversation,
+} from "@app/types/assistant/conversation";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
@@ -272,12 +275,15 @@ export async function notifyActivationConversationAgentReplied(
   }
 
   const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
-  // Only the conversation created by the pod's own activation nudge trigger gets the notification
-  if (
-    activationPod === null ||
-    activationPod.triggerId === null ||
-    conversationResource.triggerId !== activationPod.triggerId
-  ) {
+  if (activationPod === null) {
+    return;
+  }
+
+  // Only a conversation Dust opened with a nudge gets the notification, not one
+  // the user started themselves.
+  const openingOrigin =
+    await conversationResource.openingUserMessageOrigin(auth);
+  if (openingOrigin !== ACTIVATION_NUDGE_ORIGIN) {
     return;
   }
 

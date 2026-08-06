@@ -141,6 +141,8 @@ export const AUDIT_ACTIONS = [
   "trigger.disabled",
   "trigger.fired",
   "trigger.email_received",
+  // Activation.
+  "activation.nudge_posted",
   // Wake-ups.
   "wake_up.cancelled",
   "wake_up.created",
