@@ -54,7 +54,6 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
     const nudge = await this.model.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       spaceId: pod.id,
-      triggerId: null,
       userId: activationPod.userId,
       activationPodId: activationPod.id,
     });

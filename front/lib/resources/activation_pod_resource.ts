@@ -60,7 +60,6 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
       workspaceId: auth.getNonNullableWorkspace().id,
       spaceId: pod.id,
       userId: user.id,
-      triggerId: null,
     });
 
     return new this(this.model, model.get());
