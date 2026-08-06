@@ -81,6 +81,7 @@ type CreateRemoteMCPServerFn = (args: {
   sharedSecret?: string;
   oauthConnection?: MCPConnectionType;
   customHeaders?: { key: string; value: string }[];
+  viewName?: string;
 }) => Promise<Result<CreateMCPServerResponseBody, Error>>;
 
 type CreateInternalMCPServerFn = (
@@ -295,10 +296,12 @@ export async function submitCreateMCPServerDialogForm({
   }
 
   if (values.remoteServerUrl) {
+    const viewName = values.viewName?.trim();
     const createRes = await createWithURL({
       url: values.remoteServerUrl,
       defaultServerId,
       includeGlobal: true,
+      ...(viewName ? { viewName } : {}),
       sharedSecret:
         values.authMethod === "bearer" ? values.sharedSecret : undefined,
       oauthConnection,

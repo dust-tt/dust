@@ -257,7 +257,7 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
 });
 
 describe("POST /api/w/:wId/mcp/ — name conflict", () => {
-  it("returns 400 when distinct names generate the same cropped tool name", async () => {
+  it("allows a custom view name to resolve a cropped tool name conflict", async () => {
     const { workspace, auth } = await setup();
     const sharedPrefix = "a".repeat(80);
     const existingName = `${sharedPrefix}-existing`;
@@ -311,6 +311,47 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error.message).toContain(candidateName);
+
+    vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
+      new Ok({
+        name: candidateName,
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: "Test description",
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        tools,
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+      })
+    );
+
+    const customName = "custom-view-name";
+    const retryResponse = await postMcp(workspace, {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+      viewName: customName,
+    });
+
+    expect(retryResponse.status).toBe(201);
+    const retryBody = await retryResponse.json();
+    expect(retryBody.server.name).toBe(candidateName);
+    const createdSystemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        retryBody.server.sId
+      );
+    expect(createdSystemView?.name).toBe(customName);
+
+    const globalViews = await MCPServerViewResource.listBySpace(
+      auth,
+      globalSpace
+    );
+    expect(
+      globalViews.find((view) => view.mcpServerId === retryBody.server.sId)
+        ?.name
+    ).toBe(customName);
   });
 
   it("succeeds when creating a remote server with includeGlobal and no name conflict", async () => {
