@@ -12,6 +12,7 @@ import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
 } from "@app/temporal/activation_scheduler/config";
+import { removeNulls } from "@app/types/shared/utils/general";
 import isNumber from "lodash/isNumber";
 import uniq from "lodash/uniq";
 
@@ -59,7 +60,7 @@ async function countUnansweredNudgeStreak(
   }
 
   const oldestNudge = recentNudges[recentNudges.length - 1];
-  const triggerIds = uniq(recentNudges.map((nudge) => nudge.triggerId));
+  const triggerIds = uniq(removeNulls(recentNudges.map((n) => n.triggerId)));
   const replyTimestamps =
     await ConversationResource.listUserMessageTimestampsForTriggers(auth, {
       triggerIds,

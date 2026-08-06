@@ -7,15 +7,15 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
-// One row = one nudge sent to a Pod (i.e. the activation trigger was fired for it).
+// One row = one nudge sent to a Pod.
 export class ActivationNudgeModel extends WorkspaceAwareModel<ActivationNudgeModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   // The Pod that was nudged.
   declare spaceId: ForeignKey<SpaceModel["id"]>;
-  // The trigger that fired the nudge.
-  declare triggerId: ForeignKey<TriggerModel["id"]>;
+  // The trigger that fired the nudge. Null for nudges posted directly.
+  declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   // The user targeted by the nudge.
   declare userId: ForeignKey<UserModel["id"]>;
 
@@ -58,11 +58,11 @@ SpaceModel.hasMany(ActivationNudgeModel, {
 });
 
 ActivationNudgeModel.belongsTo(TriggerModel, {
-  foreignKey: { name: "triggerId", allowNull: false },
-  onDelete: "RESTRICT",
+  foreignKey: { name: "triggerId", allowNull: true },
+  onDelete: "SET NULL",
 });
 TriggerModel.hasMany(ActivationNudgeModel, {
-  foreignKey: { name: "triggerId", allowNull: false },
+  foreignKey: { name: "triggerId", allowNull: true },
 });
 
 ActivationNudgeModel.belongsTo(UserModel, {
