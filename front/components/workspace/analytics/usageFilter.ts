@@ -1,3 +1,5 @@
+import { MODEL_MAKER_IDS } from "@app/types/assistant/models/providers";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
 export const USAGE_FILTER_CATEGORIES = [
@@ -41,27 +43,12 @@ export const USAGE_MODEL_TIER_LABEL: Record<UsageModelTier, string> = {
   complex: "Complex",
 };
 
-export const USAGE_MODEL_LABS = [
-  "anthropic",
-  "openai",
-  "google",
-  "meta",
-  "mistral",
-  "cohere",
-  "deepseek",
-] as const;
+// Reuses the same maker ids and grouping the model picker uses (see
+// `getModelMaker`/`getModelMakerDisplayName`/`getModelMakerLogo`), so the
+// "More models" dropdown here matches the one in the message composer.
+export const USAGE_MODEL_LABS = MODEL_MAKER_IDS;
 
-export type UsageModelLab = (typeof USAGE_MODEL_LABS)[number];
-
-export const USAGE_MODEL_LAB_LABEL: Record<UsageModelLab, string> = {
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  google: "Google",
-  meta: "Meta",
-  mistral: "Mistral",
-  cohere: "Cohere",
-  deepseek: "DeepSeek",
-};
+export type UsageModelLab = ModelMakerIdType;
 
 export interface UsageFilterEntity {
   id: string;

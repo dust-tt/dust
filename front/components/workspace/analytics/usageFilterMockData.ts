@@ -16,11 +16,11 @@ const MOCK_MODEL_LAB: Record<string, UsageModelLab> = {
   "Claude Fable 5": "anthropic",
   "GPT-5": "openai",
   "GPT-5 mini": "openai",
-  "Gemini 3 Pro": "google",
-  "Gemini 3 Flash": "google",
-  "Llama 4 Maverick": "meta",
+  "Gemini 3 Pro": "google_ai_studio",
+  "Gemini 3 Flash": "google_ai_studio",
+  "Llama 4 Maverick": "fireworks",
   "Mistral Large 3": "mistral",
-  "Command R+": "cohere",
+  "Grok 4": "xai",
   "DeepSeek V4": "deepseek",
 };
 
@@ -86,7 +86,7 @@ const MOCK_ENTITY_NAMES = {
     "Gemini 3 Flash",
     "Llama 4 Maverick",
     "Mistral Large 3",
-    "Command R+",
+    "Grok 4",
     "DeepSeek V4",
   ],
   tool: [
