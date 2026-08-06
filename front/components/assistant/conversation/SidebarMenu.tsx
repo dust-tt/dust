@@ -1124,7 +1124,7 @@ export function AgentSidebarMenu({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             side="bottom"
-                            align="end"
+                            align="center"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <DropdownMenuLabel label="New agent" />
@@ -1205,7 +1205,7 @@ export function AgentSidebarMenu({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             side="bottom"
-                            align="end"
+                            align="center"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <DropdownMenuLabel label="New skill" />
