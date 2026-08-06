@@ -373,23 +373,24 @@ export class E2BSandboxProvider implements SandboxProvider {
   /**
    * Returns a handle for `providerId`, reusing a cached one while it is fresh.
    *
-   * `cached` reports whether the handle predates this call, which is what makes a retry worth
-   * attempting: a handle we just opened and that already failed will fail the same way again.
+   * `entry` is the cache entry the handle came from, or null when this call opened it. That both
+   * says whether a retry is worth attempting (a handle we just opened and that already failed
+   * will fail the same way again) and identifies exactly which entry to evict if it does.
    */
   private async getConnection(
     providerId: string
-  ): Promise<{ sandbox: Sandbox; cached: boolean }> {
+  ): Promise<{ sandbox: Sandbox; entry: CachedConnection | null }> {
     const existing = this.connections.get(providerId);
     if (existing && existing.expiresAtMs > Date.now()) {
       try {
-        return { sandbox: await existing.sandbox, cached: true };
+        return { sandbox: await existing.sandbox, entry: existing };
       } catch (err) {
         this.dropConnection(providerId, existing);
         throw err;
       }
     }
 
-    return { sandbox: await this.openConnection(providerId), cached: false };
+    return { sandbox: await this.openConnection(providerId), entry: null };
   }
 
   private async openConnection(providerId: string): Promise<Sandbox> {
@@ -468,7 +469,7 @@ export class E2BSandboxProvider implements SandboxProvider {
     op: (sandbox: Sandbox) => Promise<T>,
     { retryOnStaleConnection }: { retryOnStaleConnection: boolean }
   ): Promise<T> {
-    const { sandbox, cached } = await this.getConnection(providerId);
+    const { sandbox, entry } = await this.getConnection(providerId);
 
     try {
       return await op(sandbox);
@@ -481,9 +482,11 @@ export class E2BSandboxProvider implements SandboxProvider {
       }
 
       // Otherwise stop handing this connection to the next caller. Reconnecting costs one round
-      // trip; continuing to use a handle that just failed can cost every call after it.
-      this.dropConnection(providerId);
-      if (!cached || !retryOnStaleConnection) {
+      // trip; continuing to use a handle that just failed can cost every call after it. Scoped to
+      // the entry we actually used, so that when a batch of calls fails together, the first one
+      // to reconnect is not evicted again by each of its peers.
+      this.dropConnection(providerId, entry ?? undefined);
+      if (entry === null || !retryOnStaleConnection) {
         throw err;
       }
 
