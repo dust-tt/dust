@@ -880,7 +880,6 @@ export function AgentMessage({
           size="xs"
           label={formattedCredits}
           iconRight={CoinsStacked01}
-          isSelect
           className="gap-1 px-1 tracking-normal"
           aria-label={`${formattedCredits} credits used for this message. View credit breakdown`}
         />

@@ -145,10 +145,13 @@ export function FeedbackSelector({
       return;
     }
 
-    form.reset({
-      ...DEFAULT_FEEDBACK_FORM_VALUES,
-      thumbDirection: direction,
-    });
+    form.reset(
+      {
+        ...DEFAULT_FEEDBACK_FORM_VALUES,
+        thumbDirection: direction,
+      },
+      { keepDefaultValues: true }
+    );
     setIsDialogOpen(true);
   };
 
