@@ -60,6 +60,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         ),
       steps: z
         .array(z.string().max(100))
+        .max(8)
         .optional()
         .describe(
           "Optional ordered list of concrete steps to complete the recommendation. " +
@@ -79,6 +80,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         ),
       sourceIcon: z
         .string()
+        .max(255)
         .optional()
         .describe(
           "Optional icon identifier for the source of this recommendation. " +

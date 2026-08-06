@@ -81,7 +81,11 @@ export async function updateActivationRecommendationForUser(
     auth,
     recommendationId
   );
-  if (!rec) {
+  // fetchById only scopes to the workspace, so also enforce ownership: a
+  // recommendation may only be updated by the user it belongs to. Return
+  // "not_found" rather than a distinct error so we don't leak the existence of
+  // another user's recommendation.
+  if (!rec || rec.userId !== auth.getNonNullableUser().id) {
     return "not_found";
   }
 

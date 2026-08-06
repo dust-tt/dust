@@ -121,4 +121,29 @@ describe("PATCH /api/w/:wId/activation-recommendations/:recommendationId", () =>
     });
     expect(response.status).toBe(404);
   });
+
+  it("does not let another workspace member update a recommendation they do not own", async () => {
+    // Owner creates a recommendation.
+    const { workspace, auth: ownerAuth } = await createPrivateApiMockRequest();
+    const rec = await ActivationRecommendationResource.makeNew(ownerAuth, {
+      content: "Owner's private next step",
+      title: "Next step",
+      conversationId: null,
+    });
+
+    // A different member of the same workspace re-authenticates and attempts to
+    // dismiss the owner's recommendation. They must not be able to.
+    await createPrivateApiMockRequest({ workspace });
+    const response = await updateRecommendation(workspace.sId, rec.sId, {
+      status: "dismissed",
+    });
+    expect(response.status).toBe(404);
+
+    // The recommendation is untouched — still suggested for its owner.
+    const untouched = await ActivationRecommendationResource.fetchById(
+      ownerAuth,
+      rec.sId
+    );
+    expect(untouched?.status).toBe("suggested");
+  });
 });
