@@ -18,7 +18,6 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentMessageAnalyticsModel,
   AgentMessageConsumptionAnalyticsAgent,
@@ -48,10 +47,13 @@ function isBilledRunUsage(
     case USAGE_TYPE_USER:
     case USAGE_TYPE_PROGRAMMATIC:
       return true;
+
     case USAGE_TYPE_FREE:
       return false;
+
     case null:
       throw new Error("Run usage billing classification is incomplete");
+
     default:
       return assertNever(usage.usageType);
   }
@@ -84,21 +86,6 @@ export type AgentMessageConsumptionAnalyticsInput =
     stepContents: AgentStepContentResource[];
     usages: BilledRunUsage[];
   };
-
-async function loadAnalyticsUser(
-  auth: Authenticator,
-  userModelId: ModelId | null
-): Promise<AgentMessageConsumptionAnalyticsUser | null> {
-  if (userModelId !== null) {
-    const [user] = await UserResource.fetchByModelIds([userModelId]);
-    if (user) {
-      return { id: user.sId };
-    }
-  }
-
-  const authenticatedUser = auth.user();
-  return authenticatedUser ? { id: authenticatedUser.sId } : null;
-}
 
 async function loadApiKeyName(
   auth: Authenticator,
@@ -175,7 +162,6 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     throw new Error("Billed agent message is missing costCredits");
   }
 
-  const user = await loadAnalyticsUser(auth, triggeringUserMessage.userModelId);
   const apiKeyName = await loadApiKeyName(
     auth,
     triggeringUserMessage.apiKeyModelId
@@ -252,7 +238,11 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       workspace.id
     ),
     usages: billedUsages,
-    user,
+    // The triggering message is the source of truth. Background auth may represent another user.
+    user:
+      triggeringUserMessage.userId === null
+        ? null
+        : { id: triggeringUserMessage.userId },
     workspaceId: workspace.sId,
   };
 }

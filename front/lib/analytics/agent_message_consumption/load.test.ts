@@ -16,8 +16,10 @@ import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
 async function setupSettledMessage({
+  authorless = false,
   usageType = USAGE_TYPE_USER,
 }: {
+  authorless?: boolean;
   usageType?: UsageType | null;
 } = {}) {
   const { authenticator: auth, workspace } = await createResourceTest({
@@ -36,13 +38,15 @@ async function setupSettledMessage({
     throw new Error("Conversation was not created");
   }
 
-  const userMessage = await ConversationFactory.createUserMessageWithRank({
-    auth,
-    workspace,
-    conversationId: conversation.id,
-    rank: 0,
-    content: "Hello",
-  });
+  const { messageRow: userMessage } =
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      rank: 0,
+      content: "Hello",
+      authorless,
+    });
   const { run } = await RunFactory.createWithUsage(auth, {
     inputTokens: 100,
     outputTokens: 20,
@@ -145,6 +149,17 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     expect(input?.usages).toEqual([
       expect.objectContaining({ usageType: USAGE_TYPE_PROGRAMMATIC }),
     ]);
+  });
+
+  it("keeps the user null when the triggering message is authorless", async () => {
+    const context = await setupSettledMessage({ authorless: true });
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input?.user).toBeNull();
   });
 
   it("returns null when every usage is explicitly free", async () => {

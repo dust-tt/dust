@@ -136,7 +136,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
   triggeringUserMessage: {
     apiKeyModelId: ModelId | null;
     origin: UserMessageOrigin;
-    userModelId: ModelId | null;
+    userId: string | null;
   };
 };
 
@@ -837,7 +837,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
               workspaceId,
             },
             include: [
-              { model: UserMessageModel, as: "userMessage", required: true },
+              {
+                model: UserMessageModel,
+                as: "userMessage",
+                required: true,
+                include: [
+                  {
+                    model: UserModel,
+                    required: false,
+                    attributes: ["sId"],
+                  },
+                ],
+              },
             ],
           });
     const triggeringUserMessage = triggeringMessageRow?.userMessage;
@@ -869,7 +880,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggeringUserMessage: {
         apiKeyModelId: triggeringUserMessage.userContextApiKeyId,
         origin: triggeringUserMessage.userContextOrigin,
-        userModelId: triggeringUserMessage.userId,
+        userId: triggeringUserMessage.user?.sId ?? null,
       },
     };
   }
