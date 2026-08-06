@@ -47,7 +47,7 @@ function isExpiryMode(value: string): value is ExpiryMode {
 }
 
 function formatShortDate(epochMs: number): string {
-  return new Date(epochMs).toLocaleDateString("en-US", {
+  return new Date(epochMs).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
