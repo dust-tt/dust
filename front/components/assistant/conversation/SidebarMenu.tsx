@@ -39,12 +39,15 @@ import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon, SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { useActivationRecommendations } from "@app/lib/swr/activation";
+import {
+  useActivationPod,
+  useActivationRecommendations,
+} from "@app/lib/swr/activation";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -54,6 +57,7 @@ import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
+  getGetStartedRoute,
   getPodRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
@@ -439,6 +443,18 @@ export function AgentSidebarMenu({
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
+  const { hasFeature } = useFeatureFlags();
+  const hasActivationSkill = hasFeature("activation_skill");
+  const { activationPodId } = useActivationPod({
+    workspaceId: owner.sId,
+    disabled: !hasActivationSkill,
+  });
+  const showGetStarted = hasActivationSkill && activationPodId !== null;
+  const { recommendations: activationRecsForBadge } =
+    useActivationRecommendations({
+      workspaceId: owner.sId,
+      disabled: !showGetStarted,
+    });
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
   const [agentSearchText, setAgentSearchText] = useState("");
@@ -1264,6 +1280,23 @@ export function AgentSidebarMenu({
                 </div>
               </div>
             )}
+            {showGetStarted && (
+              <NavigationList className="px-sidebar-side-spacing py-1">
+                <NavigationListItem
+                  label="Get started"
+                  icon={MagicWand02}
+                  href={getGetStartedRoute(owner.sId)}
+                  selected={router.asPath?.startsWith(
+                    getGetStartedRoute(owner.sId)
+                  )}
+                  count={
+                    activationRecsForBadge.length > 0
+                      ? activationRecsForBadge.length
+                      : undefined
+                  }
+                />
+              </NavigationList>
+            )}
             {isConversationsError && (
               <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
                 Error loading conversations
@@ -1713,29 +1746,6 @@ function NavigationListWithInbox({
   );
   const { isConversationsSectionCollapsed, setConversationsSectionCollapsed } =
     useConversationsSectionCollapsed();
-  // Conversations opened from an activation recommendation are pinned into
-  // their own highlighted "Recommendations for you" section at the top and
-  // pulled out of the other sections so they only appear once. The recs are
-  // fetched once (SWR dedupes) and carry the conversation they opened.
-  const { recommendations: activationRecommendations } =
-    useActivationRecommendations({ workspaceId: owner.sId });
-  const activationConversationIds = useMemo(
-    () =>
-      new Set(
-        activationRecommendations
-          .map((rec) => rec.conversationId)
-          .filter((id): id is string => id !== null)
-      ),
-    [activationRecommendations]
-  );
-  const activationConversations = useMemo(
-    () => conversations.filter((c) => activationConversationIds.has(c.sId)),
-    [conversations, activationConversationIds]
-  );
-  const nonActivationConversations = useMemo(
-    () => conversations.filter((c) => !activationConversationIds.has(c.sId)),
-    [conversations, activationConversationIds]
-  );
 
   const {
     readConversations,
@@ -1744,10 +1754,10 @@ function NavigationListWithInbox({
     triggeredConversations,
   } = useMemo(() => {
     return getGroupConversationsByUnreadAndActionRequired(
-      nonActivationConversations,
+      conversations,
       titleFilter
     );
-  }, [nonActivationConversations, titleFilter]);
+  }, [conversations, titleFilter]);
 
   const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
     owner,
@@ -1802,48 +1812,6 @@ function NavigationListWithInbox({
     >
       <div className="flex flex-col gap-4">
         <AnimatePresence initial={false}>
-          {activationConversations.length > 0 && (
-            <motion.div
-              key="recommendations"
-              style={GRID_STYLE}
-              animate={GRID_ANIMATE}
-              exit={GRID_EXIT}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-            >
-              <div className="overflow-hidden">
-                <NavigationListCollapsibleSection
-                  label="Recommendations for you"
-                  icon={ActionSparklesIcon}
-                  count={activationConversations.length}
-                  className="bg-highlight-50 rounded-xl border border-highlight-200 p-1 mx-sidebar-side-spacing"
-                >
-                  {activationConversations.map((conversation) => (
-                    <motion.div
-                      key={conversation.sId}
-                      style={GRID_STYLE}
-                      animate={GRID_ANIMATE}
-                      exit={GRID_EXIT}
-                      transition={{ ease: "easeOut", duration: 0.1 }}
-                    >
-                      <div className="overflow-hidden">
-                        <ConversationListItem
-                          conversation={conversation}
-                          isMultiSelect={isMultiSelect}
-                          selectedConversations={selectedConversations}
-                          toggleConversationSelection={
-                            toggleConversationSelection
-                          }
-                          activeConversationId={activeConversationId}
-                          owner={owner}
-                          showStatusDot={false}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
-                </NavigationListCollapsibleSection>
-              </div>
-            </motion.div>
-          )}
           {triggeredConversations.length > 0 && (
             <motion.div
               key="triggered"
