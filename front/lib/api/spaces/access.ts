@@ -24,6 +24,60 @@ export class SpaceAccessCheckError extends Error {
 const NO_GROUPS: ReadonlySet<ModelId> = new Set();
 
 /**
+ * For each user, the groups they are an active member of among the ones that make `spaces`
+ * readable. One query, whatever the number of users and spaces.
+ */
+async function listSpaceGroupsByUser(
+  auth: Authenticator,
+  { spaces, users }: { spaces: SpaceResource[]; users: UserResource[] }
+): Promise<Map<ModelId, Set<ModelId>>> {
+  const groupModelIds = [
+    ...new Set(spaces.flatMap((space) => space.groups.map((g) => g.groupId))),
+  ];
+
+  return GroupResource.listGroupModelIdsByUserModelIdInWorkspace({
+    workspace: auth.getNonNullableWorkspace(),
+    userModelIds: users.map((user) => user.id),
+    groupModelIds,
+  });
+}
+
+export interface UserWithoutSpaceAccess {
+  user: UserResource;
+  spaces: SpaceResource[];
+}
+
+/**
+ * For each of `users`, the spaces among `spaces` they cannot read.
+ *
+ * Unlike {@link listUsersWithoutAccessToSpaces} this takes already-fetched resources and performs
+ * no permission check of its own: it is meant for callers that hold the spaces because they are
+ * about to write them (skill requirements, editor lists), and that have established their own
+ * access separately. Users are assumed to be active workspace members.
+ */
+export async function listUsersWithoutAccessToSpaceResources(
+  auth: Authenticator,
+  { spaces, users }: { spaces: SpaceResource[]; users: UserResource[] }
+): Promise<UserWithoutSpaceAccess[]> {
+  if (spaces.length === 0 || users.length === 0) {
+    return [];
+  }
+
+  const groupsByUser = await listSpaceGroupsByUser(auth, { spaces, users });
+
+  return users.flatMap((user) => {
+    const groupModelIds = groupsByUser.get(user.id) ?? NO_GROUPS;
+    const unreadableSpaces = spaces.filter(
+      (space) => !space.isMemberByGroupModelIds(groupModelIds)
+    );
+
+    return unreadableSpaces.length > 0
+      ? [{ user, spaces: unreadableSpaces }]
+      : [];
+  });
+}
+
+/**
  * For each requested space, the requested users that are not members of it.
  *
  * Membership is the ground truth for read access on restricted spaces: their
@@ -77,15 +131,10 @@ export async function listUsersWithoutAccessToSpaces(
     (userId) => !workspaceUserIds.has(userId)
   );
 
-  const groupModelIds = [
-    ...new Set(spaces.flatMap((space) => space.groups.map((g) => g.groupId))),
-  ];
-  const groupModelIdsByUserModelId =
-    await GroupResource.listGroupModelIdsByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: workspaceUsers.map((user) => user.id),
-      groupModelIds,
-    });
+  const groupModelIdsByUserModelId = await listSpaceGroupsByUser(auth, {
+    spaces,
+    users: workspaceUsers,
+  });
 
   // A user belong to multiple groups
   // A space has multiple group of readers

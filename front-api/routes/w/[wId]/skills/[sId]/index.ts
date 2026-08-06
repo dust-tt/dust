@@ -1,5 +1,6 @@
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import {
+  findSkillEditorsWithoutSpaceAccess,
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
@@ -9,6 +10,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
@@ -30,6 +32,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context, TypedResponse } from "hono";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 import { z } from "zod";
 
 import editors from "./editors";
@@ -405,6 +408,29 @@ app.patch(
       ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIds,
     ]);
+
+    // Adding a restricted space can lock out editors that are already on the skill. `updateSkill`
+    // also makes the caller an editor, so they are part of the set to validate.
+    const editors = skill.editorGroup
+      ? await skill.editorGroup.getActiveMembers(auth)
+      : [];
+    const requestedSpaces = await SpaceResource.fetchByModelIds(
+      auth,
+      requestedSpaceIds
+    );
+    const editorsAccessError = await findSkillEditorsWithoutSpaceAccess(auth, {
+      editors: uniqBy([...editors, auth.getNonNullableUser()], "id"),
+      requestedSpaces,
+    });
+    if (editorsAccessError) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: editorsAccessError,
+        },
+      });
+    }
 
     // Validate file attachments if provided.
     let files: FileResource[] | undefined;

@@ -20,7 +20,10 @@ import {
   SkillVersionComparisonProvider,
   useSkillVersionComparisonContext,
 } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import { SkillSpaceRestrictionsProvider } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
+import {
+  SkillSpaceRestrictionsProvider,
+  useSkillSpaceRestrictionsContext,
+} from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,
@@ -323,25 +326,11 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           />
         </div>
       </ScrollArea>
-      <BarFooter
-        variant="default"
-        className="mx-4 justify-between"
-        leftActions={
-          <Button
-            variant="outline"
-            label="Cancel"
-            onClick={handleCancel}
-            type="button"
-          />
-        }
-        rightActions={
-          <Button
-            variant="highlight"
-            label={isSaving ? "Saving..." : "Save"}
-            onClick={handleSave}
-            disabled={isSaving || isEditorLocked}
-          />
-        }
+      <SkillBuilderFooter
+        isEditorLocked={isEditorLocked}
+        isSaving={isSaving}
+        onCancel={handleCancel}
+        onSave={handleSave}
       />
     </div>
   );
@@ -390,6 +379,57 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
         </SkillVersionComparisonProvider>
       </FormProvider>
     </SkillBuilderFormContext.Provider>
+  );
+}
+
+interface SkillBuilderFooterProps {
+  isEditorLocked: boolean;
+  isSaving: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+}
+
+/**
+ * Rendered inside `SkillSpaceRestrictionsProvider` so it can gate saving on the editors' space
+ * access — the server rejects that combination, so the button explains it up front instead.
+ */
+function SkillBuilderFooter({
+  isEditorLocked,
+  isSaving,
+  onCancel,
+  onSave,
+}: SkillBuilderFooterProps) {
+  const { editorsWithoutSpaceAccess } = useSkillSpaceRestrictionsContext();
+
+  const hasEditorsWithoutSpaceAccess = editorsWithoutSpaceAccess.length > 0;
+  // The warning in the editors section names who and offers the fixes; the tooltip only has to say
+  // why the button is off.
+  const saveTooltip = hasEditorsWithoutSpaceAccess
+    ? "Some skill editors cannot access some of the restricted spaces"
+    : undefined;
+
+  return (
+    <BarFooter
+      variant="default"
+      className="mx-4 justify-between"
+      leftActions={
+        <Button
+          variant="outline"
+          label="Cancel"
+          onClick={onCancel}
+          type="button"
+        />
+      }
+      rightActions={
+        <Button
+          variant="highlight"
+          label={isSaving ? "Saving..." : "Save"}
+          onClick={onSave}
+          disabled={isSaving || isEditorLocked || hasEditorsWithoutSpaceAccess}
+          tooltip={saveTooltip}
+        />
+      }
+    />
   );
 }
 
