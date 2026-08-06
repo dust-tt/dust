@@ -21,26 +21,16 @@ describe("makeFileAttachment", () => {
     hideFromUser: true,
   };
 
-  it("should mark offloaded tool output files as not searchable", () => {
+  it("should mark pasted text files as not searchable, even with a snippet", () => {
     const attachment = makeFileAttachment({
       ...baseArgs,
-      skipDataSourceIndexing: true,
+      contentType: "text/vnd.dust.attachment.pasted",
     });
 
     expect(attachment.isSearchable).toBe(false);
   });
 
-  it("should keep web browser files searchable (hideFromUser but no skipDataSourceIndexing)", () => {
-    // Web browser tool also sets hideFromUser: true but should remain searchable.
-    const attachment = makeFileAttachment({
-      ...baseArgs,
-      skipDataSourceIndexing: false,
-    });
-
-    expect(attachment.isSearchable).toBe(true);
-  });
-
-  it("should keep user-uploaded files searchable", () => {
+  it("should keep user-uploaded files with snippet searchable", () => {
     const attachment = makeFileAttachment({
       ...baseArgs,
       source: "user",
@@ -50,11 +40,10 @@ describe("makeFileAttachment", () => {
     expect(attachment.isSearchable).toBe(true);
   });
 
-  it("should not be searchable when snippet is null regardless of skipDataSourceIndexing", () => {
+  it("should not be searchable when snippet is null regardless", () => {
     const attachment = makeFileAttachment({
       ...baseArgs,
       snippet: null,
-      skipDataSourceIndexing: false,
     });
 
     expect(attachment.isSearchable).toBe(false);
@@ -63,13 +52,11 @@ describe("makeFileAttachment", () => {
 
 function makeFileContentFragment({
   isInProjectContext = false,
-  skipDataSourceIndexing = false,
   skipFileProcessing = false,
   snippet = "snippet",
   contentType = "text/csv",
 }: {
   isInProjectContext?: boolean;
-  skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
   snippet?: string | null;
   contentType?: "text/csv" | "text/plain";
@@ -96,7 +83,6 @@ function makeFileContentFragment({
     expiredReason: null,
     contentFragmentType: "file",
     path: "conversation/data.csv",
-    skipDataSourceIndexing,
     skipFileProcessing,
     fileId: "fil_123",
     snippet,
@@ -174,11 +160,11 @@ describe("renderAttachmentXml", () => {
 });
 
 describe("getAttachmentFromFileContentFragment", () => {
-  it("keeps skipped text files includable without advertising semantic search", () => {
+  it("keeps skipped text files without snippet includable without advertising semantic search", () => {
     const attachment = getAttachmentFromFileContentFragment(
       makeFileContentFragment({
         contentType: "text/plain",
-        skipDataSourceIndexing: true,
+        snippet: null,
       })
     );
 

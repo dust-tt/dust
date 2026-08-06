@@ -66,7 +66,6 @@ export async function listAttachments(
         snippet: f.snippet,
         isInProjectContext: f.isInProjectContext ?? false,
         hideFromUser: f.hidden ?? false,
-        skipDataSourceIndexing: f.skipDataSourceIndexing ?? false,
         creator: f.creator,
       })
     );

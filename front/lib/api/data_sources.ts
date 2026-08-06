@@ -19,12 +19,10 @@ import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import { executeWithLock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -75,7 +73,7 @@ import type {
 } from "@dust-tt/client";
 import assert from "assert";
 import type { Transaction } from "sequelize";
-import { ConversationResource } from "../resources/conversation_resource";
+import type { ConversationResource } from "../resources/conversation_resource";
 
 const CORE_UNKNOWN_DATA_SOURCE_DELETE_ERROR_PREFIX =
   "Failed to delete data source (error: Unknown DataSource: ";
@@ -1253,116 +1251,6 @@ export async function createDataSourceWithoutProvider(
       return new Ok(dataSourceView);
     }
   );
-}
-
-async function getOrCreateConversationDataSource(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType | ConversationResource
-): Promise<
-  Result<
-    DataSourceResource,
-    Omit<DustError, "code"> & {
-      code: "internal_server_error" | "invalid_request_error";
-    }
-  >
-> {
-  const lockName = "conversationDataSource" + conversation.id;
-
-  const res = await executeWithLock(
-    lockName,
-    async (): Promise<
-      Result<
-        DataSourceResource,
-        Omit<DustError, "code"> & {
-          code: "internal_server_error" | "invalid_request_error";
-        }
-      >
-    > => {
-      // Fetch the datasource linked to the conversation...
-      let dataSource = await DataSourceResource.fetchByConversation(
-        auth,
-        conversation
-      );
-
-      if (!dataSource) {
-        // ...or create a new one.
-        const conversationsSpace =
-          await SpaceResource.fetchWorkspaceConversationsSpace(auth);
-
-        // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs
-        // are used as secrets to share the conversation within the workspace users.
-        const r = await createDataSourceWithoutProvider(auth, {
-          plan: auth.getNonNullablePlan(),
-          owner: auth.getNonNullableWorkspace(),
-          space: conversationsSpace,
-          name: generateRandomModelSId("conv"),
-          description: "Files uploaded to conversation",
-          conversation: conversation,
-        });
-
-        if (r.isErr()) {
-          return new Err({
-            name: "dust_error",
-            code: "internal_server_error",
-            message: `Failed to create datasource : ${r.error}`,
-          });
-        }
-
-        dataSource = r.value.dataSource;
-      }
-
-      return new Ok(dataSource);
-    }
-  );
-
-  return res;
-}
-
-function validateFileMetadataForConversation(
-  file: FileResource
-): Result<string, Error> {
-  const conversationId = file.useCaseMetadata?.conversationId;
-  if (!conversationId) {
-    return new Err(new Error("Field conversationId is missing from metadata"));
-  }
-
-  return new Ok(conversationId);
-}
-
-export async function getOrCreateConversationDataSourceFromFile(
-  auth: Authenticator,
-  file: FileResource
-): Promise<
-  Result<
-    DataSourceResource,
-    Omit<DustError, "code"> & {
-      code: "internal_server_error" | "invalid_request_error";
-    }
-  >
-> {
-  // Note: this assume that if we don't have useCaseMetadata, the file is fine.
-  const metadataResult = validateFileMetadataForConversation(file);
-  if (metadataResult.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: metadataResult.error.message,
-    });
-  }
-
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    metadataResult.value
-  );
-  if (!conversation) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `Failed to fetch conversation.`,
-    });
-  }
-
-  return getOrCreateConversationDataSource(auth, conversation);
 }
 
 async function getAllManagedDataSources(auth: Authenticator) {

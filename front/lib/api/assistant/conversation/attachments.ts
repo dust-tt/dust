@@ -5,6 +5,7 @@ import {
   isQueryableContentType,
   isSearchableContentType,
 } from "@app/lib/api/assistant/conversation/content_types";
+import { isPastedFile } from "@app/lib/files";
 import logger from "@app/logger/logger";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
@@ -166,8 +167,8 @@ export function getAttachmentFromFileContentFragment(
 
   // Here, snippet not null is actually to detect file attachments that are prior to the JIT
   // actions, and differentiate them from the newer file attachments that do have a snippet.
-  // Former ones cannot be used in JIT.
-  const canDoJIT = cf.snippet !== null;
+  // Former ones cannot be used in JIT. For pasted files, we also do not support JIT actions.
+  const canDoJIT = cf.snippet !== null && !isPastedFile(cf.contentType);
   const isInProjectContext = cf.isInProjectContext === true;
   const shouldSuppressTabularHints = shouldSuppressTabularAttachmentHints({
     contentType: cf.contentType,
@@ -181,10 +182,8 @@ export function getAttachmentFromFileContentFragment(
   const isIncludable =
     !shouldSuppressTabularHints &&
     isConversationIncludableFileContentType(cf.contentType);
-  const isSearchable =
-    canDoJIT &&
-    isSearchableContentType(cf.contentType) &&
-    cf.skipDataSourceIndexing !== true;
+  const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
+
   const creator: AttachmentCreator | null = cf.context.fullName
     ? {
         type: "user",
@@ -234,7 +233,6 @@ export function makeFileAttachment({
   snippet,
   isInProjectContext,
   hideFromUser,
-  skipDataSourceIndexing = false,
   path = null,
   creator = null,
 }: {
@@ -247,17 +245,14 @@ export function makeFileAttachment({
   snippet: string | null;
   isInProjectContext: boolean;
   hideFromUser: boolean;
-  skipDataSourceIndexing?: boolean;
   path?: string | null;
   creator?: AttachmentCreator | null;
 }): FileAttachmentType {
-  const canDoJIT = snippet !== null;
+  // For pasted files, we also do not support JIT actions.
+  const canDoJIT = snippet !== null && !isPastedFile(contentType);
   const isIncludable = isConversationIncludableFileContentType(contentType);
   const isQueryable = canDoJIT && isQueryableContentType(contentType);
-  // Files offloaded to disk because their tool output was too large are never indexed in Qdrant,
-  // so they must not be advertised as searchable to the model.
-  const isSearchable =
-    canDoJIT && isSearchableContentType(contentType) && !skipDataSourceIndexing;
+  const isSearchable = canDoJIT && isSearchableContentType(contentType);
 
   return {
     fileId,
@@ -304,25 +299,19 @@ export function renderLargePasteXml({
 export function renderAttachmentXml({
   attachment,
   content = null,
-  hideFlagsAndVersion = false,
 }: {
   attachment: ConversationAttachmentType;
   content?: string | null;
-  hideFlagsAndVersion?: boolean;
 }): string {
   const params = [
     `id="${conversationAttachmentId(attachment)}"`,
     `type="${attachment.contentType}"`,
     `title="${attachment.title}"`,
-    ...(hideFlagsAndVersion
-      ? []
-      : [
-          `version="${attachment.contentFragmentVersion}"`,
-          `isInProjectContext="${attachment.isInProjectContext}"`,
-          `isIncludable="${attachment.isIncludable}"`,
-          `isQueryable="${attachment.isQueryable}"`,
-          `isSearchable="${attachment.isSearchable}"`,
-        ]),
+    `version="${attachment.contentFragmentVersion}"`,
+    `isInProjectContext="${attachment.isInProjectContext}"`,
+    `isIncludable="${attachment.isIncludable}"`,
+    `isQueryable="${attachment.isQueryable}"`,
+    `isSearchable="${attachment.isSearchable}"`,
   ];
 
   if (isContentNodeAttachmentType(attachment)) {

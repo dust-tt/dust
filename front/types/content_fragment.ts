@@ -80,7 +80,6 @@ export type FileContentFragmentType = BaseContentFragmentType & {
   contentFragmentType: "file";
   path?: string | null;
   processedPath?: string | null;
-  skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
 } & (
     | {

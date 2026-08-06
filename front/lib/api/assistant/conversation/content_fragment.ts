@@ -64,12 +64,10 @@ export async function toFileContentFragment(
     conversation,
     contentFragment,
     fileName,
-    skipDataSourceIndexing,
   }: {
     conversation: ConversationWithoutContentType | ConversationResource;
     contentFragment: ContentFragmentInputWithInlinedContent;
     fileName?: string;
-    skipDataSourceIndexing?: boolean;
   }
 ): Promise<
   Result<ContentFragmentInputWithFileIdType, ProcessAndStoreFileError>
@@ -83,9 +81,7 @@ export async function toFileContentFragment(
     userId: auth.user()?.id,
     workspaceId: auth.getNonNullableWorkspace().id,
     useCase: "conversation",
-    useCaseMetadata: skipDataSourceIndexing
-      ? { skipDataSourceIndexing: true, conversationId: conversation.sId }
-      : { conversationId: conversation.sId },
+    useCaseMetadata: { conversationId: conversation.sId },
   });
 
   const processRes = await processAndStoreFile(auth, {

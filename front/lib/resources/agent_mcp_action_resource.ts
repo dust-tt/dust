@@ -890,8 +890,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         updatedAt: file.updatedAt.getTime(),
         isInProjectContext: file.useCase === "project_context",
         hidden: file.useCaseMetadata?.hideFromUser ?? false,
-        skipDataSourceIndexing:
-          file.useCaseMetadata?.skipDataSourceIndexing ?? false,
         creator,
         rank: agentMessageIdToRank.get(agentMessage.id) ?? 0,
       });
@@ -1407,8 +1405,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                     updatedAt: file.updatedAt.getTime(),
                     isInProjectContext: file.useCase === "project_context",
                     hidden: file.useCaseMetadata?.hideFromUser ?? false,
-                    skipDataSourceIndexing:
-                      file.useCaseMetadata?.skipDataSourceIndexing ?? false,
                   };
                 }
 

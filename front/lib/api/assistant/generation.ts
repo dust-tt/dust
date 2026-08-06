@@ -271,8 +271,7 @@ function constructAttachmentsSection({
   isComputerAlwaysActive: boolean;
 }): string {
   const sandboxFilesPrompt = hasSandboxTools
-    ? "When using the Computer, conversation files are mounted under `/files/conversation`. " +
-      `${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })}\n`
+    ? `${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })}\n`
     : "";
 
   return (
@@ -297,16 +296,16 @@ function constructAttachmentsSectionNewFileExplorer({
   hasSandboxTools: boolean;
   isComputerAlwaysActive: boolean;
 }): string {
-  const tabularFilesLine = hasSandboxTools
-    ? `- Files attached as \`<file>\` tags are mounted under \`/files/conversation\` when using the Computer. ${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
-    : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
+  const sandboxFilesPrompt = hasSandboxTools
+    ? `${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })}\n`
+    : "";
 
   return (
     "# FILES\n" +
     `Files attached to the conversation are accessible via the \`${FILES_SERVER_NAME}\` server.\n\n` +
     "Some attachments remain visible in the conversation history as metadata tags:\n\n" +
-    tabularFilesLine +
-    "- Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags; use the available search and retrieval tools to access their full content.\n"
+    "- Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags; use the available search and retrieval tools to access their full content.\n" +
+    sandboxFilesPrompt
   );
 }
 

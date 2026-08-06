@@ -255,7 +255,6 @@ export async function getFileFromConversationAttachment(
             snippet: f.snippet,
             isInProjectContext: f.isInProjectContext ?? false,
             hideFromUser: f.hidden ?? false,
-            skipDataSourceIndexing: f.skipDataSourceIndexing ?? false,
           });
           break;
         }

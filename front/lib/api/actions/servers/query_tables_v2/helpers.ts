@@ -1,7 +1,6 @@
 import {
   generateCSVFileAndSnippet,
   generateSectionFile,
-  uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
@@ -127,12 +126,6 @@ async function generateAgentLoopQueryResultFiles(
     results,
   });
 
-  // Upload the CSV file to the conversation data source.
-  await uploadFileToConversationDataSource({
-    auth,
-    file: csvFile,
-  });
-
   // Append the CSV file to the output of the tool as an agent-generated file.
   const content: TablesQueryContentItem[] = [
     {
@@ -170,12 +163,6 @@ async function generateAgentLoopQueryResultFiles(
       conversationId,
       results,
       sectionColumnsPrefix,
-    });
-
-    // Upload the section file to the conversation data source.
-    await uploadFileToConversationDataSource({
-      auth,
-      file: sectionFile,
     });
 
     // Append the section file to the output of the tool as an agent-generated file.

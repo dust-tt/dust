@@ -23,7 +23,6 @@ describe("buildEffectiveUseCaseMetadata", () => {
     ).toMatchObject({
       skillId: "skl_1",
       skipFileProcessing: true,
-      skipDataSourceIndexing: true,
     });
 
     expect(

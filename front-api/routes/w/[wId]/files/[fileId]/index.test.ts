@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -7,27 +6,8 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { Err } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/data_sources", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@app/lib/api/data_sources")>()),
-  getOrCreateConversationDataSourceFromFile: vi.fn().mockResolvedValue({
-    isErr: () => false,
-    value: {
-      id: "test-datasource-id",
-      sId: "test-datasource-sid",
-    },
-  }),
-  getOrCreateProjectContextDataSourceFromFile: vi.fn().mockResolvedValue({
-    isErr: () => false,
-    value: {
-      id: "test-project-datasource-id",
-      sId: "test-project-datasource-sid",
-    },
-  }),
-}));
 
 vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
   const mod =
@@ -40,14 +20,6 @@ vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
     }),
   };
 });
-
-vi.mock("@app/lib/api/files/upsert", () => ({
-  isFileTypeUpsertableForUseCase: vi.fn().mockReturnValue(true),
-  processAndUpsertToDataSource: vi.fn().mockResolvedValue({
-    isErr: () => false,
-    value: {},
-  }),
-}));
 
 function fileUrl(workspace: { sId: string }, fileId: string, query = "") {
   return `/api/w/${workspace.sId}/files/${fileId}${query}`;
@@ -594,116 +566,5 @@ describe("POST /api/w/:wId/files/:fileId", () => {
         message: "You cannot edit files in that space.",
       },
     });
-  });
-
-  it("should process conversation file and upsert to data source", async () => {
-    const { processAndUpsertToDataSource } = await import(
-      "@app/lib/api/files/upsert"
-    );
-
-    const { auth, user, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "user",
-    });
-
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
-      messagesCreatedAt: [new Date()],
-    });
-
-    const file = await FileFactory.create(auth, user, {
-      contentType: "text/plain",
-      fileName: "test.txt",
-      fileSize: 1024,
-      status: "created",
-      useCase: "conversation",
-      useCaseMetadata: {
-        conversationId: conversation.sId,
-      },
-    });
-
-    const response = await honoApp.request(fileUrl(workspace, file.sId), {
-      method: "POST",
-    });
-
-    expect(response.status).toBe(200);
-    expect(processAndUpsertToDataSource).toHaveBeenCalled();
-  });
-
-  it("should return a 400 with the upsert error message on invalid CSV content", async () => {
-    const { processAndUpsertToDataSource } = await import(
-      "@app/lib/api/files/upsert"
-    );
-
-    const { auth, user, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "user",
-    });
-
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
-      messagesCreatedAt: [new Date()],
-    });
-
-    const file = await FileFactory.create(auth, user, {
-      contentType: "text/csv",
-      fileName: "report.csv",
-      fileSize: 1024,
-      status: "created",
-      useCase: "conversation",
-      useCaseMetadata: {
-        conversationId: conversation.sId,
-      },
-    });
-
-    const csvErrorMessage = "This CSV file is not UTF-8 encoded.";
-    vi.mocked(processAndUpsertToDataSource).mockResolvedValueOnce(
-      new Err(new DustError("invalid_csv_content", csvErrorMessage))
-    );
-
-    const response = await honoApp.request(fileUrl(workspace, file.sId), {
-      method: "POST",
-    });
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error.type).toBe("invalid_request_error");
-    expect(body.error.message).toBe(csvErrorMessage);
-  });
-
-  it("should not upsert raw sandbox delimited conversation files", async () => {
-    const { processAndUpsertToDataSource } = await import(
-      "@app/lib/api/files/upsert"
-    );
-
-    const { auth, user, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "user",
-    });
-
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
-      messagesCreatedAt: [new Date()],
-    });
-
-    const file = await FileFactory.create(auth, user, {
-      contentType: "text/csv",
-      fileName: "large.csv",
-      fileSize: 1024,
-      status: "created",
-      useCase: "conversation",
-      useCaseMetadata: {
-        conversationId: conversation.sId,
-        skipDataSourceIndexing: true,
-        skipFileProcessing: true,
-      },
-    });
-
-    const response = await honoApp.request(fileUrl(workspace, file.sId), {
-      method: "POST",
-    });
-
-    expect(response.status).toBe(200);
-    expect(processAndUpsertToDataSource).not.toHaveBeenCalled();
   });
 });
