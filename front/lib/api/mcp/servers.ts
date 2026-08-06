@@ -16,6 +16,7 @@ import {
   MAX_MCP_SERVER_VIEW_NAME_LENGTH,
   type MCPServerType,
   type MCPServerTypeWithViews,
+  type MCPServerViewNameConflict,
   type MCPServerViewType,
   type MCPToolType,
 } from "@app/lib/api/mcp";
@@ -36,18 +37,6 @@ const MAX_URL_LENGTH = 2048;
 const MAX_NAME_LENGTH = 2048;
 
 type CustomHeader = { key: string; value: string };
-
-export class MCPServerViewNameConflictError extends Error {
-  constructor(readonly viewName: string) {
-    super(`An existing Tool is already using the name "${viewName}"`);
-  }
-}
-
-export function isMCPServerViewNameConflictError(
-  error: Error
-): error is MCPServerViewNameConflictError {
-  return error instanceof MCPServerViewNameConflictError;
-}
 
 export async function listMCPServersWithViews(
   auth: Authenticator
@@ -111,7 +100,7 @@ interface CreateRemoteMCPServerInput {
 export async function createRemoteMCPServer(
   auth: Authenticator,
   input: CreateRemoteMCPServerInput
-): Promise<Result<MCPServerType, Error>> {
+): Promise<Result<MCPServerType, Error | MCPServerViewNameConflict>> {
   const {
     url,
     sharedSecret,
@@ -199,13 +188,13 @@ export async function createRemoteMCPServer(
   }
 
   if (includeGlobal) {
-    const conflict = await checkNameConflictInGlobalSpace(
+    const nameConflict = await getNameConflictInGlobalSpace(
       auth,
       normalizedViewName ?? name,
       metadata.tools
     );
-    if (conflict.isErr()) {
-      return conflict;
+    if (nameConflict) {
+      return new Err({ nameConflict });
     }
   }
 
@@ -319,13 +308,17 @@ export async function createInternalMCPServer(
   // otherwise fall back to the internal server name.
   const nameForConflictCheck = viewName ?? name;
   if (includeGlobal) {
-    const conflict = await checkNameConflictInGlobalSpace(
+    const nameConflict = await getNameConflictInGlobalSpace(
       auth,
       nameForConflictCheck,
       getInternalMCPServerMetadata(name).tools
     );
-    if (conflict.isErr()) {
-      return conflict;
+    if (nameConflict) {
+      return new Err(
+        new Error(
+          `An existing Tool is already using the name "${nameConflict}"`
+        )
+      );
     }
   }
 
@@ -399,11 +392,11 @@ export async function createInternalMCPServer(
   return new Ok(newInternalMCPServer.toJSON());
 }
 
-async function checkNameConflictInGlobalSpace(
+async function getNameConflictInGlobalSpace(
   auth: Authenticator,
   name: string,
   tools: readonly MCPToolType[]
-): Promise<Result<void, Error>> {
+): Promise<string | null> {
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const { hasConflict } =
     await MCPServerViewResource.hasNameConflictInSpaceByName(
@@ -412,10 +405,7 @@ async function checkNameConflictInGlobalSpace(
       globalSpace,
       tools
     );
-  if (hasConflict) {
-    return new Err(new MCPServerViewNameConflictError(name));
-  }
-  return new Ok(undefined);
+  return hasConflict ? name : null;
 }
 
 async function createGlobalSpaceView(

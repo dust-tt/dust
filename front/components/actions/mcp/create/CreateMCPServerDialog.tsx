@@ -184,8 +184,10 @@ export function CreateMCPServerDialog({
     name: "selectedScopes",
   });
 
-  const [remoteMCPServerViewNameConflict, setRemoteMCPServerViewNameConflict] =
-    useState<string | null>(null);
+  const [nameConflict, setNameConflict] = useState<{
+    name: string;
+    oauthConnectionId: string | null;
+  } | null>(null);
 
   // Client-side validation for the view name field.
   const viewNameError = useMemo(() => {
@@ -193,11 +195,11 @@ export function CreateMCPServerDialog({
     if (needsCustomName && !trimmed) {
       return "Name is required.";
     }
-    if (remoteMCPServerViewNameConflict) {
+    if (nameConflict) {
       if (!trimmed) {
-        return `The default name "${remoteMCPServerViewNameConflict}" conflicts with an existing Tool. Enter a different name.`;
+        return `The default name "${nameConflict.name}" conflicts with an existing Tool. Enter a different name.`;
       }
-      if (trimmed === remoteMCPServerViewNameConflict) {
+      if (trimmed === nameConflict.name) {
         return "This name conflicts with an existing Tool. Enter a different name.";
       }
     }
@@ -208,12 +210,7 @@ export function CreateMCPServerDialog({
       return "This name is already in use.";
     }
     return null;
-  }, [
-    needsCustomName,
-    remoteMCPServerViewNameConflict,
-    viewName,
-    existingViewNames,
-  ]);
+  }, [needsCustomName, nameConflict, viewName, existingViewNames]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState<{
@@ -232,11 +229,6 @@ export function CreateMCPServerDialog({
     remoteMCPServerOAuthDiscoveryDone,
     setRemoteMCPServerOAuthDiscoveryDone,
   ] = useState(false);
-  const [
-    remoteMCPServerOAuthConnectionId,
-    setRemoteMCPServerOAuthConnectionId,
-  ] = useState<string | null>(null);
-
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
@@ -294,8 +286,7 @@ export function CreateMCPServerDialog({
     // Reset workflow state (useState).
     setAuthorization(null);
     setRemoteMCPServerOAuthDiscoveryDone(false);
-    setRemoteMCPServerOAuthConnectionId(null);
-    setRemoteMCPServerViewNameConflict(null);
+    setNameConflict(null);
     setIsStaticFormValid(false);
     setServerError(null);
     // Reset form state.
@@ -319,7 +310,7 @@ export function CreateMCPServerDialog({
       // Pass workflow state as separate params (not from form).
       authorization,
       remoteMCPServerOAuthDiscoveryDone,
-      remoteMCPServerOAuthConnectionId,
+      oauthConnectionId: nameConflict?.oauthConnectionId ?? null,
       discoverOAuthMetadata,
       createWithURL,
       createInternalMCPServer,
@@ -335,12 +326,6 @@ export function CreateMCPServerDialog({
         setRemoteMCPServerOAuthDiscoveryDone(
           err.remoteMCPServerOAuthDiscoveryDone
         );
-        if (err.nameConflict) {
-          setRemoteMCPServerViewNameConflict(err.nameConflict);
-          setRemoteMCPServerOAuthConnectionId(err.oauthConnectionId);
-          setServerError(null);
-          return;
-        }
         setServerError({
           message: err.message,
           domain: new URL(values.remoteServerUrl).hostname,
@@ -374,6 +359,16 @@ export function CreateMCPServerDialog({
       setAuthorization(submitRes.value.authorization);
       form.setValue("authCredentials", submitRes.value.authCredentials);
       // Returning here as now the user must select the use case.
+      setIsLoading(false);
+      return;
+    }
+
+    if (submitRes.value.type === "name_conflict") {
+      setNameConflict({
+        name: submitRes.value.name,
+        oauthConnectionId: submitRes.value.oauthConnectionId,
+      });
+      setExternalIsLoading(false);
       setIsLoading(false);
       return;
     }
@@ -589,7 +584,7 @@ export function CreateMCPServerDialog({
                   {serverError.message}
                 </ContentMessage>
               )}
-              {(needsCustomName || remoteMCPServerViewNameConflict) && (
+              {(needsCustomName || nameConflict) && (
                 <div className="space-y-2">
                   <Label htmlFor="viewName">Tool name</Label>
                   <Input
@@ -669,7 +664,7 @@ export function CreateMCPServerDialog({
                     isLoading,
                     authorization,
                     defaultServerConfig,
-                    remoteMCPServerOAuthConnectionId
+                    nameConflict?.oauthConnectionId ?? null
                   ),
               variant: "primary",
               disabled: isSubmitDisabled,
