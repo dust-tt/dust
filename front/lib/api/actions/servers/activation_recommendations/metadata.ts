@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import { z } from "zod";
 
 export const ACTIVATION_RECOMMENDATIONS_SERVER_NAME =
@@ -69,6 +70,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
       ctaLabel: z
         .string()
         .max(40)
+        .transform((label) => stripMarkdown(label).trim())
         .optional()
         .describe(
           "Optional label for the primary call-to-action button on the recommendation card. " +
