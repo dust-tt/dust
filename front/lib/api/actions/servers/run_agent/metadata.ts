@@ -10,9 +10,11 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
+export const RUN_AGENT_SERVER_NAME = "run_agent" as const;
+
 // This is a placeholder tool name used in the metadata for UI detection.
 // The actual tool name is dynamic: `run_<agent_name>`.
-export const RUN_AGENT_PLACEHOLDER_TOOL_NAME = "run_agent" as const;
+export const RUN_AGENT_PLACEHOLDER_TOOL_NAME = RUN_AGENT_SERVER_NAME;
 
 type RunAgentToolDescriptionArgs =
   | {
@@ -137,7 +139,7 @@ export const RUN_AGENT_TOOL_SCHEMA = {
 
 export const RUN_AGENT_SERVER = {
   serverInfo: {
-    name: "run_agent",
+    name: RUN_AGENT_SERVER_NAME,
     version: "1.0.0",
     description: "Run a child agent (agent as tool).",
     authorization: null,

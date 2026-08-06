@@ -1,5 +1,5 @@
 import { INTERACTIVE_CONTENT_SERVER_NAME } from "@app/lib/api/actions/servers/interactive_content/metadata";
-import { RUN_AGENT_PLACEHOLDER_TOOL_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
+import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
@@ -163,7 +163,7 @@ export async function fetchUserDayCells({
             },
             {
               term: {
-                "tools_used.server_name": RUN_AGENT_PLACEHOLDER_TOOL_NAME,
+                "tools_used.server_name": RUN_AGENT_SERVER_NAME,
               },
             },
           ],
