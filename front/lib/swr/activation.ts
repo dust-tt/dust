@@ -1,5 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GetActivationRecommendationsResponseBody } from "@app/lib/api/activation/recommendations";
+import type {
+  GetActivationPodResponseBody,
+  GetActivationRecommendationsResponseBody,
+} from "@app/lib/api/activation/recommendations";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -13,24 +16,34 @@ import type { Fetcher } from "swr";
 export function useActivationRecommendations({
   workspaceId,
   podId,
+  status,
   disabled,
 }: {
   workspaceId: string;
   podId?: string;
+  status?: "suggested" | "executed";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const recommendationsFetcher: Fetcher<GetActivationRecommendationsResponseBody> =
     fetcher;
 
-  const url = podId
-    ? `/api/w/${workspaceId}/activation-recommendations?podId=${podId}`
+  const params = new URLSearchParams();
+  if (podId) {
+    params.set("podId", podId);
+  }
+  if (status) {
+    params.set("status", status);
+  }
+  const queryString = params.toString();
+  const url = queryString
+    ? `/api/w/${workspaceId}/activation-recommendations?${queryString}`
     : `/api/w/${workspaceId}/activation-recommendations`;
 
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     url,
     recommendationsFetcher,
-    { disabled }
+    { disabled, revalidateOnFocus: false }
   );
 
   return {
@@ -38,6 +51,29 @@ export function useActivationRecommendations({
     isRecommendationsLoading: disabled ? false : isLoading,
     isRecommendationsError: !!error,
     mutateRecommendations: mutate,
+  };
+}
+
+export function useActivationPod({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const podFetcher: Fetcher<GetActivationPodResponseBody> = fetcher;
+
+  const { data, error, isLoading } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/activation-pod`,
+    podFetcher,
+    { disabled, revalidateOnFocus: false }
+  );
+
+  return {
+    activationPodId: data?.podId ?? null,
+    isActivationPodLoading: disabled ? false : isLoading,
+    isActivationPodError: !!error,
   };
 }
 

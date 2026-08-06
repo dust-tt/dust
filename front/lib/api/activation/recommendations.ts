@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { ActivationRecommendationStatus } from "@app/lib/models/activation/activation_recommendation";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
@@ -21,6 +22,25 @@ export interface ActivationRecommendationForUserType {
 
 export interface GetActivationRecommendationsResponseBody {
   recommendations: ActivationRecommendationForUserType[];
+}
+
+export interface GetActivationPodResponseBody {
+  podId: string | null;
+}
+
+export async function getActivationPodId(
+  auth: Authenticator
+): Promise<string | null> {
+  const activationPod = await ActivationPodResource.fetchByUser(auth);
+  if (!activationPod) {
+    return null;
+  }
+
+  const [space] = await SpaceResource.fetchByModelIds(auth, [
+    activationPod.spaceId,
+  ]);
+
+  return space?.sId ?? null;
 }
 
 export interface UpdateActivationRecommendationResponseBody {
