@@ -303,7 +303,8 @@ const readOnlyStyles = cn(
   "border-border bg-muted-background"
 );
 
-function handleCopy(
+// ProseMirror skips its clipboard serializer when the editor is read-only.
+function handleReadOnlyCopy(
   editor: Editor | null,
   event: ReactClipboardEvent<HTMLDivElement>
 ) {
@@ -365,15 +366,11 @@ export function SkillInstructionsEditorContent({
           <EditorContent
             editor={editor}
             className="leading-7"
-            onCopy={(event) => handleCopy(editor, event)}
+            onCopy={(event) => handleReadOnlyCopy(editor, event)}
           />
         </div>
       ) : (
-        <EditorContent
-          editor={editor}
-          className={cn(className, "leading-7")}
-          onCopy={(event) => handleCopy(editor, event)}
-        />
+        <EditorContent editor={editor} className={cn(className, "leading-7")} />
       )}
     </>
   );

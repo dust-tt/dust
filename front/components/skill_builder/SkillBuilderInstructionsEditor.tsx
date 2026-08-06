@@ -10,7 +10,6 @@ import {
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type {
@@ -253,11 +252,6 @@ export function SkillBuilderInstructionsEditor({
     selectedSuggestionId,
     setAcceptInstructionEdits,
   } = useSkillBuilderContext();
-  const { mcpServerViews } = useMCPServerViewsContext();
-  const mcpServerViewsById = useMemo(
-    () => new Map(mcpServerViews.map((view) => [view.sId, view])),
-    [mcpServerViews]
-  );
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -328,29 +322,15 @@ export function SkillBuilderInstructionsEditor({
   const syncInlineReferencesFromEditor = useCallback(
     (editor: Editor) => {
       const currentInlineToolIds = collectToolReferenceIds(editor);
-      const removedToolIds = new Set(
-        [...previousInlineToolIdsRef.current].filter(
-          (toolId) => !currentInlineToolIds.has(toolId)
-        )
-      );
-      let didToolsChange = removedToolIds.size > 0;
-      const nextTools = toolsRef.current.filter(
-        (tool) => !removedToolIds.has(tool.configuration.mcpServerViewId)
-      );
-      const configuredToolIds = new Set(
-        nextTools.map((tool) => tool.configuration.mcpServerViewId)
+      const removedToolIds = [...previousInlineToolIdsRef.current].filter(
+        (toolId) => !currentInlineToolIds.has(toolId)
       );
 
-      for (const toolId of currentInlineToolIds) {
-        const view = mcpServerViewsById.get(toolId);
-        if (!configuredToolIds.has(toolId) && view) {
-          nextTools.push(getDefaultMCPAction(view));
-          configuredToolIds.add(toolId);
-          didToolsChange = true;
-        }
-      }
-
-      if (didToolsChange) {
+      if (removedToolIds.length > 0) {
+        const removedToolIdsSet = new Set(removedToolIds);
+        const nextTools = toolsRef.current.filter(
+          (tool) => !removedToolIdsSet.has(tool.configuration.mcpServerViewId)
+        );
         toolsRef.current = nextTools;
         onToolsChange(nextTools);
       }
@@ -373,7 +353,7 @@ export function SkillBuilderInstructionsEditor({
 
       previousInlineSkillIdsRef.current = currentInlineSkillIds;
     },
-    [mcpServerViewsById, onReferencedSkillsChange, onToolsChange]
+    [onReferencedSkillsChange, onToolsChange]
   );
 
   const syncInstructionsFromEditor = useCallback(
@@ -625,14 +605,6 @@ export function SkillBuilderInstructionsEditor({
     previousInlineToolIdsRef.current = collectToolReferenceIds(editor);
     previousInlineSkillIdsRef.current = collectSkillReferenceIds(editor);
   }, [editor, isContentReady, isDiffMode, resetField]);
-
-  useEffect(() => {
-    if (!editor || !isContentReady || isDiffMode) {
-      return;
-    }
-
-    syncInlineReferencesFromEditor(editor);
-  }, [editor, isContentReady, isDiffMode, syncInlineReferencesFromEditor]);
 
   // Apply pending instruction suggestions as inline diff decorations.
   // "Reject all + re-apply current" on every change so that accepts and
