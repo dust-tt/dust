@@ -263,6 +263,8 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
       naturalDescription: string,
       options: {
         excludeSkillId: string | null;
+        // Restricts the skills to compare against. Defaults server-side to all published skills.
+        availabilities?: SkillAvailability[];
         signal?: AbortSignal;
       }
     ) => {
@@ -276,6 +278,7 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
           body: JSON.stringify({
             naturalDescription,
             excludeSkillId: options?.excludeSkillId ?? undefined,
+            availabilities: options?.availabilities,
           }),
           signal: options?.signal,
         }

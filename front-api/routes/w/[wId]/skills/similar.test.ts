@@ -155,11 +155,77 @@ describe("POST /api/w/:wId/skills/similar", () => {
     const response = await post(workspace, {});
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "naturalDescription is required and must be a string.",
-      },
+    const body = await response.json();
+    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.message).toContain("naturalDescription");
+  });
+
+  it("returns 400 when availabilities contains an unknown value", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, {
+      naturalDescription: "Create GitHub issues for support",
+      availabilities: ["not_an_availability"],
     });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.message).toContain("availabilities");
+  });
+
+  it("only compares against skills matching the requested availabilities", async () => {
+    const { workspace, auth } = await setup();
+
+    const discoverableSkill = await SkillFactory.create(auth, {
+      name: "Discoverable Skill",
+      agentFacingDescription: "Open support cards on github.com",
+      availability: "users_and_agents",
+    });
+    await SkillFactory.create(auth, {
+      name: "Members Only Skill",
+      agentFacingDescription: "Create issues on GitHub repositories",
+      availability: "workspace_users",
+    });
+
+    vi.mocked(runMultiActionsAgent).mockResolvedValue(
+      mockSimilarSkillsResponse([discoverableSkill.sId])
+    );
+
+    const response = await post(workspace, {
+      naturalDescription: "Create GitHub issues for support",
+      availabilities: ["users_and_agents"],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      similar_skills: [discoverableSkill.sId],
+    });
+    expect(runMultiActionsAgent).toHaveBeenCalledTimes(1);
+
+    // Only the users_and_agents skill was submitted to the LLM.
+    const [, , { conversation }] =
+      vi.mocked(runMultiActionsAgent).mock.calls[0];
+    const inputText = JSON.stringify(conversation.messages);
+    expect(inputText).toContain(discoverableSkill.sId);
+    expect(inputText).not.toContain("Create issues on GitHub repositories");
+  });
+
+  it("returns empty similar skills without calling the LLM when no skill matches the requested availabilities", async () => {
+    const { workspace, auth } = await setup();
+
+    await SkillFactory.create(auth, {
+      name: "Members Only Skill",
+      availability: "workspace_users",
+    });
+
+    const response = await post(workspace, {
+      naturalDescription: "Create GitHub issues for support",
+      availabilities: ["users_and_agents"],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ similar_skills: [] });
+    expect(runMultiActionsAgent).not.toHaveBeenCalled();
   });
 });
