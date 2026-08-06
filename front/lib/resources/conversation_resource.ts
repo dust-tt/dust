@@ -1000,89 +1000,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return row.total_credits;
   }
 
-  /**
-   * Returns an agent message's ancestor agent configuration IDs from the root agent to the direct
-   * parent. The recursive query follows persisted run-agent and handover origins across
-   * conversations in one database round trip.
-   */
-  static async listAgenticAncestorAgentConfigurationIds(
-    auth: Authenticator,
-    {
-      agentMessageId,
-      maxDepth = 64,
-    }: { agentMessageId: string; maxDepth?: number }
-  ): Promise<string[]> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const query = `
-      WITH RECURSIVE agent_ancestors AS (
-        SELECT
-          origin."sId"                    AS agent_message_sid,
-          origin_am."agentConfigurationId" AS agent_configuration_id,
-          1                               AS depth
-        FROM messages current_message
-        JOIN messages parent_user_message
-          ON parent_user_message.id = current_message."parentId"
-         AND parent_user_message."workspaceId" = current_message."workspaceId"
-        JOIN user_messages parent_user
-          ON parent_user.id = parent_user_message."userMessageId"
-         AND parent_user."workspaceId" = current_message."workspaceId"
-        JOIN messages origin
-          ON origin."sId" = parent_user."agenticOriginMessageId"
-         AND origin."workspaceId" = current_message."workspaceId"
-        JOIN agent_messages origin_am
-          ON origin_am.id = origin."agentMessageId"
-         AND origin_am."workspaceId" = current_message."workspaceId"
-        WHERE current_message."workspaceId" = :workspaceId
-          AND current_message."sId" = :agentMessageId
-
-        UNION ALL
-
-        SELECT
-          origin."sId",
-          origin_am."agentConfigurationId",
-          ancestors.depth + 1
-        FROM agent_ancestors ancestors
-        JOIN messages current_message
-          ON current_message."sId" = ancestors.agent_message_sid
-         AND current_message."workspaceId" = :workspaceId
-        JOIN messages parent_user_message
-          ON parent_user_message.id = current_message."parentId"
-         AND parent_user_message."workspaceId" = :workspaceId
-        JOIN user_messages parent_user
-          ON parent_user.id = parent_user_message."userMessageId"
-         AND parent_user."workspaceId" = :workspaceId
-        JOIN messages origin
-          ON origin."sId" = parent_user."agenticOriginMessageId"
-         AND origin."workspaceId" = :workspaceId
-        JOIN agent_messages origin_am
-          ON origin_am.id = origin."agentMessageId"
-         AND origin_am."workspaceId" = :workspaceId
-        WHERE ancestors.depth < :maxDepth
-      )
-      SELECT agent_configuration_id, depth
-      FROM agent_ancestors
-      ORDER BY depth DESC
-    `;
-
-    // biome-ignore lint/plugin/noRawSql: recursive ancestry has no Sequelize equivalent.
-    const rows = await frontSequelize.query<{
-      agent_configuration_id: string;
-      depth: number;
-    }>(query, {
-      type: QueryTypes.SELECT,
-      replacements: { workspaceId, agentMessageId, maxDepth },
-    });
-
-    if (rows.some((row) => row.depth >= maxDepth)) {
-      logger.warn(
-        { workspaceId: auth.getNonNullableWorkspace().sId, agentMessageId },
-        "[ConsumptionAnalytics] Agent ancestry hit the depth cap."
-      );
-    }
-
-    return rows.map((row) => row.agent_configuration_id);
-  }
-
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {
@@ -3245,7 +3162,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async findAgenticParent(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
-  ): Promise<MessageModel | null> {
+  ): Promise<{
+    agentConfigurationId: string;
+    agentMessageId: string;
+    conversationModelId: ModelId;
+  } | null> {
     const owner = auth.getNonNullableWorkspace();
 
     const agentMessage = await MessageModel.findOne({
@@ -3289,9 +3210,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: owner.id,
         sId: agenticOriginMessageId,
       },
+      attributes: ["sId", "conversationId"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["agentConfigurationId"],
+        },
+      ],
     });
 
-    return agenticOriginMessage;
+    if (!agenticOriginMessage?.agentMessage) {
+      return null;
+    }
+
+    return {
+      agentConfigurationId:
+        agenticOriginMessage.agentMessage.agentConfigurationId,
+      agentMessageId: agenticOriginMessage.sId,
+      conversationModelId: agenticOriginMessage.conversationId,
+    };
   }
 
   /**

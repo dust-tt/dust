@@ -1,4 +1,5 @@
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { listAgenticAncestors } from "@app/lib/api/assistant/conversation/agentic_ancestors";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -182,10 +183,18 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     auth,
     agentMessage.agentMessageModelId
   );
-  const ancestorAgentIds =
-    await ConversationResource.listAgenticAncestorAgentConfigurationIds(auth, {
-      agentMessageId,
-    });
+  const messageConversation = await ConversationResource.fetchById(
+    auth,
+    conversation.conversationId
+  );
+  if (!messageConversation) {
+    throw new Error("Agent message conversation not found");
+  }
+  const ancestorAgentIds = (
+    await listAgenticAncestors(auth, messageConversation, { agentMessageId })
+  )
+    .map((ancestor) => ancestor.agentConfigurationId)
+    .reverse();
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
 
   const resolvedModel = resolvedModelFromAgentMessageRow({

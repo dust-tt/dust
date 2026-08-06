@@ -1,4 +1,5 @@
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import type { Authenticator } from "@app/lib/auth";
 import {
   USAGE_TYPE_FREE,
   USAGE_TYPE_PROGRAMMATIC,
@@ -13,22 +14,31 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
-async function setupSettledMessage({
+async function createAgenticMessage({
+  auth,
+  workspace,
+  depth,
+  agenticOriginMessageId,
   authorless = false,
-  usageType = USAGE_TYPE_USER,
+  agentName,
 }: {
+  auth: Authenticator;
+  workspace: WorkspaceType;
+  depth: number;
+  agenticOriginMessageId?: string;
   authorless?: boolean;
-  usageType?: UsageType | null;
-} = {}) {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "admin",
+  agentName?: string;
+}) {
+  const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+    name: agentName,
   });
-  const agent = await AgentConfigurationFactory.createTestAgent(auth);
   const conversationType = await ConversationFactory.create(auth, {
     agentConfigurationId: agent.sId,
     messagesCreatedAt: [],
+    depth,
   });
   const conversation = await ConversationResource.fetchById(
     auth,
@@ -45,13 +55,10 @@ async function setupSettledMessage({
       conversation,
       rank: 0,
       content: "Hello",
+      agenticMessageType: agenticOriginMessageId ? "run_agent" : undefined,
+      agenticOriginMessageId,
       authorless,
     });
-  const { run } = await RunFactory.createWithUsage(auth, {
-    inputTokens: 100,
-    outputTokens: 20,
-    modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
-  });
   const agentMessage = await ConversationFactory.createAgentMessageWithRank({
     workspace,
     conversationId: conversation.id,
@@ -66,10 +73,88 @@ async function setupSettledMessage({
     },
     modelResolutionMethod: "agent",
   });
-  if (!agentMessage.agentMessageId) {
+  const agentMessageModelId = agentMessage.agentMessageId;
+  if (!agentMessageModelId) {
     throw new Error("Agent message was not created");
   }
 
+  return { agent, agentMessage, agentMessageModelId, conversation };
+}
+
+async function appendHandoverMessage({
+  auth,
+  workspace,
+  conversation,
+  rank,
+  agenticOriginMessageId,
+  agentName,
+}: {
+  auth: Authenticator;
+  workspace: WorkspaceType;
+  conversation: ConversationResource;
+  rank: number;
+  agenticOriginMessageId: string;
+  agentName: string;
+}) {
+  const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+    name: agentName,
+  });
+  const { messageRow: userMessage } =
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      rank,
+      content: "Continue with another agent",
+      agenticMessageType: "agent_handover",
+      agenticOriginMessageId,
+    });
+  const agentMessage = await ConversationFactory.createAgentMessageWithRank({
+    workspace,
+    conversationId: conversation.id,
+    rank: rank + 1,
+    parentId: userMessage.id,
+    agentConfigurationId: agent.sId,
+    agentConfigurationVersion: agent.version,
+  });
+
+  return { agent, agentMessage };
+}
+
+async function setupSettledMessage({
+  authorless = false,
+  depth = 0,
+  agenticOriginMessageId,
+  agentName,
+  testContext,
+  usageType = USAGE_TYPE_USER,
+}: {
+  authorless?: boolean;
+  depth?: number;
+  agenticOriginMessageId?: string;
+  agentName?: string;
+  testContext?: { authenticator: Authenticator; workspace: WorkspaceType };
+  usageType?: UsageType | null;
+} = {}) {
+  const { authenticator: auth, workspace } =
+    testContext ??
+    (await createResourceTest({
+      role: "admin",
+    }));
+  const { agent, agentMessage, agentMessageModelId, conversation } =
+    await createAgenticMessage({
+      auth,
+      workspace,
+      depth,
+      agenticOriginMessageId,
+      authorless,
+      agentName,
+    });
+  const { run } = await RunFactory.createWithUsage(auth, {
+    inputTokens: 100,
+    outputTokens: 20,
+    modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+  });
   const completedAt = new Date("2026-08-05T12:00:00.000Z");
   await AgentMessageModel.update(
     {
@@ -80,7 +165,7 @@ async function setupSettledMessage({
     },
     {
       where: {
-        id: agentMessage.agentMessageId,
+        id: agentMessageModelId,
         workspaceId: workspace.id,
       },
     }
@@ -133,6 +218,71 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       ],
       user: { id: context.auth.getNonNullableUser().sId },
       workspaceId: context.workspace.sId,
+    });
+  });
+
+  it("lists the full agent chain from the root to the direct parent", async () => {
+    const testContext = await createResourceTest({ role: "admin" });
+    const root = await createAgenticMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      depth: 0,
+      agentName: "Root agent",
+    });
+    const firstHandover = await appendHandoverMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      conversation: root.conversation,
+      rank: 2,
+      agenticOriginMessageId: root.agentMessage.sId,
+      agentName: "First handover agent",
+    });
+    const secondHandover = await appendHandoverMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      conversation: root.conversation,
+      rank: 4,
+      agenticOriginMessageId: firstHandover.agentMessage.sId,
+      agentName: "Second handover agent",
+    });
+    const thirdHandover = await appendHandoverMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      conversation: root.conversation,
+      rank: 6,
+      agenticOriginMessageId: secondHandover.agentMessage.sId,
+      agentName: "Third handover agent",
+    });
+    const directParent = await appendHandoverMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      conversation: root.conversation,
+      rank: 8,
+      agenticOriginMessageId: thirdHandover.agentMessage.sId,
+      agentName: "Direct parent agent",
+    });
+    const child = await setupSettledMessage({
+      testContext,
+      depth: 1,
+      agenticOriginMessageId: directParent.agentMessage.sId,
+      agentName: "Child agent",
+    });
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(child.auth, {
+      agentMessageId: child.agentMessage.sId,
+    });
+
+    expect(input?.agent).toMatchObject({
+      parent_ids: [
+        root.agent.sId,
+        firstHandover.agent.sId,
+        secondHandover.agent.sId,
+        thirdHandover.agent.sId,
+        directParent.agent.sId,
+      ],
+      direct_parent_id: directParent.agent.sId,
+      root_id: root.agent.sId,
+      depth: 1,
     });
   });
 
