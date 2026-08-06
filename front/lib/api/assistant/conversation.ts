@@ -158,8 +158,8 @@ import {
   ConversationError,
   isAgentMessageType,
   isPodConversation,
-  isSystemAuthoredUserMessage,
   isUserMessageType,
+  isUserMessageWithoutConcreteUser,
   UNRESUMABLE_AGENT_MESSAGE_STATUSES,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
@@ -1084,14 +1084,14 @@ function canAccessAgent(
 
 class UserMessageError extends Error {}
 
-// A system-authored message has no author to be, so nobody passes this. Testing
-// that first also stops an API key, which has no `auth.user()` either, from
-// matching null against null.
+// A message with no concrete user has no author to be, so nobody passes this.
+// Testing that first also stops an API key, which has no `auth.user()` either,
+// from matching null against null.
 function isUserMessageAuthor(
   auth: Authenticator,
   message: UserMessageType
 ): boolean {
-  if (isSystemAuthoredUserMessage(message)) {
+  if (isUserMessageWithoutConcreteUser(message)) {
     return false;
   }
 
@@ -1770,7 +1770,7 @@ export async function retryAgentMessage(
 
   // Retrying would replay the parent's server-set origin, which can carry free
   // usage.
-  if (isSystemAuthoredUserMessage(parentUserMessage)) {
+  if (isUserMessageWithoutConcreteUser(parentUserMessage)) {
     return new Err({
       status_code: 403,
       api_error: {
