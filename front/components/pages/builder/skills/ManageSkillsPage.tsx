@@ -52,6 +52,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  EmptyCTA,
+  EmptyCTAButton,
   FolderOpen,
   InfoCircle,
   ListSelect,
@@ -118,6 +120,7 @@ export function ManageSkillsPage() {
   const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
 
   const isSearchActive = !isEmptyString(skillSearch);
+  const isFilterActive = isSearchActive || availabilityFilter !== "all";
 
   const activeTab = useMemo<SkillManagerTabType>(() => {
     if (
@@ -360,6 +363,35 @@ export function ManageSkillsPage() {
   useSetPageTitle("Dust - Manage Skills");
   useSetNavChildren(navChildren);
 
+  const isActiveTabEmpty = skillsByTab[activeTab].length === 0;
+
+  const renderEmptyTabState = () => {
+    if (isFilterActive) {
+      return (
+        <EmptyCTA
+          message="No skill matches your search or filters."
+          action={null}
+        />
+      );
+    }
+    // Nothing to create into from the archived tab.
+    if (activeTab === "archived" || !canCreateSkill) {
+      return null;
+    }
+    return (
+      <EmptyCTA
+        action={
+          <EmptyCTAButton
+            label="Create a skill"
+            icon={Plus}
+            variant="primary"
+            href={getSkillBuilderRoute(owner.sId, "new")}
+          />
+        }
+      />
+    );
+  };
+
   return (
     <>
       <SkillDetailsSheet
@@ -521,17 +553,21 @@ export function ManageSkillsPage() {
                       user={user}
                     />
                   )}
-                <SkillsTable
-                  owner={owner}
-                  skills={skillsByTab[activeTab]}
-                  onSkillClick={handleSkillSelect}
-                  onAgentClick={setAgentId}
-                  onUsedBySkillClick={handleUsedBySkillSelect}
-                  canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
-                  {...(isBatchEditionAvailable && isBatchEditing
-                    ? { rowSelection, setRowSelection }
-                    : {})}
-                />
+                {isActiveTabEmpty ? (
+                  <div className="pt-2">{renderEmptyTabState()}</div>
+                ) : (
+                  <SkillsTable
+                    owner={owner}
+                    skills={skillsByTab[activeTab]}
+                    onSkillClick={handleSkillSelect}
+                    onAgentClick={setAgentId}
+                    onUsedBySkillClick={handleUsedBySkillSelect}
+                    canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
+                    {...(isBatchEditionAvailable && isBatchEditing
+                      ? { rowSelection, setRowSelection }
+                      : {})}
+                  />
+                )}
               </>
             )}
           </div>

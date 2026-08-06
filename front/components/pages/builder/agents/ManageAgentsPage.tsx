@@ -31,6 +31,7 @@ import {
   Button,
   Chip,
   ContactsRobot,
+  EmptyCTA,
   ListSelect,
   Page,
   Plus,
@@ -93,6 +94,8 @@ export function ManageAgentsPage() {
 
   const canCreateAgent = hasPermission("create", "agent");
   const isSearchActive = assistantSearch.trim() !== "";
+  const isFilterActive =
+    isSearchActive || selectedTags.length > 0 || selectedModels.length > 0;
 
   const activeTab = useMemo(() => {
     return selectedTab && isValidTab(selectedTab) ? selectedTab : "all_custom";
@@ -392,7 +395,14 @@ export function ManageAgentsPage() {
               <div className="mt-8 flex justify-center">
                 <Spinner size="lg" />
               </div>
-            ) : activeTab && agentsByTab[activeTab] ? (
+            ) : isFilterActive && agentsByTab[activeTab].length === 0 ? (
+              <div className="pt-2">
+                <EmptyCTA
+                  message="No agent matches your search or filters."
+                  action={null}
+                />
+              </div>
+            ) : agentsByTab[activeTab].length > 0 ? (
               <AssistantsTable
                 isBatchEdit={isBatchEdit}
                 selection={selection}
@@ -408,7 +418,6 @@ export function ManageAgentsPage() {
                 mutateAgentConfigurations={mutateAgentConfigurations}
               />
             ) : (
-              !assistantSearch &&
               canCreateAgent && (
                 <div className="pt-2">
                   <EmptyCallToAction
