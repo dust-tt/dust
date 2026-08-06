@@ -10,7 +10,7 @@ use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 
 mod build;
-mod envelope;
+pub(crate) mod envelope;
 mod get;
 mod run;
 

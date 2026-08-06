@@ -216,6 +216,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Return Pod function results in the invocation response when the invocation settles before it returns",
     stage: "dust_only",
   },
+  sandbox_function_warm_channel: {
+    description:
+      "Run fast Pod function invocations through the pod's poller instead of the sandbox exec API when the pod is listening",
+    stage: "dust_only",
+  },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",

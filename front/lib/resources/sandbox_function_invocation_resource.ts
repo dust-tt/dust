@@ -13,10 +13,19 @@ import {
   generateSandboxFunctionInvocationToken,
 } from "@app/lib/api/sandbox/access_tokens";
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
+import { recordSandboxFunctionRouting } from "@app/lib/api/sandbox/instrumentation";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { awaitSandboxFunctionInvocationOutcome } from "@app/lib/api/sandbox_functions/await_invocation";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import {
+  claimInvocationForExec,
+  discardPollerJob,
+  isPollerChannelOpen,
+  POLLER_MAX_JOB_TIMEOUT_MS,
+  publishPollerJob,
+} from "@app/lib/api/sandbox_functions/poller_channel";
 import { parseStdoutResultEnvelope } from "@app/lib/api/sandbox_functions/result_delivery";
 import {
   authorizeSandboxFunctionInvocation,
@@ -28,6 +37,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -50,6 +60,7 @@ import type {
   SandboxFunctionCallError,
   SandboxFunctionInvocationContext,
   SandboxFunctionInvocationOrigin,
+  SandboxFunctionInvocationOutcome,
   SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
@@ -72,6 +83,41 @@ const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
 // than handed to the workflow, since by then the function may already have written to pod state
 // and re-running it would repeat those writes.
 const SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS = 10 * 1000;
+// How long a dispatched job has to settle before the exec fallback decides nobody took it. Named
+// for the handover rather than for pickup: it is an outcome deadline, and a pod that has the
+// invocation keeps it past this point. Only paid when a pod that looked reachable does not answer.
+const WARM_CHANNEL_HANDOVER_TIMEOUT_MS = 1000;
+// The ceiling handed to the poller. Clamped rather than asserted, since raising the inline ceiling
+// is an anticipated change and a job asking for more than the channel allows is refused at
+// publish, which would turn every warm invocation into a failure.
+const WARM_CHANNEL_JOB_TIMEOUT_MS = Math.min(
+  SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS,
+  POLLER_MAX_JOB_TIMEOUT_MS
+);
+// How much longer than the job ceiling front waits before calling a pod abandoned. Covers the
+// claim round trip and the result callback, which sit outside the pod's own deadline: without it
+// a function that legitimately runs to its ceiling gets failed as abandoned, making the warm path
+// less tolerant than the exec fallback it replaces.
+const WARM_CHANNEL_RESULT_GRACE_MS = 2000;
+// Past this an input goes down the exec API's stdin rather than through Redis. A Frame poll sends
+// orders of magnitude less than this.
+export const WARM_CHANNEL_MAX_INPUT_BYTES = 256 * 1024;
+
+// Which transport ran an invocation, and why. One shape for every routing decision so the warm
+// share is a ratio over a single log line rather than a guess across several.
+type SandboxFunctionInvocationRoute = "channel" | "exec";
+type SandboxFunctionRoutingReason =
+  | "channel_disabled"
+  | "stdout_delivery_disabled"
+  | "oversized_input"
+  | "no_presence"
+  | "pickup_timeout"
+  | "settled"
+  | "pod_abandoned";
+
+type PodPollerRouting =
+  | { ranOnPod: false }
+  | { ranOnPod: true; outcome: SandboxFunctionInvocationOutcome | null };
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 // Caps on runner output surfaced on failure: a small head for the error forwarded to the agent,
 // a larger one for the log fields.
@@ -224,6 +270,16 @@ function buildSandboxFunctionRunCommand(
   }
   return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
 }
+
+// Everything the runner needs, resolved once and usable by either transport.
+type PreparedSandboxFunctionRun = {
+  sandbox: SandboxResource;
+  command: string;
+  execToken: string;
+  stdoutResultDelivery: boolean;
+  inputEnvelope: string;
+  envVars: Record<string, string>;
+};
 
 /**
  * Whether an invocation runs inline, in the request that creates it, instead of through the
@@ -486,9 +542,319 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
    * free to restart the invocation durably. And execution is bounded by a much shorter timeout, so
    * a function that never returns cannot hold the request open for the workflow's ceiling.
    */
+  /**
+   * Everything needed to run this invocation on its pod, resolved once.
+   *
+   * Shared by the two transports that run the same runner the same way: the sandbox exec API, and
+   * the pod's poller. Building it in one place is what keeps them from drifting, since a warm
+   * invocation that ran with a different environment or a different envelope than the exec
+   * fallback would be a bug nobody sees until the fallback fires.
+   */
+  private async prepareRun(
+    auth: Authenticator,
+    { requireRunning }: { requireRunning: boolean }
+  ): Promise<Result<PreparedSandboxFunctionRun, Error>> {
+    const { sandboxFunction } = this;
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+      return new Err(
+        new SandboxFunctionInvocationError(
+          "This Pod Function belongs to another workspace."
+        )
+      );
+    }
+    const persistedFunction = await SandboxFunctionModel.findOne({
+      where: {
+        id: this.sandboxFunctionId,
+        workspaceId: this.workspaceId,
+      },
+    });
+    if (!persistedFunction) {
+      return new Err(new Error("The Pod Function no longer exists."));
+    }
+    const authorization = await authorizeSandboxFunctionInvocation(auth, {
+      userIdentity: persistedFunction.userIdentity,
+      origin: this.origin ?? "delegated",
+    });
+    if (!authorization.authorized) {
+      return new Err(
+        new SandboxFunctionInvocationError(authorization.errorMessage)
+      );
+    }
+
+    const ensureResult = await ensurePodSandboxReady(
+      auth,
+      sandboxFunction.space,
+      { requireRunning }
+    );
+    if (ensureResult.isErr()) {
+      return ensureResult;
+    }
+
+    await ensureResult.value.sandbox.updateLastActivityAt();
+
+    const sandbox = ensureResult.value.sandbox;
+    const stdoutResultDelivery = await hasFeatureFlag(
+      auth,
+      "sandbox_function_stdout_result"
+    );
+
+    const execId = generateExecId();
+    // The mode, not the transport, decides this: a fast function is denied tools however it
+    // ends up running, so it behaves the same whether it ran inline or through the workflow.
+    // Read from the persisted row rather than the in-memory copy, which may predate a
+    // re-publish, since this one gates tool access.
+    const noTools = persistedFunction.executionMode === "fast";
+    const token = await generateSandboxFunctionInvocationToken(auth, {
+      sandbox,
+      sandboxFunction,
+      invocationId: this.sId,
+      execId,
+      noTools,
+    });
+
+    const command = buildSandboxFunctionRunCommand(sandboxFunction.slug, {
+      stdoutResultDelivery,
+    });
+    const inputEnvelope = {
+      method: "POST",
+      url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${this.sId}`,
+      headers: {
+        "content-type": "application/json",
+        "x-dust-sandbox-function-id": sandboxFunction.sId,
+        "x-dust-sandbox-function-invocation-id": this.sId,
+      },
+      ...(this.input === undefined ? {} : { body: JSON.stringify(this.input) }),
+      encoding: "utf8",
+    };
+    const userIdentity = getSandboxFunctionUserIdentity(
+      auth,
+      authorization.user,
+      this
+    );
+
+    return new Ok({
+      sandbox,
+      command,
+      execToken: token,
+      stdoutResultDelivery,
+      inputEnvelope: JSON.stringify(inputEnvelope),
+      envVars: {
+        DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
+        DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(
+          sandboxFunction.space.sId
+        ),
+        ...podDatabaseExecEnvVars(),
+        DUST_SANDBOX_TOKEN: token,
+        // Set this for every invocation so userless calls cannot inherit a sandbox-level value.
+        [POD_USER_IDENTITY_ENV]: userIdentity
+          ? JSON.stringify(userIdentity)
+          : "",
+      },
+    });
+  }
+
+  /**
+   * Try to run this invocation on the pod's poller instead of through the sandbox exec API.
+   *
+   * `ranOnPod: false` means the caller should run it itself, which is safe because either no job
+   * was dispatched or the exec claim was taken first. Everything here degrades to that: routing is
+   * an optimization, and a Redis blip must make an invocation slower, never failed.
+   */
+  private async tryRunOnPodPoller(
+    auth: Authenticator,
+    { prepared }: { prepared: PreparedSandboxFunctionRun }
+  ): Promise<PodPollerRouting> {
+    const { sandboxFunction } = this;
+    const dispatchedAtMs = Date.now();
+    // Whether a job is live in Redis, and so whether a pod could still pick this up.
+    let dispatched = false;
+    const logRouting = (
+      route: SandboxFunctionInvocationRoute,
+      reason: SandboxFunctionRoutingReason
+    ) => {
+      const durationMs = Date.now() - dispatchedAtMs;
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          sandboxFunctionId: sandboxFunction.sId,
+          slug: sandboxFunction.slug,
+          invocationId: this.sId,
+          route,
+          reason,
+          durationMs,
+        },
+        "Routed a fast Pod function invocation"
+      );
+      recordSandboxFunctionRouting({ route, reason, durationMs });
+    };
+
+    try {
+      if (!(await hasFeatureFlag(auth, "sandbox_function_warm_channel"))) {
+        logRouting("exec", "channel_disabled");
+        return { ranOnPod: false };
+      }
+      // Both transports have to agree on how a result comes back, and the pod's poller only knows
+      // how to read the runner's stdout. Rather than run one transport on stdout and the other on
+      // the in-sandbox callback, the channel waits for the delivery it matches.
+      if (!prepared.stdoutResultDelivery) {
+        logRouting("exec", "stdout_delivery_disabled");
+        return { ranOnPod: false };
+      }
+      // Checked before touching Redis since it costs nothing. The job travels through Redis, which
+      // is not where a large payload belongs, and an input this size is far outside what a Frame
+      // poll sends.
+      if (
+        Buffer.byteLength(prepared.inputEnvelope, "utf8") >
+        WARM_CHANNEL_MAX_INPUT_BYTES
+      ) {
+        logRouting("exec", "oversized_input");
+        return { ranOnPod: false };
+      }
+      if (!(await isPollerChannelOpen({ sandboxId: prepared.sandbox.sId }))) {
+        logRouting("exec", "no_presence");
+        return { ranOnPod: false };
+      }
+
+      await publishPollerJob(
+        {
+          invocationId: this.sId,
+          functionId: sandboxFunction.sId,
+          slug: sandboxFunction.slug,
+          execToken: prepared.execToken,
+          inputEnvelope: prepared.inputEnvelope,
+          envVars: prepared.envVars,
+          timeoutMs: WARM_CHANNEL_JOB_TIMEOUT_MS,
+        },
+        { sandboxId: prepared.sandbox.sId }
+      );
+      // From here a pod may pick this up at any moment, so failing over to the exec path is no
+      // longer free: it needs the claim first.
+      dispatched = true;
+
+      // Waiting for the outcome rather than for the pickup keeps the warm path at its natural
+      // latency: a job the pod answers in 150ms returns in 150ms, and only a pod that stays silent
+      // pays this deadline.
+      const outcome = await awaitSandboxFunctionInvocationOutcome({
+        invocationId: this.sId,
+        timeoutMs: WARM_CHANNEL_HANDOVER_TIMEOUT_MS,
+      });
+      if (outcome) {
+        await this.reloadStatus();
+        logRouting("channel", "settled");
+        return { ranOnPod: true, outcome };
+      }
+
+      // No outcome yet: either the pod took it and is still working, or nothing answered. Taking
+      // the claim settles which, and losing the race is the pod telling us it has this one.
+      const claimedForExec = await claimInvocationForExec({
+        invocationId: this.sId,
+      });
+      if (claimedForExec) {
+        // The pod never picked it up. Drop the job so a poller reconnecting later cannot find work
+        // the exec path is about to do, and so the invocation's credential stops sitting in Redis.
+        await discardPollerJob({ invocationId: this.sId });
+        logRouting("exec", "pickup_timeout");
+        return { ranOnPod: false };
+      }
+
+      // The pod owns it. Nothing else does, so front has to be the one holding it to a deadline:
+      // a pod that claims and then dies would otherwise leave the invocation created forever, and
+      // every caller waiting on it would burn its own ceiling.
+      const settled = await awaitSandboxFunctionInvocationOutcome({
+        invocationId: this.sId,
+        timeoutMs: WARM_CHANNEL_JOB_TIMEOUT_MS + WARM_CHANNEL_RESULT_GRACE_MS,
+      });
+      await this.reloadStatus();
+      if (settled) {
+        logRouting("channel", "settled");
+        return { ranOnPod: true, outcome: settled };
+      }
+
+      logRouting("channel", "pod_abandoned");
+      await this.fail(
+        new SandboxFunctionInvocationError(
+          "The Pod stopped responding while running this function."
+        )
+      );
+      return { ranOnPod: true, outcome: null };
+    } catch (error) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          sandboxFunctionId: sandboxFunction.sId,
+          invocationId: this.sId,
+          dispatched,
+          error: normalizeError(error).message,
+        },
+        "Failed to route a fast Pod function invocation to the pod"
+      );
+      // Nothing was dispatched, so routing was just an optimization that did not pay off and the
+      // exec path can still run this.
+      if (!dispatched) {
+        return { ranOnPod: false };
+      }
+      // A job is live. Handing this to the exec path without the claim would let a pod that picks
+      // the job up run the same function a second time, against the same pod state.
+      return this.abandonDispatchedJob(auth);
+    }
+  }
+
+  /**
+   * Decide what to do with an invocation whose routing failed after its job was dispatched.
+   *
+   * Takes the claim so the exec path can run it, and if the claim cannot be taken the pod has it
+   * and the exec path must not. Either way the invocation ends up owned by exactly one runner.
+   */
+  private async abandonDispatchedJob(
+    auth: Authenticator
+  ): Promise<PodPollerRouting> {
+    try {
+      const claimedForExec = await claimInvocationForExec({
+        invocationId: this.sId,
+      });
+      if (claimedForExec) {
+        await discardPollerJob({ invocationId: this.sId });
+        return { ranOnPod: false };
+      }
+    } catch (error) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          invocationId: this.sId,
+          error: normalizeError(error).message,
+        },
+        "Failed to claim a dispatched Pod function invocation for the exec path"
+      );
+    }
+
+    // The pod may be running it and nothing here can tell. Failing the invocation is the only
+    // outcome that cannot run it twice, and a caller that gets an error is better than one that
+    // waits out its ceiling for a result nobody is coming to deliver.
+    await this.fail(
+      new SandboxFunctionInvocationError(
+        "This Pod function invocation could not be routed to the Pod."
+      )
+    );
+    return { ranOnPod: true, outcome: null };
+  }
+
+  // The pod settles an invocation from its own request, in another process, so the copy this
+  // request holds still says `created`. Re-read it so both transports hand back the same thing.
+  private async reloadStatus(): Promise<void> {
+    const row = await this.model.findOne({
+      where: { id: this.id, workspaceId: this.workspaceId },
+    });
+    if (row) {
+      Object.assign(this, row.get());
+    }
+  }
+
   async execute(
     auth: Authenticator,
-    { inline = false }: { inline?: boolean } = {}
+    {
+      inline = false,
+      prepared,
+    }: { inline?: boolean; prepared?: PreparedSandboxFunctionRun } = {}
   ): Promise<Result<undefined, Error>> {
     if (this.status !== "created") {
       logger.info(
@@ -505,100 +871,22 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     try {
       const { sandboxFunction } = this;
-      if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
-        return new Err(
-          new SandboxFunctionInvocationError(
-            "This Pod Function belongs to another workspace."
-          )
-        );
+      // Reused when the caller already prepared the run to try the pod's poller first: preparing
+      // twice would mint a second token and re-authorize for no reason.
+      const prepareResult =
+        prepared !== undefined
+          ? new Ok(prepared)
+          : await this.prepareRun(auth, { requireRunning: inline });
+      if (prepareResult.isErr()) {
+        return prepareResult;
       }
-      const persistedFunction = await SandboxFunctionModel.findOne({
-        where: {
-          id: this.sandboxFunctionId,
-          workspaceId: this.workspaceId,
-        },
-      });
-      if (!persistedFunction) {
-        return new Err(new Error("The Pod Function no longer exists."));
-      }
-      const authorization = await authorizeSandboxFunctionInvocation(auth, {
-        userIdentity: persistedFunction.userIdentity,
-        origin: this.origin ?? "delegated",
-      });
-      if (!authorization.authorized) {
-        return new Err(
-          new SandboxFunctionInvocationError(authorization.errorMessage)
-        );
-      }
-
-      const ensureResult = await ensurePodSandboxReady(
-        auth,
-        sandboxFunction.space,
-        { requireRunning: inline }
-      );
-      if (ensureResult.isErr()) {
-        return ensureResult;
-      }
-
-      await ensureResult.value.sandbox.updateLastActivityAt();
-
-      const sandbox = ensureResult.value.sandbox;
-      const stdoutResultDelivery = await hasFeatureFlag(
-        auth,
-        "sandbox_function_stdout_result"
-      );
-
-      const execId = generateExecId();
-      // The mode, not the transport, decides this: a fast function is denied tools however it
-      // ends up running, so it behaves the same whether it ran inline or through the workflow.
-      // Read from the persisted row rather than the in-memory copy, which may predate a
-      // re-publish, since this one gates tool access.
-      const noTools = persistedFunction.executionMode === "fast";
-      const token = await generateSandboxFunctionInvocationToken(auth, {
-        sandbox,
-        sandboxFunction,
-        invocationId: this.sId,
-        execId,
-        noTools,
-      });
-
-      const command = buildSandboxFunctionRunCommand(sandboxFunction.slug, {
-        stdoutResultDelivery,
-      });
-      const inputEnvelope = {
-        method: "POST",
-        url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${this.sId}`,
-        headers: {
-          "content-type": "application/json",
-          "x-dust-sandbox-function-id": sandboxFunction.sId,
-          "x-dust-sandbox-function-invocation-id": this.sId,
-        },
-        ...(this.input === undefined
-          ? {}
-          : { body: JSON.stringify(this.input) }),
-        encoding: "utf8",
-      };
-      const userIdentity = getSandboxFunctionUserIdentity(
-        auth,
-        authorization.user,
-        this
-      );
+      const { sandbox, command, envVars, inputEnvelope, stdoutResultDelivery } =
+        prepareResult.value;
 
       const execResult = await sandbox.exec(auth, command, {
         workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
-        envVars: {
-          DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
-          DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(
-            sandboxFunction.space.sId
-          ),
-          ...podDatabaseExecEnvVars(),
-          DUST_SANDBOX_TOKEN: token,
-          // Set this for every invocation so userless calls cannot inherit a sandbox-level value.
-          [POD_USER_IDENTITY_ENV]: userIdentity
-            ? JSON.stringify(userIdentity)
-            : "",
-        },
-        stdin: JSON.stringify(inputEnvelope),
+        envVars,
+        stdin: inputEnvelope,
         timeoutMs: inline
           ? SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS
           : SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
@@ -853,7 +1141,33 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
 
     if (await shouldExecuteInline(auth, sandboxFunction)) {
-      const executionResult = await invocation.execute(auth, { inline: true });
+      // Everything from here to the exec used to run inside `execute`'s own try, which turned a
+      // throw into a failed invocation rather than a 500 with a row stuck at `created`. Preparing
+      // the run moved out of it, so the guard has to move with it.
+      const executionResult = await (async (): Promise<
+        Result<undefined, Error>
+      > => {
+        try {
+          const prepareResult = await invocation.prepareRun(auth, {
+            requireRunning: true,
+          });
+          if (prepareResult.isErr()) {
+            return prepareResult;
+          }
+          const routing = await invocation.tryRunOnPodPoller(auth, {
+            prepared: prepareResult.value,
+          });
+          if (routing.ranOnPod) {
+            return new Ok(undefined);
+          }
+          return invocation.execute(auth, {
+            inline: true,
+            prepared: prepareResult.value,
+          });
+        } catch (error) {
+          return new Err(normalizeError(error));
+        }
+      })();
       if (executionResult.isOk()) {
         return new Ok(invocation);
       }

@@ -2,7 +2,14 @@ import { formatSandboxFunctionInvocations } from "@app/lib/api/actions/servers/s
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { awaitSandboxFunctionInvocationOutcome } from "@app/lib/api/sandbox_functions/await_invocation";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import {
+  claimInvocationForExec,
+  discardPollerJob,
+  isPollerChannelOpen,
+  publishPollerJob,
+} from "@app/lib/api/sandbox_functions/poller_channel";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -74,6 +81,37 @@ vi.mock("@app/lib/auth", async (importOriginal) => {
     hasFeatureFlag: vi.fn(),
   };
 });
+
+vi.mock(
+  "@app/lib/api/sandbox_functions/poller_channel",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/sandbox_functions/poller_channel")
+      >();
+    return {
+      ...actual,
+      isPollerChannelOpen: vi.fn(async () => false),
+      publishPollerJob: vi.fn(async () => undefined),
+      claimInvocationForExec: vi.fn(async () => true),
+      discardPollerJob: vi.fn(async () => undefined),
+    };
+  }
+);
+
+vi.mock(
+  "@app/lib/api/sandbox_functions/await_invocation",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/sandbox_functions/await_invocation")
+      >();
+    return {
+      ...actual,
+      awaitSandboxFunctionInvocationOutcome: vi.fn(async () => null),
+    };
+  }
+);
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -1255,5 +1293,338 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     }
     expect(result.value.status).toBe("errored");
     expect(result.value.error?.message).toContain("boom");
+  });
+});
+
+describe("SandboxFunctionInvocationResource.createAndStartExecution warm channel", () => {
+  function enableFlags(flags: WhitelistableFeature[]) {
+    vi.mocked(hasFeatureFlag).mockImplementation(async (_auth, flag) =>
+      flags.includes(flag)
+    );
+  }
+
+  const WARM_FLAGS: WhitelistableFeature[] = [
+    "sandbox_function_fast_execution",
+    "sandbox_function_stdout_result",
+    "sandbox_function_warm_channel",
+  ];
+
+  async function setupWarmTest() {
+    const setup = await setupExecutionTest("optional", "delegated", "fast");
+    vi.mocked(ensurePodSandboxReady).mockResolvedValue(
+      new Ok({ sandbox: setup.sandbox, freshlyCreated: false })
+    );
+    const execSpy = vi.spyOn(setup.sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout:
+          JSON.stringify({
+            protocolVersion: 3,
+            delivery: "stdout",
+            outcome: { ok: true, output: { commentId: "exec" } },
+          }) + "\n",
+        stderr: "",
+      })
+    );
+    vi.mocked(isPollerChannelOpen).mockResolvedValue(true);
+    vi.mocked(publishPollerJob).mockResolvedValue(undefined);
+    vi.mocked(claimInvocationForExec).mockResolvedValue(true);
+    vi.mocked(discardPollerJob).mockResolvedValue(undefined);
+    vi.mocked(awaitSandboxFunctionInvocationOutcome).mockResolvedValue(null);
+    return { ...setup, execSpy };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("runs on the pod when it answers, without touching the exec API", async () => {
+    const { authenticator, sandboxFunction, sandbox, execSpy } =
+      await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+    vi.mocked(awaitSandboxFunctionInvocationOutcome).mockResolvedValue({
+      status: "succeeded",
+      result: { commentId: "pod" },
+    });
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: { input: { message: "hello" } } }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(publishPollerJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slug: "add-comment",
+        execToken: expect.any(String),
+      }),
+      { sandboxId: sandbox.sId }
+    );
+    // The whole point: the E2B exec round trip is what the warm path removes.
+    expect(execSpy).not.toHaveBeenCalled();
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("runs through the exec API when the pod is not listening", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+    vi.mocked(isPollerChannelOpen).mockResolvedValue(false);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(publishPollerJob).not.toHaveBeenCalled();
+    expect(execSpy).toHaveBeenCalledOnce();
+  });
+
+  it("falls back to the exec API when a pod that looked reachable never answers", async () => {
+    // Presence can be stale in both directions, so the pod looking reachable is never enough.
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(publishPollerJob).toHaveBeenCalledOnce();
+    expect(execSpy).toHaveBeenCalledOnce();
+    // Ordering is the whole guarantee: running before claiming would let a pod that answers late
+    // run the same invocation a second time.
+    expect(
+      vi.mocked(claimInvocationForExec).mock.invocationCallOrder[0]!
+    ).toBeLessThan(execSpy.mock.invocationCallOrder[0]!);
+    // The job is dropped so a poller reconnecting later cannot find work exec is about to do.
+    expect(discardPollerJob).toHaveBeenCalledWith({
+      invocationId: expect.any(String),
+    });
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.status).toBe("succeeded");
+  });
+
+  it("waits only the handover deadline before giving up on the pod", async () => {
+    const { authenticator, sandboxFunction } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+
+    await SandboxFunctionInvocationResource.createAndStartExecution(
+      authenticator,
+      { sandboxFunction, body: {} }
+    );
+
+    // Letting this default to the caller's own ceiling would make every fallback ten times slower.
+    expect(awaitSandboxFunctionInvocationOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ timeoutMs: 1000 })
+    );
+  });
+
+  it("holds the pod to the deadline it was given", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+    // The pod claimed and then died. Nothing else owns the invocation, so front has to fail it or
+    // every caller waiting on it burns its own ceiling.
+    vi.mocked(claimInvocationForExec).mockResolvedValue(false);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(execSpy).not.toHaveBeenCalled();
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.status).toBe("errored");
+    expect(result.value.error?.message).toContain("stopped responding");
+  });
+
+  it("runs through the exec API rather than failing when Redis is down", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+    // Routing is an optimization. A Redis blip has to make an invocation slower, never failed.
+    vi.mocked(isPollerChannelOpen).mockRejectedValue(
+      new Error("redis is down")
+    );
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(execSpy).toHaveBeenCalledOnce();
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.status).toBe("succeeded");
+  });
+
+  it("does not hand a dispatched invocation to the exec path without the claim", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+    // The job is already live and a pod can pick it up at any moment, so failing over to exec here
+    // would run the same function twice against the same pod state.
+    vi.mocked(claimInvocationForExec).mockRejectedValue(
+      new Error("redis is down")
+    );
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(publishPollerJob).toHaveBeenCalledOnce();
+    expect(execSpy).not.toHaveBeenCalled();
+    if (result.isErr()) {
+      return;
+    }
+    // Failing is the only outcome that cannot run it twice, and beats a caller waiting out its
+    // ceiling for a result nobody will deliver.
+    expect(result.value.status).toBe("errored");
+  });
+
+  it("takes the claim before falling back when routing fails after dispatch", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+    vi.mocked(awaitSandboxFunctionInvocationOutcome).mockRejectedValueOnce(
+      new Error("redis is down")
+    );
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(claimInvocationForExec).toHaveBeenCalled();
+    expect(discardPollerJob).toHaveBeenCalled();
+    expect(execSpy).toHaveBeenCalledOnce();
+  });
+
+  it("settles the invocation when preparing the run throws", async () => {
+    const { authenticator, sandboxFunction } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+    vi.mocked(ensurePodSandboxReady).mockRejectedValue(
+      new Error("the provider is unreachable")
+    );
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    // Left unguarded this is a 500 with the row stuck at created, and every listener on the
+    // invocation's stream waits out its ceiling for an event that never comes.
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.status).toBe("errored");
+  });
+
+  it("stays on the exec API while results still come back through the callback", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    // The pod's poller only knows how to read the runner's stdout, so the channel waits for the
+    // delivery mode it matches rather than running the two transports differently.
+    enableFlags([
+      "sandbox_function_fast_execution",
+      "sandbox_function_warm_channel",
+    ]);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(publishPollerJob).not.toHaveBeenCalled();
+    expect(execSpy).toHaveBeenCalledOnce();
+  });
+
+  it("leaves a slow pod alone rather than running the invocation twice", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+    // The pod claimed and is still working: losing the claim race is how the fallback finds out.
+    vi.mocked(claimInvocationForExec).mockResolvedValue(false);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(execSpy).not.toHaveBeenCalled();
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("sends an oversized input through the exec API rather than Redis", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        {
+          sandboxFunction,
+          body: { input: { message: "x".repeat(300 * 1024) } },
+        }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(publishPollerJob).not.toHaveBeenCalled();
+    expect(execSpy).toHaveBeenCalledOnce();
+  });
+
+  it("does not use the channel when the flag is off", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags([
+      "sandbox_function_fast_execution",
+      "sandbox_function_stdout_result",
+    ]);
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: {} }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(isPollerChannelOpen).not.toHaveBeenCalled();
+    expect(publishPollerJob).not.toHaveBeenCalled();
+    expect(execSpy).toHaveBeenCalledOnce();
+  });
+
+  it("dispatches the same run the exec fallback would have made", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupWarmTest();
+    enableFlags(WARM_FLAGS);
+
+    await SandboxFunctionInvocationResource.createAndStartExecution(
+      authenticator,
+      { sandboxFunction, body: { input: { message: "hello" } } }
+    );
+
+    // Both transports run the same runner. If the job and the exec differed, the difference would
+    // only ever show up when the fallback fired.
+    const [job] = vi.mocked(publishPollerJob).mock.calls[0]!;
+    const [, , execOptions] = execSpy.mock.calls[0]!;
+    expect(job.envVars).toEqual(execOptions?.envVars);
+    expect(job.inputEnvelope).toEqual(execOptions?.stdin);
   });
 });
