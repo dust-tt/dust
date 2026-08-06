@@ -1105,7 +1105,7 @@ export function AgentSidebarMenu({
                     canCreateAgent ? (
                       <div
                         ref={createAgentButtonRef}
-                        className="absolute right-2 top-1.5"
+                        className="absolute right-2 top-1.5 transition-opacity [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 has-[[data-state=open]]:opacity-100"
                       >
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
@@ -1189,7 +1189,7 @@ export function AgentSidebarMenu({
                   )}
                   moreMenu={
                     canCreateSkill ? (
-                      <div className="absolute right-2 top-1.5">
+                      <div className="absolute right-2 top-1.5 transition-opacity [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 has-[[data-state=open]]:opacity-100">
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button
