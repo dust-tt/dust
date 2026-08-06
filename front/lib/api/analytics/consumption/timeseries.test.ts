@@ -129,34 +129,7 @@ describe("fetchConsumptionTimeseries", () => {
     ]);
   });
 
-  it("flags the bucket in progress and leaves future buckets alone", async () => {
-    const { auth, period } = await setup();
-    mockBuckets([
-      dayBucket(0, 2_000_000),
-      dayBucket(1, 1_500_000),
-      dayBucket(2, 500_000), // Today, still filling.
-      dayBucket(3, 0), // Not happened yet.
-    ]);
-
-    const result = await fetchConsumptionTimeseries(auth, {
-      period,
-      granularity: "day",
-      mode: "daily",
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (!result.isOk()) {
-      return;
-    }
-    expect(result.value.points.map((point) => point.isPartial)).toEqual([
-      false,
-      false,
-      true,
-      false,
-    ]);
-  });
-
-  it("requests buckets through the end of the period, not through now", async () => {
+  it("stops the histogram at the present when the period runs into the future", async () => {
     const { auth, period } = await setup();
     mockBuckets([dayBucket(0, 1_000_000)]);
 
@@ -172,10 +145,32 @@ describe("fetchConsumptionTimeseries", () => {
       calendar_interval: "day",
       time_zone: "UTC",
       min_doc_count: 0,
-      // The window is half-open, so the last instant covered is one ms short of
-      // the end — an inclusive bound would open an empty extra bucket.
-      extended_bounds: { min: PERIOD_START_MS, max: PERIOD_END_MS - 1 },
+      // A cycle ends in the future; without the clamp min_doc_count: 0 would
+      // manufacture an empty bucket per remaining day of the month.
+      extended_bounds: { min: PERIOD_START_MS, max: NOW_MS },
     });
+  });
+
+  it("bounds on the period's end once the period is over", async () => {
+    const { auth } = await setup();
+    const endedPeriodEndMs = Date.UTC(2026, 6, 1);
+    mockBuckets([dayBucket(0, 1_000_000)]);
+
+    await fetchConsumptionTimeseries(auth, {
+      period: {
+        startDate: new Date(Date.UTC(2026, 5, 1)).toISOString(),
+        endDate: new Date(endedPeriodEndMs).toISOString(),
+      },
+      granularity: "day",
+      mode: "daily",
+    });
+
+    const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    // The period is half-open, so the last instant covered is one ms short of
+    // its end — an inclusive bound would open an empty extra bucket.
+    expect(
+      options?.aggregations?.by_date?.date_histogram?.extended_bounds?.max
+    ).toBe(endedPeriodEndMs - 1);
   });
 
   it("scopes the query to the requested dimension filters", async () => {
@@ -199,13 +194,13 @@ describe("fetchConsumptionTimeseries", () => {
     );
   });
 
-  it("accumulates up to the bucket in progress and drops future buckets", async () => {
+  it("carries the running total across every point in cumulative mode", async () => {
     const { auth, period } = await setup();
+    // Jul 1 through today, Jul 3 — the histogram never returns anything later.
     mockBuckets([
       dayBucket(0, 2_000_000),
       dayBucket(1, 1_500_000),
       dayBucket(2, 500_000),
-      dayBucket(3, 0),
     ]);
 
     const result = await fetchConsumptionTimeseries(auth, {
@@ -221,27 +216,6 @@ describe("fetchConsumptionTimeseries", () => {
     expect(
       result.value.points.map((point) => point.values[TOTAL_GROUP_KEY])
     ).toEqual([2, 3.5, 4]);
-  });
-
-  it("marks no bucket partial once the period is over", async () => {
-    const { auth } = await setup();
-    const endedPeriod: ConsumptionPeriod = {
-      startDate: new Date(Date.UTC(2026, 5, 1)).toISOString(),
-      endDate: new Date(Date.UTC(2026, 6, 1)).toISOString(),
-    };
-    mockBuckets([dayBucket(0, 1_000_000), dayBucket(1, 1_000_000)]);
-
-    const result = await fetchConsumptionTimeseries(auth, {
-      period: endedPeriod,
-      granularity: "day",
-      mode: "daily",
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (!result.isOk()) {
-      return;
-    }
-    expect(result.value.points.every((point) => !point.isPartial)).toBe(true);
   });
 
   describe("breakdown", () => {
@@ -435,7 +409,6 @@ describe("fetchConsumptionTimeseries", () => {
           }),
           groupDayBucket(1, 1_000_000, { agent1: 1_000_000 }),
           groupDayBucket(2, 2_000_000, { agent2: 2_000_000 }),
-          groupDayBucket(3, 0, {}),
         ],
       });
 
@@ -450,7 +423,7 @@ describe("fetchConsumptionTimeseries", () => {
       if (!result.isOk()) {
         return;
       }
-      // Future bucket dropped; each agent accumulates on its own.
+      // Each agent accumulates on its own.
       expect(result.value.points.map((point) => point.values)).toEqual([
         { agent1: 2, agent2: 1 },
         { agent1: 3, agent2: 1 },

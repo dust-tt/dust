@@ -38,15 +38,12 @@ import type { estypes } from "@elastic/elasticsearch";
  * chart. Filtered by any of the scope dimensions, optionally split along one of
  * them, aggregating whichever metric was asked for (gross credits by default).
  *
- * Two things this does that the agent-message timeseries does not:
- *
- * - Buckets run to the end of the period, not to now. When the period is a
- *   billing cycle its end is in the future, and the empty buckets are emitted
- *   so the chart's x axis covers the whole cycle from day one instead of
- *   growing as the cycle progresses.
- * - The bucket the present moment falls into is flagged partial. Its total is
- *   still growing, and without the flag the chart's last bar reads as a drop in
- *   consumption rather than as a period in progress.
+ * Points stop at the present. A billing cycle's period ends in the future, and
+ * the response carries that `period` so a chart can lay out the rest of the
+ * axis, but padding it with empty future buckets is a presentation choice and
+ * belongs to whoever is drawing. The last point is therefore always the bucket
+ * in progress, still filling — again something the caller can read off `period`
+ * without being told.
  */
 
 // Re-exported so server-side callers have one import for the whole timeseries
@@ -107,25 +104,6 @@ function metricValue(
   agg: estypes.AggregationsSumAggregate | undefined
 ): number {
   return (agg?.value ?? 0) / CONSUMPTION_METRIC_DEFINITIONS[metric].divisor;
-}
-
-// Index of the bucket the present moment falls into, or -1 when the period is
-// already over (every bucket is then complete).
-function findPartialBucketIndex(
-  buckets: DateBucket[],
-  period: ConsumptionPeriod
-): number {
-  const nowMs = Date.now();
-  if (nowMs >= new Date(period.endDate).getTime()) {
-    return -1;
-  }
-  let partialIndex = -1;
-  for (const [index, bucket] of buckets.entries()) {
-    if (bucket.key <= nowMs) {
-      partialIndex = index;
-    }
-  }
-  return partialIndex;
 }
 
 function accumulate(
@@ -224,6 +202,15 @@ export async function fetchConsumptionTimeseries(
     topGroupKeys = rankingResult.value;
   }
 
+  // Last instant the histogram covers. The period's own end is exclusive, and
+  // for a billing cycle it sits in the future — where `min_doc_count: 0` would
+  // manufacture an empty bucket per remaining day. Clamping to now keeps the
+  // series to what has actually happened.
+  const lastBucketMs = Math.min(
+    new Date(period.endDate).getTime() - 1,
+    Date.now()
+  );
+
   const result = await searchConsumptionAnalytics<never, TimeseriesAggs>(
     query,
     {
@@ -238,9 +225,7 @@ export async function fetchConsumptionTimeseries(
             min_doc_count: 0,
             extended_bounds: {
               min: new Date(period.startDate).getTime(),
-              // The window is half-open, so `endDate` itself belongs to the
-              // next bucket and must not open one of its own.
-              max: new Date(period.endDate).getTime() - 1,
+              max: lastBucketMs,
             },
           },
           aggs: {
@@ -274,17 +259,13 @@ export async function fetchConsumptionTimeseries(
   const buckets = bucketsToArray<DateBucket>(
     result.value.aggregations?.by_date?.buckets
   );
-  const partialIndex = findPartialBucketIndex(buckets, period);
 
   // No breakdown asked for, or nothing consumed at all: one total series.
   if (!breakdownBy || topGroupKeys.length === 0) {
-    const points: ConsumptionTimeseriesPoint[] = buckets.map(
-      (bucket, index) => ({
-        timestamp: bucket.key,
-        values: { [TOTAL_GROUP_KEY]: metricValue(metric, bucket.metric) },
-        isPartial: index === partialIndex,
-      })
-    );
+    const points: ConsumptionTimeseriesPoint[] = buckets.map((bucket) => ({
+      timestamp: bucket.key,
+      values: { [TOTAL_GROUP_KEY]: metricValue(metric, bucket.metric) },
+    }));
     return new Ok({
       period,
       granularity,
@@ -292,7 +273,7 @@ export async function fetchConsumptionTimeseries(
       metric,
       breakdownBy: breakdownBy ?? null,
       groups: [{ groupKey: TOTAL_GROUP_KEY, name: "Total" }],
-      points: finalizePoints(points, [TOTAL_GROUP_KEY], mode, partialIndex),
+      points: finalizePoints(points, [TOTAL_GROUP_KEY], mode),
     });
   }
 
@@ -341,7 +322,7 @@ export async function fetchConsumptionTimeseries(
     if (hasOthers) {
       values[OTHERS_GROUP_KEY] = bucketValues[index].otherValue;
     }
-    return { timestamp: bucket.key, values, isPartial: index === partialIndex };
+    return { timestamp: bucket.key, values };
   });
 
   const names = await resolveConsumptionGroupNames(
@@ -364,24 +345,14 @@ export async function fetchConsumptionTimeseries(
     metric,
     breakdownBy,
     groups,
-    points: finalizePoints(points, groupKeys, mode, partialIndex),
+    points: finalizePoints(points, groupKeys, mode),
   });
 }
 
-// A cumulative series stops at the bucket in progress: carrying the running
-// total across buckets that have not happened yet would draw a plateau that
-// reads as consumption having stopped.
 function finalizePoints(
   points: ConsumptionTimeseriesPoint[],
   groupKeys: string[],
-  mode: ConsumptionTimeseriesMode,
-  partialIndex: number
+  mode: ConsumptionTimeseriesMode
 ): ConsumptionTimeseriesPoint[] {
-  if (mode !== "cumulative") {
-    return points;
-  }
-  return accumulate(
-    partialIndex === -1 ? points : points.slice(0, partialIndex + 1),
-    groupKeys
-  );
+  return mode === "cumulative" ? accumulate(points, groupKeys) : points;
 }
