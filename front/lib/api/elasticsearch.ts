@@ -247,3 +247,34 @@ export async function searchAnalytics<
     search_after: options?.search_after,
   });
 }
+
+/**
+ * High-level consumption  analytics-specific interface.
+ * This interface enforces proper usage and makes it harder to accidentally
+ * query other Elasticsearch indexes from the front service.
+ */
+export async function searchConsumptionAnalytics<
+  TDocument extends ElasticsearchBaseDocument | never,
+  TAggregations = unknown,
+>(
+  query: estypes.QueryDslQueryContainer,
+  options?: {
+    aggregations?: Record<string, estypes.AggregationsAggregationContainer>;
+    size?: number;
+    from?: number;
+    sort?: estypes.Sort;
+    search_after?: estypes.SortResults;
+  }
+): Promise<
+  Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
+> {
+  return esSearch<TDocument, TAggregations>({
+    index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
+    query,
+    aggs: options?.aggregations,
+    size: options?.size,
+    from: options?.from,
+    sort: options?.sort,
+    search_after: options?.search_after,
+  });
+}
