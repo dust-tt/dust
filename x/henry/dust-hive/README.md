@@ -212,8 +212,8 @@ When you source the shell completion script, it also defines shorthand commands:
 | `dhw` | `dust-hive warm` |
 | `dhc` | `dust-hive cool` |
 | `dhx` | `dust-hive spawn -C -c "codex"` |
-| `dhb <query>` | Open the matched environment app URL in your browser |
-| `dhdb <query> [database] [psql-args...]` | Open `psql` on the matched environment database. Defaults to `dust_front`; `front`, `connectors`, and `core` complete to `dust_front`, `dust_connectors`, and `dust_api`. |
+| `dhb [query]` | Open the matched environment app URL in your browser. Defaults to the current hive when run from its worktree. |
+| `dhdb [query] [database] [psql-args...]` | Open `psql` on the matched environment database. Defaults to the current hive when run from its worktree and to `dust_front`; `front`, `connectors`, and `core` complete to `dust_front`, `dust_connectors`, and `dust_api`. |
 | `dhcd` | Change directory into the environment worktree |
 
 > **Tip**: When `NAME` is omitted, you'll get an interactive picker to select an environment.
