@@ -1,5 +1,8 @@
 import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
-import type { GetMCPServersResponseBody } from "@app/lib/api/mcp";
+import {
+  type GetMCPServersResponseBody,
+  isMCPServerViewNameConflict,
+} from "@app/lib/api/mcp";
 import {
   createInternalMCPServer,
   createRemoteMCPServer,
@@ -78,7 +81,7 @@ app.post("/", validate("json", PostBodySchema), async (ctx) => {
       : await createInternalMCPServer(auth, body);
 
   if (result.isErr()) {
-    if ("nameConflict" in result.error) {
+    if (isMCPServerViewNameConflict(result.error)) {
       const { nameConflict } = result.error;
       return ctx.json(
         {

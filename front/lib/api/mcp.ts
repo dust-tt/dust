@@ -43,6 +43,12 @@ export const DEFAULT_MCP_TOOL_RETRY_POLICY =
 
 export type MCPServerViewNameConflict = { nameConflict: string };
 
+export function isMCPServerViewNameConflict(
+  input: Error | MCPServerViewNameConflict
+): input is MCPServerViewNameConflict {
+  return !(input instanceof Error) && typeof input.nameConflict === "string";
+}
+
 export function getRetryPolicyFromToolConfiguration(
   toolConfiguration: MCPToolConfigurationType | LightMCPToolConfigurationType
 ): MCPToolRetryPolicyType {
