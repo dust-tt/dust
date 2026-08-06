@@ -30,6 +30,7 @@ import { getModelMakerDisplayName } from "@app/types/assistant/models/providers"
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
+  BarChart05,
   BarFull,
   BarHalf,
   BarLow,
@@ -47,7 +48,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
-  FilterFunnel01,
   Icon,
   Label,
   NavigationList,
@@ -325,19 +325,15 @@ export function UsageFilterPanel({
     <PopoverRoot open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
-          icon={FilterFunnel01}
-          size="xs"
+          icon={BarChart05}
+          label="Filters"
+          size="sm"
           variant="outline"
           isCounter={appliedSelectionCount > 0}
           counterValue={String(appliedSelectionCount)}
-          tooltip="Filter"
         />
       </PopoverTrigger>
-      <PopoverContent
-        fullWidth
-        align="start"
-        className="w-auto rounded-2xl p-0"
-      >
+      <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
         <div className="flex h-[420px] flex-row divide-x divide-border">
           <div className="flex h-full w-[170px] flex-col p-2">
             <NavigationListLabel
