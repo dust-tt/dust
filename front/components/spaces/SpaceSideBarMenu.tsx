@@ -157,14 +157,14 @@ export default function SpaceSideBarMenu({
         {/* pt-3 because the first section (Administration) has no header to
          * space it off the top of the sidebar. */}
         <div className="mx-sidebar-side-spacing pt-3">
-          {sortedGroupedSpaces.map(({ section, spaces }, index) => {
+          {sortedGroupedSpaces.map(({ section, spaces }) => {
             if (section === "restricted" && !spaces.length && !isAdmin) {
               return null;
             }
 
             return (
               <SpaceSection
-                key={`space-section-${index}`}
+                key={`space-section-${section}`}
                 section={section}
                 isAdmin={isAdmin}
                 openSpaceCreationModal={openSpaceCreationModal}
