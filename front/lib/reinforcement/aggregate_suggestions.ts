@@ -337,7 +337,6 @@ export async function createSkillSuggestionsConversation(
       url: null,
     },
     fileName: "suggestions.txt",
-    skipDataSourceIndexing: true,
   });
 
   if (contentFragmentRes.isErr()) {

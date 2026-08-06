@@ -13,11 +13,12 @@ import { getQueryTablesServer } from "@app/lib/api/assistant/jit/query_tables_v2
 import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedules_management";
 import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const ALWAYS_PREFETCHED_MCP_SERVERS: AutoInternalMCPServerNameType[] = [
@@ -90,6 +91,7 @@ async function getConditionalJITServers(
     conversation,
     attachments,
     autoInternalViews,
+    hasSandboxTools,
   }: {
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
@@ -98,6 +100,7 @@ async function getConditionalJITServers(
       AutoInternalMCPServerNameType,
       MCPServerViewResource
     >;
+    hasSandboxTools: boolean;
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
   const servers: (ServerSideMCPServerConfigurationType | null)[] = [];
@@ -132,13 +135,17 @@ async function getConditionalJITServers(
   );
   servers.push(conversationFilesServer);
 
-  const queryTablesServer = await getQueryTablesServer(
-    auth,
-    conversation,
-    attachments,
-    autoInternalViews
-  );
-  servers.push(queryTablesServer);
+  // With Computer available, tabular files are handled via the sandbox instead of
+  // the legacy conversation query_tables JIT server.
+  if (!hasSandboxTools) {
+    const queryTablesServer = await getQueryTablesServer(
+      auth,
+      conversation,
+      attachments,
+      autoInternalViews
+    );
+    servers.push(queryTablesServer);
+  }
 
   const folderSearchServers = await getFolderSearchServers(
     auth,
@@ -162,15 +169,21 @@ export async function getJITServers(
     attachments: ConversationAttachmentType[];
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
+  const featureFlags = await getFeatureFlags(auth);
+  const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
+
   const mcpServersToFetch = new Set<AutoInternalMCPServerNameType>(
     ALWAYS_PREFETCHED_MCP_SERVERS
   );
 
   if (attachments.length > 0) {
     mcpServersToFetch.add("conversation_files");
-    if (attachments.some((a) => a.isQueryable)) {
+
+    // If the computer feature is enabled, we rely on the computer to do the querying.
+    if (!hasSandboxTools && attachments.some((a) => a.isQueryable)) {
       mcpServersToFetch.add("query_tables_v2");
     }
+
     if (
       attachments.some(
         (a) => isContentNodeAttachmentType(a) && isSearchableFolder(a)
@@ -197,6 +210,7 @@ export async function getJITServers(
       conversation,
       attachments,
       autoInternalViews,
+      hasSandboxTools,
     }),
   ]);
 

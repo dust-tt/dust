@@ -46,11 +46,8 @@ export type FileUseCaseMetadata = {
   sourceProvider?: string;
   sourceIcon?: string;
   hideFromUser?: boolean;
-  // `skipDataSourceIndexing` means "do not write this file to Qdrant / data source"
-  // (audio/webm, pasted, Slack threads, Chrome captures, tool-output offloads).
   // `skipFileProcessing` means "do not run upload-time processing (Tika / resize / transcribe)";
   // only the original blob exists. Stamped together for sandbox-mounted raw delimited files.
-  skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
   // Which branding asset this file was uploaded for (workspace_branding use case only).
   asset?: string;

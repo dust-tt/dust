@@ -1,4 +1,3 @@
-import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
 import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import type {
   MCPToolConfigurationType,
@@ -308,7 +307,6 @@ export async function processToolResults(
                   conversationId: conversation.sId,
                 });
               }
-              await uploadFileToConversationDataSource({ auth, file });
             }
             return {
               content: {
@@ -479,8 +477,6 @@ export async function processToolResults(
           updatedAt: c.file.updatedAt.getTime(),
           isInProjectContext: c.file.useCase === "project_context",
           hidden: c.file.useCaseMetadata?.hideFromUser ?? false,
-          skipDataSourceIndexing:
-            c.file.useCaseMetadata?.skipDataSourceIndexing ?? false,
         } satisfies ActionGeneratedFileType;
       }
 

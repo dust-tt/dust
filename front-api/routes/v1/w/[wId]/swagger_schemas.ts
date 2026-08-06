@@ -472,9 +472,6 @@
  *           nullable: true
  *           description: Path of the plain-text sibling of this file inside the sandbox conversation mount (e.g. an audio transcript), when it has one.
  *           example: conversation/voice.processed.txt
- *         skipDataSourceIndexing:
- *           type: boolean
- *           description: Whether data source indexing was skipped for this file.
  *         skipFileProcessing:
  *           type: boolean
  *           description: Whether upload-time file processing was skipped.

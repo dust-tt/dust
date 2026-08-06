@@ -272,7 +272,6 @@ describe("conversation use case", () => {
         useCase: "conversation",
         useCaseMetadata: {
           conversationId: "conv-raw",
-          skipDataSourceIndexing: true,
           skipFileProcessing: true,
         },
       });
@@ -315,7 +314,6 @@ describe("skill_attachment use case", () => {
         useCase: "skill_attachment",
         useCaseMetadata: {
           skillId: "skl-test",
-          skipDataSourceIndexing: true,
           skipFileProcessing: true,
         },
       });

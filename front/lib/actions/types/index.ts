@@ -127,9 +127,6 @@ type ActionGeneratedFileBase = {
   createdAt?: number;
   updatedAt?: number;
   isInProjectContext?: boolean;
-  // True for files created by offloading oversized tool output to disk. These are never indexed in
-  // Qdrant and should not be flagged as searchable in the conversation render.
-  skipDataSourceIndexing?: boolean;
 };
 
 // File backed by a Dust FileResource: always a supported content type.

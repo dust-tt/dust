@@ -128,7 +128,6 @@ async function createConversationForAgentConfiguration({
         title: `Webhook body (source id: ${webhookRequest.webhookSourceId}, date: ${new Date().toISOString()})`,
       },
       fileName: `webhook_body_${webhookRequest.webhookSourceId}_${Date.now()}.json`,
-      skipDataSourceIndexing: true,
     });
 
     if (contentFragmentRes.isErr()) {

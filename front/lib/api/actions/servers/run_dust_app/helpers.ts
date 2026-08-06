@@ -1,7 +1,4 @@
-import {
-  generateCSVFileAndSnippet,
-  uploadFileToConversationDataSource,
-} from "@app/lib/actions/action_file_helpers";
+import { generateCSVFileAndSnippet } from "@app/lib/actions/action_file_helpers";
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
 import type {
   LightServerSideMCPToolConfigurationType,
@@ -221,8 +218,6 @@ export async function processDustFileOutput(
       conversationId: conversation.sId,
       results: sanitizedOutput.__dust_file?.content ?? [],
     });
-
-    await uploadFileToConversationDataSource({ auth, file: csvFile });
 
     content.push({
       type: "resource",

@@ -655,13 +655,14 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const sections = constructPromptMultiActions(authenticator1, params);
     const text = systemPromptToText(sections);
 
-    expect(text).toContain(
-      "Files attached as `<file>` tags are mounted under `/files/conversation` when using the Computer."
-    );
+    expect(text).toContain("# FILES");
     expect(text).toContain(
       "You must enable the Computer skill proactively as soon as the user uploads files"
     );
     expect(text).toContain("especially PDFs");
+    expect(text).toContain(
+      "Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags"
+    );
   });
 
   it("should point legacy attachment prompts to the Computer when Computer is available", () => {
@@ -680,15 +681,13 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const sections = constructPromptMultiActions(authenticator1, params);
     const text = systemPromptToText(sections);
 
-    expect(text).toContain(
-      "When using the Computer, conversation files are mounted under `/files/conversation`."
-    );
+    expect(text).toContain("# ATTACHMENTS");
     expect(text).toContain(
       "You must enable the Computer skill proactively as soon as the user uploads files"
     );
   });
 
-  it("should not mention the Computer file mount when Computer is unavailable", () => {
+  it("should not mention the Computer when Computer is unavailable", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
@@ -704,10 +703,10 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const sections = constructPromptMultiActions(authenticator1, params);
     const text = systemPromptToText(sections);
 
+    expect(text).toContain("# FILES");
     expect(text).not.toContain("Computer skill");
-    expect(text).not.toContain("/files/conversation");
     expect(text).toContain(
-      "Tabular files (CSV, spreadsheets) are queryable via the query tables tool"
+      "Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags"
     );
   });
 
