@@ -10,8 +10,10 @@ import {
   createSelectionColumn,
   DataTable,
   DataTableLoadingSkeleton,
+  Icon,
   InfoCircle,
   PuzzlePiece01,
+  PuzzlePiece01Filled,
   ScrollableDataTable,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -36,17 +38,60 @@ interface SkillRowData {
 
 type SkillCellInfo = CellContext<SkillRowData, unknown>;
 
+interface PuzzleSelectToggleProps {
+  selected: boolean | "partial";
+  disabled?: boolean;
+  onToggle: () => void;
+  ariaLabel: string;
+}
+
+function PuzzleSelectToggle({
+  selected,
+  disabled = false,
+  onToggle,
+  ariaLabel,
+}: PuzzleSelectToggleProps) {
+  const isActive = selected === true || selected === "partial";
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-pressed={selected === true}
+      disabled={disabled}
+      onClick={onToggle}
+      className="flex items-center justify-center transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+    >
+      <Icon
+        visual={isActive ? PuzzlePiece01Filled : PuzzlePiece01}
+        size="sm"
+        className="text-foreground dark:text-foreground-night"
+      />
+    </button>
+  );
+}
+
 function getColumns(): ColumnDef<SkillRowData>[] {
   return [
-    createSelectionColumn<SkillRowData>(),
+    createSelectionColumn<SkillRowData>({
+      renderIndicator: (indicator) => (
+        <PuzzleSelectToggle
+          selected={indicator.checked}
+          disabled={indicator.kind === "select-row" && indicator.disabled}
+          onToggle={() => indicator.onChange(indicator.checked !== true)}
+          ariaLabel={
+            indicator.kind === "select-row"
+              ? `Select ${indicator.row.original.name}`
+              : "Select all skills"
+          }
+        />
+      ),
+    }),
     {
       id: "name",
       accessorKey: "name",
       header: "Skill name",
       cell: (info: SkillCellInfo) => (
-        <DataTable.CellContent icon={PuzzlePiece01}>
-          {info.row.original.name}
-        </DataTable.CellContent>
+        <DataTable.CellContent>{info.row.original.name}</DataTable.CellContent>
       ),
       meta: {
         sizeRatio: 60,

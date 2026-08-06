@@ -890,6 +890,7 @@ export { default as PresentationChart02 } from "./PresentationChart02";
 export { default as PresentationChart03 } from "./PresentationChart03";
 export { default as Printer } from "./Printer";
 export { default as PuzzlePiece01 } from "./PuzzlePiece01";
+export { default as PuzzlePiece01Filled } from "./PuzzlePiece01Filled";
 export { default as PuzzlePiece02 } from "./PuzzlePiece02";
 export { default as QrCode01 } from "./QrCode01";
 export { default as QrCode02 } from "./QrCode02";
