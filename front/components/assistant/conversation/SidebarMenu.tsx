@@ -15,7 +15,6 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
   groupUnreadConversations,
 } from "@app/components/assistant/conversation/utils";
-import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
@@ -450,7 +449,6 @@ export function AgentSidebarMenu({
 
   const [podSearchText, setPodSearchText] = useState("");
   const { setSidebarOpen } = useContext(SidebarContext);
-  const { createAgentButtonRef } = useWelcomeTourGuide();
 
   const {
     conversations,
@@ -1103,10 +1101,7 @@ export function AgentSidebarMenu({
                   )}
                   moreMenu={
                     canCreateAgent ? (
-                      <div
-                        ref={createAgentButtonRef}
-                        className="absolute right-2 top-1.5 transition-opacity [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 has-[[data-state=open]]:opacity-100"
-                      >
+                      <div className="absolute right-2 top-1.5 transition-opacity [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 has-[[data-state=open]]:opacity-100">
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button
