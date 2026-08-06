@@ -1,6 +1,7 @@
 import { findSkillEditorsWithoutSpaceAccess } from "@app/lib/api/skills/space_requirements";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   PatchSkillEditorsRequestBody,
@@ -140,9 +141,12 @@ app.patch(
 
     // Only the editors being added need checking: the ones already there were validated when they
     // were added or when the skill's spaces last changed.
+    const requestedSpaces = await SpaceResource.fetchByModelIds(auth, [
+      ...skillRes.requestedSpaceIds,
+    ]);
     const editorsAccessError = await findSkillEditorsWithoutSpaceAccess(auth, {
       editors: usersToAddResources,
-      requestedSpaceModelIds: skillRes.requestedSpaceIds,
+      requestedSpaces,
     });
     if (editorsAccessError) {
       return apiError(ctx, {

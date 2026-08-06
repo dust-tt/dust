@@ -65,18 +65,14 @@ export async function findSkillEditorsWithoutSpaceAccess(
   auth: Authenticator,
   {
     editors,
-    requestedSpaceModelIds,
-  }: { editors: UserResource[]; requestedSpaceModelIds: ModelId[] }
+    requestedSpaces,
+  }: { editors: UserResource[]; requestedSpaces: SpaceResource[] }
 ): Promise<string | null> {
-  if (editors.length === 0 || requestedSpaceModelIds.length === 0) {
+  if (editors.length === 0 || requestedSpaces.length === 0) {
     return null;
   }
 
-  const spaces = await SpaceResource.fetchByModelIds(
-    auth,
-    requestedSpaceModelIds
-  );
-  const restrictedSpaces = spaces.filter(
+  const restrictedSpaces = requestedSpaces.filter(
     (space) => space.isRegularAndRestricted() || space.isProjectAndRestricted()
   );
 

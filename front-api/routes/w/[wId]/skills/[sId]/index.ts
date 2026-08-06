@@ -10,6 +10,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
@@ -413,9 +414,13 @@ app.patch(
     const editors = skill.editorGroup
       ? await skill.editorGroup.getActiveMembers(auth)
       : [];
+    const requestedSpaces = await SpaceResource.fetchByModelIds(
+      auth,
+      requestedSpaceIds
+    );
     const editorsAccessError = await findSkillEditorsWithoutSpaceAccess(auth, {
       editors: uniqBy([...editors, auth.getNonNullableUser()], "id"),
-      requestedSpaceModelIds: requestedSpaceIds,
+      requestedSpaces,
     });
     if (editorsAccessError) {
       return apiError(ctx, {
