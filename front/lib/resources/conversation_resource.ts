@@ -1741,19 +1741,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Returns the timestamps of messages authored by `userId` in conversations
-   * created by any of `triggerIds`, created at or after `since`. Used by the
-   * activation scheduler to determine whether a user replied following a
-   * nudge (each nudge fires a trigger, which creates its own conversation).
+   * Returns the timestamps of messages authored by `userId` in any of
+   * `conversationModelIds`, created at or after `since`. Used by the activation
+   * scheduler to determine whether a user replied to a nudge (each nudge opens
+   * its own conversation).
    */
-  static async listUserMessageTimestampsForTriggers(
+  static async listUserMessageTimestampsForConversations(
     auth: Authenticator,
     {
-      triggerIds,
+      conversationModelIds,
       userId,
       since,
     }: {
-      triggerIds: ModelId[];
+      conversationModelIds: ModelId[];
       userId: ModelId;
       since: Date;
     }
@@ -1764,6 +1764,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       attributes: ["createdAt"],
       where: {
         workspaceId,
+        conversationId: { [Op.in]: conversationModelIds },
         createdAt: { [Op.gte]: since },
       },
       include: [
@@ -1773,13 +1774,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           required: true,
           attributes: [],
           where: { userId },
-        },
-        {
-          model: ConversationModel,
-          as: "conversation",
-          required: true,
-          attributes: [],
-          where: { triggerId: { [Op.in]: triggerIds } },
         },
       ],
     });

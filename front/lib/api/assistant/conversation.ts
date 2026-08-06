@@ -173,7 +173,10 @@ import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
-import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type {
+  APIErrorType,
+  APIErrorWithContentfulStatusCode,
+} from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -514,6 +517,27 @@ export function isUserMessageContextValid(
       return false;
     default:
       assertNever(context.origin);
+  }
+}
+
+/**
+ * Whether a failure to post a message reflects a condition that will not clear
+ * on its own (no seat, exhausted credits, an agent the caller cannot use), so
+ * a background sender should give up rather than retry.
+ */
+export function isPermanentPostMessageError(errorType: APIErrorType): boolean {
+  switch (errorType) {
+    case "agent_inaccessible":
+    case "credits_exhausted":
+    case "invalid_request_error":
+    case "model_disabled":
+    case "no_seat":
+    case "plan_message_limit_exceeded":
+    case "user_cap_reached":
+    case "webhook_storage_error":
+      return true;
+    default:
+      return false;
   }
 }
 

@@ -1,20 +1,65 @@
-import type { Authenticator } from "@app/lib/auth";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  createConversation,
+  isPermanentPostMessageError,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
+import { Authenticator } from "@app/lib/auth";
+import { serializeMention } from "@app/lib/mentions/format";
 import { isUserBlocked } from "@app/lib/metronome/user_block";
 import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
-import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import { removeNulls } from "@app/types/shared/utils/general";
+import logger from "@app/logger/logger";
 import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
 } from "@app/temporal/activation_scheduler/config";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import isNumber from "lodash/isNumber";
-import uniq from "lodash/uniq";
+
+const ACTIVATION_NUDGE_PROMPT = "Run the Dust Training workflow.";
+
+// A resource type that the activation nudge should drive the user toward
+export type ActivationNudgePushedResourceType = "skill" | "agent";
+
+// The context for what the activation nudge should drive the user toward
+export type ActivationNudgeContext = {
+  sessionGoal: string | null;
+  pushedResourceType: ActivationNudgePushedResourceType | null;
+  pushedResourceName: string | null;
+};
+
+export const EMPTY_ACTIVATION_NUDGE_CONTEXT: ActivationNudgeContext = {
+  sessionGoal: null,
+  pushedResourceType: null,
+  pushedResourceName: null,
+};
+
+// `retryable` tells the Temporal caller whether trying again can succeed:
+// a missing seat or an inaccessible agent will not fix itself, a failed write
+// might.
+export class ActivationNudgeError extends Error {
+  constructor(
+    readonly retryable: boolean,
+    message: string
+  ) {
+    super(message);
+  }
+}
 
 export function getActivationNudgeFrequencyCapDays(
   auth: Authenticator
@@ -44,34 +89,40 @@ export function getActivationNudgeMaxUnansweredCount(
 
 // Counts how many of the pod's most recent nudges, starting from the latest
 // and going backwards, got no message from the nudged user (a nudge is
-// "unanswered" if the pod has no message from that user since it fired). The
-// count stops at the first answered nudge, so a reply resets the streak.
+// "unanswered" if its conversation has no message from that user since it was
+// posted). The count stops at the first answered nudge, so a reply resets the
+// streak.
 async function countUnansweredNudgeStreak(
   auth: Authenticator,
   activationPod: ActivationPodResource,
   { limit }: { limit: number }
 ): Promise<number> {
-  const recentNudges = await ActivationNudgeResource.listRecentForActivationPod(
-    auth,
-    { activationPod, limit }
-  );
-  if (recentNudges.length === 0) {
+  const recentNudges =
+    await ActivationNudgeResource.listRecentSentForActivationPod(auth, {
+      activationPod,
+      limit,
+    });
+  // A nudge with no conversation cannot be answered, so it says nothing about
+  // the user's engagement and is left out of the streak entirely.
+  const nudges = recentNudges.filter((nudge) => nudge.conversationId !== null);
+  if (nudges.length === 0) {
     return 0;
   }
 
-  const oldestNudge = recentNudges[recentNudges.length - 1];
-  const triggerIds = uniq(removeNulls(recentNudges.map((n) => n.triggerId)));
+  const oldestNudge = nudges[nudges.length - 1];
   const replyTimestamps =
-    await ConversationResource.listUserMessageTimestampsForTriggers(auth, {
-      triggerIds,
-      userId: oldestNudge.userId,
+    await ConversationResource.listUserMessageTimestampsForConversations(auth, {
+      conversationModelIds: removeNulls(
+        nudges.map((nudge) => nudge.conversationId)
+      ),
+      userId: activationPod.userId,
       since: oldestNudge.createdAt,
     });
 
   let streak = 0;
-  for (let i = 0; i < recentNudges.length; i++) {
-    const windowStart = recentNudges[i].createdAt;
-    const windowEnd = i === 0 ? new Date() : recentNudges[i - 1].createdAt;
+  for (let i = 0; i < nudges.length; i++) {
+    const windowStart = nudges[i].createdAt;
+    const windowEnd = i === 0 ? new Date() : nudges[i - 1].createdAt;
 
     const wasAnswered = replyTimestamps.some(
       (t) => t >= windowStart && t < windowEnd
@@ -91,13 +142,15 @@ async function countUnansweredNudgeStreak(
 async function isPodDead(
   auth: Authenticator,
   pod: SpaceResource,
-  trigger: TriggerResource
+  activationPod: ActivationPodResource
 ): Promise<boolean> {
   if (pod.deletedAt !== null) {
     return true;
   }
 
-  const [targetUser] = await UserResource.fetchByModelIds([trigger.editor]);
+  const [targetUser] = await UserResource.fetchByModelIds([
+    activationPod.userId,
+  ]);
   if (!targetUser) {
     return true;
   }
@@ -112,32 +165,31 @@ async function isPodDead(
 }
 
 // Gates re-nudging a pod on five conditions:
-// - Opted out: was the trigger disabled by the user?
+// - Opted out: did the user turn nudges off?
 // - Dead: is the pod archived, or has its target user left the workspace?
 // - Credit gate: is the pod's user blocked (workspace credit pool exhausted
 //   or their per-user cap reached)?
 // - Frequency cap: was the pod nudged within the workspace's configured cap
 //   window?
 // - Unanswered cap: have the pod's most recent nudges gone unanswered (no
-//   user message since they fired), up to the workspace's configured max?
+//   user message since they were posted), up to the workspace's configured max?
 export async function isEligibleForNudge(
   auth: Authenticator,
-  pod: SpaceResource,
-  { user }: { user: UserResource | null }
+  {
+    pod,
+    activationPod,
+    user,
+  }: {
+    pod: SpaceResource;
+    activationPod: ActivationPodResource;
+    user: UserResource | null;
+  }
 ): Promise<boolean> {
-  const activationPod = await ActivationPodResource.fetchBySpace(auth, pod);
-  if (!activationPod || activationPod.triggerId === null) {
+  if (activationPod.nudgesDisabledAt !== null) {
     return false;
   }
 
-  const [trigger] = await TriggerResource.fetchByModelIds(auth, [
-    activationPod.triggerId,
-  ]);
-  if (!trigger || trigger.status !== "enabled") {
-    return false;
-  }
-
-  if (await isPodDead(auth, pod, trigger)) {
+  if (await isPodDead(auth, pod, activationPod)) {
     return false;
   }
 
@@ -150,10 +202,10 @@ export async function isEligibleForNudge(
     }
   }
 
-  const latestNudge = await ActivationNudgeResource.fetchLatestForActivationPod(
-    auth,
-    { activationPod }
-  );
+  const latestNudge =
+    await ActivationNudgeResource.fetchLatestSentForActivationPod(auth, {
+      activationPod,
+    });
   if (!latestNudge) {
     return true;
   }
@@ -175,4 +227,181 @@ export async function isEligibleForNudge(
   );
 
   return unansweredStreak < maxUnansweredCount;
+}
+
+// The opening message of a nudge conversation. The per-nudge context rides in
+// the message itself: the agent is told (in the Activation skill) to read it
+// and never surface it.
+function buildActivationNudgeContent(
+  agentConfiguration: AgentConfigurationType,
+  context: ActivationNudgeContext
+): string {
+  const contextLines = removeNulls([
+    context.sessionGoal ? `Session goal: ${context.sessionGoal}` : null,
+    context.pushedResourceType && context.pushedResourceName
+      ? `Featured ${context.pushedResourceType}: ${context.pushedResourceName}`
+      : null,
+  ]);
+
+  const content =
+    serializeMention(agentConfiguration) + `\n\n${ACTIVATION_NUDGE_PROMPT}`;
+  if (contextLines.length === 0) {
+    return content;
+  }
+
+  return (
+    content +
+    `\n\n<dust_activation>\n${contextLines.join("\n")}\n</dust_activation>`
+  );
+}
+
+/**
+ * Posts a nudge to a Pod: Dust opening a conversation in the pod, on behalf of
+ * the pod's user, so they have somewhere to start.
+ *
+ * The message is authored by the system, not by them: the agent's identity in
+ * the context, and no author on the message row. `email` has to stay null,
+ * since `postUserMessage` resolves an author from the context email when the
+ * message has none, which would hand the nudge back to the user. The run still
+ * executes under the target user's authenticator, so the agent sees exactly
+ * what they can see, and they stay a participant of the conversation.
+ *
+ * Callers are expected to have gated on `isEligibleForNudge`, except for the
+ * poke plugin, which nudges on demand.
+ */
+export async function postActivationNudge(
+  auth: Authenticator,
+  {
+    pod,
+    activationPod,
+    context,
+  }: {
+    pod: SpaceResource;
+    activationPod: ActivationPodResource;
+    context: ActivationNudgeContext;
+  }
+): Promise<Result<{ conversationId: string }, ActivationNudgeError>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const [targetUser] = await UserResource.fetchByModelIds([
+    activationPod.userId,
+  ]);
+  if (!targetUser) {
+    return new Err(
+      new ActivationNudgeError(false, "The Pod's user no longer exists.")
+    );
+  }
+
+  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    targetUser.sId,
+    workspace.sId
+  );
+  if (!userAuth.isUser()) {
+    return new Err(
+      new ActivationNudgeError(
+        false,
+        "The Pod's user is no longer a member of the workspace."
+      )
+    );
+  }
+
+  if (!pod.isMember(userAuth)) {
+    return new Err(
+      new ActivationNudgeError(
+        false,
+        "The Pod's user is no longer a member of the Pod."
+      )
+    );
+  }
+
+  const agentConfiguration = await getAgentConfiguration(userAuth, {
+    agentId: GLOBAL_AGENTS_SID.DUST,
+    variant: "extra_light",
+  });
+  if (!agentConfiguration) {
+    return new Err(
+      new ActivationNudgeError(
+        false,
+        "The Dust agent is not available to the Pod's user."
+      )
+    );
+  }
+
+  // Claimed before the conversation exists: an activity retry then hits the
+  // frequency cap instead of posting the nudge a second time.
+  const nudge = await ActivationNudgeResource.makeNew(auth, {
+    activationPod,
+    pod,
+  });
+
+  const conversation = await createConversation(userAuth, {
+    title: null,
+    visibility: "unlisted",
+    spaceId: pod.id,
+  });
+
+  const messageRes = await postUserMessage(userAuth, {
+    conversationResource: conversation,
+    content: buildActivationNudgeContent(agentConfiguration, context),
+    mentions: [{ configurationId: agentConfiguration.sId }],
+    context: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username: agentConfiguration.name,
+      fullName: agentConfiguration.name,
+      email: null,
+      profilePictureUrl: agentConfiguration.pictureUrl,
+      origin: ACTIVATION_NUDGE_ORIGIN,
+    },
+    skipToolsValidation: false,
+    doNotAssociateUser: true,
+  });
+
+  if (messageRes.isErr()) {
+    const { type, message } = messageRes.error.api_error;
+
+    const deleteRes = await conversation.delete(userAuth);
+    if (deleteRes.isErr()) {
+      logger.error(
+        {
+          conversationId: conversation.sId,
+          error: deleteRes.error,
+          workspaceId: workspace.sId,
+        },
+        "[Activation] Failed to clean up the conversation of a nudge that did not post."
+      );
+    }
+
+    await nudge.markFailed(`[${type}] ${message}`);
+
+    return new Err(
+      new ActivationNudgeError(
+        !isPermanentPostMessageError(type),
+        `Failed to post the nudge: [${type}] ${message}`
+      )
+    );
+  }
+
+  await nudge.markPosted(conversation);
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "activation.nudge_posted",
+    actor: { type: "system", id: "activation", name: "Dust Training" },
+    targets: [
+      buildAuditLogTarget("workspace", workspace),
+      {
+        type: "user",
+        id: targetUser.sId,
+        name: targetUser.fullName(),
+      },
+      buildAuditLogTarget("space", pod),
+    ],
+    context: { location: "internal" },
+    metadata: {
+      agent_id: agentConfiguration.sId,
+      conversation_id: conversation.sId,
+    },
+  });
+
+  return new Ok({ conversationId: conversation.sId });
 }
