@@ -93,6 +93,43 @@ export function useUpgradeRequests({
   };
 }
 
+// Server-enforced page size for the History tab — must match
+// `RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE` in
+// `@app/lib/api/credits/upgrade_requests`.
+export const UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
+
+// Admin-only: resolved (approved/denied) upgrade requests, for the History
+// tab. Disabled until that tab is visible.
+export function useUpgradeRequestsHistory({
+  workspaceId,
+  pageIndex,
+  disabled,
+}: {
+  workspaceId: string;
+  pageIndex: number;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const upgradeRequestsHistoryFetcher: Fetcher<GetUpgradeRequestsResponseBody> =
+    fetcher;
+
+  const offset = pageIndex * UPGRADE_REQUESTS_HISTORY_PAGE_SIZE;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `${upgradeRequestsUrl(workspaceId)}?status=resolved&offset=${offset}`,
+    upgradeRequestsHistoryFetcher,
+    { disabled, keepPreviousData: true }
+  );
+
+  return {
+    upgradeRequestsHistory: data?.requests ?? emptyArray(),
+    totalUpgradeRequestsHistoryCount: data?.total ?? 0,
+    isUpgradeRequestsHistoryLoading: !error && !data && !disabled,
+    isUpgradeRequestsHistoryError: !!error,
+    mutateUpgradeRequestsHistory: mutate,
+  };
+}
+
 export function useResolveUpgradeRequest({
   workspaceId,
 }: {
