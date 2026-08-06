@@ -9,7 +9,7 @@ async function setupTest() {
 }
 
 function getRecommendations(wId: string) {
-  return honoApp.request(`/api/w/${wId}/action-recommendations`);
+  return honoApp.request(`/api/w/${wId}/activation-recommendations`);
 }
 
 function updateRecommendation(
@@ -22,7 +22,7 @@ function updateRecommendation(
   }
 ) {
   return honoApp.request(
-    `/api/w/${wId}/action-recommendations/${recommendationId}`,
+    `/api/w/${wId}/activation-recommendations/${recommendationId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -31,7 +31,7 @@ function updateRecommendation(
   );
 }
 
-describe("GET /api/w/:wId/action-recommendations", () => {
+describe("GET /api/w/:wId/activation-recommendations", () => {
   it("returns the user's suggested recommendations", async () => {
     const { workspace, auth } = await setupTest();
 
@@ -50,7 +50,13 @@ describe("GET /api/w/:wId/action-recommendations", () => {
       sId: rec.sId,
       title: "Next step",
       content: "Automate your Monday meeting prep",
+      body: null,
+      steps: null,
+      ctaLabel: null,
+      sourceIcon: null,
+      sourceLabel: null,
       conversationId: null,
+      createdAt: expect.any(Number),
     });
   });
 
@@ -70,7 +76,7 @@ describe("GET /api/w/:wId/action-recommendations", () => {
   });
 });
 
-describe("PATCH /api/w/:wId/action-recommendations/:recommendationId", () => {
+describe("PATCH /api/w/:wId/activation-recommendations/:recommendationId", () => {
   it("dismisses a recommendation so it no longer surfaces", async () => {
     const { workspace, auth } = await setupTest();
 
@@ -114,5 +120,30 @@ describe("PATCH /api/w/:wId/action-recommendations/:recommendationId", () => {
       status: "dismissed",
     });
     expect(response.status).toBe(404);
+  });
+
+  it("does not let another workspace member update a recommendation they do not own", async () => {
+    // Owner creates a recommendation.
+    const { workspace, auth: ownerAuth } = await createPrivateApiMockRequest();
+    const rec = await ActivationRecommendationResource.makeNew(ownerAuth, {
+      content: "Owner's private next step",
+      title: "Next step",
+      conversationId: null,
+    });
+
+    // A different member of the same workspace re-authenticates and attempts to
+    // dismiss the owner's recommendation. They must not be able to.
+    await createPrivateApiMockRequest({ workspace });
+    const response = await updateRecommendation(workspace.sId, rec.sId, {
+      status: "dismissed",
+    });
+    expect(response.status).toBe(404);
+
+    // The recommendation is untouched — still suggested for its owner.
+    const untouched = await ActivationRecommendationResource.fetchById(
+      ownerAuth,
+      rec.sId
+    );
+    expect(untouched?.status).toBe("suggested");
   });
 });
