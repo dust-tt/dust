@@ -128,6 +128,7 @@ export function useSearchMembers<
   pageIndex,
   pageSize,
   groupKind,
+  groupIds,
   disabled,
 }: {
   workspaceId: string;
@@ -135,6 +136,8 @@ export function useSearchMembers<
   pageIndex: number;
   pageSize: number;
   groupKind?: Exclude<GroupKind, "system">;
+  // Narrows results to members belonging to at least one of these groups.
+  groupIds?: string[];
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -161,6 +164,10 @@ export function useSearchMembers<
 
   if (groupKind && isGroupKind(groupKind)) {
     searchParams.set("groupKind", groupKind);
+  }
+
+  if (groupIds && groupIds.length > 0) {
+    searchParams.set("groupIds", groupIds.join(","));
   }
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =

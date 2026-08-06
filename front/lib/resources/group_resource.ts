@@ -1544,6 +1544,47 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
+  // Active members across a set of groups, unioned. A single batched query
+  // covers every non-global group; the global group short-circuits to all
+  // workspace members since it has no per-member DB rows.
+  static async getActiveMembersForGroups(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<UserResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    if (groups.some((group) => group.isGlobal())) {
+      const { memberships } = await MembershipResource.getActiveMemberships({
+        workspace: owner,
+      });
+      return UserResource.fetchByModelIds(memberships.map((m) => m.userId));
+    }
+
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        groupId: { [Op.in]: groups.map((group) => group.id) },
+        status: "active",
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+      },
+    });
+
+    const userModelIds = [...new Set(memberships.map((m) => m.userId))];
+    const users = await UserResource.fetchByModelIds(userModelIds);
+
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+      });
+
+    // Only return users that have an active membership in the workspace.
+    return users.filter((user) =>
+      workspaceMemberships.some((m) => m.userId === user.id)
+    );
+  }
+
   async getAllMembers(auth: Authenticator): Promise<UserResource[]> {
     const owner = auth.getNonNullableWorkspace();
 

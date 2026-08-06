@@ -303,12 +303,36 @@ export async function searchMembers(
     searchTerm?: string;
     searchEmails?: string[];
     groupKind?: Exclude<GroupKind, "system">;
+    // Narrows results to members belonging to at least one of these groups.
+    // Membership is resolved from Postgres first, then handed to the (ES-backed)
+    // user search as a restrictToUserIds allowlist — the two stores are never
+    // queried with a mixed filter.
+    groupIds?: string[];
   },
   paginationParams: SearchMembersPaginationParams
 ): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
+  }
+
+  let restrictToUserIds: string[] | undefined;
+  if (options.groupIds && options.groupIds.length > 0) {
+    const groupsRes = await GroupResource.fetchByIds(auth, options.groupIds);
+    if (groupsRes.isErr()) {
+      logger.error({ err: groupsRes.error }, "Error fetching groups");
+      return { members: [], total: 0 };
+    }
+
+    const groupMembers = await GroupResource.getActiveMembersForGroups(
+      auth,
+      groupsRes.value
+    );
+    restrictToUserIds = groupMembers.map((u) => u.sId);
+
+    if (restrictToUserIds.length === 0) {
+      return { members: [], total: 0 };
+    }
   }
 
   let users: UserResource[];
@@ -324,12 +348,17 @@ export async function searchMembers(
       owner,
       options.searchEmails
     );
+    if (restrictToUserIds) {
+      const allowedUserIds = new Set(restrictToUserIds);
+      users = users.filter((u) => allowedUserIds.has(u.sId));
+    }
     total = users.length;
   } else {
     const results = await UserResource.searchUsers(auth, {
       searchTerm: options.searchTerm ?? "",
       offset: paginationParams.offset,
       limit: paginationParams.limit,
+      restrictToUserIds,
     });
 
     if (results.isErr()) {
