@@ -1,5 +1,8 @@
+import { ArchiveSkillsDialog } from "@app/components/skills/ArchiveSkillsDialog";
+import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Dialog,
@@ -58,20 +61,27 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
 ];
 
 interface SkillsBatchEditBarProps {
-  selectedCount: number;
+  selectedSkills: GetSkillsWithRelationsResponseBody["skills"];
   isUpdating: boolean;
   canMakeSkillAutoDiscoverable: boolean;
+  owner: LightWorkspaceType;
   onClose: () => void;
   onSelectAction: (action: BatchAvailabilityAction) => void;
 }
 
 export function SkillsBatchEditBar({
-  selectedCount,
+  selectedSkills,
   isUpdating,
   canMakeSkillAutoDiscoverable,
+  owner,
   onClose,
   onSelectAction,
 }: SkillsBatchEditBarProps) {
+  const selectedCount = selectedSkills.length;
+  const canArchiveSelection = selectedSkills.every(
+    (skill) => skill.canAdministrate
+  );
+
   return (
     <div className="flex flex-row items-center justify-between gap-2 rounded-xl bg-muted-background px-2 py-2 dark:bg-muted-background-night">
       <Button
@@ -81,38 +91,46 @@ export function SkillsBatchEditBar({
         label="Close edition"
         onClick={onClose}
       />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            label="Set availability"
-            isSelect
-            isLoading={isUpdating}
-            disabled={selectedCount === 0 || isUpdating}
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {BATCH_AVAILABILITY_ACTIONS.map((action) => {
-            const isActionDisabled =
-              action.availability === "users_and_agents" &&
-              !canMakeSkillAutoDiscoverable;
-            return (
-              <DropdownMenuItem
-                key={action.availability}
-                label={action.label}
-                description={
-                  isActionDisabled
-                    ? "You don’t have permission to make skills auto-discoverable"
-                    : action.description
-                }
-                disabled={isActionDisabled}
-                onClick={() => onSelectAction(action)}
-              />
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex flex-row items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              label="Set availability"
+              isSelect
+              isLoading={isUpdating}
+              disabled={selectedCount === 0 || isUpdating}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {BATCH_AVAILABILITY_ACTIONS.map((action) => {
+              const isActionDisabled =
+                action.availability === "users_and_agents" &&
+                !canMakeSkillAutoDiscoverable;
+              return (
+                <DropdownMenuItem
+                  key={action.availability}
+                  label={action.label}
+                  description={
+                    isActionDisabled
+                      ? "You don’t have permission to make skills auto-discoverable"
+                      : action.description
+                  }
+                  disabled={isActionDisabled}
+                  onClick={() => onSelectAction(action)}
+                />
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <ArchiveSkillsDialog
+          skills={selectedSkills}
+          disabled={selectedCount === 0 || isUpdating || !canArchiveSelection}
+          owner={owner}
+          onSave={onClose}
+        />
+      </div>
     </div>
   );
 }

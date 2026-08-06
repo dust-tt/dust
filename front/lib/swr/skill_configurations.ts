@@ -349,6 +349,56 @@ export function useArchiveSkill({
   return doArchive;
 }
 
+export function useBatchArchiveSkills({
+  owner,
+  skillIds,
+}: {
+  owner: LightWorkspaceType;
+  skillIds: string[];
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+  const {
+    mutateSkillsWithRelationsRegardlessOfQueryParams: mutateSkillsWithRelations,
+  } = useSkillsWithRelations({
+    owner,
+    status: "active",
+    disabled: true,
+  });
+
+  const doArchive = async () => {
+    if (skillIds.length === 0) {
+      return false;
+    }
+
+    try {
+      await fetcher(`/api/w/${owner.sId}/skills/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skillIds }),
+      });
+
+      void mutateSkillsWithRelations();
+
+      sendNotification({
+        type: "success",
+        title: "Successfully archived skills",
+        description: `${skillIds.length} skill${pluralize(skillIds.length)} ${skillIds.length === 1 ? "was" : "were"} successfully archived.`,
+      });
+      return true;
+    } catch (err) {
+      sendNotification({
+        type: "error",
+        title: "Error archiving skills",
+        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
+      });
+      return false;
+    }
+  };
+
+  return doArchive;
+}
+
 export function useUpdateSkillFavorite({
   owner,
 }: {

@@ -242,6 +242,10 @@ export function ManageSkillsPage() {
         .map(([sId]) => sId),
     [rowSelection]
   );
+  const selectedSkills = useMemo(
+    () => activeSkills.filter((skill) => rowSelection[skill.sId]),
+    [activeSkills, rowSelection]
+  );
 
   const closeBatchEdition = () => {
     setIsBatchEditing(false);
@@ -473,9 +477,10 @@ export function ManageSkillsPage() {
           </div>
           {isBatchEditionAvailable && isBatchEditing && (
             <SkillsBatchEditBar
-              selectedCount={selectedSkillIds.length}
+              selectedSkills={selectedSkills}
               isUpdating={isBatchUpdating}
               canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
+              owner={owner}
               onClose={closeBatchEdition}
               onSelectAction={setPendingBatchAction}
             />
