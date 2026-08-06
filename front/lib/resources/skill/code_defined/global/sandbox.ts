@@ -53,13 +53,11 @@ function buildFilesSection({ hasPod }: { hasPod: boolean }): string {
   const podUsageSection = hasPod
     ? `
 
-This conversation belongs to a Pod, so use \`/files/pod\` for files that
-belong to the Pod as a whole (specs, knowledge bases, shared scripts,
-recurring data sets), and \`/files/conversation\` for per-conversation
-artifacts. When both are relevant, prefer reading from \`/files/pod\` and
-writing deliverables to \`/files/conversation\` unless the user has asked
-you to update the Pod's files specifically. Pod files are also exposed by
-the \`files\` MCP server under scoped paths like \`pod-{podId}/<rel>\`.`
+This conversation belongs to a Pod. \`/files/pod\` holds what belongs to the
+Pod as a whole (specs, knowledge bases, shared scripts, recurring data
+sets) and outlives this conversation; \`/files/conversation\` holds this
+conversation's own artifacts. Pod files are also exposed by the \`files\`
+MCP server under scoped paths like \`pod-{podId}/<rel>\`.`
     : "";
 
   return `#### Sandbox File System
