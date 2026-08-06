@@ -35,6 +35,7 @@ interface EditPodFrameTabDialogProps {
   isEditor: boolean;
   includeConnectedData?: boolean;
   tab: PodFrameTab;
+  mode?: "create" | "edit";
   isOpen: boolean;
   onClose: () => void;
 }
@@ -47,10 +48,13 @@ export function EditPodFrameTabDialog({
   isEditor,
   includeConnectedData = false,
   tab,
+  mode = "edit",
   isOpen,
   onClose,
 }: EditPodFrameTabDialogProps) {
+  const isCreate = mode === "create";
   const {
+    addFrameTab,
     updateFrameTab,
     removeFrameTab,
     moveFrameTab,
@@ -79,9 +83,9 @@ export function EditPodFrameTabDialog({
   const tabIndex = navItems.findIndex(
     (item) => item.kind === "frame" && item.tab.path === tab.path
   );
-  const canMoveLeft = isEditor && tabIndex > 0;
+  const canMoveLeft = !isCreate && isEditor && tabIndex > 0;
   const canMoveRight =
-    isEditor && tabIndex >= 0 && tabIndex < navItems.length - 1;
+    !isCreate && isEditor && tabIndex >= 0 && tabIndex < navItems.length - 1;
 
   const selectedIcon = isCustomResourceIconType(icon)
     ? icon
@@ -93,10 +97,17 @@ export function EditPodFrameTabDialog({
       return;
     }
     setIsSaving(true);
-    const ok = await updateFrameTab(tab.path, {
-      title: title.trim() || tab.title,
-      icon: selectedIcon,
-    });
+    const nextTitle = title.trim() || tab.title;
+    const ok = isCreate
+      ? await addFrameTab(tab.path, {
+          title: nextTitle,
+          icon: selectedIcon,
+          skipConfirm: true,
+        })
+      : await updateFrameTab(tab.path, {
+          title: nextTitle,
+          icon: selectedIcon,
+        });
     setIsSaving(false);
     if (ok) {
       onClose();
@@ -104,11 +115,14 @@ export function EditPodFrameTabDialog({
   };
 
   const handleRemove = async () => {
-    if (!isEditor) {
+    if (!isEditor || isCreate) {
       return;
     }
     setIsSaving(true);
-    const ok = await removeFrameTab(tab.path, { fileName: tab.title });
+    const ok = await removeFrameTab(tab.path, {
+      fileName: tab.title,
+      skipConfirm: true,
+    });
     setIsSaving(false);
     if (ok) {
       onClose();
@@ -116,7 +130,7 @@ export function EditPodFrameTabDialog({
   };
 
   const handleMove = async (direction: "left" | "right") => {
-    if (!isEditor) {
+    if (!isEditor || isCreate) {
       return;
     }
     setIsMoving(true);
@@ -136,7 +150,9 @@ export function EditPodFrameTabDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Edit frame tab</DialogTitle>
+          <DialogTitle>
+            {isCreate ? "Add frame tab" : "Edit frame tab"}
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <div className="flex items-center gap-2">
@@ -159,6 +175,9 @@ export function EditPodFrameTabDialog({
               </PopoverTrigger>
               <PopoverContent
                 className="w-fit p-0"
+                mountPortalContainer={
+                  typeof document !== "undefined" ? document.body : undefined
+                }
                 onOpenAutoFocus={(e) => e.preventDefault()}
               >
                 <IconPicker
@@ -203,14 +222,18 @@ export function EditPodFrameTabDialog({
           </div>
         </DialogContainer>
         <DialogFooter
-          leftButtonProps={{
-            label: "Remove tab",
-            variant: "warning",
-            onClick: () => void handleRemove(),
-            disabled: !isEditor || isSaving || isMoving,
-          }}
+          leftButtonProps={
+            isCreate
+              ? undefined
+              : {
+                  label: "Remove tab",
+                  variant: "warning",
+                  onClick: () => void handleRemove(),
+                  disabled: !isEditor || isSaving || isMoving,
+                }
+          }
           rightButtonProps={{
-            label: "Save",
+            label: isCreate ? "Add tab" : "Save",
             variant: "primary",
             onClick: () => void handleSave(),
             disabled: !isEditor || isSaving || isMoving || !title.trim(),

@@ -19,6 +19,7 @@ type FrameTabOptions = {
   fileName?: string;
   title?: string;
   icon?: CustomResourceIconType;
+  skipConfirm?: boolean;
 };
 
 export function usePodFrameTabs({
@@ -91,25 +92,27 @@ export function usePodFrameTabs({
         return false;
       }
 
-      const label = podFrameTabBasename(
-        options?.title ?? options?.fileName ?? path
-      );
+      const label = (
+        options?.title?.trim() || podFrameTabBasename(options?.fileName ?? path)
+      ).slice(0, MAX_POD_FRAME_TAB_TITLE_LENGTH);
 
-      const confirmed = await confirm({
-        title: "Add as Pod tab?",
-        message: `"${label}" will appear as a tab in this Pod for all members.`,
-        validateLabel: "Add tab",
-        validateVariant: "primary",
-      });
-      if (!confirmed) {
-        return false;
+      if (!options?.skipConfirm) {
+        const confirmed = await confirm({
+          title: "Add as Pod tab?",
+          message: `"${label}" will appear as a tab in this Pod for all members.`,
+          validateLabel: "Add tab",
+          validateVariant: "primary",
+        });
+        if (!confirmed) {
+          return false;
+        }
       }
 
       const nextTabs: PodFrameTab[] = [
         ...sortedTabs,
         {
           path,
-          title: label.slice(0, MAX_POD_FRAME_TAB_TITLE_LENGTH),
+          title: label,
           icon: options?.icon ?? DEFAULT_POD_FRAME_TAB_ICON,
         },
       ];
@@ -140,14 +143,16 @@ export function usePodFrameTabs({
 
       const label = options?.fileName ?? existing.title;
 
-      const confirmed = await confirm({
-        title: "Remove Pod tab?",
-        message: `"${label}" will no longer appear as a tab in this Pod.`,
-        validateLabel: "Remove",
-        validateVariant: "warning",
-      });
-      if (!confirmed) {
-        return false;
+      if (!options?.skipConfirm) {
+        const confirmed = await confirm({
+          title: "Remove Pod tab?",
+          message: `"${label}" will no longer appear as a tab in this Pod.`,
+          validateLabel: "Remove",
+          validateVariant: "warning",
+        });
+        if (!confirmed) {
+          return false;
+        }
       }
 
       return persist(
