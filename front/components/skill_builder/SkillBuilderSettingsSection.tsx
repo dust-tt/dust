@@ -3,6 +3,7 @@ import { SkillBuilderEnableSuggestionsSection } from "@app/components/skill_buil
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
+import { SkillBuilderSimilarDiscoverableSkills } from "@app/components/skill_builder/SkillBuilderSimilarDiscoverableSkills";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsAccessWarning } from "@app/components/skill_builder/SkillEditorsAccessWarning";
 import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/SkillEditorsSheetWithButton";
@@ -225,6 +226,7 @@ export function SkillBuilderSettingsSection({
             restrictedSpaces={nonGlobalSpacesWithRestrictions}
           />
         )}
+        <SkillBuilderSimilarDiscoverableSkills />
       </div>
 
       {hasSelfImprovingSkills && (
