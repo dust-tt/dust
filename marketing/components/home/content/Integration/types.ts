@@ -1,5 +1,8 @@
 import type { FAQItem } from "@marketing/components/home/content/Competitor/types";
-import type { InternalAllowedIconType } from "@marketing/components/resources/resources_icons";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@marketing/components/resources/resources_icons";
 
 export type IntegrationType = "mcp_server" | "connector" | "both";
 
@@ -47,7 +50,7 @@ export interface IntegrationBase {
 export interface IntegrationUseCase {
   title: string;
   description: string;
-  icon: InternalAllowedIconType;
+  icon: InternalAllowedIconType | CustomResourceIconType;
 }
 
 // Color variants for benefit cards. The Sparkle/Tailwind palette already exposes
@@ -65,7 +68,7 @@ export type BenefitCardColor =
 // configs/index.ts under `enrichment.benefits`, or produced by the heuristic
 // generator in utils/benefitsTemplates.ts.
 export interface BenefitCard {
-  icon: InternalAllowedIconType;
+  icon: InternalAllowedIconType | CustomResourceIconType;
   color: BenefitCardColor;
   title: string;
   description: string;
