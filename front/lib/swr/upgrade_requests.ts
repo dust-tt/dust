@@ -16,6 +16,7 @@ import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useCallback, useEffect, useState } from "react";
 import type { Fetcher } from "swr";
+import { mutate } from "swr";
 
 export type UpgradeRequestDecisionFilter = Exclude<
   MembershipUpgradeRequestStatus,
@@ -48,12 +49,22 @@ function usageStatusUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/usage-status`;
 }
 
+async function invalidateUpgradeRequests(workspaceId: string): Promise<void> {
+  await mutate(
+    (key) =>
+      typeof key === "string" && key.startsWith(upgradeRequestsUrl(workspaceId))
+  );
+}
+
 // Member-initiated: request a spend-limit upgrade for the current user. On
 // success the usage-status read is revalidated so the banner reflects the now
 // pending request.
 export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
   const sendNotification = useSendNotification();
-  const { mutate } = useSWRWithDefaults(usageStatusUrl(workspaceId), null);
+  const { mutate: mutateUsageStatus } = useSWRWithDefaults(
+    usageStatusUrl(workspaceId),
+    null
+  );
 
   const doRequestUpgrade = useCallback(
     async ({ reason }: { reason?: string }): Promise<boolean> => {
@@ -73,7 +84,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
         return false;
       }
 
-      await mutate();
+      await mutateUsageStatus();
       sendNotification({
         type: "success",
         title: "Upgrade requested",
@@ -81,64 +92,32 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
       });
       return true;
     },
-    [workspaceId, sendNotification, mutate]
+    [workspaceId, sendNotification, mutateUsageStatus]
   );
 
   return { doRequestUpgrade };
 }
 
-// Admin-only: pending upgrade requests for the workspace. Fetched on the Usage
-// page both to render the Requests tab and to back its count badge, so it is
-// not gated behind tab visibility.
-export function useUpgradeRequests({
+// Server-enforced page size
+export const UPGRADE_REQUESTS_PAGE_SIZE = 100;
+
+function useUpgradeRequestsList({
   workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const upgradeRequestsFetcher: Fetcher<GetUpgradeRequestsResponseBody> =
-    fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    upgradeRequestsUrl(workspaceId),
-    upgradeRequestsFetcher,
-    { disabled }
-  );
-
-  const requests = data?.requests ?? emptyArray();
-
-  return {
-    upgradeRequests: requests,
-    isUpgradeRequestsLoading: !error && !data && !disabled,
-    isUpgradeRequestsError: !!error,
-    mutateUpgradeRequests: mutate,
-  };
-}
-
-// Server-enforced page size for the History tab — must match
-// `RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE` in
-// `@app/lib/api/credits/upgrade_requests`.
-export const UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
-
-// Admin-only: resolved (approved/denied) upgrade requests, for the History
-// tab. Disabled until that tab is visible.
-export function useUpgradeRequestsHistory({
-  workspaceId,
+  status,
   pageIndex,
   searchTerm = "",
   decision,
   disabled,
 }: {
   workspaceId: string;
+  status: "pending" | "resolved";
   pageIndex: number;
   searchTerm?: string;
   decision?: UpgradeRequestDecisionFilter;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const upgradeRequestsHistoryFetcher: Fetcher<GetUpgradeRequestsResponseBody> =
+  const upgradeRequestsFetcher: Fetcher<GetUpgradeRequestsResponseBody> =
     fetcher;
 
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
@@ -148,10 +127,10 @@ export function useUpgradeRequestsHistory({
     return () => clearTimeout(id);
   }, [searchTerm]);
 
-  const offset = pageIndex * UPGRADE_REQUESTS_HISTORY_PAGE_SIZE;
+  const offset = pageIndex * UPGRADE_REQUESTS_PAGE_SIZE;
 
   const searchParams = new URLSearchParams({
-    status: "resolved",
+    status,
     offset: offset.toString(),
   });
   if (decision) {
@@ -161,18 +140,78 @@ export function useUpgradeRequestsHistory({
     searchParams.set("search", debouncedSearchTerm.trim());
   }
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error } = useSWRWithDefaults(
     `${upgradeRequestsUrl(workspaceId)}?${searchParams.toString()}`,
-    upgradeRequestsHistoryFetcher,
+    upgradeRequestsFetcher,
     { disabled, keepPreviousData: true }
   );
 
   return {
-    upgradeRequestsHistory: data?.requests ?? emptyArray(),
-    totalUpgradeRequestsHistoryCount: data?.total ?? 0,
-    isUpgradeRequestsHistoryLoading: !error && !data && !disabled,
-    isUpgradeRequestsHistoryError: !!error,
-    mutateUpgradeRequestsHistory: mutate,
+    requests: data?.requests ?? emptyArray(),
+    totalCount: data?.total ?? 0,
+    isLoading: !error && !data && !disabled,
+    isError: !!error,
+  };
+}
+
+// Admin-only: pending upgrade requests for the workspace, paginated. Fetched
+// on the Usage page both to render the Requests tab and to back its count
+// badge, so it is not gated behind tab visibility.
+export function useUpgradeRequests({
+  workspaceId,
+  pageIndex,
+  searchTerm,
+  disabled,
+}: {
+  workspaceId: string;
+  pageIndex: number;
+  searchTerm?: string;
+  disabled?: boolean;
+}) {
+  const { requests, totalCount, isLoading, isError } = useUpgradeRequestsList({
+    workspaceId,
+    status: "pending",
+    pageIndex,
+    searchTerm,
+    disabled,
+  });
+
+  return {
+    upgradeRequests: requests,
+    totalUpgradeRequestsCount: totalCount,
+    isUpgradeRequestsLoading: isLoading,
+    isUpgradeRequestsError: isError,
+  };
+}
+
+// Admin-only: resolved (approved/denied) upgrade requests, applies filtering
+export function useUpgradeRequestsHistory({
+  workspaceId,
+  pageIndex,
+  searchTerm,
+  decision,
+  disabled,
+}: {
+  workspaceId: string;
+  pageIndex: number;
+  searchTerm?: string;
+  decision?: UpgradeRequestDecisionFilter;
+  disabled?: boolean;
+}) {
+  const { requests, totalCount, isLoading, isError } = useUpgradeRequestsList({
+    workspaceId,
+    status: "resolved",
+    pageIndex,
+    searchTerm,
+    decision,
+    disabled,
+  });
+
+  return {
+    upgradeRequestsHistory: requests,
+    totalUpgradeRequestsHistoryCount: totalCount,
+    isUpgradeRequestsHistoryLoading: isLoading,
+    isUpgradeRequestsHistoryError: isError,
   };
 }
 
@@ -182,7 +221,6 @@ export function useResolveUpgradeRequest({
   workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutate } = useSWRWithDefaults(upgradeRequestsUrl(workspaceId), null);
 
   const doResolveUpgradeRequest = useCallback(
     async ({
@@ -218,7 +256,7 @@ export function useResolveUpgradeRequest({
       // approval edits the member's seat / limit, so the members-usage surface
       // only needs refreshing on approve.
       await Promise.all([
-        mutate(),
+        invalidateUpgradeRequests(workspaceId),
         resolution.status === "approved"
           ? invalidateMembersUsage(workspaceId)
           : Promise.resolve(),
@@ -244,7 +282,7 @@ export function useResolveUpgradeRequest({
       }
       return true;
     },
-    [workspaceId, sendNotification, mutate]
+    [workspaceId, sendNotification]
   );
 
   return { doResolveUpgradeRequest };
