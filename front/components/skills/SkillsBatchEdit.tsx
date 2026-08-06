@@ -86,7 +86,7 @@ export function SkillsBatchEditBar({
     <div className="flex flex-row items-center justify-between gap-2 rounded-xl bg-muted-background px-2 py-2 dark:bg-muted-background-night">
       <Button
         variant="outline"
-        size="sm"
+        size="xs"
         icon={XClose}
         label="Close edition"
         onClick={onClose}
@@ -96,7 +96,7 @@ export function SkillsBatchEditBar({
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              size="sm"
+              size="xs"
               label="Set availability"
               isSelect
               isLoading={isUpdating}
