@@ -90,8 +90,15 @@ function SourceIcon({ sourceIcon }: SourceIconProps) {
   );
 }
 
+// Recommendations created within the last minute read as "Just now".
+const JUST_NOW_THRESHOLD_MS = 60_000;
+
+// Middot separating a recommendation's source label from its relative time
+// (e.g. "From your #design channel · 2h ago").
+const SOURCE_META_SEPARATOR = "·";
+
 function recencyLabel(createdAtMs: number): string {
-  if (Date.now() - createdAtMs < 60_000) {
+  if (Date.now() - createdAtMs < JUST_NOW_THRESHOLD_MS) {
     return "Just now";
   }
   return `${timeAgoFrom(createdAtMs, { useLongFormat: true })} ago`;
@@ -144,7 +151,9 @@ function RecommendationItem({
           <span className="text-muted-foreground">
             {rec.sourceLabel ?? "Suggested for you"}
           </span>
-          <span className="text-faint">· {recencyLabel(rec.createdAt)}</span>
+          <span className="text-faint">
+            {SOURCE_META_SEPARATOR} {recencyLabel(rec.createdAt)}
+          </span>
         </div>
         <Icon
           visual={expanded ? ChevronUp : ChevronDown}
@@ -483,7 +492,7 @@ function PreviouslyDoneRow({ owner, podId }: PreviouslyDoneRowProps) {
                   {rec.sourceLabel ?? "Completed"}
                 </span>
                 <span className="text-faint">
-                  · {recencyLabel(rec.createdAt)}
+                  {SOURCE_META_SEPARATOR} {recencyLabel(rec.createdAt)}
                 </span>
               </div>
               <p className="text-base font-semibold text-foreground">
