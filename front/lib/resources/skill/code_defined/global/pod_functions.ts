@@ -80,6 +80,8 @@ Pod file system rather than splitting it between the conversation and the Pod ro
     functions/
       list-notes.ts    one file per function, named after the function's slug
       post-note.ts
+      lib/
+        notes.ts       helpers shared by several functions
     databases/
       notes.db.ts      one shared drizzle schema file per database
 \`\`\`
@@ -124,11 +126,18 @@ export default {
 };
 \`\`\`
 
-You can split the implementation across several files in the app folder and import them with
-relative paths (e.g. \`import { parse } from "./lib/parse.ts"\` for a helper under
-\`functions/lib/\`). Publishing bundles the entrypoint
-and all of its relative imports into one module. The bundle is a snapshot taken at publish time, so
-editing an imported helper has no effect until you re-publish.
+Keep a function file to its own endpoint and put anything two functions both need in
+\`functions/lib/\`: validation, formatting, an external API client, a query several endpoints run.
+Import helpers with relative paths (\`import { parse } from "./lib/parse.ts"\`). Before writing a
+helper, read what \`functions/lib/\` already has and extend it rather than adding a near-duplicate;
+when a second function needs logic that currently sits inline in the first, move it to
+\`functions/lib/\` instead of copying it.
+
+Publishing bundles the entrypoint and all of its relative imports into one module, so each
+published function carries its own copy of the helpers it uses. The bundle is a snapshot taken at
+publish time: editing a helper changes nothing until you re-publish, and re-publishing one consumer
+leaves the others on the old copy. After changing a shared helper, re-publish every function that
+imports it.
 
 The external packages you can import are \`zod\`, \`drizzle-orm\` and \`@dust/pod\`. Other npm packages
 are not available at build time.
