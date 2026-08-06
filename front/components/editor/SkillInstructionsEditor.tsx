@@ -21,13 +21,7 @@ import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import {
-  type ClipboardEvent as ReactClipboardEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 function useEditorService(editor: Editor | null) {
   return useMemo(() => {
@@ -303,51 +297,6 @@ const readOnlyStyles = cn(
   "border-border bg-muted-background"
 );
 
-// ProseMirror skips its clipboard serializer when the editor is read-only.
-function handleReadOnlyCopy(
-  editor: Editor | null,
-  event: ReactClipboardEvent<HTMLDivElement>
-) {
-  if (!editor || editor.isDestroyed) {
-    return;
-  }
-
-  const selection = window.getSelection();
-  if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-    return;
-  }
-
-  const range = selection.getRangeAt(0);
-  const editorDom = editor.view.dom;
-  if (
-    !editorDom.contains(range.startContainer) ||
-    !editorDom.contains(range.endContainer)
-  ) {
-    return;
-  }
-
-  let from: number;
-  let to: number;
-  try {
-    from = editor.view.posAtDOM(range.startContainer, range.startOffset, -1);
-    to = editor.view.posAtDOM(range.endContainer, range.endOffset, 1);
-  } catch {
-    return;
-  }
-
-  if (from >= to) {
-    return;
-  }
-
-  const { dom, text } = editor.view.serializeForClipboard(
-    editor.state.doc.slice(from, to)
-  );
-  event.preventDefault();
-  event.clipboardData.clearData();
-  event.clipboardData.setData("text/html", dom.innerHTML);
-  event.clipboardData.setData("text/plain", text);
-}
-
 interface SkillInstructionsEditorContentProps {
   editor: Editor | null;
   isReadOnly: boolean;
@@ -363,11 +312,7 @@ export function SkillInstructionsEditorContent({
     <>
       {isReadOnly ? (
         <div className={cn(className, readOnlyStyles)}>
-          <EditorContent
-            editor={editor}
-            className="leading-7"
-            onCopy={(event) => handleReadOnlyCopy(editor, event)}
-          />
+          <EditorContent editor={editor} className="leading-7" />
         </div>
       ) : (
         <EditorContent editor={editor} className={cn(className, "leading-7")} />
