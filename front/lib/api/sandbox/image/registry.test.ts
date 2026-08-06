@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.66",
+      tag: "0.8.67",
     });
   });
 
@@ -188,7 +188,7 @@ describe("sandbox image registry", () => {
       expect(command).toContain("/usr/bin/passwd");
       expect(command).toContain("chmod u-s");
       expect(command).toContain(
-        "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin /usr/local/lib"
+        `install -d -o root -g root -m 755 ${SANDBOX_STATIC_ROOT_CONSUMED_DIRS.join(" ")}`
       );
       expect(command).toContain("/usr/bin/systemd-analyze unit-paths");
       expect(command).toContain("systemd unit path must be absolute");
@@ -459,7 +459,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.41/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.42/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"

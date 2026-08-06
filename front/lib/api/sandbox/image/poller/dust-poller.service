@@ -1,0 +1,25 @@
+[Unit]
+Description=Dust Pod function poller
+After=network.target
+
+[Service]
+Type=simple
+# Runs as root because it drops each Pod function to the workload account itself: sandbox images
+# purge sudo and strip setuid from the local auth helpers, so there is no unprivileged way to
+# change credentials. Function code never runs in this process.
+User=root
+ExecStart=/opt/bin/dsbx poller
+Restart=always
+RestartSec=2
+# Stop only the poller itself. The default control-group kill would take every Pod function
+# runner in its cgroup with it, so a restart would kill invocations that are mid-flight.
+KillMode=process
+# A credential front no longer accepts is not something restarting fixes, so stop hammering it and
+# wait for the next wake to install a fresh one.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+StateDirectory=dust-poller
+StateDirectoryMode=0700
+
+[Install]
+WantedBy=multi-user.target

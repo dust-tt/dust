@@ -15,6 +15,9 @@ export const SANDBOX_AGENT_PROXIED_SAFE_PATH = [
 ].join(":");
 export const SANDBOX_STATIC_ROOT_CONSUMED_DIRS = [
   "/opt/bin",
+  // Root and the poller read the poller's settings and credential out of /etc/dust. A workload
+  // able to write it owns the sandbox without ever needing a PATH trick.
+  "/etc/dust",
   "/usr/local",
   "/usr/local/sbin",
   "/usr/local/bin",
@@ -85,6 +88,13 @@ export function getSandboxServicePathHardeningCommand(): string {
     "/bin/chmod 644 /opt/dust/profile/*.sh",
     "/bin/chmod 755 /opt/dust/profile/dust-tools /opt/dust/profile/soffice/*.py",
   ].join(" && ");
+  // The poller's unit is read as root by systemd, and the poller it starts runs as root. A
+  // workload able to write it is a straight path to running as root, so ownership and mode are
+  // pinned here rather than left to whatever the copy step happened to produce.
+  const hardenPollerFiles = [
+    "/usr/bin/chown root:root /etc/systemd/system/dust-poller.service",
+    "/bin/chmod 644 /etc/systemd/system/dust-poller.service",
+  ].join(" && ");
   const assertPermissions = [
     `if [ "$(/usr/bin/getent passwd agent | /usr/bin/cut -d: -f6)" != ${SANDBOX_AGENT_SERVICE_HOME} ]; then`,
     "echo 'agent service account must use the root-owned empty home' >&2;",
@@ -93,6 +103,10 @@ export function getSandboxServicePathHardeningCommand(): string {
     "if /usr/bin/find /home/agent /opt/venv /opt/dust/profile \\( -type f -o -type d \\) -perm /022 -print -quit | /usr/bin/grep -q .; then",
     "echo 'sandbox service paths must not be group/other writable' >&2;",
     "exit 1;",
+    "fi;",
+    "if /usr/bin/find /etc/systemd/system/dust-poller.service \\( ! -user root -o ! -group root -o -perm /022 \\) -print -quit | /usr/bin/grep -q .; then",
+    "echo 'poller service files must be root-owned and not group/other writable' >&2;",
+    "exit 1;",
     "fi",
   ].join(" ");
 
@@ -100,6 +114,7 @@ export function getSandboxServicePathHardeningCommand(): string {
     hardenAgentHome,
     hardenPythonVenv,
     hardenDustProfiles,
+    hardenPollerFiles,
     assertPermissions,
   ].join(" && ");
 }

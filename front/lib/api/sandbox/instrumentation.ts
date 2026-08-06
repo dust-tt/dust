@@ -30,6 +30,7 @@ type SandboxStartupPhase =
   | "gcs_refresh"
   | "egress_on_exec"
   | "telemetry_start"
+  | "poller_start"
   // provider.create split.
   | "provider.create_vm"
   | "provider.hardening"
