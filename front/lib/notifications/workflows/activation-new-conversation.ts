@@ -13,7 +13,7 @@ import {
   getConversationDetails,
 } from "@app/lib/notifications/helpers";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { getConversationRoute } from "@app/lib/utils/router";
+import { getGetStartedRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
   ACTIVATION_NEW_CONVERSATION_TRIGGER_ID,
@@ -164,9 +164,7 @@ export const activationNewConversationWorkflow = workflow(
           goal: details.goal,
           action: {
             label: details.subject,
-            url:
-              config.getAppUrl() +
-              getConversationRoute(payload.workspaceId, payload.conversationId),
+            url: config.getAppUrl() + getGetStartedRoute(payload.workspaceId),
           },
         });
 
