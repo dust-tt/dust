@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   AGENT_MEMORY_COMPACT_TOOL_NAME,
@@ -10,11 +11,37 @@ import {
   AGENT_MEMORY_RETRIEVE_TOOL_NAME,
   AGENT_MEMORY_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/agent_memory/metadata";
+import {
+  USER_MEMORY_EDIT_TOOL_NAME,
+  USER_MEMORY_SERVER_NAME,
+} from "@app/lib/api/actions/servers/user_memory/metadata";
+import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+
+const USER_MEMORY_EDIT_TOOL = getPrefixedToolName(
+  USER_MEMORY_SERVER_NAME,
+  USER_MEMORY_EDIT_TOOL_NAME
+);
+
+export const AGENT_MEMORY_WRITE_DISABLED_MESSAGE =
+  `This tool is disabled. Use the \`${USER_MEMORY_EDIT_TOOL}\` tool to add or ` +
+  `update the user's personal memory instead.`;
+
+async function agentMemoryWriteDisabledError(
+  auth: Authenticator
+): Promise<MCPError | null> {
+  if (await hasFeatureFlag(auth, "user_memory")) {
+    return new MCPError(AGENT_MEMORY_WRITE_DISABLED_MESSAGE, {
+      tracked: false,
+    });
+  }
+  return null;
+}
 
 const renderMemory = (
   memory: { lastUpdated: Date; content: string }[]
@@ -61,6 +88,11 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     { entries },
     { auth, runContext }
   ) => {
+    const writeDisabled = await agentMemoryWriteDisabledError(auth);
+    if (writeDisabled) {
+      return new Err(writeDisabled);
+    }
+
     const user = auth.user();
     if (!user) {
       return new Err(
@@ -108,6 +140,11 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
   },
 
   [AGENT_MEMORY_EDIT_TOOL_NAME]: async ({ edits }, { auth, runContext }) => {
+    const writeDisabled = await agentMemoryWriteDisabledError(auth);
+    if (writeDisabled) {
+      return new Err(writeDisabled);
+    }
+
     const user = auth.user();
     if (!user) {
       return new Err(
