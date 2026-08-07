@@ -102,14 +102,6 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
           "Optional short label shown alongside the source icon (e.g. 'Slack', 'GitHub'). " +
             "Can be set independently of sourceIcon."
         ),
-      workAreaId: z
-        .string()
-        .optional()
-        .describe(
-          "Optional sId of the confirmed work area this recommendation serves. " +
-            "Set this when the recommendation was chosen because it advances a specific confirmed work area. " +
-            "Returned by list_work_areas or create_work_areas."
-        ),
     },
     stake: "never_ask",
     toolCostCategory: "basic",
@@ -171,19 +163,13 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "list_work_areas",
     description:
-      "List work areas for this user. " +
-      "Call at the start of every session to check whether work areas have been confirmed (Phase B) " +
-      "or whether Phase A bootstrap is needed (no confirmed rows). " +
-      "Also call before generating session goals to rank against confirmed work areas.",
+      "List the current user's work areas. Returns each work area's id, " +
+      "title, description, and status.",
     schema: {
       status: z
         .enum(["candidate", "confirmed", "dismissed"])
         .optional()
-        .describe(
-          "Filter by status. Omit to return all. " +
-            "Use 'confirmed' to check if Phase B is active. " +
-            "Use 'candidate' to show triage-pending rows."
-        ),
+        .describe("Only return work areas with this status. Omit for all."),
     },
     stake: "never_ask",
     toolCostCategory: "basic",
@@ -196,9 +182,8 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "create_work_areas",
     description:
-      "Persist a batch of inferred candidate work areas (Phase A bootstrap). " +
-      "Call after researching the user to create 3-7 candidate rows, then present them for triage. " +
-      "All rows start with status=candidate. Use update_work_area for triage dispositions.",
+      "Create one or more work areas for the current user. Each is created " +
+      "with status 'candidate'. Returns the created work areas with their ids.",
     schema: {
       workAreas: z
         .array(
@@ -212,14 +197,12 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
             description: z
               .string()
               .max(512)
-              .describe(
-                "One sentence describing what good looks like for this work area."
-              ),
+              .describe("One sentence describing what the work area covers."),
           })
         )
         .min(1)
         .max(10)
-        .describe("Batch of candidate work areas to persist."),
+        .describe("The work areas to create."),
     },
     stake: "never_ask",
     toolCostCategory: "basic",
@@ -231,27 +214,15 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   },
   {
     name: "update_work_area",
-    description:
-      "Update a single work area's status or content (triage disposition or user edit). " +
-      "Use status='confirmed' when the user accepts it, 'dismissed' when they reject it.",
+    description: "Update a single work area's status, title, or description.",
     schema: {
-      workAreaId: z
-        .string()
-        .describe("The sId returned by list_work_areas or create_work_areas."),
+      workAreaId: z.string().describe("The id of the work area to update."),
       status: z
         .enum(["confirmed", "dismissed"])
         .optional()
         .describe("New status for the work area."),
-      title: z
-        .string()
-        .max(255)
-        .optional()
-        .describe("Updated title (user-edited)."),
-      description: z
-        .string()
-        .max(512)
-        .optional()
-        .describe("Updated description (user-edited)."),
+      title: z.string().max(255).optional().describe("New title."),
+      description: z.string().max(512).optional().describe("New description."),
     },
     stake: "never_ask",
     toolCostCategory: "basic",

@@ -263,10 +263,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         return new Ok([
           {
             type: "text" as const,
-            text:
-              status === "confirmed"
-                ? "No confirmed work areas yet. Phase A bootstrap is needed."
-                : "No work areas found.",
+            text: "No work areas found.",
           },
         ]);
       }
@@ -305,7 +302,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       return new Ok([
         {
           type: "text" as const,
-          text: `Created ${created.length} candidate work areas:\n${lines.join("\n")}\n\nPresent these to the user for triage using update_work_area with status='confirmed' or 'dismissed'.`,
+          text: `Created ${created.length} work areas:\n${lines.join("\n")}`,
         },
       ]);
     },
@@ -348,7 +345,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         parts.push(`Title updated.`);
       }
       if (description) {
-        parts.push(`Intent updated.`);
+        parts.push(`Description updated.`);
       }
 
       return new Ok([{ type: "text" as const, text: parts.join(" ") }]);
