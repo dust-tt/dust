@@ -168,7 +168,7 @@ export async function fetchConsumptionTimeseries(
   }
 ): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
-    workspaceId: auth.getNonNullableWorkspace().sId,
+    auth,
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
