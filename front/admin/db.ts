@@ -288,6 +288,7 @@ export function loadAllModels() {
     ActivationPodModel,
     ActivationRecommendationModel,
     ActivationNudgeModel,
+    ActivationWorkAreaModel,
   ];
 }
 
