@@ -4,13 +4,13 @@ import type {
   UsageFilterAgentOption,
   UsageFilterCategory,
   UsageFilterGroup,
-  UsageFilterMemberOption,
   UsageFilterModelOption,
   UsageFilterOptionForCategory,
   UsageFilterScope,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
   UsageFilterToolOption,
+  UsageFilterUserOption,
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
@@ -89,14 +89,14 @@ export function UsageFilterPanel({
     USAGE_MODEL_TIERS[0]
   );
   const [searchText, setSearchText] = useState("");
-  // Only used for the "member" category: narrows the displayed members down
+  // Only used for the "user" category: narrows the displayed members down
   // to those belonging to at least one of these groups. Groups only narrow
   // the picker — the user still checks individual members to add them to the
   // filter. Lifted here (rather than owned by UsageFilterMemberGroupsControls)
   // because filteredEntities below needs it too.
   const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
 
-  const isMemberCategoryActive = isOpen && activeCategory === "member";
+  const isMemberCategoryActive = isOpen && activeCategory === "user";
 
   const { rows: topUserRows } = useConsumptionTop({
     workspaceId: owner.sId,
@@ -117,12 +117,12 @@ export function UsageFilterPanel({
   // Search is applied client-side below (the top-users ranking has no
   // server-side search), so a member outside the top 100 by credits over the
   // period will not be searchable here.
-  const memberOptions = useMemo<UsageFilterMemberOption[]>(
+  const memberOptions = useMemo<UsageFilterUserOption[]>(
     () =>
       topUserRows.map((row) => ({
         id: row.id,
         name: row.name,
-        kind: "member",
+        kind: "user",
         image: row.pictureUrl,
       })),
     [topUserRows]
@@ -133,7 +133,7 @@ export function UsageFilterPanel({
   }>(
     () => ({
       ...categoryOptions,
-      member: memberOptions,
+      user: memberOptions,
     }),
     [categoryOptions, memberOptions]
   );
@@ -142,7 +142,7 @@ export function UsageFilterPanel({
   const filteredOptions = useMemo(() => {
     const search = searchText.trim().toLowerCase();
     const selectedGroupMemberIds =
-      activeCategory === "member" && selectedGroups.length > 0
+      activeCategory === "user" && selectedGroups.length > 0
         ? new Set(selectedGroups.flatMap((group) => group.memberIds))
         : null;
     return activeOptions.filter((option) => {
@@ -267,7 +267,7 @@ export function UsageFilterPanel({
               onChange={setSearchText}
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
-            {activeCategory === "member" && (
+            {activeCategory === "user" && (
               <UsageFilterMemberGroupsControls
                 groups={groups}
                 selectedGroups={selectedGroups}
