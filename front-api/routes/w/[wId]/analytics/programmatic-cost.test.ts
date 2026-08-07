@@ -13,7 +13,11 @@ vi.mock(import("@app/lib/api/analytics/programmatic_cost"), async (orig) => {
   };
 });
 
-async function setupTest({ role = "admin" as MembershipRoleType } = {}) {
+async function setupTest({
+  role = "admin",
+}: {
+  role?: MembershipRoleType;
+} = {}) {
   const { workspace, ...rest } = await createPrivateApiMockRequest({
     role,
   });

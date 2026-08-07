@@ -17,7 +17,11 @@ vi.mock(import("@app/lib/api/analytics/export_tables"), async (orig) => {
   };
 });
 
-async function setupTest({ role = "admin" as MembershipRoleType } = {}) {
+async function setupTest({
+  role = "admin",
+}: {
+  role?: MembershipRoleType;
+} = {}) {
   const { workspace, ...rest } = await createPrivateApiMockRequest({ role });
   return { workspace, ...rest };
 }

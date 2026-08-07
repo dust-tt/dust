@@ -49,8 +49,11 @@ const MCP_SOURCE_WITH_TOKEN: ResolvedLabelSource = {
 };
 
 async function setupTest({
-  role = "admin" as MembershipRoleType,
+  role = "admin",
   withFeatureFlag = true,
+}: {
+  role?: MembershipRoleType;
+  withFeatureFlag?: boolean;
 } = {}) {
   const { workspace, auth, ...rest } = await createPrivateApiMockRequest({
     role,
