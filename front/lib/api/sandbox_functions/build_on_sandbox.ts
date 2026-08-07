@@ -4,6 +4,11 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import {
+  splitStagingStdout,
+  stagingHashCaptureLines,
+  verifyStagingContent,
+} from "@app/lib/api/sandbox_functions/staging_integrity";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
@@ -101,6 +106,10 @@ export async function buildSandboxFunctionOnSandbox(
     `mkdir -p -- ${shellEscape(buildDir)}`,
     // `--` stops the model-supplied source path from being read as a dsbx flag.
     `${DSBX_BIN_PATH} function build -- ${shellEscape(srcSandboxPath)} ${shellEscape(bundlePath)} ${shellEscape(schemaPath)}`,
+    // Pin the artifact hashes in the same exec; verified after the provider read-back
+    // below (the read-back runs as root and follows symlinks, so a swapped staging
+    // file would otherwise read an arbitrary root file).
+    ...stagingHashCaptureLines([bundlePath, schemaPath]),
   ].join("\n");
 
   const execResult = await sandbox.exec(auth, command, {
@@ -113,7 +122,8 @@ export async function buildSandboxFunctionOnSandbox(
     );
   }
 
-  const envelope = parseBuildEnvelope(execResult.value.stdout);
+  const { dsbxStdout, hashes } = splitStagingStdout(execResult.value.stdout);
+  const envelope = parseBuildEnvelope(dsbxStdout);
   if (envelope.isErr()) {
     return envelope;
   }
@@ -129,11 +139,27 @@ export async function buildSandboxFunctionOnSandbox(
       new SandboxFunctionError("internal", bundleResult.error.message)
     );
   }
+  const bundleIntegrity = verifyStagingContent(
+    bundlePath,
+    bundleResult.value,
+    hashes
+  );
+  if (bundleIntegrity.isErr()) {
+    return bundleIntegrity;
+  }
   const schemaResult = await sandbox.readFile(auth, schemaPath);
   if (schemaResult.isErr()) {
     return new Err(
       new SandboxFunctionError("internal", schemaResult.error.message)
     );
+  }
+  const schemaIntegrity = verifyStagingContent(
+    schemaPath,
+    schemaResult.value,
+    hashes
+  );
+  if (schemaIntegrity.isErr()) {
+    return schemaIntegrity;
   }
 
   return parseSchemaFile(
