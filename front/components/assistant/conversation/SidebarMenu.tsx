@@ -1373,7 +1373,10 @@ function UnreadConversationsSection({
               return [
                 <NavigationListLabel
                   key={`pod-label-${group.spaceId}`}
-                  className="bg-background"
+                  // The pod name is a static group header, not a link: keep
+                  // the arrow cursor instead of the text I-beam so it doesn't
+                  // read as interactive or selectable.
+                  className="bg-background cursor-default select-none"
                   label={group.podName}
                   icon={pod ? getSpaceIcon(pod) : undefined}
                   isSticky
@@ -1401,7 +1404,9 @@ function UnreadConversationsSection({
                     exit={GRID_EXIT}
                     transition={{ ease: "easeOut", duration: 0.1 }}
                   >
-                    <div className="overflow-hidden">
+                    {/* Indented under the pod header so the conversation
+                     * reads as nested inside the pod group. */}
+                    <div className="overflow-hidden pl-3">
                       <ConversationListItem
                         conversation={conversation}
                         isMultiSelect={isMultiSelect}
