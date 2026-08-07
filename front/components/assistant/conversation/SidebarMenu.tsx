@@ -1382,7 +1382,10 @@ function UnreadConversationsSection({
                       // doesn't read as interactive or selectable. The mt-2/
                       // pt-2 split of the label's default pt-4 keeps half of
                       // the inter-group spacing outside the highlight block.
-                      className="cursor-default select-none mt-2 pt-2"
+                      // bg-transparent overrides the label's own background so
+                      // the section card and the mark-as-read hover block show
+                      // through.
+                      className="bg-transparent cursor-default select-none mt-2 pt-2"
                       label={group.podName}
                       icon={pod ? getSpaceIcon(pod) : undefined}
                       action={
