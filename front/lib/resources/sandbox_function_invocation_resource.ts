@@ -646,6 +646,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ? {}
           : { body: JSON.stringify(this.input) }),
         encoding: "utf8",
+        // From the persisted row, like the mode above: the warm server refuses to serve a
+        // bundle that does not hash to this, so a republished function is never run from a
+        // stale warm import. Null only for functions last published before hashes existed —
+        // those keep the server's stat/lifetime backstops.
+        ...(persistedFunction.bundleSha256 === null
+          ? {}
+          : { bundleSha256: persistedFunction.bundleSha256 }),
       };
       const userIdentity = getSandboxFunctionUserIdentity(
         auth,

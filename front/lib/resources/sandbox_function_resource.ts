@@ -40,6 +40,7 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
+import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
 
@@ -48,6 +49,14 @@ export interface SandboxFunctionResource
   extends ReadonlyAttributesType<SandboxFunctionModel> {}
 
 export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
+
+/**
+ * Sha256 hex of a published bundle's utf8 bytes — the same bytes uploadContent writes and the
+ * in-sandbox warm server hashes off disk, so the two sides can compare (see the runner's serve.ts).
+ */
+export function computeSandboxFunctionBundleSha256(bundleCode: string): string {
+  return createHash("sha256").update(bundleCode, "utf8").digest("hex");
+}
 
 export function getSandboxFunctionPublishLockName(
   sandboxFunctionSId: string
@@ -115,6 +124,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description,
       userIdentity = "optional",
       executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+      bundleSha256 = null,
       inputSchema,
       outputSchema,
     }: {
@@ -124,6 +134,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: string;
       userIdentity?: SandboxFunctionUserIdentityPolicy;
       executionMode?: SandboxFunctionExecutionMode;
+      bundleSha256?: string | null;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     },
@@ -164,6 +175,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         description,
         userIdentity,
         executionMode,
+        bundleSha256,
         inputSchema,
         outputSchema,
       },
@@ -236,6 +248,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
             description,
             userIdentity,
             executionMode,
+            // Derived from the exact code the upload above wrote. Landing with the row update
+            // (not before the upload) means a warm server can never be told to expect a bundle
+            // that is not on disk yet; invocations racing this publish carry the old hash and
+            // settle against whichever bundle they were issued for.
+            bundleSha256: computeSandboxFunctionBundleSha256(bundleCode),
             inputSchema,
             outputSchema,
           });

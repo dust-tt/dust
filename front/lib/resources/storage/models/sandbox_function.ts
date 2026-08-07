@@ -54,6 +54,10 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare description: string;
   declare userIdentity: SandboxFunctionUserIdentityPolicy | null;
   declare executionMode: CreationOptional<SandboxFunctionExecutionMode>;
+  // Sha256 hex of the published bundle. Stamped onto every invocation envelope so the in-sandbox
+  // warm server can refuse to serve a bundle the publisher has since replaced. Null only for
+  // functions last published before the column existed.
+  declare bundleSha256: string | null;
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
 
@@ -121,6 +125,10 @@ SandboxFunctionModel.init(
       validate: {
         isIn: [SANDBOX_FUNCTION_EXECUTION_MODES],
       },
+    },
+    bundleSha256: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
     },
     inputSchema: {
       type: DataTypes.JSONB,
