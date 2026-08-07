@@ -1,7 +1,4 @@
-import {
-  isRunAgentQueryProgressOutput,
-  isSidePanelControlOutput,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isRunAgentQueryProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -199,10 +196,7 @@ export function toPublicAgentMessageEvent(
       event.data.notification._meta.data;
 
     let output;
-    if (isSidePanelControlOutput(originalOutput)) {
-      // UI-only signal — not exposed on the public v1 API.
-      output = undefined;
-    } else if (isRunAgentQueryProgressOutput(originalOutput)) {
+    if (isRunAgentQueryProgressOutput(originalOutput)) {
       const wId = auth.getNonNullableWorkspace().sId;
       const { conversationId, agentMessageId } = originalOutput;
       const childConversationUrl = `${config.getApiBaseUrl()}/api/v1/w/${wId}/assistant/conversations/${conversationId}`;
@@ -217,10 +211,6 @@ export function toPublicAgentMessageEvent(
       output = originalOutput;
     }
 
-    // Cast: this is the internal→public boundary. The internal type carries
-    // output variants (e.g. side_panel_control) that post-date the installed
-    // SDK. Casting is safe here because the handler is the mapping layer.
-    // biome-ignore lint/suspicious/noExplicitAny: internal→public boundary cast
     return {
       eventId: event.eventId,
       data: {
@@ -234,7 +224,7 @@ export function toPublicAgentMessageEvent(
           },
         },
       },
-    } as AgentMessageEventType;
+    };
   }
 
   return {
