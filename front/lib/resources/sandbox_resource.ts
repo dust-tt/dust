@@ -1120,6 +1120,23 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
 
+      // Same guard as the sleep flow, and destroy is the worse race to lose: there is no later
+      // wake or re-flush, so an exec whose writes land after the flush loses them permanently.
+      // Deferring is safe — a busy pod's next invocation escalates through ensureActive's
+      // kill-requested branch, which recreates on access regardless, and a quiet pod is caught
+      // by the next sweep.
+      const activityBefore = await readSandboxExecActivity(sandbox.sId);
+      if (activityBefore.isErr()) {
+        return activityBefore;
+      }
+      if (activityBefore.value.inFlight > 0) {
+        logger.info(
+          { sandbox: sandbox.toLogJSON() },
+          "Kill-requested sandbox has an exec in flight — deferring destroy."
+        );
+        return new Ok(undefined);
+      }
+
       // Pre-destroy flush: kill-requested destroys (image rollouts) would
       // otherwise lose state that never reached its replica.
       const checkResult = await this.runPreSleepCheck(
@@ -1137,6 +1154,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           "Kill-requested destroy: pre-destroy health check failed — skipping destroy this sweep."
         );
         return checkResult;
+      }
+
+      const activityAfter = await readSandboxExecActivity(sandbox.sId);
+      if (activityAfter.isErr()) {
+        return activityAfter;
+      }
+      if (
+        activityAfter.value.inFlight > 0 ||
+        activityAfter.value.started !== activityBefore.value.started
+      ) {
+        logger.info(
+          { sandbox: sandbox.toLogJSON() },
+          "Exec activity during kill-requested pre-destroy flush — deferring destroy."
+        );
+        return new Ok(undefined);
       }
 
       const result = await provider.destroy(sandbox.providerId, tracingOpts);

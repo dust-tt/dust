@@ -200,6 +200,9 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping", () =>
     mockProviderDestroy.mockResolvedValue(new Ok(undefined));
     mockDeleteLegacySandboxPolicy.mockResolvedValue(new Ok(undefined));
     mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
+    mockReadSandboxExecActivity.mockResolvedValue(
+      new Ok({ started: 2, inFlight: 0 })
+    );
 
     const testSetup = await createResourceTest({ role: "admin" });
     authenticator = testSetup.authenticator;
@@ -327,6 +330,9 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", 
     mockProviderDestroy.mockResolvedValue(new Ok(undefined));
     mockDeleteLegacySandboxPolicy.mockResolvedValue(new Ok(undefined));
     mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
+    mockReadSandboxExecActivity.mockResolvedValue(
+      new Ok({ started: 2, inFlight: 0 })
+    );
 
     const testSetup = await createResourceTest({ role: "admin" });
     authenticator = testSetup.authenticator;
@@ -414,6 +420,37 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", 
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).not.toHaveBeenCalled();
+  });
+
+  it("defers the destroy when an exec is in flight", async () => {
+    const sandbox = await SandboxFactory.create(
+      authenticator,
+      conversationResource.toJSON(),
+      {
+        status: "running",
+        killRequestedAt: new Date(),
+      }
+    );
+    mockReadSandboxExecActivity.mockResolvedValue(
+      new Ok({ started: 3, inFlight: 1 })
+    );
+
+    const result =
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+        authenticator,
+        conversationResource
+      );
+
+    // Destroy is the worse race to lose: no later wake or re-flush ever
+    // recovers writes committed after the flush.
+    expect(result.isOk()).toBe(true);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversationResource.toJSON()
+    );
+    expect(reloaded?.status).toBe("running");
+    expect(reloaded?.sId).toBe(sandbox.sId);
   });
 });
 
@@ -1179,7 +1216,9 @@ describe("SandboxResource.dangerouslySleepIfRunning", () => {
   // The adapter's real beforeSleep flushes pod state through the provider; a
   // stub keeps these tests on the flow under test (activity read -> flush ->
   // activity re-read -> pause) without mocking the whole pod-state stack.
-  async function sleepPod(pod: Awaited<ReturnType<typeof SpaceFactory.project>>) {
+  async function sleepPod(
+    pod: Awaited<ReturnType<typeof SpaceFactory.project>>
+  ) {
     return SandboxResource.dangerouslySleepIfRunning(
       authenticator,
       {
