@@ -5,7 +5,6 @@ import { Authenticator } from "@app/lib/auth";
 import { storeAgentMessageConsumptionAnalyticsActivity } from "@app/temporal/analytics_queue/activities/consumption_attribution";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { Err, Ok } from "@app/types/shared/result";
-import { ApplicationFailure } from "@temporalio/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(
@@ -44,25 +43,16 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
     ).resolves.toBeUndefined();
   });
 
-  it.each([
-    [new ElasticsearchError("connection_error", "unavailable"), false],
-    [new ElasticsearchError("query_error", "invalid mapping", 400), true],
-  ])("sets Temporal retryability from the Elasticsearch error", async (error, nonRetryable) => {
+  it("throws the Elasticsearch error so Temporal retries the activity", async () => {
+    const error = new ElasticsearchError("query_error", "invalid mapping", 400);
     vi.mocked(indexAgentMessageConsumptionAnalytics).mockResolvedValue(
       new Err(error)
     );
 
-    try {
-      await storeAgentMessageConsumptionAnalyticsActivity(authType, {
+    await expect(
+      storeAgentMessageConsumptionAnalyticsActivity(authType, {
         agentLoopArgs,
-      });
-      expect.unreachable("The activity should fail");
-    } catch (failure) {
-      expect(failure).toBeInstanceOf(ApplicationFailure);
-      expect(failure).toMatchObject({
-        nonRetryable,
-        type: "ElasticsearchError",
-      });
-    }
+      })
+    ).rejects.toBe(error);
   });
 });
