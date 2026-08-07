@@ -10,6 +10,7 @@ import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mc
 import { createMCPServerDialogFormSchema } from "@app/components/actions/mcp/forms/types";
 import {
   getCreateMCPServerDialogDefaultValues,
+  getMCPServerViewNameError,
   handleCreateMCPServerDialogSubmitError,
 } from "@app/components/actions/mcp/forms/utils";
 import type {
@@ -187,24 +188,12 @@ export function CreateMCPServerDialog({
   } | null>(null);
 
   // Client-side validation for the view name field.
-  const viewNameError = useMemo(() => {
-    const trimmed = (viewName ?? "").trim();
-    if (needsCustomName && !trimmed) {
-      return "Name is required.";
-    }
-    if (nameConflict) {
-      if (!trimmed) {
-        return `The default name "${nameConflict.name}" conflicts with an existing Tool. Enter a different name.`;
-      }
-      if (trimmed === nameConflict.name) {
-        return "This name conflicts with an existing Tool. Enter a different name.";
-      }
-    }
-    if (trimmed.length > 0 && existingViewNames.includes(trimmed)) {
-      return "This name is already in use.";
-    }
-    return null;
-  }, [needsCustomName, nameConflict, viewName, existingViewNames]);
+  const viewNameError = getMCPServerViewNameError({
+    viewName,
+    needsCustomName,
+    nameConflict: nameConflict?.name ?? null,
+    existingViewNames,
+  });
 
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState<{
@@ -432,7 +421,12 @@ export function CreateMCPServerDialog({
   );
 
   const handleCreateServerAndSubmitStaticCredentials = async () => {
-    if (!internalMCPServer || !authorization || !useCase || viewNameError) {
+    if (!internalMCPServer || !authorization || !useCase) {
+      return;
+    }
+
+    const isValid = await form.trigger("viewName");
+    if (!isValid || viewNameError) {
       return;
     }
 
@@ -463,12 +457,14 @@ export function CreateMCPServerDialog({
     setExternalIsLoading(true);
 
     try {
+      const viewName = form.getValues("viewName")?.trim();
+
       // Create the internal server without an OAuth connection.
       const createRes = await createInternalMCPServer({
         name: internalMCPServer.name,
         useCase,
         includeGlobal: true,
-        viewName: form.getValues("viewName"),
+        ...(viewName ? { viewName } : {}),
       });
 
       if (createRes.isErr()) {

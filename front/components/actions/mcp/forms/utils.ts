@@ -31,6 +31,35 @@ interface HandleCreateMCPServerDialogSubmitErrorParams {
   loading: LoadingControls;
 }
 
+export function getMCPServerViewNameError({
+  viewName,
+  needsCustomName,
+  nameConflict,
+  existingViewNames,
+}: {
+  viewName: string | undefined;
+  needsCustomName: boolean;
+  nameConflict: string | null;
+  existingViewNames: string[];
+}): string | null {
+  const trimmed = (viewName ?? "").trim();
+  if (needsCustomName && !trimmed) {
+    return "Name is required.";
+  }
+  if (nameConflict) {
+    if (!trimmed) {
+      return `The default name "${nameConflict}" conflicts with an existing Tool. Enter a different name.`;
+    }
+    if (trimmed === nameConflict) {
+      return "This name conflicts with an existing Tool. Enter a different name.";
+    }
+  }
+  if (trimmed.length > 0 && existingViewNames.includes(trimmed)) {
+    return "This name is already in use.";
+  }
+  return null;
+}
+
 export function handleCreateMCPServerDialogSubmitError({
   error,
   context,

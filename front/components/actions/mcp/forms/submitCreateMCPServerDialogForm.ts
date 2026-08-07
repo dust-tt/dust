@@ -259,6 +259,7 @@ export async function submitCreateMCPServerDialogForm({
   let server: MCPServerType | undefined;
 
   if (internalMCPServer) {
+    const viewName = values.viewName?.trim();
     const sanitizedHeaders =
       requiresBearerTokenConfiguration(internalMCPServer) &&
       values.useCustomHeaders
@@ -286,14 +287,14 @@ export async function submitCreateMCPServerDialogForm({
           name: internalMCPServer.name,
           oauthConnection,
           includeGlobal: true,
-          viewName: values.viewName,
+          ...(viewName ? { viewName } : {}),
           ...scopeField,
           ...optionalFields,
         })
       : await createInternalMCPServer({
           name: internalMCPServer.name,
           includeGlobal: true,
-          viewName: values.viewName,
+          ...(viewName ? { viewName } : {}),
           ...scopeField,
           ...optionalFields,
         });
