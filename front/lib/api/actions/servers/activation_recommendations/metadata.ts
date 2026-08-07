@@ -161,6 +161,78 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
     },
   },
   {
+    name: "list_work_areas",
+    description:
+      "List the current user's work areas. Returns each work area's id, " +
+      "title, description, and status.",
+    schema: {
+      status: z
+        .enum(["candidate", "confirmed", "dismissed"])
+        .optional()
+        .describe("Only return work areas with this status. Omit for all."),
+    },
+    stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
+    displayLabels: {
+      running: "Fetching work areas",
+      done: "Work areas fetched",
+    },
+  },
+  {
+    name: "create_work_areas",
+    description:
+      "Create one or more work areas for the current user. Each is created " +
+      "with status 'candidate'. Returns the created work areas with their ids.",
+    schema: {
+      workAreas: z
+        .array(
+          z.object({
+            title: z
+              .string()
+              .max(255)
+              .describe(
+                "Short name of the work area (e.g. 'Weekly pipeline reporting')."
+              ),
+            description: z
+              .string()
+              .max(512)
+              .describe("One sentence describing what the work area covers."),
+          })
+        )
+        .min(1)
+        .max(10)
+        .describe("The work areas to create."),
+    },
+    stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
+    displayLabels: {
+      running: "Saving work areas",
+      done: "Work areas saved",
+    },
+  },
+  {
+    name: "update_work_area",
+    description: "Update a single work area's status, title, or description.",
+    schema: {
+      workAreaId: z.string().describe("The id of the work area to update."),
+      status: z
+        .enum(["confirmed", "dismissed"])
+        .optional()
+        .describe("New status for the work area."),
+      title: z.string().max(255).optional().describe("New title."),
+      description: z.string().max(512).optional().describe("New description."),
+    },
+    stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
+    displayLabels: {
+      running: "Updating work area",
+      done: "Work area updated",
+    },
+  },
+  {
     name: "get_tool_execution_modes",
     description:
       "Get the resolved execution mode for each tool available in the current run. " +

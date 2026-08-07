@@ -7,6 +7,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "create_work_areas": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "get_tool_execution_modes": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -15,7 +19,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "list_work_areas": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "update_recommendation": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "update_work_area": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -2636,9 +2648,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
 {
   "activation_recommendations": {
     "create_recommendation": "never_ask",
+    "create_work_areas": "never_ask",
     "get_tool_execution_modes": "never_ask",
     "list_recommendations": "never_ask",
+    "list_work_areas": "never_ask",
     "update_recommendation": "never_ask",
+    "update_work_area": "never_ask",
   },
   "agent_memory": {
     "compact_memory": "never_ask",
