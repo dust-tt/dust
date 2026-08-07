@@ -536,13 +536,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // invocation of a busy pod queue behind a blind-polling Redis lock for work that reads two
     // rows.
     //
-    // The read is a snapshot, so a transition can land right after it — which is exactly as racy
-    // as the same transition landing right after the locked version released. Every such race
-    // converges: a concurrent kill or sleep makes the exec fail, the caller escalates to the
-    // durable path, and the locked ensure there runs the transition machinery (kill-requested
-    // recreation included). A sandbox that is NOT running never takes the fast path: the error
-    // return below preserves requireRunning's contract without touching the lock, since waiting
-    // behind an in-flight multi-second wake would defeat the caller's latency bound anyway.
+    // The read is a snapshot, so a concurrent kill or sleep can invalidate the sandbox between
+    // this check and the caller's exec. That race is accepted, not converged: the exec fails
+    // with a provider error and the invocation fails (escalation to the durable path only
+    // happens on SandboxNotRunningError, and escalating on an arbitrary exec failure would risk
+    // re-running a function that partially executed). The lock never protected running execs —
+    // it only serialized admission — so an exec racing a sleep's pre-pause flush was already
+    // possible for any exec admitted before the reaper took the lock; this path widens
+    // admission into that window but does not create it. Both windows need the reaper to pick
+    // an actively-used pod, which the activity touch below makes minutes-rare.
+    //
+    // A sandbox that is NOT running never takes the fast path: the error return below preserves
+    // requireRunning's contract without touching the lock, since waiting behind an in-flight
+    // multi-second wake would defeat the caller's latency bound anyway.
     if (opts.requireRunning) {
       const existing = await owner.fetchSandbox();
       if (
