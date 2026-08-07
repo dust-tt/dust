@@ -398,23 +398,16 @@ export async function hardDeleteSpace(
     space,
     { includeDeleted: true }
   );
-  for (const webhookSourceView of webhookSourceViews) {
-    // Delete triggers referencing this webhook source view first.
-    const triggers = await TriggerResource.listByWebhookSourceViewId(
-      auth,
-      webhookSourceView.id
-    );
-    await concurrentExecutor(
-      triggers,
-      async (trigger) => {
-        const triggerRes = await trigger.delete(auth);
-        if (triggerRes.isErr()) {
-          throw triggerRes.error;
-        }
-      },
-      { concurrency: 4 }
-    );
+  const triggers = await TriggerResource.listByWebhookSourceViewIds(
+    auth,
+    webhookSourceViews.map((view) => view.id)
+  );
+  const triggersRes = await TriggerResource.deleteMany(auth, triggers);
+  if (triggersRes.isErr()) {
+    return triggersRes;
+  }
 
+  for (const webhookSourceView of webhookSourceViews) {
     const res = await webhookSourceView.hardDelete(auth);
     if (res.isErr()) {
       return res;

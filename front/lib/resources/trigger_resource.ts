@@ -259,9 +259,20 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     webhookSourceViewId: ModelId
   ) {
+    return this.listByWebhookSourceViewIds(auth, [webhookSourceViewId]);
+  }
+
+  static async listByWebhookSourceViewIds(
+    auth: Authenticator,
+    webhookSourceViewIds: ModelId[]
+  ) {
+    if (webhookSourceViewIds.length === 0) {
+      return [];
+    }
+
     return this.baseFetch(auth, {
       where: {
-        webhookSourceViewId,
+        webhookSourceViewId: { [Op.in]: webhookSourceViewIds },
         kind: "webhook",
       },
     });
@@ -415,82 +426,136 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
   ): Promise<Result<undefined, Error>> {
-    const owner = auth.getNonNullableWorkspace();
+    return TriggerResource.deleteMany(auth, [this], { transaction });
+  }
 
-    const r = await this.removeTemporalWorkflow(auth);
-    if (r.isErr()) {
-      return r;
+  private static async deleteWebhookRequestsForSourceViews(
+    auth: Authenticator,
+    webhookSourceViewIds: ModelId[],
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
+    if (webhookSourceViewIds.length === 0) {
+      return new Ok(undefined);
     }
 
-    try {
-      if (this.kind === "webhook" && this.webhookSourceViewId) {
-        const webhookSourceView = await WebhookSourcesViewModel.findOne({
-          where: {
-            id: this.webhookSourceViewId,
-            workspaceId: owner.id,
-          },
-        });
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const webhookSourceViews = await WebhookSourcesViewModel.findAll({
+      attributes: ["id", "webhookSourceId"],
+      where: {
+        id: { [Op.in]: webhookSourceViewIds },
+        workspaceId,
+      },
+      transaction,
+    });
 
-        if (!webhookSourceView) {
-          return new Err(new Error("Webhook source view not found"));
-        }
+    if (webhookSourceViews.length !== webhookSourceViewIds.length) {
+      return new Err(new Error("Webhook source view not found"));
+    }
 
-        const webhookRequests = await WebhookRequestModel.findAll({
-          where: {
-            workspaceId: owner.id,
-            webhookSourceId: webhookSourceView.webhookSourceId,
-          },
-        });
-
-        await WebhookRequestTriggerModel.destroy({
-          where: {
-            workspaceId: owner.id,
-            webhookRequestId: {
-              [Op.in]: webhookRequests.map((w) => w.id),
-            },
-          },
-        });
-        await WebhookRequestModel.destroy({
-          where: {
-            workspaceId: owner.id,
-            id: { [Op.in]: webhookRequests.map((w) => w.id) },
-          },
-        });
-      }
-
-      await ActivationNudgeModel.destroy({
-        where: { triggerId: this.id, workspaceId: owner.id },
-        transaction,
-      });
-
-      await TriggerModel.destroy({
-        where: {
-          id: this.id,
-          workspaceId: owner.id,
+    const webhookRequests = await WebhookRequestModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId,
+        webhookSourceId: {
+          [Op.in]: webhookSourceViews.map((view) => view.webhookSourceId),
         },
-        transaction,
-      });
+      },
+      transaction,
+    });
 
+    if (webhookRequests.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const webhookRequestIds = webhookRequests.map((request) => request.id);
+    await WebhookRequestTriggerModel.destroy({
+      where: {
+        workspaceId,
+        webhookRequestId: { [Op.in]: webhookRequestIds },
+      },
+      transaction,
+    });
+    await WebhookRequestModel.destroy({
+      where: {
+        workspaceId,
+        id: { [Op.in]: webhookRequestIds },
+      },
+      transaction,
+    });
+
+    return new Ok(undefined);
+  }
+
+  static async deleteMany(
+    auth: Authenticator,
+    triggers: TriggerResource[],
+    { transaction }: { transaction?: Transaction | undefined } = {}
+  ): Promise<Result<undefined, Error>> {
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    for (const trigger of triggers) {
+      const r = await trigger.removeTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
+    }
+
+    const webhookSourceViewIds = [
+      ...new Set(
+        triggers.flatMap((trigger) =>
+          trigger.kind === "webhook" && trigger.webhookSourceViewId
+            ? [trigger.webhookSourceViewId]
+            : []
+        )
+      ),
+    ];
+    const webhookRequestsDeletion =
+      await this.deleteWebhookRequestsForSourceViews(
+        auth,
+        webhookSourceViewIds,
+        transaction
+      );
+    if (webhookRequestsDeletion.isErr()) {
+      return webhookRequestsDeletion;
+    }
+
+    const triggerIds = triggers.map((trigger) => trigger.id);
+    await ActivationNudgeModel.destroy({
+      where: { triggerId: { [Op.in]: triggerIds }, workspaceId: owner.id },
+      transaction,
+    });
+
+    await TriggerModel.destroy({
+      where: {
+        id: { [Op.in]: triggerIds },
+        workspaceId: owner.id,
+      },
+      transaction,
+    });
+
+    for (const trigger of triggers) {
       void emitAuditLogEvent({
         auth,
         action: "trigger.deleted",
         targets: [
-          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("workspace", owner),
           buildAuditLogTarget("trigger", {
-            sId: this.sId,
-            name: this.name,
+            sId: trigger.sId,
+            name: trigger.name,
           }),
         ],
         metadata: {
-          trigger_type: this.kind,
-          agent_id: this.agentConfigurationId,
+          trigger_type: trigger.kind,
+          agent_id: trigger.agentConfigurationId,
         },
       });
-
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(normalizeError(error));
     }
+
+    return new Ok(undefined);
   }
 
   static async deleteAllForWorkspace(

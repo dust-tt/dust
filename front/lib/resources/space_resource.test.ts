@@ -13,14 +13,18 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -181,6 +185,71 @@ describe("SpaceResource", () => {
           where: { workspaceId: workspace.id, name: "WORKSPACE_TOKEN" },
         })
       ).resolves.toBe(1);
+    });
+
+    it("should delete all webhook triggers before hard deleting a space", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+        name: "Webhook Agent",
+      });
+      const webhookSourceView = await new WebhookSourceViewFactory(
+        workspace
+      ).create(regularSpace);
+      const triggers = await Promise.all([
+        TriggerFactory.webhook(adminAuth, {
+          agentConfigurationId: agent.sId,
+          name: "Webhook Trigger 1",
+          webhookSourceViewId: webhookSourceView.id,
+        }),
+        TriggerFactory.webhook(adminAuth, {
+          agentConfigurationId: agent.sId,
+          name: "Webhook Trigger 2",
+          webhookSourceViewId: webhookSourceView.id,
+        }),
+      ]);
+      const unrelatedTrigger = await TriggerFactory.webhook(adminAuth, {
+        agentConfigurationId: agent.sId,
+        name: "Unrelated Webhook Trigger",
+      });
+      const webhookRequest = await WebhookRequestResource.makeNew({
+        workspaceId: workspace.id,
+        webhookSourceId: webhookSourceView.webhookSourceId,
+        status: "received",
+      });
+      await webhookRequest.markRelatedTrigger({
+        trigger: triggers[0].toJSON(),
+        status: "workflow_start_succeeded",
+      });
+
+      const softDeleteResult = await regularSpace.delete(adminAuth, {
+        hardDelete: false,
+      });
+      expect(softDeleteResult.isOk()).toBe(true);
+
+      const deletedSpace = await SpaceResource.fetchById(
+        adminAuth,
+        regularSpace.sId,
+        { includeDeleted: true }
+      );
+      if (!deletedSpace) {
+        throw new Error("Deleted space should exist");
+      }
+
+      const hardDeleteResult = await hardDeleteSpace(adminAuth, deletedSpace);
+
+      expect(hardDeleteResult.isOk()).toBe(true);
+      const remainingTriggers = await TriggerResource.fetchByIds(adminAuth, [
+        ...triggers.map((trigger) => trigger.sId),
+        unrelatedTrigger.sId,
+      ]);
+      expect(remainingTriggers.map((trigger) => trigger.sId)).toEqual([
+        unrelatedTrigger.sId,
+      ]);
+      await expect(
+        WebhookRequestResource.fetchByModelIdWithAuth(
+          adminAuth,
+          webhookRequest.id
+        )
+      ).resolves.toBeNull();
     });
 
     describe("authorization checks", () => {
