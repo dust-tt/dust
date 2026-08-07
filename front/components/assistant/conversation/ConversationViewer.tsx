@@ -815,7 +815,16 @@ export const ConversationViewer = ({
                   exists.sId === agentMessage.sId &&
                   !isAtInitialStreamState(exists);
 
-                if (!shouldSkipReplace) {
+                if (shouldSkipReplace && agentMessage.richMentions.length > 0) {
+                  // User mentions are resolved after the agent finishes and
+                  // arrive through a second agent_message_new event. Keep the
+                  // streamed message state, but apply the resolved mentions.
+                  virtuosoMessageListRef.current.data.map((m) =>
+                    isAgentMessageWithStreaming(m) && m.sId === agentMessage.sId
+                      ? { ...m, richMentions: agentMessage.richMentions }
+                      : m
+                  );
+                } else if (!shouldSkipReplace) {
                   virtuosoMessageListRef.current.data.map((m) =>
                     predicate(m) ? agentMessage : m
                   );
