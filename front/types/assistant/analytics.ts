@@ -144,13 +144,15 @@ export interface AgentMessageConsumptionAnalyticsTool {
 }
 
 export interface AgentMessageConsumptionAnalyticsTokens {
+  // System prompt tokens when measured separately. Otherwise included in `input`.
   system: number;
-  // Actual prompt tokens on LLM documents. Not applicable to tool documents.
+  // Other provider prompt tokens on LLM documents. Null on tool documents.
   input: number | null;
-  // Tool documents only: tokens the tool result adds to the conversation. Cannot
-  // be summed with `input`, which counts the tokens the LLM consumed itself.
+  // Estimated tokens added by a tool result. Null on LLM documents and not additive with `input`.
   result_footprint: number | null;
+  // Model completion tokens attributed to this document. For tools, this is the emitted call.
   output: number;
+  // Model reasoning tokens. Always 0 on tool documents.
   reasoning: number;
 }
 
