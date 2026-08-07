@@ -46,10 +46,30 @@ import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
+import {
+  AnimatePresence,
+  motion,
+  type Transition,
+  useReducedMotion,
+} from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 const DOUBLE_ESC_WINDOW_MS = 300;
+const INPUT_BAR_SWAP_TRANSITION = {
+  layout: {
+    duration: 0.2,
+    ease: [0.455, 0.03, 0.515, 0.955],
+  },
+  opacity: {
+    duration: 0.2,
+    ease: [0.215, 0.61, 0.355, 1],
+  },
+  transform: {
+    duration: 0.2,
+    ease: [0.215, 0.61, 0.355, 1],
+  },
+} satisfies Transition;
 
 interface AgentInputBarProps {
   context: VirtuosoMessageListContext;
@@ -80,6 +100,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const agentBuilderContext = context.agentBuilderContext;
 
   const isMobile = useIsMobile();
+  const shouldReduceMotion = useReducedMotion();
   const accessibleAgentIds = useAccessibleAgentIds({
     workspaceId: context.owner.sId,
   });
@@ -306,6 +327,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const userAnswerRequiredItem = blockedActionItems.find(
     (item) => item.blockedAction.status === "blocked_user_answer_required"
   );
+  const inputBarContentKey =
+    userAnswerRequiredItem?.blockedAction.actionId ?? "input-bar";
 
   // Keep blockedActionIndex in sync when blockedActions array changes.
   useEffect(() => {
@@ -619,46 +642,75 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
             "flex items-center gap-2"
         )}
       >
-        {userAnswerRequiredItem?.blockedAction.status ===
-        "blocked_user_answer_required" ? (
-          <UserAnswerRequired
-            key={userAnswerRequiredItem.blockedAction.actionId}
-            blockedAction={userAnswerRequiredItem.blockedAction}
-            triggeringUser={
-              userAnswerRequiredItem.blockedAction.userId === context.user.sId
-                ? context.user
-                : null
+        <AnimatePresence initial={false} mode="popLayout" anchorY="bottom">
+          <motion.div
+            key={inputBarContentKey}
+            layoutId={
+              shouldReduceMotion
+                ? undefined
+                : `${context.draftKey}-input-bar-content`
             }
-            owner={context.owner}
-            retryHandler={retryUserAnswerRequired}
-          />
-        ) : (
-          <InputBar
-            owner={context.owner}
-            user={context.user}
-            onSubmit={context.handleSubmit}
-            stickyMentions={autoMentions}
-            lastRequestedModel={lastRequestedModel}
-            conversation={context.conversation}
-            draftKey={context.draftKey}
-            disableAutoFocus={isMobile}
-            disableUserMentions={!!agentBuilderContext}
-            disableAgentMentions={
-              agentBuilderContext?.disableAgentMentions === true
+            initial={
+              shouldReduceMotion
+                ? false
+                : { opacity: 0, transform: "translateY(8px)" }
             }
-            actions={agentBuilderContext?.actionsToShow}
-            isSubmitting={agentBuilderContext?.isSubmitting === true}
-            isAgentBuilder={!!agentBuilderContext}
-            submitBlockMessage={
-              forkBlockMessage ?? wakeUpBlockMessage ?? compactionBlockMessage
+            animate={{ opacity: 1, transform: "translateY(0px)" }}
+            exit={
+              shouldReduceMotion
+                ? undefined
+                : { opacity: 0, transform: "translateY(-4px)" }
             }
-            effectiveIsCompact={effectiveIsCompact}
-            onExpandInputBar={expandInputBar}
-            onEditorFocusChange={onEditorFocusChange}
-            onOverlayOpenChange={onOverlayOpenChange}
-            onVoiceActiveChange={onVoiceActiveChange}
-          />
-        )}
+            transition={INPUT_BAR_SWAP_TRANSITION}
+            className={classNames(
+              "w-full",
+              effectiveIsCompact && !userAnswerRequiredItem && "min-w-0 flex-1"
+            )}
+          >
+            {userAnswerRequiredItem?.blockedAction.status ===
+            "blocked_user_answer_required" ? (
+              <UserAnswerRequired
+                blockedAction={userAnswerRequiredItem.blockedAction}
+                triggeringUser={
+                  userAnswerRequiredItem.blockedAction.userId ===
+                  context.user.sId
+                    ? context.user
+                    : null
+                }
+                owner={context.owner}
+                retryHandler={retryUserAnswerRequired}
+              />
+            ) : (
+              <InputBar
+                owner={context.owner}
+                user={context.user}
+                onSubmit={context.handleSubmit}
+                stickyMentions={autoMentions}
+                lastRequestedModel={lastRequestedModel}
+                conversation={context.conversation}
+                draftKey={context.draftKey}
+                disableAutoFocus={isMobile}
+                disableUserMentions={!!agentBuilderContext}
+                disableAgentMentions={
+                  agentBuilderContext?.disableAgentMentions === true
+                }
+                actions={agentBuilderContext?.actionsToShow}
+                isSubmitting={agentBuilderContext?.isSubmitting === true}
+                isAgentBuilder={!!agentBuilderContext}
+                submitBlockMessage={
+                  forkBlockMessage ??
+                  wakeUpBlockMessage ??
+                  compactionBlockMessage
+                }
+                effectiveIsCompact={effectiveIsCompact}
+                onExpandInputBar={expandInputBar}
+                onEditorFocusChange={onEditorFocusChange}
+                onOverlayOpenChange={onOverlayOpenChange}
+                onVoiceActiveChange={onVoiceActiveChange}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
         {effectiveIsCompact &&
           !userAnswerRequiredItem &&
           showNavigationContainer && (
