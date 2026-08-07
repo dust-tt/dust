@@ -1,5 +1,6 @@
 import { submitCreateMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
+import { getMCPServerViewNameError } from "@app/components/actions/mcp/forms/utils";
 import {
   DEFAULT_MCP_ACTION_VERSION,
   DEFAULT_MCP_SERVER_ICON,
@@ -12,6 +13,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("@app/types/oauth/client/setup"), () => ({
   setupOAuthConnection: vi.fn(),
+}));
+
+vi.mock(import("@app/lib/actions/mcp_helper"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  requiresBearerTokenConfiguration: () => false,
 }));
 
 const owner = {
@@ -54,6 +60,77 @@ const values = {
 describe("submitCreateMCPServerDialogForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("omits an empty view name when creating an internal server", async () => {
+    const createInternalMCPServer = vi.fn().mockResolvedValue(
+      new Ok({
+        success: true,
+        server,
+      })
+    );
+
+    const result = await submitCreateMCPServerDialogForm({
+      owner,
+      internalMCPServer: server,
+      values: { ...values, remoteServerUrl: "", viewName: "" },
+      authorization: null,
+      remoteMCPServerOAuthDiscoveryDone: false,
+      oauthConnectionId: null,
+      discoverOAuthMetadata: vi.fn(),
+      createWithURL: vi.fn(),
+      createInternalMCPServer,
+      onBeforeCreateServer: vi.fn(),
+      regionInfo: null,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(createInternalMCPServer).toHaveBeenCalledWith(
+      expect.not.objectContaining({ viewName: expect.anything() })
+    );
+  });
+
+  it("requires a custom name for a second internal server instance", () => {
+    expect(
+      getMCPServerViewNameError({
+        viewName: "",
+        needsCustomName: true,
+        nameConflict: null,
+        existingViewNames: ["Candidate"],
+      })
+    ).toBe("Name is required.");
+  });
+
+  it("uses a custom view name when creating a second internal server instance", async () => {
+    const createInternalMCPServer = vi.fn().mockResolvedValue(
+      new Ok({
+        success: true,
+        server,
+      })
+    );
+
+    const result = await submitCreateMCPServerDialogForm({
+      owner,
+      internalMCPServer: server,
+      values: {
+        ...values,
+        remoteServerUrl: "",
+        viewName: "  Candidate 2  ",
+      },
+      authorization: null,
+      remoteMCPServerOAuthDiscoveryDone: false,
+      oauthConnectionId: null,
+      discoverOAuthMetadata: vi.fn(),
+      createWithURL: vi.fn(),
+      createInternalMCPServer,
+      onBeforeCreateServer: vi.fn(),
+      regionInfo: null,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(createInternalMCPServer).toHaveBeenCalledWith(
+      expect.objectContaining({ viewName: "Candidate 2" })
+    );
   });
 
   it("reuses the OAuth connection when retrying a view name conflict", async () => {
