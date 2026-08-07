@@ -32,6 +32,7 @@ import type {
   LiveDatabaseEntry,
   TableRowsResult,
 } from "@app/types/api/sandbox/pod_databases";
+import { RESERVED_TABLE_PREFIXES } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -506,12 +507,6 @@ export async function queryDatabaseOnSandbox(
   return new Err(dbErrorToSandboxFunctionError(database, envelope, "internal"));
 }
 
-/**
- * Tables owned by SQLite itself (`sqlite_master`, `sqlite_sequence`, …) and by drizzle's
- * migration bookkeeping: real to the engine, noise to whoever is browsing the pod's data.
- */
-const HIDDEN_TABLE_PREFIXES = ["sqlite_", "__drizzle"];
-
 const TABLE_NAMES_SQL =
   "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name";
 
@@ -539,8 +534,14 @@ export function buildTableRowCountsQuery(tableNames: string[]): string {
   return `${terms.join(" UNION ALL ")} ORDER BY idx`;
 }
 
+/**
+ * Hide the tables the storage machinery owns — SQLite's own (`sqlite_master`, `sqlite_sequence`),
+ * drizzle's migration bookkeeping, and litestream's replication bookkeeping (`_litestream_lock`,
+ * `_litestream_seq`). They are real tables in the file but noise to whoever is browsing the pod's
+ * data, and the runner already refuses to let a pod schema claim these prefixes.
+ */
 function isVisibleTableName(name: string): boolean {
-  return !HIDDEN_TABLE_PREFIXES.some((prefix) => name.startsWith(prefix));
+  return !RESERVED_TABLE_PREFIXES.some((prefix) => name.startsWith(prefix));
 }
 
 async function listTableNamesOnSandbox(

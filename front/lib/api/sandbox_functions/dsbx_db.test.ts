@@ -11,8 +11,11 @@ import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { RESERVED_TABLE_PREFIXES } from "@app/types/api/sandbox_functions";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { RESERVED_TABLE_PREFIXES as RUNNER_RESERVED_TABLE_PREFIXES } from "../../../../cli/dust-sandbox/functions-runner/types/db";
 
 vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
   ensurePodSandboxReady: vi.fn(),
@@ -202,5 +205,13 @@ describe("buildTableRowCountsQuery", () => {
     const sql = buildTableRowCountsQuery(['a" UNION SELECT 1, 1 --']);
 
     expect(sql).toContain('FROM "a"" UNION SELECT 1, 1 --"');
+  });
+});
+
+// Table enumeration hides these prefixes; the runner refuses to let a pod schema claim them.
+// Front cannot runtime-import cli code, so the mirrored copy's equality is asserted here.
+describe("RESERVED_TABLE_PREFIXES", () => {
+  it("stays identical to the runner's list", () => {
+    expect(RESERVED_TABLE_PREFIXES).toEqual(RUNNER_RESERVED_TABLE_PREFIXES);
   });
 });
