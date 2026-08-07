@@ -212,14 +212,14 @@ export function UsageFilterPanel({
         />
       </PopoverTrigger>
       <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
-        <div className="flex h-[420px] flex-row divide-x divide-border">
+        <div className="flex h-96 flex-row divide-x divide-border">
           <UsageFilterCategoryNav
             categories={USAGE_FILTER_CATEGORIES}
             draftFilter={draftFilter}
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
-          <div className="flex h-full w-[300px] flex-col gap-2 p-2">
+          <div className="flex h-full w-72 flex-col gap-2 p-2">
             <NavigationListLabel
               label={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
               className="bg-transparent pt-1.5 pb-0 font-medium"

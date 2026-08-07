@@ -56,7 +56,7 @@ export function UsageFilterMemberGroupsControls({
         }
       />
       {isAddGroupOpen && (
-        <NavigationList className="max-h-[120px]">
+        <NavigationList className="max-h-32">
           {availableGroups.length > 0 ? (
             availableGroups.map((group) => (
               <NavigationListItem

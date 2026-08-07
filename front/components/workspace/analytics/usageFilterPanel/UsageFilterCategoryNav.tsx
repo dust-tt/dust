@@ -24,7 +24,7 @@ export function UsageFilterCategoryNav({
   onCategoryChange,
 }: UsageFilterCategoryNavProps) {
   return (
-    <div className="flex h-full w-[170px] flex-col p-2">
+    <div className="flex h-full w-44 flex-col p-2">
       <NavigationListLabel
         label="Filter"
         className="bg-transparent pt-1.5 font-medium"
