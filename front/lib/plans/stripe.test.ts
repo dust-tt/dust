@@ -1059,6 +1059,99 @@ describe("cleanAndFinalizeMetronomeDraftInvoice", () => {
     });
   });
 
+  it("should delete a commit-applied pair when the label is its own parenthesized group", async () => {
+    setupMetronomeDraftInvoice({
+      lines: [
+        makeMetronomeLine({
+          id: "l1",
+          amountCents: 5300,
+          description:
+            "Platform Seat (Yearly) (Platform Seat (Yearly) commitment: 53 seats)",
+        }),
+        makeMetronomeLine({
+          id: "l2",
+          amountCents: -5300,
+          description: "Platform Seat (Yearly) commitment: 53 seats applied",
+        }),
+        makeMetronomeLine({
+          id: "l3",
+          amountCents: 1900,
+          description: "Pro Seat",
+        }),
+      ],
+      totalCents: 1900,
+    });
+
+    const result = await cleanAndFinalizeMetronomeDraftInvoice({
+      invoiceId: "in_test",
+      workspaceId: "w_test",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcome).toBe("cleaned");
+    }
+    expect(mockInvoiceItems.del).toHaveBeenCalledWith("ii_l1");
+    expect(mockInvoiceItems.del).toHaveBeenCalledWith("ii_l2");
+    expect(mockInvoiceItems.del).not.toHaveBeenCalledWith("ii_l3");
+  });
+
+  it("should delete a commit-applied pair when the label is the last element of the qty/price group", async () => {
+    // a commit split across two positive lines, each offset by its
+    // own negative "applied" line, with the label embedded as
+    // "Name (qty, $price, label)". The same-amount line without the label
+    // (l3) must survive.
+    const commitLabel = "Business subscription activation (max monthly)";
+    setupMetronomeDraftInvoice({
+      lines: [
+        makeMetronomeLine({
+          id: "l1",
+          amountCents: 14980,
+          description: `Max Seat (prorated) (${commitLabel})`,
+        }),
+        makeMetronomeLine({
+          id: "l2",
+          amountCents: 20,
+          description: `Max Seat (0.0013440860215053763441, $150.00, ${commitLabel})`,
+        }),
+        makeMetronomeLine({
+          id: "l3",
+          amountCents: 14980,
+          description: "Max Seat (0.99865591397849462366, $150.00)",
+        }),
+        makeMetronomeLine({
+          id: "l4",
+          amountCents: -14980,
+          description: `${commitLabel} applied`,
+        }),
+        makeMetronomeLine({
+          id: "l5",
+          amountCents: -20,
+          description: `${commitLabel} applied`,
+        }),
+      ],
+      totalCents: 14980,
+    });
+
+    const result = await cleanAndFinalizeMetronomeDraftInvoice({
+      invoiceId: "in_test",
+      workspaceId: "w_test",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcome).toBe("cleaned");
+    }
+    expect(mockInvoiceItems.del).toHaveBeenCalledWith("ii_l1");
+    expect(mockInvoiceItems.del).toHaveBeenCalledWith("ii_l2");
+    expect(mockInvoiceItems.del).toHaveBeenCalledWith("ii_l4");
+    expect(mockInvoiceItems.del).toHaveBeenCalledWith("ii_l5");
+    expect(mockInvoiceItems.del).not.toHaveBeenCalledWith("ii_l3");
+    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_test", {
+      auto_advance: true,
+    });
+  });
+
   it("should delete negative lines without normalizing them", async () => {
     setupMetronomeDraftInvoice({
       lines: [
