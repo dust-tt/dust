@@ -2,6 +2,7 @@ import type {
   UsageFilter,
   UsageFilterAgentOption,
   UsageFilterCategory,
+  UsageFilterGroup,
   UsageFilterMemberOption,
   UsageFilterModelOption,
   UsageFilterOptionForCategory,
@@ -21,10 +22,14 @@ import {
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
 import { UsageFilterFooter } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterFooter";
+import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
+import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
@@ -52,12 +57,13 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Agents/models/tools/skills/sources are still mock data (see
+  period: ConsumptionPeriodSelection;
+  // Models/tools/skills/sources are still mock data (see
   // usageFilterMockData.ts — sources are fake connectors standing in for a
-  // real db call); members and teams are fetched live below, via the generic
-  // member search and group listing endpoints (useSearchMembers, useGroups).
+  // real db call); agents are fetched live below scoped to `period`
+  // (useConsumptionTop), members and teams via the generic member search
+  // and group listing endpoints (useSearchMembers, useGroups).
   categoryOptions: {
-    agent: UsageFilterAgentOption[];
     model: UsageFilterModelOption[];
     tool: UsageFilterToolOption[];
     skill: UsageFilterSkillOption[];
@@ -69,6 +75,7 @@ interface UsageFilterPanelProps {
 
 export function UsageFilterPanel({
   owner,
+  period,
   categoryOptions,
   filter,
   onFilterChange,
@@ -94,9 +101,13 @@ export function UsageFilterPanel({
     USAGE_MODEL_TIERS[0]
   );
   const [searchText, setSearchText] = useState("");
+  // Only used for the "member" category: narrows the displayed members down
+  // to those belonging to at least one of these groups.
+  const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
   const isMemberCategoryActive = isOpen && activeCategory === "member";
   const isTeamCategoryActive = isOpen && activeCategory === "team";
+  const isAgentCategoryActive = isOpen && activeCategory === "agent";
 
   // Every category picker supports scroll-to-load-more:
   const [memberPageIndex, setMemberPageIndex] = useState(0);
@@ -166,8 +177,29 @@ export function UsageFilterPanel({
   const { groups: workspaceGroups } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
-    disabled: !isTeamCategoryActive,
+    withMembers: true,
+    disabled: !isMemberCategoryActive && !isTeamCategoryActive,
   });
+
+  const { rows: topAgentRows } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "agent",
+    period,
+    // Same rationale as members: broader than the Attribution table's own
+    // top-N so the picker covers most of the period's active agents.
+    limit: 100,
+    disabled: !isAgentCategoryActive,
+  });
+
+  const groups = useMemo<UsageFilterGroup[]>(
+    () =>
+      workspaceGroups.map((group) => ({
+        id: group.sId,
+        name: group.name,
+        memberIds: group.memberIds ?? [],
+      })),
+    [workspaceGroups]
+  );
 
   const teamOptions = useMemo<UsageFilterTeamOption[]>(
     () =>
@@ -179,6 +211,20 @@ export function UsageFilterPanel({
     [workspaceGroups]
   );
 
+  // Same client-side search caveat as members: an agent outside the top 100
+  // by credits over the period will not be searchable here.
+  const agentOptions = useMemo<UsageFilterAgentOption[]>(
+    () =>
+      topAgentRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        kind: "agent",
+        image: row.pictureUrl,
+        scope: row.scope ?? "private",
+      })),
+    [topAgentRows]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -186,18 +232,26 @@ export function UsageFilterPanel({
       ...categoryOptions,
       member: accumulatedMemberOptions,
       team: teamOptions,
+      agent: agentOptions,
     }),
-    [categoryOptions, accumulatedMemberOptions, teamOptions]
+    [categoryOptions, accumulatedMemberOptions, teamOptions, agentOptions]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
     const search = searchText.trim().toLowerCase();
+    const selectedGroupMemberIds =
+      activeCategory === "member" && selectedGroups.items.length > 0
+        ? new Set(selectedGroups.items.flatMap((group) => group.memberIds))
+        : null;
     const matchingOptions = activeOptions.filter((option) => {
       if (option.kind === "agent" && option.scope !== activeScope) {
         return false;
       }
       if (option.kind === "model" && option.tier !== activeTier) {
+        return false;
+      }
+      if (selectedGroupMemberIds && !selectedGroupMemberIds.has(option.id)) {
         return false;
       }
       // The member category is already searched server-side by
@@ -213,7 +267,14 @@ export function UsageFilterPanel({
       return true;
     });
     return matchingOptions;
-  }, [activeOptions, searchText, activeScope, activeTier, activeCategory]);
+  }, [
+    activeOptions,
+    searchText,
+    activeScope,
+    activeTier,
+    activeCategory,
+    selectedGroups.items,
+  ]);
 
   // Members are already paginated server-side into filteredOptions; the
   // other categories reveal a growing window of the already-loaded
@@ -288,6 +349,7 @@ export function UsageFilterPanel({
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
+      selectedGroups.setItems([]);
       resetFilterPickerPagination();
     }
   };
@@ -367,6 +429,14 @@ export function UsageFilterPanel({
               onChange={handleSearchTextChange}
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
+            {activeCategory === "member" && (
+              <UsageFilterMemberGroupsControls
+                groups={groups}
+                selectedGroups={selectedGroups.items}
+                onAddGroup={selectedGroups.add}
+                onRemoveGroup={selectedGroups.remove}
+              />
+            )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
                 models={categoryOptions.model}

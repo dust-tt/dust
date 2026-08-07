@@ -53,6 +53,7 @@ interface UsageFilterOptionBase {
 export interface UsageFilterAgentOption extends UsageFilterOptionBase {
   kind: "agent";
   scope: UsageFilterScope;
+  image: string | null;
 }
 
 export interface UsageFilterMemberOption extends UsageFilterOptionBase {
@@ -91,6 +92,12 @@ export type UsageFilterOption =
   | UsageFilterModelOption
   | UsageFilterToolOption
   | UsageFilterSkillOption;
+
+export interface UsageFilterGroup {
+  id: string;
+  name: string;
+  memberIds: string[];
+}
 
 export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
   Extract<UsageFilterOption, { kind: C }>;
@@ -141,16 +148,44 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-// Members and teams are wired to real consumption scope dimensions. The other
-// categories stay mock data and are not sent as query filters yet.
+export function addUsageFilterGroup(
+  groups: UsageFilterGroup[],
+  group: UsageFilterGroup
+): UsageFilterGroup[] {
+  if (groups.some((g) => g.id === group.id)) {
+    return groups;
+  }
+  return [...groups, group];
+}
+
+export function removeUsageFilterGroup(
+  groups: UsageFilterGroup[],
+  id: string
+): UsageFilterGroup[] {
+  return groups.filter((g) => g.id !== id);
+}
+
+// Members, teams, and agents are wired to real consumption scope dimensions.
+// The other categories stay mock data and are not sent as query filters yet.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
-  const memberIds = filter.member?.map((entity) => entity.id);
-  const teamIds = filter.team?.map((entity) => entity.id);
+  const scopeFilter: ConsumptionScopeFilter = {};
 
-  return {
-    ...(memberIds && memberIds.length > 0 ? { users: memberIds } : {}),
-    ...(teamIds && teamIds.length > 0 ? { teams: teamIds } : {}),
-  };
+  const memberIds = filter.member?.map((entity) => entity.id);
+  if (memberIds && memberIds.length > 0) {
+    scopeFilter.users = memberIds;
+  }
+
+  const teamIds = filter.team?.map((entity) => entity.id);
+  if (teamIds && teamIds.length > 0) {
+    scopeFilter.teams = teamIds;
+  }
+
+  const agentIds = filter.agent?.map((entity) => entity.id);
+  if (agentIds && agentIds.length > 0) {
+    scopeFilter.agents = agentIds;
+  }
+
+  return scopeFilter;
 }

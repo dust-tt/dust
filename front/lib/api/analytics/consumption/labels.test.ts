@@ -89,6 +89,7 @@ describe("resolveDimensionLabels", () => {
     expect(labels.get(user.sId)).toEqual({
       name: user.fullName(),
       pictureUrl: user.imageUrl ?? null,
+      scope: null,
     });
   });
 
@@ -106,6 +107,7 @@ describe("resolveDimensionLabels", () => {
     expect(labels.get(agent.sId)).toEqual({
       name: "Analytics agent",
       pictureUrl: agent.pictureUrl,
+      scope: "shared",
     });
   });
 
@@ -123,5 +125,27 @@ describe("resolveDimensionLabels", () => {
       name: "Engineering",
       pictureUrl: null,
     });
+  });
+
+  it("carries a visibility scope for agents, derived from their real scope", async () => {
+    // Needs an author, unlike the rest of this file's admin-only `auth`.
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const published = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Published Agent", scope: "visible" }
+    );
+    const unpublished = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Unpublished Agent", scope: "hidden" }
+    );
+
+    const labels = await resolveDimensionLabels(authenticator, "agent", [
+      published.sId,
+      unpublished.sId,
+    ]);
+
+    expect(labels.get(published.sId)?.scope).toBe("shared");
+    expect(labels.get(unpublished.sId)?.scope).toBe("private");
   });
 });

@@ -97,6 +97,7 @@ const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
       agentId: "agent1",
       name: "@dust",
       pictureUrl: null,
+      scope: "company",
       credits: 2230,
       messageCount: 10,
       avgCreditsPerMessage: 223,

@@ -54,7 +54,7 @@ function mockLabels(labels: Record<string, string>) {
     new Map(
       Object.entries(labels).map(([key, name]) => [
         key,
-        { name, pictureUrl: null },
+        { name, pictureUrl: null, scope: null },
       ])
     )
   );
@@ -81,7 +81,12 @@ describe("consumption top rankings", () => {
   it("ranks agents on gross credits and averages over distinct messages", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
-      new Map([["agent1", { name: "@dust", pictureUrl: "http://pic/dust" }]])
+      new Map([
+        [
+          "agent1",
+          { name: "@dust", pictureUrl: "http://pic/dust", scope: "company" },
+        ],
+      ])
     );
     mockAggs({
       buckets: [
@@ -111,6 +116,7 @@ describe("consumption top rankings", () => {
         agentId: "agent1",
         name: "@dust",
         pictureUrl: "http://pic/dust",
+        scope: "company",
         credits: 3,
         // The 7 documents of the bucket belong to 2 messages.
         messageCount: 2,
