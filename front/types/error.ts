@@ -130,6 +130,8 @@ const API_ERROR_TYPES = [
   "plugin_execution_failed",
   // Action recommendations:
   "recommendation_not_found",
+  // Activation work areas:
+  "activation_work_area_not_found",
   // Triggers:
   "trigger_not_found",
   "webhook_source_not_found",
