@@ -9,54 +9,21 @@ import assert from "assert";
 function makeAgentMessageConsumptionAnalyticsDocumentId(
   document: Pick<
     AgentMessageConsumptionAnalyticsData,
-    "agent_message_id" | "consumption_key" | "message_version" | "workspace_id"
+    "agent_message_id" | "consumption_key" | "workspace_id"
   >
 ): string {
-  return `${document.workspace_id}_${document.agent_message_id}_${document.message_version}_${document.consumption_key}`;
+  return `${document.workspace_id}_${document.agent_message_id}_${document.consumption_key}`;
 }
 
-/** Replaces the complete indexed consumption snapshot for one agent message. */
-export async function replaceAgentMessageConsumptionAnalyticsDocuments({
-  agentMessageId,
-  documents,
-  workspaceId,
-}: {
-  agentMessageId: string;
-  documents: AgentMessageConsumptionAnalyticsData[];
-  workspaceId: string;
-}): Promise<void> {
-  assert(
-    documents.every(
-      (document) =>
-        document.agent_message_id === agentMessageId &&
-        document.workspace_id === workspaceId
-    ),
-    "Consumption documents belong to different agent messages"
-  );
+/** Upserts every consumption unit using its stable identity. */
+export async function upsertAgentMessageConsumptionAnalyticsDocuments(
+  documents: AgentMessageConsumptionAnalyticsData[]
+): Promise<void> {
+  if (documents.length === 0) {
+    return;
+  }
 
   const result = await withEs(async (client) => {
-    const deleteResponse = await client.deleteByQuery({
-      index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
-      query: {
-        bool: {
-          filter: [
-            { term: { workspace_id: workspaceId } },
-            { term: { agent_message_id: agentMessageId } },
-          ],
-        },
-      },
-      refresh: documents.length === 0,
-    });
-    assert(
-      (deleteResponse.failures?.length ?? 0) === 0 &&
-        (deleteResponse.version_conflicts ?? 0) === 0,
-      "Elasticsearch failed to delete the previous consumption snapshot"
-    );
-
-    if (documents.length === 0) {
-      return;
-    }
-
     const response = await client.bulk({
       body: documents.flatMap((document) => [
         {
@@ -67,8 +34,7 @@ export async function replaceAgentMessageConsumptionAnalyticsDocuments({
         },
         document,
       ]),
-      // Wait until this snapshot is searchable so a following replacement can delete it.
-      refresh: "wait_for",
+      refresh: false,
     });
 
     assert(
@@ -78,16 +44,17 @@ export async function replaceAgentMessageConsumptionAnalyticsDocuments({
   });
 
   if (result.isErr()) {
+    const firstDocument = documents[0];
     logger.error(
       {
         error: result.error,
-        workspaceId,
-        agentMessageId,
+        workspaceId: firstDocument?.workspace_id,
+        agentMessageId: firstDocument?.agent_message_id,
         documentCount: documents.length,
       },
-      "[ConsumptionAnalytics] Failed to replace consumption documents in ES"
+      "[ConsumptionAnalytics] Failed to upsert consumption documents in ES"
     );
   }
 
-  assert(result.isOk(), "Failed to replace consumption analytics snapshot");
+  assert(result.isOk(), "Failed to upsert consumption analytics documents");
 }
