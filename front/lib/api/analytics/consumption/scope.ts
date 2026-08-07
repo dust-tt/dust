@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const COMPLETED_AT_FIELD = "completed_at";
@@ -54,18 +55,19 @@ function termFilter(
  * Workspace-scoped query over a half-open [startDate, endDate) window.
  */
 export function buildConsumptionScopeQuery({
-  workspaceId,
+  auth,
   startDate,
   endDate,
   filter = {},
   extraFilters = [],
 }: {
-  workspaceId: string;
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   filter?: ConsumptionScopeFilter;
   extraFilters?: estypes.QueryDslQueryContainer[];
 }): estypes.QueryDslQueryContainer {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
   const filters: estypes.QueryDslQueryContainer[] = [
     { term: { workspace_id: workspaceId } },
     { range: { [COMPLETED_AT_FIELD]: { gte: startDate, lt: endDate } } },

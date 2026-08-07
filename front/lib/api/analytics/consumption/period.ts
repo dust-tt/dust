@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import logger from "@app/logger/logger";
 import { isCreditPricedPlan } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import moment from "moment-timezone";
 
 /**
@@ -73,21 +74,24 @@ export async function resolveConsumptionPeriod(
 ): Promise<ConsumptionPeriod> {
   const now = new Date();
 
-  if (input.kind === "days") {
-    const startMs = moment
-      .utc(now)
-      .subtract(input.days - 1, "days")
-      .startOf("day")
-      .valueOf();
-    return {
-      startDate: new Date(startMs).toISOString(),
-      endDate: now.toISOString(),
-    };
+  switch (input.kind) {
+    case "cycle":
+      const { cycleStart, cycleEnd } = await resolveCycleBounds(auth, now);
+      return {
+        startDate: cycleStart.toISOString(),
+        endDate: cycleEnd.toISOString(),
+      };
+    case "days":
+      const startMs = moment
+        .utc(now)
+        .subtract(input.days - 1, "days")
+        .startOf("day")
+        .valueOf();
+      return {
+        startDate: new Date(startMs).toISOString(),
+        endDate: now.toISOString(),
+      };
+    default:
+      assertNever(input);
   }
-
-  const { cycleStart, cycleEnd } = await resolveCycleBounds(auth, now);
-  return {
-    startDate: cycleStart.toISOString(),
-    endDate: cycleEnd.toISOString(),
-  };
 }
