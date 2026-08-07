@@ -19,11 +19,13 @@ vi.mock(import("@app/lib/user_search/search"), async (importOriginal) => {
         searchTerm,
         offset,
         limit,
+        userIds,
       }: {
         owner: LightWorkspaceType;
         searchTerm: string;
         offset: number;
         limit: number;
+        userIds?: string[];
       }) => {
         const { memberships } =
           await MembershipResource.getMembershipsForWorkspace({
@@ -31,9 +33,11 @@ vi.mock(import("@app/lib/user_search/search"), async (importOriginal) => {
             includeUser: true,
           });
 
+        const allowedUserIds = userIds ? new Set(userIds) : undefined;
         const users = memberships
           .map((m) => m.user)
-          .filter((u): u is NonNullable<typeof u> => u !== undefined);
+          .filter((u): u is NonNullable<typeof u> => u !== undefined)
+          .filter((u) => !allowedUserIds || allowedUserIds.has(u.sId));
 
         const filteredUsers =
           searchTerm && searchTerm.trim()
@@ -155,6 +159,87 @@ describe("GET /api/w/:wId/members/search", () => {
     expect(data.members.map((m: { email: string }) => m.email)).toContain(
       users[1].email
     );
+  });
+
+  it("filters members by role", async () => {
+    const { workspace, user: adminUser } = await setup();
+
+    const [member, otherAdmin] = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    await MembershipFactory.associate(workspace, otherAdmin, {
+      role: "admin",
+    });
+
+    const response = await honoApp.request(
+      searchUrl(workspace.sId, { role: "admin" })
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.total).toBe(2);
+    expect(data.members.map((m: { sId: string }) => m.sId).sort()).toEqual(
+      [adminUser.sId, otherAdmin.sId].sort()
+    );
+  });
+
+  it("includes builders when filtering on the member role", async () => {
+    const { workspace } = await setup();
+
+    const [member, builder] = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    await MembershipFactory.associate(workspace, builder, { role: "builder" });
+
+    const response = await honoApp.request(
+      searchUrl(workspace.sId, { role: "user" })
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.total).toBe(2);
+    expect(data.members.map((m: { sId: string }) => m.sId).sort()).toEqual(
+      [member.sId, builder.sId].sort()
+    );
+  });
+
+  it("combines the role filter with the search term", async () => {
+    const { workspace } = await setup();
+
+    const [member, otherAdmin] = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    await MembershipFactory.associate(workspace, otherAdmin, {
+      role: "admin",
+    });
+
+    const response = await honoApp.request(
+      searchUrl(workspace.sId, { role: "admin", searchTerm: member.email })
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.total).toBe(0);
+    expect(data.members).toHaveLength(0);
+  });
+
+  it("returns 400 on an unknown role filter", async () => {
+    const { workspace } = await setup();
+
+    const response = await honoApp.request(
+      searchUrl(workspace.sId, { role: "not-a-role" })
+    );
+
+    expect(response.status).toBe(400);
   });
 
   it("returns 400 when too many emails provided", async () => {

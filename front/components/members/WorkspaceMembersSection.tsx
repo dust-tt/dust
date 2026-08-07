@@ -7,6 +7,11 @@ import {
   type SearchMemberWithWorkspaceType,
 } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
+import type { RoleFilter } from "@app/components/members/Roles";
+import {
+  getRoleFilterLabel,
+  ROLE_FILTER_OPTIONS,
+} from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
@@ -21,8 +26,13 @@ import type {
 } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
+  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
@@ -51,6 +61,7 @@ export function WorkspaceMembersSection({
 }: WorkspaceMembersSectionProps) {
   const [view, setView] = useState("members");
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
@@ -84,6 +95,27 @@ export function WorkspaceMembersSection({
           onChange={setSearchTerm}
           className="w-full"
         />
+        {view === "members" && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                isSelect
+                className="w-32 shrink-0 justify-between"
+                label={getRoleFilterLabel(roleFilter)}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              {ROLE_FILTER_OPTIONS.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  label={option.label}
+                  onClick={() => setRoleFilter(option.value)}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {isManualInvitationsEnabled && (
           <InviteEmailButtonWithModal
             owner={owner}
@@ -115,6 +147,7 @@ export function WorkspaceMembersSection({
           currentUser={currentUser}
           owner={owner}
           searchTerm={searchTerm}
+          roleFilter={roleFilter}
           isProvisioningEnabled={isProvisioningEnabled}
         />
       )}
@@ -140,6 +173,7 @@ interface WorkspaceMembersListProps {
   currentUser: UserType | null;
   owner: WorkspaceType;
   searchTerm: string;
+  roleFilter: RoleFilter;
   isProvisioningEnabled: boolean;
 }
 
@@ -147,6 +181,7 @@ function WorkspaceMembersList({
   currentUser,
   owner,
   searchTerm,
+  roleFilter,
   isProvisioningEnabled,
 }: WorkspaceMembersListProps) {
   const [pagination, setPagination] = useState<PaginationState>({
@@ -154,6 +189,7 @@ function WorkspaceMembersList({
     pageSize: DEFAULT_PAGE_SIZE,
   });
   const [prevSearchTerm, setPrevSearchTerm] = useState(searchTerm);
+  const [prevRoleFilter, setPrevRoleFilter] = useState(roleFilter);
 
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspace | null>(null);
@@ -164,10 +200,12 @@ function WorkspaceMembersList({
     pageIndex: pagination.pageIndex,
     pageSize: DEFAULT_PAGE_SIZE,
     groupKind: isProvisioningEnabled ? "provisioned" : undefined,
+    role: roleFilter === "all" ? undefined : roleFilter,
   });
 
-  if (searchTerm !== prevSearchTerm) {
+  if (searchTerm !== prevSearchTerm || roleFilter !== prevRoleFilter) {
     setPrevSearchTerm(searchTerm);
+    setPrevRoleFilter(roleFilter);
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }
 
