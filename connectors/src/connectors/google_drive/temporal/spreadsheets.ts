@@ -506,6 +506,14 @@ export async function syncSpreadSheet(
               isSupported: false,
               skipReason: "google_bad_request_error",
             };
+          } else if (isCallerDoesNotHavePermissionError(err)) {
+            localLogger.info(
+              "[Spreadsheet] Access forbidden to spreadsheet, marking as skipped."
+            );
+            return {
+              isSupported: true,
+              skipReason: "access_forbidden",
+            };
           }
           throw err;
         }
@@ -548,6 +556,14 @@ export async function syncSpreadSheet(
               // Allow locally retrying the API call.
               continue;
             }
+          } else if (isCallerDoesNotHavePermissionError(err)) {
+            localLogger.info(
+              "[Spreadsheet] Access forbidden to spreadsheet on batchGet, marking as skipped."
+            );
+            return {
+              isSupported: true,
+              skipReason: "access_forbidden",
+            };
           }
           throw err;
         }
@@ -724,6 +740,24 @@ function isGAxiosNotFoundError(err: unknown): err is Error {
 
 function isGAxiosBadRequestError(err: unknown): err is Error {
   return err instanceof Error && "code" in err && err.code === 400;
+}
+
+// A 403 is not enough on its own: Google also answers 403 for quota and rate-limit exhaustion,
+// and for tokens missing scopes (which the activity interceptor turns into an
+// ExternalOAuthTokenError). Only a per-file ACL denial is permanent, so we match its message.
+function isCallerDoesNotHavePermissionError(err: unknown): err is GaxiosError {
+  return !!(
+    err instanceof GaxiosError &&
+    err.response?.status === 403 &&
+    err.response?.data &&
+    typeof err.response.data === "object" &&
+    "error" in err.response.data &&
+    "message" in err.response.data.error &&
+    typeof err.response.data.error.message === "string" &&
+    err.response.data.error.message.includes(
+      "The caller does not have permission"
+    )
+  );
 }
 
 function isStringTooLongError(
