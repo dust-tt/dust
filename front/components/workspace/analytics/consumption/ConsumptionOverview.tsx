@@ -1,8 +1,10 @@
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { timeAgoFrom } from "@app/lib/utils";
 
 interface ConsumptionOverviewProps {
   workspaceId: string;
+  period: ConsumptionPeriodSelection;
 }
 
 // The period is resolved in UTC server-side, so it has to be rendered in UTC here too.
@@ -14,9 +16,12 @@ function formatPeriodBound(isoDate: string): string {
   });
 }
 
-export function ConsumptionOverview({ workspaceId }: ConsumptionOverviewProps) {
+export function ConsumptionOverview({
+  workspaceId,
+  period: periodSelection,
+}: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId });
+    useConsumptionOverview({ workspaceId, period: periodSelection });
 
   if (isOverviewLoading) {
     return (

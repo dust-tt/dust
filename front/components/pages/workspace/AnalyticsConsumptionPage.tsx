@@ -1,11 +1,18 @@
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
+import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { BarChart01, cn, Page } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 export function AnalyticsConsumptionPage() {
   const owner = useWorkspace();
   const { hasFeature } = useFeatureFlags();
   const isEnabled = hasFeature("enable_analytics_consumption");
+  const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
+    DEFAULT_CONSUMPTION_PERIOD
+  );
 
   if (!isEnabled) {
     return (
@@ -31,10 +38,18 @@ export function AnalyticsConsumptionPage() {
   return (
     <Page.Vertical align="stretch" gap="xl">
       <Page.Header
-        title={<Page.H variant="h3">Analytics</Page.H>}
+        title={
+          <div className="flex w-full flex-row justify-between">
+            <Page.H variant="h3">Analytics</Page.H>
+            <ConsumptionPeriodSelector
+              period={period}
+              onPeriodChange={setPeriod}
+            />
+          </div>
+        }
         icon={BarChart01}
       />
-      <ConsumptionOverview workspaceId={owner.sId} />
+      <ConsumptionOverview workspaceId={owner.sId} period={period} />
     </Page.Vertical>
   );
 }
