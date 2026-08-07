@@ -2,12 +2,12 @@ import { PodDatabaseRowsTable } from "@app/components/pod/databases/PodDatabaseR
 import { PodDatabaseSchemaSheet } from "@app/components/pod/databases/PodDatabaseSchemaSheet";
 import { PodDatabasesSidebar } from "@app/components/pod/databases/PodDatabasesSidebar";
 import { PodSqlConsole } from "@app/components/pod/databases/PodSqlConsole";
-import { MAX_TABLE_ROWS_PAGE_SIZE } from "@app/lib/api/sandbox_functions/dsbx_db";
 import {
   usePodDatabases,
   usePodDatabaseTables,
   usePodTableRows,
 } from "@app/lib/swr/pod_databases";
+import { MAX_TABLE_ROWS_PAGE_SIZE } from "@app/types/api/sandbox/pod_databases";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { ContentMessage, Database01, Spinner } from "@dust-tt/sparkle";
