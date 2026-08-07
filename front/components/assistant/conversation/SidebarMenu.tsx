@@ -1262,13 +1262,28 @@ export function AgentSidebarMenu({
                         )}
                         <DropdownMenuLabel>Conversations</DropdownMenuLabel>
                         <DropdownMenuItem
-                          label="Edit conversations"
+                          label={
+                            hideTriggeredConversations
+                              ? "Show triggered"
+                              : "Hide triggered"
+                          }
+                          icon={hideTriggeredConversations ? Zap : ZapOff}
+                          disabled={!hasTriggeredConversations}
+                          onClick={() =>
+                            setHideTriggeredConversations(
+                              !hideTriggeredConversations
+                            )
+                          }
+                        />
+                        <DropdownMenuItem
+                          label="Edit history"
                           onClick={toggleMultiSelect}
                           icon={CheckDone01}
                           disabled={filteredConversations.length === 0}
                         />
                         <DropdownMenuItem
-                          label="Clear conversation history"
+                          label="Clear history"
+                          variant="warning"
                           onClick={() => setShowDeleteDialog("all")}
                           icon={Trash01}
                           disabled={filteredConversations.length === 0}

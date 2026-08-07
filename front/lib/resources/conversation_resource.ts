@@ -2364,6 +2364,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       pagination,
       restrictToConversationModelIds,
       filter = "all",
+      excludeTriggered = false,
     }: {
       spaceId: string;
       options?: FetchConversationOptions;
@@ -2374,6 +2375,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       };
       restrictToConversationModelIds?: ModelId[];
       filter?: SpaceConversationsFilter;
+      /**
+       * When true, conversations created by a trigger (`triggerId IS NOT NULL`)
+       * are excluded in SQL so pagination stays dense under heavy automation.
+       * Orthogonal to `filter` (participation scope).
+       */
+      excludeTriggered?: boolean;
     }
   ): Promise<{
     conversations: ConversationResource[];
@@ -2401,6 +2408,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ...(restrictToConversationModelIds && {
         id: { [Op.in]: restrictToConversationModelIds },
       }),
+      ...(excludeTriggered && { triggerId: null }),
     };
 
     if (pagination.lastValue) {

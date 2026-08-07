@@ -16,6 +16,8 @@ const scopedUIPreferencesSchemaByScope = {
   podUi: z.object({
     tab: z.union([z.enum(SYSTEM_POD_TABS), z.string().regex(/^frame:.+/)]),
     conversationsFilter: z.enum(["all", "group", "with_me"]),
+    // Default false so older persisted blobs without this field still parse.
+    hideTriggeredConversations: z.boolean().default(false),
     tasksOwnerFilter: z
       .unknown()
       .transform(normalizeTasksOwnerFilterFromPersistedBlob),

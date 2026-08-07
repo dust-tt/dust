@@ -65,6 +65,8 @@ export function PodPageContent({
   const conversationFilter: PodConversationListFilter = isSingleMemberPod
     ? "all"
     : podUiPreferences.conversationsFilter;
+  const hideTriggeredConversations =
+    podUiPreferences.hideTriggeredConversations;
 
   const {
     conversations,
@@ -78,6 +80,7 @@ export function PodPageContent({
     workspaceId: owner.sId,
     podId: podInfo.sId,
     filter: conversationFilter,
+    excludeTriggered: hideTriggeredConversations,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,6 +93,13 @@ export function PodPageContent({
     setPodUiPreferences({
       ...podUiPreferences,
       conversationsFilter: filter,
+    });
+  };
+
+  const handleHideTriggeredConversationsChange = (hideTriggered: boolean) => {
+    setPodUiPreferences({
+      ...podUiPreferences,
+      hideTriggeredConversations: hideTriggered,
     });
   };
 
@@ -192,6 +202,10 @@ export function PodPageContent({
           isPodEmpty={isPodEmpty}
           conversationFilter={conversationFilter}
           onConversationFilterChange={handleConversationFilterChange}
+          hideTriggeredConversations={hideTriggeredConversations}
+          onHideTriggeredConversationsChange={
+            handleHideTriggeredConversationsChange
+          }
           onSubmit={handleConversationCreation}
           onNavigateToTasks={() => onTabChange("tasks")}
         />
