@@ -1,5 +1,4 @@
 import {
-  getDatabaseSchemaOnSandbox,
   listDatabasesOnSandbox,
   listTablesOnSandbox,
   queryDatabaseOnSandbox,
@@ -25,7 +24,6 @@ vi.mock("@app/lib/api/sandbox_functions/dsbx_db", async (importOriginal) => {
     ...original,
     listDatabasesOnSandbox: vi.fn(),
     listTablesOnSandbox: vi.fn(),
-    getDatabaseSchemaOnSandbox: vi.fn(),
     readTableRowsOnSandbox: vi.fn(),
     queryDatabaseOnSandbox: vi.fn(),
   };
@@ -33,7 +31,6 @@ vi.mock("@app/lib/api/sandbox_functions/dsbx_db", async (importOriginal) => {
 
 const mockedListDatabases = vi.mocked(listDatabasesOnSandbox);
 const mockedListTables = vi.mocked(listTablesOnSandbox);
-const mockedGetSchema = vi.mocked(getDatabaseSchemaOnSandbox);
 const mockedReadRows = vi.mocked(readTableRowsOnSandbox);
 const mockedQuery = vi.mocked(queryDatabaseOnSandbox);
 
@@ -98,19 +95,6 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
       expect.anything(),
       expect.objectContaining({ database: "chat" })
     );
-  });
-
-  it("returns the regenerated schema of a database", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
-    mockedGetSchema.mockResolvedValue(new Ok("export const t = {}"));
-
-    const response = await honoApp.request(
-      databasesUrl(workspace.sId, pod.sId, "/chat/schema")
-    );
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ schema: "export const t = {}" });
   });
 
   it("reads a page of table rows", async () => {

@@ -4,7 +4,6 @@ import type {
   LiveDatabaseEntry,
 } from "@app/types/api/sandbox/pod_databases";
 import {
-  Button,
   ChevronDown,
   ChevronRight,
   Database01,
@@ -20,7 +19,6 @@ interface PodDatabasesSidebarProps {
   isTablesLoading: boolean;
   onSelectDatabase: (database: string) => void;
   onSelectTable: (table: string) => void;
-  onShowSchema: (database: string) => void;
 }
 
 const BYTES_PER_KB = 1024;
@@ -43,7 +41,6 @@ export function PodDatabasesSidebar({
   isTablesLoading,
   onSelectDatabase,
   onSelectTable,
-  onShowSchema,
 }: PodDatabasesSidebarProps) {
   return (
     <div className="flex w-64 shrink-0 flex-col gap-1 overflow-y-auto border-r border-separator pr-2">
@@ -107,14 +104,6 @@ export function PodDatabasesSidebar({
                         No tables
                       </div>
                     )}
-                    <div className="pt-1">
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        label="View schema"
-                        onClick={() => onShowSchema(database.name)}
-                      />
-                    </div>
                   </>
                 )}
               </div>

@@ -1,5 +1,4 @@
 import { PodDatabaseRowsTable } from "@app/components/pod/databases/PodDatabaseRowsTable";
-import { PodDatabaseSchemaSheet } from "@app/components/pod/databases/PodDatabaseSchemaSheet";
 import { PodDatabasesSidebar } from "@app/components/pod/databases/PodDatabasesSidebar";
 import { PodSqlConsole } from "@app/components/pod/databases/PodSqlConsole";
 import {
@@ -37,7 +36,6 @@ export function PodDatabasesTab({ owner, pod }: PodDatabasesTabProps) {
   }>({ database: null, table: null });
   const [pagination, setPagination] =
     useState<PaginationState>(INITIAL_PAGINATION);
-  const [schemaDatabase, setSchemaDatabase] = useState<string | null>(null);
 
   const { databases, isPodDatabasesLoading, podDatabasesError } =
     usePodDatabases({ owner, podId: pod.sId });
@@ -136,7 +134,6 @@ export function PodDatabasesTab({ owner, pod }: PodDatabasesTabProps) {
         isTablesLoading={isPodDatabaseTablesLoading}
         onSelectDatabase={onSelectDatabase}
         onSelectTable={onSelectTable}
-        onShowSchema={setSchemaDatabase}
       />
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
@@ -187,13 +184,6 @@ export function PodDatabasesTab({ owner, pod }: PodDatabasesTabProps) {
           />
         )}
       </div>
-
-      <PodDatabaseSchemaSheet
-        owner={owner}
-        podId={pod.sId}
-        database={schemaDatabase}
-        onClose={() => setSchemaDatabase(null)}
-      />
     </div>
   );
 }
