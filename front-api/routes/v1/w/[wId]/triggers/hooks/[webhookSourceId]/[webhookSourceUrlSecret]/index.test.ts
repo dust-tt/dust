@@ -309,7 +309,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     expect(launchTriggersWorkflowsMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not store payload when no triggers match", async () => {
+  it("stores payload when no triggers match if a trigger includes payload", async () => {
     const { workspace } = await createPublicApiMockRequest();
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
@@ -325,7 +325,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     );
 
     expect(response.status).toBe(200);
-    expect(uploadWebhookPayloadMock).not.toHaveBeenCalled();
+    expect(uploadWebhookPayloadMock).toHaveBeenCalledTimes(1);
     expect(launchTriggersWorkflowsMock).not.toHaveBeenCalled();
   });
 
