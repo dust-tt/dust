@@ -1,4 +1,3 @@
-import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { AvatarNameCell } from "@app/components/workspace/analytics/creditsTableCells";
 import type {
   ConsumptionTopDimension,
@@ -6,6 +5,7 @@ import type {
 } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import {
   cn,
@@ -19,10 +19,8 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
-// The rankings this table can show, one tab per `top-*` endpoint. Tools and
-// skills average their cost over invocations rather than messages: a single
-// message can call the same tool many times, so a per-message figure would say
-// nothing about the tool itself.
+// The rankings this table can show, one tab per `top-*` endpoint.
+// Tools and Skills average their cost over invocations rather than messages.
 const DIMENSION_TABS: {
   dimension: ConsumptionTopDimension;
   label: string;
@@ -68,13 +66,16 @@ const DIMENSION_TABS: {
   },
 ];
 
-// Enough to make the per-tab search useful without paging; the table shows a
-// ranking, not the full population.
+function isConsumptionTopDimension(
+  value: string
+): value is ConsumptionTopDimension {
+  return DIMENSION_TABS.some((tab) => tab.dimension === value);
+}
+
 const TOP_LIMIT = 25;
 
-// DataTable requires its optional row-interaction fields on the row shape.
-// No row action here yet — expandable rows and the row-to-chart drilldown come
-// in later branches.
+const SEARCH_DEBOUNCE_DELAY_MS = 300;
+
 type AttributionRowData = ConsumptionTopRow & {
   onClick?: () => void;
   onDoubleClick?: () => void;
@@ -231,17 +232,7 @@ function AttributionRows({
     );
   }
 
-  return (
-    <div className="[&_tbody_tr:last-child]:border-b-0">
-      <DataTable<AttributionRowData> data={rows} columns={columns} />
-    </div>
-  );
-}
-
-function isConsumptionTopDimension(
-  value: string
-): value is ConsumptionTopDimension {
-  return DIMENSION_TABS.some((tab) => tab.dimension === value);
+  return <DataTable<AttributionRowData> data={rows} columns={columns} />;
 }
 
 interface ConsumptionAttributionTableProps {
@@ -255,7 +246,7 @@ export function ConsumptionAttributionTable({
 }: ConsumptionAttributionTableProps) {
   const [dimension, setDimension] = useState<ConsumptionTopDimension>("agent");
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
-    delay: 300,
+    delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
 
   const activeTab = DIMENSION_TABS.find((tab) => tab.dimension === dimension);
