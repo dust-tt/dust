@@ -11,8 +11,8 @@ export const CONVERSATION_SIDE_PANEL_TOOLS_METADATA = [
   {
     name: OPEN_FRAME_TOOL_NAME,
     description:
-      "Open an existing Frame in the conversation side panel without modifying it. " +
-      "Use this when a Frame already exists and you want the user to see it now " +
+      "Open and show an existing Frame in the conversation side panel without modifying it. " +
+      "Use this when a Frame was already created and you want the user to see it now " +
       "(for example after referring back to a prior Frame). Creating, editing, reverting, " +
       "renaming, or publishing a Frame already opens it automatically — call this only to " +
       "re-open a Frame that is not currently shown.",
