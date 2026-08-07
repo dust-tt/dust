@@ -31,6 +31,7 @@ import {
 } from "@app/lib/triggers/webhook";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
@@ -371,6 +372,46 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
     default:
       console.log(`Unknown data-source command: ${command}`);
       console.log("Possible values: `delete`, `delete-document`");
+  }
+};
+
+const space = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "scrub": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.spaceId) {
+        throw new Error("Missing --spaceId argument");
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+
+      const space = await SpaceResource.fetchById(auth, args.spaceId, {
+        includeDeleted: true,
+      });
+      if (!space) {
+        throw new Error(
+          `Space not found: wId='${args.wId}' spaceId='${args.spaceId}'`
+        );
+      }
+
+      if (space.deletedAt === null) {
+        throw new Error(
+          `Space is not soft-deleted, refusing to scrub: spaceId='${args.spaceId}'`
+        );
+      }
+
+      await launchScrubSpaceWorkflow(auth, space);
+
+      console.log(`Scrub space workflow launched: ${args.spaceId}`);
+
+      return;
+    }
+
+    default:
+      console.log(`Unknown space command: ${command}`);
+      console.log("Possible values: `scrub`");
   }
 };
 
@@ -920,6 +961,7 @@ const CLI_OBJECT_TYPES = [
   "workspace",
   "user",
   "data-source",
+  "space",
   "conversation",
   "transcripts",
   "production-check",
@@ -961,6 +1003,9 @@ const main = async () => {
       return;
     case "data-source":
       await dataSource(command, argv);
+      return;
+    case "space":
+      await space(command, argv);
       return;
     case "conversation":
       return conversation(command, argv);
