@@ -1,16 +1,18 @@
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type {
-  UsageFilterEntity,
-  UsageModelLab,
+  UsageFilterModelOption,
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
-  USAGE_MODEL_LABS,
   USAGE_MODEL_TIER_LABEL,
   USAGE_MODEL_TIERS,
 } from "@app/components/workspace/analytics/usageFilter";
-import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
+import {
+  getModelMakerDisplayName,
+  MODEL_MAKER_IDS,
+} from "@app/types/assistant/models/providers";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import {
   BarFull,
   BarHalf,
@@ -37,9 +39,9 @@ const MODEL_TIER_ICON: Record<UsageModelTier, ComponentType> = {
 };
 
 interface UsageFilterModelComplexityControlsProps {
-  models: UsageFilterEntity[];
+  models: UsageFilterModelOption[];
   selectedModelIds: Set<string>;
-  onToggleModel: (model: UsageFilterEntity) => void;
+  onToggleModel: (model: UsageFilterModelOption) => void;
   activeTier: UsageModelTier;
   onTierChange: (tier: UsageModelTier) => void;
 }
@@ -59,7 +61,7 @@ export function UsageFilterModelComplexityControls({
   const [isMoreModelsOpen, setIsMoreModelsOpen] = useState(false);
   const [moreModelsSearch, setMoreModelsSearch] = useState("");
   const [expandedModelLab, setExpandedModelLab] =
-    useState<UsageModelLab | null>(null);
+    useState<ModelMakerIdType | null>(null);
 
   const handleMoreModelsOpenChange = (open: boolean) => {
     setIsMoreModelsOpen(open);
@@ -69,7 +71,7 @@ export function UsageFilterModelComplexityControls({
     }
   };
 
-  const handleToggleExpandedModelLab = (lab: UsageModelLab) => {
+  const handleToggleExpandedModelLab = (lab: ModelMakerIdType) => {
     setExpandedModelLab((current) => (current === lab ? null : lab));
   };
 
@@ -90,7 +92,7 @@ export function UsageFilterModelComplexityControls({
 
   const moreModelsGroups = useMemo(
     () =>
-      USAGE_MODEL_LABS.flatMap((lab) => {
+      MODEL_MAKER_IDS.flatMap((lab) => {
         const labModels = models.filter((entity) => entity.lab === lab);
         return labModels.length > 0 ? [{ lab, models: labModels }] : [];
       }),
@@ -127,11 +129,7 @@ export function UsageFilterModelComplexityControls({
                     <DropdownMenuItem
                       key={model.id}
                       label={model.name}
-                      icon={
-                        model.lab
-                          ? getModelMakerLogo(model.lab, isDark)
-                          : undefined
-                      }
+                      icon={getModelMakerLogo(model.lab, isDark)}
                       endComponent={
                         selectedModelIds.has(model.id) ? (
                           <Icon
