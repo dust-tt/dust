@@ -173,7 +173,7 @@ export function UsageFilterPanel({
     );
   };
 
-  const handleClearAll = () => {
+  const handleClearAllCategories = () => {
     setDraftFilter({});
   };
 
@@ -279,7 +279,7 @@ export function UsageFilterPanel({
           />
         </div>
         <UsageFilterFooter
-          onClearAll={handleClearAll}
+          onClearAll={handleClearAllCategories}
           onCancel={handleCancel}
           onApply={handleApply}
         />
