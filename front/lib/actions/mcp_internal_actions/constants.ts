@@ -22,6 +22,7 @@ import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
@@ -169,6 +170,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "clari_copilot",
   "confluence",
   "conversation_files",
+  "conversation_side_panel",
   "files",
   "databricks",
   "data_sources_file_system",
@@ -476,6 +478,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: CONVERSATION_FILES_SERVER,
+  },
+  conversation_side_panel: {
+    id: 1044,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: CONVERSATION_SIDE_PANEL_SERVER,
   },
   slack: {
     id: 18,
