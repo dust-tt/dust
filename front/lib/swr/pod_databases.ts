@@ -8,7 +8,6 @@ import {
 } from "@app/lib/swr/swr";
 import type {
   DatabaseTableEntry,
-  GetPodDatabaseSchemaResponseBody,
   GetPodDatabasesResponseBody,
   GetPodDatabaseTablesResponseBody,
   GetPodTableRowsResponseBody,
@@ -97,35 +96,6 @@ export function usePodDatabaseTables({
     isPodDatabaseTablesLoading: isDisabled ? false : isLoading,
     podDatabaseTablesError: errorMessage(error),
     mutatePodDatabaseTables: mutate,
-  };
-}
-
-export function usePodDatabaseSchema({
-  owner,
-  podId,
-  database,
-  disabled = false,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-  database: string | null;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const schemaFetcher: Fetcher<GetPodDatabaseSchemaResponseBody> = fetcher;
-  const isDisabled = disabled || database === null;
-  const { data, error, isLoading } = useSWRWithDefaults(
-    database === null
-      ? null
-      : `${podDatabasesUrl(owner.sId, podId)}/${encodeURIComponent(database)}/schema`,
-    schemaFetcher,
-    { disabled: isDisabled }
-  );
-
-  return {
-    schema: data?.schema ?? null,
-    isPodDatabaseSchemaLoading: isDisabled ? false : isLoading,
-    podDatabaseSchemaError: errorMessage(error),
   };
 }
 

@@ -1,5 +1,4 @@
 import {
-  getDatabaseSchemaOnSandbox,
   listDatabasesOnSandbox,
   listTablesOnSandbox,
   queryDatabaseOnSandbox,
@@ -7,7 +6,6 @@ import {
 } from "@app/lib/api/sandbox_functions/dsbx_db";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import {
-  type GetPodDatabaseSchemaResponseBody,
   type GetPodDatabasesResponseBody,
   type GetPodDatabaseTablesResponseBody,
   type GetPodTableRowsResponseBody,
@@ -139,27 +137,6 @@ app.get(
     }
 
     return ctx.json({ tables: result.value });
-  }
-);
-
-/** @ignoreswagger */
-app.get(
-  "/:database/schema",
-  withSpace({ requireCanAdministrate: true }),
-  requirePodSpace,
-  validate("param", DatabaseParamSchema),
-  async (ctx): HandlerResult<GetPodDatabaseSchemaResponseBody> => {
-    const { database } = ctx.req.valid("param");
-
-    const result = await getDatabaseSchemaOnSandbox(ctx.get("auth"), {
-      space: ctx.get("space"),
-      database,
-    });
-    if (result.isErr()) {
-      return apiErrorForDbError(ctx, result.error);
-    }
-
-    return ctx.json({ schema: result.value });
   }
 );
 

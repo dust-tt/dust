@@ -31,10 +31,6 @@ export type GetPodDatabaseTablesResponseBody = {
   tables: DatabaseTableEntry[];
 };
 
-export type GetPodDatabaseSchemaResponseBody = {
-  schema: string;
-};
-
 export type GetPodTableRowsResponseBody = TableRowsResult;
 
 export type PostPodDatabaseQueryResponseBody = {
