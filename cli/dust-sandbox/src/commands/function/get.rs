@@ -6,6 +6,6 @@ use super::spawn_function;
 /// through from the runner. The bundle import (which executes the module's
 /// top-level code) runs unprivileged (agent uid) when dsbx is invoked as root.
 pub async fn cmd_function_get(name: &str) -> Result<()> {
-    let (code, _) = spawn_function("get", name, false, false).await?;
+    let (code, _) = spawn_function("get", name, None, false).await?;
     std::process::exit(code);
 }

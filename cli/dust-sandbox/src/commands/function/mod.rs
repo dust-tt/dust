@@ -13,6 +13,7 @@ mod build;
 mod envelope;
 mod get;
 mod run;
+mod warm;
 
 pub use build::cmd_function_build;
 pub use envelope::ResultDelivery;
@@ -102,10 +103,22 @@ fn running_as_root() -> bool {
 pub(crate) async fn spawn_function(
     subcommand: &str,
     name: &str,
-    inherit_stdin: bool,
+    input: Option<&str>,
     capture_stdout: bool,
 ) -> Result<(i32, Option<String>)> {
     let handler = resolve_existing(name)?;
+    spawn_function_at(&handler, subcommand, input, capture_stdout).await
+}
+
+/// Like [`spawn_function`], for an already-resolved handler path. `input` is
+/// written to the child's stdin over a pipe when present (the caller has
+/// already consumed its own stdin); `None` gives the child no stdin at all.
+pub(crate) async fn spawn_function_at(
+    handler: &Path,
+    subcommand: &str,
+    input: Option<&str>,
+    capture_stdout: bool,
+) -> Result<(i32, Option<String>)> {
     let runner = ensure_runner()?;
     let as_agent = running_as_root();
     let function_working_dir = function_working_dir();
@@ -130,19 +143,19 @@ pub(crate) async fn spawn_function(
             .arg("bun")
             .arg(&*runner)
             .arg(subcommand)
-            .arg(&handler);
+            .arg(handler);
         c
     } else {
         let mut c = Command::new("bun");
-        c.arg(&*runner).arg(subcommand).arg(&handler);
+        c.arg(&*runner).arg(subcommand).arg(handler);
         c
     };
     // No env_clear: the child inherits dsbx's env verbatim, so per-exec vars
     // front sets (e.g. DUST_POD_DATABASES_DIR, read by `@dust/pod`) flow
     // through without dsbx naming each one — pinned by the inheritance tests.
     cmd.env("NODE_PATH", harness_node_path())
-        .stdin(if inherit_stdin {
-            Stdio::inherit()
+        .stdin(if input.is_some() {
+            Stdio::piped()
         } else {
             Stdio::null()
         })
@@ -158,8 +171,22 @@ pub(crate) async fn spawn_function(
         .spawn()
         .map_err(|e| emit_error(anyhow!("failed to run function: {e}")))?;
 
+    // Feed stdin from a task so a child that never reads it cannot deadlock
+    // against us while we wait on its stdout: the write and the read below
+    // progress independently, and a broken pipe (child exited early) is fine.
+    if let Some(input) = input {
+        if let Some(mut stdin) = child.stdin.take() {
+            let payload = input.as_bytes().to_vec();
+            tokio::spawn(async move {
+                use tokio::io::AsyncWriteExt as _;
+                let _ = stdin.write_all(&payload).await;
+                let _ = stdin.shutdown().await;
+            });
+        }
+    }
+
     // Capturing reads stdout to EOF (child closes it on exit) before waiting.
-    // Only stdout is piped; stderr/stdin are inherited, so there is no deadlock.
+    // Only stdout is piped for reading; stderr is inherited, so no deadlock.
     let captured = if capture_stdout {
         let mut buf = Vec::new();
         if let Some(mut out) = child.stdout.take() {
@@ -363,15 +390,18 @@ pub(crate) fn is_valid_name(name: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
+// The environment is process-global and `cargo test` runs tests on parallel
+// threads within one process: any test (in this module or `warm`) that reads
+// or mutates env vars must hold this lock for the whole window where it
+// relies on them.
+#[cfg(test)]
+pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use std::sync::Mutex;
-    // The environment is process-global and `cargo test` runs tests on
-    // parallel threads within one process: any test that reads or mutates env
-    // vars must hold this lock for the whole window where it relies on them.
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
+    use super::ENV_LOCK;
 
     #[test]
     fn accepts_simple_names() {
@@ -525,7 +555,7 @@ export default {
 
         // A var set on dsbx's own process reaches the child by inheritance.
         std::env::set_var(POD_DATABASES_DIR_ENV, "/custom/pod-databases");
-        let (code, stdout) = spawn_function("get", "envprobe", false, true)
+        let (code, stdout) = spawn_function("get", "envprobe", None, true)
             .await
             .expect("spawn get");
         let stdout = stdout.unwrap_or_default();
@@ -538,7 +568,7 @@ export default {
         // Absent env var: no dsbx-side default, the child sees it unset.
         // (Empty-string normalization is `@dust/pod`'s job, tested there.)
         std::env::remove_var(POD_DATABASES_DIR_ENV);
-        let (code, stdout) = spawn_function("get", "envprobe", false, true)
+        let (code, stdout) = spawn_function("get", "envprobe", None, true)
             .await
             .expect("spawn get");
         let stdout = stdout.unwrap_or_default();
