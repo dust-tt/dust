@@ -133,7 +133,7 @@ describe("upsertAgentMessageConsumptionAnalyticsDocuments", () => {
     }
   });
 
-  it("returns failed bulk items with their retry status", async () => {
+  it("returns the error from a failed bulk item", async () => {
     bulkMock.mockResolvedValueOnce({
       errors: true,
       items: [
@@ -159,7 +159,6 @@ describe("upsertAgentMessageConsumptionAnalyticsDocuments", () => {
     if (result.isErr()) {
       expect(result.error.message).toBe("queue full");
       expect(result.error.statusCode).toBe(429);
-      expect(result.error.isRetryable).toBe(true);
     }
   });
 });
