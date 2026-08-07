@@ -227,4 +227,49 @@ describe("GET /api/poke/search - resource sId", () => {
       }),
     ]);
   });
+
+  it("returns the space when searching by its sId", async () => {
+    await createPrivateApiMockRequest({ isSuperUser: true, role: "admin" });
+
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+    const space = await SpaceFactory.regular(workspace);
+
+    const response = await searchRequest(space.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.results).toEqual([
+      {
+        id: space.id,
+        link: expect.stringContaining(`/${workspace.sId}/spaces/${space.sId}`),
+        name: `${workspace.name}'s ${space.name} space`,
+        type: "Space",
+      },
+    ]);
+  });
+
+  it("returns the group when searching by its sId", async () => {
+    await createPrivateApiMockRequest({ isSuperUser: true, role: "admin" });
+
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+    const group = await GroupFactory.regularManual(
+      workspace,
+      faker.company.name()
+    );
+
+    const response = await searchRequest(group.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.results).toEqual([
+      {
+        id: group.id,
+        link: expect.stringContaining(`/${workspace.sId}/groups/${group.sId}`),
+        name: `${workspace.name}'s ${group.name} group`,
+        type: "Group",
+      },
+    ]);
+  });
 });
