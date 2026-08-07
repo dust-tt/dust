@@ -12,6 +12,7 @@ export const POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS = [
   "conversations",
   "tasks",
   "files",
+  "databases",
   "connected_data",
 ] as const;
 
@@ -94,26 +95,39 @@ export function normalizeTabsOrder(
   return result;
 }
 
+/** System tabs that only some pods (or only some members) get to see. */
+export interface PodNavVisibility {
+  includeConnectedData: boolean;
+  includeDatabases: boolean;
+}
+
 export function visibleTabsOrder(
   tabsOrder: string[],
-  { includeConnectedData }: { includeConnectedData: boolean }
+  { includeConnectedData, includeDatabases }: PodNavVisibility
 ): string[] {
-  return tabsOrder.filter(
-    (id) => id !== "connected_data" || includeConnectedData
-  );
+  return tabsOrder.filter((id) => {
+    switch (id) {
+      case "connected_data":
+        return includeConnectedData;
+      case "databases":
+        return includeDatabases;
+      default:
+        return true;
+    }
+  });
 }
 
 export function buildPodNavItemsBeforeSettings(
   frameTabs: PodFrameTab[],
   tabsOrder: string[],
-  { includeConnectedData }: { includeConnectedData: boolean }
+  visibility: PodNavVisibility
 ): PodNavItemBeforeSettings[] {
   const byPath = new Map(frameTabs.map((tab) => [tab.path, tab]));
   const normalized = normalizeTabsOrder(
     tabsOrder,
     frameTabs.map((tab) => tab.path)
   );
-  const visible = visibleTabsOrder(normalized, { includeConnectedData });
+  const visible = visibleTabsOrder(normalized, visibility);
 
   const items: PodNavItemBeforeSettings[] = [];
   for (const entry of visible) {
@@ -134,9 +148,9 @@ export function moveFrameTabInTabsOrder(
   tabsOrder: string[],
   path: string,
   direction: "left" | "right",
-  { includeConnectedData }: { includeConnectedData: boolean }
+  visibility: PodNavVisibility
 ): string[] | null {
-  const visible = visibleTabsOrder(tabsOrder, { includeConnectedData });
+  const visible = visibleTabsOrder(tabsOrder, visibility);
   const index = visible.indexOf(path);
   if (index < 0) {
     return null;

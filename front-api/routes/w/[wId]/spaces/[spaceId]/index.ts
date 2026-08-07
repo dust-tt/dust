@@ -31,6 +31,7 @@ import uniqBy from "lodash/uniqBy";
 import apps from "./apps";
 import dataSourceViews from "./data_source_views";
 import dataSources from "./data_sources";
+import databases from "./databases";
 import files from "./files";
 import join from "./join";
 import leave from "./leave";
@@ -517,6 +518,7 @@ app.delete(
 app.route("/apps", apps);
 app.route("/data_source_views", dataSourceViews);
 app.route("/data_sources", dataSources);
+app.route("/databases", databases);
 app.route("/files", files);
 app.route("/join", join);
 app.route("/leave", leave);

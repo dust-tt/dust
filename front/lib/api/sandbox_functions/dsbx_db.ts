@@ -507,6 +507,179 @@ export async function queryDatabaseOnSandbox(
 }
 
 /**
+ * Tables owned by SQLite itself (`sqlite_master`, `sqlite_sequence`, …) and by drizzle's
+ * migration bookkeeping: real to the engine, noise to whoever is browsing the pod's data.
+ */
+const HIDDEN_TABLE_PREFIXES = ["sqlite_", "__drizzle"];
+
+const TABLE_NAMES_SQL =
+  "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name";
+
+/** Max rows a single browse page may request; keeps every page inside the runner's inline cap. */
+export const MAX_TABLE_ROWS_PAGE_SIZE = 50;
+
+export interface DatabaseTableEntry {
+  name: string;
+  rowCount: number;
+}
+
+export interface TableRowsResult {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  hasMore: boolean;
+}
+
+/**
+ * Quote an identifier for interpolation into SQL. SQLite quotes identifiers with double quotes
+ * and escapes an inner double quote by doubling it. Only ever applied to names read back from
+ * `sqlite_master`, never to caller-supplied text.
+ */
+export function quoteSqliteIdentifier(name: string): string {
+  return `"${name.replaceAll('"', '""')}"`;
+}
+
+/**
+ * One compound SELECT returning `(idx, row_count)` for every table, so the whole sidebar costs a
+ * single sandbox exec instead of one per table. Tables are addressed by index rather than by name
+ * literal: nothing from `sqlite_master` reaches the statement except as a quoted identifier.
+ *
+ * Bounded by SQLITE_MAX_COMPOUND_SELECT (500 by default) — far above any realistic pod database.
+ */
+export function buildTableRowCountsQuery(tableNames: string[]): string {
+  const terms = tableNames.map(
+    (name, index) =>
+      `SELECT ${index} AS idx, COUNT(*) AS row_count FROM ${quoteSqliteIdentifier(name)}`
+  );
+  return `${terms.join(" UNION ALL ")} ORDER BY idx`;
+}
+
+function isVisibleTableName(name: string): boolean {
+  return !HIDDEN_TABLE_PREFIXES.some((prefix) => name.startsWith(prefix));
+}
+
+async function listTableNamesOnSandbox(
+  auth: Authenticator,
+  { space, database }: { space: SpaceResource; database: string }
+): Promise<Result<string[], SandboxFunctionError>> {
+  const result = await queryDatabaseOnSandbox(auth, {
+    space,
+    database,
+    sql: TABLE_NAMES_SQL,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+
+  const names: string[] = [];
+  for (const row of result.value.rows) {
+    const { name } = row;
+    if (typeof name === "string" && isVisibleTableName(name)) {
+      names.push(name);
+    }
+  }
+  return new Ok(names);
+}
+
+/**
+ * The pod database's user-visible tables with their row counts: one query for the names, one for
+ * every count.
+ */
+export async function listTablesOnSandbox(
+  auth: Authenticator,
+  { space, database }: { space: SpaceResource; database: string }
+): Promise<Result<DatabaseTableEntry[], SandboxFunctionError>> {
+  const namesResult = await listTableNamesOnSandbox(auth, { space, database });
+  if (namesResult.isErr()) {
+    return namesResult;
+  }
+  const names = namesResult.value;
+  if (names.length === 0) {
+    return new Ok([]);
+  }
+
+  const countsResult = await queryDatabaseOnSandbox(auth, {
+    space,
+    database,
+    sql: buildTableRowCountsQuery(names),
+  });
+  if (countsResult.isErr()) {
+    return countsResult;
+  }
+
+  const countByIndex = new Map<number, number>();
+  for (const row of countsResult.value.rows) {
+    const { idx, row_count: rowCount } = row;
+    if (typeof idx === "number" && typeof rowCount === "number") {
+      countByIndex.set(idx, rowCount);
+    }
+  }
+
+  return new Ok(
+    names.map((name, index) => ({
+      name,
+      rowCount: countByIndex.get(index) ?? 0,
+    }))
+  );
+}
+
+/**
+ * One page of a table's rows. The table is resolved against `sqlite_master` first: that lookup is
+ * both the "unknown table" check and the guarantee that the identifier interpolated below came
+ * from the database rather than from the request.
+ *
+ * Deliberately unordered — SQLite's natural order is stable enough for browsing a rowid table,
+ * and there is no column we could order by that every table is guaranteed to have.
+ */
+export async function readTableRowsOnSandbox(
+  auth: Authenticator,
+  {
+    space,
+    database,
+    table,
+    limit,
+    offset,
+  }: {
+    space: SpaceResource;
+    database: string;
+    table: string;
+    limit: number;
+    offset: number;
+  }
+): Promise<Result<TableRowsResult, SandboxFunctionError>> {
+  const namesResult = await listTableNamesOnSandbox(auth, { space, database });
+  if (namesResult.isErr()) {
+    return namesResult;
+  }
+
+  const resolved = namesResult.value.find((name) => name === table);
+  if (resolved === undefined) {
+    return new Err(
+      new SandboxFunctionError(
+        "not_found",
+        `Database "${database}" has no table "${table}".`
+      )
+    );
+  }
+
+  // One row past the page so the caller knows whether a next page exists without a second count.
+  const result = await queryDatabaseOnSandbox(auth, {
+    space,
+    database,
+    sql: `SELECT * FROM ${quoteSqliteIdentifier(resolved)} LIMIT ${limit + 1} OFFSET ${offset}`,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+
+  const { columns, rows } = result.value;
+  return new Ok({
+    columns,
+    rows: rows.slice(0, limit),
+    hasMore: rows.length > limit,
+  });
+}
+
+/**
  * Parse the one-line JSON envelope a dsbx command prints as its last non-empty stdout line
  * (sandbox stdout can carry shell noise and be truncated; big payloads go to files).
  */

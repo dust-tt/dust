@@ -2,6 +2,7 @@ import type { TaskOwnerFilter } from "@app/components/assistant/conversation/spa
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { PodConnectedDataTab } from "@app/components/pod/connected_data/PodConnectedDataTab";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
+import { PodDatabasesTab } from "@app/components/pod/databases/PodDatabasesTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
 import { PodFrameTabContent } from "@app/components/pod/PodFrameTabContent";
 import { PodSettingsTab } from "@app/components/pod/settings/PodSettingsTab";
@@ -38,6 +39,7 @@ interface PodPageContentProps {
   mutatePodInfo: () => Promise<unknown>;
   clientSideMCPServerIds?: string[];
   frameTabs?: PodFrameTab[];
+  canViewDatabases?: boolean;
 }
 
 export function PodPageContent({
@@ -48,6 +50,7 @@ export function PodPageContent({
   mutatePodInfo,
   clientSideMCPServerIds,
   frameTabs = [],
+  canViewDatabases = false,
 }: PodPageContentProps) {
   const owner = useWorkspace();
   const { user } = useAuth();
@@ -219,6 +222,11 @@ export function PodPageContent({
       <NavTabPillContent value="files">
         <PodFilesTab owner={owner} pod={podInfo} />
       </NavTabPillContent>
+      {canViewDatabases && (
+        <NavTabPillContent value="databases">
+          <PodDatabasesTab owner={owner} pod={podInfo} />
+        </NavTabPillContent>
+      )}
       {podInfo.isAdminControlled && (
         <NavTabPillContent value="connected_data">
           <PodConnectedDataTab owner={owner} pod={podInfo} />

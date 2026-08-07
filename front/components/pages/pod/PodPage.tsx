@@ -29,6 +29,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   CheckCircle,
   CloudArrowLeftRight,
+  Database01,
   Folder,
   MessageChatSquare,
   NavTabPill,
@@ -51,6 +52,10 @@ const SYSTEM_TAB_TRIGGERS = {
   files: {
     label: "Files",
     icon: Folder,
+  },
+  databases: {
+    label: "Databases",
+    icon: Database01,
   },
   connected_data: {
     label: "Connected Data",
@@ -88,11 +93,18 @@ export function PodPage() {
 
   const isMobile = useIsMobile();
 
+  // Pod databases live in the pod sandbox, so the tab follows the Sandbox Functions flag and is
+  // limited to editors (`isEditor` is what the databases routes check as canAdministrate).
+  const canViewDatabases = podInfo
+    ? podInfo.isEditor && hasFeature("sandbox_functions")
+    : undefined;
+
   const { currentTab, handleTabChange } = usePodTabs({
     podId,
     podUiPreferences,
     setPodUiPreferences,
     isAdminControlled: podInfo?.isAdminControlled,
+    canViewDatabases,
   });
 
   const frameTabs = useMemo(
@@ -112,13 +124,15 @@ export function PodPage() {
   );
 
   const includeConnectedData = !!podInfo?.isAdminControlled;
+  const includeDatabases = !!canViewDatabases;
 
   const navItemsBeforeSettings = useMemo(
     () =>
       buildPodNavItemsBeforeSettings(frameTabs, tabsOrder, {
         includeConnectedData,
+        includeDatabases,
       }),
-    [frameTabs, tabsOrder, includeConnectedData]
+    [frameTabs, tabsOrder, includeConnectedData, includeDatabases]
   );
 
   // Drop frame-tab selection when the flag is off or the tab was removed
@@ -238,6 +252,7 @@ export function PodPage() {
           setPodUiPreferences={setPodUiPreferences}
           mutatePodInfo={mutatePodInfo}
           frameTabs={frameTabs}
+          canViewDatabases={includeDatabases}
         />
       </NavTabPill>
 
@@ -250,6 +265,7 @@ export function PodPage() {
           tabsOrder={tabsOrder}
           isEditor={podInfo.isEditor}
           includeConnectedData={includeConnectedData}
+          includeDatabases={includeDatabases}
           tab={editingFrameTab}
           isOpen
           onClose={() => setEditingFrameTab(null)}
