@@ -8,6 +8,7 @@ import type {
   GetMemberGroupsResponseBody,
   PatchGroupResponseBody,
   PostGroupResponseBody,
+  PostMemberGroupResponseBody,
 } from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
 import { type GroupKind, MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
@@ -176,13 +177,21 @@ export function useAddMemberToGroup({
           return false;
         }
 
+        const body: PostMemberGroupResponseBody = await res.json();
+
         sendNotification({
           type: "success",
           title: "Member added to group",
           description: `The member has been added to ${groupName}.`,
         });
 
-        await mutateMemberGroups();
+        await mutateMemberGroups(
+          (previous) =>
+            previous
+              ? { ...previous, groups: [...previous.groups, body.group] }
+              : previous,
+          { revalidate: false }
+        );
         // Member counts changed in the workspace groups list.
         await invalidateWorkspaceGroups(owner.sId);
 
@@ -247,7 +256,16 @@ export function useRemoveMemberFromGroup({
           description: `The member has been removed from ${groupName}.`,
         });
 
-        await mutateMemberGroups();
+        await mutateMemberGroups(
+          (previous) =>
+            previous
+              ? {
+                  ...previous,
+                  groups: previous.groups.filter((g) => g.sId !== groupId),
+                }
+              : previous,
+          { revalidate: false }
+        );
         // Member counts changed in the workspace groups list.
         await invalidateWorkspaceGroups(owner.sId);
 
