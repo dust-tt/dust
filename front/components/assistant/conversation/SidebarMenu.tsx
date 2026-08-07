@@ -1321,7 +1321,8 @@ function UnreadConversationsSection({
       try {
         await onMarkAllAsRead(conversationIds);
       } finally {
-        setMarkingScope(null);
+        // Only clear our own scope: another button may be in flight.
+        setMarkingScope((prev) => (prev === scope ? null : prev));
       }
     },
     [onMarkAllAsRead]
@@ -1403,7 +1404,8 @@ function UnreadConversationsSection({
                     className={cn(
                       "flex flex-col gap-0.5 overflow-hidden rounded-lg",
                       "transition-colors duration-150 motion-reduce:transition-none",
-                      "has-[[data-mark-read=pod]:hover]:bg-hover"
+                      "has-[[data-mark-read=pod]:hover]:bg-hover",
+                      "has-[[data-mark-read=pod]:focus-visible]:bg-hover"
                     )}
                   >
                     <NavigationListLabel
