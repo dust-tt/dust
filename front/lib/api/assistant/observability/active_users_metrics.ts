@@ -1,5 +1,4 @@
 import {
-  bucketsToArray,
   formatDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
@@ -23,25 +22,29 @@ export type GetWorkspaceActiveUsersResponse = {
   points: ActiveUsersMetricsPoint[];
 };
 
-interface UserBucket {
-  key: string;
+interface UserDayBucket {
+  key: {
+    day: number;
+    user: string;
+  };
   doc_count: number;
 }
 
-interface DayBucket {
-  key: number;
-  key_as_string: string;
-  doc_count: number;
-  users?: estypes.AggregationsMultiBucketAggregateBase<UserBucket>;
+interface CompositeKey {
+  day: number;
+  user: string;
 }
 
 interface ActiveUsersAggs {
-  by_day?: estypes.AggregationsMultiBucketAggregateBase<DayBucket>;
+  by_user_day?: {
+    after_key?: CompositeKey;
+    buckets: UserDayBucket[];
+  };
 }
 
 const WAU_WINDOW_DAYS = 7;
 const MAU_WINDOW_DAYS = 28;
-const MAX_USERS_PER_DAY = 10000;
+const COMPOSITE_AGG_SIZE = 10000;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
@@ -70,10 +73,8 @@ function computeRollingActiveUsers(
  * Fetches DAU/WAU/MAU metrics for the given time range.
  *
  * Strategy:
- * 1. Fetch user IDs per day using a single ES query with terms aggregation
+ * 1. Fetch all (day, user ID) pairs with a paginated composite aggregation
  * 2. Compute rolling WAU (7-day) and MAU (30-day) windows on the server
- *
- * This approach is efficient (single ES query) and accurate for typical workspace sizes.
  */
 export async function fetchActiveUsersMetrics(
   workspace: LightWorkspaceType,
@@ -105,47 +106,56 @@ export async function fetchActiveUsersMetrics(
     },
   };
 
-  const result = await searchAnalytics<never, ActiveUsersAggs>(query, {
-    aggregations: {
-      by_day: {
-        date_histogram: {
-          field: "timestamp",
-          calendar_interval: "day",
-          time_zone: timezone,
-        },
-        aggs: {
-          users: {
-            terms: {
-              field: "user_id",
-              size: MAX_USERS_PER_DAY,
-            },
+  const usersByDay = new Map<number, Set<string>>();
+  let afterKey: CompositeKey | undefined;
+
+  while (true) {
+    const result = await searchAnalytics<never, ActiveUsersAggs>(query, {
+      aggregations: {
+        by_user_day: {
+          composite: {
+            size: COMPOSITE_AGG_SIZE,
+            sources: [
+              {
+                day: {
+                  date_histogram: {
+                    field: "timestamp",
+                    calendar_interval: "day",
+                    time_zone: timezone,
+                  },
+                },
+              },
+              { user: { terms: { field: "user_id" } } },
+            ],
+            ...(afterKey ? { after: afterKey } : {}),
           },
         },
       },
-    },
-    size: 0,
-  });
+      size: 0,
+    });
 
-  if (result.isErr()) {
-    return new Err(new Error(result.error.message));
+    if (result.isErr()) {
+      return new Err(new Error(result.error.message));
+    }
+
+    const aggregation = result.value.aggregations?.by_user_day;
+    const buckets = aggregation?.buckets ?? [];
+    for (const bucket of buckets) {
+      const users = usersByDay.get(bucket.key.day);
+      if (users) {
+        users.add(bucket.key.user);
+      } else {
+        usersByDay.set(bucket.key.day, new Set([bucket.key.user]));
+      }
+    }
+
+    afterKey = aggregation?.after_key;
+    if (!afterKey || buckets.length === 0) {
+      break;
+    }
   }
 
-  const dayBuckets = bucketsToArray<DayBucket>(
-    result.value.aggregations?.by_day?.buckets
-  );
-
-  // Build a map of timestamp -> Set of user IDs
-  const usersByDay = new Map<number, Set<string>>();
-  const sortedTimestamps: number[] = [];
-
-  for (const bucket of dayBuckets) {
-    const users = bucketsToArray<UserBucket>(bucket.users?.buckets);
-    const userSet = new Set(users.map((u) => u.key));
-    usersByDay.set(bucket.key, userSet);
-    sortedTimestamps.push(bucket.key);
-  }
-
-  sortedTimestamps.sort((a, b) => a - b);
+  const sortedTimestamps = [...usersByDay.keys()].sort((a, b) => a - b);
 
   // Collect timestamps in the requested range for membership counting.
   const requestedTimestamps = sortedTimestamps.filter(
