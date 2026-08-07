@@ -1076,48 +1076,6 @@ export function AgentSidebarMenu({
                     tooltip="Create a new conversation"
                     onClick={handleNewClick}
                   />
-                  {!hideActions && (
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          icon={DotsHorizontal}
-                          variant="outline"
-                          aria-label="Conversation options"
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel>Conversations</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          label={
-                            hideTriggeredConversations
-                              ? "Show triggered"
-                              : "Hide triggered"
-                          }
-                          icon={hideTriggeredConversations ? Zap : ZapOff}
-                          disabled={!hasTriggeredConversations}
-                          onClick={() =>
-                            setHideTriggeredConversations(
-                              !hideTriggeredConversations
-                            )
-                          }
-                        />
-                        <DropdownMenuItem
-                          label="Edit history"
-                          onClick={toggleMultiSelect}
-                          icon={CheckDone01}
-                          disabled={filteredConversations.length === 0}
-                        />
-                        <DropdownMenuItem
-                          label="Clear history"
-                          variant="warning"
-                          onClick={() => setShowDeleteDialog("all")}
-                          icon={Trash01}
-                          disabled={filteredConversations.length === 0}
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
                 </div>
               </div>
             )}
