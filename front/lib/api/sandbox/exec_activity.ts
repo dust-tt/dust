@@ -17,10 +17,13 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  *   moves it;
  * - `started - finished` is the in-flight count.
  *
- * Both keys expire a few minutes after the last exec: a replica that dies mid-exec leaves the
- * pair unbalanced, and expiry is what un-wedges the sleep rather than a count that never
- * settles. The TTL comfortably exceeds the exec ceiling (2 minutes), so a live exec can never
- * have its start expire from under it.
+ * Both keys expire together a few minutes after the last record on either: every record
+ * refreshes both TTLs in one MULTI, so the pair cannot drift apart and a replica that dies
+ * mid-exec leaves an imbalance that expiry clears rather than a count that never settles. The
+ * TTL comfortably exceeds every exec ceiling (SANDBOX_MAX_COMMAND_TIMEOUT_MS,
+ * SANDBOX_FUNCTION_EXEC_TIMEOUT_MS and BUILD_EXEC_TIMEOUT_MS are all <= 2 minutes), so a live
+ * exec can never have its start expire from under it; a caller introducing a longer timeout
+ * must bump this in step.
  */
 
 const EXEC_ACTIVITY_TTL_SECONDS = 10 * 60;
@@ -41,16 +44,22 @@ export interface SandboxExecActivity {
 }
 
 /**
- * Best-effort: an exec must never fail because the activity counter could not be written. A
- * missed increment weakens one reaper cycle's guard, which the pre-existing rarity of the race
- * already bounds.
+ * Best-effort: an exec must never fail because the activity counter could not be written. The
+ * MULTI keeps each record atomic (no increment can land without its TTL refresh), but a lost
+ * start with a surviving end still leaves a deficit the read-side clamp absorbs — the guard
+ * then under-reports until a quiet TTL window expires both keys together. The pre-existing
+ * rarity of the race this module closes bounds that exposure.
  */
 export async function recordSandboxExecStart(sandboxId: string): Promise<void> {
   try {
-    await runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
-      await client.incr(startedKey(sandboxId));
-      await client.expire(startedKey(sandboxId), EXEC_ACTIVITY_TTL_SECONDS);
-    });
+    await runOnRedis({ origin: REDIS_ORIGIN }, (client) =>
+      client
+        .multi()
+        .incr(startedKey(sandboxId))
+        .expire(startedKey(sandboxId), EXEC_ACTIVITY_TTL_SECONDS)
+        .expire(finishedKey(sandboxId), EXEC_ACTIVITY_TTL_SECONDS)
+        .exec()
+    );
   } catch (err) {
     logger.warn(
       { sandboxId, err: normalizeError(err) },
@@ -61,10 +70,14 @@ export async function recordSandboxExecStart(sandboxId: string): Promise<void> {
 
 export async function recordSandboxExecEnd(sandboxId: string): Promise<void> {
   try {
-    await runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
-      await client.incr(finishedKey(sandboxId));
-      await client.expire(finishedKey(sandboxId), EXEC_ACTIVITY_TTL_SECONDS);
-    });
+    await runOnRedis({ origin: REDIS_ORIGIN }, (client) =>
+      client
+        .multi()
+        .incr(finishedKey(sandboxId))
+        .expire(finishedKey(sandboxId), EXEC_ACTIVITY_TTL_SECONDS)
+        .expire(startedKey(sandboxId), EXEC_ACTIVITY_TTL_SECONDS)
+        .exec()
+    );
   } catch (err) {
     logger.warn(
       { sandboxId, err: normalizeError(err) },
