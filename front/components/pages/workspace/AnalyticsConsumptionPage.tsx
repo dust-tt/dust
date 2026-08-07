@@ -6,10 +6,7 @@ import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analyti
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
-import {
-  USAGE_FILTER_MOCK_GROUPS,
-  USAGE_FILTER_MOCK_OPTIONS,
-} from "@app/components/workspace/analytics/usageFilterMockData";
+import { USAGE_FILTER_MOCK_OPTIONS } from "@app/components/workspace/analytics/usageFilterMockData";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -92,8 +89,8 @@ export function AnalyticsConsumptionPage() {
           <div className="flex justify-end">
             <UsageFilterPanel
               owner={owner}
+              period={period}
               categoryOptions={USAGE_FILTER_MOCK_OPTIONS}
-              groups={USAGE_FILTER_MOCK_GROUPS}
               filter={filter}
               onFilterChange={setFilter}
             />
