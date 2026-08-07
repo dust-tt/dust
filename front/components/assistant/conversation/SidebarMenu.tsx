@@ -1254,8 +1254,7 @@ interface UnreadConversationsSectionProps {
   conversations: ConversationListItemType[];
   pods: PodListItemType[];
   isMultiSelect: boolean;
-  isMarkingAllAsRead: boolean;
-  onMarkAllAsRead: (conversationIds: string[]) => void;
+  onMarkAllAsRead: (conversationIds: string[]) => Promise<void>;
   selectedConversations: ConversationListItemType[];
   toggleConversationSelection: (c: ConversationListItemType) => void;
   activeConversationId: string | null;
@@ -1282,7 +1281,6 @@ function UnreadConversationsSection({
   conversations,
   pods,
   isMultiSelect,
-  isMarkingAllAsRead,
   titleFilter,
   onMarkAllAsRead,
   selectedConversations,
@@ -1293,6 +1291,22 @@ function UnreadConversationsSection({
   const conversationGroups = useMemo(
     () => groupUnreadConversations(conversations, pods),
     [conversations, pods]
+  );
+
+  // Which mark-as-read button is in flight ("all" or a pod's spaceId), so
+  // only the clicked button shows a spinner.
+  const [markingScope, setMarkingScope] = useState<string | null>(null);
+
+  const handleMarkAsRead = useCallback(
+    async (scope: string, conversationIds: string[]) => {
+      setMarkingScope(scope);
+      try {
+        await onMarkAllAsRead(conversationIds);
+      } finally {
+        setMarkingScope(null);
+      }
+    },
+    [onMarkAllAsRead]
   );
 
   const podById = useMemo(
@@ -1316,8 +1330,13 @@ function UnreadConversationsSection({
             size="xmini"
             variant="ghost-secondary"
             label="Mark all as read"
-            onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
-            isLoading={isMarkingAllAsRead}
+            onClick={() =>
+              void handleMarkAsRead(
+                "all",
+                conversations.map((c) => c.sId)
+              )
+            }
+            isLoading={markingScope === "all"}
             hasLighterFont
             className="hover:bg-hover active:bg-selected"
           />
@@ -1389,11 +1408,12 @@ function UnreadConversationsSection({
                             label="Mark as read"
                             data-mark-read="pod"
                             onClick={() =>
-                              onMarkAllAsRead(
+                              void handleMarkAsRead(
+                                group.spaceId,
                                 group.conversations.map((c) => c.sId)
                               )
                             }
-                            isLoading={isMarkingAllAsRead}
+                            isLoading={markingScope === group.spaceId}
                             hasLighterFont
                             className="hover:bg-hover active:bg-selected"
                           />
@@ -1691,7 +1711,7 @@ function NavigationListWithInbox({
     );
   }, [conversations, titleFilter]);
 
-  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
+  const { markAllAsRead } = useMarkAllConversationsAsRead({
     owner,
   });
 
@@ -1758,7 +1778,6 @@ function NavigationListWithInbox({
                   conversations={triggeredConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
-                  isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
                   onMarkAllAsRead={markAllAsRead}
                   selectedConversations={selectedConversations}
@@ -1783,7 +1802,6 @@ function NavigationListWithInbox({
                   conversations={skillSuggestionConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
-                  isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
                   onMarkAllAsRead={markAllAsRead}
                   selectedConversations={selectedConversations}
@@ -1808,7 +1826,6 @@ function NavigationListWithInbox({
                   conversations={inboxConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
-                  isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
                   onMarkAllAsRead={markAllAsRead}
                   selectedConversations={selectedConversations}
