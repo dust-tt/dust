@@ -11,7 +11,7 @@ import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMessageToolConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { AgentMessageConsumptionAnalyticsToolData } from "@app/types/assistant/analytics";
+import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import assert from "assert";
 
 function skillExposesAction(
@@ -38,8 +38,6 @@ function skillIdsAttributedToAction(
   action: AgentMCPActionResource,
   enabledSkillIds: string[]
 ): string[] {
-  // Attribute every skill that exposes the tool and any skill enabled by the action.
-  // The tool document keeps its full credit amount instead of splitting it across these skills.
   return [
     ...new Set([
       ...skills
@@ -65,7 +63,7 @@ function summarizeToolConsumptionItem({
   allocation: MessageConsumptionAllocation<BilledRunUsage>;
   item: AgentMessageToolConsumptionItemResource;
 }): Pick<
-  AgentMessageConsumptionAnalyticsToolData,
+  AgentMessageConsumptionAnalyticsData,
   "credit_micro" | "gross_credit_micro" | "tokens"
 > {
   const resultFootprintTokens = item.inputTokensCount ?? 0;
@@ -76,8 +74,8 @@ function summarizeToolConsumptionItem({
     "Tool credit is smaller than its direct charge"
   );
 
-  // TODO(2026-08-07 OBSERVABILITY): We currently exclusively store the direct charge credits and
-  // gross credits but we don't have credit consumption just for the result footprint.
+  // TODO(2026-08-07 flav): Populate this split once it is persisted with the attribution.
+  // Repricing stored tokens here would make historical analytics depend on current model pricing.
   return {
     credit_micro: attributedCreditMicro,
     gross_credit_micro: {
@@ -115,19 +113,19 @@ function buildToolConsumptionDocument({
   item: AgentMessageToolConsumptionItemResource;
   parentAction: AgentMCPActionResource | undefined;
   usage: BilledRunUsage;
-}): AgentMessageConsumptionAnalyticsToolData {
+}): AgentMessageConsumptionAnalyticsData {
   const serializedAction = action.toJSON();
 
   return {
     ...makeBaseDocument(input, {
       attributionVersion: allocation.attributionVersion,
       consumptionKey: item.itemKey,
+      consumptionType: "tool",
       runUsageModelId: item.runUsageId,
       stepIndex: serializedAction.step,
       usageType: usage.usageType,
     }),
     ...summarizeToolConsumptionItem({ allocation, item }),
-    consumption_type: "tool",
     execution_time_ms: serializedAction.executionDurationMs,
     model: modelForUsage(input.model, usage),
     status: serializedAction.status,
@@ -148,7 +146,7 @@ function buildToolConsumptionDocument({
 export function buildToolConsumptionDocuments(
   input: AgentMessageConsumptionAnalyticsInput,
   allocation: MessageConsumptionAllocation<BilledRunUsage>
-): AgentMessageConsumptionAnalyticsToolData[] {
+): AgentMessageConsumptionAnalyticsData[] {
   const usageByModelId = new Map(
     allocation.messageUsages.map((usage) => [usage.runUsageModelId, usage])
   );
@@ -158,7 +156,7 @@ export function buildToolConsumptionDocuments(
   const actionById = new Map(
     input.actions.map((action) => [action.sId, action])
   );
-  const documents: AgentMessageConsumptionAnalyticsToolData[] = [];
+  const documents: AgentMessageConsumptionAnalyticsData[] = [];
 
   for (const item of allocation.items) {
     if (!item.isToolItem()) {

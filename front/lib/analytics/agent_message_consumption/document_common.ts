@@ -13,7 +13,7 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
-type AgentMessageConsumptionAnalyticsDocumentMetadata = Pick<
+type AgentMessageConsumptionAnalyticsBaseDocument = Pick<
   AgentMessageConsumptionAnalyticsData,
   | "agent"
   | "agent_message_id"
@@ -21,6 +21,7 @@ type AgentMessageConsumptionAnalyticsDocumentMetadata = Pick<
   | "attribution_version"
   | "completed_at"
   | "consumption_key"
+  | "consumption_type"
   | "context_origin"
   | "conversation_id"
   | "message_version"
@@ -53,17 +54,19 @@ export function makeBaseDocument(
   {
     attributionVersion,
     consumptionKey,
+    consumptionType,
     runUsageModelId,
     stepIndex,
     usageType,
   }: {
     attributionVersion: number;
     consumptionKey: string;
+    consumptionType: AgentMessageConsumptionAnalyticsData["consumption_type"];
     runUsageModelId: ModelId;
     stepIndex: number;
     usageType: AgentMessageConsumptionAnalyticsUsageType;
   }
-): AgentMessageConsumptionAnalyticsDocumentMetadata {
+): AgentMessageConsumptionAnalyticsBaseDocument {
   return {
     agent: metadata.agent,
     agent_message_id: metadata.agentMessageId,
@@ -71,6 +74,7 @@ export function makeBaseDocument(
     attribution_version: attributionVersion,
     completed_at: metadata.completedAt.toISOString(),
     consumption_key: consumptionKey,
+    consumption_type: consumptionType,
     context_origin: metadata.contextOrigin,
     conversation_id: metadata.conversationId,
     message_version: metadata.messageVersion.toString(),

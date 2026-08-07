@@ -5,6 +5,7 @@ import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assi
 import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { intelligenceAwuFromRunUsagesGroupedByRunKey } from "@app/lib/metronome/events";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import type { CompletedAgentMessageConsumptionItem } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -135,6 +136,47 @@ async function setupSettledMessage({
 }
 
 type SettledMessageContext = Awaited<ReturnType<typeof setupSettledMessage>>;
+
+async function recordModelAttribution(
+  context: SettledMessageContext,
+  {
+    attributionVersion,
+    inputTokensCount,
+    outputTokensCount,
+  }: {
+    attributionVersion: number;
+    inputTokensCount: number;
+    outputTokensCount: number | null;
+  }
+): Promise<void> {
+  const records: CompletedAgentMessageConsumptionItem[] = [
+    {
+      itemType: "input",
+      runUsageModelId: context.runUsageModelId,
+      inputTokensCount,
+      grossAttributedCreditAmountMicro: 4_000_000,
+    },
+  ];
+  if (outputTokensCount !== null) {
+    records.push({
+      itemType: "output",
+      runUsageModelId: context.runUsageModelId,
+      outputTokensCount,
+      grossAttributedCreditAmountMicro: 1_000_000,
+    });
+  }
+
+  await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+    context.auth,
+    {
+      conversation: context.conversation,
+      agentMessageModelId: context.agentMessageModelId,
+      attributionVersion,
+      records,
+      pendingToolItems: [],
+    }
+  );
+}
 
 async function setupLlmAndToolConsumptionScenario(
   options?: SettledMessageOptions
@@ -819,5 +861,53 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     expect(
       documents.reduce((total, document) => total + document.credit_micro, 0)
     ).toBe(5_000_000);
+  });
+
+  it("uses only the newest complete attribution version", async () => {
+    const context = await setupSettledMessage();
+    const previousAttributionVersion =
+      AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
+    await recordModelAttribution(context, {
+      attributionVersion: previousAttributionVersion,
+      inputTokensCount: 100,
+      outputTokensCount: 20,
+    });
+    await recordModelAttribution(context, {
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      inputTokensCount: 200,
+      outputTokensCount: 30,
+    });
+
+    expect(await buildDocuments(context)).toEqual([
+      expect.objectContaining({
+        attribution_version: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        credit_micro: 5_000_000,
+        tokens: expect.objectContaining({ input: 200, output: 30 }),
+      }),
+    ]);
+  });
+
+  it("falls back to the newest complete attribution version", async () => {
+    const context = await setupSettledMessage();
+    const previousAttributionVersion =
+      AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
+    await recordModelAttribution(context, {
+      attributionVersion: previousAttributionVersion,
+      inputTokensCount: 100,
+      outputTokensCount: 20,
+    });
+    await recordModelAttribution(context, {
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      inputTokensCount: 200,
+      outputTokensCount: null,
+    });
+
+    expect(await buildDocuments(context)).toEqual([
+      expect.objectContaining({
+        attribution_version: previousAttributionVersion,
+        credit_micro: 5_000_000,
+        tokens: expect.objectContaining({ input: 100, output: 20 }),
+      }),
+    ]);
   });
 });

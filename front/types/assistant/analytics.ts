@@ -145,89 +145,32 @@ export interface AgentMessageConsumptionAnalyticsTool {
   attributed_skill_ids: string[];
 }
 
-type AgentMessageConsumptionAnalyticsTokens = {
+export interface AgentMessageConsumptionAnalyticsTokens {
   system: number;
+  // Actual prompt tokens on LLM documents. Not applicable to tool documents.
   input: number | null;
+  // Tool documents only: tokens the tool result adds to the conversation. Cannot
+  // be summed with `input`, which counts the tokens the LLM consumed itself.
   result_footprint: number | null;
   output: number;
   reasoning: number;
-};
+}
 
-export type AgentMessageConsumptionAnalyticsLlmTokens =
-  AgentMessageConsumptionAnalyticsTokens & {
-    // System prompt tokens when measured separately. Otherwise included in `input`.
-    system: number;
-    // Provider prompt tokens not split into `system`.
-    input: number;
-    // Tool result footprints are carried by tool documents.
-    result_footprint: null;
-    // Assistant output tokens after reasoning and tool calls are removed.
-    output: number;
-    // Provider-reported reasoning tokens.
-    reasoning: number;
-  };
-
-export type AgentMessageConsumptionAnalyticsToolTokens =
-  AgentMessageConsumptionAnalyticsTokens & {
-    // Tool documents do not carry system prompt tokens.
-    system: 0;
-    // Provider prompt tokens are carried by LLM documents.
-    input: null;
-    // Estimated tokens added to model context by the tool result. Not additive with LLM input.
-    result_footprint: number;
-    // Model output tokens used to emit the tool name and arguments.
-    output: number;
-    // Tool documents do not carry reasoning tokens.
-    reasoning: 0;
-  };
-
-type AgentMessageConsumptionAnalyticsGrossCreditMicro = {
+export interface AgentMessageConsumptionAnalyticsGrossCreditMicro {
   system: number;
+  // Reconciled prompt credit on LLM documents. Not applicable to tool documents.
   input: number | null;
+  // Tool documents only, see AgentMessageConsumptionAnalyticsTokens.result_footprint.
   result_footprint: number | null;
+  // Null on tool documents until the model credit split is persisted at attribution time.
   output: number | null;
   reasoning: number;
   direct: number;
+  // Equals credit_micro for every document.
   total: number;
-};
+}
 
-export type AgentMessageConsumptionAnalyticsLlmGrossCreditMicro =
-  AgentMessageConsumptionAnalyticsGrossCreditMicro & {
-    // Credit attributed to system prompt tokens.
-    system: number;
-    // Reconciled credit attributed to the remaining provider prompt tokens.
-    input: number;
-    // Tool result footprint credit is carried by tool documents.
-    result_footprint: null;
-    // Credit attributed to assistant output tokens.
-    output: number;
-    // Credit attributed to provider-reported reasoning tokens.
-    reasoning: number;
-    // LLM documents do not carry direct tool charges.
-    direct: 0;
-    // Total credit attributed to this LLM run. Equals `credit_micro`.
-    total: number;
-  };
-
-export type AgentMessageConsumptionAnalyticsToolGrossCreditMicro =
-  AgentMessageConsumptionAnalyticsGrossCreditMicro & {
-    // Tool documents do not carry system prompt credit.
-    system: 0;
-    // The tool model-input credit split is not persisted yet.
-    input: null;
-    // The tool result footprint credit split is not persisted yet.
-    result_footprint: null;
-    // The emitted tool call credit split is not persisted yet.
-    output: null;
-    // Tool documents do not carry reasoning credit.
-    reasoning: 0;
-    // Direct charge for executing the tool.
-    direct: number;
-    // Full credit attributed to this tool call. Equals `credit_micro`.
-    total: number;
-  };
-
-interface AgentMessageConsumptionAnalyticsBaseData
+export interface AgentMessageConsumptionAnalyticsData
   extends ElasticsearchBaseDocument {
   agent: AgentMessageConsumptionAnalyticsAgent;
   agent_message_id: string;
@@ -237,6 +180,7 @@ interface AgentMessageConsumptionAnalyticsBaseData
   completed_at: string; // ISO date string.
   // Idempotency key.
   consumption_key: string;
+  consumption_type: AgentMessageConsumptionAnalyticsType;
   context_origin: UserMessageOrigin | null;
   conversation_id: string;
   // Normalized cost attributed to this consumption unit. Tool documents include the model output
@@ -245,37 +189,20 @@ interface AgentMessageConsumptionAnalyticsBaseData
   // billed cost.
   credit_micro: number;
   execution_time_ms: number | null;
+  gross_credit_micro: AgentMessageConsumptionAnalyticsGrossCreditMicro;
   message_version: string;
   model: AgentMessageAnalyticsModel | null;
   run_usage_id: string;
   space_id: string | null;
   status: string;
   step_index: number;
+  tokens: AgentMessageConsumptionAnalyticsTokens;
+  tool: AgentMessageConsumptionAnalyticsTool | null;
   trigger_id: string | null;
   usage_type: AgentMessageConsumptionAnalyticsUsageType;
   user: AgentMessageConsumptionAnalyticsUser | null;
   workspace_id: string;
 }
-
-export interface AgentMessageConsumptionAnalyticsLlmData
-  extends AgentMessageConsumptionAnalyticsBaseData {
-  consumption_type: "llm";
-  gross_credit_micro: AgentMessageConsumptionAnalyticsLlmGrossCreditMicro;
-  tokens: AgentMessageConsumptionAnalyticsLlmTokens;
-  tool: null;
-}
-
-export interface AgentMessageConsumptionAnalyticsToolData
-  extends AgentMessageConsumptionAnalyticsBaseData {
-  consumption_type: "tool";
-  gross_credit_micro: AgentMessageConsumptionAnalyticsToolGrossCreditMicro;
-  tokens: AgentMessageConsumptionAnalyticsToolTokens;
-  tool: AgentMessageConsumptionAnalyticsTool;
-}
-
-export type AgentMessageConsumptionAnalyticsData =
-  | AgentMessageConsumptionAnalyticsLlmData
-  | AgentMessageConsumptionAnalyticsToolData;
 
 export interface AgentRetrievalOutputAnalyticsData
   extends ElasticsearchBaseDocument {
