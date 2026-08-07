@@ -27,6 +27,7 @@ import {
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -298,27 +299,35 @@ export function UsageFilterPanel({
     category: UsageFilterCategory,
     entity: UsageFilterEntity
   ) => {
-    if (category === "member") {
-      return (
-        <Avatar
-          name={entity.name}
-          visual={entity.image ?? undefined}
-          size="xxs"
-          isRounded
-        />
-      );
+    switch (category) {
+      case "member":
+        return (
+          <Avatar
+            name={entity.name}
+            visual={entity.image ?? undefined}
+            size="xxs"
+            isRounded
+          />
+        );
+      case "source": {
+        const logo = getConnectorProviderLogoWithFallback({
+          provider: entity.connectorProvider ?? null,
+          isDark,
+        });
+        return <Icon visual={logo} size="sm" />;
+      }
+      case "model":
+        return entity.lab ? (
+          <Icon visual={getModelMakerLogo(entity.lab, isDark)} size="sm" />
+        ) : null;
+      case "agent":
+      case "tool":
+      case "skill":
+        return null;
+      default:
+        assertNeverAndIgnore(category);
+        return null;
     }
-    if (category === "source") {
-      const logo = getConnectorProviderLogoWithFallback({
-        provider: entity.connectorProvider ?? null,
-        isDark,
-      });
-      return <Icon visual={logo} size="sm" />;
-    }
-    if (category === "model" && entity.lab) {
-      return <Icon visual={getModelMakerLogo(entity.lab, isDark)} size="sm" />;
-    }
-    return null;
   };
 
   return (
