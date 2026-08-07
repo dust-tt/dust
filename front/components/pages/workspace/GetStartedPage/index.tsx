@@ -4,13 +4,13 @@ import { PreviouslyDoneRow } from "@app/components/pages/workspace/GetStartedPag
 import { RecentConversations } from "@app/components/pages/workspace/GetStartedPage/RecentConversations";
 import { RecommendationItem } from "@app/components/pages/workspace/GetStartedPage/RecommendationItem";
 import { WorkAreaSection } from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useAuth,
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useActivationPod,
@@ -118,11 +118,11 @@ export function GetStartedPage() {
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-        style={{
+          style={{
             backgroundImage:
               "linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px)",
             backgroundSize: "calc(100% / 7) 100%",
-        }}
+          }}
         />
         <img
           alt=""

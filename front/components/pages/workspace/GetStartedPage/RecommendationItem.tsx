@@ -4,7 +4,6 @@ import {
 } from "@app/components/pages/workspace/GetStartedPage/recency";
 import { SourceIcon } from "@app/components/pages/workspace/GetStartedPage/SourceIcon";
 import type { ActivationRecommendationForUserType } from "@app/lib/api/activation/recommendations";
-import { useAppRouter } from "@app/lib/platform";
 import { useUpdateActivationRecommendation } from "@app/lib/swr/activation";
 import { getConversationRoute } from "@app/lib/utils/router";
 import {
@@ -32,19 +31,10 @@ export function RecommendationItem({
   onToggle,
   onResolved,
 }: RecommendationItemProps) {
-  const router = useAppRouter();
   const [isUpdating, setIsUpdating] = useState(false);
   const { updateRecommendation } = useUpdateActivationRecommendation({
     workspaceId: owner.sId,
   });
-
-  // "Create this agent" deep-links into the activation conversation where this
-  // recommendation was surfaced; the agent marks it executed once the work
-  // actually runs there (via the update_recommendation tool). We don't mark it
-  // executed on click — clicking is navigation, not completion.
-  const handleCreate = () => {
-    void router.push(getConversationRoute(owner.sId, rec.conversationId));
-  };
 
   const handleDismiss = async () => {
     setIsUpdating(true);
@@ -114,7 +104,7 @@ export function RecommendationItem({
               label={rec.ctaLabel ?? "Create this agent"}
               icon={ArrowRight}
               disabled={isUpdating}
-              onClick={handleCreate}
+              href={getConversationRoute(owner.sId, rec.conversationId)}
             />
             <Button
               variant="outline"

@@ -68,7 +68,7 @@ export function WorkAreaSection({
       void mutateWorkAreas();
       setUpdatingId(null);
     },
-    [updateWorkArea, mutateWorkAreas],
+    [updateWorkArea, mutateWorkAreas]
   );
 
   const startConversation = useCallback(
@@ -103,7 +103,7 @@ export function WorkAreaSection({
       owner.sId,
       router,
       sendNotification,
-    ],
+    ]
   );
 
   return (
