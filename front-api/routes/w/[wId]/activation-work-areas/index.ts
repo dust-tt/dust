@@ -8,6 +8,7 @@ import {
   listActivationWorkAreasForUser,
   updateActivationWorkAreaForUser,
 } from "@app/lib/api/activation/work_areas";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -98,6 +99,8 @@ app.patch(
         });
       case "ok":
         return ctx.json({ success: true });
+      default:
+        assertNever(result);
     }
   }
 );

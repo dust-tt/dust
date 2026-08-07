@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 export interface ActivationWorkAreaForUserType {
   sId: string;
@@ -58,14 +59,15 @@ export async function createActivationWorkAreasForUser(
   // Best-effort link to the user's activation pod.
   const pod = await ActivationPodResource.fetchByUser(auth);
 
-  const created = await Promise.all(
-    items.map((item) =>
+  const created = await concurrentExecutor(
+    items,
+    (item) =>
       ActivationWorkAreaResource.makeNew(auth, {
         title: item.title,
         description: item.description,
         podId: pod?.id ?? null,
-      })
-    )
+      }),
+    { concurrency: 8 }
   );
 
   return created.map(toUserType);

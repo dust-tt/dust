@@ -21,6 +21,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -286,14 +287,15 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
     create_work_areas: async ({ workAreas }, { auth }) => {
       const pod = await ActivationPodResource.fetchByUser(auth);
 
-      const created = await Promise.all(
-        workAreas.map((item) =>
+      const created = await concurrentExecutor(
+        workAreas,
+        (item) =>
           ActivationWorkAreaResource.makeNew(auth, {
             title: item.title,
             description: item.description,
             podId: pod?.id ?? null,
-          })
-        )
+          }),
+        { concurrency: 8 }
       );
 
       const lines = created.map(
