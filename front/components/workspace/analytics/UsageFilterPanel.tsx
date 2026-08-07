@@ -4,20 +4,16 @@ import type {
   UsageFilterEntity,
   UsageFilterGroup,
   UsageFilterScope,
-  UsageModelLab,
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
-  addUsageFilterGroup,
   clearUsageFilterCategory,
   removeUsageFilterEntity,
-  removeUsageFilterGroup,
   selectAllUsageFilterEntities,
   toggleUsageFilterEntity,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_FILTER_SCOPES,
-  USAGE_MODEL_LABS,
   USAGE_MODEL_TIERS,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
@@ -76,23 +72,6 @@ export function UsageFilterPanel({
     USAGE_MODEL_TIERS[0]
   );
   const [searchText, setSearchText] = useState("");
-  const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
-  const [isMoreModelsOpen, setIsMoreModelsOpen] = useState(false);
-  const [moreModelsSearch, setMoreModelsSearch] = useState("");
-  // "More models" opens collapsed to just the maker rows; picking one expands
-  // its model list. Cleared whenever the dropdown re-opens.
-  const [expandedModelLab, setExpandedModelLab] =
-    useState<UsageModelLab | null>(null);
-  // Only used for the "member" category: narrows the displayed members down
-  // to those belonging to at least one of these groups. Not currently backed
-  // by real group-membership data (the search endpoint has no such concept
-  // yet), so it's UI-only until that exists.
-  const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
-  // Sections are open by default; a category lands here once the user
-  // collapses it.
-  const [collapsedCategories, setCollapsedCategories] = useState<
-    Set<UsageFilterCategory>
-  >(new Set());
 
   const { members } = useSearchMembers({
     workspaceId: owner.sId,
@@ -134,42 +113,6 @@ export function UsageFilterPanel({
     });
   }, [activeEntities, searchText, activeScope, activeTier, activeCategory]);
 
-  // "More models" browses every model grouped by maker, independent of the
-  // Fast/Standard/Complex quick filter above. Groups start collapsed to just
-  // their maker row; a search bypasses grouping entirely and lists matches
-  // flat, mirroring the message composer's model picker.
-  const moreModelsQuery = moreModelsSearch.trim().toLowerCase();
-  const isSearchingMoreModels = moreModelsQuery !== "";
-
-  const moreModelsSearchResults = useMemo(
-    () =>
-      isSearchingMoreModels
-        ? categoryEntities.model.filter((entity) =>
-            entity.name.toLowerCase().includes(moreModelsQuery)
-          )
-        : [],
-    [categoryEntities, isSearchingMoreModels, moreModelsQuery]
-  );
-
-  const moreModelsGroups = useMemo(
-    () =>
-      USAGE_MODEL_LABS.flatMap((lab) => {
-        const models = categoryEntities.model.filter(
-          (entity) => entity.lab === lab
-        );
-        return models.length > 0 ? [{ lab, models }] : [];
-      }),
-    [categoryEntities]
-  );
-
-  const availableGroups = useMemo(
-    () =>
-      groups.filter(
-        (group) => !selectedGroups.some((selected) => selected.id === group.id)
-      ),
-    [groups, selectedGroups]
-  );
-
   const selectedIdsForActiveCategory = useMemo(
     () =>
       new Set((draftFilter[activeCategory] ?? []).map((entity) => entity.id)),
@@ -198,25 +141,12 @@ export function UsageFilterPanel({
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
-      setIsAddGroupOpen(false);
-      setIsMoreModelsOpen(false);
     }
   };
 
   const handleCategoryChange = (category: UsageFilterCategory) => {
     setActiveCategory(category);
     setSearchText("");
-    setIsAddGroupOpen(false);
-    setIsMoreModelsOpen(false);
-  };
-
-  const handleAddGroup = (group: UsageFilterGroup) => {
-    setSelectedGroups((current) => addUsageFilterGroup(current, group));
-    setIsAddGroupOpen(false);
-  };
-
-  const handleRemoveGroup = (id: string) => {
-    setSelectedGroups((current) => removeUsageFilterGroup(current, id));
   };
 
   const handleClearActiveCategory = () => {
@@ -225,18 +155,6 @@ export function UsageFilterPanel({
 
   const handleClearCategory = (category: UsageFilterCategory) => {
     setDraftFilter(clearUsageFilterCategory(draftFilter, category));
-  };
-
-  const handleToggleCategoryOpen = (category: UsageFilterCategory) => {
-    setCollapsedCategories((current) => {
-      const next = new Set(current);
-      if (next.has(category)) {
-        next.delete(category);
-      } else {
-        next.add(category);
-      }
-      return next;
-    });
   };
 
   const handleSelectAllFiltered = () => {
@@ -271,18 +189,6 @@ export function UsageFilterPanel({
 
   const handleRemoveEntity = (category: UsageFilterCategory, id: string) => {
     setDraftFilter(removeUsageFilterEntity(draftFilter, category, id));
-  };
-
-  const handleMoreModelsOpenChange = (open: boolean) => {
-    setIsMoreModelsOpen(open);
-    if (open) {
-      setMoreModelsSearch("");
-      setExpandedModelLab(null);
-    }
-  };
-
-  const handleToggleExpandedModelLab = (lab: UsageModelLab) => {
-    setExpandedModelLab((current) => (current === lab ? null : lab));
   };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
@@ -331,28 +237,11 @@ export function UsageFilterPanel({
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
             {activeCategory === "member" && (
-              <UsageFilterMemberGroupsControls
-                isAddGroupOpen={isAddGroupOpen}
-                onToggleAddGroupOpen={() =>
-                  setIsAddGroupOpen((current) => !current)
-                }
-                availableGroups={availableGroups}
-                onAddGroup={handleAddGroup}
-                selectedGroups={selectedGroups}
-                onRemoveGroup={handleRemoveGroup}
-              />
+              <UsageFilterMemberGroupsControls groups={groups} />
             )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
-                isMoreModelsOpen={isMoreModelsOpen}
-                onMoreModelsOpenChange={handleMoreModelsOpenChange}
-                moreModelsSearch={moreModelsSearch}
-                onMoreModelsSearchChange={setMoreModelsSearch}
-                isSearchingMoreModels={isSearchingMoreModels}
-                moreModelsSearchResults={moreModelsSearchResults}
-                moreModelsGroups={moreModelsGroups}
-                expandedModelLab={expandedModelLab}
-                onToggleExpandedModelLab={handleToggleExpandedModelLab}
+                models={categoryEntities.model}
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => handleToggleEntity("model", model)}
                 activeTier={activeTier}
@@ -379,9 +268,7 @@ export function UsageFilterPanel({
           <UsageFilterSelectionSummary
             categoriesWithSelection={categoriesWithSelection}
             draftFilter={draftFilter}
-            collapsedCategories={collapsedCategories}
             onClearCategory={handleClearCategory}
-            onToggleCategoryOpen={handleToggleCategoryOpen}
             onRemoveEntity={handleRemoveEntity}
           />
         </div>
