@@ -38,6 +38,20 @@ const sharedEventFields = {
     ),
 };
 
+const eventStartSchema = z.union([
+  z.object({ dateTime: z.string().describe("RFC3339 start time") }),
+  z.object({
+    date: z.string().describe("All-day start date (YYYY-MM-DD)"),
+  }),
+]);
+
+const eventEndSchema = z.union([
+  z.object({ dateTime: z.string().describe("RFC3339 end time") }),
+  z.object({
+    date: z.string().describe("Exclusive all-day end date (YYYY-MM-DD)"),
+  }),
+]);
+
 export const GOOGLE_CALENDAR_TOOLS_METADATA = [
   {
     name: "list_calendars",
@@ -128,12 +142,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         .describe(
           "Description of the event. Supports basic HTML tags (<b>, <i>, <br>, <ul>, <li>, <a href='...'>). Use raw HTML tags — never escape them as entities. Use plain text only when no formatting is needed."
         ),
-      start: z
-        .object({ dateTime: z.string().describe("RFC3339 start time") })
-        .describe("Start time object."),
-      end: z
-        .object({ dateTime: z.string().describe("RFC3339 end time") })
-        .describe("End time object."),
+      start: eventStartSchema.describe("Timed or all-day event start."),
+      end: eventEndSchema.describe("Timed or all-day event end (exclusive)."),
       attendees: z
         .array(z.string())
         .optional()
@@ -179,14 +189,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         .describe(
           "Description of the event. Only include this field when intentionally changing the description. Supports basic HTML tags (<b>, <i>, <br>, <ul>, <li>, <a href='...'>). Use raw HTML tags — never escape them as entities. Use plain text only when no formatting is needed."
         ),
-      start: z
-        .object({ dateTime: z.string().describe("RFC3339 start time") })
+      start: eventStartSchema
         .optional()
-        .describe("Start time object."),
-      end: z
-        .object({ dateTime: z.string().describe("RFC3339 end time") })
+        .describe("Timed or all-day event start."),
+      end: eventEndSchema
         .optional()
-        .describe("End time object."),
+        .describe("Timed or all-day event end (exclusive)."),
       attendees: z
         .array(z.string())
         .optional()
