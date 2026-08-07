@@ -119,13 +119,22 @@ export function GetStartedPage() {
           aria-hidden
           className="pointer-events-none absolute inset-0"
         style={{
-            backgroundImage: [
+            backgroundImage:
               "linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px)",
-              "radial-gradient(68% 52% at 60% -8%, rgba(255, 203, 99, 0.55) 0%, rgba(255, 138, 128, 0.32) 35%, rgba(122, 159, 255, 0.24) 58%, transparent 76%)",
-              "radial-gradient(52% 44% at 14% 2%, rgba(132, 202, 255, 0.32) 0%, transparent 72%)",
-            ].join(", "),
-            backgroundSize: "calc(100% / 7) 100%, 100% 100%, 100% 100%",
+            backgroundSize: "calc(100% / 7) 100%",
         }}
+        />
+        <img
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -top-[307.6px] left-[227.4px] w-[1067.2px] max-w-none"
+          src="/static/activation/for-you-orb-large.svg"
+        />
+        <img
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -top-[307.6px] -left-[72.6px] w-[859.2px] max-w-none"
+          src="/static/activation/for-you-orb-small.svg"
         />
         <div className="relative ml-6 w-[calc(100%-48px)] pb-16 pt-[130px] md:ml-24 md:w-[566px]">
           <div className="flex flex-col gap-1">

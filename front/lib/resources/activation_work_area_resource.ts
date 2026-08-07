@@ -97,7 +97,13 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
 
   static async listByUserAndStatus(
     auth: Authenticator,
-    { status }: { status?: ActivationWorkAreaStatus }
+    {
+      status,
+      activationPodModelId,
+    }: {
+      status?: ActivationWorkAreaStatus;
+      activationPodModelId?: ModelId;
+    }
   ): Promise<ActivationWorkAreaResource[]> {
     const user = auth.getNonNullableUser();
 
@@ -108,6 +114,9 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
 
     if (status !== undefined) {
       where.status = status;
+    }
+    if (activationPodModelId !== undefined) {
+      where.podId = activationPodModelId;
     }
 
     const rows = await this.model.findAll({

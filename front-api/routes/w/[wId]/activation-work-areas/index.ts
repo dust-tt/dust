@@ -13,6 +13,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const ListWorkAreasQuerySchema = z.object({
+  podId: z.string().optional(),
   status: z.enum(["candidate", "confirmed", "dismissed"]).optional(),
 });
 
@@ -31,9 +32,12 @@ app.get(
   validate("query", ListWorkAreasQuerySchema),
   async (ctx): HandlerResult<GetActivationWorkAreasResponseBody> => {
     const auth = ctx.get("auth");
-    const { status } = ctx.req.valid("query");
+    const { podId, status } = ctx.req.valid("query");
 
-    const workAreas = await listActivationWorkAreasForUser(auth, { status });
+    const workAreas = await listActivationWorkAreasForUser(auth, {
+      podId,
+      status,
+    });
 
     return ctx.json({ workAreas });
   }

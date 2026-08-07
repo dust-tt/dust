@@ -1,7 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -23,10 +25,31 @@ export interface UpdateActivationWorkAreaResponseBody {
 
 export async function listActivationWorkAreasForUser(
   auth: Authenticator,
-  { status }: { status?: ActivationWorkAreaStatus } = {}
+  {
+    status,
+    podId,
+  }: {
+    status?: ActivationWorkAreaStatus;
+    podId?: string;
+  } = {}
 ): Promise<ActivationWorkAreaForUserType[]> {
+  let activationPodModelId;
+  if (podId !== undefined) {
+    const space = await SpaceResource.fetchById(auth, podId);
+    if (!space) {
+      return [];
+    }
+
+    const activationPod = await ActivationPodResource.fetchByUser(auth);
+    if (!activationPod || activationPod.spaceId !== space.id) {
+      return [];
+    }
+    activationPodModelId = activationPod.id;
+  }
+
   const rows = await ActivationWorkAreaResource.listByUserAndStatus(auth, {
     status,
+    activationPodModelId,
   });
 
   return rows.map((r) => r.toJSON());

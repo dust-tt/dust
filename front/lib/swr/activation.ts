@@ -128,10 +128,12 @@ export function useUpdateActivationRecommendation({
 
 export function useActivationWorkAreas({
   workspaceId,
+  podId,
   status,
   disabled,
 }: {
   workspaceId: string;
+  podId?: string;
   status?: ActivationWorkAreaStatus;
   disabled?: boolean;
 }) {
@@ -139,6 +141,9 @@ export function useActivationWorkAreas({
   const workAreasFetcher: Fetcher<GetActivationWorkAreasResponseBody> = fetcher;
 
   const params = new URLSearchParams();
+  if (podId) {
+    params.set("podId", podId);
+  }
   if (status) {
     params.set("status", status);
   }

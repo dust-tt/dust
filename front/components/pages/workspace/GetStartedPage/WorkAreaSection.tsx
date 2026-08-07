@@ -47,7 +47,11 @@ export function WorkAreaSection({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const { workAreas, isWorkAreasLoading, mutateWorkAreas } =
-    useActivationWorkAreas({ workspaceId: owner.sId, disabled });
+    useActivationWorkAreas({
+      workspaceId: owner.sId,
+      podId: podId ?? undefined,
+      disabled,
+    });
 
   const { updateWorkArea } = useUpdateActivationWorkArea({
     workspaceId: owner.sId,
