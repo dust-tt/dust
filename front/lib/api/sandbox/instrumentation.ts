@@ -106,12 +106,14 @@ export function recordLifecycleOperation(
  */
 export function recordSandboxFunctionRun({
   runnerKind,
+  status,
   durationMs,
 }: {
   runnerKind: "warm" | "cold" | "unknown";
+  status: "success" | "error";
   durationMs: number;
 }): void {
-  const tags = [regionTag(), `runner_kind:${runnerKind}`];
+  const tags = [regionTag(), `runner_kind:${runnerKind}`, `status:${status}`];
   getStatsDClient().increment("sandbox.functions.run", 1, tags);
   getStatsDClient().distribution(
     "sandbox.functions.run.duration",

@@ -14,8 +14,24 @@ describe("parseStdoutResultEnvelope", () => {
           "\n"
       )
     ).toEqual({
-      ok: true,
-      output: { hello: "world" },
+      outcome: { ok: true, output: { hello: "world" } },
+      timings: null,
+    });
+  });
+
+  it("extracts the runner kind from the envelope timings in the same parse", () => {
+    expect(
+      parseStdoutResultEnvelope(
+        JSON.stringify({
+          protocolVersion: 3,
+          delivery: "stdout",
+          outcome: { ok: true, output: 1 },
+          timingsMs: { total: 12, runner: 8, runnerKind: "warm" },
+        })
+      )
+    ).toEqual({
+      outcome: { ok: true, output: 1 },
+      timings: { runnerKind: "warm" },
     });
   });
 
@@ -32,19 +48,19 @@ describe("parseStdoutResultEnvelope", () => {
         })
       )
     ).toEqual({
-      ok: false,
-      error: { code: "threw", message: "boom" },
+      outcome: { ok: false, error: { code: "threw", message: "boom" } },
+      timings: null,
     });
   });
 
   it("returns invocation_failed for empty or non-JSON stdout", () => {
     expect(parseStdoutResultEnvelope("")).toMatchObject({
-      ok: false,
-      error: { code: "invocation_failed" },
+      outcome: { ok: false, error: { code: "invocation_failed" } },
+      timings: null,
     });
     expect(parseStdoutResultEnvelope("not-json")).toMatchObject({
-      ok: false,
-      error: { code: "invocation_failed" },
+      outcome: { ok: false, error: { code: "invocation_failed" } },
+      timings: null,
     });
   });
 });
