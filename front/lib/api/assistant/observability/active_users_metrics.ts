@@ -108,8 +108,9 @@ export async function fetchActiveUsersMetrics(
 
   const usersByDay = new Map<number, Set<string>>();
   let afterKey: CompositeKey | undefined;
+  let buckets: UserDayBucket[];
 
-  while (true) {
+  do {
     const result = await searchAnalytics<never, ActiveUsersAggs>(query, {
       aggregations: {
         by_user_day: {
@@ -149,7 +150,7 @@ export async function fetchActiveUsersMetrics(
     }
 
     const aggregation = result.value.aggregations?.by_user_day;
-    const buckets = aggregation?.buckets ?? [];
+    buckets = aggregation?.buckets ?? [];
     for (const bucket of buckets) {
       const users = usersByDay.get(bucket.key.day);
       if (users) {
@@ -160,10 +161,7 @@ export async function fetchActiveUsersMetrics(
     }
 
     afterKey = aggregation?.after_key;
-    if (!afterKey || buckets.length === 0) {
-      break;
-    }
-  }
+  } while (afterKey !== undefined && buckets.length > 0);
 
   const sortedTimestamps = [...usersByDay.keys()].sort((a, b) => a - b);
 
