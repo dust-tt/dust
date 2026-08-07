@@ -151,14 +151,12 @@ export async function fetchLiveUserCreditInputs({
 
   if (normalizedSeatType) {
     // Priority: per-user override > max group cap > workspace default (shared
-    // ladder). The `?? defaultPoolCapAwuCredits` is unreachable — the default is
-    // always a number here — but keeps the type non-null for the arithmetic.
-    const poolCapAwuCredits =
-      resolveEffectiveSpendLimitAwuCredits({
-        overrideAwuCredits: poolCapOverrideAwuCredits,
-        groupCapAwuCredits,
-        defaultAwuCredits: defaultPoolCapAwuCredits,
-      }) ?? defaultPoolCapAwuCredits;
+    // ladder).
+    const poolCapAwuCredits = resolveEffectiveSpendLimitAwuCredits({
+      overrideAwuCredits: poolCapOverrideAwuCredits,
+      groupCapAwuCredits,
+      defaultAwuCredits: defaultPoolCapAwuCredits,
+    });
     capSource = resolveEffectiveSpendLimitSource({
       overrideAwuCredits: poolCapOverrideAwuCredits,
       groupCapAwuCredits,
