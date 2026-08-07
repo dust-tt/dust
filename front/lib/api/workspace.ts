@@ -36,6 +36,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
+  ActiveRoleType,
   LightUserTypeWithWorkspace,
   LightWorkspaceType,
   RoleType,
@@ -297,18 +298,54 @@ export async function getGroupMembersWithWorkspaces(
   });
 }
 
+// The user search index has no role field, so a role filter is resolved from the
+// active memberships and handed to Elasticsearch as a user allowlist.
+async function resolveRoleFilterUserIds({
+  workspace,
+  role,
+}: {
+  workspace: LightWorkspaceType;
+  role: ActiveRoleType;
+}): Promise<string[]> {
+  // `builder` is deprecated and surfaced to end users as a regular member, so
+  // filtering on `user` must include both.
+  const roles: ActiveRoleType[] =
+    role === "user" ? ["user", "builder"] : [role];
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+    roles,
+  });
+
+  // The query's filter make sure `user` is never null, so nothing
+  // is dropped here.
+  return removeNulls(memberships.map((m) => m.user?.sId));
+}
+
 export async function searchMembers(
   auth: Authenticator,
   options: {
     searchTerm?: string;
     searchEmails?: string[];
     groupKind?: Exclude<GroupKind, "system">;
+    role?: ActiveRoleType;
   },
   paginationParams: SearchMembersPaginationParams
 ): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
+  }
+
+  let restrictToUserIds: string[] | undefined;
+  if (options.role) {
+    restrictToUserIds = await resolveRoleFilterUserIds({
+      workspace: owner,
+      role: options.role,
+    });
+    if (restrictToUserIds.length === 0) {
+      return { members: [], total: 0 };
+    }
   }
 
   let users: UserResource[];
@@ -324,12 +361,17 @@ export async function searchMembers(
       owner,
       options.searchEmails
     );
+    if (restrictToUserIds) {
+      const allowedUserIds = new Set(restrictToUserIds);
+      users = users.filter((u) => allowedUserIds.has(u.sId));
+    }
     total = users.length;
   } else {
     const results = await UserResource.searchUsers(auth, {
       searchTerm: options.searchTerm ?? "",
       offset: paginationParams.offset,
       limit: paginationParams.limit,
+      restrictToUserIds,
     });
 
     if (results.isErr()) {

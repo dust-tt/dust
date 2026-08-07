@@ -20,6 +20,23 @@ export function normalizeDisplayRole<T extends RoleType>(role: T): T | "user" {
   return role;
 }
 
+export type RoleFilter = Exclude<ActiveRoleType, "builder"> | "all";
+
+// `builder` is not offered: it is deprecated and displayed as a regular member,
+// so the `user` filter covers it (see `searchMembers`).
+export const ROLE_FILTER_OPTIONS: { value: RoleFilter; label: string }[] = [
+  { value: "all", label: "All roles" },
+  { value: "admin", label: displayRoleCapitalized("admin") },
+  { value: "manager", label: displayRoleCapitalized("manager") },
+  { value: "user", label: displayRoleCapitalized("user") },
+];
+
+export function getRoleFilterLabel(filter: RoleFilter): string {
+  return (
+    ROLE_FILTER_OPTIONS.find((o) => o.value === filter)?.label ?? "All roles"
+  );
+}
+
 export const ROLES_DATA: Record<
   ActiveRoleType,
   { color: "warning" | "info" | "success" | "highlight" }
