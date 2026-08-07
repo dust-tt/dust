@@ -329,6 +329,26 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     expect(launchTriggersWorkflowsMock).not.toHaveBeenCalled();
   });
 
+  it("does not store payload when no enabled triggers include payload", async () => {
+    const { workspace } = await createPublicApiMockRequest();
+
+    const webhookSource = await createWebhookSourceAndTrigger(workspace, {
+      includePayload: false,
+      filter: '(eq "type" "wanted")',
+    });
+
+    const response = await postWebhook(
+      workspace,
+      webhookSource.sId,
+      webhookSource.urlSecret,
+      { type: "ignored" }
+    );
+
+    expect(response.status).toBe(200);
+    expect(uploadWebhookPayloadMock).not.toHaveBeenCalled();
+    expect(launchTriggersWorkflowsMock).not.toHaveBeenCalled();
+  });
+
   it("returns 200 when GitHub webhook source does not subscribe to pull_request event", async () => {
     const { workspace } = await createPublicApiMockRequest();
 
