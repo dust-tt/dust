@@ -1,4 +1,6 @@
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
@@ -25,14 +27,14 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
     source: "Sources",
   };
 
-export const USAGE_FILTER_SCOPES = ["company", "shared", "private"] as const;
+export const USAGE_FILTER_SCOPES = AGENT_CONFIGURATION_SCOPES;
 
-export type UsageFilterScope = (typeof USAGE_FILTER_SCOPES)[number];
+export type UsageFilterScope = AgentConfigurationScope;
 
 export const USAGE_FILTER_SCOPE_LABEL: Record<UsageFilterScope, string> = {
-  company: "Company",
-  shared: "Shared",
-  private: "Private",
+  global: "Company",
+  visible: "Shared",
+  hidden: "Private",
 };
 
 export const USAGE_MODEL_TIERS = ["fast", "standard", "complex"] as const;

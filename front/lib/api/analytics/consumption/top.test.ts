@@ -83,7 +83,7 @@ describe("consumption top rankings", () => {
       new Map([
         [
           "agent1",
-          { name: "@dust", pictureUrl: "http://pic/dust", scope: "company" },
+          { name: "@dust", pictureUrl: "http://pic/dust", scope: "global" },
         ],
       ])
     );
@@ -115,7 +115,7 @@ describe("consumption top rankings", () => {
         agentId: "agent1",
         name: "@dust",
         pictureUrl: "http://pic/dust",
-        scope: "company",
+        scope: "global",
         credits: 3,
         // The 7 documents of the bucket belong to 2 messages.
         messageCount: 2,

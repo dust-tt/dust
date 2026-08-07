@@ -1,6 +1,5 @@
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
-import type { AgentVisibilityScope } from "@app/lib/api/assistant/observability/agent_labels";
 import {
   resolveAnalyticsAgentLabels,
   UNKNOWN_AGENT_LABEL,
@@ -11,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
@@ -31,7 +31,7 @@ export type ConsumptionGroupLabel = {
   // Only agents and users have one; null for every other dimension.
   pictureUrl: string | null;
   // Only agents have one; null for every other dimension.
-  scope: AgentVisibilityScope | null;
+  scope: AgentConfigurationScope | null;
 };
 
 function labelsFromNames(

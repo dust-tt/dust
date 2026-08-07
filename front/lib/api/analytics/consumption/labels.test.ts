@@ -116,7 +116,7 @@ describe("resolveConsumptionGroupNames", () => {
       unpublished.sId,
     ]);
 
-    expect(labels.get(published.sId)?.scope).toBe("shared");
-    expect(labels.get(unpublished.sId)?.scope).toBe("private");
+    expect(labels.get(published.sId)?.scope).toBe("visible");
+    expect(labels.get(unpublished.sId)?.scope).toBe("hidden");
   });
 });

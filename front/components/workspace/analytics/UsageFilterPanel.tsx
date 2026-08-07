@@ -30,6 +30,7 @@ import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analyti
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionRelevantGroups } from "@app/hooks/useConsumptionRelevantGroups";
+import type { ConsumptionAgentTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -142,13 +143,17 @@ export function UsageFilterPanel({
   // by credits over the period will not be searchable here.
   const agentOptions = useMemo<UsageFilterAgentOption[]>(
     () =>
-      topAgentRows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        kind: "agent",
-        image: row.pictureUrl,
-        scope: row.scope ?? "private",
-      })),
+      topAgentRows
+        .filter(
+          (row): row is ConsumptionAgentTopRow => row.dimension === "agent"
+        )
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          kind: "agent",
+          image: row.pictureUrl,
+          scope: row.scope,
+        })),
     [topAgentRows]
   );
 
