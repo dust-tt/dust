@@ -14,21 +14,25 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-// Subject is the only editable argument (see `editableArguments` in the gmail
-// tool metadata); the body is shown read-only.
 interface ComposeFormValues {
   subject: string;
+  body: string;
 }
 
-// Subject is required, unless this is a reply (in which case `send_mail` derives
-// the subject from the original message).
-function getComposeFormSchema(isReply: boolean) {
-  const subjectSchema = z.string().trim();
-
+function getComposeFormSchema({
+  isSubjectEditable,
+  isBodyEditable,
+}: {
+  isSubjectEditable: boolean;
+  isBodyEditable: boolean;
+}) {
   return z.object({
-    subject: isReply
-      ? subjectSchema.optional()
-      : subjectSchema.min(1, "Subject is required."),
+    subject: isSubjectEditable
+      ? z.string().trim().min(1, "Subject is required.")
+      : z.string(),
+    body: isBodyEditable
+      ? z.string().trim().min(1, "Body is required.")
+      : z.string(),
   });
 }
 
@@ -60,8 +64,10 @@ interface RecipientRowProps {
 function RecipientRow({ label, value }: RecipientRowProps) {
   return (
     <div className="flex gap-2 border-b border-border px-4 py-2">
-      <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
-      <span className="wrap-break-word text-sm text-foreground">{value}</span>
+      <span className="shrink-0 text-sm text-faint">{label}</span>
+      <span className="wrap-break-word text-sm text-muted-foreground">
+        {value}
+      </span>
     </div>
   );
 }
@@ -85,7 +91,15 @@ export function GmailSendMailValidation({
   const originalBody = inputs?.body ?? "";
   const isReply = !!inputs?.replyToMessageId;
 
-  const formSchema = useMemo(() => getComposeFormSchema(isReply), [isReply]);
+  const { editableArguments } = blockedAction;
+  const isSubjectEditable =
+    !isReply && !!editableArguments?.includes("subject");
+  const isBodyEditable = !!editableArguments?.includes("body");
+
+  const formSchema = useMemo(
+    () => getComposeFormSchema({ isSubjectEditable, isBodyEditable }),
+    [isSubjectEditable, isBodyEditable]
+  );
 
   const {
     register,
@@ -93,16 +107,19 @@ export function GmailSendMailValidation({
     formState: { errors },
   } = useForm<ComposeFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { subject: originalSubject },
+    defaultValues: { subject: originalSubject, body: originalBody },
     mode: "onChange",
   });
 
   const attachmentName = inputs?.attachmentFilePath?.split("/").pop() ?? null;
   const recipientRows = inputs ? getRecipientRows(inputs) : [];
 
-  const onApprove = handleSubmit(async ({ subject }) => {
+  const onApprove = handleSubmit(async ({ subject, body }) => {
     await onApproveWithEditedArguments({
-      editedArguments: { subject },
+      editedArguments: {
+        ...(isSubjectEditable && { subject }),
+        ...(isBodyEditable && { body }),
+      },
       approved: neverAskAgain ? "always_approved" : "approved",
     });
   });
@@ -125,23 +142,46 @@ export function GmailSendMailValidation({
       {recipientRows.map(({ label, value }) => (
         <RecipientRow key={label} label={label} value={value} />
       ))}
-      <div className="border-b border-border px-4 py-2">
-        <input
-          {...register("subject")}
-          disabled={isSubmitting || isReply}
-          placeholder="Subject"
-          className="w-full border-none bg-transparent p-0 text-sm text-foreground outline-none focus:ring-0 placeholder:text-muted-foreground disabled:cursor-not-allowed"
-        />
-        {errors.subject && (
-          <p className="mt-1 text-xs text-warning-800">
-            {errors.subject.message}
-          </p>
-        )}
-      </div>
 
-      <div className="h-64 w-full overflow-auto whitespace-pre-wrap wrap-break-word px-4 py-3 text-sm text-foreground">
-        {originalBody}
-      </div>
+      {isSubjectEditable ? (
+        <div className="border-b border-border px-4 py-2">
+          <input
+            {...register("subject")}
+            disabled={isSubmitting}
+            placeholder="Subject"
+            className="w-full border-none bg-transparent p-0 text-sm text-foreground outline-none focus:ring-0 placeholder:text-faint disabled:cursor-not-allowed"
+          />
+          {errors.subject && (
+            <p className="mt-1 text-xs text-warning-800">
+              {errors.subject.message}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="border-b border-border px-4 py-2 text-sm text-muted-foreground">
+          {isReply ? "Kept from the original message" : originalSubject}
+        </div>
+      )}
+
+      {isBodyEditable ? (
+        <div className="px-4 py-3">
+          <textarea
+            {...register("body")}
+            disabled={isSubmitting}
+            placeholder="Body"
+            className="h-64 w-full resize-none border-none bg-transparent p-0 text-sm text-foreground outline-none focus:ring-0 placeholder:text-faint disabled:cursor-not-allowed"
+          />
+          {errors.body && (
+            <p className="mt-1 text-xs text-warning-800">
+              {errors.body.message}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="whitespace-pre-wrap px-4 py-3 text-sm text-muted-foreground">
+          {originalBody}
+        </div>
+      )}
 
       {attachmentName && (
         <div className="px-4 py-2">
