@@ -53,49 +53,54 @@ export function RecommendationItem({
   };
 
   return (
-    <div className="py-6">
+    <div className="py-4">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 text-left"
+        className="relative flex w-full items-start justify-between gap-3 text-left"
       >
-        <div className="flex items-center gap-2 text-sm">
-          {rec.sourceIcon && <SourceIcon sourceIcon={rec.sourceIcon} />}
-          <span className="text-muted-foreground">
-            {rec.sourceLabel ?? "Suggested for you"}
-          </span>
-          <span className="text-faint">
-            {SOURCE_META_SEPARATOR} {recencyLabel(rec.createdAt)}
-          </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1 text-sm leading-5">
+            {rec.sourceIcon && <SourceIcon sourceIcon={rec.sourceIcon} />}
+            <span className="text-muted-foreground">
+              {rec.sourceLabel ?? "Suggested for you"}
+            </span>
+            <span className="text-faint">
+              {SOURCE_META_SEPARATOR} {recencyLabel(rec.createdAt)}
+            </span>
+          </div>
+          <h3 className="text-base font-semibold leading-6 tracking-tight text-foreground">
+            {rec.title}
+          </h3>
+          <p className="text-sm leading-5 tracking-tight text-muted-foreground">
+            {rec.content}
+          </p>
         </div>
         <Icon
           visual={expanded ? ChevronUp : ChevronDown}
           size="sm"
-          className="shrink-0 text-faint"
+          className="mt-0.5 shrink-0 text-faint"
         />
       </button>
-
-      <h3 className="mt-2 text-base font-semibold text-foreground">
-        {rec.title}
-      </h3>
-      <p className="mt-1 text-sm text-muted-foreground">{rec.content}</p>
 
       {expanded && (
         <>
           {rec.body && (
-            <p className="mt-4 text-sm leading-relaxed text-foreground">
+            <p className="mt-4 text-sm leading-5 tracking-tight text-foreground">
               {rec.body}
             </p>
           )}
 
           {rec.steps && rec.steps.length > 0 && (
-            <ol className="mt-4 flex flex-col gap-3">
+            <ol className="mt-4 flex flex-col gap-2">
               {rec.steps.map((step, i) => (
-                <li key={step} className="flex items-center gap-3 text-sm">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-dark text-xs text-muted-foreground">
+                <li key={step} className="flex items-start gap-2 text-sm">
+                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-stone-100 bg-gradient-to-t from-stone-50 to-white px-1 text-xs font-semibold leading-4 text-muted-foreground shadow-sm">
                     {i + 1}
                   </span>
-                  <span className="text-muted-foreground">{step}</span>
+                  <span className="leading-5 text-muted-foreground">
+                    {step}
+                  </span>
                 </li>
               ))}
             </ol>
@@ -107,7 +112,7 @@ export function RecommendationItem({
               size="sm"
               isRounded
               label={rec.ctaLabel ?? "Create this agent"}
-              iconRight={ArrowRight}
+              icon={ArrowRight}
               disabled={isUpdating}
               onClick={handleCreate}
             />

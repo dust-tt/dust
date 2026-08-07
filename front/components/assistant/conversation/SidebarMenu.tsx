@@ -77,6 +77,7 @@ import {
   Chip,
   Clock,
   cn,
+  Counter,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -1035,10 +1036,14 @@ export function AgentSidebarMenu({
                   selected={router.asPath?.startsWith(
                     getGetStartedRoute(owner.sId)
                   )}
-                  count={
-                    activationRecsForBadge.length > 0
-                      ? activationRecsForBadge.length
-                      : undefined
+                  suffix={
+                    activationRecsForBadge.length > 0 ? (
+                      <Counter
+                        value={activationRecsForBadge.length}
+                        size="xs"
+                        variant="highlight"
+                      />
+                    ) : undefined
                   }
                 />
               </NavigationList>
