@@ -1,8 +1,8 @@
+import type { PaidPlanTier } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
   BillingPeriodSwitch,
   FreePlanCard,
   PaidPlanCards,
-  type PaidPlanTier,
 } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { UserMenu } from "@app/components/UserMenu";
 import { useAuth } from "@app/lib/auth/AuthContext";

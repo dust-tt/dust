@@ -17,10 +17,8 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { PodTaskStatus, PodTaskType } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import {
-  type LightWorkspaceType,
-  resolveDefaultAgentId,
-} from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
+import { resolveDefaultAgentId } from "@app/types/user";
 import {
   AttachmentChip,
   Avatar,

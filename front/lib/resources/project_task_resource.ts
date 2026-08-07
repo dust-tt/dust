@@ -19,16 +19,17 @@ import type {
   PodTaskType,
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WhereOptions } from "sequelize";
-import {
-  type Attributes,
-  type CreationAttributes,
-  type ModelStatic,
-  Op,
-  type Transaction,
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 
 // Return type of fetchByItemIds: outer key is itemId (action item sId), inner
 // key is userId (ModelId | null, where null represents unassigned tasks).

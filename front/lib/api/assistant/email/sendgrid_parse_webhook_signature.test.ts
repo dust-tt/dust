@@ -1,4 +1,5 @@
-import { generateKeyPairSync, type KeyObject, sign } from "node:crypto";
+import type { KeyObject } from "node:crypto";
+import { generateKeyPairSync, sign } from "node:crypto";
 import {
   createBufferedRequestFromRawBody,
   isSendgridParseFormRequest,

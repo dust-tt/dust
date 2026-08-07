@@ -23,14 +23,8 @@ import {
 } from "@app/types/sheets";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  Edit04,
-  Eye,
-  File04,
-  LinkExternal01,
-  type MenuItem,
-  Trash01,
-} from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
+import { Edit04, Eye, File04, LinkExternal01, Trash01 } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
 import React, { useCallback, useImperativeHandle, useState } from "react";

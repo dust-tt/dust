@@ -6,10 +6,8 @@ import {
   SANDBOX_AGENT_SERVICE_HOME,
   SANDBOX_ROOT_SAFE_PATH,
 } from "@app/lib/api/sandbox/hardening";
-import {
-  formatSandboxImageId,
-  type NetworkPolicy,
-} from "@app/lib/api/sandbox/image/types";
+import type { NetworkPolicy } from "@app/lib/api/sandbox/image/types";
+import { formatSandboxImageId } from "@app/lib/api/sandbox/image/types";
 import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
 import type {
   ExecOptions,
@@ -26,8 +24,8 @@ import {
   SandboxNotFoundError,
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import {
-  type RootCommand,
   renderRootCommand,
   rootCommand,
 } from "@app/lib/api/sandbox/root_command";
@@ -37,12 +35,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import {
-  CommandExitError,
-  type CommandHandle,
-  NotFoundError,
-  Sandbox,
-} from "e2b";
+import type { CommandHandle } from "e2b";
+import { CommandExitError, NotFoundError, Sandbox } from "e2b";
 
 const ONE_HOUR_MS = 60 * 60 * 1_000;
 

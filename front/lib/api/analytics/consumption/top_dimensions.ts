@@ -1,8 +1,8 @@
-import type { ConsumptionMetric } from "@app/lib/api/analytics/consumption/scope";
-import {
-  type ConsumptionGroupBucket,
-  metricSubAgg,
+import type {
+  ConsumptionGroupBucket,
+  ConsumptionMetric,
 } from "@app/lib/api/analytics/consumption/scope";
+import { metricSubAgg } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,

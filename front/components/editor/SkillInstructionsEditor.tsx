@@ -1,8 +1,8 @@
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import {
   isSkillSlashCommand,
   isToolSlashCommand,
-  type SlashCommandSkillSuggestion,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";

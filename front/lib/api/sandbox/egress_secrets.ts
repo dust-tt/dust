@@ -4,16 +4,15 @@ import {
   renderEgressSecretPlaceholder,
   scopeEncryptionKey,
 } from "@app/lib/api/sandbox/env_vars";
-import {
-  resolvePodForRuntimeOwner,
-  type SandboxRuntimeOwner,
-} from "@app/lib/api/sandbox/owner";
+import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
+import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { decrypt } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 

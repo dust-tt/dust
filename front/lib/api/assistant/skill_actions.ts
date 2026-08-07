@@ -10,10 +10,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import {
-  type SkillMCPServerConfiguration,
-  SkillResource,
-} from "@app/lib/resources/skill/skill_resource";
+import type { SkillMCPServerConfiguration } from "@app/lib/resources/skill/skill_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";

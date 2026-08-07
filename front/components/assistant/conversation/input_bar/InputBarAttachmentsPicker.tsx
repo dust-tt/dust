@@ -32,6 +32,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
   Attachment01,
   Button,
@@ -40,7 +41,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  type DropdownMenuFilterOption,
   DropdownMenuFilters,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,

@@ -11,11 +11,13 @@ import type {
   PostMemberGroupResponseBody,
 } from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
-import { type GroupKind, MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import type { GroupKind } from "@app/types/groups";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
-import { type Fetcher, mutate } from "swr";
+import type { Fetcher } from "swr";
+import { mutate } from "swr";
 import { z } from "zod";
 
 export function useGroups({

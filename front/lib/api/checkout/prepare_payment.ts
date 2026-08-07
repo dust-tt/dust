@@ -5,7 +5,8 @@ import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import { calculateTax, getStripeClient } from "@app/lib/plans/stripe";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prepare_payment";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 
 export type PreparePaymentError =

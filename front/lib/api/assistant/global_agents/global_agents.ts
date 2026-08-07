@@ -104,10 +104,8 @@ import {
   _getSlackGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/retired_managed";
 import { canRoleSeeGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import {
-  buildSidekickContext,
-  type SidekickContext,
-} from "@app/lib/api/assistant/global_agents/sidekick_context";
+import type { SidekickContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
+import { buildSidekickContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type {
   MCPServerViewsForGlobalAgentsMap,
   PrefetchedDataSourcesType,
@@ -133,10 +131,8 @@ import {
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import {
-  isComputerFeatureEnabled,
-  type WhitelistableFeature,
-} from "@app/types/shared/feature_flags";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 
 function getGlobalAgent({

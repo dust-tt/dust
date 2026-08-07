@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-
-import { CreditUsage, type CreditUsageState } from "./CreditUsage";
+import type { CreditUsageState } from "./CreditUsage";
+import { CreditUsage } from "./CreditUsage";
 
 const ON_PACE_STATE = {
   usedPercentage: 80,

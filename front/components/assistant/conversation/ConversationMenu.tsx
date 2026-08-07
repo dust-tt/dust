@@ -32,8 +32,8 @@ import {
   getPodRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import {
-  type ConversationListItemType,
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
   isPodConversation,

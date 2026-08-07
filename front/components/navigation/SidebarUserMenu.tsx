@@ -3,7 +3,8 @@ import { FairUseCreditsUsage } from "@app/components/app/FairUseCreditsUsage";
 import { UserMenu } from "@app/components/UserMenu";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useMyUsage } from "@app/lib/swr/credits";
-import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
+import type { SubscriptionType } from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 
 const DAY_DURATION_MS = 24 * 60 * 60 * 1000;

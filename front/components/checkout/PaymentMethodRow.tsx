@@ -1,4 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
+import type { SVGComponentProps } from "react-svg-credit-card-payment-icons";
 import {
   AmericanExpressFlatIcon,
   DinersClubFlatIcon,
@@ -7,7 +8,6 @@ import {
   JCBFlatIcon,
   MaestroFlatIcon,
   MastercardFlatIcon,
-  type SVGComponentProps,
   UnionPayFlatIcon,
   VisaFlatIcon,
 } from "react-svg-credit-card-payment-icons";

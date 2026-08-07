@@ -1,7 +1,5 @@
-import {
-  CreditUsageCard,
-  type CreditUsageCardVariant,
-} from "@app/components/app/CreditUsageCard";
+import type { CreditUsageCardVariant } from "@app/components/app/CreditUsageCard";
+import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
 import type { CreditUsagePace } from "@app/types/api/credits/usage_status";
 
 export interface CreditUsageState {

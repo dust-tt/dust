@@ -30,9 +30,9 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { currentCalendarMonthCycleUtc } from "@app/lib/spend_limits/cycle";
 import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
+import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
-  type FixedWindowBounds,
   getFixedWindowCount,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";

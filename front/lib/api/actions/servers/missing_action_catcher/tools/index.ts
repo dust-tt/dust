@@ -1,9 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { Err, Ok } from "@app/types/shared/result";
 import { truncate } from "@app/types/shared/utils/string_utils";
 

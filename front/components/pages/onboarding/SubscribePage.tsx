@@ -1,7 +1,7 @@
+import type { PaidPlanTier } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
   BillingPeriodSwitch,
   PaidPlanCards,
-  type PaidPlanTier,
 } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";

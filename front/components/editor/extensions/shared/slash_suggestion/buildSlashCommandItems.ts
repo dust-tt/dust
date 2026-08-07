@@ -1,9 +1,11 @@
+import type {
+  SlashCommandSkillSuggestion,
+  SlashCommandToolSuggestion,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import {
   getSkillSlashCommandItem,
   getToolSlashCommandItem,
   getToolSlashCommandLabel,
-  type SlashCommandSkillSuggestion,
-  type SlashCommandToolSuggestion,
   searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";

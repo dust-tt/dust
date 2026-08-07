@@ -22,12 +22,14 @@ import {
 } from "@app/temporal/triggers/wakeup_client";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  WakeUpScheduleConfig,
+  WakeUpStatus,
+  WakeUpType,
+} from "@app/types/assistant/wakeups";
 import {
   ACTIVE_WAKE_UP_STATUSES,
   isActiveWakeUp,
-  type WakeUpScheduleConfig,
-  type WakeUpStatus,
-  type WakeUpType,
 } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";

@@ -1,8 +1,8 @@
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerIconByName,
   getInternalMCPServerToolIcon,
-  type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ShapesPlus } from "@dust-tt/sparkle";
 import type React from "react";

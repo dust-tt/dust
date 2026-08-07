@@ -2,13 +2,13 @@ import { ConfirmContext } from "@app/components/Confirm";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import {
   DEFAULT_POD_FRAME_TAB_ICON,
   MAX_POD_FRAME_TAB_TITLE_LENGTH,
   MAX_POD_FRAME_TABS,
   moveFrameTabInTabsOrder,
   normalizeTabsOrder,
-  type PodFrameTab,
   podFrameTabBasename,
   sortPodFrameTabs,
 } from "@app/types/pod_frame_tab";

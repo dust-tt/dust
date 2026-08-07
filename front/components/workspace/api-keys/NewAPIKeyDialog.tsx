@@ -1,9 +1,9 @@
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import type { KeyRole } from "@app/components/workspace/api-keys/utils";
 import {
   dollarsToMicroUsd,
   isKeyRole,
   KEY_ROLES,
-  type KeyRole,
   monthlyCapCreditsSchema,
   monthlyCapDollarsSchema,
   parseCreditsString,

@@ -2,6 +2,7 @@ import {
   clearPerUserCreditBalanceAlerts,
   upsertPerUserCreditBalanceAlerts,
 } from "@app/lib/metronome/alerts/per_user_credit_balance";
+import type { SubscriptionSeatState } from "@app/lib/metronome/client";
 import {
   addPerUserCreditToCustomer,
   adjustSeatCreditBalances,
@@ -13,7 +14,6 @@ import {
   listCustomerPerUserCreditUserIds,
   listMetronomeSeatBalances,
   revokePerUserCustomerCredit,
-  type SubscriptionSeatState,
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";

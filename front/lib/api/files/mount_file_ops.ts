@@ -1,18 +1,17 @@
-import {
-  type GCSMountPoint,
-  moveFile,
-} from "@app/lib/api/files/gcs_mount/files";
+import type { GCSMountPoint } from "@app/lib/api/files/gcs_mount/files";
+import { moveFile } from "@app/lib/api/files/gcs_mount/files";
+import type { ResolveMountFilePathError } from "@app/lib/api/files/mount_path";
 import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
   normalizeAndValidateMountRelativeFilePath,
-  type ResolveMountFilePathError,
   resolveMoveSourcePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 function resolveMountPrefix(auth: Authenticator, scope: GCSMountPoint): string {

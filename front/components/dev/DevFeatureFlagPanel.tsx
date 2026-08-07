@@ -1,7 +1,5 @@
-import {
-  isWhitelistableFeature,
-  type WhitelistableFeature,
-} from "@app/types/shared/feature_flags";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { isWhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   useCallback,
   useEffect,
@@ -15,11 +13,8 @@ import {
   getFeatureFlagOverrides,
   writeFeatureFlagOverrides,
 } from "./devFeatureFlagOverrides";
-import {
-  DOCK_BAR_HEIGHT,
-  type DockMode,
-  type ExpandedPanel,
-} from "./devModeConfig";
+import type { DockMode, ExpandedPanel } from "./devModeConfig";
+import { DOCK_BAR_HEIGHT } from "./devModeConfig";
 import { DEV_MODE_STORAGE_KEY } from "./devModeConstants";
 import { S } from "./devPanelStyles";
 import {

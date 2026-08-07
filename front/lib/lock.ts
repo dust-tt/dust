@@ -1,4 +1,5 @@
-import { getRedisStreamClient, type RedisClientType } from "@app/lib/api/redis";
+import type { RedisClientType } from "@app/lib/api/redis";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import tracer from "@app/logger/tracer";
 
 // Distributed lock implementation using Redis

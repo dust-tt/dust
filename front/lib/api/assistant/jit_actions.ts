@@ -16,7 +16,8 @@ import { getQueryTablesServer } from "@app/lib/api/assistant/jit/query_tables_v2
 import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedules_management";
 import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";

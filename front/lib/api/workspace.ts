@@ -15,10 +15,8 @@ import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import {
-  type WorkspaceConversationKillSwitchValue,
-  WorkspaceResource,
-} from "@app/lib/resources/workspace_resource";
+import type { WorkspaceConversationKillSwitchValue } from "@app/lib/resources/workspace_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";

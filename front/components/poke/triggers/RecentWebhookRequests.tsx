@@ -1,9 +1,7 @@
 import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
 import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
-import {
-  WEBHOOK_REQUEST_TRIGGER_STATUSES,
-  type WebhookRequestTriggerStatus,
-} from "@app/types/assistant/triggers";
+import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
+import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,

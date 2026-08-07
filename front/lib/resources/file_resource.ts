@@ -8,9 +8,9 @@ import {
   sanitizeFileSystemName,
 } from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { FrameScopedPathContext } from "@app/lib/api/files/mount_path";
 import {
   disambiguateFileName,
-  type FrameScopedPathContext,
   getConversationFilePath,
   getConversationFilesBasePath,
   getPodFilesBasePath,
@@ -32,10 +32,8 @@ import {
   computeFrameContentHash,
   isVerifiableAuthorizedFileIdRefUseCase,
 } from "@app/lib/api/viz/authorized_file_access_policy";
-import {
-  extractFileRefs,
-  type FileRef,
-} from "@app/lib/api/viz/extract_file_refs";
+import type { FileRef } from "@app/lib/api/viz/extract_file_refs";
+import { extractFileRefs } from "@app/lib/api/viz/extract_file_refs";
 import type { ShareFrameViewerFile } from "@app/lib/api/viz/share_frame_viewer_files";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";

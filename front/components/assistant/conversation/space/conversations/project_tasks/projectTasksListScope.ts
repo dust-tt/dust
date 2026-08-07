@@ -1,8 +1,8 @@
-import {
-  isPodTaskPeriodScope,
-  type PodTaskPeopleScope,
-  type PodTaskPeriodScope,
+import type {
+  PodTaskPeopleScope,
+  PodTaskPeriodScope,
 } from "@app/types/project_task";
+import { isPodTaskPeriodScope } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
 import { z } from "zod";
 

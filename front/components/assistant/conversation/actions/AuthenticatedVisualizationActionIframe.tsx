@@ -1,7 +1,5 @@
-import {
-  VisualizationActionIframe,
-  type VisualizationActionIframeProps,
-} from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import type { VisualizationActionIframeProps } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import type {
   ScopedWorkspaceUserIdentity,

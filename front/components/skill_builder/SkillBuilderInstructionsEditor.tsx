@@ -17,10 +17,8 @@ import type {
   ReferencedSkillFormData,
   SkillBuilderFormData,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
-import {
-  type ReferenceSummaryItem,
-  SkillBuilderInstructionsReferenceSummary,
-} from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
+import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
+import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";

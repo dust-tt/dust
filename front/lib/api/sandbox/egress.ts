@@ -10,8 +10,8 @@ import { writeSandboxEnvManifestFile } from "@app/lib/api/sandbox/env_manifest";
 import { SANDBOX_EGRESS_CONTROLLED_UIDS } from "@app/lib/api/sandbox/image/types";
 import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import {
-  type RootCommand,
   renderRootCommand,
   rootCommand,
 } from "@app/lib/api/sandbox/root_command";
@@ -21,7 +21,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 import { z } from "zod";

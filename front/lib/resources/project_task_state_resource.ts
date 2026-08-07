@@ -5,7 +5,8 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

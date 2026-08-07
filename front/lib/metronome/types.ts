@@ -6,12 +6,14 @@
  * because we enforce `properties: Record<string, string | number>` (no unknown).
  */
 
+import type {
+  USAGE_TYPE_FREE,
+  USAGE_TYPE_PROGRAMMATIC,
+  USAGE_TYPE_USER,
+} from "@app/lib/metronome/constants";
 import {
   getCreditTypeProgrammaticUsdId,
   getProductFreeCreditId,
-  type USAGE_TYPE_FREE,
-  type USAGE_TYPE_PROGRAMMATIC,
-  type USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { Commit, Credit } from "@metronome/sdk/resources/shared";

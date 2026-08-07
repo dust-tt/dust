@@ -17,17 +17,13 @@ import type {
   Where,
 } from "@app/lib/llms/types/filter";
 import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/providers/fireworks/constants";
-import {
-  GOOGLE_AI_STUDIO_HOST,
-  type Host,
-} from "@app/lib/model_constructors/types/hosts";
+import type { Host } from "@app/lib/model_constructors/types/hosts";
+import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/hosts";
 import type { Lab } from "@app/lib/model_constructors/types/labs";
-import {
-  isModel,
-  type Model,
-  NOOP_MODEL,
-} from "@app/lib/model_constructors/types/models";
-import { EUROPE, type Region } from "@app/lib/model_constructors/types/regions";
+import type { Model } from "@app/lib/model_constructors/types/models";
+import { isModel, NOOP_MODEL } from "@app/lib/model_constructors/types/models";
+import type { Region } from "@app/lib/model_constructors/types/regions";
+import { EUROPE } from "@app/lib/model_constructors/types/regions";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
   ModelIdType,

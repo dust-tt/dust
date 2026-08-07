@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-
+import type {
+  FontFamilyOverrides,
+  TypoOverrides,
+  TypoProp,
+  TypoToken,
+  TypoTokenOverride,
+} from "./devModeConfig";
 import {
-  type FontFamilyOverrides,
   POPULAR_FONTS,
   POPULAR_MONO_FONTS,
   TYPO_GROUPS,
   TYPO_PROP_LABELS,
   TYPO_PROPS,
-  type TypoOverrides,
-  type TypoProp,
-  type TypoToken,
-  type TypoTokenOverride,
 } from "./devModeConfig";
 import { S } from "./devPanelStyles";
 import {

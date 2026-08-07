@@ -1,10 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import {
   MAX_QUERY_ROWS,

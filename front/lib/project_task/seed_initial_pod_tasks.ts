@@ -3,11 +3,10 @@ import { INITIAL_POD_TASKS } from "@app/lib/project_task/initial_project_tasks";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import {
-  POD_MANAGER_AGENT_SID,
-  type PodTaskType,
-} from "@app/types/project_task";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { PodTaskType } from "@app/types/project_task";
+import { POD_MANAGER_AGENT_SID } from "@app/types/project_task";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type PostSeedInitialPodTasksResponseBody = {

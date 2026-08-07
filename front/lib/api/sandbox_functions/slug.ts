@@ -3,7 +3,8 @@ import {
   resolveCanonicalScopedPath,
 } from "@app/lib/api/files/mount_path";
 import { SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX } from "@app/types/api/sandbox_functions";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const SANDBOX_FUNCTION_SLUG_SEPARATOR = "__";
 

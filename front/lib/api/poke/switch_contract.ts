@@ -5,13 +5,15 @@ import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
+import type {
+  MetronomePackageSummary,
+  PackageSeatConfig,
+} from "@app/lib/metronome/client";
 import {
   ceilToHourISO,
   editMetronomeContract,
   floorToHourISO,
   listMetronomePackages,
-  type MetronomePackageSummary,
-  type PackageSeatConfig,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import {
@@ -36,9 +38,9 @@ import {
   remapMembershipSeatTypesForContract,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
+import type { MetronomePackageTier } from "@app/lib/metronome/types";
 import {
   isPaygEligibleTier,
-  type MetronomePackageTier,
   PAYG_ELIGIBLE_TIERS,
 } from "@app/lib/metronome/types";
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
@@ -60,15 +62,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { isMembershipSeatType } from "@app/types/memberships";
-// The request schema is defined in `types/poke/switch_contract.ts` (no
-// server-only imports) so the SwitchContractDialog SPA form can import and
-// reuse the same pieces (payment schedule, scheduled charge shape) without
-// pulling this server-only module into the client bundle. Re-exported here
-// so existing importers of this file are unaffected.
-import {
-  type SwitchContractBody,
-  SwitchContractBodySchema,
-} from "@app/types/poke/switch_contract";
+import type { SwitchContractBody } from "@app/types/poke/switch_contract";
+import { SwitchContractBodySchema } from "@app/types/poke/switch_contract";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

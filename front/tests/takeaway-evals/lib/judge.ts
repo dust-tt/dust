@@ -1,10 +1,12 @@
 import type { Authenticator } from "@app/lib/auth";
+import type {
+  JudgeResult,
+  TakeawayExecutionResult,
+  TakeawayTestCase,
+} from "@app/tests/takeaway-evals/lib/types";
 import {
   formatExtractionResult,
   getTestCaseInputForDisplay,
-  type JudgeResult,
-  type TakeawayExecutionResult,
-  type TakeawayTestCase,
 } from "@app/tests/takeaway-evals/lib/types";
 import { getJudgeLLM } from "@app/tests/utils/eval_llm";
 

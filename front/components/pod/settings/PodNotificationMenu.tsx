@@ -3,11 +3,11 @@ import {
   useUpdatePodNotificationPreference,
 } from "@app/lib/swr/pods";
 import { useUserMetadata } from "@app/lib/swr/user";
+import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   DEFAULT_NOTIFICATION_CONDITION,
   isNotificationCondition,
-  type NotificationCondition,
 } from "@app/types/notification_preferences";
 import type { WorkspaceType } from "@app/types/user";
 import {

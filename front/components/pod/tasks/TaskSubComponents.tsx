@@ -2,11 +2,8 @@ import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { timeAgoFrom } from "@app/lib/utils";
-import {
-  POD_MANAGER_AGENT_SID,
-  type PodTaskActorType,
-  type PodTaskType,
-} from "@app/types/project_task";
+import type { PodTaskActorType, PodTaskType } from "@app/types/project_task";
+import { POD_MANAGER_AGENT_SID } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   LightWorkspaceType,

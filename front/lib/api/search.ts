@@ -5,7 +5,8 @@ import {
   NON_SEARCHABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { normalizeUrlForSourceUrlSearch } from "@app/lib/connectors";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

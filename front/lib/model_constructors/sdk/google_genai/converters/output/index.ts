@@ -1,11 +1,11 @@
 import type { Client } from "@app/lib/model_constructors/client";
+import type { OutputEventConverters } from "@app/lib/model_constructors/sdk/google_genai/converters/output/utils";
 import {
   accumulatedReasoningToReasoningEvent,
   accumulatedTextToTextEvent,
   finishReasonToErrorEvent,
   functionCallToToolCallEvent,
   functionCallToToolCallStartedEvent,
-  type OutputEventConverters,
   reasoningDeltaToReasoningDeltaEvent,
   responseIdToResponseIdEvent,
   streamErrorToErrorEvent,

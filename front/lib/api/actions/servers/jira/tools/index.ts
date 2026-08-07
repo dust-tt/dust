@@ -3,10 +3,8 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import {
-  type AgentLoopRunContext,
-  isAgentLoopRunContext,
-} from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   createComment,
   createIssue,

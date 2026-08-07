@@ -12,11 +12,11 @@ import {
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import type { ToolEntry } from "@app/lib/api/sandbox/image/types";
 import {
   DSBX_TOOL_NAME,
   PROXY_ONLY_NETWORK_POLICY,
   SANDBOX_AGENT_PROXIED_UID,
-  type ToolEntry,
 } from "@app/lib/api/sandbox/image/types";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import logger from "@app/logger/logger";

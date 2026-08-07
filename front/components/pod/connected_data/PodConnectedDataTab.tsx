@@ -17,12 +17,8 @@ import type {
 import type { WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import {
-  Breadcrumbs,
-  type BreadcrumbsItem,
-  CloudArrowLeftRight,
-  Spinner,
-} from "@dust-tt/sparkle";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
+import { Breadcrumbs, CloudArrowLeftRight, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 
 // Module-level so the reference passed to `useQueryParams` stays stable.

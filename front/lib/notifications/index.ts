@@ -10,7 +10,8 @@ import {
   makeNotificationPreferencesUserMetadata,
 } from "@app/types/notification_preferences";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { NovuError } from "@novu/api/models/errors";

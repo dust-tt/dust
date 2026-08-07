@@ -1,7 +1,5 @@
-import {
-  parseWorkOSJwtPayload,
-  type WorkOSJwtPayload,
-} from "@app/lib/api/workos";
+import type { WorkOSJwtPayload } from "@app/lib/api/workos";
+import { parseWorkOSJwtPayload } from "@app/lib/api/workos";
 import { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";

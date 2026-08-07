@@ -1,8 +1,6 @@
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
-import {
-  getInternalMCPServerNameFromSId,
-  type InternalMCPServerNameType,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFilePath } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";

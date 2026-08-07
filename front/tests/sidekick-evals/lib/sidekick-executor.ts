@@ -2,14 +2,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { MAX_TOOL_CALL_ROUNDS } from "@app/tests/sidekick-evals/lib/config";
 import { getMockToolResponse } from "@app/tests/sidekick-evals/lib/mock-responses";
-import {
-  isTestCaseWithConversation,
-  type MockAgentState,
-  type SidekickConfig,
-  type SidekickExecutionResult,
-  type TestCase,
-  type ToolCall,
+import type {
+  MockAgentState,
+  SidekickConfig,
+  SidekickExecutionResult,
+  TestCase,
+  ToolCall,
 } from "@app/tests/sidekick-evals/lib/types";
+import { isTestCaseWithConversation } from "@app/tests/sidekick-evals/lib/types";
 import { getEvalStreamLLM } from "@app/tests/utils/eval_llm";
 import type {
   AgentContentItemType,

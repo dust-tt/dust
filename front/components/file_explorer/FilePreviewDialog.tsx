@@ -3,10 +3,8 @@ import {
   MAX_CSV_ROWS,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
-import {
-  type MarkdownFilePreviewViewMode,
-  MarkdownFilePreviewViewModeSwitch,
-} from "@app/components/file_explorer/MarkdownFilePreview";
+import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
+import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { parseCanonicalScopedPath } from "@app/lib/api/files/mount_path";

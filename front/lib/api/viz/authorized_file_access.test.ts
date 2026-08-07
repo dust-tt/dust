@@ -28,9 +28,11 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type {
+  AuthorizedFileAccessAllowlist,
+  FileUseCase,
+} from "@app/types/files";
 import {
-  type AuthorizedFileAccessAllowlist,
-  type FileUseCase,
   frameContentType,
   isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";

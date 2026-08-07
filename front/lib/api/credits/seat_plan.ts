@@ -3,13 +3,13 @@ import { amountCents } from "@app/lib/metronome/amounts";
 import { listMetronomeContractRateSchedule } from "@app/lib/metronome/client";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import type { SeatAwuCreditsPeriod } from "@app/lib/metronome/seat_types";
 import {
   getAwuAllocationInfoForSeatType,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
   getSeatTypesByProductIdFromContract,
   isMauContract,
-  type SeatAwuCreditsPeriod,
 } from "@app/lib/metronome/seat_types";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";

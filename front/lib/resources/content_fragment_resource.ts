@@ -28,10 +28,8 @@ import { isPastedFile } from "@app/lib/files";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import {
-  FileResource,
-  type FileVersion,
-} from "@app/lib/resources/file_resource";
+import type { FileVersion } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";

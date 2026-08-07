@@ -6,10 +6,8 @@ import {
   buildPromptActionItems,
 } from "@app/lib/project_task/analyze_document/action_items";
 import { buildPromptForSourceType } from "@app/lib/project_task/analyze_document/prompts";
-import {
-  type ExtractionResult,
-  ExtractTakeawaysInputSchema,
-} from "@app/lib/project_task/analyze_document/types";
+import type { ExtractionResult } from "@app/lib/project_task/analyze_document/types";
+import { ExtractTakeawaysInputSchema } from "@app/lib/project_task/analyze_document/types";
 import { buildSpec } from "@app/lib/project_task/analyze_document/utils";
 import type { TakeawaySourceDocument } from "@app/lib/resources/takeaways_resource";
 import logger from "@app/logger/logger";

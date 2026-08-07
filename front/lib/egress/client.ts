@@ -1,9 +1,7 @@
 import { getBaseUrl, getDefaultInit } from "@app/lib/api/config";
 import { isString } from "@app/types/shared/utils/general";
-import {
-  EventSourcePolyfill,
-  type EventSourcePolyfillInit,
-} from "event-source-polyfill";
+import type { EventSourcePolyfillInit } from "event-source-polyfill";
+import { EventSourcePolyfill } from "event-source-polyfill";
 
 /**
  * Resolve the default RequestInit, merging it with `init` (caller takes precedence).

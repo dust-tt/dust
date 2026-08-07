@@ -1,8 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  ActivationRecommendationModel,
-  type ActivationRecommendationStatus,
-} from "@app/lib/models/activation/activation_recommendation";
+import type { ActivationRecommendationStatus } from "@app/lib/models/activation/activation_recommendation";
+import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";

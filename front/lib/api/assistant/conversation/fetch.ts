@@ -40,9 +40,12 @@ import { Err, Ok } from "@app/types/shared/result";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type {
+  ConversationForDataSourceSyncType,
+  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: useful to convert for sync
+} from "@dust-tt/client";
 import {
   ConversationForDataSourceSyncSchema,
-  type ConversationForDataSourceSyncType,
   // biome-ignore lint/plugin/enforceClientTypesInPublicApi: useful to convert for sync
 } from "@dust-tt/client";
 import type { WhereOptions } from "sequelize";

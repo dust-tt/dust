@@ -26,7 +26,8 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ConnectorProvider } from "@app/types/data_source";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 

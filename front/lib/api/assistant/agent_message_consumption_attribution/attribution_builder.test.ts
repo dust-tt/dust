@@ -1,7 +1,7 @@
+import type { RunUsageForAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import {
   buildRunUsageAttribution,
   buildToolAttribution,
-  type RunUsageForAttribution,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { GPT_5_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";

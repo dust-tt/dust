@@ -1,7 +1,5 @@
-import {
-  formatSandboxImageId,
-  type SandboxImageId,
-} from "@app/lib/api/sandbox/image";
+import type { SandboxImageId } from "@app/lib/api/sandbox/image";
+import { formatSandboxImageId } from "@app/lib/api/sandbox/image";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { TemplateBuilder } from "e2b";
 import { beforeEach, describe, expect, test, vi } from "vitest";

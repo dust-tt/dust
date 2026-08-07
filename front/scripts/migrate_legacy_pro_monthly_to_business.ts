@@ -40,9 +40,9 @@
  * rollout-window migration). `--now` takes precedence if both are set.
  */
 
+import type { MigrationDeps } from "@app/lib/api/billing/migrate_to_business";
 import {
   loadMigrationDeps,
-  type MigrationDeps,
   migrateWorkspaceToBusiness,
 } from "@app/lib/api/billing/migrate_to_business";
 import { Authenticator } from "@app/lib/auth";

@@ -5,10 +5,8 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
 import {
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,

@@ -21,7 +21,8 @@ import type {
   FileSystemEntry,
 } from "@app/types/api/file_system/types";
 import { stripMimeParameters } from "@app/types/files";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";

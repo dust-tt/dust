@@ -36,10 +36,10 @@ import {
 } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
+import type { SeatData } from "@app/lib/metronome/seats";
 import {
   buildSeatDataByUserId,
   getCachedSeatDataByUserId,
-  type SeatData,
 } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { isUserAwuWarned } from "@app/lib/metronome/user_block";

@@ -1,10 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getTestCaseInputForDisplay,
-  type JudgeResult,
-  type TestCase,
-  type ToolCall,
+import type {
+  JudgeResult,
+  TestCase,
+  ToolCall,
 } from "@app/tests/reinforcement-evals/lib/types";
+import { getTestCaseInputForDisplay } from "@app/tests/reinforcement-evals/lib/types";
 import { getJudgeLLM } from "@app/tests/utils/eval_llm";
 
 const JUDGE_PROMPT = `You are evaluating the quality of a Reinforced Skills analyst's suggestions.

@@ -96,6 +96,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
   ButtonGroupDropdown,
@@ -111,7 +112,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  type DropdownMenuItemProps,
   DropdownMenuTrigger,
   GitBranch01,
   InfoCircle,
@@ -129,15 +129,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import {
-  type MutableRefObject,
-  type ReactElement,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import type { MutableRefObject, ReactElement } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";

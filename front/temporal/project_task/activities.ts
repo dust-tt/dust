@@ -14,7 +14,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { PodTaskSourceType } from "@app/types/project_task";
-import { Err, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage

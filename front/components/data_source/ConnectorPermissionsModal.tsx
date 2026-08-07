@@ -52,6 +52,7 @@ import type { RegionInfo } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
@@ -70,7 +71,6 @@ import {
   Hoverable,
   Icon,
   Lock01,
-  type NotificationType,
   Page,
   Sheet,
   SheetContainer,

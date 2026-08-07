@@ -7,11 +7,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
-import {
-  type AgentLoopRunContext,
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { AgentLoopRunContext, ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
   executeArchiveChannel,

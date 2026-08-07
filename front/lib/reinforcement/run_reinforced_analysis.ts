@@ -16,21 +16,23 @@ import {
   hasSuggestionSelfConflict,
   pruneConflictingSkillEditSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
+import type {
+  ExploratoryToolCallInfo,
+  ProcessReinforcedSkillsEventsResult,
+  ReinforcedSkillsOperationType,
+  TerminalToolCallEvent,
+  TerminalToolCallFailure,
+  TerminalToolCallInfo,
+  TerminalToolCallSuccess,
+} from "@app/lib/reinforcement/types";
 import {
   ALL_TOOLS,
   DESCRIBE_MCP_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
-  type ExploratoryToolCallInfo,
   getEditSkillToolSchema,
   getReinforcedSkillsMetadata,
   isExploratoryToolName,
   isTerminalToolName,
-  type ProcessReinforcedSkillsEventsResult,
-  type ReinforcedSkillsOperationType,
-  type TerminalToolCallEvent,
-  type TerminalToolCallFailure,
-  type TerminalToolCallInfo,
-  type TerminalToolCallSuccess,
   TOOL_SCHEMAS,
 } from "@app/lib/reinforcement/types";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";

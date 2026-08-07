@@ -6,10 +6,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   FILES_LIST_ACTION_NAME,
@@ -76,10 +76,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import {
-  isUserMessageType,
-  type UserMessageOrigin,
-} from "@app/types/assistant/conversation";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";

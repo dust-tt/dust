@@ -1,7 +1,7 @@
+import type { PaidPlanTier } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
   BillingPeriodSwitch,
   PaidPlanCards,
-  type PaidPlanTier,
 } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { DontLoseSection } from "@app/components/paywall/DontLoseSection";
 import { useAuth } from "@app/lib/auth/AuthContext";

@@ -60,11 +60,11 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { formatWakeUpSidebarLabel } from "@app/lib/utils/wakeup_description";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import {
-  type ConversationListItemType,
-  getConversationDisplayTitle,
+import type {
+  ConversationListItemType,
+  ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { PodListItemType, PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";

@@ -1,16 +1,14 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import {
-  type CreateMCPServerResponseBody,
-  isMCPServerViewNameConflict,
-  type MCPServerType,
-  type MCPServerViewNameConflict,
+import type {
+  CreateMCPServerResponseBody,
+  MCPServerType,
+  MCPServerViewNameConflict,
 } from "@app/lib/api/mcp";
-import {
-  isMCPCreateServerError,
-  type MCPConnectionType,
-} from "@app/lib/swr/mcp_servers";
+import { isMCPServerViewNameConflict } from "@app/lib/api/mcp";
+import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
+import { isMCPCreateServerError } from "@app/lib/swr/mcp_servers";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";

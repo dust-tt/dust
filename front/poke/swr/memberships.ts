@@ -1,8 +1,8 @@
-import type { PokeGetMemberships } from "@app/lib/api/poke/memberships";
-import {
-  type PokeSearchWorkspaceMembers,
-  parsePokeSearchWorkspaceMembers,
+import type {
+  PokeGetMemberships,
+  PokeSearchWorkspaceMembers,
 } from "@app/lib/api/poke/memberships";
+import { parsePokeSearchWorkspaceMembers } from "@app/lib/api/poke/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";

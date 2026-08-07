@@ -50,7 +50,8 @@ import {
   isPaidSeatType,
   normalizeToPoolLimitSeatType,
 } from "@app/types/memberships";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   ActiveRoleType,

@@ -1,7 +1,8 @@
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 

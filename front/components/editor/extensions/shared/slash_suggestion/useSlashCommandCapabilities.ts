@@ -12,7 +12,8 @@ import {
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
-import { type RefObject, useMemo } from "react";
+import type { RefObject } from "react";
+import { useMemo } from "react";
 
 import { buildCapabilitySlashCommandItems } from "./buildSlashCommandItems";
 

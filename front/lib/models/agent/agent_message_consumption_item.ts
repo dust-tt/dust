@@ -5,10 +5,8 @@ import {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import {
-  AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES,
-  type AgentMessageConsumptionItemType,
-} from "@app/types/assistant/agent_message_consumption";
+import type { AgentMessageConsumptionItemType } from "@app/types/assistant/agent_message_consumption";
+import { AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional, ForeignKey } from "sequelize";

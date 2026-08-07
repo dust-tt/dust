@@ -37,13 +37,15 @@ import {
   SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { invalidateProductSeatTypesCache } from "@app/lib/metronome/seat_types";
+import type {
+  PackageDef,
+  ProductDef,
+  RateCardDef,
+} from "@app/lib/metronome/setup_common";
 import {
   getCreditTypeAwuId,
   getCreditTypeProgrammaticUsdId,
-  type PackageDef,
   PRODUCTS,
-  type ProductDef,
-  type RateCardDef,
   setMetronomeEnv,
 } from "@app/lib/metronome/setup_common";
 import {

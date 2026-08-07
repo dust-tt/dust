@@ -1,8 +1,6 @@
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
-import {
-  buildLatestAvailableMessageConsumptionDetails,
-  type MessageConsumptionDetails,
-} from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
+import type { MessageConsumptionDetails } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
+import { buildLatestAvailableMessageConsumptionDetails } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationConsumptionMessageFacts } from "@app/lib/resources/agent_message_consumption_item_resource";

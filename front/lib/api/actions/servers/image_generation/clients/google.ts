@@ -1,25 +1,22 @@
+import type { Base64ImageData } from "@app/lib/api/actions/servers/image_generation/helpers";
 import {
-  type Base64ImageData,
   ImageGenerationError,
   QUALITY_TO_IMAGE_SIZE,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
-import {
-  type ImageGenerationInput,
-  ImageGenerationLLM,
-  type ImageGenerationOutput,
+import type {
+  ImageGenerationInput,
+  ImageGenerationOutput,
 } from "@app/lib/api/actions/servers/image_generation/imageGeneration";
+import { ImageGenerationLLM } from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import { GOOGLE_AI_STUDIO_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import { Err, Ok, type Result } from "@app/types/shared/result";
-import {
-  createPartFromUri,
-  type GenerateContentResponse,
-  GoogleGenAI,
-  type Part,
-} from "@google/genai";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { GenerateContentResponse, Part } from "@google/genai";
+import { createPartFromUri, GoogleGenAI } from "@google/genai";
 import assert from "assert";
 import z from "zod";
 

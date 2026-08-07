@@ -27,26 +27,23 @@
 
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  batchDeduplicateCandidates,
-  type DeduplicateCandidate,
-  type DeduplicatedGroup,
+import type {
+  DeduplicateCandidate,
+  DeduplicatedGroup,
 } from "@app/lib/project_task/deduplicate_candidates";
-import {
-  ProjectTaskResource,
-  type TasksByItemId,
-} from "@app/lib/resources/project_task_resource";
+import { batchDeduplicateCandidates } from "@app/lib/project_task/deduplicate_candidates";
+import type { TasksByItemId } from "@app/lib/resources/project_task_resource";
+import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  TakeawaysResource,
-  type TakeawaysWithSource,
-} from "@app/lib/resources/takeaways_resource";
+import type { TakeawaysWithSource } from "@app/lib/resources/takeaways_resource";
+import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import type { PodTaskSourceInfo } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
 
 // Stable identifier used when recording the creating actor for butler-created

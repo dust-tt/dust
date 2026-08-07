@@ -26,11 +26,8 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
-import {
-  resolveDefaultAgentId,
-  type UserType,
-  type WorkspaceType,
-} from "@app/types/user";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { resolveDefaultAgentId } from "@app/types/user";
 import {
   Button,
   ButtonsSwitch,

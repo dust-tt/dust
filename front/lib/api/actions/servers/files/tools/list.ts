@@ -15,10 +15,8 @@ import {
 } from "@app/lib/api/file_system/types";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
-import {
-  type ConversationWithoutContentType,
-  isPodConversation,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import {
   isInteractiveContentType,
   stripMimeParameters,

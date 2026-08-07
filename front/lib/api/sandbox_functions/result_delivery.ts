@@ -1,7 +1,9 @@
-import type { SandboxFunctionResultTimings } from "@app/lib/api/sandbox_functions/result_envelope";
+import type {
+  NormalizedSandboxFunctionOutcome,
+  SandboxFunctionResultTimings,
+} from "@app/lib/api/sandbox_functions/result_envelope";
 import {
   extractResultEnvelopeTimings,
-  type NormalizedSandboxFunctionOutcome,
   normalizeSandboxFunctionResult,
 } from "@app/lib/api/sandbox_functions/result_envelope";
 

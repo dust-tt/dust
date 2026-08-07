@@ -1,11 +1,11 @@
 import AnthropicClient from "@anthropic-ai/sdk";
 import type { BetaMessageBatchResult } from "@anthropic-ai/sdk/resources/beta/messages/batches";
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages/messages";
-import {
-  BatchEndpoint,
-  type BatchRequest,
-  type BatchStatus,
+import type {
+  BatchRequest,
+  BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
+import { BatchEndpoint } from "@app/lib/model_constructors/batch/endpoint";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
 import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";

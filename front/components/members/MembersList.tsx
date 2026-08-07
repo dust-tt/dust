@@ -1,7 +1,5 @@
-import {
-  isFullUserType,
-  type SearchMemberWithWorkspaceType,
-} from "@app/components/members/MemberSelectionTable";
+import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
+import { isFullUserType } from "@app/components/members/MemberSelectionTable";
 import {
   displayRole,
   normalizeDisplayRole,

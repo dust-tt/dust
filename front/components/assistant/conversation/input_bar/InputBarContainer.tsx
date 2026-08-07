@@ -14,21 +14,21 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import {
-  getAvailableInputBarSlashCommands,
-  type InputBarSlashCommand,
-} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { getAvailableInputBarSlashCommands } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
+import type {
+  RunCommandSlashCommand,
+  SkillSlashCommand,
+  ToolSlashCommand,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import {
   isRunCommandSlashCommand,
   isSkillSlashCommand,
   isToolSlashCommand,
   RUN_COMMAND_SLASH_COMMAND_ACTION,
-  type RunCommandSlashCommand,
   SELECT_SKILL_SLASH_COMMAND_ACTION,
   SELECT_TOOL_SLASH_COMMAND_ACTION,
-  type SkillSlashCommand,
-  type ToolSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";

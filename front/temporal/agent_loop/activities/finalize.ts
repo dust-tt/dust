@@ -3,7 +3,8 @@ import {
   sendEmailReplyOnCompletion,
   sendEmailReplyOnError,
 } from "@app/lib/api/assistant/email/email_reply";
-import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   launchAgentMessageAnalytics,
   launchAgentMessageConsumptionAttribution,

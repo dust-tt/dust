@@ -5,11 +5,10 @@ import type {
   ConcreteResourceType,
   GrantVerb,
 } from "@app/types/group_permissions";
-import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
-import {
-  isComputerFeatureEnabled,
-  type WhitelistableFeature,
-} from "@app/types/shared/feature_flags";
+import type { SubscriptionType } from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isManager } from "@app/types/user";
 import {

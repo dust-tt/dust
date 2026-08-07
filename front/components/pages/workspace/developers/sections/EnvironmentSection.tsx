@@ -18,11 +18,11 @@ import {
 } from "@app/lib/swr/sandbox";
 import { timeAgoFrom } from "@app/lib/utils";
 import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
-import {
-  SANDBOX_ENV_VAR_KINDS,
-  type SandboxEnvVarKind,
-  type SandboxEnvVarType,
+import type {
+  SandboxEnvVarKind,
+  SandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
+import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {

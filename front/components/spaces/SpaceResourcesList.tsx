@@ -40,6 +40,7 @@ import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -48,7 +49,6 @@ import {
   cn,
   DataTable,
   Edit04,
-  type MenuItem,
   Settings01,
   Spinner,
   Trash01,

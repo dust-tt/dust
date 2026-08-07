@@ -1,7 +1,5 @@
-import {
-  type CustomResourceIconType,
-  isCustomResourceIconType,
-} from "@app/components/resources/resources_icon_names";
+import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
+import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { z } from "zod";
 
 export const MAX_POD_FRAME_TABS = 8;

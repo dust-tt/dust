@@ -1,7 +1,5 @@
-import {
-  MODELS_TIER_NAMES,
-  type ModelsTierName,
-} from "@app/lib/api/assistant/token_pricing/tiers";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import { MODELS_TIER_NAMES } from "@app/lib/api/assistant/token_pricing/tiers";
 import { formatAsDisplayName } from "@app/types/shared/utils/string_utils";
 
 export const DEFAULT_MAX_MODEL_TIER: ModelsTierName = "premium";

@@ -1,7 +1,5 @@
-import {
-  isMembershipSeatType,
-  type MembershipSeatType,
-} from "@app/types/memberships";
+import type { MembershipSeatType } from "@app/types/memberships";
+import { isMembershipSeatType } from "@app/types/memberships";
 import { z } from "zod";
 
 // Shared between the switch-contract poke plugin (server-side validation in

@@ -9,7 +9,8 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { type ComponentType, isValidElement } from "react";
+import type { ComponentType } from "react";
+import { isValidElement } from "react";
 
 export type FileCitationCardSize = "md" | "sm" | "xs";
 export type FileCitationCardIcon = ComponentType | React.ReactNode;

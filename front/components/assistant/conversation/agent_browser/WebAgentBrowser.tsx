@@ -18,13 +18,13 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
+import type { WebAgentBrowserProps } from "./shared";
 import {
   AGENTS_TABS,
   AgentBrowserSearchDropdown,
   AgentGrid,
   AllTabContent,
   useTagClick,
-  type WebAgentBrowserProps,
 } from "./shared";
 
 export function WebAgentBrowser({

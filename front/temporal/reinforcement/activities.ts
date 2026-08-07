@@ -19,7 +19,8 @@ import type {
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
@@ -66,9 +67,9 @@ import {
   reinforcedSkillsConversationTitle,
 } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { findConversationsWithSkills } from "@app/lib/reinforcement/selection";
+import type { ReinforcedToolActionInfo } from "@app/lib/reinforcement/tool_execution";
 import {
   prepareReinforcedToolActions,
-  type ReinforcedToolActionInfo,
   storeTerminalToolCallResults,
 } from "@app/lib/reinforcement/tool_execution";
 import type { ReinforcedSkillsOperationType } from "@app/lib/reinforcement/types";

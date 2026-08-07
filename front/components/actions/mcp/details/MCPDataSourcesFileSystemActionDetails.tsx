@@ -9,9 +9,9 @@ import {
   getVisualForContentNodeType,
 } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types/core/utils";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   Breadcrumbs,
-  type BreadcrumbsItem,
   Citation,
   CitationIcons,
   CitationTitle,

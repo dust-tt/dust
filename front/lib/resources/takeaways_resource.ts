@@ -14,7 +14,8 @@ import type {
   PodTaskSourceType,
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type {
   Attributes,

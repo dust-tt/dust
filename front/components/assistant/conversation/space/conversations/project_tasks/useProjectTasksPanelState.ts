@@ -36,12 +36,12 @@ import type {
   GetPodTasksResponseBody,
 } from "@app/types/api/projects/tasks";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import {
-  POD_TASK_UNASSIGNED_GROUP_KEY,
-  type PodTaskAssigneeType,
-  type PodTaskStatus,
-  type PodTaskType,
+import type {
+  PodTaskAssigneeType,
+  PodTaskStatus,
+  PodTaskType,
 } from "@app/types/project_task";
+import { POD_TASK_UNASSIGNED_GROUP_KEY } from "@app/types/project_task";
 import { resolveDefaultAgentId } from "@app/types/user";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 

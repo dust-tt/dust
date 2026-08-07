@@ -1,9 +1,7 @@
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import {
-  type ClaudeSonnetFourDotSix,
-  WithAnthropicClaudeSonnetFourDotSixConfig,
-} from "@app/lib/model_constructors/providers/anthropic/models/claude_sonnet_four_dot_six";
+import type { ClaudeSonnetFourDotSix } from "@app/lib/model_constructors/providers/anthropic/models/claude_sonnet_four_dot_six";
+import { WithAnthropicClaudeSonnetFourDotSixConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_sonnet_four_dot_six";
 import { AnthropicStream } from "@app/lib/model_constructors/stream/clients/anthropic";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";

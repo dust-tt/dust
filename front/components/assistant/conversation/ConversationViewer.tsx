@@ -7,10 +7,8 @@ import {
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import {
-  InputBarContext,
-  type PendingConversationMessage,
-} from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { PendingConversationMessage } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -67,9 +65,11 @@ import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
 import type { GetConversationPlanModeResponseBody } from "@app/types/api/assistant/plan_mode";
+import type {
+  ConversationForkedChildType,
+  ConversationListItemType,
+} from "@app/types/assistant/conversation";
 import {
-  type ConversationForkedChildType,
-  type ConversationListItemType,
   isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";

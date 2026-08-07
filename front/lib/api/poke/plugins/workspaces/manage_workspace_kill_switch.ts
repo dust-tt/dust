@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import type { WorkspaceKillSwitchOperation } from "@app/lib/resources/workspace_resource";
 import {
   WORKSPACE_KILL_SWITCH_OPERATIONS,
-  type WorkspaceKillSwitchOperation,
   WorkspaceResource,
 } from "@app/lib/resources/workspace_resource";
 import { mapToEnumValues } from "@app/types/poke/plugins";

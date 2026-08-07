@@ -9,10 +9,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
-import {
-  type EnabledSkill,
-  renderEnabledSkillUserMessageFromInstructions,
-} from "@app/lib/api/assistant/skills_rendering";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
+import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assistant/skills_rendering";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";

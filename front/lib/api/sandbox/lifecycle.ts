@@ -22,7 +22,8 @@ import type {
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import { Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 

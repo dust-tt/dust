@@ -1,8 +1,6 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import {
-  type GoogleAiStudioInputConfig,
-  googleAiStudioConfigSchema,
-} from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
+import type { GoogleAiStudioInputConfig } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
+import { googleAiStudioConfigSchema } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
 import { WithGoogleGenAIInputConverter } from "@app/lib/model_constructors/sdk/google_genai/converters/input";
 import { WithGoogleGenAIOutputConverter } from "@app/lib/model_constructors/sdk/google_genai/converters/output";
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/google_genai/converters/output/utils";

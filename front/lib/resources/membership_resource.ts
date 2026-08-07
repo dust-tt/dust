@@ -18,13 +18,15 @@ import {
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import type {
+  MembershipOriginType,
+  MembershipRoleType,
+  MembershipSeatType,
+  UserCreditState,
+} from "@app/types/memberships";
 import {
   initialCreditStateForSeatType,
   isMembershipSeatType,
-  type MembershipOriginType,
-  type MembershipRoleType,
-  type MembershipSeatType,
-  type UserCreditState,
 } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";

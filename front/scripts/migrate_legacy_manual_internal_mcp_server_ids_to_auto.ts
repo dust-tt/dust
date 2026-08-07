@@ -15,11 +15,13 @@
  */
 
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type {
+  AutoInternalMCPServerNameType,
+  InternalMCPServerNameType,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  type AutoInternalMCPServerNameType,
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   INTERNAL_MCP_SERVERS,
-  type InternalMCPServerNameType,
   isAutoInternalMCPServerName,
   isInternalMCPServerName,
   matchesInternalMCPServerName,

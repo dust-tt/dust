@@ -14,9 +14,9 @@ import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
+import type { SkillDirectiveProps } from "@app/components/markdown/SkillBlock";
 import {
   SkillBlock,
-  type SkillDirectiveProps,
   skillDirective,
 } from "@app/components/markdown/SkillBlock";
 import {

@@ -3,10 +3,8 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import {
-  NOTIFICATION_CONDITION_OPTIONS,
-  type NotificationCondition,
-} from "@app/types/notification_preferences";
+import type { NotificationCondition } from "@app/types/notification_preferences";
+import { NOTIFICATION_CONDITION_OPTIONS } from "@app/types/notification_preferences";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
 export class UserProjectPreferencesModel extends WorkspaceAwareModel<UserProjectPreferencesModel> {

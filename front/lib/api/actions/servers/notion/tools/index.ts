@@ -8,10 +8,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
-import {
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { NOTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/notion/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";

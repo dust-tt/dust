@@ -1,9 +1,9 @@
 import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
+import type { TemporalAbortClassification } from "@app/lib/temporal/cancellation";
 import {
   classifyTemporalAbortReason,
   classifyTemporalAbortSignal,
-  type TemporalAbortClassification,
 } from "@app/lib/temporal/cancellation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ApplicationFailure } from "@temporalio/common";

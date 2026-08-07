@@ -1,8 +1,6 @@
 import { buildDocs, buildIndex, rank } from "@app/lib/api/actions/servers/bm25";
-import {
-  type LabeledQuery,
-  SERVERS,
-} from "@app/lib/api/actions/servers/bm25_tool_search_utils.test";
+import type { LabeledQuery } from "@app/lib/api/actions/servers/bm25_tool_search_utils.test";
+import { SERVERS } from "@app/lib/api/actions/servers/bm25_tool_search_utils.test";
 import { describe, expect, it } from "vitest";
 
 const QUERIES: LabeledQuery[] = [

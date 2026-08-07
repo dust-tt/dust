@@ -2,11 +2,11 @@ import type { ImportFormValues } from "@app/components/skills/import/formSchema"
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
-import {
-  type DetectedSkillSummary,
-  type DetectSkillsResponseBody,
-  parseGitHubRepoUrl,
+import type {
+  DetectedSkillSummary,
+  DetectSkillsResponseBody,
 } from "@app/lib/skill_detection";
+import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import type {

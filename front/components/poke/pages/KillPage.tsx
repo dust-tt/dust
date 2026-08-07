@@ -1,7 +1,8 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { KILL_SWITCH_TYPES, type KillSwitchType } from "@app/lib/poke/types";
+import type { KillSwitchType } from "@app/lib/poke/types";
+import { KILL_SWITCH_TYPES } from "@app/lib/poke/types";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
 import {

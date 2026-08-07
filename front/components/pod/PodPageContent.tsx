@@ -6,10 +6,8 @@ import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
 import { PodFrameTabContent } from "@app/components/pod/PodFrameTabContent";
 import { PodSettingsTab } from "@app/components/pod/settings/PodSettingsTab";
 import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
-import {
-  type PodConversationListFilter,
-  usePodConversations,
-} from "@app/hooks/conversations/usePodConversations";
+import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
+import { usePodConversations } from "@app/hooks/conversations/usePodConversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { PodUiScopedPreferences } from "@app/hooks/useScopedUIPreferences";

@@ -3,11 +3,10 @@ import type {
   ToolDefinition,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolContext, ToolRunContext } from "@app/lib/actions/types";
 import {
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContext,
-  type ToolRunContext,
 } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";

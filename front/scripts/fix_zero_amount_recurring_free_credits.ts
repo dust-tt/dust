@@ -29,11 +29,11 @@ import {
   listMetronomeCustomerCredits,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
+import type { MetronomeCredit } from "@app/lib/metronome/types";
 import {
   FREE_ANNUAL_CREDIT_NAME,
   FREE_MONTHLY_CREDIT_NAME,
   isMetronomeFreeCredit,
-  type MetronomeCredit,
 } from "@app/lib/metronome/types";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import type { Logger } from "@app/logger/logger";

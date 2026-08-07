@@ -1,6 +1,6 @@
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
+import type { CacheDiagnosticsKey } from "@app/lib/api/llm/cache_diagnostics";
 import {
-  type CacheDiagnosticsKey,
   getPreviousMessageId,
   setPreviousMessageId,
 } from "@app/lib/api/llm/cache_diagnostics";

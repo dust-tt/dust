@@ -12,7 +12,8 @@ import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { DbModelIdSchema } from "@app/types/shared/model_id";
-import { TagSchema, type TagType } from "@app/types/tag";
+import type { TagType } from "@app/types/tag";
+import { TagSchema } from "@app/types/tag";
 import { UserSchema } from "@app/types/user";
 import { z } from "zod";
 

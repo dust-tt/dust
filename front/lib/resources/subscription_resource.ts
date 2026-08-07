@@ -62,14 +62,14 @@ import {
   renderLightWorkspaceType,
 } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import {
-  type EnterpriseUpgradeFormType,
-  isSubscriptionMetronomeBilled,
-  type PlanType,
-  type SubscriptionPerSeatPricing,
-  type SubscriptionStatusType,
-  type SubscriptionType,
+import type {
+  EnterpriseUpgradeFormType,
+  PlanType,
+  SubscriptionPerSeatPricing,
+  SubscriptionStatusType,
+  SubscriptionType,
 } from "@app/types/plan";
+import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import { SUBSCRIPTION_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";

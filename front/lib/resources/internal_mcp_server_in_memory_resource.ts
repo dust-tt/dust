@@ -26,7 +26,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";

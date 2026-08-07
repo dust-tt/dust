@@ -1,7 +1,7 @@
+import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import {
   buildPodTasksListSwrKey,
   isPodTasksListSwrKey,
-  type TaskOwnerFilter,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -68,7 +68,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { type Fetcher, useSWRConfig } from "swr";
+import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 export function usePodContextAttachments({
   owner,

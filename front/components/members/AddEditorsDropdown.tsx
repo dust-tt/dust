@@ -11,7 +11,8 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { type ReactElement, useState } from "react";
+import type { ReactElement } from "react";
+import { useState } from "react";
 
 interface AddEditorDropdownProps {
   owner: WorkspaceType;

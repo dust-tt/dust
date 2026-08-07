@@ -41,7 +41,8 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import { type LangfuseGeneration, startObservation } from "@langfuse/tracing";
+import type { LangfuseGeneration } from "@langfuse/tracing";
+import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";

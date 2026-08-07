@@ -36,7 +36,8 @@ import {
 } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";

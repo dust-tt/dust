@@ -1,6 +1,6 @@
+import type { ReconcileCreditStateTarget } from "@app/lib/api/metronome/reconcile_credit_state";
 import {
   RECONCILE_CREDIT_STATE_TARGETS,
-  type ReconcileCreditStateTarget,
   reconcileCreditState,
 } from "@app/lib/api/metronome/reconcile_credit_state";
 import { createPlugin } from "@app/lib/api/poke/types";

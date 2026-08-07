@@ -11,6 +11,7 @@ import {
   includesToolSearchTool,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { stripUnreplayableToolSearchBlocks } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
+import type { MessageBlockConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
@@ -19,7 +20,6 @@ import {
   conversationToMessages,
   forceToolNameToToolChoice,
   imageUrlToImageBlock,
-  type MessageBlockConverters,
   outputFormatToOutputConfig,
   reasoningToThinkingConfig,
   systemMessagesToSystemParam,

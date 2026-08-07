@@ -35,10 +35,8 @@ import type {
 } from "@app/types/api/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import {
-  type LightWorkspaceType,
-  resolveDefaultAgentId,
-} from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
+import { resolveDefaultAgentId } from "@app/types/user";
 import {
   Archive,
   Avatar,

@@ -56,10 +56,8 @@ import {
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
 import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
-import {
-  ACTIVE_WAKE_UP_STATUSES,
-  type WakeUpScheduleConfig,
-} from "@app/types/assistant/wakeups";
+import type { WakeUpScheduleConfig } from "@app/types/assistant/wakeups";
+import { ACTIVE_WAKE_UP_STATUSES } from "@app/types/assistant/wakeups";
 import type { ContentFragmentVersion } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";

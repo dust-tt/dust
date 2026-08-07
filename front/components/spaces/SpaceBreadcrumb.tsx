@@ -5,9 +5,9 @@ import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   Breadcrumbs,
-  type BreadcrumbsItem,
   CloudArrowLeftRight,
   ShapesPlus,
   Zap,

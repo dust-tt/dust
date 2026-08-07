@@ -1,5 +1,6 @@
 import { cn } from "@dust-tt/sparkle";
-import { forwardRef, type UIEventHandler } from "react";
+import type { UIEventHandler } from "react";
+import { forwardRef } from "react";
 
 interface RawMarkdownEditorProps {
   value: string;

@@ -2,20 +2,22 @@ import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
-import {
-  type EnsureSandboxResult,
-  type SandboxCreateBlob,
-  type SandboxDeleteOwner,
-  type SandboxLifecycleOwner,
-  SandboxResource,
+import type {
+  EnsureSandboxResult,
+  SandboxCreateBlob,
+  SandboxDeleteOwner,
+  SandboxLifecycleOwner,
 } from "@app/lib/resources/sandbox_resource";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Ok, type Result } from "@app/types/shared/result";
-import { Op, type Transaction } from "sequelize";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 type ConversationSandboxOwner = Pick<
   ConversationWithoutContentType,

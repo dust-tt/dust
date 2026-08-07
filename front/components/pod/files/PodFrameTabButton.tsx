@@ -1,9 +1,9 @@
 import { EditPodFrameTabDialog } from "@app/components/pod/files/EditPodFrameTabDialog";
 import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import {
   DEFAULT_POD_FRAME_TAB_ICON,
   MAX_POD_FRAME_TAB_TITLE_LENGTH,
-  type PodFrameTab,
   podFrameTabBasename,
 } from "@app/types/pod_frame_tab";
 import type { LightWorkspaceType } from "@app/types/user";

@@ -3,10 +3,8 @@ import { getAwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
 import { MAX_AWU_PURCHASE_CREDITS_PER_CYCLE } from "@app/lib/credits/awu_purchase_constants";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
-import {
-  type CachedContract,
-  getActiveContract,
-} from "@app/lib/metronome/plan_type";
+import type { CachedContract } from "@app/lib/metronome/plan_type";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";

@@ -1,7 +1,7 @@
+import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import {
   flattenSlashCommandSections,
   SLASH_COMMAND_CAPABILITIES_SECTION_LABEL,
-  type SlashCommandSection,
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import {
   SLASH_COMMAND_DEFAULT_LOADING_MESSAGE,
