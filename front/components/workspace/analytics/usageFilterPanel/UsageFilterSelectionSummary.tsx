@@ -3,7 +3,7 @@ import type {
   UsageFilterCategory,
 } from "@app/components/workspace/analytics/usageFilter";
 import { USAGE_FILTER_CATEGORY_LABEL } from "@app/components/workspace/analytics/usageFilter";
-import { UsageFilterEntityIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterEntityIcon";
+import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
 import {
   Button,
   ChevronDown,
@@ -21,14 +21,14 @@ interface UsageFilterSelectionSummaryProps {
   categoriesWithSelection: UsageFilterCategory[];
   draftFilter: UsageFilter;
   onClearCategory: (category: UsageFilterCategory) => void;
-  onRemoveEntity: (category: UsageFilterCategory, id: string) => void;
+  onRemoveOption: (category: UsageFilterCategory, id: string) => void;
 }
 
 export function UsageFilterSelectionSummary({
   categoriesWithSelection,
   draftFilter,
   onClearCategory,
-  onRemoveEntity,
+  onRemoveOption,
 }: UsageFilterSelectionSummaryProps) {
   // Sections are open by default; a category lands here once the user
   // collapses it.
@@ -88,14 +88,14 @@ export function UsageFilterSelectionSummary({
                 />
                 <Collapsible open={isCategoryOpen}>
                   <CollapsibleContent>
-                    {(draftFilter[category] ?? []).map((entity) => (
+                    {(draftFilter[category] ?? []).map((option) => (
                       <NavigationListItem
-                        key={`${category}:${entity.id}`}
+                        key={`${category}:${option.id}`}
                         avatar={
                           <div className="flex grow items-center gap-2 overflow-hidden">
-                            <UsageFilterEntityIcon entity={entity} />
+                            <UsageFilterOptionIcon option={option} />
                             <span className="label-sm overflow-hidden text-ellipsis whitespace-nowrap text-gray-950">
-                              {entity.name}
+                              {option.name}
                             </span>
                           </div>
                         }
@@ -104,7 +104,7 @@ export function UsageFilterSelectionSummary({
                             icon={XClose}
                             size="xmini"
                             variant="ghost"
-                            onClick={() => onRemoveEntity(category, entity.id)}
+                            onClick={() => onRemoveOption(category, option.id)}
                           />
                         }
                       />

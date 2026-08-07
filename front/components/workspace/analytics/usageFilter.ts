@@ -64,9 +64,7 @@ export interface UsageFilterSourceOption extends UsageFilterOptionBase {
 
 export interface UsageFilterModelOption extends UsageFilterOptionBase {
   kind: "model";
-  // Used to group models in the "More models" dropdown by maker.
   lab: ModelMakerIdType;
-  // Used for the Fast/Standard/Complex quick filter.
   tier: UsageModelTier;
 }
 
@@ -95,19 +93,19 @@ export type UsageFilter = Partial<
   Record<UsageFilterCategory, UsageFilterOption[]>
 >;
 
-export function toggleUsageFilterEntity(
+export function toggleUsageFilterOption(
   filter: UsageFilter,
   category: UsageFilterCategory,
-  entity: UsageFilterOption
+  option: UsageFilterOption
 ): UsageFilter {
   const current = filter[category] ?? [];
-  const next = current.some((e) => e.id === entity.id)
-    ? current.filter((e) => e.id !== entity.id)
-    : [...current, entity];
+  const next = current.some((e) => e.id === option.id)
+    ? current.filter((e) => e.id !== option.id)
+    : [...current, option];
   return { ...filter, [category]: next.length > 0 ? next : undefined };
 }
 
-export function removeUsageFilterEntity(
+export function removeUsageFilterOption(
   filter: UsageFilter,
   category: UsageFilterCategory,
   id: string
@@ -123,14 +121,14 @@ export function clearUsageFilterCategory(
   return { ...filter, [category]: undefined };
 }
 
-export function selectAllUsageFilterEntities(
+export function selectAllUsageFilterOptions(
   filter: UsageFilter,
   category: UsageFilterCategory,
-  entities: UsageFilterOption[]
+  options: UsageFilterOption[]
 ): UsageFilter {
   const current = filter[category] ?? [];
   const currentIds = new Set(current.map((e) => e.id));
-  const additions = entities.filter((e) => !currentIds.has(e.id));
+  const additions = options.filter((e) => !currentIds.has(e.id));
   if (additions.length === 0) {
     return filter;
   }
