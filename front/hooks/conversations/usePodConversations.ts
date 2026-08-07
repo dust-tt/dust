@@ -46,12 +46,14 @@ export function usePodConversations({
   podId,
   limit = DEFAULT_CONVERSATIONS_PAGE_SIZE,
   filter = "all",
+  excludeTriggered = false,
   options,
 }: {
   workspaceId: string;
   podId: string | null;
   limit?: number;
   filter?: PodConversationListFilter;
+  excludeTriggered?: boolean;
   options?: { disabled?: boolean };
 }) {
   const { fetcher } = useFetcher();
@@ -71,6 +73,9 @@ export function usePodConversations({
         const searchParams = new URLSearchParams({
           filter,
         });
+        if (excludeTriggered) {
+          searchParams.set("excludeTriggered", "true");
+        }
 
         if (previousPageData === null) {
           return `/api/w/${workspaceId}/assistant/conversations/spaces/${podId}?${searchParams.toString()}`;

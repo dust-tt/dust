@@ -19,6 +19,7 @@ export type PodTab = PodUiScopedPreferences["tab"];
 export const DEFAULT_POD_UI_PREFERENCES: PodUiScopedPreferences = {
   tab: "conversations",
   conversationsFilter: "all",
+  hideTriggeredConversations: false,
   tasksOwnerFilter: DEFAULT_TASK_OWNER_FILTER,
 };
 

@@ -37,6 +37,7 @@ import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -7125,6 +7126,40 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
       );
 
     expect(counts.get(convo.id)).toBe(2);
+  });
+
+  it("excludeTriggered omits conversations with a triggerId", async () => {
+    const humanConvo = await createConvoWithUpdatedAt(1);
+    const triggeredConvo = await createConvoWithUpdatedAt(0);
+
+    const trigger = await TriggerFactory.webhook(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      spaceId: space.id,
+    });
+    await ConversationFactory.setTriggerIdForTest(
+      triggeredConvo.id,
+      workspace.id,
+      trigger.id
+    );
+
+    const included =
+      await ConversationResource.listConversationsInSpacePaginated(adminAuth, {
+        spaceId: space.sId,
+        pagination: { limit: 10 },
+      });
+    expect(included.conversations.map((c) => c.sId)).toEqual(
+      expect.arrayContaining([humanConvo.sId, triggeredConvo.sId])
+    );
+
+    const excluded =
+      await ConversationResource.listConversationsInSpacePaginated(adminAuth, {
+        spaceId: space.sId,
+        excludeTriggered: true,
+        pagination: { limit: 10 },
+      });
+    const excludedIds = excluded.conversations.map((c) => c.sId);
+    expect(excludedIds).toContain(humanConvo.sId);
+    expect(excludedIds).not.toContain(triggeredConvo.sId);
   });
 });
 

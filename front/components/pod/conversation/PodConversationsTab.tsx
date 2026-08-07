@@ -46,6 +46,8 @@ import {
   LoadingBlock,
   SearchInputWithPopover,
   Spinner,
+  Zap,
+  ZapOff,
 } from "@dust-tt/sparkle";
 import moment from "moment";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -71,6 +73,8 @@ interface PodConversationsTabProps {
   isPodEmpty: boolean;
   conversationFilter: PodConversationListFilter;
   onConversationFilterChange: (filter: PodConversationListFilter) => void;
+  hideTriggeredConversations: boolean;
+  onHideTriggeredConversationsChange: (hide: boolean) => void;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -94,6 +98,8 @@ export function PodConversationsTab({
   isPodEmpty,
   conversationFilter,
   onConversationFilterChange,
+  hideTriggeredConversations,
+  onHideTriggeredConversationsChange,
   onSubmit,
   onNavigateToTasks,
 }: PodConversationsTabProps) {
@@ -295,6 +301,22 @@ export function PodConversationsTab({
                       />
                     </ButtonsSwitchList>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={hideTriggeredConversations ? Zap : ZapOff}
+                    tooltip={
+                      hideTriggeredConversations
+                        ? "Show triggered"
+                        : "Hide triggered"
+                    }
+                    className="shrink-0"
+                    onClick={() =>
+                      onHideTriggeredConversationsChange(
+                        !hideTriggeredConversations
+                      )
+                    }
+                  />
                   <SearchInputWithPopover
                     name="conversation-search"
                     value={searchText}
