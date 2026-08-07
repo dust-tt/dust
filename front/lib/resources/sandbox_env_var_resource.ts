@@ -782,6 +782,20 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     return new Ok(undefined);
   }
 
+  // Pod scrub: the FK to spaces is `onDelete: "RESTRICT"`, so the pod-scoped
+  // rows must go before the pod itself can be hard-deleted.
+  static async deleteAllForPod(
+    auth: Authenticator,
+    pod: SpaceResource
+  ): Promise<undefined> {
+    await this.model.destroy({
+      where: {
+        spaceId: pod.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
   // Workspace scrub: spaces (and their pod-scoped rows) are already gone by
   // the time this runs; destroying by workspaceId sweeps the remaining
   // workspace-scoped rows plus any stragglers.
