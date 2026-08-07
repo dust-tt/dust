@@ -1,5 +1,5 @@
-import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { timeAgoFrom } from "@app/lib/utils";
 
 interface ConsumptionOverviewProps {

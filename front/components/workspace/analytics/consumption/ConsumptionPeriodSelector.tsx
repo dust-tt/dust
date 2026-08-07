@@ -1,10 +1,10 @@
-import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   CONSUMPTION_PERIOD_OPTIONS,
   consumptionPeriodFromKey,
   consumptionPeriodKey,
   consumptionPeriodLabel,
-} from "@app/components/workspace/analytics/consumption/consumptionPeriod";
+} from "@app/lib/analytics/consumption_period";
 import {
   Button,
   DropdownMenu,

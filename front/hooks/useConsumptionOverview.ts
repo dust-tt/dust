@@ -1,5 +1,5 @@
-import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
-import { consumptionQueryString } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { Fetcher } from "swr";
