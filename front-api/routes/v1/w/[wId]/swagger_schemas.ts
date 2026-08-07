@@ -243,6 +243,11 @@
  *               type: string
  *               description: Visibility setting of the conversation
  *               example: "private"
+ *             uiView:
+ *               type: string
+ *               enum: [compact]
+ *               nullable: true
+ *               description: Server-resolved UI display hint for the conversation (currently only 'compact' for conversations in activation pods)
  *             content:
  *               type: array
  *               items:
