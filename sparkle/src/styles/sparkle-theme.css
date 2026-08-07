@@ -135,40 +135,41 @@
   }
 }
 
-/* Skill import loading indicator */
-.sil-icon {
+/* Puzzle spinner */
+.puzzle-spinner-icon {
   display: block;
   width: 1rem;
   height: 1rem;
   overflow: visible;
 }
-.sil-base {
+.puzzle-spinner-base {
   fill: currentColor;
   opacity: 0.16;
 }
-.sil-water-cycle {
-  animation: sil-water-cycle 2.8s cubic-bezier(0.2, 0.72, 0.2, 1) infinite;
+.puzzle-spinner-water-cycle {
+  animation: puzzle-spinner-water-cycle 2.8s
+    cubic-bezier(0.2, 0.72, 0.2, 1) infinite;
   will-change: transform, opacity;
 }
-.sil-back-wave {
+.puzzle-spinner-back-wave {
   fill: currentColor;
   opacity: 0.72;
-  animation: sil-wave-back 1.8s linear infinite;
+  animation: puzzle-spinner-wave-back 1.8s linear infinite;
   will-change: transform;
 }
-.sil-front-wave {
+.puzzle-spinner-front-wave {
   fill: currentColor;
-  animation: sil-wave-front 1.25s linear infinite;
+  animation: puzzle-spinner-wave-front 1.25s linear infinite;
   will-change: transform;
 }
-.sil-outline {
+.puzzle-spinner-outline {
   fill: none;
   stroke: currentColor;
   stroke-width: 8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-@keyframes sil-water-cycle {
+@keyframes puzzle-spinner-water-cycle {
   0% {
     opacity: 0;
     transform: translateY(86px);
@@ -186,7 +187,7 @@
     transform: translateY(-14px);
   }
 }
-@keyframes sil-wave-back {
+@keyframes puzzle-spinner-wave-back {
   from {
     transform: translateX(0);
   }
@@ -194,7 +195,7 @@
     transform: translateX(-64px);
   }
 }
-@keyframes sil-wave-front {
+@keyframes puzzle-spinner-wave-front {
   from {
     transform: translateX(-64px);
   }
@@ -203,13 +204,13 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sil-water-cycle,
-  .sil-back-wave,
-  .sil-front-wave {
+  .puzzle-spinner-water-cycle,
+  .puzzle-spinner-back-wave,
+  .puzzle-spinner-front-wave {
     animation: none;
   }
 
-  .sil-water-cycle {
+  .puzzle-spinner-water-cycle {
     opacity: 1;
     transform: translateY(18px);
   }

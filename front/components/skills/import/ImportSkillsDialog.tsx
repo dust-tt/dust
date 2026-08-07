@@ -20,7 +20,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  SkillImportLoading,
+  PuzzleSpinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -159,7 +159,7 @@ export function ImportSkillsDialog({
           <Button
             className="w-20"
             label={isImporting ? undefined : "Import"}
-            icon={isImporting ? <SkillImportLoading /> : undefined}
+            icon={isImporting ? <PuzzleSpinner /> : undefined}
             disabled={isImporting || isDetecting || selectedCount === 0}
             aria-label={isImporting ? "Importing skills" : undefined}
             onClick={form.handleSubmit(onSubmit)}
