@@ -69,6 +69,7 @@ const CONNECTORS_ERROR_TYPES = [
   "webcrawling_synchronization_limit_reached",
   "remote_database_connection_not_readonly",
   "remote_database_network_error",
+  "workspace_plan_no_api_access",
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];

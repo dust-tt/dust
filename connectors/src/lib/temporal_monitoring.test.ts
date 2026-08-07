@@ -157,4 +157,38 @@ describe("ActivityInboundLogInterceptor", () => {
       reason: "Stopped on RemoteDatabaseConnectionNotReadonlyError",
     });
   });
+
+  it("pauses the connector when the workspace plan does not allow API access", async () => {
+    const interceptor = new ActivityInboundLogInterceptor(
+      makeActivityContext(),
+      logger,
+      "snowflake"
+    );
+    const error = new Error(
+      `Error uploading to dust: ${JSON.stringify({
+        error: {
+          type: "workspace_can_use_product_required_error",
+          message:
+            "Your current plan does not allow API access. Please upgrade your plan.",
+        },
+      })}`
+    );
+    const input = {
+      args: [],
+      headers: {},
+    } satisfies ActivityExecuteInput;
+    const next = vi.fn(async () => {
+      throw error;
+    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
+
+    expect(mocks.syncFailed).toHaveBeenCalledWith(
+      42,
+      "workspace_plan_no_api_access"
+    );
+    expect(mocks.pauseAndStop).toHaveBeenCalledWith({
+      reason: "Stopped on workspace_can_use_product_required_error",
+    });
+  });
 });

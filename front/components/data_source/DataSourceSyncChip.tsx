@@ -111,6 +111,13 @@ export default function ConnectorSyncingChip({
             trigger={<Chip color="warning">Quota exceeded</Chip>}
           />
         );
+      case "workspace_plan_no_api_access":
+        return (
+          <Tooltip
+            label="Your current plan does not allow API access, which is required to synchronize data. Contact support@dust.tt to upgrade your plan."
+            trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
+        );
       default:
         assertNeverAndIgnore(connector.errorType);
     }
