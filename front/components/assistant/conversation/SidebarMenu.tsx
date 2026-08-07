@@ -1327,20 +1327,13 @@ function UnreadConversationsSection({
     <NavigationListCollapsibleSection
       label={label}
       count={totalCount}
-      // Hovering "Mark all as read" highlights the whole section it would
-      // clear.
-      className={cn(
-        "bg-background rounded-xl border border-border p-1 mx-sidebar-side-spacing",
-        "transition-colors duration-150 motion-reduce:transition-none",
-        "has-[[data-mark-read=all]:hover]:bg-hover"
-      )}
+      className="bg-background rounded-xl border border-border p-1 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
             size="xmini"
             variant="ghost-secondary"
             label="Mark all as read"
-            data-mark-read="all"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
             hasLighterFont
