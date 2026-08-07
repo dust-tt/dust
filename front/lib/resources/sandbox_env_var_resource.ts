@@ -788,6 +788,8 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     auth: Authenticator,
     pod: SpaceResource
   ): Promise<undefined> {
+    assert(pod.isProject(), "Sandbox env vars can only be scoped to pods.");
+
     await this.model.destroy({
       where: {
         spaceId: pod.id,
