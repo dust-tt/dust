@@ -1,4 +1,5 @@
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
@@ -71,7 +72,10 @@ export interface UsageFilterSourceOption extends UsageFilterOptionBase {
 export interface UsageFilterModelOption extends UsageFilterOptionBase {
   kind: "model";
   lab: ModelMakerIdType;
-  tier: UsageModelTier;
+  // Undefined for a model outside the static tier table — it doesn't match
+  // any Fast/Standard/Complex quick filter, so it's absent from the main
+  // checklist but still reachable through the "More models" browse dropdown.
+  tier: UsageModelTier | undefined;
 }
 
 export interface UsageFilterToolOption extends UsageFilterOptionBase {
@@ -146,8 +150,9 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-// Members, teams, and agents are wired to real consumption scope dimensions.
-// The other categories stay mock data and are not sent as query filters yet.
+// Members, teams, agents, and models are wired to real consumption scope
+// dimensions. The other categories stay mock data and are not sent as query
+// filters yet.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
@@ -168,5 +173,30 @@ export function toConsumptionScopeFilter(
     scopeFilter.agents = agentIds;
   }
 
+  const modelIds = filter.model?.map((entity) => entity.id);
+  if (modelIds && modelIds.length > 0) {
+    scopeFilter.models = modelIds;
+  }
+
   return scopeFilter;
+}
+
+// Maps the backend's reasoning-effort-aware pricing tier onto the filter
+// panel's simpler Fast/Standard/Complex bucket. Null propagates (a model
+// outside the static tier table, or a raw catalog entry with no config match)
+// as "no bucket", so it's excluded from every quick-filter tier rather than
+// landing in one arbitrarily.
+export function usageModelTierFromModelsTierName(
+  tier: ModelsTierName | null | undefined
+): UsageModelTier | undefined {
+  switch (tier) {
+    case "cost_efficient":
+      return "fast";
+    case "balanced":
+      return "standard";
+    case "premium":
+      return "complex";
+    default:
+      return undefined;
+  }
 }

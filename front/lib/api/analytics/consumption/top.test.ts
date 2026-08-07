@@ -54,7 +54,7 @@ function mockLabels(labels: Record<string, string>) {
     new Map(
       Object.entries(labels).map(([key, name]) => [
         key,
-        { name, pictureUrl: null },
+        { name, pictureUrl: null, modelMaker: null, tier: null },
       ])
     )
   );
@@ -81,7 +81,17 @@ describe("consumption top rankings", () => {
   it("ranks agents on gross credits and averages over distinct messages", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
-      new Map([["agent1", { name: "@dust", pictureUrl: "http://pic/dust" }]])
+      new Map([
+        [
+          "agent1",
+          {
+            name: "@dust",
+            pictureUrl: "http://pic/dust",
+            modelMaker: null,
+            tier: null,
+          },
+        ],
+      ])
     );
     mockAggs({
       buckets: [
@@ -286,6 +296,8 @@ describe("consumption top rankings", () => {
     expect(models.value.models[0]).toEqual({
       modelId: "key1",
       name: "Claude 4 Sonnet",
+      modelMaker: null,
+      tier: null,
       credits: 2,
       messageCount: 4,
       avgCreditsPerMessage: 0.5,

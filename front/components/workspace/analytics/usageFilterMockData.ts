@@ -1,47 +1,16 @@
 import type {
-  UsageFilterModelOption,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
   UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
-import { USAGE_MODEL_TIERS } from "@app/components/workspace/analytics/usageFilter";
-import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
-const MOCK_MODEL_LAB: Record<string, ModelMakerIdType> = {
-  "Claude Sonnet 5": "anthropic",
-  "Claude Opus 5": "anthropic",
-  "Claude Haiku 4.5": "anthropic",
-  "Claude Fable 5": "anthropic",
-  "GPT-5": "openai",
-  "GPT-5 mini": "openai",
-  "Gemini 3 Pro": "google_ai_studio",
-  "Gemini 3 Flash": "google_ai_studio",
-  "Llama 4 Maverick": "fireworks",
-  "Mistral Large 3": "mistral",
-  "Grok 4": "xai",
-  "DeepSeek V4": "deepseek",
-};
-
 // Placeholder data for categories not yet wired to a real backend endpoint.
-// Agents are fetched live in UsageFilterPanel (useConsumptionTop); members
-// and groups via useSearchMembers and useGroups. Lists are long enough to
-// exercise scrolling in the preview.
+// Agents are fetched live in UsageFilterPanel (useAgentConfigurations);
+// members via useSearchMembers; groups via useGroups; models via
+// useConsumptionTop. Lists are long enough to exercise scrolling in the
+// preview.
 const MOCK_ENTITY_NAMES = {
-  model: [
-    "Claude Sonnet 5",
-    "Claude Opus 5",
-    "Claude Haiku 4.5",
-    "Claude Fable 5",
-    "GPT-5",
-    "GPT-5 mini",
-    "Gemini 3 Pro",
-    "Gemini 3 Flash",
-    "Llama 4 Maverick",
-    "Mistral Large 3",
-    "Grok 4",
-    "DeepSeek V4",
-  ],
   tool: [
     "web_search",
     "file_search",
@@ -100,16 +69,6 @@ const MOCK_SOURCE_CONNECTORS: Array<{
   { name: "Uploaded files — Legal templates", connectorProvider: undefined },
 ];
 
-function buildModelOptions(names: string[]): UsageFilterModelOption[] {
-  return names.map((name, index) => ({
-    id: `model_${index + 1}`,
-    name,
-    kind: "model",
-    lab: MOCK_MODEL_LAB[name],
-    tier: USAGE_MODEL_TIERS[index % USAGE_MODEL_TIERS.length],
-  }));
-}
-
 function buildToolOptions(names: string[]): UsageFilterToolOption[] {
   return names.map((name, index) => ({
     id: `tool_${index + 1}`,
@@ -127,7 +86,6 @@ function buildSkillOptions(names: string[]): UsageFilterSkillOption[] {
 }
 
 export const USAGE_FILTER_MOCK_OPTIONS = {
-  model: buildModelOptions(MOCK_ENTITY_NAMES.model),
   tool: buildToolOptions(MOCK_ENTITY_NAMES.tool),
   skill: buildSkillOptions(MOCK_ENTITY_NAMES.skill),
   source: MOCK_SOURCE_CONNECTORS.map<UsageFilterSourceOption>(

@@ -3,11 +3,15 @@ import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { getModelMaker } from "@app/types/assistant/models/providers";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -29,13 +33,20 @@ export type DimensionLabel = {
   name: string;
   // Only agents and users have one; null for every other dimension.
   pictureUrl: string | null;
+  // Only models have one; null for every other dimension.
+  modelMaker: ModelMakerIdType | null;
+  // Only models have one; null for every other dimension.
+  tier: ModelsTierName | null;
 };
 
 function labelsFromNames(
   names: Map<string, string>
 ): Map<string, DimensionLabel> {
   return new Map(
-    [...names].map(([key, name]) => [key, { name, pictureUrl: null }])
+    [...names].map(([key, name]) => [
+      key,
+      { name, pictureUrl: null, modelMaker: null, tier: null },
+    ])
   );
 }
 
@@ -54,7 +65,15 @@ export async function resolveDimensionLabels(
       return new Map(
         keys.map((key) => {
           const label = labels.get(key) ?? { name: key, pictureUrl: null };
-          return [key, { name: label.name, pictureUrl: label.pictureUrl }];
+          return [
+            key,
+            {
+              name: label.name,
+              pictureUrl: label.pictureUrl,
+              modelMaker: null,
+              tier: null,
+            },
+          ];
         })
       );
     }
@@ -70,6 +89,8 @@ export async function resolveDimensionLabels(
             {
               name: getUserDisplayName(user),
               pictureUrl: user?.imageUrl ?? null,
+              modelMaker: null,
+              tier: null,
             },
           ];
         })
@@ -86,15 +107,27 @@ export async function resolveDimensionLabels(
       );
     }
 
-    case "model":
-      return labelsFromNames(
-        new Map(
-          keys.map((key) => [
+    case "model": {
+      return new Map(
+        keys.map((key) => {
+          const config = getModelConfigByModelId(key);
+          return [
             key,
-            getModelConfigByModelId(key)?.displayName ?? key,
-          ])
-        )
+            {
+              name: config?.displayName ?? key,
+              pictureUrl: null,
+              modelMaker: config ? getModelMaker(config) : null,
+              tier: config
+                ? ModelsTierResource.getTierForModel(
+                    config.modelId,
+                    config.defaultReasoningEffort
+                  )
+                : null,
+            },
+          ];
+        })
       );
+    }
 
     case "tool": {
       // The key is the MCP server name. Internal servers get their display name

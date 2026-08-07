@@ -16,6 +16,7 @@ import {
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_MODEL_TIERS,
+  usageModelTierFromModelsTierName,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
@@ -25,12 +26,17 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useModels } from "@app/lib/swr/models";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -56,14 +62,14 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Models/tools/skills/sources are still mock data (see
-  // usageFilterMockData.ts — sources are fake connectors standing in for a
-  // real db call); agents come from the same workspace-wide listing the rest
-  // of the app uses (useAgentConfigurations), members and teams via the
-  // generic member search and group listing endpoints (useSearchMembers,
-  // useGroups).
+  period: ConsumptionPeriodSelection;
+  // Tools/skills/sources are still mock data (see usageFilterMockData.ts —
+  // sources are fake connectors standing in for a real db call); agents come
+  // from useAgentConfigurations, members from useSearchMembers, and teams
+  // from useGroups. Models are fetched live too, scoped to `period`
+  // (useConsumptionTop), plus the full workspace catalog backing "More
+  // models" (useModels).
   categoryOptions: {
-    model: UsageFilterModelOption[];
     tool: UsageFilterToolOption[];
     skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
@@ -74,6 +80,7 @@ interface UsageFilterPanelProps {
 
 export function UsageFilterPanel({
   owner,
+  period,
   categoryOptions,
   filter,
   onFilterChange,
@@ -106,6 +113,7 @@ export function UsageFilterPanel({
   const isMemberCategoryActive = isOpen && activeCategory === "member";
   const isTeamCategoryActive = isOpen && activeCategory === "team";
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
+  const isModelCategoryActive = isOpen && activeCategory === "model";
 
   // Every category picker supports scroll-to-load-more:
   const [memberPageIndex, setMemberPageIndex] = useState(0);
@@ -185,6 +193,24 @@ export function UsageFilterPanel({
     disabled: !isAgentCategoryActive,
   });
 
+  const { rows: topModelRows } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "model",
+    period,
+    // Same rationale as members/agents: broader than the Attribution table's
+    // own top-N so the picker covers most of the period's active models.
+    limit: 100,
+    disabled: !isModelCategoryActive,
+  });
+
+  // The full workspace catalog (not period-scoped), used only for the "More
+  // models" browse-by-maker escape hatch — a model the period's top-100
+  // missed is still reachable there.
+  const { models: modelCatalog } = useModels({
+    owner,
+    disabled: !isModelCategoryActive,
+  });
+
   const groups = useMemo<UsageFilterGroup[]>(
     () =>
       workspaceGroups.map((group) => ({
@@ -217,6 +243,29 @@ export function UsageFilterPanel({
     [agentConfigurations]
   );
 
+  // Same client-side search caveat as members/agents: a model outside the
+  // top 100 by credits over the period will not be searchable here (it's
+  // still reachable through "More models", which browses the full catalog).
+  // Rows whose model maker can't be resolved are dropped — they'd have no
+  // logo and no tier bucket to live in.
+  const modelOptions = useMemo<UsageFilterModelOption[]>(
+    () =>
+      topModelRows.flatMap((row) =>
+        row.modelMaker
+          ? [
+              {
+                id: row.id,
+                name: row.name,
+                kind: "model" as const,
+                lab: row.modelMaker,
+                tier: usageModelTierFromModelsTierName(row.tier),
+              },
+            ]
+          : []
+      ),
+    [topModelRows]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -225,8 +274,15 @@ export function UsageFilterPanel({
       member: accumulatedMemberOptions,
       team: teamOptions,
       agent: agentOptions,
+      model: modelOptions,
     }),
-    [categoryOptions, accumulatedMemberOptions, teamOptions, agentOptions]
+    [
+      categoryOptions,
+      accumulatedMemberOptions,
+      teamOptions,
+      agentOptions,
+      modelOptions,
+    ]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
@@ -312,6 +368,25 @@ export function UsageFilterPanel({
     hasMoreStaticOptions,
     handleLoadMoreStaticOptions,
   ]);
+
+  // "More models" browses the workspace's full model catalog grouped by
+  // maker, independent of the Fast/Standard/Complex quick filter above and of
+  // the period (unlike the primary checklist above it, sourced from
+  // `topModelRows`). Search/grouping over this catalog is handled inside
+  // UsageFilterModelComplexityControls itself.
+  const moreModelsCatalog = useMemo<UsageFilterModelOption[]>(
+    () =>
+      modelCatalog
+        .filter((model) => !isModelStreamId(model.modelId))
+        .map((model) => ({
+          id: model.modelId,
+          name: model.displayName,
+          kind: "model" as const,
+          lab: getModelMaker(model),
+          tier: undefined,
+        })),
+    [modelCatalog]
+  );
 
   const selectedIdsForActiveCategory = useMemo(
     () =>
@@ -431,7 +506,7 @@ export function UsageFilterPanel({
             )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
-                models={categoryOptions.model}
+                moreModelsCatalog={moreModelsCatalog}
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}

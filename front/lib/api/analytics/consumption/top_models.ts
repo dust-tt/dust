@@ -4,8 +4,10 @@ import {
   avgCreditsPerUnit,
   fetchConsumptionTopGroups,
 } from "@app/lib/api/analytics/consumption/top";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { resolveDimensionLabels } from "./labels";
@@ -20,6 +22,8 @@ import { resolveDimensionLabels } from "./labels";
 export type ConsumptionTopModelRow = {
   modelId: string;
   name: string;
+  modelMaker: ModelMakerIdType | null;
+  tier: ModelsTierName | null;
   credits: number;
   messageCount: number;
   avgCreditsPerMessage: number;
@@ -70,6 +74,8 @@ export async function fetchConsumptionTopModels(
     models: groups.map((group) => ({
       modelId: group.key,
       name: labels.get(group.key)?.name ?? group.key,
+      modelMaker: labels.get(group.key)?.modelMaker ?? null,
+      tier: labels.get(group.key)?.tier ?? null,
       credits: group.credits,
       messageCount: group.count,
       avgCreditsPerMessage: avgCreditsPerUnit(group.credits, group.count),

@@ -9,7 +9,9 @@ import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/co
 import type { GetConsumptionTopTeamsResponse } from "@app/lib/api/analytics/consumption/top_teams";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -28,6 +30,10 @@ export type ConsumptionTopRow = {
   id: string;
   name: string;
   pictureUrl: string | null;
+  // Only models have one; null for every other dimension.
+  modelMaker: ModelMakerIdType | null;
+  // Only models have one; null for every other dimension.
+  tier: ModelsTierName | null;
   credits: number;
   avgCredits: number;
 };
@@ -50,6 +56,8 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.agentId,
       name: row.name,
       pictureUrl: row.pictureUrl,
+      modelMaker: null,
+      tier: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -59,6 +67,8 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.userId,
       name: row.name,
       pictureUrl: row.pictureUrl,
+      modelMaker: null,
+      tier: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -68,6 +78,8 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.teamId,
       name: row.name,
       pictureUrl: null,
+      modelMaker: null,
+      tier: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -77,6 +89,8 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.modelId,
       name: row.name,
       pictureUrl: null,
+      modelMaker: row.modelMaker,
+      tier: row.tier,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -86,6 +100,8 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.serverName,
       name: row.name,
       pictureUrl: null,
+      modelMaker: null,
+      tier: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
     }));
@@ -95,6 +111,8 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.skillId,
       name: row.name,
       pictureUrl: null,
+      modelMaker: null,
+      tier: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
     }));
@@ -104,6 +122,8 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.source,
       name: row.name,
       pictureUrl: null,
+      modelMaker: null,
+      tier: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
