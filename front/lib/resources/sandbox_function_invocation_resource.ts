@@ -286,10 +286,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   private data: SandboxFunctionInvocationData;
 
   /**
-   * In-flight initial persistence (blob write + created event) for an inline execution. Terminal
-   * transitions await it so the terminal blob write cannot be overwritten by the initial one and
-   * the result event cannot outrun the created event. Only ever set on the instance that runs the
-   * invocation inline; instances rehydrated from the DB never have one, and never need one.
+   * In-flight blob persistence for an inline execution: the deferred initial write (blob +
+   * created event), and after a terminal transition also the write-behind terminal blob write
+   * chained onto it. The chaining keeps the object-level ordering (the terminal write can never
+   * be overwritten by a late initial one) without holding the caller's response on GCS. Only
+   * ever set on the instance that runs the invocation inline; instances rehydrated from the DB
+   * never have one, and never need one.
    */
   private pendingInitialPersistence: Promise<void> | undefined;
 
@@ -389,6 +391,59 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return true;
   }
 
+  /**
+   * Persist the terminal blob (input, context, outcome), set on `this.data` by the caller.
+   *
+   * Inline path (a deferred initial persistence is pending): the write chains behind it,
+   * write-behind. The caller's response and the result event carry the outcome, and every
+   * cross-process blob reader is either explicitly settled first (the workflow handoff awaits
+   * settleInitialPersistence) or reads well after the write's ~100-500ms window (inspection,
+   * listings), so nothing is left holding a request on GCS tail latency. The cost is a
+   * narrower durability guarantee: a write that fails, or a process that dies right after
+   * responding, leaves a terminal row whose blob is missing the outcome. Logged loudly; the
+   * outcome itself was still delivered to the caller and the event stream.
+   *
+   * Every other path keeps the awaited write, and gives the terminal claim back on failure so
+   * a retry can record the outcome.
+   */
+  private async persistTerminalData(
+    claimed: Exclude<SandboxFunctionInvocationStatus, "created">
+  ): Promise<void> {
+    if (this.pendingInitialPersistence !== undefined) {
+      const pending = this.pendingInitialPersistence;
+      this.pendingInitialPersistence = (async () => {
+        // The catch guards the floating promise: nothing awaits this chain on the request
+        // path, and a rejection would otherwise surface as an unhandled rejection.
+        try {
+          await pending;
+          const writeResult = await this.writeDataToGcs();
+          if (writeResult.isErr()) {
+            throw writeResult.error;
+          }
+        } catch (error) {
+          logger.error(
+            {
+              workspaceModelId: this.workspaceId,
+              sandboxFunctionId: this.sandboxFunction.sId,
+              invocationId: this.sId,
+              claimedStatus: claimed,
+              err: normalizeError(error),
+            },
+            "Write-behind terminal Pod function invocation persistence failed"
+          );
+        }
+      })();
+      return;
+    }
+
+    await this.settleInitialPersistence();
+    const writeResult = await this.writeDataToGcs();
+    if (writeResult.isErr()) {
+      await this.releaseTerminalClaim(claimed);
+      throw writeResult.error;
+    }
+  }
+
   // Give the claim back if terminal blob persistence fails, so a later fail()/
   // markCreatedAsErrored() path can still record the outcome.
   private async releaseTerminalClaim(
@@ -434,10 +489,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
-    // A deferred initial persistence (inline path) must land before the terminal blob write
-    // overwrites the same object, and before the result event can outrun the created event.
-    await this.settleInitialPersistence();
-
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
@@ -447,11 +498,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // record of a failure the stream classified precisely.
       error: callError,
     };
-    const writeResult = await this.writeDataToGcs();
-    if (writeResult.isErr()) {
-      await this.releaseTerminalClaim("errored");
-      throw writeResult.error;
-    }
+    await this.persistTerminalData("errored");
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_error",
@@ -488,21 +535,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
-    // A deferred initial persistence (inline path) must land before the terminal blob write
-    // overwrites the same object, and before the result event can outrun the created event.
-    await this.settleInitialPersistence();
-
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
       context: this.context,
       result,
     };
-    const writeResult = await this.writeDataToGcs();
-    if (writeResult.isErr()) {
-      await this.releaseTerminalClaim("succeeded");
-      throw writeResult.error;
-    }
+    await this.persistTerminalData("succeeded");
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_result",
@@ -984,8 +1023,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     if (inline) {
       // The created event rides with the deferred blob write: nothing before the terminal
-      // transition consumes either, and succeed()/fail() await the combined promise before
-      // publishing the result, which keeps the created event ahead of the result event.
+      // transition consumes either. The result event may outrun the created event (the terminal
+      // transition chains its blob write behind this promise instead of awaiting it), which
+      // stream consumers already tolerate: they settle on the first terminal event and treat
+      // the created event as optional.
       const pendingBlobWrite = invocation.pendingInitialPersistence;
       invocation.pendingInitialPersistence = Promise.allSettled([
         pendingBlobWrite,
