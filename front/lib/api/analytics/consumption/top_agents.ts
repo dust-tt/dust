@@ -4,9 +4,9 @@ import {
   avgCreditsPerUnit,
   fetchConsumptionTopGroups,
 } from "@app/lib/api/analytics/consumption/top";
-import type { AgentVisibilityScope } from "@app/lib/api/assistant/observability/agent_labels";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { resolveDimensionLabels } from "./labels";
@@ -21,7 +21,7 @@ export type ConsumptionTopAgentRow = {
   agentId: string;
   name: string;
   pictureUrl: string | null;
-  scope: AgentVisibilityScope;
+  scope: AgentConfigurationScope;
   credits: number;
   messageCount: number;
   avgCreditsPerMessage: number;
@@ -73,7 +73,7 @@ export async function fetchConsumptionTopAgents(
       agentId: group.key,
       name: labels.get(group.key)?.name ?? group.key,
       pictureUrl: labels.get(group.key)?.pictureUrl ?? null,
-      scope: labels.get(group.key)?.scope ?? "private",
+      scope: labels.get(group.key)?.scope ?? "hidden",
       credits: group.credits,
       messageCount: group.count,
       avgCreditsPerMessage: avgCreditsPerUnit(group.credits, group.count),

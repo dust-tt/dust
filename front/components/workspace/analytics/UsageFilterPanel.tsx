@@ -27,8 +27,9 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
-import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
+import type { ConsumptionAgentTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
+import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
@@ -215,13 +216,17 @@ export function UsageFilterPanel({
   // by credits over the period will not be searchable here.
   const agentOptions = useMemo<UsageFilterAgentOption[]>(
     () =>
-      topAgentRows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        kind: "agent",
-        image: row.pictureUrl,
-        scope: row.scope ?? "private",
-      })),
+      topAgentRows
+        .filter(
+          (row): row is ConsumptionAgentTopRow => row.dimension === "agent"
+        )
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          kind: "agent",
+          image: row.pictureUrl,
+          scope: row.scope,
+        })),
     [topAgentRows]
   );
 
