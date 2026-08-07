@@ -102,6 +102,109 @@ export function validateTailwindCode(
  * - transpileModule API: https://github.com/microsoft/TypeScript/blob/main/src/services/transpile.ts
  * - Limitation discussion: https://github.com/microsoft/TypeScript/issues/4864
  */
+function isConstantStringExpression(node: ts.Expression): boolean {
+  return ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
+}
+
+function formatSourceLocation(
+  sourceFile: ts.SourceFile,
+  node: ts.Node
+): string {
+  const { line, character } = sourceFile.getLineAndCharacterOfPosition(
+    node.getStart(sourceFile)
+  );
+  return `Line ${line + 1}, Column ${character + 1}`;
+}
+
+/**
+ * Validates that every useFile() call uses a string literal as its first argument.
+ *
+ * Static analysis of useFile() references is required to authorize file access when
+ * a Frame is shared. Dynamic arguments (variables, expressions, template literals
+ * with substitutions) cannot be resolved at validation time.
+ */
+export function validateUseFileCalls(code: string): Result<undefined, Error> {
+  const invalidCalls: {
+    callText: string;
+    lineColumn: string;
+    reason: string;
+  }[] = [];
+
+  try {
+    const sourceFile = ts.createSourceFile(
+      "frame.tsx",
+      code,
+      ts.ScriptTarget.Latest,
+      false,
+      ts.ScriptKind.TSX
+    );
+
+    const visit = (node: ts.Node): void => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === "useFile"
+      ) {
+        const callText = node.getText(sourceFile);
+        const lineColumn = formatSourceLocation(sourceFile, node);
+
+        if (node.arguments.length === 0) {
+          invalidCalls.push({
+            callText,
+            lineColumn,
+            reason:
+              "useFile() requires a string literal file ID or scoped path as its first argument.",
+          });
+        } else if (!isConstantStringExpression(node.arguments[0])) {
+          invalidCalls.push({
+            callText,
+            lineColumn,
+            reason:
+              'The first argument must be a string literal such as useFile("fil_abc123") ' +
+              'or useFile("conversation-{conversationId}/report.csv"). Variables, ' +
+              "expressions, concatenation, and template literals with ${...} are not allowed.",
+          });
+        }
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(sourceFile);
+  } catch (error) {
+    return new Err(
+      new Error(`Failed to validate useFile() calls: ${normalizeError(error)}`)
+    );
+  }
+
+  if (invalidCalls.length > 0) {
+    const formattedErrors = invalidCalls
+      .slice(0, MAX_DISPLAYED_ERRORS)
+      .map(
+        ({ lineColumn, callText, reason }) =>
+          `${lineColumn}: ${callText}\n  ${reason}`
+      )
+      .join("\n\n");
+
+    const additionalErrors =
+      invalidCalls.length > MAX_DISPLAYED_ERRORS
+        ? ` (and ${invalidCalls.length - MAX_DISPLAYED_ERRORS} more invalid useFile() calls)`
+        : "";
+
+    return new Err(
+      new Error(
+        `Invalid useFile() calls detected${additionalErrors}:\n\n${formattedErrors}\n\n` +
+          `useFile() must be called with a string literal so referenced files can be detected ` +
+          `and authorized when the Frame is shared. Replace dynamic arguments with a literal ` +
+          `file ID (e.g. "fil_abc123") or scoped path (e.g. "conversation-{conversationId}/report.csv"). ` +
+          `Please fix these errors and try again.`
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
 export function validateTypeScriptSyntax(
   code: string
 ): Result<undefined, Error> {
