@@ -882,8 +882,8 @@ describe("getJITServers", () => {
     });
   });
 
-  describe("schedules_management feature", () => {
-    it("should include schedules_management server for onboarding conversations", async () => {
+  describe("triggers_management feature", () => {
+    it("should include triggers_management server for onboarding conversations", async () => {
       const user = auth.getNonNullableUser();
 
       // Mark this conversation as the onboarding conversation.
@@ -899,29 +899,27 @@ describe("getJITServers", () => {
         attachments: [],
       });
 
-      const schedulesManagementServer = jitServers.find(
-        (server) => server.name === "schedules_management"
+      const triggersManagementServer = jitServers.find(
+        (server) => server.name === "triggers_management"
       );
 
-      expect(schedulesManagementServer).toBeDefined();
-      expect(schedulesManagementServer?.name).toContain("schedules_management");
-      expect(schedulesManagementServer?.description).toContain(
-        "recurring tasks"
-      );
+      expect(triggersManagementServer).toBeDefined();
+      expect(triggersManagementServer?.name).toContain("triggers_management");
+      expect(triggersManagementServer?.description).toContain("recurring");
     });
 
-    it("should not include schedules_management server for non-onboarding conversations", async () => {
+    it("should not include triggers_management server for non-onboarding conversations", async () => {
       const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
       });
 
-      const schedulesManagementServer = jitServers.find(
-        (server) => server.name === "schedules_management"
+      const triggersManagementServer = jitServers.find(
+        (server) => server.name === "triggers_management"
       );
 
-      expect(schedulesManagementServer).toBeUndefined();
+      expect(triggersManagementServer).toBeUndefined();
     });
   });
 

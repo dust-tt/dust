@@ -440,7 +440,7 @@ export const activationSkill = {
     { name: "agent_router" },
     { name: "agent_templates" },
     { name: "skill_authoring" },
-    { name: "schedules_management" },
+    { name: "triggers_management" },
     { name: "files" },
     { name: "activation_recommendations" },
     { name: "pod_manager" },

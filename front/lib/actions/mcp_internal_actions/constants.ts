@@ -72,7 +72,6 @@ import {
   SANDBOX_SERVER,
 } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
-import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
@@ -85,6 +84,7 @@ import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/m
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
+import { TRIGGERS_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/triggers_management/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { USER_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/user_analytics/metadata";
 import { USER_MEMORY_SERVER } from "@app/lib/api/actions/servers/user_memory/metadata";
@@ -225,7 +225,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   TABLE_QUERY_V2_SERVER_NAME,
   SKILL_AUTHORING_SERVER_NAME,
   "skill_management",
-  "schedules_management",
+  "triggers_management",
   "pod_manager",
   "pod_tasks",
   "poke",
@@ -998,7 +998,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     timeoutMs: undefined,
     metadata: SKILL_AUTHORING_SERVER,
   },
-  schedules_management: {
+  triggers_management: {
     id: 1020,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -1007,7 +1007,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: SCHEDULES_MANAGEMENT_SERVER,
+    metadata: TRIGGERS_MANAGEMENT_SERVER,
   },
   pod_manager: {
     id: 1021,
