@@ -8,9 +8,11 @@ import {
   CONSUMPTION_SCOPE_DIMENSIONS,
   DEFAULT_CONSUMPTION_METRIC,
 } from "@app/lib/api/analytics/consumption/scope";
-import { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/series";
 import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
-import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
+import {
+  DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
+  fetchConsumptionTimeseries,
+} from "@app/lib/api/analytics/consumption/timeseries";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";

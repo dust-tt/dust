@@ -3,10 +3,10 @@ import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/perio
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FIELDS } from "@app/lib/api/analytics/consumption/scope";
 import {
+  fetchConsumptionTimeseries,
   OTHERS_GROUP_KEY,
   TOTAL_GROUP_KEY,
-} from "@app/lib/api/analytics/consumption/series";
-import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
+} from "@app/lib/api/analytics/consumption/timeseries";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";

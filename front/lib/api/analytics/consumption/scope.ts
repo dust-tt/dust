@@ -54,6 +54,26 @@ export const CONSUMPTION_METRIC_DEFINITIONS: Record<
   },
 };
 
+export type ConsumptionGroupBucket = {
+  key: string;
+  metric?: estypes.AggregationsSumAggregate;
+};
+
+export function metricSubAgg(
+  metric: ConsumptionMetric
+): Record<string, estypes.AggregationsAggregationContainer> {
+  return {
+    metric: { sum: { field: CONSUMPTION_METRIC_DEFINITIONS[metric].field } },
+  };
+}
+
+export function metricValue(
+  metric: ConsumptionMetric,
+  agg: estypes.AggregationsSumAggregate | undefined
+): number {
+  return (agg?.value ?? 0) / CONSUMPTION_METRIC_DEFINITIONS[metric].divisor;
+}
+
 function termFilter(
   field: string,
   values: string[] | undefined

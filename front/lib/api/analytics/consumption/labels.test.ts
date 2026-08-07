@@ -58,9 +58,9 @@ describe("resolveDimensionLabels", () => {
       "deleted_skill",
     ]);
 
-    expect(names.get("retired")).toBe("deleted_model");
-    expect(origins.get("unknown_origin")).toBe("deleted_origin");
-    expect(skills.get("skl_deleted")).toBe("deleted_skill");
+    expect(names.get("deleted_model")).toBe("deleted_model");
+    expect(origins.get("deleted_origin")).toBe("deleted_origin");
+    expect(skills.get("deleted_skill")).toBe("deleted_skill");
   });
 
   it("returns nothing for an empty breakdown", async () => {

@@ -2,27 +2,19 @@ import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/label
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionMetric,
+  ConsumptionScopeDimension,
   ConsumptionScopeFilter,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
   buildConsumptionScopeQuery,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
-  CONSUMPTION_METRIC_DEFINITIONS,
+  type ConsumptionGroupBucket,
   DEFAULT_CONSUMPTION_METRIC,
+  metricSubAgg,
+  metricValue,
 } from "@app/lib/api/analytics/consumption/scope";
-import type {
-  ConsumptionBreakdownDimension,
-  ConsumptionGranularity,
-  ConsumptionTimeseriesGroup,
-  ConsumptionTimeseriesMode,
-  ConsumptionTimeseriesPoint,
-} from "@app/lib/api/analytics/consumption/series";
-import {
-  DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
-  OTHERS_GROUP_KEY,
-  TOTAL_GROUP_KEY,
-} from "@app/lib/api/analytics/consumption/series";
+import { fetchTopDimensions } from "@app/lib/api/analytics/consumption/top_dimensions";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
@@ -33,12 +25,25 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type {
-  ConsumptionBreakdownDimension,
-  ConsumptionGranularity,
-  ConsumptionTimeseriesGroup,
-  ConsumptionTimeseriesMode,
-  ConsumptionTimeseriesPoint,
+export type ConsumptionGranularity = "day" | "week" | "month";
+export type ConsumptionTimeseriesMode = "daily" | "cumulative";
+
+export const TOTAL_GROUP_KEY = "total";
+
+export const OTHERS_GROUP_KEY = "others";
+
+export type ConsumptionBreakdownDimension = ConsumptionScopeDimension;
+
+export const DEFAULT_CONSUMPTION_BREAKDOWN_COUNT = 10;
+
+export type ConsumptionTimeseriesGroup = {
+  groupKey: string;
+  name: string;
+};
+
+export type ConsumptionTimeseriesPoint = {
+  timestamp: number;
+  values: Record<string, number>;
 };
 
 export type ConsumptionTimeseries = {
@@ -56,75 +61,35 @@ export type ConsumptionTimeseries = {
 
 export type GetConsumptionTimeseriesResponse = ConsumptionTimeseries;
 
-type GroupBucket = {
-  key: string;
-  metric?: estypes.AggregationsSumAggregate;
+type ConsumptionTimeseriesScope = {
+  period: ConsumptionPeriod;
+  granularity: ConsumptionGranularity;
+  mode: ConsumptionTimeseriesMode;
+  metric: ConsumptionMetric;
 };
 
 type DateBucket = {
   key: number;
   metric?: estypes.AggregationsSumAggregate;
-  by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
+  by_group?: estypes.AggregationsMultiBucketAggregateBase<ConsumptionGroupBucket>;
 };
 
 type TimeseriesAggs = {
   by_date?: estypes.AggregationsMultiBucketAggregateBase<DateBucket>;
 };
 
-type RankingAggs = {
-  by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
+type ConsumptionMetricBucket = {
+  timestamp: number;
+  total: number;
+  // Empty unless the search was given a breakdown, in which case the keys are a
+  // subset of the ones it was restricted to.
+  valueByGroupKey: Map<string, number>;
 };
 
-function metricSubAgg(
-  metric: ConsumptionMetric
-): Record<string, estypes.AggregationsAggregationContainer> {
-  return {
-    metric: { sum: { field: CONSUMPTION_METRIC_DEFINITIONS[metric].field } },
-  };
-}
-
-function metricValue(
-  metric: ConsumptionMetric,
-  agg: estypes.AggregationsSumAggregate | undefined
-): number {
-  return (agg?.value ?? 0) / CONSUMPTION_METRIC_DEFINITIONS[metric].divisor;
-}
-
-/**
- * Top `limit` group keys by metric over the whole period.
- *
- * Ranked in its own request rather than as a terms sub-agg of the histogram:
- * a per-bucket top N would pick a different set of agents for each bucket, so
- * a series would mean a different agent from one bar to the next.
- */
-async function fetchTopGroupKeys(
-  query: estypes.QueryDslQueryContainer,
-  {
-    field,
-    limit,
-    metric,
-  }: { field: string; limit: number; metric: ConsumptionMetric }
-): Promise<Result<string[], ElasticsearchError>> {
-  const result = await searchConsumptionAnalytics<never, RankingAggs>(query, {
-    aggregations: {
-      by_group: {
-        terms: { field, size: limit, order: { metric: "desc" } },
-        aggs: metricSubAgg(metric),
-      },
-    },
-    size: 0,
-  });
-
-  if (result.isErr()) {
-    return result;
-  }
-
-  return new Ok(
-    bucketsToArray<GroupBucket>(
-      result.value.aggregations?.by_group?.buckets
-    ).map((bucket) => String(bucket.key))
-  );
-}
+type ConsumptionBreakdown = {
+  field: string;
+  groupKeys: string[];
+};
 
 export async function fetchConsumptionTimeseries(
   auth: Authenticator,
@@ -152,24 +117,128 @@ export async function fetchConsumptionTimeseries(
     endDate: period.endDate,
     filter,
   });
+  const scope = { period, granularity, mode, metric };
 
-  const breakdownField = breakdownBy
-    ? CONSUMPTION_DIMENSION_FIELDS[breakdownBy]
-    : null;
-
-  let topGroupKeys: string[] = [];
-  if (breakdownField) {
-    const rankingResult = await fetchTopGroupKeys(query, {
-      field: breakdownField,
-      limit: breakdownCount,
-      metric,
-    });
-    if (rankingResult.isErr()) {
-      return rankingResult;
-    }
-    topGroupKeys = rankingResult.value;
+  if (!breakdownBy) {
+    return fetchTimeseries(query, scope);
   }
 
+  return fetchTimeseriesBreakdown(auth, query, scope, {
+    breakdownBy,
+    breakdownCount,
+  });
+}
+
+async function fetchTimeseries(
+  query: estypes.QueryDslQueryContainer,
+  scope: ConsumptionTimeseriesScope,
+  breakdownBy: ConsumptionBreakdownDimension | null = null
+): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+  const bucketsResult = await fetchMetricTimeseries(query, {
+    period: scope.period,
+    granularity: scope.granularity,
+    metric: scope.metric,
+    breakdown: null,
+  });
+  if (bucketsResult.isErr()) {
+    return bucketsResult;
+  }
+
+  const points = bucketsResult.value.map((bucket) => ({
+    timestamp: bucket.timestamp,
+    values: { [TOTAL_GROUP_KEY]: bucket.total },
+  }));
+
+  return new Ok({
+    ...scope,
+    breakdownBy,
+    groups: [{ groupKey: TOTAL_GROUP_KEY, name: "Total" }],
+    points: finalizePoints(points, [TOTAL_GROUP_KEY], scope.mode),
+  });
+}
+
+async function fetchTimeseriesBreakdown(
+  auth: Authenticator,
+  query: estypes.QueryDslQueryContainer,
+  scope: ConsumptionTimeseriesScope,
+  {
+    breakdownBy,
+    breakdownCount,
+  }: {
+    breakdownBy: ConsumptionBreakdownDimension;
+    breakdownCount: number;
+  }
+): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+  const field = CONSUMPTION_DIMENSION_FIELDS[breakdownBy];
+
+  const rankingResult = await fetchTopDimensions(query, {
+    field,
+    limit: breakdownCount,
+    metric: scope.metric,
+  });
+  if (rankingResult.isErr()) {
+    return rankingResult;
+  }
+  const topDimensionKeys = rankingResult.value;
+
+  if (topDimensionKeys.length === 0) {
+    return fetchTimeseries(query, scope);
+  }
+
+  const bucketsResult = await fetchMetricTimeseries(query, {
+    period: scope.period,
+    granularity: scope.granularity,
+    metric: scope.metric,
+    breakdown: { field, groupKeys: topDimensionKeys },
+  });
+  if (bucketsResult.isErr()) {
+    return bucketsResult;
+  }
+
+  const { points, hasOthers } = buildBreakdownPoints(
+    bucketsResult.value,
+    topDimensionKeys
+  );
+
+  const names = await resolveDimensionLabels(
+    auth,
+    breakdownBy,
+    topDimensionKeys
+  );
+  const rankedGroups = topDimensionKeys.map((groupKey) => ({
+    groupKey,
+    name: names.get(groupKey) ?? groupKey,
+  }));
+  const groups: ConsumptionTimeseriesGroup[] = hasOthers
+    ? [...rankedGroups, { groupKey: OTHERS_GROUP_KEY, name: "Others" }]
+    : rankedGroups;
+
+  return new Ok({
+    ...scope,
+    breakdownBy,
+    groups,
+    points: finalizePoints(
+      points,
+      groups.map((group) => group.groupKey),
+      scope.mode
+    ),
+  });
+}
+
+async function fetchMetricTimeseries(
+  query: estypes.QueryDslQueryContainer,
+  {
+    period,
+    granularity,
+    metric,
+    breakdown,
+  }: {
+    period: ConsumptionPeriod;
+    granularity: ConsumptionGranularity;
+    metric: ConsumptionMetric;
+    breakdown: ConsumptionBreakdown | null;
+  }
+): Promise<Result<ConsumptionMetricBucket[], ElasticsearchError>> {
   const result = await searchConsumptionAnalytics<never, TimeseriesAggs>(
     query,
     {
@@ -189,13 +258,13 @@ export async function fetchConsumptionTimeseries(
           },
           aggs: {
             ...metricSubAgg(metric),
-            ...(breakdownField && topGroupKeys.length > 0
+            ...(breakdown
               ? {
                   by_group: {
                     terms: {
-                      field: breakdownField,
-                      include: topGroupKeys,
-                      size: topGroupKeys.length,
+                      field: breakdown.field,
+                      include: breakdown.groupKeys,
+                      size: breakdown.groupKeys.length,
                     },
                     aggs: metricSubAgg(metric),
                   },
@@ -216,98 +285,69 @@ export async function fetchConsumptionTimeseries(
     result.value.aggregations?.by_date?.buckets
   );
 
-  // No breakdown asked for, or nothing consumed at all: one total series.
-  if (!breakdownBy || topGroupKeys.length === 0) {
-    const points: ConsumptionTimeseriesPoint[] = buckets.map((bucket) => ({
+  return new Ok(
+    buckets.map((bucket) => ({
       timestamp: bucket.key,
-      values: { [TOTAL_GROUP_KEY]: metricValue(metric, bucket.metric) },
-    }));
-    return new Ok({
-      period,
-      granularity,
-      mode,
-      metric,
-      breakdownBy: breakdownBy ?? null,
-      groups: [{ groupKey: TOTAL_GROUP_KEY, name: "Total" }],
-      points: finalizePoints(points, [TOTAL_GROUP_KEY], mode),
-    });
-  }
-
-  // Per bucket: the ranked groups' values, plus whatever the bucket total has
-  // left over for everyone outside the ranking.
-  const bucketValues = buckets.map((bucket) => {
-    const valuesByKey = new Map(
-      bucketsToArray<GroupBucket>(bucket.by_group?.buckets).map(
-        (groupBucket) => [
-          String(groupBucket.key),
-          metricValue(metric, groupBucket.metric),
-        ]
-      )
-    );
-
-    const rankedValues = topGroupKeys.map(
-      (groupKey) => valuesByKey.get(groupKey) ?? 0
-    );
-    const total = metricValue(metric, bucket.metric);
-    return {
-      rankedValues,
-      // Clamped: floating-point sums can leave a sliver behind, and on a
-      // multi-valued dimension (a tool call attributed to several skills) the
-      // ranked groups legitimately double-count against the bucket total.
-      otherValue: Math.max(
-        0,
-        total - rankedValues.reduce((sum, value) => sum + value, 0)
+      total: metricValue(metric, bucket.metric),
+      valueByGroupKey: new Map(
+        bucketsToArray<ConsumptionGroupBucket>(bucket.by_group?.buckets).map(
+          (groupBucket) => [
+            String(groupBucket.key),
+            metricValue(metric, groupBucket.metric),
+          ]
+        )
       ),
-    };
-  });
+    }))
+  );
+}
+
+/**
+ * Per bucket: the ranked groups' values, plus whatever the bucket total has left
+ * over for everyone outside the ranking.
+ */
+function buildBreakdownPoints(
+  buckets: ConsumptionMetricBucket[],
+  groupKeys: string[]
+): { points: ConsumptionTimeseriesPoint[]; hasOthers: boolean } {
+  const otherValues = buckets.map((bucket) => otherValue(bucket, groupKeys));
 
   // Only show an "others" series when something actually falls outside the top
   // N — an empty series in the legend of an all-agents-shown chart is noise.
-  const hasOthers = bucketValues.some((bucket) => bucket.otherValue > 0);
-  const groupKeys = hasOthers
-    ? [...topGroupKeys, OTHERS_GROUP_KEY]
-    : topGroupKeys;
+  const hasOthers = otherValues.some((value) => value > 0);
 
-  const points: ConsumptionTimeseriesPoint[] = buckets.map((bucket, index) => {
+  const points = buckets.map((bucket, index) => {
     const values: Record<string, number> = {};
-    topGroupKeys.forEach((groupKey, groupIndex) => {
+    for (const groupKey of groupKeys) {
       // A group absent from a bucket still gets a 0, so every point carries
       // exactly the keys in `groups` and the stack is never ragged.
-      values[groupKey] = bucketValues[index].rankedValues[groupIndex];
-    });
-    if (hasOthers) {
-      values[OTHERS_GROUP_KEY] = bucketValues[index].otherValue;
+      values[groupKey] = bucket.valueByGroupKey.get(groupKey) ?? 0;
     }
-    return { timestamp: bucket.key, values };
+    if (hasOthers) {
+      values[OTHERS_GROUP_KEY] = otherValues[index];
+    }
+    return { timestamp: bucket.timestamp, values };
   });
 
-  const names = await resolveDimensionLabels(auth, breakdownBy, topGroupKeys);
-  const groups: ConsumptionTimeseriesGroup[] = topGroupKeys.map((groupKey) => ({
-    groupKey,
-    name: names.get(groupKey) ?? groupKey,
-  }));
-  if (hasOthers) {
-    groups.push({ groupKey: OTHERS_GROUP_KEY, name: "Others" });
-  }
+  return { points, hasOthers };
+}
 
-  return new Ok({
-    period,
-    granularity,
-    mode,
-    metric,
-    breakdownBy,
-    groups,
-    points: finalizePoints(points, groupKeys, mode),
-  });
+function otherValue(
+  bucket: ConsumptionMetricBucket,
+  groupKeys: string[]
+): number {
+  const ranked = groupKeys.reduce(
+    (sum, groupKey) => sum + (bucket.valueByGroupKey.get(groupKey) ?? 0),
+    0
+  );
+  return Math.max(0, bucket.total - ranked);
 }
 
 /**
  * Zeroes the buckets that have not started yet and, in cumulative mode, carries
  * the running total across the ones that have.
  *
- * One pass rather than two because the two rules are the same rule: a bucket
- * that has not started has consumed nothing, so it neither reports a total nor
- * advances one.
+ * Regardless of mode, a bucket in the future is always zeroed (so the timeseries stops
+ * rather than plateau in cumulative mode).
  */
 function finalizePoints(
   points: ConsumptionTimeseriesPoint[],

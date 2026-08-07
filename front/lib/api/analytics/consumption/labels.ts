@@ -1,4 +1,3 @@
-import type { ConsumptionBreakdownDimension } from "@app/lib/api/analytics/consumption/series";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import {
   resolveAnalyticsAgentLabels,
@@ -11,6 +10,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import type { ConsumptionBreakdownDimension } from "./timeseries";
 
 /**
  * Resolve display names / labels for a set of keys for a given dimension.
