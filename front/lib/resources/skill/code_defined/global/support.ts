@@ -29,6 +29,6 @@ export const supportSkill = {
     "an expert in Dust, for instance if they have a @dust.tt email address.",
   instructions: SUPPORT_INSTRUCTIONS,
   mcpServers: [{ name: WEB_SEARCH_BROWSE_SERVER_NAME }],
-  version: 1,
+  version: 2,
   icon: "ActionHandHeartIcon",
 } as const satisfies GlobalSkillDefinition;
