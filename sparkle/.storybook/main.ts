@@ -5,11 +5,7 @@ import path from "path";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const config: StorybookConfig = {
-  stories: [
-    "../src/**/*.mdx",
-    "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-    "../../front/components/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-  ],
+  stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
 
   staticDirs: [
     { from: "../../front/public/static", to: "/static" },
