@@ -12,6 +12,7 @@ import { useImportSkills } from "@app/lib/swr/skill_configurations";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -19,6 +20,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  PuzzleSpinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -153,13 +155,16 @@ export function ImportSkillsDialog({
             variant: "outline",
             disabled: isImporting,
           }}
-          rightButtonProps={{
-            label: isImporting ? "Importing..." : "Import",
-            disabled: isImporting || isDetecting || selectedCount === 0,
-            isLoading: isImporting,
-            onClick: form.handleSubmit(onSubmit),
-          }}
-        />
+        >
+          <Button
+            className="w-20"
+            label={isImporting ? undefined : "Import"}
+            icon={isImporting ? <PuzzleSpinner /> : undefined}
+            disabled={isImporting || isDetecting || selectedCount === 0}
+            aria-label={isImporting ? "Importing skills" : undefined}
+            onClick={form.handleSubmit(onSubmit)}
+          />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
