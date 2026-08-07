@@ -1,32 +1,15 @@
 import type {
   UsageFilterSkillOption,
   UsageFilterSourceOption,
-  UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import type { ConnectorProvider } from "@app/types/data_source";
 
 // Placeholder data for categories not yet wired to a real backend endpoint.
 // Agents are fetched live in UsageFilterPanel (useAgentConfigurations);
-// members via useSearchMembers; groups via useGroups; models via useModels.
-// Lists are long enough to exercise scrolling in the preview.
+// members via useSearchMembers; groups via useGroups; models via useModels;
+// tools via useConsumptionTop. Lists are long enough to exercise scrolling
+// in the preview.
 const MOCK_ENTITY_NAMES = {
-  tool: [
-    "web_search",
-    "file_search",
-    "run_code",
-    "browse_page",
-    "generate_image",
-    "send_email",
-    "create_calendar_event",
-    "query_database",
-    "read_spreadsheet",
-    "post_to_slack",
-    "create_jira_ticket",
-    "translate_text",
-    "summarize_document",
-    "extract_table",
-    "fetch_url",
-  ],
   skill: [
     "Summarize",
     "Translate",
@@ -68,14 +51,6 @@ const MOCK_SOURCE_CONNECTORS: Array<{
   { name: "Uploaded files — Legal templates", connectorProvider: undefined },
 ];
 
-function buildToolOptions(names: string[]): UsageFilterToolOption[] {
-  return names.map((name, index) => ({
-    id: `tool_${index + 1}`,
-    name,
-    kind: "tool",
-  }));
-}
-
 function buildSkillOptions(names: string[]): UsageFilterSkillOption[] {
   return names.map((name, index) => ({
     id: `skill_${index + 1}`,
@@ -85,7 +60,6 @@ function buildSkillOptions(names: string[]): UsageFilterSkillOption[] {
 }
 
 export const USAGE_FILTER_MOCK_OPTIONS = {
-  tool: buildToolOptions(MOCK_ENTITY_NAMES.tool),
   skill: buildSkillOptions(MOCK_ENTITY_NAMES.skill),
   source: MOCK_SOURCE_CONNECTORS.map<UsageFilterSourceOption>(
     (connector, index) => ({

@@ -27,7 +27,9 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
@@ -61,14 +63,15 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Tools/skills/sources are still mock data (see usageFilterMockData.ts —
-  // sources are fake connectors standing in for a real db call); agents come
-  // from useAgentConfigurations, members from useSearchMembers, teams from
+  period: ConsumptionPeriodSelection;
+  // Skills/sources are still mock data (see usageFilterMockData.ts — sources
+  // are fake connectors standing in for a real db call); agents come from
+  // useAgentConfigurations, members from useSearchMembers, teams from
   // useGroups, and models from the workspace's full model catalog
   // (useModels) — the same endpoint that backs the model picker elsewhere in
-  // the app.
+  // the app. Tools are fetched live too, scoped to `period`
+  // (useConsumptionTop).
   categoryOptions: {
-    tool: UsageFilterToolOption[];
     skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
   };
@@ -78,6 +81,7 @@ interface UsageFilterPanelProps {
 
 export function UsageFilterPanel({
   owner,
+  period,
   categoryOptions,
   filter,
   onFilterChange,
@@ -111,6 +115,7 @@ export function UsageFilterPanel({
   const isTeamCategoryActive = isOpen && activeCategory === "team";
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
   const isModelCategoryActive = isOpen && activeCategory === "model";
+  const isToolCategoryActive = isOpen && activeCategory === "tool";
 
   // Every category picker supports scroll-to-load-more:
   const [memberPageIndex, setMemberPageIndex] = useState(0);
@@ -190,6 +195,17 @@ export function UsageFilterPanel({
     disabled: !isAgentCategoryActive,
   });
 
+  const { rows: topToolRows } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "tool",
+    period,
+    // Same rationale as members/agents: broader than the Attribution
+    // table's own top-N so the picker covers most of the period's active
+    // tools.
+    limit: 100,
+    disabled: !isToolCategoryActive,
+  });
+
   // The workspace's full, period-independent model catalog — the same
   // endpoint backing the model picker elsewhere in the app — rather than a
   // period-scoped top-N, so every enabled model is listable and searchable
@@ -252,6 +268,18 @@ export function UsageFilterPanel({
     [modelCatalog]
   );
 
+  // Same client-side search caveat as members/agents/models: a tool outside
+  // the top 100 by credits over the period will not be searchable here.
+  const toolOptions = useMemo<UsageFilterToolOption[]>(
+    () =>
+      topToolRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        kind: "tool" as const,
+      })),
+    [topToolRows]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -261,6 +289,7 @@ export function UsageFilterPanel({
       team: teamOptions,
       agent: agentOptions,
       model: modelCatalogOptions,
+      tool: toolOptions,
     }),
     [
       categoryOptions,
@@ -268,6 +297,7 @@ export function UsageFilterPanel({
       teamOptions,
       agentOptions,
       modelCatalogOptions,
+      toolOptions,
     ]
   );
 
