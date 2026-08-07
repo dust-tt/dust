@@ -296,9 +296,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   private pendingInitialPersistence: Promise<void> | undefined;
 
   async settleInitialPersistence(): Promise<void> {
-    if (this.pendingInitialPersistence) {
-      await this.pendingInitialPersistence;
-      this.pendingInitialPersistence = undefined;
+    // Re-read after each await: a terminal transition can chain a write-behind onto the field
+    // while a settle is in flight, and clearing blindly would drop that chain undrained.
+    while (this.pendingInitialPersistence) {
+      const pending = this.pendingInitialPersistence;
+      await pending;
+      if (this.pendingInitialPersistence === pending) {
+        this.pendingInitialPersistence = undefined;
+      }
     }
   }
 
@@ -412,22 +417,22 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     if (this.pendingInitialPersistence !== undefined) {
       const pending = this.pendingInitialPersistence;
       this.pendingInitialPersistence = (async () => {
-        // The catch guards the floating promise: nothing awaits this chain on the request
-        // path, and a rejection would otherwise surface as an unhandled rejection.
-        try {
-          await pending;
-          const writeResult = await this.writeDataToGcs();
-          if (writeResult.isErr()) {
-            throw writeResult.error;
-          }
-        } catch (error) {
+        // Invariant: `pending` never rejects — its producers settle internally (makeNew logs
+        // its write failure, createAndStartExecution wraps in Promise.allSettled) — and
+        // writeDataToGcs returns a Result, so this floating chain cannot produce an unhandled
+        // rejection. The claim is deliberately kept on failure, unlike the awaited branch:
+        // releasing here would strand a row whose caller already got the outcome, with nothing
+        // left to retry it.
+        await pending;
+        const writeResult = await this.writeDataToGcs();
+        if (writeResult.isErr()) {
           logger.error(
             {
               workspaceModelId: this.workspaceId,
               sandboxFunctionId: this.sandboxFunction.sId,
               invocationId: this.sId,
               claimedStatus: claimed,
-              err: normalizeError(error),
+              err: writeResult.error,
             },
             "Write-behind terminal Pod function invocation persistence failed"
           );
