@@ -1,5 +1,3 @@
-import { getModelMakerLogo } from "@app/components/providers/types";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type {
   UsageFilter,
   UsageFilterCategory,
@@ -18,57 +16,29 @@ import {
   toggleUsageFilterEntity,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
-  USAGE_FILTER_SCOPE_LABEL,
   USAGE_FILTER_SCOPES,
   USAGE_MODEL_LABS,
-  USAGE_MODEL_TIER_LABEL,
   USAGE_MODEL_TIERS,
 } from "@app/components/workspace/analytics/usageFilter";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
+import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
+import { UsageFilterEntityCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterEntityCheckboxList";
+import { UsageFilterFooter } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterFooter";
+import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
+import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
+import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Avatar,
   BarChart05,
-  BarFull,
-  BarHalf,
-  BarLow,
   Button,
-  Check,
-  Checkbox,
-  ChevronDown,
-  ChevronRight,
-  Chip,
-  Collapsible,
-  CollapsibleContent,
-  Counter,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSearchbar,
-  DropdownMenuTrigger,
-  Icon,
-  Label,
-  NavigationList,
-  NavigationListItem,
   NavigationListLabel,
-  Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
   SearchInput,
-  XClose,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
-import { Fragment, useMemo, useState } from "react";
-
-const MODEL_TIER_ICON: Record<UsageModelTier, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
+import { useMemo, useState } from "react";
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -91,7 +61,6 @@ export function UsageFilterPanel({
   filter,
   onFilterChange,
 }: UsageFilterPanelProps) {
-  const { isDark } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   // Selections are staged here while the panel is open and only propagated to
   // `onFilterChange` when the user clicks Apply. Cancel (or dismissing the
@@ -293,42 +262,30 @@ export function UsageFilterPanel({
     setIsOpen(false);
   };
 
-  const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
-
-  const renderEntityIcon = (
+  const handleToggleEntity = (
     category: UsageFilterCategory,
     entity: UsageFilterEntity
   ) => {
-    switch (category) {
-      case "member":
-        return (
-          <Avatar
-            name={entity.name}
-            visual={entity.image ?? undefined}
-            size="xxs"
-            isRounded
-          />
-        );
-      case "source": {
-        const logo = getConnectorProviderLogoWithFallback({
-          provider: entity.connectorProvider ?? null,
-          isDark,
-        });
-        return <Icon visual={logo} size="sm" />;
-      }
-      case "model":
-        return entity.lab ? (
-          <Icon visual={getModelMakerLogo(entity.lab, isDark)} size="sm" />
-        ) : null;
-      case "agent":
-      case "tool":
-      case "skill":
-        return null;
-      default:
-        assertNeverAndIgnore(category);
-        return null;
+    setDraftFilter(toggleUsageFilterEntity(draftFilter, category, entity));
+  };
+
+  const handleRemoveEntity = (category: UsageFilterCategory, id: string) => {
+    setDraftFilter(removeUsageFilterEntity(draftFilter, category, id));
+  };
+
+  const handleMoreModelsOpenChange = (open: boolean) => {
+    setIsMoreModelsOpen(open);
+    if (open) {
+      setMoreModelsSearch("");
+      setExpandedModelLab(null);
     }
   };
+
+  const handleToggleExpandedModelLab = (lab: UsageModelLab) => {
+    setExpandedModelLab((current) => (current === lab ? null : lab));
+  };
+
+  const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={handleOpenChange}>
@@ -344,38 +301,12 @@ export function UsageFilterPanel({
       </PopoverTrigger>
       <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
         <div className="flex h-[420px] flex-row divide-x divide-border">
-          <div className="flex h-full w-[170px] flex-col p-2">
-            <NavigationListLabel
-              label="Filter"
-              className="bg-transparent pt-1.5 font-medium"
-            />
-            <NavigationList className="min-h-0 flex-1">
-              {USAGE_FILTER_CATEGORIES.map((category) => {
-                const selectionCount = draftFilter[category]?.length ?? 0;
-                return (
-                  <NavigationListItem
-                    key={category}
-                    selected={category === activeCategory}
-                    avatar={
-                      <span className="label-sm grow overflow-hidden text-ellipsis whitespace-nowrap text-gray-950">
-                        {USAGE_FILTER_CATEGORY_LABEL[category]}
-                      </span>
-                    }
-                    suffix={
-                      selectionCount > 0 ? (
-                        <Counter
-                          value={selectionCount}
-                          size="xs"
-                          variant="highlight"
-                        />
-                      ) : undefined
-                    }
-                    onClick={() => handleCategoryChange(category)}
-                  />
-                );
-              })}
-            </NavigationList>
-          </div>
+          <UsageFilterCategoryNav
+            categories={USAGE_FILTER_CATEGORIES}
+            draftFilter={draftFilter}
+            activeCategory={activeCategory}
+            onCategoryChange={handleCategoryChange}
+          />
           <div className="flex h-full w-[300px] flex-col gap-2 p-2">
             <NavigationListLabel
               label={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
@@ -400,372 +331,65 @@ export function UsageFilterPanel({
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
             {activeCategory === "member" && (
-              <>
-                <NavigationListLabel
-                  label="Groups"
-                  className="bg-transparent font-medium"
-                  action={
-                    <Button
-                      label="Add group"
-                      icon={Plus}
-                      size="xmini"
-                      variant="ghost-secondary"
-                      onClick={() => setIsAddGroupOpen((current) => !current)}
-                    />
-                  }
-                />
-                {isAddGroupOpen && (
-                  <NavigationList className="max-h-[120px]">
-                    {availableGroups.length > 0 ? (
-                      availableGroups.map((group) => (
-                        <NavigationListItem
-                          key={group.id}
-                          avatar={
-                            <span className="label-sm grow overflow-hidden text-ellipsis whitespace-nowrap text-gray-950">
-                              {group.name}
-                            </span>
-                          }
-                          onClick={() => handleAddGroup(group)}
-                        />
-                      ))
-                    ) : (
-                      <div className="flex items-center p-2 text-sm text-muted-foreground">
-                        No more groups
-                      </div>
-                    )}
-                  </NavigationList>
-                )}
-                {selectedGroups.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedGroups.map((group) => (
-                      <Chip
-                        key={group.id}
-                        label={group.name}
-                        size="xs"
-                        onRemove={() => handleRemoveGroup(group.id)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
+              <UsageFilterMemberGroupsControls
+                isAddGroupOpen={isAddGroupOpen}
+                onToggleAddGroupOpen={() =>
+                  setIsAddGroupOpen((current) => !current)
+                }
+                availableGroups={availableGroups}
+                onAddGroup={handleAddGroup}
+                selectedGroups={selectedGroups}
+                onRemoveGroup={handleRemoveGroup}
+              />
             )}
             {activeCategory === "model" && (
-              <>
-                <NavigationListLabel
-                  label="Complexity"
-                  className="bg-transparent font-medium"
-                  action={
-                    <DropdownMenu
-                      open={isMoreModelsOpen}
-                      onOpenChange={(open) => {
-                        setIsMoreModelsOpen(open);
-                        if (open) {
-                          setMoreModelsSearch("");
-                          setExpandedModelLab(null);
-                        }
-                      }}
-                    >
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          label="More models"
-                          size="xmini"
-                          variant="ghost-secondary"
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuSearchbar
-                          name="usage-filter-more-models-search"
-                          placeholder="Search for model"
-                          value={moreModelsSearch}
-                          onChange={setMoreModelsSearch}
-                        />
-                        {isSearchingMoreModels ? (
-                          moreModelsSearchResults.length > 0 ? (
-                            moreModelsSearchResults.map((model) => (
-                              <DropdownMenuItem
-                                key={model.id}
-                                label={model.name}
-                                icon={
-                                  model.lab
-                                    ? getModelMakerLogo(model.lab, isDark)
-                                    : undefined
-                                }
-                                endComponent={
-                                  selectedIdsForActiveCategory.has(model.id) ? (
-                                    <Icon
-                                      visual={Check}
-                                      size="sm"
-                                      className="text-muted-foreground"
-                                    />
-                                  ) : undefined
-                                }
-                                onClick={() =>
-                                  setDraftFilter(
-                                    toggleUsageFilterEntity(
-                                      draftFilter,
-                                      "model",
-                                      model
-                                    )
-                                  )
-                                }
-                                onSelect={(e) => e.preventDefault()}
-                              />
-                            ))
-                          ) : (
-                            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                              No models found
-                            </div>
-                          )
-                        ) : (
-                          moreModelsGroups.map(({ lab, models }) => (
-                            <Fragment key={lab}>
-                              <DropdownMenuItem
-                                label={getModelMakerDisplayName(lab)}
-                                icon={getModelMakerLogo(lab, isDark)}
-                                endComponent={
-                                  <Icon
-                                    visual={
-                                      expandedModelLab === lab
-                                        ? ChevronDown
-                                        : ChevronRight
-                                    }
-                                    size="xs"
-                                  />
-                                }
-                                onClick={() =>
-                                  setExpandedModelLab((current) =>
-                                    current === lab ? null : lab
-                                  )
-                                }
-                                onSelect={(e) => e.preventDefault()}
-                              />
-                              {expandedModelLab === lab &&
-                                models.map((model) => (
-                                  <DropdownMenuItem
-                                    key={model.id}
-                                    label={model.name}
-                                    className="pl-8"
-                                    endComponent={
-                                      selectedIdsForActiveCategory.has(
-                                        model.id
-                                      ) ? (
-                                        <Icon
-                                          visual={Check}
-                                          size="sm"
-                                          className="text-muted-foreground"
-                                        />
-                                      ) : undefined
-                                    }
-                                    onClick={() =>
-                                      setDraftFilter(
-                                        toggleUsageFilterEntity(
-                                          draftFilter,
-                                          "model",
-                                          model
-                                        )
-                                      )
-                                    }
-                                    onSelect={(e) => e.preventDefault()}
-                                  />
-                                ))}
-                            </Fragment>
-                          ))
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  }
-                />
-                <div className="flex items-center gap-1">
-                  {USAGE_MODEL_TIERS.map((tier) => (
-                    <Button
-                      key={tier}
-                      label={USAGE_MODEL_TIER_LABEL[tier]}
-                      icon={MODEL_TIER_ICON[tier]}
-                      size="xs"
-                      variant={activeTier === tier ? "primary" : "outline"}
-                      onClick={() => setActiveTier(tier)}
-                    />
-                  ))}
-                </div>
-              </>
+              <UsageFilterModelComplexityControls
+                isMoreModelsOpen={isMoreModelsOpen}
+                onMoreModelsOpenChange={handleMoreModelsOpenChange}
+                moreModelsSearch={moreModelsSearch}
+                onMoreModelsSearchChange={setMoreModelsSearch}
+                isSearchingMoreModels={isSearchingMoreModels}
+                moreModelsSearchResults={moreModelsSearchResults}
+                moreModelsGroups={moreModelsGroups}
+                expandedModelLab={expandedModelLab}
+                onToggleExpandedModelLab={handleToggleExpandedModelLab}
+                selectedModelIds={selectedIdsForActiveCategory}
+                onToggleModel={(model) => handleToggleEntity("model", model)}
+                activeTier={activeTier}
+                onTierChange={setActiveTier}
+              />
             )}
             {activeCategory === "agent" && (
-              <>
-                <NavigationListLabel
-                  label="Scopes"
-                  className="bg-transparent font-medium"
-                />
-                <div className="flex items-center gap-1">
-                  {USAGE_FILTER_SCOPES.map((scope) => (
-                    <Button
-                      key={scope}
-                      label={USAGE_FILTER_SCOPE_LABEL[scope]}
-                      size="xs"
-                      variant={activeScope === scope ? "primary" : "outline"}
-                      onClick={() => setActiveScope(scope)}
-                    />
-                  ))}
-                </div>
-              </>
+              <UsageFilterAgentScopeControls
+                activeScope={activeScope}
+                onScopeChange={setActiveScope}
+              />
             )}
-            <NavigationListLabel
-              label={`All ${USAGE_FILTER_CATEGORY_LABEL[activeCategory]}`}
-              className="bg-transparent font-medium"
-              action={
-                <Button
-                  label="Select all"
-                  size="xmini"
-                  variant="ghost-secondary"
-                  onClick={handleSelectAllFiltered}
-                  disabled={filteredEntities.length === 0}
-                />
+            <UsageFilterEntityCheckboxList
+              category={activeCategory}
+              categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
+              entities={filteredEntities}
+              selectedIds={selectedIdsForActiveCategory}
+              onToggleEntity={(entity) =>
+                handleToggleEntity(activeCategory, entity)
               }
+              onSelectAll={handleSelectAllFiltered}
             />
-            <NavigationList className="min-h-0 flex-1">
-              {filteredEntities.length > 0 ? (
-                filteredEntities.map((entity) => {
-                  const checked = selectedIdsForActiveCategory.has(entity.id);
-                  const checkboxId = `usage-filter-entity-${activeCategory}-${entity.id}`;
-                  const onCheckedChange = () =>
-                    setDraftFilter(
-                      toggleUsageFilterEntity(
-                        draftFilter,
-                        activeCategory,
-                        entity
-                      )
-                    );
-                  return (
-                    <div
-                      key={entity.id}
-                      className="flex items-center gap-2 py-1 pl-1 pr-2"
-                    >
-                      <Checkbox
-                        id={checkboxId}
-                        checked={checked}
-                        onCheckedChange={onCheckedChange}
-                      />
-                      {renderEntityIcon(activeCategory, entity)}
-                      <Label
-                        htmlFor={checkboxId}
-                        className="cursor-pointer text-sm leading-none"
-                      >
-                        {entity.name}
-                      </Label>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                  No results
-                </div>
-              )}
-            </NavigationList>
           </div>
-          <div className="flex h-full w-[200px] flex-col p-2">
-            <NavigationListLabel
-              className="bg-transparent pt-1.5 font-medium"
-              label={(() => {
-                const count = categoriesWithSelection.reduce(
-                  (total, category) =>
-                    total + (draftFilter[category]?.length ?? 0),
-                  0
-                );
-                return `${count} filter${count === 1 ? "" : "s"} selected`;
-              })()}
-            />
-            <NavigationList className="min-h-0 flex-1">
-              {categoriesWithSelection.length > 0 ? (
-                categoriesWithSelection.map((category) => {
-                  const isCategoryOpen = !collapsedCategories.has(category);
-                  return (
-                    <div key={category}>
-                      <NavigationListLabel
-                        className="bg-transparent font-medium"
-                        label={`${USAGE_FILTER_CATEGORY_LABEL[category]} (${draftFilter[category]?.length ?? 0})`}
-                        action={
-                          <div className="flex items-center gap-1">
-                            <Button
-                              label="Clear"
-                              size="xmini"
-                              variant="ghost-secondary"
-                              onClick={() => handleClearCategory(category)}
-                            />
-                            <Button
-                              icon={isCategoryOpen ? ChevronDown : ChevronRight}
-                              size="xmini"
-                              variant="ghost"
-                              tooltip={isCategoryOpen ? "Collapse" : "Expand"}
-                              onClick={() => handleToggleCategoryOpen(category)}
-                            />
-                          </div>
-                        }
-                      />
-                      <Collapsible open={isCategoryOpen}>
-                        <CollapsibleContent>
-                          {(draftFilter[category] ?? []).map((entity) => (
-                            <NavigationListItem
-                              key={`${category}:${entity.id}`}
-                              avatar={
-                                <div className="flex grow items-center gap-2 overflow-hidden">
-                                  {renderEntityIcon(category, entity)}
-                                  <span className="label-sm overflow-hidden text-ellipsis whitespace-nowrap text-gray-950">
-                                    {entity.name}
-                                  </span>
-                                </div>
-                              }
-                              suffix={
-                                <Button
-                                  icon={XClose}
-                                  size="xmini"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    setDraftFilter(
-                                      removeUsageFilterEntity(
-                                        draftFilter,
-                                        category,
-                                        entity.id
-                                      )
-                                    )
-                                  }
-                                />
-                              }
-                            />
-                          ))}
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="flex items-center p-2 text-sm text-muted-foreground">
-                  No filters selected
-                </div>
-              )}
-            </NavigationList>
-          </div>
-        </div>
-        <div className="flex items-center justify-between border-t border-border p-2">
-          <Button
-            label="Clear filters"
-            size="xmini"
-            variant="ghost-secondary"
-            onClick={handleClearAll}
+          <UsageFilterSelectionSummary
+            categoriesWithSelection={categoriesWithSelection}
+            draftFilter={draftFilter}
+            collapsedCategories={collapsedCategories}
+            onClearCategory={handleClearCategory}
+            onToggleCategoryOpen={handleToggleCategoryOpen}
+            onRemoveEntity={handleRemoveEntity}
           />
-          <div className="flex items-center gap-2">
-            <Button
-              label="Cancel"
-              size="sm"
-              variant="outline"
-              onClick={handleCancel}
-            />
-            <Button
-              label="Apply"
-              size="sm"
-              variant="highlight"
-              onClick={handleApply}
-            />
-          </div>
         </div>
+        <UsageFilterFooter
+          onClearAll={handleClearAll}
+          onCancel={handleCancel}
+          onApply={handleApply}
+        />
       </PopoverContent>
     </PopoverRoot>
   );
