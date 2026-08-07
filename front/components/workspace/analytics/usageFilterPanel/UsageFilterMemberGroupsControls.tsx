@@ -62,7 +62,7 @@ export function UsageFilterMemberGroupsControls({
               <NavigationListItem
                 key={group.id}
                 avatar={
-                  <span className="label-sm grow overflow-hidden text-ellipsis whitespace-nowrap text-gray-950">
+                  <span className="label-sm grow overflow-hidden text-ellipsis whitespace-nowrap text-faint">
                     {group.name}
                   </span>
                 }

@@ -5,7 +5,7 @@ import type {
   UsageFilterGroup,
   UsageFilterMemberOption,
   UsageFilterModelOption,
-  UsageFilterOption,
+  UsageFilterOptionForCategory,
   UsageFilterScope,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
@@ -13,10 +13,6 @@ import type {
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
-  clearUsageFilterCategory,
-  removeUsageFilterOption,
-  selectAllUsageFilterOptions,
-  toggleUsageFilterOption,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_FILTER_SCOPES,
@@ -29,6 +25,7 @@ import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analy
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
+import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -66,7 +63,15 @@ export function UsageFilterPanel({
   const [isOpen, setIsOpen] = useState(false);
   // Selections are staged while the panel is open and only propagated
   // when the user clicks Apply.
-  const [draftFilter, setDraftFilter] = useState<UsageFilter>(filter);
+  const {
+    draftFilter,
+    setDraftFilter,
+    clearAllCategories,
+    clearCategory,
+    toggleOption,
+    removeOption,
+    selectAllFiltered,
+  } = useUsageFilter(filter);
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
   const [activeScope, setActiveScope] = useState<UsageFilterScope>(
@@ -96,9 +101,9 @@ export function UsageFilterPanel({
     [members]
   );
 
-  const resolvedCategoryOptions = useMemo<
-    Record<UsageFilterCategory, UsageFilterOption[]>
-  >(
+  const resolvedCategoryOptions = useMemo<{
+    [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
+  }>(
     () => ({
       ...categoryOptions,
       member: memberOptions,
@@ -159,24 +164,6 @@ export function UsageFilterPanel({
     setSearchText("");
   };
 
-  const handleClearActiveCategory = () => {
-    setDraftFilter(clearUsageFilterCategory(draftFilter, activeCategory));
-  };
-
-  const handleClearCategory = (category: UsageFilterCategory) => {
-    setDraftFilter(clearUsageFilterCategory(draftFilter, category));
-  };
-
-  const handleSelectAllFiltered = () => {
-    setDraftFilter(
-      selectAllUsageFilterOptions(draftFilter, activeCategory, filteredOptions)
-    );
-  };
-
-  const handleClearAllCategories = () => {
-    setDraftFilter({});
-  };
-
   const handleCancel = () => {
     setIsOpen(false);
   };
@@ -184,17 +171,6 @@ export function UsageFilterPanel({
   const handleApply = () => {
     onFilterChange(draftFilter);
     setIsOpen(false);
-  };
-
-  const handleToggleOption = (
-    category: UsageFilterCategory,
-    option: UsageFilterOption
-  ) => {
-    setDraftFilter(toggleUsageFilterOption(draftFilter, category, option));
-  };
-
-  const handleRemoveOption = (category: UsageFilterCategory, id: string) => {
-    setDraftFilter(removeUsageFilterOption(draftFilter, category, id));
   };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
@@ -228,7 +204,7 @@ export function UsageFilterPanel({
                   label="Clear"
                   size="xmini"
                   variant="ghost-secondary"
-                  onClick={handleClearActiveCategory}
+                  onClick={() => clearCategory(activeCategory)}
                   disabled={activeCategorySelectionCount === 0}
                   className={
                     activeCategorySelectionCount === 0 ? "invisible" : undefined
@@ -249,7 +225,7 @@ export function UsageFilterPanel({
               <UsageFilterModelComplexityControls
                 models={categoryOptions.model}
                 selectedModelIds={selectedIdsForActiveCategory}
-                onToggleModel={(model) => handleToggleOption("model", model)}
+                onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}
                 onTierChange={setActiveTier}
               />
@@ -265,21 +241,21 @@ export function UsageFilterPanel({
               categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
               options={filteredOptions}
               selectedIds={selectedIdsForActiveCategory}
-              onToggleOption={(option) =>
-                handleToggleOption(activeCategory, option)
+              onToggleOption={(option) => toggleOption(activeCategory, option)}
+              onSelectAll={() =>
+                selectAllFiltered(activeCategory, filteredOptions)
               }
-              onSelectAll={handleSelectAllFiltered}
             />
           </div>
           <UsageFilterSelectionSummary
             categoriesWithSelection={categoriesWithSelection}
             draftFilter={draftFilter}
-            onClearCategory={handleClearCategory}
-            onRemoveOption={handleRemoveOption}
+            onClearCategory={clearCategory}
+            onRemoveOption={removeOption}
           />
         </div>
         <UsageFilterFooter
-          onClearAll={handleClearAllCategories}
+          onClearAll={clearAllCategories}
           onCancel={handleCancel}
           onApply={handleApply}
         />

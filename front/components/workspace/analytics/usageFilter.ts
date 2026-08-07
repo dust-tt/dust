@@ -89,14 +89,17 @@ export interface UsageFilterGroup {
   name: string;
 }
 
-export type UsageFilter = Partial<
-  Record<UsageFilterCategory, UsageFilterOption[]>
->;
+export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
+  Extract<UsageFilterOption, { kind: C }>;
 
-export function toggleUsageFilterOption(
+export type UsageFilter = {
+  [C in UsageFilterCategory]?: UsageFilterOptionForCategory<C>[];
+};
+
+export function toggleUsageFilterOption<C extends UsageFilterCategory>(
   filter: UsageFilter,
-  category: UsageFilterCategory,
-  option: UsageFilterOption
+  category: C,
+  option: NoInfer<UsageFilterOptionForCategory<C>>
 ): UsageFilter {
   const current = filter[category] ?? [];
   const next = current.some((e) => e.id === option.id)
@@ -121,10 +124,10 @@ export function clearUsageFilterCategory(
   return { ...filter, [category]: undefined };
 }
 
-export function selectAllUsageFilterOptions(
+export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   filter: UsageFilter,
-  category: UsageFilterCategory,
-  options: UsageFilterOption[]
+  category: C,
+  options: NoInfer<UsageFilterOptionForCategory<C>>[]
 ): UsageFilter {
   const current = filter[category] ?? [];
   const currentIds = new Set(current.map((e) => e.id));
