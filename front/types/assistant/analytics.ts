@@ -145,7 +145,8 @@ export interface AgentMessageConsumptionAnalyticsTool {
 
 export interface AgentMessageConsumptionAnalyticsTokens {
   system: number;
-  input: number;
+  // Actual prompt tokens on LLM documents. Not applicable to tool documents.
+  input: number | null;
   // Tool documents only: tokens the tool result adds to the conversation. Cannot
   // be summed with `input`, which counts the tokens the LLM consumed itself.
   result_footprint: number | null;
@@ -155,12 +156,15 @@ export interface AgentMessageConsumptionAnalyticsTokens {
 
 export interface AgentMessageConsumptionAnalyticsGrossCreditMicro {
   system: number;
-  input: number;
+  // Reconciled prompt credit on LLM documents. Not applicable to tool documents.
+  input: number | null;
   // Tool documents only, see AgentMessageConsumptionAnalyticsTokens.result_footprint.
   result_footprint: number | null;
-  output: number;
+  // Null on tool documents until the model credit split is persisted at attribution time.
+  output: number | null;
   reasoning: number;
   direct: number;
+  // Equals credit_micro for every document.
   total: number;
 }
 
@@ -177,6 +181,10 @@ export interface AgentMessageConsumptionAnalyticsData
   consumption_type: AgentMessageConsumptionAnalyticsType;
   context_origin: UserMessageOrigin | null;
   conversation_id: string;
+  // Normalized cost attributed to this consumption unit. Tool documents include the model output
+  // used to emit the call, the result footprint, and the direct tool charge. LLM documents carry
+  // the remaining model cost. The sum over one message reconciles exactly to its authoritative
+  // billed cost.
   credit_micro: number;
   execution_time_ms: number | null;
   gross_credit_micro: AgentMessageConsumptionAnalyticsGrossCreditMicro;
