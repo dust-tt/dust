@@ -90,7 +90,7 @@ RUN if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then 
 FROM node:24.16.0-slim AS workers
 
 RUN apt-get update && \
-  apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 curl procps && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -233,7 +233,7 @@ RUN npm run build && \
 FROM node:24.16.0-slim AS front-api
 
 RUN apt-get update && \
-  apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 curl procps && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
