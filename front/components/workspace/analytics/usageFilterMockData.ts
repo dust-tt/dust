@@ -1,27 +1,10 @@
-import type {
-  UsageFilterSkillOption,
-  UsageFilterSourceOption,
-} from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilterSourceOption } from "@app/components/workspace/analytics/usageFilter";
 import type { ConnectorProvider } from "@app/types/data_source";
 
-// Placeholder data for categories not yet wired to a real backend endpoint.
-// Agents, members, models and tools are fetched live in UsageFilterPanel
-// (useConsumptionTop), and groups via useConsumptionRelevantGroups. Lists are
-// long enough to exercise scrolling in the preview.
-const MOCK_ENTITY_NAMES = {
-  skill: [
-    "Summarize",
-    "Translate",
-    "Extract data",
-    "Draft email",
-    "Brainstorm ideas",
-    "Review code",
-    "Analyze spreadsheet",
-    "Write SQL",
-    "Proofread",
-    "Generate outline",
-  ],
-};
+// Placeholder data for "source", the only category not yet wired to a real
+// backend endpoint. Agents, members, models, tools and skills are fetched
+// live in UsageFilterPanel (useConsumptionTop), and groups via
+// useConsumptionRelevantGroups.
 
 // Fake connectors, standing in for the real per-workspace data source list
 // until "source" is wired to a real db call. Covers a broad mix of
@@ -50,16 +33,7 @@ const MOCK_SOURCE_CONNECTORS: Array<{
   { name: "Uploaded files — Legal templates", connectorProvider: undefined },
 ];
 
-function buildSkillOptions(names: string[]): UsageFilterSkillOption[] {
-  return names.map((name, index) => ({
-    id: `skill_${index + 1}`,
-    name,
-    kind: "skill",
-  }));
-}
-
 export const USAGE_FILTER_MOCK_OPTIONS = {
-  skill: buildSkillOptions(MOCK_ENTITY_NAMES.skill),
   source: MOCK_SOURCE_CONNECTORS.map<UsageFilterSourceOption>(
     (connector, index) => ({
       id: `source_${index + 1}`,

@@ -169,9 +169,9 @@ export function removeUsageFilterGroup(
   return groups.filter((g) => g.id !== id);
 }
 
-// Only "user", "agent", "model" and "tool" are wired to real consumption
-// scope dimensions so far; the other categories stay mock data and are not
-// sent as query filters.
+// Only "user", "agent", "model", "tool" and "skill" are wired to real
+// consumption scope dimensions so far; the other categories stay mock data
+// and are not sent as query filters.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
@@ -195,6 +195,11 @@ export function toConsumptionScopeFilter(
   const toolIds = filter.tool?.map((entity) => entity.id);
   if (toolIds && toolIds.length > 0) {
     scopeFilter.tool = toolIds;
+  }
+
+  const skillIds = filter.skill?.map((entity) => entity.id);
+  if (skillIds && skillIds.length > 0) {
+    scopeFilter.skill = skillIds;
   }
 
   return scopeFilter;
