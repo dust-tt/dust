@@ -47,11 +47,34 @@ describe("splitStagingStdout", () => {
       "",
     ].join("\n");
     const { dsbxStdout, hashes } = splitStagingStdout(stdout);
-    expect(dsbxStdout).toBe('some noise\n{"ok":true}\n');
+    expect(dsbxStdout).toBe('some noise\n{"ok":true}');
     expect(hashes).toEqual({
       [bundle]: sha256Hex("bundle"),
       [schema]: sha256Hex("schema"),
     });
+  });
+
+  it("anchors on the last full-line marker, so a forged marker cannot shadow the capture", () => {
+    const schema = "/tmp/dust-sandbox-function-builds/uuid/schema.json";
+    const stdout = [
+      "model printed __DUST_STAGING_SHA256__ mid-stream",
+      "__DUST_STAGING_SHA256__", // forged full-line marker before the real one
+      `${"0".repeat(64)}  ${schema}`, // forged hash line, shadowed below
+      '{"ok":true}',
+      "__DUST_STAGING_SHA256__", // real capture marker
+      `${sha256Hex("schema")}  ${schema}`,
+      "",
+    ].join("\n");
+    const { dsbxStdout, hashes } = splitStagingStdout(stdout);
+    expect(hashes).toEqual({ [schema]: sha256Hex("schema") });
+    expect(dsbxStdout).toContain('{"ok":true}');
+  });
+
+  it("does not split on a marker substring inside another line", () => {
+    const stdout = 'noise __DUST_STAGING_SHA256__ noise\n{"ok":true}\n';
+    const { dsbxStdout, hashes } = splitStagingStdout(stdout);
+    expect(dsbxStdout).toBe(stdout);
+    expect(hashes).toEqual({});
   });
 
   it("ignores malformed hash lines", () => {
@@ -85,6 +108,22 @@ describe("verifyStagingContent", () => {
     }
     expect(result.error.code).toBe("internal");
     expect(result.error.message).not.toContain("secret-bytes");
+  });
+
+  it("includes the exec stderr hint when the hash is missing", () => {
+    const result = verifyStagingContent(
+      "/tmp/x/bundle.js",
+      Buffer.from("bundle"),
+      {},
+      {
+        execStderr: "sha256sum: /tmp/x/bundle.js: Permission denied",
+      }
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toContain("Permission denied");
   });
 
   it("rejects when the hash is missing", () => {

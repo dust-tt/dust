@@ -27,27 +27,29 @@ export function stagingHashCaptureLines(paths: string[]): string[] {
 }
 
 /**
- * Split exec stdout at the marker: everything before it is dsbx output, everything after is
+ * Split exec stdout at the marker line: everything before it is dsbx output, everything after is
  * `<sha256>  <path>` lines. Without a marker the input is returned untouched with no hashes.
+ * The split anchors on the LAST full-line marker so a model that prints the marker string from
+ * its own code cannot shadow the real capture (the sha256 lines are always the last stdout
+ * lines) and cannot truncate its own output by emitting a marker mid-stream.
  */
 export function splitStagingStdout(stdout: string): {
   dsbxStdout: string;
   hashes: StagingHashes;
 } {
-  const markerIndex = stdout.indexOf(HASH_MARKER);
+  const lines = stdout.split("\n");
+  const markerIndex = lines.findLastIndex((line) => line === HASH_MARKER);
   if (markerIndex === -1) {
     return { dsbxStdout: stdout, hashes: {} };
   }
   const hashes: StagingHashes = {};
-  for (const line of stdout
-    .slice(markerIndex + HASH_MARKER.length)
-    .split("\n")) {
+  for (const line of lines.slice(markerIndex + 1)) {
     const match = /^([0-9a-f]{64}) {2}(\S.*)$/.exec(line.trim());
     if (match) {
       hashes[match[2]] = match[1];
     }
   }
-  return { dsbxStdout: stdout.slice(0, markerIndex), hashes };
+  return { dsbxStdout: lines.slice(0, markerIndex).join("\n"), hashes };
 }
 
 function sha256Hex(content: Buffer): string {
@@ -61,14 +63,20 @@ function sha256Hex(content: Buffer): string {
 export function verifyStagingContent(
   path: string,
   content: Buffer,
-  hashes: StagingHashes
+  hashes: StagingHashes,
+  opts?: { execStderr?: string }
 ): Result<void, SandboxFunctionError> {
   const expected = hashes[path];
   if (expected === undefined) {
+    // A missing hash is how a failed capture surfaces (e.g. sha256sum could not open a
+    // swapped target); include the exec stderr so the failure is debuggable.
+    const stderrHint = opts?.execStderr?.trim()
+      ? ` Exec stderr: ${opts.execStderr.trim().slice(0, 300)}`
+      : "";
     return new Err(
       new SandboxFunctionError(
         "internal",
-        `Missing integrity hash for staging file ${path}.`
+        `Missing integrity hash for staging file ${path}.${stderrHint}`
       )
     );
   }
