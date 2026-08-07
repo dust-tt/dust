@@ -23,12 +23,6 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
-// Background/border pair for each variant — matches the Figma spec's
-// light-50 background + light-100/200 border recipe for every color.
-// warning/rose use border-rose-100 (not border-red-100): red's own 100 step
-// is much darker than every other color's 100/150 step, so it visually pops
-// against the rest — rose-100 matches their lightness while staying the same
-// hue family as bg-red-50/text-red-800 (rose and red converge at dark shades).
 const sharedVariantStyles = {
   primary: "bg-stone-50 border-stone-150",
   success: "bg-success-50 border-success-200",
@@ -42,10 +36,6 @@ const sharedVariantStyles = {
   outline: "bg-transparent border-stone-150",
 };
 
-// The Figma spec defines two size recipes (compact/cozy) that scale padding,
-// radius, icon size, and typography together — `sm` maps to the compact
-// recipe, `md`/`lg` to the cozy one (`md`/`lg` differ only by max-width, as
-// before).
 const contentMessageVariants = cva("flex flex-col gap-3 border", {
   variants: {
     variant: sharedVariantStyles,
@@ -61,9 +51,6 @@ const contentMessageVariants = cva("flex flex-col gap-3 border", {
   },
 });
 
-// Reuses the compact (Figma "xs") recipe: same border, padding, radius,
-// icon size, and typography as `<ContentMessage size="sm">`, laid out as a
-// single row instead of stacked.
 const contentMessageInlineVariants = cva(
   "flex items-center gap-2 rounded-xl border p-3",
   {
@@ -127,10 +114,6 @@ const textVariants = cva("", {
   },
 });
 
-// Icon/typography scale driven by `size`: `sm` renders the compact Figma
-// recipe (16px icon, heading-xs/text-xs), `md`/`lg` the cozy one (20px icon,
-// heading-sm/text-sm). Title is one step down from the Figma spec's
-// heading-sm/heading-base.
 const contentMessageSizeConfig: Record<
   ContentMessageSizeType,
   {
