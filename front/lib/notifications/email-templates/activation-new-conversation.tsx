@@ -68,7 +68,7 @@ const ActivationNewConversationEmailTemplate = ({
         Hi {name}!
         <br />
         <br />
-        Welcome to your Dust Training environment:
+        Welcome to your Dust Learning environment:
         <br />
         The place where Dust works for you.
       </p>
