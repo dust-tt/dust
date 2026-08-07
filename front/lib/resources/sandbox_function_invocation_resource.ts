@@ -291,7 +291,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
    */
   private pendingInitialPersistence: Promise<void> | undefined;
 
-  private async settleInitialPersistence(): Promise<void> {
+  async settleInitialPersistence(): Promise<void> {
     if (this.pendingInitialPersistence) {
       await this.pendingInitialPersistence;
       this.pendingInitialPersistence = undefined;
@@ -551,30 +551,46 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         );
       }
       // The function re-fetch (it guards a re-publish race on `noTools` below) and its dependent
-      // authorization are independent of the sandbox readiness check: overlapping the two chains
-      // takes the slower one off the critical path. The authorization chains on the re-fetch
-      // because it reads the persisted userIdentity.
-      const [functionCheck, ensureResult] = await Promise.all([
-        (async () => {
-          const persistedFunction = await SandboxFunctionModel.findOne({
-            where: {
-              id: this.sandboxFunctionId,
-              workspaceId: this.workspaceId,
-            },
-          });
-          if (!persistedFunction) {
-            return null;
-          }
-          const authorization = await authorizeSandboxFunctionInvocation(auth, {
-            userIdentity: persistedFunction.userIdentity,
-            origin: this.origin ?? "delegated",
-          });
-          return { persistedFunction, authorization };
-        })(),
+      // authorization are independent of the sandbox readiness check. On the inline path
+      // (requireRunning) readiness is a read with no side effect, so the two chains overlap to
+      // take the slower one off the critical path. On the durable path readiness may create or
+      // wake a sandbox, a paid side effect that stays gated behind the checks.
+      const runFunctionCheck = async () => {
+        const persistedFunction = await SandboxFunctionModel.findOne({
+          where: {
+            id: this.sandboxFunctionId,
+            workspaceId: this.workspaceId,
+          },
+        });
+        if (!persistedFunction) {
+          return null;
+        }
+        const authorization = await authorizeSandboxFunctionInvocation(auth, {
+          userIdentity: persistedFunction.userIdentity,
+          origin: this.origin ?? "delegated",
+        });
+        return { persistedFunction, authorization };
+      };
+      const runEnsure = () =>
         ensurePodSandboxReady(auth, sandboxFunction.space, {
           requireRunning: inline,
-        }),
-      ]);
+        });
+
+      let functionCheck;
+      let ensureResult;
+      if (inline) {
+        [functionCheck, ensureResult] = await Promise.all([
+          runFunctionCheck(),
+          runEnsure(),
+        ]);
+      } else {
+        functionCheck = await runFunctionCheck();
+        if (functionCheck === null || !functionCheck.authorization.authorized) {
+          ensureResult = null;
+        } else {
+          ensureResult = await runEnsure();
+        }
+      }
       if (!functionCheck) {
         return new Err(new Error("The Pod Function no longer exists."));
       }
@@ -583,6 +599,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         return new Err(
           new SandboxFunctionInvocationError(authorization.errorMessage)
         );
+      }
+      if (!ensureResult) {
+        // Unreachable: ensureResult is only null when a check above already returned.
+        return new Err(new Error("The Pod sandbox could not be prepared."));
       }
       if (ensureResult.isErr()) {
         return ensureResult;
@@ -914,6 +934,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     }
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
     const inline = await shouldExecuteInline(auth, sandboxFunction);
+    // Deferring is only safe when no other process reads the blob during execution: with stdout
+    // delivery the result comes back on the exec's own stdout, but callback delivery has dsbx
+    // POST to a route that fetches the invocation (and its blob) mid-execution.
+    const deferInitialWrite =
+      inline && (await hasFeatureFlag(auth, "sandbox_function_stdout_result"));
     const invocation = await this.makeNew(
       auth,
       {
@@ -923,7 +948,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         origin,
       },
       undefined,
-      { deferInitialWrite: inline }
+      { deferInitialWrite }
     );
     const publishCreated = () =>
       publishSandboxFunctionInvocationEvent(
@@ -942,7 +967,19 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const pendingBlobWrite = invocation.pendingInitialPersistence;
       invocation.pendingInitialPersistence = Promise.allSettled([
         pendingBlobWrite,
-        publishCreated(),
+        Promise.resolve(publishCreated()).catch((error) => {
+          // Stream consumers tolerate a missing created event (they stop at the first terminal
+          // event), but losing one must be visible.
+          logger.error(
+            {
+              workspaceModelId: invocation.workspaceId,
+              sandboxFunctionId: sandboxFunction.sId,
+              invocationId: invocation.sId,
+              err: normalizeError(error),
+            },
+            "Deferred Pod function invocation created-event publish failed"
+          );
+        }),
       ]).then(() => undefined);
     } else {
       await publishCreated();
@@ -970,6 +1007,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         },
         "Escalating a fast Pod function invocation to the invocation workflow"
       );
+    }
+
+    // The workflow activity re-reads the invocation, blob included, from another process: a
+    // deferred initial write must be durable before the workflow can be allowed to start. The
+    // rewrite is idempotent (same object, same content) and this is already the slow path.
+    await invocation.settleInitialPersistence();
+    const persistResult = await invocation.writeDataToGcs();
+    if (persistResult.isErr()) {
+      throw persistResult.error;
     }
 
     const launchResult = await launchSandboxFunctionInvocationWorkflow(auth, {

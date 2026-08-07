@@ -1135,3 +1135,26 @@ describe("SandboxResource.ensureActive", () => {
     expect(persisted?.status).toBe("running");
   });
 });
+
+describe("SandboxResource.updateLastActivityAt", () => {
+  it("skips the write while the recorded activity is fresh", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const sandbox = await SandboxResource.makeNew(authenticator, {
+      providerId: "throttle-test-provider",
+      status: "running",
+      baseImage: "dust-base",
+      version: "0.0.0-test",
+    });
+
+    // makeNew stamps lastActivityAt with now, so an immediate touch is within
+    // the throttle window and must not issue a write.
+    const [affectedFresh] = await sandbox.updateLastActivityAt();
+    expect(affectedFresh).toBe(0);
+
+    // Backdate the in-memory timestamp past the 30s window: the next touch
+    // writes through.
+    Object.assign(sandbox, { lastActivityAt: new Date(Date.now() - 60_000) });
+    const [affectedStale] = await sandbox.updateLastActivityAt();
+    expect(affectedStale).toBe(1);
+  });
+});
