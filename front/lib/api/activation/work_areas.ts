@@ -1,9 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -45,21 +45,32 @@ export async function listActivationWorkAreasForUser(
 
 export async function createActivationWorkAreasForUser(
   auth: Authenticator,
-  items: CreateActivationWorkAreaItem[],
-  podId: ModelId
-): Promise<ActivationWorkAreaForUserType[]> {
+  items: CreateActivationWorkAreaItem[]
+): Promise<
+  Result<ActivationWorkAreaForUserType[], DustError<"activation_pod_not_found">>
+> {
+  const pod = await ActivationPodResource.fetchByUser(auth);
+  if (!pod) {
+    return new Err(
+      new DustError(
+        "activation_pod_not_found",
+        "No activation pod found for this user."
+      )
+    );
+  }
+
   const created = await concurrentExecutor(
     items,
     (item) =>
       ActivationWorkAreaResource.makeNew(auth, {
         title: item.title,
         description: item.description,
-        podId,
+        podId: pod.id,
       }),
     { concurrency: 8 }
   );
 
-  return created.map((r) => r.toJSON());
+  return new Ok(created.map((r) => r.toJSON()));
 }
 
 export async function updateActivationWorkAreaForUser(
@@ -75,26 +86,16 @@ export async function updateActivationWorkAreaForUser(
     title?: string;
     description?: string;
   }
-): Promise<
-  Result<
-    undefined,
-    DustError<"activation_work_area_not_found" | "unauthorized">
-  >
-> {
+): Promise<Result<undefined, DustError<"activation_work_area_not_found">>> {
   const row = await ActivationWorkAreaResource.fetchById(auth, workAreaId);
 
-  if (!row) {
+  // fetchById only scopes to the workspace, so also enforce ownership: a work
+  // area may only be updated by the user it belongs to. Return "not_found"
+  // rather than a distinct error so we don't leak the existence of another
+  // user's work area.
+  if (!row || row.userId !== auth.getNonNullableUser().id) {
     return new Err(
       new DustError("activation_work_area_not_found", "Work area not found.")
-    );
-  }
-
-  if (row.userId !== auth.getNonNullableUser().id) {
-    return new Err(
-      new DustError(
-        "unauthorized",
-        "Cannot update a work area owned by another user."
-      )
     );
   }
 
