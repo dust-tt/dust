@@ -34,6 +34,7 @@ interface EditPodFrameTabDialogProps {
   tabsOrder?: string[];
   isEditor: boolean;
   includeConnectedData?: boolean;
+  includeDatabases?: boolean;
   tab: PodFrameTab;
   mode?: "create" | "edit";
   isOpen: boolean;
@@ -47,6 +48,7 @@ export function EditPodFrameTabDialog({
   tabsOrder,
   isEditor,
   includeConnectedData = false,
+  includeDatabases = false,
   tab,
   mode = "edit",
   isOpen,
@@ -77,8 +79,9 @@ export function EditPodFrameTabDialog({
     () =>
       buildPodNavItemsBeforeSettings(frameTabs, navOrder, {
         includeConnectedData,
+        includeDatabases,
       }),
-    [frameTabs, includeConnectedData, navOrder]
+    [frameTabs, includeConnectedData, includeDatabases, navOrder]
   );
   const tabIndex = navItems.findIndex(
     (item) => item.kind === "frame" && item.tab.path === tab.path
@@ -134,7 +137,10 @@ export function EditPodFrameTabDialog({
       return;
     }
     setIsMoving(true);
-    await moveFrameTab(tab.path, direction, { includeConnectedData });
+    await moveFrameTab(tab.path, direction, {
+      includeConnectedData,
+      includeDatabases,
+    });
     setIsMoving(false);
   };
 

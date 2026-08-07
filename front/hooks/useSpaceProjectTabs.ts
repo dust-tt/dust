@@ -11,6 +11,7 @@ export type SystemPodTab =
   | "conversations"
   | "tasks"
   | "files"
+  | "databases"
   | "connected_data"
   | "settings";
 
@@ -30,6 +31,7 @@ const SYSTEM_POD_TAB_HASHES = new Set<string>([
   "settings",
   "conversations",
   "tasks",
+  "databases",
   "connected_data",
 ]);
 
@@ -59,15 +61,26 @@ function parsePodTabFromLocationHash(fallbackTab: PodTab): PodTab {
   return fallbackTab;
 }
 
+/** Gates for the system tabs that are not shown on every Pod, to every member. */
+interface PodTabGates {
+  /** Connected Data is only available on admin-controlled Pods. */
+  isAdminControlled?: boolean;
+  /** Databases is only available to Pod editors, with Sandbox Functions enabled. */
+  canViewDatabases?: boolean;
+}
+
 /**
- * Connected Data is only available on admin-controlled Pods.
- * `undefined` means pod info is still loading — keep the tab as-is.
+ * Remap a tab the current user cannot see onto Conversations.
+ * `undefined` means pod info (or the feature flag) is still loading — keep the tab as-is.
  */
 function resolvePodTab(
   tab: PodTab,
-  isAdminControlled: boolean | undefined
+  { isAdminControlled, canViewDatabases }: PodTabGates
 ): PodTab {
   if (tab === "connected_data" && isAdminControlled === false) {
+    return "conversations";
+  }
+  if (tab === "databases" && canViewDatabases === false) {
     return "conversations";
   }
   return tab;
@@ -94,12 +107,10 @@ function replaceUrlWithTab(tab: PodTab) {
   window.history.replaceState(null, "", url.pathname + url.search + url.hash);
 }
 
-interface UsePodTabsParams {
+interface UsePodTabsParams extends PodTabGates {
   podId: string | null;
   podUiPreferences: PodUiScopedPreferences;
   setPodUiPreferences: (value: PodUiScopedPreferences) => void;
-  /** When false, `connected_data` is remapped to `conversations`. */
-  isAdminControlled?: boolean;
 }
 
 /**
@@ -118,15 +129,17 @@ export function usePodTabs({
   podUiPreferences,
   setPodUiPreferences,
   isAdminControlled,
+  canViewDatabases,
 }: UsePodTabsParams): {
   currentTab: PodTab;
   handleTabChange: (tab: PodTab) => void;
 } {
   const onHashChangeRef = useRef<() => void>(() => {});
+  const gates: PodTabGates = { isAdminControlled, canViewDatabases };
 
   onHashChangeRef.current = () => {
     const tabFromHash = parsePodTabFromLocationHash(podUiPreferences.tab);
-    const resolved = resolvePodTab(tabFromHash, isAdminControlled);
+    const resolved = resolvePodTab(tabFromHash, gates);
     const expectedHash = `#${tabToHash(podUiPreferences.tab)}`;
     if (resolved !== podUiPreferences.tab) {
       setPodUiPreferences({ ...podUiPreferences, tab: resolved });
@@ -158,32 +171,41 @@ export function usePodTabs({
     };
   }, [podId]);
 
-  // Remap a persisted/URL `connected_data` tab once we know the Pod is not
-  // admin-controlled (pod info loads after the hash sync above).
+  // Remap a persisted/URL tab the user turns out not to be allowed on (pod info and feature
+  // flags load after the hash sync above).
   useEffect(() => {
-    if (
-      isAdminControlled !== false ||
-      podUiPreferences.tab !== "connected_data"
-    ) {
+    const resolved = resolvePodTab(podUiPreferences.tab, {
+      isAdminControlled,
+      canViewDatabases,
+    });
+    if (resolved === podUiPreferences.tab) {
       return;
     }
-    setPodUiPreferences({ ...podUiPreferences, tab: "conversations" });
+    setPodUiPreferences({ ...podUiPreferences, tab: resolved });
     if (typeof window !== "undefined") {
-      replaceUrlWithTab("conversations");
+      replaceUrlWithTab(resolved);
     }
-  }, [isAdminControlled, podUiPreferences, setPodUiPreferences]);
+  }, [
+    isAdminControlled,
+    canViewDatabases,
+    podUiPreferences,
+    setPodUiPreferences,
+  ]);
 
   const handleTabChange = useCallback(
     (newTab: PodTab) => {
-      const resolved = resolvePodTab(newTab, isAdminControlled);
+      const resolved = resolvePodTab(newTab, {
+        isAdminControlled,
+        canViewDatabases,
+      });
       replaceUrlWithTab(resolved);
       setPodUiPreferences({ ...podUiPreferences, tab: resolved });
     },
-    [podUiPreferences, setPodUiPreferences, isAdminControlled]
+    [podUiPreferences, setPodUiPreferences, isAdminControlled, canViewDatabases]
   );
 
   return {
-    currentTab: resolvePodTab(podUiPreferences.tab, isAdminControlled),
+    currentTab: resolvePodTab(podUiPreferences.tab, gates),
     handleTabChange,
   };
 }
