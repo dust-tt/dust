@@ -2,7 +2,9 @@ import { indexAgentMessageConsumptionAnalytics } from "@app/lib/analytics/agent_
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { ApplicationFailure } from "@temporalio/common";
 
 export async function storeAgentMessageConsumptionAttributionActivity(
   authType: AuthenticatorType,
@@ -31,7 +33,29 @@ export async function storeAgentMessageConsumptionAnalyticsActivity(
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
-  await indexAgentMessageConsumptionAnalytics(auth, {
+  const result = await indexAgentMessageConsumptionAnalytics(auth, {
     agentMessageId: agentLoopArgs.agentMessageId,
   });
+
+  if (result.isErr()) {
+    const { error } = result;
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+
+    logger.error(
+      {
+        error,
+        workspaceId,
+        agentMessageId: agentLoopArgs.agentMessageId,
+        isRetryable: error.isRetryable,
+      },
+      "[ConsumptionAnalytics] Failed to upsert consumption documents in ES"
+    );
+
+    throw ApplicationFailure.create({
+      message: `Failed to upsert consumption analytics documents: ${error.message}`,
+      type: "ElasticsearchError",
+      nonRetryable: !error.isRetryable,
+      cause: error,
+    });
+  }
 }

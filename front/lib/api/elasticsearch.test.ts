@@ -1,4 +1,7 @@
-import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
+import {
+  ElasticsearchError,
+  formatDateFromMillis,
+} from "@app/lib/api/elasticsearch";
 import { describe, expect, it } from "vitest";
 
 describe("formatDateFromMillis", () => {
@@ -16,5 +19,22 @@ describe("formatDateFromMillis", () => {
 
   it("keeps the local day for a negative-offset timezone", () => {
     expect(formatDateFromMillis(ms, "America/New_York")).toBe("2026-06-09");
+  });
+});
+
+describe("ElasticsearchError", () => {
+  it.each([
+    ["connection_error", undefined, true],
+    ["query_error", 408, true],
+    ["query_error", 429, true],
+    ["query_error", 500, true],
+    ["query_error", 400, false],
+    ["query_error", undefined, false],
+    ["unknown_error", undefined, false],
+  ] as const)("classifies %s with status %s as retryable=%s", (type, statusCode, expected) => {
+    expect(
+      new ElasticsearchError(type, "Elasticsearch failure", statusCode)
+        .isRetryable
+    ).toBe(expected);
   });
 });

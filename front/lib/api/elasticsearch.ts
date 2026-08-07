@@ -52,6 +52,22 @@ export class ElasticsearchError extends Error {
     this.type = type;
     this.statusCode = statusCode;
   }
+
+  get isRetryable(): boolean {
+    if (this.type === "connection_error") {
+      return true;
+    }
+
+    if (this.type !== "query_error" || this.statusCode === undefined) {
+      return false;
+    }
+
+    return (
+      this.statusCode === 408 ||
+      this.statusCode === 429 ||
+      this.statusCode >= 500
+    );
+  }
 }
 
 type SearchParams = estypes.SearchRequest;

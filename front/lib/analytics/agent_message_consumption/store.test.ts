@@ -93,8 +93,11 @@ describe("upsertAgentMessageConsumptionAnalyticsDocuments", () => {
   it("uses a stable identity for idempotent upserts", async () => {
     const document = makeDocument();
 
-    await upsertAgentMessageConsumptionAnalyticsDocuments([document]);
+    const result = await upsertAgentMessageConsumptionAnalyticsDocuments([
+      document,
+    ]);
 
+    expect(result.isOk()).toBe(true);
     expect(bulkMock).toHaveBeenCalledWith({
       body: [
         {
@@ -110,18 +113,53 @@ describe("upsertAgentMessageConsumptionAnalyticsDocuments", () => {
   });
 
   it("does nothing when there are no documents", async () => {
-    await upsertAgentMessageConsumptionAnalyticsDocuments([]);
+    const result = await upsertAgentMessageConsumptionAnalyticsDocuments([]);
 
+    expect(result.isOk()).toBe(true);
     expect(withEs).not.toHaveBeenCalled();
   });
 
-  it("fails the activity when Elasticsearch rejects the upsert", async () => {
-    vi.mocked(withEs).mockResolvedValueOnce(
-      new Err(new ElasticsearchError("query_error", "write failed"))
-    );
+  it("returns the Elasticsearch error when the request fails", async () => {
+    const error = new ElasticsearchError("connection_error", "write failed");
+    vi.mocked(withEs).mockResolvedValueOnce(new Err(error));
 
-    await expect(
-      upsertAgentMessageConsumptionAnalyticsDocuments([makeDocument()])
-    ).rejects.toThrow("Failed to upsert consumption analytics documents");
+    const result = await upsertAgentMessageConsumptionAnalyticsDocuments([
+      makeDocument(),
+    ]);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBe(error);
+    }
+  });
+
+  it("returns failed bulk items with their retry status", async () => {
+    bulkMock.mockResolvedValueOnce({
+      errors: true,
+      items: [
+        {
+          index: {
+            _index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
+            status: 429,
+            error: {
+              type: "es_rejected_execution_exception",
+              reason: "queue full",
+            },
+          },
+        },
+      ],
+      took: 1,
+    });
+
+    const result = await upsertAgentMessageConsumptionAnalyticsDocuments([
+      makeDocument(),
+    ]);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("queue full");
+      expect(result.error.statusCode).toBe(429);
+      expect(result.error.isRetryable).toBe(true);
+    }
   });
 });
