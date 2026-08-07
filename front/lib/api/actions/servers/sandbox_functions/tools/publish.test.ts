@@ -78,7 +78,7 @@ describe("publishHandler", () => {
     expect(result.value).toEqual([
       {
         type: "text",
-        text: `Published pod function "tasklist__add-task". Call it by reference "${projectId}/tasklist__add-task".`,
+        text: `Published pod function "tasklist__add-task". Frames call it by reference "${projectId}/tasklist__add-task".`,
       },
     ]);
   });

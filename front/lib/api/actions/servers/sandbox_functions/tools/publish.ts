@@ -42,14 +42,15 @@ export async function publishHandler(
     return new Err(toMCPError(result.error));
   }
 
-  // The slug carries the app prefix publish derived from `path`, so state it and the reference a
-  // Frame needs rather than letting the model assume the name it passed.
+  // The slug carries the app prefix publish derived from `path`, so state it rather than letting the
+  // model assume the name it passed. The other tools resolve the pod from the run context and take
+  // the slug alone; only a Frame needs the qualified reference, so name that consumer.
   const { slug: publishedSlug } = result.value;
 
   return new Ok([
     {
       type: "text",
-      text: `Published pod function "${publishedSlug}". Call it by reference "${podResult.value.pod.sId}/${publishedSlug}".`,
+      text: `Published pod function "${publishedSlug}". Frames call it by reference "${podResult.value.pod.sId}/${publishedSlug}".`,
     },
   ]);
 }
