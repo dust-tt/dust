@@ -50,6 +50,7 @@ import type {
   SandboxFunctionCallError,
   SandboxFunctionInvocationContext,
   SandboxFunctionInvocationOrigin,
+  SandboxFunctionInvocationOutcome,
   SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
@@ -282,6 +283,33 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   readonly sandboxFunction: SandboxFunctionResource;
   private data: SandboxFunctionInvocationData;
 
+  /**
+   * In-flight initial persistence (blob write + created event) for an inline execution. Terminal
+   * transitions await it so the terminal blob write cannot be overwritten by the initial one and
+   * the result event cannot outrun the created event. Only ever set on the instance that runs the
+   * invocation inline; instances rehydrated from the DB never have one, and never need one.
+   */
+  private pendingInitialPersistence: Promise<void> | undefined;
+
+  private async settleInitialPersistence(): Promise<void> {
+    if (this.pendingInitialPersistence) {
+      await this.pendingInitialPersistence;
+      this.pendingInitialPersistence = undefined;
+    }
+  }
+
+  /**
+   * The outcome recorded by a terminal transition that ran on this instance, kept with its
+   * original types (the stored blob deliberately widens error codes to plain strings). Callers
+   * use it to skip the event-stream read-back after an inline execution: subscribing to Redis
+   * would only re-fetch what this process just produced.
+   */
+  private lastSettledOutcome: SandboxFunctionInvocationOutcome | undefined;
+
+  settledOutcome(): SandboxFunctionInvocationOutcome | null {
+    return this.lastSettledOutcome ?? null;
+  }
+
   constructor(
     model: ModelStaticWorkspaceAware<SandboxFunctionInvocationModel>,
     blob: Attributes<SandboxFunctionInvocationModel>,
@@ -404,6 +432,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
+    // A deferred initial persistence (inline path) must land before the terminal blob write
+    // overwrites the same object, and before the result event can outrun the created event.
+    await this.settleInitialPersistence();
+
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
@@ -428,6 +460,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       },
       { invocationId: this.sId }
     );
+    this.lastSettledOutcome = { status: "errored", error: callError };
     return true;
   }
 
@@ -453,6 +486,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
+    // A deferred initial persistence (inline path) must land before the terminal blob write
+    // overwrites the same object, and before the result event can outrun the created event.
+    await this.settleInitialPersistence();
+
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
@@ -474,6 +511,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       },
       { invocationId: this.sId }
     );
+    this.lastSettledOutcome = { status: "succeeded", result };
     return true;
   }
   /**
@@ -512,36 +550,46 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           )
         );
       }
-      const persistedFunction = await SandboxFunctionModel.findOne({
-        where: {
-          id: this.sandboxFunctionId,
-          workspaceId: this.workspaceId,
-        },
-      });
-      if (!persistedFunction) {
+      // The function re-fetch (it guards a re-publish race on `noTools` below) and its dependent
+      // authorization are independent of the sandbox readiness check: overlapping the two chains
+      // takes the slower one off the critical path. The authorization chains on the re-fetch
+      // because it reads the persisted userIdentity.
+      const [functionCheck, ensureResult] = await Promise.all([
+        (async () => {
+          const persistedFunction = await SandboxFunctionModel.findOne({
+            where: {
+              id: this.sandboxFunctionId,
+              workspaceId: this.workspaceId,
+            },
+          });
+          if (!persistedFunction) {
+            return null;
+          }
+          const authorization = await authorizeSandboxFunctionInvocation(auth, {
+            userIdentity: persistedFunction.userIdentity,
+            origin: this.origin ?? "delegated",
+          });
+          return { persistedFunction, authorization };
+        })(),
+        ensurePodSandboxReady(auth, sandboxFunction.space, {
+          requireRunning: inline,
+        }),
+      ]);
+      if (!functionCheck) {
         return new Err(new Error("The Pod Function no longer exists."));
       }
-      const authorization = await authorizeSandboxFunctionInvocation(auth, {
-        userIdentity: persistedFunction.userIdentity,
-        origin: this.origin ?? "delegated",
-      });
+      const { persistedFunction, authorization } = functionCheck;
       if (!authorization.authorized) {
         return new Err(
           new SandboxFunctionInvocationError(authorization.errorMessage)
         );
       }
-
-      const ensureResult = await ensurePodSandboxReady(
-        auth,
-        sandboxFunction.space,
-        { requireRunning: inline }
-      );
       if (ensureResult.isErr()) {
         return ensureResult;
       }
 
-      await ensureResult.value.sandbox.updateLastActivityAt();
-
+      // No updateLastActivityAt here: ensurePodSandboxReady's ensureActive just wrote it under
+      // the lifecycle lock.
       const sandbox = ensureResult.value.sandbox;
       const stdoutResultDelivery = await hasFeatureFlag(
         auth,
@@ -788,7 +836,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       context?: SandboxFunctionInvocationContext;
       origin?: SandboxFunctionInvocationOrigin;
     },
-    transaction?: Transaction
+    transaction?: Transaction,
+    // Inline executions defer the initial blob write (see createAndStartExecution): the terminal
+    // transition rewrites the full blob anyway, so the upload only needs to finish before that
+    // write, not before execution starts.
+    { deferInitialWrite = false }: { deferInitialWrite?: boolean } = {}
   ): Promise<SandboxFunctionInvocationResource> {
     const resource = await withTransaction(async (t) => {
       const invocation = await this.model.create(
@@ -822,9 +874,29 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return resource;
     }, transaction);
 
-    const writeResult = await resource.writeDataToGcs();
-    if (writeResult.isErr()) {
-      throw writeResult.error;
+    if (deferInitialWrite) {
+      resource.pendingInitialPersistence = resource
+        .writeDataToGcs()
+        .then((result) => {
+          if (result.isErr()) {
+            // Surfaced here rather than thrown: the terminal transition rewrites the full blob,
+            // so a failed initial upload only matters if the invocation never settles.
+            logger.error(
+              {
+                workspaceModelId: resource.workspaceId,
+                sandboxFunctionId: sandboxFunction.sId,
+                invocationId: resource.sId,
+                err: result.error,
+              },
+              "Deferred Pod function invocation blob write failed"
+            );
+          }
+        });
+    } else {
+      const writeResult = await resource.writeDataToGcs();
+      if (writeResult.isErr()) {
+        throw writeResult.error;
+      }
     }
     return resource;
   }
@@ -841,22 +913,42 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       origin?: SandboxFunctionInvocationOrigin;
     }
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
-    const invocation = await this.makeNew(auth, {
-      sandboxFunction,
-      input: body.input,
-      context: body.context,
-      origin,
-    });
-    await publishSandboxFunctionInvocationEvent(
+    const inline = await shouldExecuteInline(auth, sandboxFunction);
+    const invocation = await this.makeNew(
+      auth,
       {
-        type: "sandbox_function_invocation_created",
-        created: invocation.createdAt.getTime(),
-        invocation: invocation.toJSON(),
+        sandboxFunction,
+        input: body.input,
+        context: body.context,
+        origin,
       },
-      { invocationId: invocation.sId }
+      undefined,
+      { deferInitialWrite: inline }
     );
+    const publishCreated = () =>
+      publishSandboxFunctionInvocationEvent(
+        {
+          type: "sandbox_function_invocation_created",
+          created: invocation.createdAt.getTime(),
+          invocation: invocation.toJSON(),
+        },
+        { invocationId: invocation.sId }
+      );
 
-    if (await shouldExecuteInline(auth, sandboxFunction)) {
+    if (inline) {
+      // The created event rides with the deferred blob write: nothing before the terminal
+      // transition consumes either, and succeed()/fail() await the combined promise before
+      // publishing the result, which keeps the created event ahead of the result event.
+      const pendingBlobWrite = invocation.pendingInitialPersistence;
+      invocation.pendingInitialPersistence = Promise.allSettled([
+        pendingBlobWrite,
+        publishCreated(),
+      ]).then(() => undefined);
+    } else {
+      await publishCreated();
+    }
+
+    if (inline) {
       const executionResult = await invocation.execute(auth, { inline: true });
       if (executionResult.isOk()) {
         return new Ok(invocation);

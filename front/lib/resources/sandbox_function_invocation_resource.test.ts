@@ -691,7 +691,10 @@ describe("SandboxFunctionInvocationResource", () => {
         invocationId: invocation.sId,
       });
     expect(refetchedInvocation?.status).toBe("created");
-    expect(updateLastActivityAtSpy).toHaveBeenCalledOnce();
+    // execute() itself never touches lastActivityAt: ensurePodSandboxReady's
+    // ensureActive already writes it under the lifecycle lock, and a second
+    // write per invocation was pure hot-row churn on the sandbox row.
+    expect(updateLastActivityAtSpy).not.toHaveBeenCalled();
     expect(ensurePodSandboxReady).toHaveBeenCalledWith(authenticator, space, {
       requireRunning: false,
     });
@@ -1143,6 +1146,22 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     }
     expect(result.value.status).toBe("succeeded");
     expect(result.value.result).toEqual({ commentId: "inline" });
+    // The settled outcome is available in memory, so callers can answer without reading the
+    // event stream back out of Redis.
+    expect(result.value.settledOutcome()).toEqual({
+      status: "succeeded",
+      result: { commentId: "inline" },
+    });
+    // The initial blob write is deferred on the inline path; the terminal write must still leave
+    // a complete blob (input and result) behind for later fetches.
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: result.value.sId }
+    );
+    expect(refetched?.input).toEqual({ message: "hello" });
+    expect(refetched?.result).toEqual({ commentId: "inline" });
+    // A rehydrated instance never short-circuits: it did not run the invocation.
+    expect(refetched?.settledOutcome()).toBeNull();
     // An inline invocation holds a request while it runs, so it gets a far shorter ceiling than
     // the workflow's.
     const [, , execOptions] = execSpy.mock.calls[0]!;

@@ -41,6 +41,15 @@ export async function callSandboxFunction(
   const invocation = invocationResult.value;
   const { sId: invocationId } = invocation;
 
+  // An inline execution settles the instance it ran on: return from memory rather than
+  // subscribing to the stream to read back an outcome this process just produced.
+  const settled = invocation.settledOutcome();
+  if (settled) {
+    return settled.status === "succeeded"
+      ? new Ok(settled.result)
+      : new Err(settled.error);
+  }
+
   try {
     for await (const { data } of getSandboxFunctionInvocationEvents({
       invocationId,
