@@ -7,7 +7,8 @@ import {
 } from "@app/lib/swr/swr";
 import type { GetConversationPlanModeResponseBody } from "@app/types/api/assistant/plan_mode";
 import { useCallback, useState } from "react";
-import { type Fetcher, useSWRConfig } from "swr";
+import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 export function planFileKey({
   workspaceId,

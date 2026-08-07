@@ -7,10 +7,10 @@ import type { SlashCommand } from "@app/components/editor/extensions/shared/slas
 import { describe, expect, it } from "vitest";
 
 import { buildInputBarSlashCommandItems } from "./InputBarSlashSuggestionItems";
+import type { InputBarSlashCommand } from "./InputBarSlashSuggestionTypes";
 import {
   getAvailableInputBarSlashCommands,
   INPUT_BAR_SLASH_COMMANDS,
-  type InputBarSlashCommand,
 } from "./InputBarSlashSuggestionTypes";
 
 const ALL_COMMANDS = getAvailableInputBarSlashCommands({

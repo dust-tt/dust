@@ -1,10 +1,8 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentsSpaceIds } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
-import {
-  type ConversationAccessType,
-  ConversationResource,
-} from "@app/lib/resources/conversation_resource";
+import type { ConversationAccessType } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";

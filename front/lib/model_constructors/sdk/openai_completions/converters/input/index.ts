@@ -1,11 +1,11 @@
 import type { Client } from "@app/lib/model_constructors/client";
+import type { OpenAICompletionsMessageConverters } from "@app/lib/model_constructors/sdk/openai_completions/converters/input/utils";
 import {
   assistantReasoningMessageToMessage,
   assistantTextMessageToMessage,
   assistantToolCallRequestToMessage,
   conversationToOpenAICompletionsMessages,
   forceToolNameToToolChoice,
-  type OpenAICompletionsMessageConverters,
   outputFormatToResponseFormat,
   systemMessageToMessage,
   toolCallResultMessageToMessage,

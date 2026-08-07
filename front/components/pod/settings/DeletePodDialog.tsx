@@ -17,7 +17,8 @@ import {
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
-import { type ChangeEvent, useCallback, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useState } from "react";
 
 interface DeletePodDialogProps {
   owner: LightWorkspaceType;

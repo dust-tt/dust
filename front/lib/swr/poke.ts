@@ -19,11 +19,8 @@ import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/types/api/
 import type { GetRegionResponseType } from "@app/types/api/regions/config";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
-import {
-  type APIErrorResponse,
-  isAPIErrorResponse,
-  type RegionRedirectError,
-} from "@app/types/error";
+import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
 import type { Fetcher } from "swr";

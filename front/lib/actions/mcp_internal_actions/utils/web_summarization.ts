@@ -4,7 +4,8 @@ import {
   getSmallWhitelistedModel,
   selectEnabledModel,
 } from "@app/lib/api/assistant/models";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { GPT_5_6_LUNA_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {

@@ -1,8 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeCoreSearchNodesFilters,
-  type ResolvedDataSourceConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { makeCoreSearchNodesFilters } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";

@@ -1,9 +1,9 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
-import type { DetectedSkillSummary } from "@app/lib/skill_detection";
-import {
-  type DetectedSkillStatus,
-  isImportableSkillStatus,
+import type {
+  DetectedSkillStatus,
+  DetectedSkillSummary,
 } from "@app/lib/skill_detection";
+import { isImportableSkillStatus } from "@app/lib/skill_detection";
 import {
   Chip,
   ContentMessage,

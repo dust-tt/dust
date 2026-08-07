@@ -46,7 +46,8 @@ import type {
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { isSupportedImageContentType } from "@app/types/files";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import * as path from "path";

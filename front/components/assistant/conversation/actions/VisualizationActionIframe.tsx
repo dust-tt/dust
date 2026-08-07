@@ -28,7 +28,8 @@ import type {
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
 import { isAPIError } from "@app/types/error";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import {
   assertNever,
   assertNeverAndIgnore,

@@ -1,15 +1,15 @@
 import config from "@app/lib/api/config";
-
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
-import {
-  type ApiKeyCredentialContentSchema,
-  type LLMCredentialsType,
-  PROVIDER_TO_CREDENTIAL_KEY,
-  type ProviderCredentialKey,
+import type {
+  ApiKeyCredentialContentSchema,
+  LLMCredentialsType,
+  ProviderCredentialKey,
 } from "@app/types/provider_credential";
+import { PROVIDER_TO_CREDENTIAL_KEY } from "@app/types/provider_credential";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";

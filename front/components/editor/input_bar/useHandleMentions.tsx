@@ -1,7 +1,5 @@
-import {
-  InputBarContext,
-  type PendingInputText,
-} from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";

@@ -8,10 +8,8 @@ import {
   INTERACTIVE_CONTENT_SERVER_NAME,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
-import {
-  SANDBOX_FUNCTIONS_SERVER_NAME,
-  type SANDBOX_FUNCTIONS_TOOLS_METADATA,
-} from "@app/lib/api/actions/servers/sandbox_functions/metadata";
+import type { SANDBOX_FUNCTIONS_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
+import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";

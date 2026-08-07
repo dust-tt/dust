@@ -1,4 +1,5 @@
-import { type ParseArgsConfig, parseArgs } from "node:util";
+import type { ParseArgsConfig } from "node:util";
+import { parseArgs } from "node:util";
 
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 

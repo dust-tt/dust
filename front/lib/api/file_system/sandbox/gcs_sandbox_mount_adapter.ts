@@ -4,15 +4,14 @@ import {
 } from "@app/lib/api/sandbox/gcs/token";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
-import {
-  type RootCommand,
-  rootCommand,
-} from "@app/lib/api/sandbox/root_command";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
+import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import type { SandboxMountAdapter } from "./sandbox_mount_adapter";

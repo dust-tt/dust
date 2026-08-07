@@ -4,10 +4,8 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
-import {
-  type ConsumptionPeriodSelection,
-  formatConsumptionDate,
-} from "@app/lib/analytics/consumption_period";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type {
   ConsumptionTimeseriesGroup,
   ConsumptionTimeseriesPoint,

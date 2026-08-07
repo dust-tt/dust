@@ -1,16 +1,18 @@
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import type {
+  AvailabilityFilter,
+  SkillManagerTabType,
+} from "@app/components/pages/builder/skills/utils";
 import {
   AVAILABILITY_FILTER_OPTIONS,
   AVAILABILITY_QUERY_PARAMS,
-  type AvailabilityFilter,
   filterByAvailability,
   filterBySearch,
   getAvailabilityFilterLabel,
   isAvailabilityFilter,
   isValidTab,
   SKILL_MANAGER_TABS,
-  type SkillManagerTabType,
   sortSkillsByName,
 } from "@app/components/pages/builder/skills/utils";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";

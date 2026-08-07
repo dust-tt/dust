@@ -1,7 +1,7 @@
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import {
   isSkillSlashCommand,
   isToolSlashCommand,
-  type SlashCommandSkillSuggestion,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
@@ -29,9 +29,9 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { ChainedCommands, Editor, Range } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
+import type { RefObject } from "react";
 import {
   forwardRef,
-  type RefObject,
   useCallback,
   useImperativeHandle,
   useMemo,

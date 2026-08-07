@@ -1,11 +1,11 @@
 import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import {
   buildPodNavItemsBeforeSettings,
   DEFAULT_POD_FRAME_TAB_ICON,
   MAX_POD_FRAME_TAB_TITLE_LENGTH,
-  type PodFrameTab,
 } from "@app/types/pod_frame_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import {

@@ -1,10 +1,10 @@
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/components/skills/SkillsTable";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
-import {
-  SKILL_AVAILABILITIES,
-  type SkillAvailability,
-  type SkillWithoutInstructionsAndToolsWithRelationsType,
+import type {
+  SkillAvailability,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 
 export type SkillManagerTabType =
   | "active"

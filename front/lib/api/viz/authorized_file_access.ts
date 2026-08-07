@@ -11,14 +11,14 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import {
-  type AuthorizedFileAccessAllowlist,
-  type AuthorizedFileAccessShareError,
-  type AuthorizedFileRef,
-  type ComputedAuthorizedFileAccess,
-  type FileShareScope,
-  getAuthorizedFileRefLabel,
+import type {
+  AuthorizedFileAccessAllowlist,
+  AuthorizedFileAccessShareError,
+  AuthorizedFileRef,
+  ComputedAuthorizedFileAccess,
+  FileShareScope,
 } from "@app/types/files";
+import { getAuthorizedFileRefLabel } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";

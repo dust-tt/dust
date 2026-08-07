@@ -18,10 +18,8 @@ import {
   SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
 } from "@app/lib/api/sandbox/hardening";
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
-import {
-  type Operation,
-  SANDBOX_EGRESS_CONTROLLED_UIDS,
-} from "@app/lib/api/sandbox/image/types";
+import type { Operation } from "@app/lib/api/sandbox/image/types";
+import { SANDBOX_EGRESS_CONTROLLED_UIDS } from "@app/lib/api/sandbox/image/types";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import { describe, expect, test } from "vitest";
 

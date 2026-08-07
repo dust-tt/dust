@@ -28,6 +28,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
   Brackets,
@@ -37,7 +38,6 @@ import {
   DataTable,
   Edit04,
   Eye,
-  type MenuItem,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";

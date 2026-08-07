@@ -1,7 +1,7 @@
+import type { SandboxImageId } from "@app/lib/api/sandbox/image";
 import {
   formatSandboxImageId,
   getRegisteredImages,
-  type SandboxImageId,
 } from "@app/lib/api/sandbox/image";
 import { listE2BTemplates } from "@app/lib/api/sandbox/providers/e2b_template";
 import logger from "@app/logger/logger";

@@ -1,6 +1,6 @@
 import type { AgentsUsageType } from "@app/types/data_source";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import {
-  type PodFrameTab,
   PodFrameTabsSchema,
   PodTabsOrderSchema,
 } from "@app/types/pod_frame_tab";

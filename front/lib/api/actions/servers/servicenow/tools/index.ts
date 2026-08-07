@@ -1,10 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  createServiceNowClient,
-  type WritableIncidentFields,
-} from "@app/lib/api/actions/servers/servicenow/client";
+import type { WritableIncidentFields } from "@app/lib/api/actions/servers/servicenow/client";
+import { createServiceNowClient } from "@app/lib/api/actions/servers/servicenow/client";
 import { renderIncident } from "@app/lib/api/actions/servers/servicenow/helpers";
 import { SERVICENOW_TOOLS_METADATA } from "@app/lib/api/actions/servers/servicenow/metadata";
 import { Err, Ok } from "@app/types/shared/result";

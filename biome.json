@@ -197,6 +197,19 @@
       }
     },
     {
+      "includes": ["front/**/*.{js,jsx,ts,tsx}"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useImportType": {
+              "level": "error",
+              "options": { "style": "separatedType" }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": [
         "front/migrations/**",
         "front/mailing/**",

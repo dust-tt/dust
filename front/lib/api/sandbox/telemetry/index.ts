@@ -1,9 +1,9 @@
 import config from "@app/lib/api/config";
 import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
+import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import {
   getSandboxOwnerEnvVars,
   getSandboxOwnerLogContext,
-  type SandboxRuntimeOwner,
 } from "@app/lib/api/sandbox/owner";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";

@@ -35,12 +35,8 @@ import type {
 } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import maxBy from "lodash/maxBy";
-import {
-  fn,
-  type InferAttributes,
-  literal,
-  type WhereOptions,
-} from "sequelize";
+import type { InferAttributes, WhereOptions } from "sequelize";
+import { fn, literal } from "sequelize";
 
 const SUB_AGENT_FLUSH_INTERVAL_MS = 2 * DEFAULT_EVENT_FLUSH_INTERVAL_MS;
 // Conversations that are more than one level deep will seldom be viewed in real-time.

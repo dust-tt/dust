@@ -2,7 +2,8 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ReactNode } from "react";
 
 import { getFeatureFlagOverrides } from "./devFeatureFlagOverrides";
-import { type ExpandedPanel, THEME_OPTIONS } from "./devModeConfig";
+import type { ExpandedPanel } from "./devModeConfig";
+import { THEME_OPTIONS } from "./devModeConfig";
 import { S } from "./devPanelStyles";
 import {
   countTypoOverrides,

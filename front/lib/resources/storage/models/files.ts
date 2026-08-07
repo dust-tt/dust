@@ -1,11 +1,13 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import type {
+  CreationOptional,
+  ForeignKey,
+  NonAttribute,
+} from "@app/lib/resources/storage/data_types";
 import {
-  type CreationOptional,
   DANGEROUSLY_UNBOUNDED_TEXT,
   DataTypes,
-  type ForeignKey,
   literal,
-  type NonAttribute,
   Op,
 } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";

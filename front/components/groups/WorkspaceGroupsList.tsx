@@ -7,8 +7,8 @@ import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import type { GroupKind } from "@app/types/groups";
 import {
-  type GroupKind,
   isRegularManualGroupKind,
   MANAGEABLE_GROUP_KINDS,
 } from "@app/types/groups";

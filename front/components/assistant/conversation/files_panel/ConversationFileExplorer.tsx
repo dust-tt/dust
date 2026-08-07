@@ -11,10 +11,8 @@ import { useConversationSandboxFiles } from "@app/hooks/conversations/useConvers
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
 import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
-import {
-  type ConversationWithoutContentType,
-  isPodConversation,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import { opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, XClose } from "@dust-tt/sparkle";

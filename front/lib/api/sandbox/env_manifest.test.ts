@@ -1,7 +1,5 @@
-import {
-  type RootCommand,
-  renderRootCommand,
-} from "@app/lib/api/sandbox/root_command";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
+import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";

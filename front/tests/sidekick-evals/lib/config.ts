@@ -3,10 +3,8 @@ import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/
 import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { _getSidekickGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
 import type { SidekickContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
-import {
-  MCP_SERVERS_FOR_GLOBAL_AGENTS,
-  type MCPServerViewsForGlobalAgentsMap,
-} from "@app/lib/api/assistant/global_agents/tools";
+import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
+import { MCP_SERVERS_FOR_GLOBAL_AGENTS } from "@app/lib/api/assistant/global_agents/tools";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { SidekickConfig } from "@app/tests/sidekick-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";

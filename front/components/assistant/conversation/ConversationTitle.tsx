@@ -19,10 +19,10 @@ import {
 } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   ArrowLeft,
   Breadcrumbs,
-  type BreadcrumbsItem,
   Button,
   Chip,
   CoinsStacked01,

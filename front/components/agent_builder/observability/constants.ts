@@ -1,7 +1,5 @@
-import {
-  type AnalyticsVisibleOrigin,
-  SOURCE_ORIGIN_LABELS,
-} from "@app/lib/api/analytics/source_labels";
+import type { AnalyticsVisibleOrigin } from "@app/lib/api/analytics/source_labels";
+import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 
 export type { AnalyticsVisibleOrigin };
 

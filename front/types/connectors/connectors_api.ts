@@ -1,5 +1,7 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
-import { type ConnectorsAPIError, isConnectorsAPIError } from "@dust-tt/client";
+import type { ConnectorsAPIError } from "@dust-tt/client";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isConnectorsAPIError } from "@dust-tt/client";
 import { z } from "zod";
 import type { ContentNodeType } from "../core/content_node";
 import type { ConnectorProvider, DataSourceType } from "../data_source";

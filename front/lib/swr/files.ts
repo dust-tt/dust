@@ -21,7 +21,8 @@ import type {
   SharingGrantType,
 } from "@app/types/files";
 import { DUST_FILE_ID_HEADER } from "@app/types/files";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher, SWRConfiguration } from "swr";

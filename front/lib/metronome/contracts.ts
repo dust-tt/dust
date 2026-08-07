@@ -13,10 +13,8 @@ import {
   listMetronomeContracts,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import {
-  type CachedContract,
-  resolveActiveMetronomeIds,
-} from "@app/lib/metronome/plan_type";
+import type { CachedContract } from "@app/lib/metronome/plan_type";
+import { resolveActiveMetronomeIds } from "@app/lib/metronome/plan_type";
 import {
   remapMembershipSeatTypesForContract,
   syncSeatCount,

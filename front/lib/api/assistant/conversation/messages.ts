@@ -3,7 +3,8 @@ import { updateConversationRequirements } from "@app/lib/api/assistant/conversat
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessageModel,
   CompactionMessageModel,

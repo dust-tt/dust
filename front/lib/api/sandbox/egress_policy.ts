@@ -11,7 +11,8 @@ import {
   normalizeEgressPolicyDomain,
   parseEgressPolicy,
 } from "@app/types/sandbox/egress_policy";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const INVALIDATION_TIMEOUT_MS = 5_000;

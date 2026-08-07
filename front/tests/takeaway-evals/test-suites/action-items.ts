@@ -1,10 +1,10 @@
+import type { TakeawayTestSuite } from "@app/tests/takeaway-evals/lib/types";
 import {
   maxActionItems,
   shouldExtractActionItem,
   shouldNotAssignTo,
   shouldNotExtractActionItem,
   shouldPreserveSId,
-  type TakeawayTestSuite,
 } from "@app/tests/takeaway-evals/lib/types";
 
 export const actionItemsSuite: TakeawayTestSuite = {

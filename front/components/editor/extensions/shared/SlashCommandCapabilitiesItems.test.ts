@@ -1,13 +1,14 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { describe, expect, it } from "vitest";
-
+import type {
+  SlashCommandSkillSuggestion,
+  SlashCommandToolSuggestion,
+} from "./SlashCommandCapabilitiesItems";
 import {
   getSkillSlashCommandItem,
   getToolSlashCommandItem,
   MAX_RENDERED_CAPABILITY_ITEMS,
   matchesSlashCommandCapabilityQuery,
-  type SlashCommandSkillSuggestion,
-  type SlashCommandToolSuggestion,
   searchCapabilityIndex,
 } from "./SlashCommandCapabilitiesItems";
 import { buildCapabilitySlashCommandItems } from "./slash_suggestion/buildSlashCommandItems";

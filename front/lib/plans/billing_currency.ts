@@ -1,7 +1,5 @@
-import {
-  isSupportedCurrency,
-  type SupportedCurrency,
-} from "@app/types/currency";
+import type { SupportedCurrency } from "@app/types/currency";
+import { isSupportedCurrency } from "@app/types/currency";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type Stripe from "stripe";
 

@@ -2,10 +2,8 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
-import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
-  type MCPToolStakeLevelType,
-} from "@app/lib/actions/constants";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import {
   autoInternalMCPServerNameToSId,
   getMcpServerViewDisplayName,
@@ -35,7 +33,8 @@ import type {
   MCPServerViewType,
   MCPToolType,
 } from "@app/lib/api/mcp";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";

@@ -1,10 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import {
-  type AgentLoopRunContext,
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { AgentLoopRunContext, ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   MAX_SLACK_MESSAGE_LENGTH,
   makeMarkdownBlocks,

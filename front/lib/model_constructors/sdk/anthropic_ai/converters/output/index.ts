@@ -1,4 +1,5 @@
 import type { Client } from "@app/lib/model_constructors/client";
+import type { OutputEventConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import {
   accumulatedReasoningToReasoningEvent,
   accumulatedTextToTextEvent,
@@ -7,7 +8,6 @@ import {
   invalidJsonToolCallToToolCallEvent,
   messageDeltaUsageToTokenUsageEvent,
   messageStartToResponseIdEvent,
-  type OutputEventConverters,
   reasoningDeltaToReasoningDeltaEvent,
   serverToolBlockToProviderPassthroughEvent,
   stopReasonToErrorEvent,

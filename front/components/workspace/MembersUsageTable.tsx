@@ -27,20 +27,20 @@ import {
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { ModelsTierDefinition } from "@app/lib/resources/models_tier_resource";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
+import type { MembershipSeatType } from "@app/types/memberships";
 import {
   isPaidSeatType,
-  type MembershipSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Clock,
   createSelectionColumn,
   DataTable,
   Icon,
   LoadingBlock,
-  type MenuItem,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";

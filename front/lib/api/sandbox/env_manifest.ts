@@ -1,16 +1,17 @@
 import { randomBytes } from "node:crypto";
 
 import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
+import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import {
   getSandboxOwnerEnvManifestEntries,
   resolvePodForRuntimeOwner,
-  type SandboxRuntimeOwner,
 } from "@app/lib/api/sandbox/owner";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const SANDBOX_ENV_MANIFEST_PATH = "/run/dust/sandbox-env-manifest.json";
 

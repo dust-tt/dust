@@ -1,9 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
+import type {
+  DedupTestCase,
+  JudgeResult,
+} from "@app/tests/dedup-evals/lib/types";
 import {
-  type DedupTestCase,
   formatMatchMap,
   getTestCaseInputForDisplay,
-  type JudgeResult,
 } from "@app/tests/dedup-evals/lib/types";
 import { getJudgeLLM } from "@app/tests/utils/eval_llm";
 

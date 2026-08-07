@@ -1,4 +1,5 @@
-import { Extension, type JSONContent, Node } from "@tiptap/core";
+import type { JSONContent } from "@tiptap/core";
+import { Extension, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 

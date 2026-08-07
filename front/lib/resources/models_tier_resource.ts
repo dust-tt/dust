@@ -1,9 +1,11 @@
+import type {
+  ModelsTierDefinition,
+  ModelsTierName,
+  ModelTierSelection,
+} from "@app/lib/api/assistant/token_pricing/tiers";
 import {
   MODELS_TIER_NAMES,
   MODELS_TIERS,
-  type ModelsTierDefinition,
-  type ModelsTierName,
-  type ModelTierSelection,
   STATIC_MODEL_TIERS,
 } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { Authenticator } from "@app/lib/auth";

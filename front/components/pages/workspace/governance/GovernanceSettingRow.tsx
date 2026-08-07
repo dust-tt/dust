@@ -1,13 +1,13 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { GroupSelector } from "@app/components/pages/workspace/governance/GroupSelector";
-import {
-  type GovernancePermission,
-  type GovernancePermissionConfiguration,
-  type GrantType,
-  type GroupPermissionResourceType,
-  isValidPermissionConfigurationScope,
-  type PermissionConfigurationScope,
+import type {
+  GovernancePermission,
+  GovernancePermissionConfiguration,
+  GrantType,
+  GroupPermissionResourceType,
+  PermissionConfigurationScope,
 } from "@app/types/group_permissions";
+import { isValidPermissionConfigurationScope } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {

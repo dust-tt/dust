@@ -13,7 +13,8 @@ import {
   Input,
   Spinner,
 } from "@dust-tt/sparkle";
-import { type MouseEvent, useState } from "react";
+import type { MouseEvent } from "react";
+import { useState } from "react";
 
 interface GroupDialogProps {
   owner: LightWorkspaceType;

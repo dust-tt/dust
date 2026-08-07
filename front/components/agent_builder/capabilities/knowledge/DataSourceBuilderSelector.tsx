@@ -29,9 +29,9 @@ import {
 } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   Breadcrumbs,
-  type BreadcrumbsItem,
   Button,
   CloudArrowLeftRight,
   cn,

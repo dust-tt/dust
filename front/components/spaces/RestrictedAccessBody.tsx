@@ -1,9 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { GroupSelectionTable } from "@app/components/groups/GroupSelectionTable";
-import {
-  MemberSelectionTable,
-  type SearchMemberType,
-} from "@app/components/members/MemberSelectionTable";
+import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
+import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {

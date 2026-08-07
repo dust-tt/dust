@@ -1,7 +1,5 @@
-import {
-  CreditUsage,
-  type CreditUsageState,
-} from "@app/components/app/CreditUsage";
+import type { CreditUsageState } from "@app/components/app/CreditUsage";
+import { CreditUsage } from "@app/components/app/CreditUsage";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { UserSettingsPopover } from "@app/components/UserSettingsPopover";

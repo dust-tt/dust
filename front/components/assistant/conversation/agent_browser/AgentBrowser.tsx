@@ -1,12 +1,14 @@
 import { MobileOrExtensionAgentBrowser } from "@app/components/assistant/conversation/agent_browser/MobileOrExtensionAgentBrowser";
+import type {
+  AgentsByTab,
+  SortType,
+} from "@app/components/assistant/conversation/agent_browser/shared";
 import {
   AGENTS_TABS,
-  type AgentsByTab,
   ALL_TAG,
   isValidTab,
   MOST_POPULAR_TAG,
   OTHERS_TAG,
-  type SortType,
 } from "@app/components/assistant/conversation/agent_browser/shared";
 import { WebAgentBrowser } from "@app/components/assistant/conversation/agent_browser/WebAgentBrowser";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";

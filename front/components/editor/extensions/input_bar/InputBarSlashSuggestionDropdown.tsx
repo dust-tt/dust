@@ -21,9 +21,9 @@ import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
+import type { RefObject } from "react";
 import {
   forwardRef,
-  type RefObject,
   useCallback,
   useImperativeHandle,
   useMemo,

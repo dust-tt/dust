@@ -1,7 +1,5 @@
-import {
-  type DeduplicateCandidate,
-  resolveDeduplicationGroups,
-} from "@app/lib/project_task/deduplicate_candidates";
+import type { DeduplicateCandidate } from "@app/lib/project_task/deduplicate_candidates";
+import { resolveDeduplicationGroups } from "@app/lib/project_task/deduplicate_candidates";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 

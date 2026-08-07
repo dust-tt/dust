@@ -6,10 +6,8 @@ import type {
   BetaRawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages/messages";
-import {
-  type AnthropicInputConfig,
-  anthropicConfigSchema,
-} from "@app/lib/model_constructors/providers/anthropic/inputConfig";
+import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
+import { anthropicConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
 import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
 import {

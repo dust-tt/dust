@@ -1,7 +1,5 @@
-import {
-  type AgentMessageBillingRunUsage,
-  buildAgentMessageBillingPlan,
-} from "@app/lib/credits/agent_message_billing";
+import type { AgentMessageBillingRunUsage } from "@app/lib/credits/agent_message_billing";
+import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
 import { describe, expect, it } from "vitest";
 
 function usage(

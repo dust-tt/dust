@@ -11,12 +11,12 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import {
-  type ExtraConfigType,
-  isValidUrl,
-  type OAuthConnectionType,
-  type OAuthUseCase,
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
 } from "@app/types/oauth/lib";
+import { isValidUrl } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

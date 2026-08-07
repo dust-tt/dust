@@ -13,10 +13,8 @@ import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import {
-  type AgentLoopRunContext,
-  isAgentLoopRunContext,
-} from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import type {
   GmailMessage,
   MessageDetail,

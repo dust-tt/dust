@@ -7,7 +7,8 @@
  * - Plain text with @ symbols
  */
 
-import { type SkillReference, serializeSkillTag } from "@app/lib/skills/format";
+import type { SkillReference } from "@app/lib/skills/format";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import type {
   AgentMention,
   MentionType,

@@ -16,7 +16,8 @@ import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { cn, LinkWrapper } from "@dust-tt/sparkle";
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 
 const statusBannerVariants = cva("space-y-2 border-y px-3 py-3 text-xs", {
   variants: {

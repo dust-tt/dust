@@ -3,6 +3,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
@@ -13,7 +14,6 @@ import {
   cn,
   DropdownMenu,
   DropdownMenuContent,
-  type DropdownMenuItemProps,
   DropdownMenuTrigger,
   Icon,
   InfoCircle,

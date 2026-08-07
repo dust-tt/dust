@@ -1,8 +1,8 @@
-import {
-  BatchEndpoint,
-  type BatchRequest,
-  type BatchStatus,
+import type {
+  BatchRequest,
+  BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
+import { BatchEndpoint } from "@app/lib/model_constructors/batch/endpoint";
 import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
 import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
 import { responseToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";

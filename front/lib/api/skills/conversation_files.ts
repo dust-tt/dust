@@ -2,7 +2,8 @@ import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { Readable } from "stream";
 
 // A skill file ready to be written into a conversation, regardless of whether it

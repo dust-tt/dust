@@ -6,10 +6,8 @@ import {
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
-import {
-  type ConversationListItemType,
-  getConversationDisplayTitle,
-} from "@app/types/assistant/conversation";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext } from "react";

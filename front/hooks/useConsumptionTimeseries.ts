@@ -1,7 +1,5 @@
-import {
-  type ConsumptionPeriodSelection,
-  consumptionQueryString,
-} from "@app/lib/analytics/consumption_period";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
 import type {
   ConsumptionBreakdownDimension,
   ConsumptionTimeseriesMode,

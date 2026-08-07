@@ -5,22 +5,24 @@ import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
-import {
-  type EnsureSandboxResult,
-  type SandboxCreateBlob,
-  type SandboxDeleteOwner,
-  type SandboxLifecycleOwner,
-  type SandboxPreSleepCheck,
-  SandboxResource,
+import type {
+  EnsureSandboxResult,
+  SandboxCreateBlob,
+  SandboxDeleteOwner,
+  SandboxLifecycleOwner,
+  SandboxPreSleepCheck,
 } from "@app/lib/resources/sandbox_resource";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import assert from "assert";
-import { Op, type Transaction } from "sequelize";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 const SANDBOX_OWNER_LOOKUP_CONCURRENCY = 4;
 

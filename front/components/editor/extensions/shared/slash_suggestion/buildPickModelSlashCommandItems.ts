@@ -1,7 +1,5 @@
-import {
-  SELECT_MODEL_SLASH_COMMAND_ACTION,
-  type SelectModelSlashCommand,
-} from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
+import type { SelectModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
+import { SELECT_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type {
   ModelTierId,

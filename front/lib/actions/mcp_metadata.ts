@@ -1,10 +1,10 @@
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
   DEFAULT_MCP_SERVER_ICON,
   MCP_TOOL_STAKE_LEVELS,
-  type MCPToolStakeLevelType,
 } from "@app/lib/actions/constants";
 import {
   getConnectionForMCPServer,
@@ -66,7 +66,8 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { McpError, type Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 

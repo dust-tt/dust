@@ -1,7 +1,7 @@
+import type { ProtoFailure } from "@temporalio/common";
 import {
   ActivityFailure,
   ApplicationFailure,
-  type ProtoFailure,
   RetryState,
   TemporalFailure,
   TimeoutFailure,

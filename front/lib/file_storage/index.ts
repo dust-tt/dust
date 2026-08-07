@@ -1,8 +1,6 @@
 import config from "@app/lib/file_storage/config";
-import {
-  type GCSAPIError,
-  isGCSNotFoundError,
-} from "@app/lib/file_storage/types";
+import type { GCSAPIError } from "@app/lib/file_storage/types";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { setTimeoutAsync, withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AllSupportedFileContentType } from "@app/types/files";

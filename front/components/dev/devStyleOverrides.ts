@@ -1,14 +1,12 @@
 // Storage read/write and CSS injection for color, typography, and font-family overrides.
 // No React imports, no side effects at module scope.
 
-import {
-  ALL_TOKENS,
-  ALL_TYPO_TOKENS,
-  type FontFamilyOverrides,
-  TYPO_PROP_CSS,
-  type TypoOverrides,
-  type TypoProp,
+import type {
+  FontFamilyOverrides,
+  TypoOverrides,
+  TypoProp,
 } from "./devModeConfig";
+import { ALL_TOKENS, ALL_TYPO_TOKENS, TYPO_PROP_CSS } from "./devModeConfig";
 
 const COLOR_OVERRIDES_KEY = "dust_color_overrides";
 const COLOR_STYLE_ID = "dust-dev-color-overrides";

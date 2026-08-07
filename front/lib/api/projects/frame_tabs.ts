@@ -3,15 +3,15 @@ import { resolveCanonicalScopedPath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { isInteractiveContentType } from "@app/types/files";
+import type { PodFrameTab, PodTabsOrder } from "@app/types/pod_frame_tab";
 import {
   MAX_POD_FRAME_TABS,
   normalizeTabsOrder,
   POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS,
-  type PodFrameTab,
-  type PodTabsOrder,
   sortPodFrameTabs,
 } from "@app/types/pod_frame_tab";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Validate frame tabs + nav order for a project space.

@@ -1,9 +1,9 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { getDataSourceFileSystemCatReadTarget } from "@app/lib/actions/data_source_file_system_read_targets";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getInternalMCPServerToolDisplayLabels,
-  type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import {

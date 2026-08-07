@@ -6,10 +6,8 @@ import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/er
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  SANDBOX_FUNCTION_USER_IDENTITY_POLICIES,
-  type SandboxFunctionUserIdentityPolicy,
-} from "@app/types/api/sandbox_functions";
+import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
+import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

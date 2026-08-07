@@ -5,10 +5,8 @@ import {
   getSandboxImageFromRegistry,
 } from "@app/lib/api/sandbox/image/registry";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
-import {
-  DSBX_TOOL_NAME,
-  type ToolEntry,
-} from "@app/lib/api/sandbox/image/types";
+import type { ToolEntry } from "@app/lib/api/sandbox/image/types";
+import { DSBX_TOOL_NAME } from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";

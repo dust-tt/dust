@@ -2,10 +2,8 @@ import {
   FIREWORKS_BASE_URL,
   FIREWORKS_MODEL_PREFIX,
 } from "@app/lib/model_constructors/providers/fireworks/constants";
-import {
-  type FireworksInputConfig,
-  fireworksConfigSchema,
-} from "@app/lib/model_constructors/providers/fireworks/inputConfig";
+import type { FireworksInputConfig } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
+import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
 import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
 import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";

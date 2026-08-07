@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
+import type { ContractCreditType } from "@app/lib/metronome/constants";
 import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
-  type ContractCreditType,
   fromFreeMetronomeUserId,
   PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,

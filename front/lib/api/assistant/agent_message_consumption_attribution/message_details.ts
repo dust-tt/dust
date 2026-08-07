@@ -12,11 +12,11 @@ import type {
   AgentMessageConsumptionDetails,
   AgentMessageConsumptionModelDetails,
 } from "@app/types/assistant/agent_message_consumption";
-import {
-  buildLatestMessageConsumptionAllocation,
-  type MessageConsumptionAllocation,
-  type ReconciledCreditAmounts,
+import type {
+  MessageConsumptionAllocation,
+  ReconciledCreditAmounts,
 } from "./allocation";
+import { buildLatestMessageConsumptionAllocation } from "./allocation";
 
 export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
   models: AgentMessageConsumptionModelDetails[];

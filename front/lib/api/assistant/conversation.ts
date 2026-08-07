@@ -106,10 +106,8 @@ import { triggerConversationUnreadNotifications } from "@app/lib/notifications/w
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
-import {
-  ConversationResource,
-  type RunningAgentMessageContext,
-} from "@app/lib/resources/conversation_resource";
+import type { RunningAgentMessageContext } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";

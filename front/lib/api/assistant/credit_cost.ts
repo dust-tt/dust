@@ -29,10 +29,8 @@ import type {
   AgentMessageAnalyticsData,
   AgentMessageAnalyticsToolUsed,
 } from "@app/types/assistant/analytics";
-import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
-  type UserMessageOrigin,
-} from "@app/types/assistant/conversation";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 
 interface CreditActionMinimalInput {
   toolName: string;

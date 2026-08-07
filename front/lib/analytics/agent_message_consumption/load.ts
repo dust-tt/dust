@@ -13,10 +13,8 @@ import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_me
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import {
-  RunResource,
-  type RunUsageWithRunKeyType,
-} from "@app/lib/resources/run_resource";
+import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";

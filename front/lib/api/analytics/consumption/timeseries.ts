@@ -1,6 +1,7 @@
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
+  ConsumptionGroupBucket,
   ConsumptionMetric,
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
@@ -9,7 +10,6 @@ import {
   buildConsumptionScopeQuery,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
-  type ConsumptionGroupBucket,
   DEFAULT_CONSUMPTION_METRIC,
   metricSubAgg,
   metricValue,

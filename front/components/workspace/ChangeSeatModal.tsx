@@ -26,10 +26,10 @@ import {
   useBulkSeatChangePreview,
   useUpdateMemberSeatType,
 } from "@app/lib/swr/memberships";
+import type { MembershipSeatType } from "@app/types/memberships";
 import {
   isMembershipSeatType,
   isPaidSeatType,
-  type MembershipSeatType,
   toBaseSeatType,
 } from "@app/types/memberships";
 import { isSubscriptionCancellationScheduled } from "@app/types/plan";

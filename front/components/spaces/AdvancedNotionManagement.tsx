@@ -3,14 +3,13 @@ import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
+import type { DropdownMenu, NotificationType } from "@dust-tt/sparkle";
 import {
   Button,
   CheckCircle,
   DataTable,
-  type DropdownMenu,
   Icon,
   Input,
-  type NotificationType,
   RefreshCw02,
   TextArea,
   Tooltip,

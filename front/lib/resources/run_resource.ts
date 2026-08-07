@@ -1,7 +1,5 @@
-import {
-  computeTokensCostForUsageInMicroUsd,
-  type InferenceRegionType,
-} from "@app/lib/api/assistant/token_pricing";
+import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";

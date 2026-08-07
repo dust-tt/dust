@@ -6,7 +6,8 @@ import { writeToConversationFolder } from "@app/lib/api/files/action_output_fs";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 // Plan mode has no database model: all state is derived from the conversation file system.
 const ARCHIVED_PLANS_DIR = "archived_plans";

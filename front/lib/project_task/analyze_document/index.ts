@@ -6,17 +6,13 @@ import {
   buildActionItems,
   buildPromptActionItems,
 } from "@app/lib/project_task/analyze_document/action_items";
-import {
-  type ExtractionResult,
-  ExtractTakeawaysInputSchema,
-} from "@app/lib/project_task/analyze_document/types";
+import type { ExtractionResult } from "@app/lib/project_task/analyze_document/types";
+import { ExtractTakeawaysInputSchema } from "@app/lib/project_task/analyze_document/types";
 import { buildSpec } from "@app/lib/project_task/analyze_document/utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  type TakeawaySourceDocument,
-  TakeawaysResource,
-} from "@app/lib/resources/takeaways_resource";
+import type { TakeawaySourceDocument } from "@app/lib/resources/takeaways_resource";
+import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";

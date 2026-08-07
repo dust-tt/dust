@@ -4,18 +4,19 @@ import {
   traceSandboxStartupPhase,
 } from "@app/lib/api/sandbox/instrumentation";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
-import {
-  type RootCommand,
-  type RootCommandArg,
-  rootCommand,
+import type {
+  RootCommand,
+  RootCommandArg,
 } from "@app/lib/api/sandbox/root_command";
+import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**

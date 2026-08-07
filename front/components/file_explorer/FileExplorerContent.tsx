@@ -1,9 +1,9 @@
+import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
 import {
   ContentNodeCard,
   FileExplorerEmptyState,
   FileExplorerFileCard,
   FileExplorerFolderCard,
-  type ViewMode,
 } from "@app/components/file_explorer/FileExplorerItem";
 import type {
   ContentNodeEntry,

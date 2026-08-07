@@ -1,4 +1,5 @@
-import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   failCompactionMessage,
   runCompaction,

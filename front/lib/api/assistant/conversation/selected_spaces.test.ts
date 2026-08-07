@@ -11,12 +11,12 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
   return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
 });
 
+import type { SelectedConversationSpacesError } from "@app/lib/api/assistant/conversation/selected_spaces";
 import {
   addSelectedConversationSpaces,
   copySelectedConversationSpacesToChild,
   getEffectiveSpaceIdsForAgentRun,
   listSelectableSpaces,
-  type SelectedConversationSpacesError,
   validateSelectableSpaces,
 } from "@app/lib/api/assistant/conversation/selected_spaces";
 import {
@@ -36,10 +36,8 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import {
-  type ConversationWithoutContentType,
-  isPodConversation,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 

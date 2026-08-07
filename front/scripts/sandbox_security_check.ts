@@ -4,11 +4,11 @@ import {
   SANDBOX_ROOT_SAFE_PATH,
   SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
 } from "@app/lib/api/sandbox/hardening";
+import type { SandboxImage } from "@app/lib/api/sandbox/image";
 import {
   formatSandboxImageId,
   getRegisteredImages,
   getSandboxImageFromRegistry,
-  type SandboxImage,
 } from "@app/lib/api/sandbox/image";
 import type {
   ExecResult,
@@ -16,10 +16,8 @@ import type {
   SandboxExecUser,
 } from "@app/lib/api/sandbox/provider";
 import { E2BSandboxProvider } from "@app/lib/api/sandbox/providers/e2b";
-import {
-  type RootCommand,
-  rootCommand,
-} from "@app/lib/api/sandbox/root_command";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
+import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";

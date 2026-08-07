@@ -1,8 +1,8 @@
-import {
-  type MemberRowData,
-  MemberSelectionTable,
-  type SearchMemberType,
+import type {
+  MemberRowData,
+  SearchMemberType,
 } from "@app/components/members/MemberSelectionTable";
+import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { RichSpaceType } from "@app/types/api/spaces";

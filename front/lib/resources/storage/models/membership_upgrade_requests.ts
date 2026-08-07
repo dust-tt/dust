@@ -2,10 +2,10 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
 import {
   MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
   MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS,
-  type MembershipUpgradeRequestStatus,
 } from "@app/types/memberships";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 

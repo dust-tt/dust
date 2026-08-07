@@ -27,10 +27,8 @@ import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
-import {
-  type NormalizedPoolLimitSeatType,
-  normalizeToPoolLimitSeatType,
-} from "@app/types/memberships";
+import type { NormalizedPoolLimitSeatType } from "@app/types/memberships";
+import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";

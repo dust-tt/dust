@@ -12,10 +12,8 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  type ConversationWithoutContentType,
-  isPodConversation,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 
 export const projectsSkill = {
   sId: "projects",

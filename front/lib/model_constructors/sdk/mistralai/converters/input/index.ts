@@ -1,12 +1,12 @@
 import type { Client } from "@app/lib/model_constructors/client";
 import type { MistralInputConfig } from "@app/lib/model_constructors/providers/mistral/inputConfig";
+import type { MistralMessageConverters } from "@app/lib/model_constructors/sdk/mistralai/converters/input/utils";
 import {
   assistantReasoningMessageToMessage,
   assistantTextMessageToMessage,
   assistantToolCallRequestToMessage,
   conversationToMistralAIMessages,
   forceToolNameToToolChoice,
-  type MistralMessageConverters,
   outputFormatToResponseFormat,
   systemMessageToMessage,
   toolCallResultMessageToMessage,

@@ -1,7 +1,5 @@
-import {
-  MarkdownEditor,
-  type MarkdownEditorProps,
-} from "@app/components/editor/MarkdownEditor";
+import type { MarkdownEditorProps } from "@app/components/editor/MarkdownEditor";
+import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getFilePathContentApiPath,

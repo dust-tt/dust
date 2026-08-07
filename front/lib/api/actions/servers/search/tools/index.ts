@@ -8,10 +8,8 @@ import {
   applyNodeIdsFilterToCoreSearchArgs,
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import {
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search";
 import {
   SEARCH_TOOL_METADATA_WITH_TAGS,

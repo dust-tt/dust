@@ -1,13 +1,15 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { requestMicrophone } from "@app/hooks/useVoiceTranscriberService";
+import type {
+  VoiceTranscriberService,
+  VoiceTranscriberStatus,
+} from "@app/hooks/utils/voice";
 import {
   hasWebkitAudioContext,
   quackingVoiceTranscriptService,
   SAMPLE_RATE_HZ,
   startLevelMeteringInterval,
   useElapsedSeconds,
-  type VoiceTranscriberService,
-  type VoiceTranscriberStatus,
 } from "@app/hooks/utils/voice";
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetTranscribeTokenResponseBody } from "@app/types/api/transcribe";

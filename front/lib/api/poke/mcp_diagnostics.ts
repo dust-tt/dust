@@ -5,10 +5,10 @@ import {
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerInfo,
   getInternalMCPServerNameFromSId,
-  type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   connectToMCPServer,
@@ -18,11 +18,11 @@ import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_t
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
-import {
-  MCP_DIAGNOSTIC_CHECK_NAMES,
-  type MCPDiagnosticCheckName,
-  type MCPDiagnosticSummary,
+import type {
+  MCPDiagnosticCheckName,
+  MCPDiagnosticSummary,
 } from "@app/lib/api/poke/mcp_diagnostics_types";
+import { MCP_DIAGNOSTIC_CHECK_NAMES } from "@app/lib/api/poke/mcp_diagnostics_types";
 import { Authenticator } from "@app/lib/auth";
 import { toGlobalResponse, untrustedFetch } from "@app/lib/egress/server";
 import { DustError } from "@app/lib/error";

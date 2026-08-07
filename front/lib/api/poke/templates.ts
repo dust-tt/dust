@@ -10,7 +10,8 @@ import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
 } from "@app/types/assistant/templates";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export type PokeFetchAssistantTemplateResponse = ReturnType<
   TemplateResource["toJSON"]

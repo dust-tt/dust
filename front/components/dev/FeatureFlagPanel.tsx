@@ -1,7 +1,5 @@
-import {
-  WHITELISTABLE_FEATURES_CONFIG,
-  type WhitelistableFeature,
-} from "@app/types/shared/feature_flags";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { WHITELISTABLE_FEATURES_CONFIG } from "@app/types/shared/feature_flags";
 import { useCallback, useMemo, useState } from "react";
 import {
   getFeatureFlagOverrides,

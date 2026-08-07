@@ -12,10 +12,8 @@ import {
 import { evaluateWithJudge } from "@app/tests/takeaway-evals/lib/judge";
 import { filterTestCases } from "@app/tests/takeaway-evals/lib/suite-loader";
 import { executeTakeawayExtraction } from "@app/tests/takeaway-evals/lib/takeaway-executor";
-import {
-  type CategorizedTakeawayTestCase,
-  formatExtractionResult,
-} from "@app/tests/takeaway-evals/lib/types";
+import type { CategorizedTakeawayTestCase } from "@app/tests/takeaway-evals/lib/types";
+import { formatExtractionResult } from "@app/tests/takeaway-evals/lib/types";
 import { allTestSuites } from "@app/tests/takeaway-evals/test-suites";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 

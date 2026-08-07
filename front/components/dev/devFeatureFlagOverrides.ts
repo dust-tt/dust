@@ -1,10 +1,8 @@
 // Feature flag overrides — sessionStorage-backed read/write + apply.
 // Lazy-loaded with the dev panel. Registers into devFlagOverrideStore on load.
 
-import {
-  isWhitelistableFeature,
-  type WhitelistableFeature,
-} from "@app/types/shared/feature_flags";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { isWhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   notifyDevFlagOverridesChanged,
   registerDevFlagOverrides,

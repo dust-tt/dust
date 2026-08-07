@@ -23,13 +23,14 @@ import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import type { SupportedPaymentMethod } from "@app/lib/plans/stripe";
 import {
   createEmbeddedMetronomeSetupCheckoutSession,
   createStripeSubscriptionCheckoutSession,
-  type SupportedPaymentMethod,
 } from "@app/lib/plans/stripe";
 import type { BillingPeriod, CheckoutUrlResult } from "@app/types/plan";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
 export const PostSubscriptionRequestBody = z.object({

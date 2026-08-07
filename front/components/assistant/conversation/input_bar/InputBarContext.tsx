@@ -1,8 +1,6 @@
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import {
-  type FileUploaderService,
-  useFileUploaderService,
-} from "@app/hooks/useFileUploaderService";
+import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type {
   RichAgentMention,
@@ -12,13 +10,8 @@ import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import type { ReactNode } from "react";
+import { createContext, useCallback, useMemo, useState } from "react";
 
 const STICKY_MODEL_OVERRIDE_STORAGE_KEY = "inputBarModelOverride_v1";
 

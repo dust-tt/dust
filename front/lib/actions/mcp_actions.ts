@@ -64,11 +64,13 @@ import {
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import type {
+  AgentLoopListToolsContext,
+  ToolContext,
+} from "@app/lib/actions/types";
 import {
-  type AgentLoopListToolsContext,
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   isClientSideMCPToolConfiguration,

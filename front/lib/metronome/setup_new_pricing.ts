@@ -29,6 +29,16 @@ import {
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
+import type {
+  MetricDef,
+  PackageDef,
+  PackageOverrideDef,
+  PackageSubscription,
+  RateCardDef,
+  RateDef,
+  RecurringCreditDef,
+  SeatSubscriptionPair,
+} from "@app/lib/metronome/setup_common";
 import {
   BILLING_CYCLE_CONFIG,
   BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
@@ -38,18 +48,10 @@ import {
   getOverageAwuRate,
   MAX_SEAT_CREDIT_NAME,
   MAX_SEAT_PRODUCT_NAME,
-  type MetricDef,
   makeSeatSubscription,
   makeSeatSubscriptions,
-  type PackageDef,
-  type PackageOverrideDef,
-  type PackageSubscription,
   PRO_SEAT_CREDIT_NAME,
   PRO_SEAT_PRODUCT_NAME,
-  type RateCardDef,
-  type RateDef,
-  type RecurringCreditDef,
-  type SeatSubscriptionPair,
   USAGE_TAG,
   WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";
