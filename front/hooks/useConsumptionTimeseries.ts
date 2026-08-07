@@ -1,5 +1,6 @@
 import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { consumptionQueryString } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionBreakdownDimension,
   ConsumptionTimeseriesMode,
@@ -14,6 +15,7 @@ export function useConsumptionTimeseries({
   mode,
   breakdownBy,
   breakdownCount,
+  filter,
   disabled,
 }: {
   workspaceId: string;
@@ -22,12 +24,13 @@ export function useConsumptionTimeseries({
   // Omit for a single total series.
   breakdownBy?: ConsumptionBreakdownDimension;
   breakdownCount?: number;
+  filter?: ConsumptionScopeFilter;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const timeseriesFetcher: Fetcher<GetConsumptionTimeseriesResponse> = fetcher;
 
-  const params = new URLSearchParams(consumptionQueryString(period));
+  const params = new URLSearchParams(consumptionQueryString(period, filter));
   params.set("mode", mode);
   if (breakdownBy) {
     params.set("breakdownBy", breakdownBy);

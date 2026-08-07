@@ -9,6 +9,7 @@ import { AvatarNameCell } from "@app/components/workspace/analytics/creditsTable
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import {
   cn,
@@ -122,6 +123,7 @@ interface AttributionRowsProps {
   workspaceId: string;
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
+  filter?: ConsumptionScopeFilter;
   search: string;
 }
 
@@ -129,6 +131,7 @@ function AttributionRows({
   workspaceId,
   dimension,
   period,
+  filter,
   search,
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
@@ -143,6 +146,7 @@ function AttributionRows({
     dimension,
     period,
     limit: TOP_LIMIT,
+    filter,
   });
 
   // Client-side filter over the loaded ranking. A row outside the top
@@ -193,6 +197,7 @@ function AttributionRows({
 interface ConsumptionAttributionTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  filter?: ConsumptionScopeFilter;
   // Owned by the page: the selected tab also drives the chart's breakdown.
   dimension: ConsumptionDimension;
   onDimensionChange: (dimension: ConsumptionDimension) => void;
@@ -201,6 +206,7 @@ interface ConsumptionAttributionTableProps {
 export function ConsumptionAttributionTable({
   workspaceId,
   period,
+  filter,
   dimension,
   onDimensionChange,
 }: ConsumptionAttributionTableProps) {
@@ -243,6 +249,7 @@ export function ConsumptionAttributionTable({
           workspaceId={workspaceId}
           dimension={dimension}
           period={period}
+          filter={filter}
           search={debouncedValue}
         />
       </div>
