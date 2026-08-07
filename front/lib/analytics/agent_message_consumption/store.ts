@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import logger from "@app/logger/logger";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
+import assert from "assert";
 
 function makeAgentMessageConsumptionAnalyticsDocumentId(
   document: Pick<
@@ -14,15 +15,48 @@ function makeAgentMessageConsumptionAnalyticsDocumentId(
   return `${document.workspace_id}_${document.agent_message_id}_${document.message_version}_${document.consumption_key}`;
 }
 
-/** Bulk-upserts every consumption unit for one agent message. */
-export async function storeAgentMessageConsumptionAnalyticsDocuments(
-  documents: AgentMessageConsumptionAnalyticsData[]
-): Promise<void> {
-  if (documents.length === 0) {
-    return;
-  }
+/** Replaces the complete indexed consumption snapshot for one agent message. */
+export async function replaceAgentMessageConsumptionAnalyticsDocuments({
+  agentMessageId,
+  documents,
+  workspaceId,
+}: {
+  agentMessageId: string;
+  documents: AgentMessageConsumptionAnalyticsData[];
+  workspaceId: string;
+}): Promise<void> {
+  assert(
+    documents.every(
+      (document) =>
+        document.agent_message_id === agentMessageId &&
+        document.workspace_id === workspaceId
+    ),
+    "Consumption documents belong to different agent messages"
+  );
 
   const result = await withEs(async (client) => {
+    const deleteResponse = await client.deleteByQuery({
+      index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
+      query: {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspaceId } },
+            { term: { agent_message_id: agentMessageId } },
+          ],
+        },
+      },
+      refresh: documents.length === 0,
+    });
+    assert(
+      (deleteResponse.failures?.length ?? 0) === 0 &&
+        (deleteResponse.version_conflicts ?? 0) === 0,
+      "Elasticsearch failed to delete the previous consumption snapshot"
+    );
+
+    if (documents.length === 0) {
+      return;
+    }
+
     const response = await client.bulk({
       body: documents.flatMap((document) => [
         {
@@ -33,25 +67,27 @@ export async function storeAgentMessageConsumptionAnalyticsDocuments(
         },
         document,
       ]),
-      refresh: false,
+      // Wait until this snapshot is searchable so a following replacement can delete it.
+      refresh: "wait_for",
     });
 
-    if (response.errors) {
-      throw new Error("Elasticsearch bulk response contains failed items");
-    }
+    assert(
+      !response.errors,
+      "Elasticsearch bulk response contains failed items"
+    );
   });
 
   if (result.isErr()) {
-    const firstDocument = documents[0];
     logger.error(
       {
         error: result.error,
-        workspaceId: firstDocument?.workspace_id,
-        agentMessageId: firstDocument?.agent_message_id,
+        workspaceId,
+        agentMessageId,
         documentCount: documents.length,
       },
-      "[ConsumptionAnalytics] Failed to write consumption documents to ES"
+      "[ConsumptionAnalytics] Failed to replace consumption documents in ES"
     );
-    throw new Error(`ES bulk write failed: ${result.error.message}`);
   }
+
+  assert(result.isOk(), "Failed to replace consumption analytics snapshot");
 }
