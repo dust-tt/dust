@@ -130,12 +130,12 @@ describe("consumption top rankings", () => {
     });
     expect(
       options?.aggregations?.by_group?.aggs?.credit_micro?.sum?.field
-    ).toBe("gross_credit_micro.total");
+    ).toBe("credit_micro");
     expect(
       options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
     ).toBe("agent_message_id");
     expect(options?.aggregations?.total_credit_micro?.sum?.field).toBe(
-      "gross_credit_micro.total"
+      "credit_micro"
     );
   });
 

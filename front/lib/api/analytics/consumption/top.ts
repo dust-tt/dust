@@ -7,8 +7,7 @@ import {
   AGENT_MESSAGE_ID_FIELD,
   buildConsumptionScopeQuery,
   CONSUMPTION_DIMENSION_FIELDS,
-  creditsFromMicroCredits,
-  GROSS_CREDIT_MICRO_FIELD,
+  CREDIT_MICRO_FIELD,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -16,30 +15,15 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { microCreditsToCredits } from "@app/lib/credits/units";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
-/**
- * Ranking machinery shared by the `top_*` endpoints — the top consumers of
- * credits along one dimension over the period.
- *
- * Every dimension ranks on the same quantity, the gross credit total, so the
- * rankings are comparable and a row's `credits / totalCredits` is its share of
- * everything the workspace consumed over the period.
- *
- * What differs is the denominator of the average, which is why each dimension
- * gets its own endpoint rather than a `dimension` query param:
- *
- * - agent / user / model / source spread their credits over whole messages, so
- *   the average that means something is per message.
- * - tool / skill only ever appear on tool documents, one per tool call, so
- *   their average is per invocation. "Per message" would be meaningless there:
- *   a single message can call the same tool a dozen times.
- */
-
 // Unit a ranking's count — and therefore its average — is denominated in.
+// "message" is the count of distinct messages,
+// "invocation" is used for the count of tool documents.
 type ConsumptionTopUnit = "message" | "invocation";
 
 export type ConsumptionTopGroup = {
@@ -128,7 +112,7 @@ export async function fetchConsumptionTopGroups(
           order: { [CREDIT_AGG]: "desc" },
         },
         aggs: {
-          [CREDIT_AGG]: { sum: { field: GROSS_CREDIT_MICRO_FIELD } },
+          [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
           ...(unit === "message"
             ? {
                 [MESSAGES_AGG]: {
@@ -138,7 +122,7 @@ export async function fetchConsumptionTopGroups(
             : {}),
         },
       },
-      total_credit_micro: { sum: { field: GROSS_CREDIT_MICRO_FIELD } },
+      total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
     },
     size: 0,
   });
@@ -151,13 +135,13 @@ export async function fetchConsumptionTopGroups(
     result.value.aggregations?.by_group?.buckets
   ).map((bucket) => ({
     key: String(bucket.key),
-    credits: creditsFromMicroCredits(bucket[CREDIT_AGG]?.value ?? 0),
+    credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
     count: countFromBucket(bucket, unit),
   }));
 
   return new Ok({
     groups,
-    totalCredits: creditsFromMicroCredits(
+    totalCredits: microCreditsToCredits(
       result.value.aggregations?.total_credit_micro?.value ?? 0
     ),
   });

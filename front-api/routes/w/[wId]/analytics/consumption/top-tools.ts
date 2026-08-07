@@ -8,7 +8,7 @@ import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
-import { apiError } from "@front-api/middlewares/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 export type { GetConsumptionTopToolsResponse };
@@ -21,7 +21,7 @@ app.get(
   "/",
   ensureIsManager(),
   validate("query", ConsumptionTopQuerySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetConsumptionTopToolsResponse> => {
     const auth = ctx.get("auth");
     const { limit, filter, ...periodQuery } = ctx.req.valid("query");
 
@@ -52,8 +52,7 @@ app.get(
       });
     }
 
-    const body: GetConsumptionTopToolsResponse = result.value;
-    return ctx.json(body);
+    return ctx.json(result.value);
   }
 );
 

@@ -113,14 +113,14 @@ describe("fetchConsumptionTimeseries", () => {
 
     const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
     expect(options?.aggregations?.by_date?.aggs?.metric).toEqual({
-      sum: { field: "gross_credit_micro.total" },
+      sum: { field: "credit_micro" },
     });
 
     expect(result.isOk()).toBe(true);
     if (!result.isOk()) {
       return;
     }
-    expect(result.value.metric).toBe("gross_credits");
+    expect(result.value.metric).toBe("credit_micro");
     expect(
       result.value.points.map((point) => point.values[TOTAL_GROUP_KEY])
     ).toEqual([2, 1.5]);

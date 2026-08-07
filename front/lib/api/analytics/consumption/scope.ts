@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const COMPLETED_AT_FIELD = "completed_at";
@@ -34,19 +35,13 @@ export type ConsumptionScopeFilter = Partial<
   Record<ConsumptionScopeDimension, string[]>
 >;
 
-export const CONSUMPTION_METRICS = ["gross_credits"] as const;
+export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 
 export type ConsumptionMetric = (typeof CONSUMPTION_METRICS)[number];
 
-export const DEFAULT_CONSUMPTION_METRIC: ConsumptionMetric = "gross_credits";
+export const DEFAULT_CONSUMPTION_METRIC: ConsumptionMetric = "credit_micro";
 
-const MICRO_CREDITS_PER_CREDIT = 1_000_000;
-
-export function creditsFromMicroCredits(microCredits: number): number {
-  return microCredits / MICRO_CREDITS_PER_CREDIT;
-}
-
-export const GROSS_CREDIT_MICRO_FIELD = "gross_credit_micro.total";
+export const CREDIT_MICRO_FIELD = "credit_micro";
 
 export const CONSUMPTION_METRIC_DEFINITIONS: Record<
   ConsumptionMetric,
@@ -56,8 +51,8 @@ export const CONSUMPTION_METRIC_DEFINITIONS: Record<
     divisor: number;
   }
 > = {
-  gross_credits: {
-    field: GROSS_CREDIT_MICRO_FIELD,
+  credit_micro: {
+    field: CREDIT_MICRO_FIELD,
     divisor: MICRO_CREDITS_PER_CREDIT,
   },
 };

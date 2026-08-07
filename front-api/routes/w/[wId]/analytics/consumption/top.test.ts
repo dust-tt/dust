@@ -1,29 +1,34 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
-import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
-import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
-import { fetchConsumptionTopSources } from "@app/lib/api/analytics/consumption/top_sources";
-import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top_tools";
-import { fetchConsumptionTopUsers } from "@app/lib/api/analytics/consumption/top_users";
+import {
+  fetchConsumptionTopAgents,
+  type GetConsumptionTopAgentsResponse,
+} from "@app/lib/api/analytics/consumption/top_agents";
+import {
+  fetchConsumptionTopModels,
+  type GetConsumptionTopModelsResponse,
+} from "@app/lib/api/analytics/consumption/top_models";
+import {
+  fetchConsumptionTopSkills,
+  type GetConsumptionTopSkillsResponse,
+} from "@app/lib/api/analytics/consumption/top_skills";
+import {
+  fetchConsumptionTopSources,
+  type GetConsumptionTopSourcesResponse,
+} from "@app/lib/api/analytics/consumption/top_sources";
+import {
+  fetchConsumptionTopTools,
+  type GetConsumptionTopToolsResponse,
+} from "@app/lib/api/analytics/consumption/top_tools";
+import {
+  fetchConsumptionTopUsers,
+  type GetConsumptionTopUsersResponse,
+} from "@app/lib/api/analytics/consumption/top_users";
+import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
-
-/**
- * Covers the six `top-*` ranking endpoints together: they share their query
- * contract and their error mapping, and only differ by the fetcher they call and
- * the shape it returns.
- */
-
-// devModeConstants reads localStorage at module load. jsdom does not always
-// have localStorage initialized when mock factories evaluate, which crashes
-// any test whose mocked lib transitively imports AuthContext. Stub it here.
-vi.mock("@app/components/dev/devModeConstants", () => ({
-  DEV_MODE_STORAGE_KEY: "dust_dev_mode",
-  DEV_MODE_ACTIVE: false,
-}));
 
 vi.mock(
   import("@app/lib/api/analytics/consumption/top_agents"),
@@ -73,7 +78,7 @@ const PERIOD: ConsumptionPeriod = {
   endDate: "2026-08-01T00:00:00.000Z",
 };
 
-const TOP_AGENTS = {
+const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
   period: PERIOD,
   totalCredits: 5000,
   agents: [
@@ -88,7 +93,7 @@ const TOP_AGENTS = {
   ],
 };
 
-const TOP_USERS = {
+const TOP_USERS: GetConsumptionTopUsersResponse = {
   period: PERIOD,
   totalCredits: 5000,
   users: [
@@ -103,7 +108,7 @@ const TOP_USERS = {
   ],
 };
 
-const TOP_MODELS = {
+const TOP_MODELS: GetConsumptionTopModelsResponse = {
   period: PERIOD,
   totalCredits: 5000,
   models: [
@@ -117,7 +122,7 @@ const TOP_MODELS = {
   ],
 };
 
-const TOP_SOURCES = {
+const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
   period: PERIOD,
   totalCredits: 5000,
   sources: [
@@ -131,7 +136,7 @@ const TOP_SOURCES = {
   ],
 };
 
-const TOP_TOOLS = {
+const TOP_TOOLS: GetConsumptionTopToolsResponse = {
   period: PERIOD,
   totalCredits: 5000,
   tools: [
@@ -145,7 +150,7 @@ const TOP_TOOLS = {
   ],
 };
 
-const TOP_SKILLS = {
+const TOP_SKILLS: GetConsumptionTopSkillsResponse = {
   period: PERIOD,
   totalCredits: 5000,
   skills: [
@@ -214,7 +219,11 @@ const RANKINGS = [
   },
 ];
 
-async function setupTest({ role = "admin" as MembershipRoleType } = {}) {
+async function setupTest({
+  role = "admin",
+}: {
+  role?: MembershipRoleType;
+} = {}) {
   return createPrivateApiMockRequest({ role });
 }
 
@@ -297,9 +306,7 @@ describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
 
   it("returns 500 when the search fails", async () => {
     vi.mocked(fetchConsumptionTopTools).mockResolvedValue(
-      new Err(
-        Object.assign(new Error("boom"), { type: "query_error" as const })
-      )
+      new Err(new ElasticsearchError("query_error", "boom"))
     );
     const { workspace } = await setupTest();
 
