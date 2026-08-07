@@ -72,7 +72,13 @@ export type SandboxPreSleepCheck = (
 
 type SandboxCreateOwner = SandboxLifecycleOwner & {
   createSandbox: (blob: SandboxCreateBlob) => Promise<SandboxResource>;
-  envVars: Record<string, string>;
+  // Owner env vars are only consumed when a sandbox is actually created.
+  // Owners whose env requires DB reads (e.g. pod env vars) should pass the
+  // factory form so ensureActive calls on an already-running sandbox don't
+  // pay for loads that would be discarded.
+  envVars:
+    | Record<string, string>
+    | (() => Promise<Result<Record<string, string>, Error>>);
   logLabel: string;
 };
 
@@ -446,6 +452,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
   }
 
+  // Owner env vars come either as a plain record or as a factory for owners
+  // whose env requires DB reads — the factory only runs on the create paths,
+  // so ensure calls on an already-running sandbox pay nothing.
+  private static async resolveOwnerEnvVars(
+    owner: SandboxCreateOwner
+  ): Promise<Result<Record<string, string>, Error>> {
+    return typeof owner.envVars === "function"
+      ? owner.envVars()
+      : new Ok(owner.envVars);
+  }
+
   // Compose the env vars passed to provider.create. Precedence (lowest →
   // highest): workspace env vars → image runEnv → owner vars → system vars.
   // Owner and system layers always win, so even if a row slips past suffix
@@ -579,9 +596,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         const createConfig = imageResult.value.toCreateConfig();
+        const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner);
+        if (ownerEnvVarsResult.isErr()) {
+          return ownerEnvVarsResult;
+        }
+
         const envVarsResult = await this.buildSandboxEnvVars(
           auth,
-          owner.envVars,
+          ownerEnvVarsResult.value,
           createConfig.envVars
         );
         if (envVarsResult.isErr()) {
@@ -718,9 +740,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           }
 
           const createConfig = imageResult.value.toCreateConfig();
+          const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner);
+          if (ownerEnvVarsResult.isErr()) {
+            return ownerEnvVarsResult;
+          }
+
           const envVarsResult = await this.buildSandboxEnvVars(
             auth,
-            owner.envVars,
+            ownerEnvVarsResult.value,
             createConfig.envVars
           );
           if (envVarsResult.isErr()) {

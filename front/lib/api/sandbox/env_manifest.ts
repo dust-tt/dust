@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
 import {
   getSandboxOwnerEnvManifestEntries,
+  resolvePodForRuntimeOwner,
   type SandboxRuntimeOwner,
 } from "@app/lib/api/sandbox/owner";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
@@ -38,10 +39,32 @@ export async function buildSandboxEnvManifest(
   auth: Authenticator,
   owner: SandboxRuntimeOwner
 ): Promise<Result<SandboxEnvManifest, Error>> {
-  const allVars = await SandboxEnvVarResource.listForScope(auth, {
+  const workspaceVars = await SandboxEnvVarResource.listForScope(auth, {
     kind: "workspace",
     workspace: auth.getNonNullableWorkspace(),
   });
+
+  // Sandboxes running in a pod also receive the pod's vars — list them too,
+  // pod winning on name collision, mirroring the injection and
+  // egress-secrets merges.
+  const podResult = await resolvePodForRuntimeOwner(auth, owner);
+  if (podResult.isErr()) {
+    return podResult;
+  }
+  const podVars = podResult.value
+    ? await SandboxEnvVarResource.listForScope(auth, {
+        kind: "pod",
+        pod: podResult.value,
+      })
+    : [];
+
+  const byEnvName = new Map(
+    workspaceVars.map((resource) => [resource.envName, resource])
+  );
+  for (const resource of podVars) {
+    byEnvName.set(resource.envName, resource);
+  }
+  const allVars = [...byEnvName.values()];
 
   const httpsSecrets: SandboxEnvManifest["httpsSecrets"] = [];
   for (const resource of allVars) {

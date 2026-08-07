@@ -8,6 +8,7 @@ import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { decrypt } from "@app/types/shared/utils/encryption";
+import { randomBytes } from "crypto";
 import { describe, expect, it } from "vitest";
 
 function wsScope(auth: Authenticator): SandboxEnvVarScope {
@@ -107,6 +108,27 @@ describe("SandboxEnvVarResource", () => {
     expect(envResult.isErr()).toBe(true);
     if (envResult.isErr()) {
       expect(envResult.error.message).toContain("DST_API_TOKEN");
+    }
+  });
+
+  it("fails closed on an https_secret row missing allowed domains", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    await SandboxEnvVarFactory.create(authenticator, {
+      name: "API_TOKEN",
+      kind: "https_secret",
+      placeholderNonce: randomBytes(16),
+    });
+
+    const result = await SandboxEnvVarResource.listHttpsSecretsForEgress(
+      authenticator,
+      wsScope(authenticator)
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "DSEC_API_TOKEN is missing allowed domains"
+      );
     }
   });
 
@@ -672,7 +694,7 @@ describe("SandboxEnvVarResource pod scope", () => {
     ).rejects.toThrow("Only pod spaces can have sandbox environment variables");
   });
 
-  it("rejects pod boot loads for sandboxes not owned by the pod", async () => {
+  it("rejects pod boot loads for sandboxes not running in the pod", async () => {
     const { authenticator, workspace, user, pod } = await setupPod();
     const otherPod = await SpaceFactory.project(workspace, user.id);
 
@@ -682,23 +704,61 @@ describe("SandboxEnvVarResource pod scope", () => {
         spaceId: otherPod.sId,
       })
     ).rejects.toThrow(
-      "Pod env vars can only be loaded for pod-owned sandboxes"
+      "Pod env vars can only be loaded for sandboxes running in that pod"
+    );
+
+    // A conversation outside any pod (or in another pod) does not qualify.
+    await expect(
+      SandboxEnvVarResource.loadEnv(authenticator, podScope(pod), {
+        kind: "conversation",
+        conversationId: "conversation-test",
+        spaceId: null,
+      })
+    ).rejects.toThrow(
+      "Pod env vars can only be loaded for sandboxes running in that pod"
     );
 
     await expect(
       SandboxEnvVarResource.loadEnv(authenticator, podScope(pod), {
         kind: "conversation",
         conversationId: "conversation-test",
+        spaceId: otherPod.sId,
       })
     ).rejects.toThrow(
-      "Pod env vars can only be loaded for pod-owned sandboxes"
+      "Pod env vars can only be loaded for sandboxes running in that pod"
     );
 
     await expect(
       SandboxEnvVarResource.loadEnv(authenticator, podScope(pod))
     ).rejects.toThrow(
-      "Pod env vars can only be loaded for pod-owned sandboxes"
+      "Pod env vars can only be loaded for sandboxes running in that pod"
     );
+  });
+
+  it("allows pod boot loads for conversation sandboxes running in the pod", async () => {
+    const { authenticator, pod } = await setupPod();
+
+    const createResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      podScope(pod),
+      { name: "CONFIG_TOKEN", value: "pod-config-value" }
+    );
+    expect(createResult.isOk()).toBe(true);
+
+    const envResult = await SandboxEnvVarResource.loadEnv(
+      authenticator,
+      podScope(pod),
+      {
+        kind: "conversation",
+        conversationId: "conversation-test",
+        spaceId: pod.sId,
+      }
+    );
+    expect(envResult.isOk()).toBe(true);
+    if (envResult.isErr()) {
+      throw envResult.error;
+    }
+    expect(envResult.value).toEqual({ DST_CONFIG_TOKEN: "pod-config-value" });
   });
 
   it("rejects mutations through a scope the row does not belong to", async () => {

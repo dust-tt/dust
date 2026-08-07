@@ -133,6 +133,7 @@ describe("sandbox egress helpers", () => {
   const runtimeOwner = {
     kind: "conversation" as const,
     conversationId: "conversation-id",
+    spaceId: null,
   };
 
   beforeEach(() => {
@@ -229,7 +230,11 @@ describe("sandbox egress helpers", () => {
       "/usr/bin/install -o root -g root -m 600 /dev/stdin"
     );
     expect(tokenCall).toContain("/etc/dust/egress-token");
-    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      runtimeOwner
+    );
     expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
       auth,
       sandbox,
@@ -525,7 +530,11 @@ describe("sandbox egress helpers", () => {
     const result = await ensure(sandbox, { wokeFromSleep: true });
 
     expect(result).toEqual(new Ok(undefined));
-    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      runtimeOwner
+    );
     expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
       auth,
       sandbox,

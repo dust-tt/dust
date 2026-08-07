@@ -136,6 +136,7 @@ describe("ensureConversationSandboxReady", () => {
   let conversationOwner: {
     kind: "conversation";
     conversationId: string;
+    spaceId: string | null;
   };
   const pod = { sId: "space-id" };
   const podOwner = {
@@ -162,6 +163,7 @@ describe("ensureConversationSandboxReady", () => {
     conversationOwner = {
       kind: "conversation",
       conversationId: conversation.sId,
+      spaceId: null,
     };
     sandbox = await SandboxFactory.create(auth, conversation);
 
@@ -231,15 +233,19 @@ describe("ensureConversationSandboxReady", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    // runtimeOwner stays the conversation (env vars, logs, file system)...
+    // The runtime owner stays the conversation but carries its pod, and the
+    // egress policy is scoped to the Pod's shared file.
+    const podConversationOwner = {
+      ...conversationOwner,
+      spaceId: "space-id",
+    };
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
       sandbox,
-      // ...but the egress policy is scoped to the Pod's shared file.
-      { runtimeOwner: conversationOwner, egressPolicyOwnerId: "space-id" }
+      { runtimeOwner: podConversationOwner, egressPolicyOwnerId: "space-id" }
     );
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
-      runtimeOwner: conversationOwner,
+      runtimeOwner: podConversationOwner,
       egressPolicyOwnerId: "space-id",
       wokeFromSleep: false,
     });

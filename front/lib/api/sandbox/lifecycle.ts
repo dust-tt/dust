@@ -210,13 +210,14 @@ export async function ensureConversationSandboxReady(
     ensureActive: () =>
       ConversationSandboxAdapter.ensureSandboxActive(auth, conversation),
     getFileSystem: () => DustFileSystem.forConversation(auth, conversation),
+    // Pod-level sandbox config applies to everything running in the Pod: a
+    // conversation inside a Pod uses the Pod's shared egress policy file and
+    // receives the Pod's env vars and HTTPS secrets at creation.
     runtimeOwner: {
       kind: "conversation",
       conversationId: conversation.sId,
+      spaceId: conversation.spaceId ?? null,
     },
-    // Pod network settings apply to everything running in the Pod: a
-    // conversation inside a Pod uses the Pod's shared policy file, not a
-    // per-conversation one.
     egressPolicyOwnerId: conversation.spaceId ?? conversation.sId,
   });
 }

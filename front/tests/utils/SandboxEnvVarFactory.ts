@@ -14,6 +14,8 @@ export class SandboxEnvVarFactory {
       space?: SpaceResource;
       kind?: SandboxEnvVarKind;
       encryptedValue?: string;
+      placeholderNonce?: Buffer;
+      allowedDomains?: string[];
     }
   ): Promise<SandboxEnvVarModel> {
     const user = auth.getNonNullableUser();
@@ -24,6 +26,8 @@ export class SandboxEnvVarFactory {
       name: opts.name,
       kind: opts.kind ?? "config",
       encryptedValue: opts.encryptedValue ?? "test-encrypted-value",
+      placeholderNonce: opts.placeholderNonce ?? null,
+      allowedDomains: opts.allowedDomains ?? null,
       createdByUserId: user.id,
       lastUpdatedByUserId: user.id,
     });
