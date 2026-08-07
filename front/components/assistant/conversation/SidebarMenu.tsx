@@ -1309,13 +1309,20 @@ function UnreadConversationsSection({
     <NavigationListCollapsibleSection
       label={label}
       count={totalCount}
-      className="bg-background rounded-xl border border-border p-1 mx-sidebar-side-spacing"
+      // Hovering "Mark all as read" highlights the whole section it would
+      // clear.
+      className={cn(
+        "bg-background rounded-xl border border-border p-1 mx-sidebar-side-spacing",
+        "transition-colors duration-150 motion-reduce:transition-none",
+        "has-[[data-mark-read=all]:hover]:bg-hover"
+      )}
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
             size="xmini"
             variant="ghost-secondary"
             label="Mark all as read"
+            data-mark-read="all"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
             hasLighterFont
@@ -1353,56 +1360,79 @@ function UnreadConversationsSection({
             case "pod": {
               const pod = podById.get(group.spaceId);
               return [
-                <NavigationListLabel
-                  key={`pod-label-${group.spaceId}`}
-                  // The pod name is a static group header, not a link: keep
-                  // the arrow cursor instead of the text I-beam so it doesn't
-                  // read as interactive or selectable.
-                  className="bg-background cursor-default select-none"
-                  label={group.podName}
-                  icon={pod ? getSpaceIcon(pod) : undefined}
-                  isSticky
-                  action={
-                    shouldShowMarkAllAsReadButton ? (
-                      <Button
-                        size="xmini"
-                        variant="ghost-secondary"
-                        label="Mark as read"
-                        onClick={() =>
-                          onMarkAllAsRead(group.conversations.map((c) => c.sId))
-                        }
-                        isLoading={isMarkingAllAsRead}
-                        hasLighterFont
-                        className="hover:bg-hover active:bg-selected"
-                      />
-                    ) : null
-                  }
-                />,
-                ...group.conversations.map((conversation) => (
-                  <motion.div
-                    key={conversation.sId}
-                    style={GRID_STYLE}
-                    animate={GRID_ANIMATE}
-                    exit={GRID_EXIT}
-                    transition={{ ease: "easeOut", duration: 0.1 }}
+                <motion.div
+                  key={`pod-group-${group.spaceId}`}
+                  style={GRID_STYLE}
+                  animate={GRID_ANIMATE}
+                  exit={GRID_EXIT}
+                  transition={{ ease: "easeOut", duration: 0.1 }}
+                >
+                  {/* Hovering the pod's "Mark as read" button highlights the
+                   * whole block (header + conversations) it would clear. */}
+                  <div
+                    className={cn(
+                      "flex flex-col gap-0.5 overflow-hidden rounded-lg",
+                      "transition-colors duration-150 motion-reduce:transition-none",
+                      "has-[[data-mark-read=pod]:hover]:bg-hover"
+                    )}
                   >
-                    {/* Indented under the pod header so the conversation
-                     * reads as nested inside the pod group. */}
-                    <div className="overflow-hidden pl-3">
-                      <ConversationListItem
-                        conversation={conversation}
-                        isMultiSelect={isMultiSelect}
-                        selectedConversations={selectedConversations}
-                        toggleConversationSelection={
-                          toggleConversationSelection
-                        }
-                        activeConversationId={activeConversationId}
-                        owner={owner}
-                        showStatusDot={false}
-                      />
-                    </div>
-                  </motion.div>
-                )),
+                    <NavigationListLabel
+                      // The pod name is a static group header, not a link:
+                      // keep the arrow cursor instead of the text I-beam so it
+                      // doesn't read as interactive or selectable. The mt-2/
+                      // pt-2 split of the label's default pt-4 keeps half of
+                      // the inter-group spacing outside the highlight block.
+                      className="cursor-default select-none mt-2 pt-2"
+                      label={group.podName}
+                      icon={pod ? getSpaceIcon(pod) : undefined}
+                      action={
+                        shouldShowMarkAllAsReadButton ? (
+                          <Button
+                            size="xmini"
+                            variant="ghost-secondary"
+                            label="Mark as read"
+                            data-mark-read="pod"
+                            onClick={() =>
+                              onMarkAllAsRead(
+                                group.conversations.map((c) => c.sId)
+                              )
+                            }
+                            isLoading={isMarkingAllAsRead}
+                            hasLighterFont
+                            className="hover:bg-hover active:bg-selected"
+                          />
+                        ) : null
+                      }
+                    />
+                    <AnimatePresence initial={false}>
+                      {group.conversations.map((conversation) => (
+                        <motion.div
+                          key={conversation.sId}
+                          style={GRID_STYLE}
+                          animate={GRID_ANIMATE}
+                          exit={GRID_EXIT}
+                          transition={{ ease: "easeOut", duration: 0.1 }}
+                        >
+                          {/* Indented under the pod header so the conversation
+                           * reads as nested inside the pod group. */}
+                          <div className="overflow-hidden pl-3">
+                            <ConversationListItem
+                              conversation={conversation}
+                              isMultiSelect={isMultiSelect}
+                              selectedConversations={selectedConversations}
+                              toggleConversationSelection={
+                                toggleConversationSelection
+                              }
+                              activeConversationId={activeConversationId}
+                              owner={owner}
+                              showStatusDot={false}
+                            />
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>,
               ];
             }
             default:
