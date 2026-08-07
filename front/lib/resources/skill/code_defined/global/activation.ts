@@ -446,7 +446,7 @@ export const activationSkill = {
     { name: "activation_recommendations" },
     { name: "pod_manager" },
   ],
-  version: 8,
+  version: 6,
   icon: "ActionRocketIcon",
   isRestricted: async (auth) => {
     const flags = await getFeatureFlags(auth);
