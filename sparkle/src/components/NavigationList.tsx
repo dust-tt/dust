@@ -61,6 +61,7 @@ interface NavigationListItemProps
   icon?: React.ComponentType;
   avatar?: React.ReactNode;
   moreMenu?: React.ReactNode;
+  keepHoverOnMoreMenu?: boolean;
   status?: NavigationListItemStatus;
   count?: number;
   hasActivity?: boolean;
@@ -87,6 +88,7 @@ const NavigationListItem = React.forwardRef<
       replace,
       shallow,
       moreMenu,
+      keepHoverOnMoreMenu,
       status = "idle",
       count,
       hasActivity,
@@ -135,7 +137,10 @@ const NavigationListItem = React.forwardRef<
               "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
               "items-center outline-hidden rounded-lg text-sm p-2 transition-colors duration-150 motion-reduce:transition-none",
               "data-[disabled]:pointer-events-none",
-              "hover:bg-hover hover:text-primary",
+              !disabled &&
+                (keepHoverOnMoreMenu
+                  ? "group-hover/menu-item:bg-hover group-hover/menu-item:text-primary"
+                  : "hover:bg-hover hover:text-primary"),
               selected && "bg-selected text-primary",
               disabled && "pointer-events-none cursor-default opacity-50"
             )}
