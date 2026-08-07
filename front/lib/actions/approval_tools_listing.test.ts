@@ -27,11 +27,11 @@ async function listedToolNames({
     { name: "Test Agent", description: "Test Agent" }
   );
 
-  // schedules_management lists `list_schedules` at `never_ask` and `create_schedule` behind an
+  // triggers_management lists `list_triggers` at `never_ask` and `create_schedule` behind an
   // approval.
   const internalServer = await InternalMCPServerInMemoryResource.makeNew(
     authenticator,
-    { name: "schedules_management", useCase: null }
+    { name: "triggers_management", useCase: null }
   );
   const view = await MCPServerViewFactory.create(
     workspace,
@@ -88,7 +88,7 @@ describe("tryListMCPTools approval-requiring tools", () => {
       origin: "web",
     });
 
-    expect(toolNames).toContain("list_schedules");
+    expect(toolNames).toContain("list_triggers");
     expect(toolNames).toContain("create_schedule");
   });
 
@@ -100,7 +100,7 @@ describe("tryListMCPTools approval-requiring tools", () => {
       origin: "web",
     });
 
-    expect(toolNames).toContain("list_schedules");
+    expect(toolNames).toContain("list_triggers");
     expect(toolNames).toContain("create_schedule");
   });
 
@@ -110,7 +110,7 @@ describe("tryListMCPTools approval-requiring tools", () => {
       origin: ACTIVATION_NUDGE_ORIGIN,
     });
 
-    expect(toolNames).toContain("list_schedules");
+    expect(toolNames).toContain("list_triggers");
     expect(toolNames).not.toContain("create_schedule");
   });
 });
