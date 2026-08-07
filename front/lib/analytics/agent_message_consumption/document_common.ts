@@ -21,7 +21,6 @@ type AgentMessageConsumptionAnalyticsBaseDocument = Pick<
   | "attribution_version"
   | "completed_at"
   | "consumption_key"
-  | "consumption_type"
   | "context_origin"
   | "conversation_id"
   | "message_version"
@@ -54,14 +53,12 @@ export function makeBaseDocument(
   {
     attributionVersion,
     consumptionKey,
-    consumptionType,
     runUsageModelId,
     stepIndex,
     usageType,
   }: {
     attributionVersion: number;
     consumptionKey: string;
-    consumptionType: AgentMessageConsumptionAnalyticsData["consumption_type"];
     runUsageModelId: ModelId;
     stepIndex: number;
     usageType: AgentMessageConsumptionAnalyticsUsageType;
@@ -74,7 +71,6 @@ export function makeBaseDocument(
     attribution_version: attributionVersion,
     completed_at: metadata.completedAt.toISOString(),
     consumption_key: consumptionKey,
-    consumption_type: consumptionType,
     context_origin: metadata.contextOrigin,
     conversation_id: metadata.conversationId,
     message_version: metadata.messageVersion.toString(),

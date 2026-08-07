@@ -11,7 +11,7 @@ import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMessageToolConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
+import type { AgentMessageConsumptionAnalyticsToolData } from "@app/types/assistant/analytics";
 import assert from "assert";
 
 function skillExposesAction(
@@ -63,7 +63,7 @@ function summarizeToolConsumptionItem({
   allocation: MessageConsumptionAllocation<BilledRunUsage>;
   item: AgentMessageToolConsumptionItemResource;
 }): Pick<
-  AgentMessageConsumptionAnalyticsData,
+  AgentMessageConsumptionAnalyticsToolData,
   "credit_micro" | "gross_credit_micro" | "tokens"
 > {
   const resultFootprintTokens = item.inputTokensCount ?? 0;
@@ -113,19 +113,19 @@ function buildToolConsumptionDocument({
   item: AgentMessageToolConsumptionItemResource;
   parentAction: AgentMCPActionResource | undefined;
   usage: BilledRunUsage;
-}): AgentMessageConsumptionAnalyticsData {
+}): AgentMessageConsumptionAnalyticsToolData {
   const serializedAction = action.toJSON();
 
   return {
     ...makeBaseDocument(input, {
       attributionVersion: allocation.attributionVersion,
       consumptionKey: item.itemKey,
-      consumptionType: "tool",
       runUsageModelId: item.runUsageId,
       stepIndex: serializedAction.step,
       usageType: usage.usageType,
     }),
     ...summarizeToolConsumptionItem({ allocation, item }),
+    consumption_type: "tool",
     execution_time_ms: serializedAction.executionDurationMs,
     model: modelForUsage(input.model, usage),
     status: serializedAction.status,
@@ -146,7 +146,7 @@ function buildToolConsumptionDocument({
 export function buildToolConsumptionDocuments(
   input: AgentMessageConsumptionAnalyticsInput,
   allocation: MessageConsumptionAllocation<BilledRunUsage>
-): AgentMessageConsumptionAnalyticsData[] {
+): AgentMessageConsumptionAnalyticsToolData[] {
   const usageByModelId = new Map(
     allocation.messageUsages.map((usage) => [usage.runUsageModelId, usage])
   );
@@ -156,7 +156,7 @@ export function buildToolConsumptionDocuments(
   const actionById = new Map(
     input.actions.map((action) => [action.sId, action])
   );
-  const documents: AgentMessageConsumptionAnalyticsData[] = [];
+  const documents: AgentMessageConsumptionAnalyticsToolData[] = [];
 
   for (const item of allocation.items) {
     if (!item.isToolItem()) {

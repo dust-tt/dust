@@ -13,19 +13,14 @@ import type {
   AgentMessageModelConsumptionItemResource,
 } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type {
-  AgentMessageConsumptionAnalyticsData,
-  AgentMessageConsumptionAnalyticsGrossCreditMicro,
+  AgentMessageConsumptionAnalyticsLlmData,
+  AgentMessageConsumptionAnalyticsLlmGrossCreditMicro,
+  AgentMessageConsumptionAnalyticsLlmTokens,
 } from "@app/types/assistant/analytics";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-type LlmGrossCreditMicro = AgentMessageConsumptionAnalyticsGrossCreditMicro & {
-  input: number;
-  output: number;
-  result_footprint: null;
-};
-
-function emptyTokens(): AgentMessageConsumptionAnalyticsData["tokens"] {
+function emptyTokens(): AgentMessageConsumptionAnalyticsLlmTokens {
   return {
     system: 0,
     input: 0,
@@ -35,7 +30,7 @@ function emptyTokens(): AgentMessageConsumptionAnalyticsData["tokens"] {
   };
 }
 
-function emptyGrossCredits(): LlmGrossCreditMicro {
+function emptyGrossCredits(): AgentMessageConsumptionAnalyticsLlmGrossCreditMicro {
   return {
     system: 0,
     input: 0,
@@ -110,7 +105,7 @@ function summarizeLlmConsumptionItems({
   allocation: MessageConsumptionAllocation<BilledRunUsage>;
   items: AgentMessageModelConsumptionItemResource[];
 }): Pick<
-  AgentMessageConsumptionAnalyticsData,
+  AgentMessageConsumptionAnalyticsLlmData,
   "credit_micro" | "gross_credit_micro" | "tokens"
 > {
   const tokens = emptyTokens();
@@ -166,17 +161,17 @@ function buildLlmConsumptionDocument({
   items: AgentMessageModelConsumptionItemResource[];
   stepIndex: number;
   usage: BilledRunUsage;
-}): AgentMessageConsumptionAnalyticsData {
+}): AgentMessageConsumptionAnalyticsLlmData {
   return {
     ...makeBaseDocument(input, {
       attributionVersion: allocation.attributionVersion,
       consumptionKey: `run-usage:${usage.runUsageModelId}`,
-      consumptionType: "llm",
       runUsageModelId: usage.runUsageModelId,
       stepIndex,
       usageType: usage.usageType,
     }),
     ...summarizeLlmConsumptionItems({ allocation, items }),
+    consumption_type: "llm",
     // The agent message stores only aggregate model latency, which cannot be split across runs.
     // TODO(2026-08-07 flav): Persist execution duration on each run and index it here.
     execution_time_ms: null,
@@ -189,10 +184,10 @@ function buildLlmConsumptionDocument({
 export function buildLlmConsumptionDocuments(
   input: AgentMessageConsumptionAnalyticsInput,
   allocation: MessageConsumptionAllocation<BilledRunUsage>
-): AgentMessageConsumptionAnalyticsData[] {
+): AgentMessageConsumptionAnalyticsLlmData[] {
   const itemsByUsageModelId = modelItemsByRunUsageModelId(allocation.items);
   const stepByRunModelId = stepIndexByRunModelId(input);
-  const documents: AgentMessageConsumptionAnalyticsData[] = [];
+  const documents: AgentMessageConsumptionAnalyticsLlmData[] = [];
 
   for (const usage of allocation.messageUsages) {
     documents.push(
