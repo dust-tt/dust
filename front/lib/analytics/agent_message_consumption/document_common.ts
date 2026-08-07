@@ -13,7 +13,7 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
-type AgentMessageConsumptionAnalyticsBaseDocument = Pick<
+type AgentMessageConsumptionAnalyticsDocumentMetadata = Pick<
   AgentMessageConsumptionAnalyticsData,
   | "agent"
   | "agent_message_id"
@@ -63,7 +63,7 @@ export function makeBaseDocument(
     stepIndex: number;
     usageType: AgentMessageConsumptionAnalyticsUsageType;
   }
-): AgentMessageConsumptionAnalyticsBaseDocument {
+): AgentMessageConsumptionAnalyticsDocumentMetadata {
   return {
     agent: metadata.agent,
     agent_message_id: metadata.agentMessageId,
