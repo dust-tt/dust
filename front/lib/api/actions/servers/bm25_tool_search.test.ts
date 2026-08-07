@@ -810,6 +810,14 @@ const QUERIES: LabeledQuery[] = [
     expected: "interactive_content.retrieve_interactive_content_file",
   },
   {
+    query: "open an existing frame in the side panel without editing it",
+    expected: "conversation_side_panel.open_frame",
+  },
+  {
+    query: "show the user a frame that was already created",
+    expected: "conversation_side_panel.open_frame",
+  },
+  {
     query: "revert my frame to the previous version",
     expected: "interactive_content.revert_interactive_content_file",
   },
@@ -1576,6 +1584,16 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "rename this conversation to something descriptive",
     expected: "common_utilities.set_conversation_title",
+  },
+
+  // --- conversation_side_panel ---
+  {
+    query: "open the files side panel so the user can browse attachments",
+    expected: "conversation_side_panel.set_files_side_panel",
+  },
+  {
+    query: "hide the conversation files explorer panel",
+    expected: "conversation_side_panel.set_files_side_panel",
   },
 
   // --- exa_people_and_company ---

@@ -1,3 +1,9 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  CONVERSATION_SIDE_PANEL_SERVER_NAME,
+  OPEN_FRAME_TOOL_NAME,
+  SET_FILES_SIDE_PANEL_TOOL_NAME,
+} from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
@@ -8,6 +14,15 @@ import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
 import { isStringArray } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+
+const OPEN_FRAME_TOOL = getPrefixedToolName(
+  CONVERSATION_SIDE_PANEL_SERVER_NAME,
+  OPEN_FRAME_TOOL_NAME
+);
+const SET_FILES_SIDE_PANEL_TOOL = getPrefixedToolName(
+  CONVERSATION_SIDE_PANEL_SERVER_NAME,
+  SET_FILES_SIDE_PANEL_TOOL_NAME
+);
 
 const ACTIVATION_BEHAVIOR = `
 # Overview
@@ -32,7 +47,7 @@ Every conversation runs the same loop. Each step below has its own section with 
 3. Build the Plan — 2–4 ordered rungs toward the Goal, recorded in \`session_plan.md\`.
 4. Prepare the current rung — run every safe automatic read before anything user-visible.
 5. Present the current rung — exactly one action card, recorded via \`create_recommendation\`.
-6. Execute on accept — run the prepared work; deliver the result as an inline Frame.
+6. Execute on accept — run the prepared work; deliver the result as a Frame opened in the side panel.
 7. Collect feedback — then offer Skill or Trigger creation only when it is the next rung.
 8. Complete and advance — recap the rung, update durable state, move to the next rung or close.
 
@@ -44,6 +59,9 @@ A session succeeds when the user gets one timely, evidence-backed domain win (ar
 # Hard Rules
 - Never use plan mode.
 - Never describe the mechanics of this workflow as a system. For example, the user will have no idea what a session goal is.
+- The user did not choose or write the Session Goal. It is something Dust set for them. Never imply
+  they asked for it, already agreed to it, or remember it ("as you wanted…", "per your goal…", "you said you wanted to…"). Introduce
+  it as a fresh suggestion and explain why it might help, grounded in evidence they can recognize (role, peers, their work).
 - Never block the user (skip / redirect / leave is always allowed).
 - The first user-visible response always includes an action card. Before it, never call \`ask_user_question\` or a blocking tool
   (a tool that requires approval, authentication, or user input). If information is missing, use the best evidence-backed Work Area
@@ -245,6 +263,8 @@ At the start of EVERY session, give an extremely warm welcome to the user. Act a
   work, and explain that the recommendation is a concrete win within it. Ground this in evidence (role, peers, their work, etc).
 * Present exactly one action card at the start of the session.
 
+* Call \`${SET_FILES_SIDE_PANEL_TOOL}\` with \`visible: false\` before finishing this first-turn response.
+
 ## Presenting the Recommendation
 
 - ALWAYS surface a new recommendation as the first user-visible response and the final output of the agent. The result is rendered
@@ -301,6 +321,12 @@ Once the user accepts, execute the current rung for real:
 - Use only that rung's preparation to inform the execution.
 - Ask at most one clarifying question, only when it is a genuinely blocking human gate; otherwise use sensible defaults and let the user correct the output.
 - Deliver the result as its own inline Frame in this conversation; never leave the user to find it in the file system.
+
+## Deliver the Frame
+
+You MUST open every Frame for the user. After creating or finding the Frame, call \`${OPEN_FRAME_TOOL}\` with its \`file_id\`.
+Do not merely mention a Frame in chat or expect the user to find it.
+When referring to a Frame again later, call \`${OPEN_FRAME_TOOL}\` again first.
 
 ## When a required source is missing user authentication
 
@@ -445,6 +471,7 @@ export const activationSkill = {
     { name: "files" },
     { name: "activation_recommendations" },
     { name: "pod_manager" },
+    { name: "conversation_side_panel" },
   ],
   version: 6,
   icon: "ActionRocketIcon",
