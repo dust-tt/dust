@@ -191,6 +191,7 @@ function PrunedContextChip() {
 interface AgentMessageProps {
   conversationId: string;
   spaceId: string | null;
+  isActivationPodConversation: boolean;
   hideHeader: boolean;
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
@@ -215,6 +216,7 @@ interface AgentMessageProps {
 export function AgentMessage({
   conversationId,
   spaceId,
+  isActivationPodConversation,
   hideHeader,
   isLastMessage,
   agentMessage,
@@ -1040,7 +1042,9 @@ export function AgentMessage({
 
   const messageContent = (
     <ConversationMessageContent
-      citations={isDeleted ? undefined : citations}
+      citations={
+        isDeleted || isActivationPodConversation ? undefined : citations
+      }
       type="agent"
     >
       {isDeleted ? (
