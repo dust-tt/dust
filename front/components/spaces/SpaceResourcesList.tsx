@@ -1,4 +1,3 @@
-import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -9,6 +8,7 @@ import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpac
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { useUsedByDetailsSheets } from "@app/components/spaces/useUsedByDetailsSheets";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
@@ -91,7 +91,8 @@ const hasConfigureSlackConnectionQuery = (
   query.configureConnection === "slack";
 
 function getTableColumns(
-  setAssistantSId: (a: string | null) => void,
+  onAgentClick: (id: string | null) => void,
+  onSkillClick: (id: string | null) => void,
   isManaged: boolean,
   isWebsite: boolean,
   space: SpaceType,
@@ -144,7 +145,8 @@ function getTableColumns(
       <DataTable.CellContent>
         <UsedByButton
           usage={info.row.original.dataSourceView.usage}
-          onItemClick={setAssistantSId}
+          onItemClick={onAgentClick}
+          onSkillClick={onSkillClick}
         />
       </DataTable.CellContent>
     ),
@@ -279,7 +281,10 @@ export const SpaceResourcesList = ({
   activeSeats,
 }: SpaceResourcesListProps) => {
   const { isDark } = useTheme();
-  const [assistantSId, setAssistantSId] = useState<string | null>(null);
+  const { onAgentClick, onSkillClick, sheets } = useUsedByDetailsSheets(
+    owner,
+    user
+  );
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
@@ -607,12 +612,7 @@ export const SpaceResourcesList = ({
 
   return (
     <>
-      <AgentDetailsSheet
-        owner={owner}
-        user={user}
-        agentId={assistantSId}
-        onClose={() => setAssistantSId(null)}
-      />
+      {sheets}
 
       {isEmpty && (
         <div
@@ -633,7 +633,8 @@ export const SpaceResourcesList = ({
           className="dd-privacy-mask"
           data={rows}
           columns={getTableColumns(
-            setAssistantSId,
+            onAgentClick,
+            onSkillClick,
             isManagedCategory,
             isWebsite,
             space,

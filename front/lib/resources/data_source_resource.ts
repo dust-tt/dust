@@ -1,4 +1,3 @@
-import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import { default as config } from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -619,10 +618,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return this.update({
       connectorId,
     });
-  }
-
-  getUsagesByAgents(auth: Authenticator) {
-    return getDataSourceUsage({ auth, dataSource: this });
   }
 
   // sId logic.

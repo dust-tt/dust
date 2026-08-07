@@ -1,12 +1,9 @@
 import { z } from "zod";
 
 import type { DataSourceViewCategory } from "./api/public/spaces";
+import type { AgentsAndSkillsUsageType } from "./assistant/skill_configuration";
 import type { ContentNodeWithParent } from "./connectors/connectors_api";
-import type {
-  AgentsUsageType,
-  ConnectorStatusDetails,
-  DataSourceType,
-} from "./data_source";
+import type { ConnectorStatusDetails, DataSourceType } from "./data_source";
 import type { ModelId } from "./shared/model_id";
 import type { EditedByUser } from "./user";
 
@@ -28,7 +25,7 @@ export interface DataSourceViewType {
 
 export type DataSourceViewsWithDetails = DataSourceViewType & {
   dataSource: DataSourceType & ConnectorStatusDetails;
-  usage: AgentsUsageType;
+  usage: AgentsAndSkillsUsageType;
 };
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {

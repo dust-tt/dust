@@ -1,7 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
@@ -873,10 +872,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   static isDataSourceViewSId(sId: string): boolean {
     return isResourceSId("data_source_view", sId);
   }
-
-  getUsagesByAgents = async (auth: Authenticator) => {
-    return getDataSourceViewUsage({ auth, dataSourceView: this });
-  };
 
   // Serialization.
 

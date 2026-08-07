@@ -1,4 +1,4 @@
-import type { AgentsUsageType } from "@app/types/data_source";
+import type { AgentsAndSkillsUsageType } from "@app/types/assistant/skill_configuration";
 import {
   type PodFrameTab,
   PodFrameTabsSchema,
@@ -87,7 +87,7 @@ export type PostSpacesResponseBody = {
 };
 
 export type SpaceCategoryInfo = {
-  usage: AgentsUsageType;
+  usage: AgentsAndSkillsUsageType;
   count: number;
 };
 

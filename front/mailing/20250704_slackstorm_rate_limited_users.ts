@@ -1,6 +1,7 @@
 import sgMail from "@sendgrid/mail";
 import assert from "assert";
 
+import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -111,7 +112,9 @@ async function contactWorkspace(workspaceId: string) {
     slackDataSources
   );
   const viewsUsageByAgentsRes = await Promise.all(
-    dataSourceViews.map((view) => view.getUsagesByAgents(auth))
+    dataSourceViews.map((view) =>
+      getDataSourceViewUsage({ auth, dataSourceView: view })
+    )
   );
 
   const viewsUsedByAgents = viewsUsageByAgentsRes.reduce((acc, usageRes) => {
