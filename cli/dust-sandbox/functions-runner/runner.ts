@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 // Embedded runner for `dsbx function` and `dsbx db`. Subcommands:
 //   runner run <path>                            stdin request envelope -> stdout Output JSON
+//   runner serve <path> <socketPath>             warm server: keep <path> imported, serve
+//                                                invocations over a unix socket until idle
 //   runner get <path>                            -> stdout FunctionSchema JSON (or {error})
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
 //   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
@@ -17,6 +19,7 @@ import { generateSchemaFileText } from "./db/schema.ts";
 import { invoke } from "./invoke.ts";
 import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";
+import { serve } from "./serve.ts";
 
 async function runHandler(handlerPath: string): Promise<number> {
   const raw = await Bun.stdin.text();
@@ -152,7 +155,7 @@ async function main(): Promise<number> {
 
   const [handlerPath] = rest;
   if (!handlerPath) {
-    process.stderr.write("usage: runner <run|get> <handler-path>\n");
+    process.stderr.write("usage: runner <run|get|serve> <handler-path>\n");
     return 2;
   }
   switch (command) {
@@ -160,6 +163,17 @@ async function main(): Promise<number> {
       return runHandler(handlerPath);
     case "get":
       return getHandler(handlerPath);
+    case "serve": {
+      const [, socketPath] = rest;
+      if (!socketPath) {
+        process.stderr.write(
+          "usage: runner serve <handler-path> <socket-path>\n"
+        );
+        return 2;
+      }
+      // Never returns: the server exits itself (idle, lifetime, staleness).
+      return serve(handlerPath, socketPath);
+    }
     default:
       process.stderr.write(`runner: unknown command "${command}"\n`);
       return 2;
