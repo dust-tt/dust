@@ -2,6 +2,7 @@ import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analyti
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { replaceAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
 import type { Authenticator } from "@app/lib/auth";
+import assert from "assert";
 
 /**
  * Loads, projects, and indexes the complete consumption analytics snapshot for one agent message.
@@ -20,9 +21,10 @@ export async function indexAgentMessageConsumptionAnalytics(
   }
 
   const documents = buildAgentMessageConsumptionAnalyticsDocuments(input);
-  if (!documents || documents.length === 0) {
-    throw new Error("Consumption attribution is incomplete for analytics");
-  }
+  assert(
+    documents && documents.length > 0,
+    "Consumption attribution is incomplete for analytics"
+  );
 
   await replaceAgentMessageConsumptionAnalyticsDocuments({
     agentMessageId: input.agentMessageId,
