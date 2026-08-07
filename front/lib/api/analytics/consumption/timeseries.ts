@@ -112,7 +112,7 @@ export async function fetchConsumptionTimeseries(
   }
 ): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
-    auth: auth,
+    auth,
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
