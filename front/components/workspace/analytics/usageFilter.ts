@@ -169,37 +169,19 @@ export function removeUsageFilterGroup(
   return groups.filter((g) => g.id !== id);
 }
 
-// Only "user", "agent", "model", "tool" and "skill" are wired to real
-// consumption scope dimensions so far; the other categories stay mock data
-// and are not sent as query filters.
+// Every category is wired to a real consumption scope dimension, and every
+// category name matches its dimension name, so the filter maps straight
+// across with no per-category translation.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
   const scopeFilter: ConsumptionScopeFilter = {};
 
-  const userIds = filter.user?.map((entity) => entity.id);
-  if (userIds && userIds.length > 0) {
-    scopeFilter.user = userIds;
-  }
-
-  const agentIds = filter.agent?.map((entity) => entity.id);
-  if (agentIds && agentIds.length > 0) {
-    scopeFilter.agent = agentIds;
-  }
-
-  const modelIds = filter.model?.map((entity) => entity.id);
-  if (modelIds && modelIds.length > 0) {
-    scopeFilter.model = modelIds;
-  }
-
-  const toolIds = filter.tool?.map((entity) => entity.id);
-  if (toolIds && toolIds.length > 0) {
-    scopeFilter.tool = toolIds;
-  }
-
-  const skillIds = filter.skill?.map((entity) => entity.id);
-  if (skillIds && skillIds.length > 0) {
-    scopeFilter.skill = skillIds;
+  for (const category of USAGE_FILTER_CATEGORIES) {
+    const ids = filter[category]?.map((entity) => entity.id);
+    if (ids && ids.length > 0) {
+      scopeFilter[category] = ids;
+    }
   }
 
   return scopeFilter;
