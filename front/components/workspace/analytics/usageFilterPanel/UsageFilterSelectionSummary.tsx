@@ -15,24 +15,39 @@ import {
   NavigationListLabel,
   XClose,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface UsageFilterSelectionSummaryProps {
   categoriesWithSelection: UsageFilterCategory[];
   draftFilter: UsageFilter;
-  collapsedCategories: Set<UsageFilterCategory>;
   onClearCategory: (category: UsageFilterCategory) => void;
-  onToggleCategoryOpen: (category: UsageFilterCategory) => void;
   onRemoveEntity: (category: UsageFilterCategory, id: string) => void;
 }
 
 export function UsageFilterSelectionSummary({
   categoriesWithSelection,
   draftFilter,
-  collapsedCategories,
   onClearCategory,
-  onToggleCategoryOpen,
   onRemoveEntity,
 }: UsageFilterSelectionSummaryProps) {
+  // Sections are open by default; a category lands here once the user
+  // collapses it.
+  const [collapsedCategories, setCollapsedCategories] = useState<
+    Set<UsageFilterCategory>
+  >(new Set());
+
+  const handleToggleCategoryOpen = (category: UsageFilterCategory) => {
+    setCollapsedCategories((current) => {
+      const next = new Set(current);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
   const selectionCount = categoriesWithSelection.reduce(
     (total, category) => total + (draftFilter[category]?.length ?? 0),
     0
@@ -66,7 +81,7 @@ export function UsageFilterSelectionSummary({
                         size="xmini"
                         variant="ghost"
                         tooltip={isCategoryOpen ? "Collapse" : "Expand"}
-                        onClick={() => onToggleCategoryOpen(category)}
+                        onClick={() => handleToggleCategoryOpen(category)}
                       />
                     </div>
                   }

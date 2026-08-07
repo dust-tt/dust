@@ -1,5 +1,9 @@
 import type { UsageFilterGroup } from "@app/components/workspace/analytics/usageFilter";
 import {
+  addUsageFilterGroup,
+  removeUsageFilterGroup,
+} from "@app/components/workspace/analytics/usageFilter";
+import {
   Button,
   Chip,
   NavigationList,
@@ -7,24 +11,39 @@ import {
   NavigationListLabel,
   Plus,
 } from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
 interface UsageFilterMemberGroupsControlsProps {
-  isAddGroupOpen: boolean;
-  onToggleAddGroupOpen: () => void;
-  availableGroups: UsageFilterGroup[];
-  onAddGroup: (group: UsageFilterGroup) => void;
-  selectedGroups: UsageFilterGroup[];
-  onRemoveGroup: (id: string) => void;
+  groups: UsageFilterGroup[];
 }
 
 export function UsageFilterMemberGroupsControls({
-  isAddGroupOpen,
-  onToggleAddGroupOpen,
-  availableGroups,
-  onAddGroup,
-  selectedGroups,
-  onRemoveGroup,
+  groups,
 }: UsageFilterMemberGroupsControlsProps) {
+  const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
+  // Narrows the displayed members down to those belonging to at least one of
+  // these groups. Not currently backed by real group-membership data (the
+  // search endpoint has no such concept yet), so it's UI-only until that
+  // exists.
+  const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
+
+  const availableGroups = useMemo(
+    () =>
+      groups.filter(
+        (group) => !selectedGroups.some((selected) => selected.id === group.id)
+      ),
+    [groups, selectedGroups]
+  );
+
+  const handleAddGroup = (group: UsageFilterGroup) => {
+    setSelectedGroups((current) => addUsageFilterGroup(current, group));
+    setIsAddGroupOpen(false);
+  };
+
+  const handleRemoveGroup = (id: string) => {
+    setSelectedGroups((current) => removeUsageFilterGroup(current, id));
+  };
+
   return (
     <>
       <NavigationListLabel
@@ -36,7 +55,7 @@ export function UsageFilterMemberGroupsControls({
             icon={Plus}
             size="xmini"
             variant="ghost-secondary"
-            onClick={onToggleAddGroupOpen}
+            onClick={() => setIsAddGroupOpen((current) => !current)}
           />
         }
       />
@@ -51,7 +70,7 @@ export function UsageFilterMemberGroupsControls({
                     {group.name}
                   </span>
                 }
-                onClick={() => onAddGroup(group)}
+                onClick={() => handleAddGroup(group)}
               />
             ))
           ) : (
@@ -68,7 +87,7 @@ export function UsageFilterMemberGroupsControls({
               key={group.id}
               label={group.name}
               size="xs"
-              onRemove={() => onRemoveGroup(group.id)}
+              onRemove={() => handleRemoveGroup(group.id)}
             />
           ))}
         </div>

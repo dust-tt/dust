@@ -6,6 +6,7 @@ import type {
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
+  USAGE_MODEL_LABS,
   USAGE_MODEL_TIER_LABEL,
   USAGE_MODEL_TIERS,
 } from "@app/components/workspace/analytics/usageFilter";
@@ -27,7 +28,7 @@ import {
   NavigationListLabel,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-import { Fragment } from "react";
+import { Fragment, useMemo, useState } from "react";
 
 const MODEL_TIER_ICON: Record<UsageModelTier, ComponentType> = {
   fast: BarLow,
@@ -36,15 +37,7 @@ const MODEL_TIER_ICON: Record<UsageModelTier, ComponentType> = {
 };
 
 interface UsageFilterModelComplexityControlsProps {
-  isMoreModelsOpen: boolean;
-  onMoreModelsOpenChange: (open: boolean) => void;
-  moreModelsSearch: string;
-  onMoreModelsSearchChange: (value: string) => void;
-  isSearchingMoreModels: boolean;
-  moreModelsSearchResults: UsageFilterEntity[];
-  moreModelsGroups: { lab: UsageModelLab; models: UsageFilterEntity[] }[];
-  expandedModelLab: UsageModelLab | null;
-  onToggleExpandedModelLab: (lab: UsageModelLab) => void;
+  models: UsageFilterEntity[];
   selectedModelIds: Set<string>;
   onToggleModel: (model: UsageFilterEntity) => void;
   activeTier: UsageModelTier;
@@ -52,21 +45,57 @@ interface UsageFilterModelComplexityControlsProps {
 }
 
 export function UsageFilterModelComplexityControls({
-  isMoreModelsOpen,
-  onMoreModelsOpenChange,
-  moreModelsSearch,
-  onMoreModelsSearchChange,
-  isSearchingMoreModels,
-  moreModelsSearchResults,
-  moreModelsGroups,
-  expandedModelLab,
-  onToggleExpandedModelLab,
+  models,
   selectedModelIds,
   onToggleModel,
   activeTier,
   onTierChange,
 }: UsageFilterModelComplexityControlsProps) {
   const { isDark } = useTheme();
+  // "More models" opens collapsed to just the maker rows; picking one expands
+  // its model list. State lives here since it's local to this dropdown and
+  // naturally resets whenever the panel is reopened (the popover unmounts
+  // its content on close).
+  const [isMoreModelsOpen, setIsMoreModelsOpen] = useState(false);
+  const [moreModelsSearch, setMoreModelsSearch] = useState("");
+  const [expandedModelLab, setExpandedModelLab] =
+    useState<UsageModelLab | null>(null);
+
+  const handleMoreModelsOpenChange = (open: boolean) => {
+    setIsMoreModelsOpen(open);
+    if (open) {
+      setMoreModelsSearch("");
+      setExpandedModelLab(null);
+    }
+  };
+
+  const handleToggleExpandedModelLab = (lab: UsageModelLab) => {
+    setExpandedModelLab((current) => (current === lab ? null : lab));
+  };
+
+  // A search bypasses maker grouping entirely and lists matches flat,
+  // mirroring the message composer's model picker.
+  const moreModelsQuery = moreModelsSearch.trim().toLowerCase();
+  const isSearchingMoreModels = moreModelsQuery !== "";
+
+  const moreModelsSearchResults = useMemo(
+    () =>
+      isSearchingMoreModels
+        ? models.filter((entity) =>
+            entity.name.toLowerCase().includes(moreModelsQuery)
+          )
+        : [],
+    [models, isSearchingMoreModels, moreModelsQuery]
+  );
+
+  const moreModelsGroups = useMemo(
+    () =>
+      USAGE_MODEL_LABS.flatMap((lab) => {
+        const labModels = models.filter((entity) => entity.lab === lab);
+        return labModels.length > 0 ? [{ lab, models: labModels }] : [];
+      }),
+    [models]
+  );
 
   return (
     <>
@@ -76,7 +105,7 @@ export function UsageFilterModelComplexityControls({
         action={
           <DropdownMenu
             open={isMoreModelsOpen}
-            onOpenChange={onMoreModelsOpenChange}
+            onOpenChange={handleMoreModelsOpenChange}
           >
             <DropdownMenuTrigger asChild>
               <Button
@@ -90,7 +119,7 @@ export function UsageFilterModelComplexityControls({
                 name="usage-filter-more-models-search"
                 placeholder="Search for model"
                 value={moreModelsSearch}
-                onChange={onMoreModelsSearchChange}
+                onChange={setMoreModelsSearch}
               />
               {isSearchingMoreModels ? (
                 moreModelsSearchResults.length > 0 ? (
@@ -137,7 +166,7 @@ export function UsageFilterModelComplexityControls({
                           size="xs"
                         />
                       }
-                      onClick={() => onToggleExpandedModelLab(lab)}
+                      onClick={() => handleToggleExpandedModelLab(lab)}
                       onSelect={(e) => e.preventDefault()}
                     />
                     {expandedModelLab === lab &&
