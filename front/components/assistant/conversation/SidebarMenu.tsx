@@ -48,9 +48,7 @@ import {
   useActivationPod,
   useActivationRecommendations,
 } from "@app/lib/swr/activation";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
@@ -103,7 +101,6 @@ import {
   Robot,
   ScrollArea,
   Spinner,
-  Tooltip,
   Trash01,
   XClose,
   Zap,
@@ -111,7 +108,6 @@ import {
 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  type ComponentProps,
   memo,
   useCallback,
   useContext,
@@ -129,41 +125,6 @@ interface AgentSidebarMenuProps {
   owner: WorkspaceType;
   hideActions?: boolean;
   hideInAppBanner?: boolean;
-}
-
-type PermissionedNavigationListItemProps = Omit<
-  ComponentProps<typeof NavigationListItem>,
-  "disabled"
-> & {
-  canAccess: boolean;
-  permissionTooltip: string;
-};
-
-function PermissionedNavigationListItem({
-  canAccess,
-  permissionTooltip,
-  moreMenu,
-  onClick,
-  ...props
-}: PermissionedNavigationListItemProps) {
-  const item = (
-    <NavigationListItem
-      {...props}
-      aria-disabled={!canAccess || undefined}
-      disabled={!canAccess}
-      moreMenu={canAccess ? moreMenu : undefined}
-      onClick={canAccess ? onClick : undefined}
-      tabIndex={canAccess ? props.tabIndex : 0}
-    />
-  );
-
-  if (canAccess) {
-    return item;
-  }
-
-  return (
-    <Tooltip label={permissionTooltip} trigger={item} tooltipTriggerAsChild />
-  );
 }
 
 type GroupLabel =
@@ -485,13 +446,6 @@ export function AgentSidebarMenu({
       workspaceId: owner.sId,
       disabled: !showGetStarted,
     });
-  const { agentConfigurations } = useUnifiedAgentConfigurations({
-    workspaceId: owner.sId,
-  });
-  const { skills } = useSkills({
-    owner,
-    status: "active",
-  });
 
   const [podSearchText, setPodSearchText] = useState("");
   const { setSidebarOpen } = useContext(SidebarContext);
@@ -547,15 +501,6 @@ export function AgentSidebarMenu({
 
   const canCreateAgent = hasPermission("create", "agent");
   const canCreateSkill = hasPermission("create", "skill");
-  const canManageAgents =
-    canCreateAgent ||
-    hasPermission("publish", "agent") ||
-    agentConfigurations.some((agent) => agent.canEdit);
-  const canManageSkills =
-    canCreateSkill ||
-    hasPermission("publish", "skill") ||
-    hasPermission("make_discoverable", "skill") ||
-    skills.some((skill) => skill.canAdministrate);
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
@@ -1140,9 +1085,7 @@ export function AgentSidebarMenu({
             )}
             {!isMultiSelect && !hideActions && (
               <NavigationList className="mx-sidebar-side-spacing mb-4 flex-shrink-0 pt-1">
-                <PermissionedNavigationListItem
-                  canAccess={canManageAgents}
-                  permissionTooltip="Ask an admin for permission to manage agents."
+                <NavigationListItem
                   href={getAgentBuilderRoute(owner.sId, "manage")}
                   icon={Robot}
                   label="Agents"
@@ -1234,9 +1177,7 @@ export function AgentSidebarMenu({
                     ) : undefined
                   }
                 />
-                <PermissionedNavigationListItem
-                  canAccess={canManageSkills}
-                  permissionTooltip="Ask an admin for permission to manage skills."
+                <NavigationListItem
                   href={getSkillBuilderRoute(owner.sId, "manage")}
                   icon={SKILL_ICON}
                   label="Skills"
