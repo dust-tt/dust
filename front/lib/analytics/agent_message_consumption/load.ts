@@ -41,25 +41,6 @@ export type BilledRunUsage = RunUsageWithRunKeyType & {
   usageType: AgentMessageConsumptionAnalyticsUsageType;
 };
 
-function isBilledRunUsage(
-  usage: RunUsageWithRunKeyType
-): usage is BilledRunUsage {
-  switch (usage.usageType) {
-    case USAGE_TYPE_USER:
-    case USAGE_TYPE_PROGRAMMATIC:
-      return true;
-
-    case USAGE_TYPE_FREE:
-      return false;
-
-    case null:
-      throw new Error("Run usage billing classification is incomplete");
-
-    default:
-      return assertNever(usage.usageType);
-  }
-}
-
 export type ConsumptionAnalyticsMessageMetadata = {
   agent: AgentMessageConsumptionAnalyticsAgent;
   agentMessageId: string;
@@ -87,6 +68,26 @@ export type AgentMessageConsumptionAnalyticsInput =
     stepContents: AgentStepContentResource[];
     usages: BilledRunUsage[];
   };
+
+// We only account for billed usage types in the analytics pipeline.
+function isBilledRunUsage(
+  usage: RunUsageWithRunKeyType
+): usage is BilledRunUsage {
+  switch (usage.usageType) {
+    case USAGE_TYPE_USER:
+    case USAGE_TYPE_PROGRAMMATIC:
+      return true;
+
+    case USAGE_TYPE_FREE:
+      return false;
+
+    case null:
+      throw new Error("Run usage billing classification is incomplete");
+
+    default:
+      return assertNever(usage.usageType);
+  }
+}
 
 async function loadApiKeyName(
   auth: Authenticator,
