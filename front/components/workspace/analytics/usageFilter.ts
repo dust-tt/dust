@@ -1,4 +1,3 @@
-import { MODEL_MAKER_IDS } from "@app/types/assistant/models/providers";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
@@ -43,29 +42,49 @@ export const USAGE_MODEL_TIER_LABEL: Record<UsageModelTier, string> = {
   complex: "Complex",
 };
 
-// Reuses the same maker ids and grouping the model picker uses (see
-// `getModelMaker`/`getModelMakerDisplayName`/`getModelMakerLogo`), so the
-// "More models" dropdown here matches the one in the message composer.
-export const USAGE_MODEL_LABS = MODEL_MAKER_IDS;
-
-export type UsageModelLab = ModelMakerIdType;
-
-export interface UsageFilterEntity {
+interface UsageFilterOptionBase {
   id: string;
   name: string;
-  // Only populated for the "agent" category.
-  scope?: UsageFilterScope;
-  // Only populated for the "member" category, used to render a real avatar.
-  image?: string | null;
-  // Only populated for the "source" category, used to show the connector's logo.
-  connectorProvider?: ConnectorProvider;
-  // Only populated for the "model" category, used to group models in the
-  // "More models" dropdown by maker.
-  lab?: UsageModelLab;
-  // Only populated for the "model" category, used for the Fast/Standard/
-  // Complex quick filter.
-  tier?: UsageModelTier;
 }
+
+export interface UsageFilterAgentOption extends UsageFilterOptionBase {
+  kind: "agent";
+  scope: UsageFilterScope;
+}
+
+export interface UsageFilterMemberOption extends UsageFilterOptionBase {
+  kind: "member";
+  image: string | null;
+}
+
+export interface UsageFilterSourceOption extends UsageFilterOptionBase {
+  kind: "source";
+  connectorProvider: ConnectorProvider | undefined;
+}
+
+export interface UsageFilterModelOption extends UsageFilterOptionBase {
+  kind: "model";
+  // Used to group models in the "More models" dropdown by maker.
+  lab: ModelMakerIdType;
+  // Used for the Fast/Standard/Complex quick filter.
+  tier: UsageModelTier;
+}
+
+export interface UsageFilterToolOption extends UsageFilterOptionBase {
+  kind: "tool";
+}
+
+export interface UsageFilterSkillOption extends UsageFilterOptionBase {
+  kind: "skill";
+}
+
+export type UsageFilterOption =
+  | UsageFilterAgentOption
+  | UsageFilterMemberOption
+  | UsageFilterSourceOption
+  | UsageFilterModelOption
+  | UsageFilterToolOption
+  | UsageFilterSkillOption;
 
 export interface UsageFilterGroup {
   id: string;
@@ -73,13 +92,13 @@ export interface UsageFilterGroup {
 }
 
 export type UsageFilter = Partial<
-  Record<UsageFilterCategory, UsageFilterEntity[]>
+  Record<UsageFilterCategory, UsageFilterOption[]>
 >;
 
 export function toggleUsageFilterEntity(
   filter: UsageFilter,
   category: UsageFilterCategory,
-  entity: UsageFilterEntity
+  entity: UsageFilterOption
 ): UsageFilter {
   const current = filter[category] ?? [];
   const next = current.some((e) => e.id === entity.id)
@@ -107,7 +126,7 @@ export function clearUsageFilterCategory(
 export function selectAllUsageFilterEntities(
   filter: UsageFilter,
   category: UsageFilterCategory,
-  entities: UsageFilterEntity[]
+  entities: UsageFilterOption[]
 ): UsageFilter {
   const current = filter[category] ?? [];
   const currentIds = new Set(current.map((e) => e.id));

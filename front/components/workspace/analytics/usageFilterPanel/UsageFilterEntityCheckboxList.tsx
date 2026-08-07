@@ -1,6 +1,6 @@
 import type {
   UsageFilterCategory,
-  UsageFilterEntity,
+  UsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterEntityIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterEntityIcon";
 import {
@@ -14,9 +14,9 @@ import {
 interface UsageFilterEntityCheckboxListProps {
   category: UsageFilterCategory;
   categoryLabel: string;
-  entities: UsageFilterEntity[];
+  entities: UsageFilterOption[];
   selectedIds: Set<string>;
-  onToggleEntity: (entity: UsageFilterEntity) => void;
+  onToggleEntity: (entity: UsageFilterOption) => void;
   onSelectAll: () => void;
 }
 
@@ -58,7 +58,7 @@ export function UsageFilterEntityCheckboxList({
                   checked={checked}
                   onCheckedChange={() => onToggleEntity(entity)}
                 />
-                <UsageFilterEntityIcon category={category} entity={entity} />
+                <UsageFilterEntityIcon entity={entity} />
                 <Label
                   htmlFor={checkboxId}
                   className="cursor-pointer text-sm leading-none"

@@ -1,9 +1,15 @@
 import type {
   UsageFilter,
+  UsageFilterAgentOption,
   UsageFilterCategory,
-  UsageFilterEntity,
   UsageFilterGroup,
+  UsageFilterMemberOption,
+  UsageFilterModelOption,
+  UsageFilterOption,
   UsageFilterScope,
+  UsageFilterSkillOption,
+  UsageFilterSourceOption,
+  UsageFilterToolOption,
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
@@ -41,10 +47,13 @@ interface UsageFilterPanelProps {
   // Agents/models/tools/skills/sources are still mock data (see
   // usageFilterMockData.ts — sources are fake connectors standing in for a
   // real db call); members are fetched live below (useSearchMembers).
-  categoryEntities: Record<
-    "agent" | "model" | "tool" | "skill" | "source",
-    UsageFilterEntity[]
-  >;
+  categoryEntities: {
+    agent: UsageFilterAgentOption[];
+    model: UsageFilterModelOption[];
+    tool: UsageFilterToolOption[];
+    skill: UsageFilterSkillOption[];
+    source: UsageFilterSourceOption[];
+  };
   groups: UsageFilterGroup[];
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
@@ -81,13 +90,19 @@ export function UsageFilterPanel({
     disabled: !isOpen || activeCategory !== "member",
   });
 
-  const memberEntities = useMemo(
-    () => members.map((m) => ({ id: m.sId, name: m.fullName, image: m.image })),
+  const memberEntities = useMemo<UsageFilterMemberOption[]>(
+    () =>
+      members.map((m) => ({
+        id: m.sId,
+        name: m.fullName,
+        kind: "member",
+        image: m.image,
+      })),
     [members]
   );
 
   const resolvedCategoryEntities = useMemo<
-    Record<UsageFilterCategory, UsageFilterEntity[]>
+    Record<UsageFilterCategory, UsageFilterOption[]>
   >(
     () => ({
       ...categoryEntities,
@@ -100,10 +115,10 @@ export function UsageFilterPanel({
   const filteredEntities = useMemo(() => {
     const search = searchText.trim().toLowerCase();
     return activeEntities.filter((entity) => {
-      if (activeCategory === "agent" && entity.scope !== activeScope) {
+      if (entity.kind === "agent" && entity.scope !== activeScope) {
         return false;
       }
-      if (activeCategory === "model" && entity.tier !== activeTier) {
+      if (entity.kind === "model" && entity.tier !== activeTier) {
         return false;
       }
       if (search && !entity.name.toLowerCase().includes(search)) {
@@ -111,7 +126,7 @@ export function UsageFilterPanel({
       }
       return true;
     });
-  }, [activeEntities, searchText, activeScope, activeTier, activeCategory]);
+  }, [activeEntities, searchText, activeScope, activeTier]);
 
   const selectedIdsForActiveCategory = useMemo(
     () =>
@@ -182,7 +197,7 @@ export function UsageFilterPanel({
 
   const handleToggleEntity = (
     category: UsageFilterCategory,
-    entity: UsageFilterEntity
+    entity: UsageFilterOption
   ) => {
     setDraftFilter(toggleUsageFilterEntity(draftFilter, category, entity));
   };
