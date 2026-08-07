@@ -38,7 +38,7 @@ app.get(
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: "Failed to retrieve consumption overview.",
+          message: "Failed to retrieve overview.",
         },
       });
     }

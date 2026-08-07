@@ -1,4 +1,4 @@
-import { resolveConsumptionGroupNames } from "@app/lib/api/analytics/consumption/labels";
+import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionMetric,
@@ -33,27 +33,6 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-/**
- * Consumption bucketed over the period, behind the dashboard's consumption
- * chart. Filtered by any of the scope dimensions, optionally split along one of
- * them, aggregating whichever metric was asked for (gross credits by default).
- *
- * Points cover the whole period, including the part of it still to come when
- * the period is a billing cycle. Bucketing stays here rather than moving to the
- * chart because the boundaries are Elasticsearch's calendar rules — weeks start
- * on Monday, months in UTC, the trailing bucket is kept whole — and a second
- * implementation of those rules in the browser would drift from this one
- * silently, one bar at a time.
- *
- * Buckets that have not started yet are zero in every mode. Empty is what they
- * are in `daily`; in `cumulative` it is a deliberate break from the running
- * total, which would otherwise plateau to the end of the cycle and read as
- * consumption having stopped rather than as not having happened.
- */
-
-// Re-exported so server-side callers have one import for the whole timeseries
-// contract. Clients must import these from `series.ts` directly — see the note
-// there on why values cannot cross into the browser bundle from this file.
 export type {
   ConsumptionBreakdownDimension,
   ConsumptionGranularity,
@@ -168,7 +147,7 @@ export async function fetchConsumptionTimeseries(
   }
 ): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
-    workspaceId: auth.getNonNullableWorkspace().sId,
+    auth: auth,
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
@@ -199,23 +178,16 @@ export async function fetchConsumptionTimeseries(
           date_histogram: {
             field: COMPLETED_AT_FIELD,
             calendar_interval: granularity,
-            // The period is resolved in UTC, so the buckets have to be too or a
-            // day's consumption straddles two buckets.
             time_zone: "UTC",
             min_doc_count: 0,
             extended_bounds: {
               min: new Date(period.startDate).getTime(),
               // The period is half-open, so `endDate` itself belongs to the
-              // next bucket and must not open one of its own. `min_doc_count: 0`
-              // then fills the rest of the period with empty buckets, which is
-              // the point: the axis is the same whatever has happened so far.
+              // next bucket and must not open one of its own.
               max: new Date(period.endDate).getTime() - 1,
             },
           },
           aggs: {
-            // Kept even when broken down: "others" is this total minus the
-            // ranked groups, which is what keeps the stack summing to the
-            // period total.
             ...metricSubAgg(metric),
             ...(breakdownField && topGroupKeys.length > 0
               ? {
@@ -309,11 +281,7 @@ export async function fetchConsumptionTimeseries(
     return { timestamp: bucket.key, values };
   });
 
-  const names = await resolveConsumptionGroupNames(
-    auth,
-    breakdownBy,
-    topGroupKeys
-  );
+  const names = await resolveDimensionLabels(auth, breakdownBy, topGroupKeys);
   const groups: ConsumptionTimeseriesGroup[] = topGroupKeys.map((groupKey) => ({
     groupKey,
     name: names.get(groupKey) ?? groupKey,

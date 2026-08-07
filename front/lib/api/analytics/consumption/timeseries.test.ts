@@ -1,4 +1,4 @@
-import { resolveConsumptionGroupNames } from "@app/lib/api/analytics/consumption/labels";
+import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FIELDS } from "@app/lib/api/analytics/consumption/scope";
@@ -23,7 +23,7 @@ vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
 
 vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
   const mod = await orig();
-  return { ...mod, resolveConsumptionGroupNames: vi.fn() };
+  return { ...mod, resolveDimensionLabels: vi.fn() };
 });
 
 const PERIOD_START_MS = Date.UTC(2026, 6, 1);
@@ -78,7 +78,7 @@ function mockBreakdown({
 }
 
 function mockGroupNames(names: Record<string, string>) {
-  vi.mocked(resolveConsumptionGroupNames).mockResolvedValue(
+  vi.mocked(resolveDimensionLabels).mockResolvedValue(
     new Map(Object.entries(names))
   );
 }
@@ -97,7 +97,7 @@ describe("fetchConsumptionTimeseries", () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.mocked(resolveConsumptionGroupNames).mockReset();
+    vi.mocked(resolveDimensionLabels).mockReset();
     vi.mocked(searchConsumptionAnalytics).mockReset();
   });
 
@@ -276,7 +276,7 @@ describe("fetchConsumptionTimeseries", () => {
         histogramOptions?.aggregations?.by_date?.aggs?.by_group?.terms
       ).toMatchObject({ field, include: ["k1"] });
 
-      expect(vi.mocked(resolveConsumptionGroupNames)).toHaveBeenCalledWith(
+      expect(vi.mocked(resolveDimensionLabels)).toHaveBeenCalledWith(
         auth,
         dimension,
         ["k1"]
@@ -399,7 +399,7 @@ describe("fetchConsumptionTimeseries", () => {
       expect(result.value.groups).toEqual([
         { groupKey: TOTAL_GROUP_KEY, name: "Total" },
       ]);
-      expect(vi.mocked(resolveConsumptionGroupNames)).not.toHaveBeenCalled();
+      expect(vi.mocked(resolveDimensionLabels)).not.toHaveBeenCalled();
     });
 
     it("accumulates each series independently in cumulative mode", async () => {
