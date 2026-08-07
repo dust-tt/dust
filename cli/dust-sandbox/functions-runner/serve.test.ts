@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, rmSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -13,7 +13,8 @@ import {
 const runner = join(import.meta.dir, "runner.ts");
 const fx = (n: string) => join(import.meta.dir, "fixtures", n);
 
-// Each test gets its own scratch dir holding the socket.
+// Each test gets its own scratch dir holding the socket and a private copy of
+// the fixture (staleness tests rewrite it).
 let scratchDirs: string[] = [];
 
 function scratch(): string {
@@ -62,6 +63,7 @@ interface WarmReply {
   v: number;
   ack?: boolean;
   outcome?: { ok: boolean; output?: unknown; error?: { code: string } };
+  stale?: boolean;
   busy?: boolean;
   error?: string;
 }
@@ -187,6 +189,80 @@ describe("runner serve", () => {
     }
   });
 
+  test("reports a rewritten bundle as stale and exits", async () => {
+    const dir = scratch();
+    const bundle = join(dir, "hello.ts");
+    copyFileSync(fx("hello.ts"), bundle);
+    const { proc, socketPath } = await startServer(bundle);
+    try {
+      // Same content, different mtime — a republish rewrites the object, and
+      // mtime/size is the staleness signal.
+      const later = new Date(Date.now() + 5_000);
+      utimesSync(bundle, later, later);
+
+      const reply = await request(
+        socketPath,
+        warmRequest({}, { url: "http://localhost/" })
+      );
+      expect(reply.stale).toBe(true);
+      expect(await proc.exited).toBe(0);
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("serves a request stamped with the matching bundle hash", async () => {
+    const { proc, socketPath } = await startServer(fx("hello.ts"));
+    try {
+      const bytes = await Bun.file(fx("hello.ts")).arrayBuffer();
+      const bundleSha256 = new Bun.CryptoHasher("sha256")
+        .update(new Uint8Array(bytes))
+        .digest("hex");
+      const reply = await request(
+        socketPath,
+        warmRequest({}, { url: "http://localhost/?name=stamped", bundleSha256 })
+      );
+      expect(reply.outcome?.ok).toBe(true);
+      expect(reply.outcome?.output).toEqual({ hello: "stamped" });
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("refuses a mismatched bundle hash as stale and exits", async () => {
+    // The stat cannot see the rewrite here (the file is untouched), which is
+    // exactly the gcsfuse-cached-metadata case: the request's hash is the
+    // only signal, and it must win.
+    const { proc, socketPath } = await startServer(fx("hello.ts"));
+    try {
+      const reply = await request(
+        socketPath,
+        warmRequest(
+          {},
+          { url: "http://localhost/", bundleSha256: "0".repeat(64) }
+        )
+      );
+      expect(reply.stale).toBe(true);
+      expect(reply.outcome).toBeUndefined();
+      expect(await proc.exited).toBe(0);
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("serves an unstamped request from an older front", async () => {
+    const { proc, socketPath } = await startServer(fx("hello.ts"));
+    try {
+      const reply = await request(
+        socketPath,
+        warmRequest({}, { url: "http://localhost/?name=unstamped" })
+      );
+      expect(reply.outcome?.output).toEqual({ hello: "unstamped" });
+    } finally {
+      proc.kill();
+    }
+  });
+
   test("rejects a protocol version it does not speak and exits", async () => {
     const { proc, socketPath } = await startServer(fx("hello.ts"));
     try {
@@ -245,6 +321,49 @@ describe("runner serve", () => {
         warmRequest({}, { url: "http://localhost/" })
       );
       expect(after.outcome?.output).toEqual({ done: true });
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("scrubs the spawn-time invocation secrets from its own environment", async () => {
+    const dir = scratch();
+    const socketPath = join(dir, "fn.sock");
+    // Spawned the way dsbx spawns it: with the cold invocation's token in
+    // env. The server must not serve requests under that inherited value.
+    const proc = Bun.spawn(
+      ["bun", runner, "serve", fx("env-probe.ts"), socketPath],
+      {
+        stdin: "ignore",
+        stdout: "ignore",
+        stderr: "inherit",
+        env: {
+          ...process.env,
+          WARM_TEST_MARKER: "from-spawn",
+          DUST_SANDBOX_TOKEN: "spawn-invocation-token",
+        },
+      }
+    );
+    try {
+      const deadline = Date.now() + 10_000;
+      let reply: WarmReply | null = null;
+      while (Date.now() < deadline && reply === null) {
+        try {
+          reply = await request(
+            socketPath,
+            warmRequest({}, { url: "http://localhost/" })
+          );
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
+      // WARM_TEST_MARKER is not in the scrub list, so it survives spawn env
+      // inheritance like any other var; the spawn-time DUST_SANDBOX_TOKEN
+      // must have been scrubbed at startup.
+      expect(reply?.outcome?.output).toEqual({
+        marker: "from-spawn",
+        token: "unset",
+      });
     } finally {
       proc.kill();
     }
