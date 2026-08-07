@@ -22,16 +22,31 @@ import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
-async function setupSettledMessage() {
-  const {
-    authenticator: auth,
-    globalSpace,
-    workspace,
-  } = await createResourceTest({ role: "admin" });
-  const agent = await AgentConfigurationFactory.createTestAgent(auth);
+type ResourceTestContext = Awaited<ReturnType<typeof createResourceTest>>;
+
+type SettledMessageOptions = {
+  agentName?: string;
+  agenticOriginMessageId?: string;
+  depth?: number;
+  testContext?: ResourceTestContext;
+};
+
+async function setupSettledMessage({
+  agentName,
+  agenticOriginMessageId,
+  depth = 0,
+  testContext,
+}: SettledMessageOptions = {}) {
+  const resourceTestContext =
+    testContext ?? (await createResourceTest({ role: "admin" }));
+  const { authenticator: auth, globalSpace, workspace } = resourceTestContext;
+  const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+    name: agentName,
+  });
   const conversationType = await ConversationFactory.create(auth, {
     agentConfigurationId: agent.sId,
     messagesCreatedAt: [],
+    depth,
   });
   const conversation = await ConversationResource.fetchById(
     auth,
@@ -40,13 +55,25 @@ async function setupSettledMessage() {
   if (!conversation) {
     throw new Error("Conversation was not created");
   }
-  const userMessage = await ConversationFactory.createUserMessageWithRank({
-    auth,
-    workspace,
-    conversationId: conversation.id,
-    rank: 0,
-    content: "Hello",
-  });
+  const userMessage = agenticOriginMessageId
+    ? (
+        await ConversationFactory.createUserMessage({
+          auth,
+          workspace,
+          conversation,
+          rank: 0,
+          content: "Hello",
+          agenticMessageType: "run_agent",
+          agenticOriginMessageId,
+        })
+      ).messageRow
+    : await ConversationFactory.createUserMessageWithRank({
+        auth,
+        workspace,
+        conversationId: conversation.id,
+        rank: 0,
+        content: "Hello",
+      });
   const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
     inputTokens: 100,
     outputTokens: 20,
@@ -101,6 +128,7 @@ async function setupSettledMessage() {
     globalSpace,
     run,
     runUsageModelId,
+    testContext: resourceTestContext,
     userMessage,
     workspace,
   };
@@ -108,12 +136,14 @@ async function setupSettledMessage() {
 
 type SettledMessageContext = Awaited<ReturnType<typeof setupSettledMessage>>;
 
-async function setupLlmAndToolConsumptionScenario(): Promise<{
+async function setupLlmAndToolConsumptionScenario(
+  options?: SettledMessageOptions
+): Promise<{
   action: Awaited<ReturnType<typeof AgentMCPActionFactory.create>>["action"];
   billedMessageCreditMicro: number;
   context: SettledMessageContext;
 }> {
-  const context = await setupSettledMessage();
+  const context = await setupSettledMessage(options);
   const { action } = await AgentMCPActionFactory.create(context.auth, {
     workspace: context.workspace,
     conversationModelId: context.conversation.id,
@@ -261,6 +291,36 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       (llmDocument?.gross_credit_micro.total ?? 0) +
         (toolDocument?.gross_credit_micro.total ?? 0)
     ).toBe(billedMessageCreditMicro);
+  });
+
+  it("keeps agent ancestry on every document", async () => {
+    const parent = await setupSettledMessage({ agentName: "Parent agent" });
+    const { context } = await setupLlmAndToolConsumptionScenario({
+      agentName: "Child agent",
+      agenticOriginMessageId: parent.agentMessage.sId,
+      depth: 1,
+      testContext: parent.testContext,
+    });
+    const documents = await buildDocuments(context);
+    if (!documents) {
+      throw new Error("Consumption documents were not built");
+    }
+
+    const expectedAncestry = {
+      parent_ids: [parent.agent.sId],
+      direct_parent_id: parent.agent.sId,
+      root_id: parent.agent.sId,
+      depth: 1,
+    };
+    const llmDocument = documents.find(
+      (document) => document.consumption_type === "llm"
+    );
+    const toolDocument = documents.find(
+      (document) => document.consumption_type === "tool"
+    );
+
+    expect(llmDocument?.agent).toMatchObject(expectedAncestry);
+    expect(toolDocument?.agent).toMatchObject(expectedAncestry);
   });
 
   it("keeps the parent server on a tool called through the sandbox", async () => {
