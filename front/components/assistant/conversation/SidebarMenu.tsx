@@ -47,6 +47,7 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import {
   useActivationPod,
   useActivationRecommendations,
+  useActivationWorkAreas,
 } from "@app/lib/swr/activation";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -89,6 +90,7 @@ import {
   FolderOpen,
   Icon,
   Label,
+  Lightbulb04,
   MagicWand02,
   MessagePlusCircle,
   NavigationList,
@@ -444,8 +446,14 @@ export function AgentSidebarMenu({
   const { recommendations: activationRecsForBadge } =
     useActivationRecommendations({
       workspaceId: owner.sId,
+      podId: activationPodId ?? undefined,
       disabled: !showGetStarted,
     });
+  const { workAreas: candidateWorkAreas } = useActivationWorkAreas({
+    workspaceId: owner.sId,
+    status: "candidate",
+    disabled: !showGetStarted,
+  });
 
   const [podSearchText, setPodSearchText] = useState("");
   const { setSidebarOpen } = useContext(SidebarContext);
@@ -1027,15 +1035,18 @@ export function AgentSidebarMenu({
             {showGetStarted && (
               <NavigationList className="px-sidebar-side-spacing py-1">
                 <NavigationListItem
-                  label="Get started"
-                  icon={MagicWand02}
+                  label="For you"
+                  icon={Lightbulb04}
                   href={getGetStartedRoute(owner.sId)}
                   selected={router.asPath?.startsWith(
                     getGetStartedRoute(owner.sId)
                   )}
                   count={
-                    activationRecsForBadge.length > 0
-                      ? activationRecsForBadge.length
+                    activationRecsForBadge.length +
+                      candidateWorkAreas.length >
+                    0
+                      ? activationRecsForBadge.length +
+                        candidateWorkAreas.length
                       : undefined
                   }
                 />

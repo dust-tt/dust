@@ -86,7 +86,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     const isActivationPod = spaceId === activationPodId;
     breadcrumbItems.push({
       icon: isMobile ? undefined : ArrowLeft,
-      label: isActivationPod ? "Get started" : spaceInfo.name,
+      label: isActivationPod ? "For you" : spaceInfo.name,
       href: isActivationPod
         ? getGetStartedRoute(owner.sId)
         : getPodRoute(owner.sId, spaceId),

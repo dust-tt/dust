@@ -3,7 +3,9 @@ import type {
   GetActivationPodResponseBody,
   GetActivationRecommendationsResponseBody,
 } from "@app/lib/api/activation/recommendations";
+import type { GetActivationWorkAreasResponseBody } from "@app/lib/api/activation/work_areas";
 import { clientFetch } from "@app/lib/egress/client";
+import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -122,4 +124,90 @@ export function useUpdateActivationRecommendation({
   );
 
   return { updateRecommendation };
+}
+
+export function useActivationWorkAreas({
+  workspaceId,
+  status,
+  disabled,
+}: {
+  workspaceId: string;
+  status?: ActivationWorkAreaStatus;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const workAreasFetcher: Fetcher<GetActivationWorkAreasResponseBody> = fetcher;
+
+  const params = new URLSearchParams();
+  if (status) {
+    params.set("status", status);
+  }
+  const queryString = params.toString();
+  const url = queryString
+    ? `/api/w/${workspaceId}/activation-work-areas?${queryString}`
+    : `/api/w/${workspaceId}/activation-work-areas`;
+
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
+    url,
+    workAreasFetcher,
+    { disabled, revalidateOnFocus: false }
+  );
+
+  return {
+    workAreas: data?.workAreas ?? emptyArray(),
+    isWorkAreasLoading: disabled ? false : isLoading,
+    isWorkAreasError: !!error,
+    mutateWorkAreas: mutate,
+  };
+}
+
+export function useUpdateActivationWorkArea({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const updateWorkArea = useCallback(
+    async (
+      workAreaId: string,
+      body: {
+        status?: "confirmed" | "dismissed";
+        title?: string;
+        description?: string;
+      }
+    ): Promise<boolean> => {
+      try {
+        const res = await clientFetch(
+          `/api/w/${workspaceId}/activation-work-areas/${workAreaId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }
+        );
+
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          sendNotification({
+            type: "error",
+            title: "Failed to update work area",
+            description: errorData.message,
+          });
+          return false;
+        }
+
+        return true;
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to update work area",
+        });
+        return false;
+      }
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { updateWorkArea };
 }

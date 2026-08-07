@@ -3,6 +3,7 @@ import { JustAskComposer } from "@app/components/pages/workspace/GetStartedPage/
 import { PreviouslyDoneRow } from "@app/components/pages/workspace/GetStartedPage/PreviouslyDoneRow";
 import { RecentConversations } from "@app/components/pages/workspace/GetStartedPage/RecentConversations";
 import { RecommendationItem } from "@app/components/pages/workspace/GetStartedPage/RecommendationItem";
+import { WorkAreaSection } from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
 import {
   useAuth,
   useFeatureFlags,
@@ -82,6 +83,14 @@ export function GetStartedPage() {
             Nothing here is a demo. It is already wired to how your team works,
             and it is waiting for you.
           </p>
+
+          <WorkAreaSection
+            owner={owner}
+            user={user}
+            podId={activationPodId}
+            defaultAgentId={defaultAgentId}
+            disabled={isActivationPodLoading}
+          />
 
           <div className="mt-10 rounded-2xl border border-border bg-background p-7 shadow-sm">
             <h2 className="text-xl font-bold text-foreground">
