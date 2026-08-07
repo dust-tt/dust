@@ -8,6 +8,7 @@ import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
 import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
+import { SandboxEnvVarsSection } from "@app/components/sandbox/SandboxEnvVarsSection";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
 import {
@@ -100,11 +101,12 @@ export function PodSettingsTab({
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
   const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
-  // The pod sandbox network allowlist is workspace-admin only (matching the
-  // API) and part of the Sandbox Functions surface.
+  // The pod sandbox admin sections (network allowlist, env vars) are
+  // workspace-admin only (matching the API) and part of the Sandbox
+  // Functions surface.
   // Mirrors the API gate (workspace-admin + sandbox_functions FF; pod
   // membership deliberately not consulted) — change both together.
-  const isPodNetworkEnabled = isAdmin && hasFeature("sandbox_functions");
+  const isPodSandboxAdminEnabled = isAdmin && hasFeature("sandbox_functions");
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -783,10 +785,6 @@ export function PodSettingsTab({
           </div>
         </div>
 
-        {isPodNetworkEnabled && (
-          <PodNetworkSection owner={owner} podId={pod.sId} />
-        )}
-
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <h3 className="heading-lg flex-1">Members</h3>
@@ -820,6 +818,16 @@ export function PodSettingsTab({
             </>
           )}
         </div>
+
+        {isPodSandboxAdminEnabled && (
+          <PodNetworkSection owner={owner} podId={pod.sId} />
+        )}
+
+        {isPodSandboxAdminEnabled && (
+          <div className="flex w-full flex-col gap-2">
+            <SandboxEnvVarsSection owner={owner} spaceId={pod.sId} />
+          </div>
+        )}
 
         {isPodEditor && (
           <div className="flex w-full flex-col gap-3 border-t border-border pt-8">

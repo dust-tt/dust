@@ -30,11 +30,15 @@ function workspaceEgressPolicyUrl(workspaceId: string) {
   return `/api/w/${workspaceId}/sandbox/egress-policy`;
 }
 
-function workspaceSandboxEnvVarsUrl(workspaceId: string) {
-  return `/api/w/${workspaceId}/sandbox/env-vars`;
+// Workspace-scoped env vars live under /sandbox/env-vars; pod-scoped ones
+// under /spaces/:spaceId/sandbox/env-vars. Response shapes are identical.
+function sandboxEnvVarsUrl(workspaceId: string, spaceId?: string) {
+  return spaceId
+    ? `/api/w/${workspaceId}/spaces/${spaceId}/sandbox/env-vars`
+    : `/api/w/${workspaceId}/sandbox/env-vars`;
 }
 
-type WorkspaceSandboxEnvVarWritePayload = {
+type SandboxEnvVarWritePayload = {
   name: string;
   value: string;
   kind?: SandboxEnvVarKind;
@@ -64,51 +68,56 @@ export function useWorkspaceEgressPolicy({
   };
 }
 
-export function useWorkspaceSandboxEnvVars({
+export function useSandboxEnvVars({
   owner,
+  spaceId,
   disabled = false,
 }: {
   owner: LightWorkspaceType;
+  spaceId?: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const envVarsFetcher: Fetcher<GetSandboxEnvVarsResponseBody> = fetcher;
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
-    workspaceSandboxEnvVarsUrl(owner.sId),
+    sandboxEnvVarsUrl(owner.sId, spaceId),
     envVarsFetcher,
     { disabled }
   );
 
   return {
     envVars: data?.envVars ?? emptyArray(),
-    isWorkspaceSandboxEnvVarsLoading: disabled ? false : isLoading,
-    isWorkspaceSandboxEnvVarsError: !!error,
-    mutateWorkspaceSandboxEnvVars: mutate,
+    isSandboxEnvVarsLoading: disabled ? false : isLoading,
+    isSandboxEnvVarsError: !!error,
+    mutateSandboxEnvVars: mutate,
   };
 }
 
-export function useUpsertWorkspaceSandboxEnvVar({
+export function useUpsertSandboxEnvVar({
   owner,
+  spaceId,
 }: {
   owner: LightWorkspaceType;
+  spaceId?: string;
 }) {
   const sendNotification = useSendNotification();
   const [isUpserting, setIsUpserting] = useState(false);
-  const { mutateWorkspaceSandboxEnvVars } = useWorkspaceSandboxEnvVars({
+  const { mutateSandboxEnvVars } = useSandboxEnvVars({
     owner,
+    spaceId,
     disabled: true,
   });
 
-  const upsertWorkspaceSandboxEnvVar = async ({
+  const upsertSandboxEnvVar = async ({
     allowedDomains,
     kind,
     name,
     value,
-  }: WorkspaceSandboxEnvVarWritePayload): Promise<boolean> => {
+  }: SandboxEnvVarWritePayload): Promise<boolean> => {
     setIsUpserting(true);
     try {
       const response = await clientFetch(
-        workspaceSandboxEnvVarsUrl(owner.sId),
+        sandboxEnvVarsUrl(owner.sId, spaceId),
         {
           method: "POST",
           headers: {
@@ -129,13 +138,15 @@ export function useUpsertWorkspaceSandboxEnvVar({
       }
 
       const data: PostSandboxEnvVarsResponseBody = await response.json();
-      await mutateWorkspaceSandboxEnvVars();
+      await mutateSandboxEnvVars();
       sendNotification({
         type: "success",
         title: data.created
           ? "Environment variable created"
           : "Environment variable replaced",
-        description: `${name} has been saved for future Computers.`,
+        description: spaceId
+          ? `${name} has been saved for future Computers in this Pod.`
+          : `${name} has been saved for future Computers.`,
       });
       return true;
     } catch (error) {
@@ -151,24 +162,27 @@ export function useUpsertWorkspaceSandboxEnvVar({
   };
 
   return {
-    upsertWorkspaceSandboxEnvVar,
-    isUpsertingWorkspaceSandboxEnvVar: isUpserting,
+    upsertSandboxEnvVar,
+    isUpsertingSandboxEnvVar: isUpserting,
   };
 }
 
-export function usePatchWorkspaceSandboxEnvVar({
+export function usePatchSandboxEnvVar({
   owner,
+  spaceId,
 }: {
   owner: LightWorkspaceType;
+  spaceId?: string;
 }) {
   const sendNotification = useSendNotification();
   const [isPatching, setIsPatching] = useState(false);
-  const { mutateWorkspaceSandboxEnvVars } = useWorkspaceSandboxEnvVars({
+  const { mutateSandboxEnvVars } = useSandboxEnvVars({
     owner,
+    spaceId,
     disabled: true,
   });
 
-  const patchWorkspaceSandboxEnvVar = async ({
+  const patchSandboxEnvVar = async ({
     allowedDomains,
     envVar,
     kind,
@@ -180,7 +194,7 @@ export function usePatchWorkspaceSandboxEnvVar({
     setIsPatching(true);
     try {
       const response = await clientFetch(
-        `${workspaceSandboxEnvVarsUrl(owner.sId)}/${envVar.sId}`,
+        `${sandboxEnvVarsUrl(owner.sId, spaceId)}/${envVar.sId}`,
         {
           method: "PATCH",
           headers: {
@@ -201,14 +215,16 @@ export function usePatchWorkspaceSandboxEnvVar({
       }
 
       const data: PatchSandboxEnvVarResponseBody = await response.json();
-      await mutateWorkspaceSandboxEnvVars();
+      await mutateSandboxEnvVars();
       sendNotification({
         type: "success",
         title:
           data.envVar.kind === "https_secret"
             ? "Environment variable secured"
             : "Environment variable updated",
-        description: `${data.envVar.name} has been updated.`,
+        description: spaceId
+          ? `${data.envVar.name} has been updated for future Computers in this Pod.`
+          : `${data.envVar.name} has been updated for future Computers.`,
       });
       return true;
     } catch (error) {
@@ -224,30 +240,33 @@ export function usePatchWorkspaceSandboxEnvVar({
   };
 
   return {
-    patchWorkspaceSandboxEnvVar,
-    isPatchingWorkspaceSandboxEnvVar: isPatching,
+    patchSandboxEnvVar,
+    isPatchingSandboxEnvVar: isPatching,
   };
 }
 
-export function useDeleteWorkspaceSandboxEnvVar({
+export function useDeleteSandboxEnvVar({
   owner,
+  spaceId,
 }: {
   owner: LightWorkspaceType;
+  spaceId?: string;
 }) {
   const sendNotification = useSendNotification();
   const [isDeleting, setIsDeleting] = useState(false);
-  const { mutateWorkspaceSandboxEnvVars } = useWorkspaceSandboxEnvVars({
+  const { mutateSandboxEnvVars } = useSandboxEnvVars({
     owner,
+    spaceId,
     disabled: true,
   });
 
-  const deleteWorkspaceSandboxEnvVar = async (
+  const deleteSandboxEnvVar = async (
     envVar: SandboxEnvVarType
   ): Promise<boolean> => {
     setIsDeleting(true);
     try {
       const response = await clientFetch(
-        `${workspaceSandboxEnvVarsUrl(owner.sId)}/${envVar.sId}`,
+        `${sandboxEnvVarsUrl(owner.sId, spaceId)}/${envVar.sId}`,
         {
           method: "DELETE",
         }
@@ -263,11 +282,13 @@ export function useDeleteWorkspaceSandboxEnvVar({
         return false;
       }
 
-      await mutateWorkspaceSandboxEnvVars();
+      await mutateSandboxEnvVars();
       sendNotification({
         type: "success",
         title: "Environment variable deleted",
-        description: `${envVar.name} has been deleted.`,
+        description: spaceId
+          ? `${envVar.name} has been removed for future Computers in this Pod.`
+          : `${envVar.name} has been removed for future Computers.`,
       });
       return true;
     } catch (error) {
@@ -283,8 +304,8 @@ export function useDeleteWorkspaceSandboxEnvVar({
   };
 
   return {
-    deleteWorkspaceSandboxEnvVar,
-    isDeletingWorkspaceSandboxEnvVar: isDeleting,
+    deleteSandboxEnvVar,
+    isDeletingSandboxEnvVar: isDeleting,
   };
 }
 
