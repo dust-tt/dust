@@ -13,8 +13,13 @@ import {
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import logger from "@app/logger/logger";
@@ -277,33 +282,33 @@ async function searchPokeResourcesBySId(
 ): Promise<PokeItemBase[]> {
   const { resourceName, sId, workspaceModelId } = resourceInfo;
 
+  // The poke authenticator is not scoped to any workspace while resource
+  // fetches are; re-scope to the workspace embedded in the sId.
+  const [workspace] = await WorkspaceResource.fetchByModelIds([
+    workspaceModelId,
+  ]);
+  if (!workspace) {
+    return [];
+  }
+  const workspaceAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  const workspaceUrl = `${config.getPokeAppUrl()}/${workspace.sId}`;
+
   switch (resourceName) {
-    case "data_source_view":
-    case "data_source": {
-      // The poke authenticator is not scoped to any workspace while resource
-      // fetches are; re-scope to the workspace embedded in the sId.
-      const [workspace] = await WorkspaceResource.fetchByModelIds([
-        workspaceModelId,
-      ]);
-      if (!workspace) {
+    case "data_source_view": {
+      const dataSourceView = await DataSourceViewResource.fetchById(
+        workspaceAuth,
+        sId
+      );
+      if (!dataSourceView) {
         return [];
       }
-      const workspaceAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
 
-      if (resourceName === "data_source_view") {
-        const dataSourceView = await DataSourceViewResource.fetchById(
-          workspaceAuth,
-          sId
-        );
-        if (!dataSourceView) {
-          return [];
-        }
+      return [await dataSourceViewToPokeItem(dataSourceView)];
+    }
 
-        return [await dataSourceViewToPokeItem(dataSourceView)];
-      }
-
+    case "data_source": {
       const dataSource = await DataSourceResource.fetchByNameOrId(
         workspaceAuth,
         sId
@@ -313,6 +318,111 @@ async function searchPokeResourcesBySId(
       }
 
       return [await dataSourceToPokeItem(dataSource)];
+    }
+
+    case "space": {
+      const space = await SpaceResource.fetchById(workspaceAuth, sId, {
+        includeDeleted: true,
+      });
+      if (!space) {
+        return [];
+      }
+
+      return [
+        {
+          id: space.id,
+          name: `${workspace.name}'s ${space.name} space`,
+          link: `${workspaceUrl}/spaces/${space.sId}`,
+          type: "Space",
+        },
+      ];
+    }
+
+    case "group": {
+      const groupRes = await GroupResource.fetchById(workspaceAuth, sId);
+      if (groupRes.isErr()) {
+        return [];
+      }
+      const group = groupRes.value;
+
+      return [
+        {
+          id: group.id,
+          name: `${workspace.name}'s ${group.name} group`,
+          link: `${workspaceUrl}/groups/${group.sId}`,
+          type: "Group",
+        },
+      ];
+    }
+
+    case "skill": {
+      const skill = await SkillResource.fetchById(workspaceAuth, sId);
+      if (!skill) {
+        return [];
+      }
+
+      return [
+        {
+          id: skill.id,
+          name: `${workspace.name}'s ${skill.name} skill`,
+          link: `${workspaceUrl}/skills/${skill.sId}`,
+          type: "Skill",
+        },
+      ];
+    }
+
+    case "mcp_server_view": {
+      const mcpServerView = await MCPServerViewResource.fetchById(
+        workspaceAuth,
+        sId
+      );
+      if (!mcpServerView) {
+        return [];
+      }
+
+      return [
+        {
+          id: mcpServerView.id,
+          name: `${workspace.name}'s ${mcpServerView.toJSON().server.name} server view`,
+          link: `${workspaceUrl}/spaces/${mcpServerView.space.sId}/mcp_server_views/${mcpServerView.sId}`,
+          type: "MCP Server View",
+        },
+      ];
+    }
+
+    case "webhook_source": {
+      const webhookSource = await WebhookSourceResource.fetchById(
+        workspaceAuth,
+        sId
+      );
+      if (!webhookSource) {
+        return [];
+      }
+
+      return [
+        {
+          id: webhookSource.id,
+          name: `${workspace.name}'s ${webhookSource.name} webhook source`,
+          link: `${workspaceUrl}/webhook-sources/${webhookSource.sId}`,
+          type: "Webhook Source",
+        },
+      ];
+    }
+
+    case "file": {
+      const file = await FileResource.fetchById(workspaceAuth, sId);
+      if (!file) {
+        return [];
+      }
+
+      return [
+        {
+          id: file.id,
+          name: `${workspace.name}'s ${file.fileName}`,
+          link: `${workspaceUrl}/files/${file.sId}`,
+          type: "File",
+        },
+      ];
     }
 
     default:

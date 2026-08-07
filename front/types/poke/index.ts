@@ -23,7 +23,12 @@ type PokeItemType =
   | "Data Source View"
   | "Connector"
   | "MCP Server View"
-  | "Frame";
+  | "Frame"
+  | "File"
+  | "Group"
+  | "Skill"
+  | "Space"
+  | "Webhook Source";
 
 export interface PokeItemBase {
   id: ModelId;

@@ -47,7 +47,14 @@ function getPokeItemChipColor(
     case "Connector":
       return "success";
     case "Frame":
+    case "File":
       return "highlight";
+    case "Space":
+    case "Group":
+      return "info";
+    case "Skill":
+    case "Webhook Source":
+      return "warning";
     default:
       return "primary";
   }
@@ -223,12 +230,10 @@ function PokeSearchCommandUI({
                   <span className="font-mono">org_01AB</span>
                 </div>
                 <div>
-                  <span className="font-medium">Data source view:</span>{" "}
-                  <span className="font-mono">dsv_abc123</span>
-                </div>
-                <div>
-                  <span className="font-medium">Data source:</span>{" "}
-                  <span className="font-mono">dts_abc123</span>
+                  <span className="font-medium">Resource sId:</span>{" "}
+                  <span className="font-mono">
+                    vlt_ / grp_ / skl_ / msv_ / whs_ / fil_ / dsv_ / dts_
+                  </span>
                 </div>
                 <div>
                   <span className="font-medium">Dust API project ID:</span>{" "}
