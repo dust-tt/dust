@@ -155,10 +155,13 @@ app.post(
     }
 
     const invocation = invocationResult.value;
+    // An inline execution settles the instance it ran on, so the outcome is usually already in
+    // memory; the stream read-back is only for invocations that escalated to the workflow.
     const outcome = fastExecution
-      ? await awaitSandboxFunctionInvocationOutcome({
+      ? (invocation.settledOutcome() ??
+        (await awaitSandboxFunctionInvocationOutcome({
           invocationId: invocation.sId,
-        })
+        })))
       : null;
 
     return ctx.json(

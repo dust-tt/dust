@@ -90,6 +90,11 @@ export type SandboxDeleteOwner = SandboxLifecycleOwner & {
   ) => Promise<void>;
 };
 
+// Activity writes are throttled to this granularity; the reaper's inactivity
+// thresholds are minutes-scale, so a lastActivityAt up to 30s stale is
+// indistinguishable to it.
+const LAST_ACTIVITY_WRITE_INTERVAL_MS = 30_000;
+
 // Owner identity env vars are reserved for owner adapters. SandboxResource
 // only enforces the env contract and does not interpret owner types.
 const SANDBOX_OWNER_ENV_VAR_CONTRACT_NAMES = new Set([
@@ -313,6 +318,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }: {
     transaction?: Transaction;
   } = {}): Promise<[affectedCount: number]> {
+    // Throttled: every operation on a busy sandbox calls this, which makes the sandbox row a
+    // hot write under concurrent invocations. The reaper compares lastActivityAt against
+    // inactivity thresholds measured in minutes, so a value up to 30s stale changes nothing.
+    const lastActivityAtMs = this.lastActivityAt?.getTime() ?? 0;
+    if (Date.now() - lastActivityAtMs < LAST_ACTIVITY_WRITE_INTERVAL_MS) {
+      return [0];
+    }
     return this.update({ lastActivityAt: new Date() }, transaction);
   }
 
