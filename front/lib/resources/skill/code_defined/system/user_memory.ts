@@ -59,6 +59,12 @@ an exact snippet of \`MEMORY.md\`:
 - To delete a memory, pass an empty \`newStr\`.
 </critical_behavior>
 
+<skill_enablement>
+Before enabling any skill, read the memory first if you have not already done so
+in this conversation. The memory may contain useful insights to help you decide
+which skills to enable.
+</skill_enablement>
+
 <memory_strategy>
 Think of memory as building a "user manual" for this person:
 - Extract facts worth remembering (use judgment, not everything is memory-worthy)
