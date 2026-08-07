@@ -2,6 +2,7 @@ import {
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
+import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
@@ -58,6 +59,7 @@ import {
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import type { CreditUsageStatus } from "@app/types/api/credits/usage_status";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
@@ -72,6 +74,7 @@ import {
   toBaseSeatType,
   USER_CREDIT_STATES,
 } from "@app/types/memberships";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -1061,6 +1064,9 @@ export async function resyncSpendLimitCountersFromEsUsage(
 
 export type GetMemberUsageResponseBody = {
   member: MemberUsageType | null;
+  // Optional for backward compatibility with clients deployed before pace
+  // information was added to this endpoint.
+  creditUsageStatus?: CreditUsageStatus | null;
 };
 
 export async function getMemberUsage({
@@ -1079,6 +1085,14 @@ export async function getMemberUsage({
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
   const userId = userResource.sId;
+  const plan = auth.plan();
+  const cycleOverride = spendLimitCycleOverrideForAuth(auth);
+  const billingCyclePromise =
+    plan && isCreditPricedPlan(plan)
+      ? cycleOverride
+        ? Promise.resolve(cycleOverride)
+        : resolveMetronomeCycle(workspace)
+      : Promise.resolve(null);
 
   // The workspace-wide default pool cap lives on the credit-usage
   // configuration row (created lazily; absent → no default configured).
@@ -1090,6 +1104,7 @@ export async function getMemberUsage({
     perUserTotalConsumedCredits,
     seatDataByUserId,
     perUserSpendLimits,
+    billingCycle,
   ] = await Promise.all([
     MembershipResource.getActiveMemberships({
       workspace,
@@ -1114,6 +1129,7 @@ export async function getMemberUsage({
         creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
       includeAlertLinks: false,
     }),
+    billingCyclePromise,
   ]);
 
   const { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType } =
@@ -1216,41 +1232,54 @@ export async function getMemberUsage({
     defaultAwuCredits: effectiveDefaultAwuCredits,
   });
 
+  const spendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
+    overrideAwuCredits,
+    groupCapAwuCredits,
+    defaultAwuCredits: effectiveDefaultAwuCredits,
+  });
+
+  const member: MemberUsageType = {
+    sId: userId,
+    name: userResource.fullName() || userResource.name,
+    email: userResource.email ?? null,
+    image: userResource.imageUrl ?? null,
+    groups: groupNamesByUserModelId.get(userResource.id) ?? [],
+    seatType: membership.seatType ?? null,
+    memberUsageLimit:
+      effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
+    seatBalanceAwu: freeSeatBalanceAwu,
+    consumedAwuCredits: totalConsumedCredits,
+    consumedFromAllowanceAwuCredits,
+    consumedFromPoolAwuCredits,
+    billingFrequency:
+      seatData?.billingFrequency ??
+      deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
+    nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
+    scheduledSeatType: null,
+    scheduledSeatChangeAt: null,
+    spendLimitAwuCredits,
+    rateLimiterSpendAwuCredits: null,
+    metronomeConsumedAwuCredits: null,
+    spendLimitSource,
+    spendLimitAlertId: null,
+    spendLimitWarningAlertId: null,
+    freeCreditLowAlert: null,
+    freeCreditEmptyAlert: null,
+    creditState: membership.creditState,
+    nearLimit: false,
+  };
+
   return {
-    member: {
-      sId: userId,
-      name: userResource.fullName() || userResource.name,
-      email: userResource.email ?? null,
-      image: userResource.imageUrl ?? null,
-      groups: groupNamesByUserModelId.get(userResource.id) ?? [],
-      seatType: membership.seatType ?? null,
-      memberUsageLimit:
-        effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
-      seatBalanceAwu: freeSeatBalanceAwu,
-      consumedAwuCredits: totalConsumedCredits,
-      consumedFromAllowanceAwuCredits,
-      consumedFromPoolAwuCredits,
-      billingFrequency:
-        seatData?.billingFrequency ??
-        deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
-      nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
-      scheduledSeatType: null,
-      scheduledSeatChangeAt: null,
-      spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
-        overrideAwuCredits,
-        groupCapAwuCredits,
-        defaultAwuCredits: effectiveDefaultAwuCredits,
-      }),
-      rateLimiterSpendAwuCredits: null,
-      metronomeConsumedAwuCredits: null,
-      spendLimitSource,
-      spendLimitAlertId: null,
-      spendLimitWarningAlertId: null,
-      freeCreditLowAlert: null,
-      freeCreditEmptyAlert: null,
-      creditState: membership.creditState,
-      nearLimit: false,
-    },
+    member,
+    creditUsageStatus:
+      billingCycle && spendLimitAwuCredits !== null
+        ? computeCreditUsageStatus({
+            consumedAwuCredits: totalConsumedCredits,
+            limitAwuCredits: spendLimitAwuCredits,
+            billingCycle,
+            nowMs: Date.now(),
+          })
+        : null,
   };
 }
 

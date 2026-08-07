@@ -1,3 +1,7 @@
+import {
+  CreditUsage,
+  type CreditUsageState,
+} from "@app/components/app/CreditUsage";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
@@ -64,9 +68,15 @@ interface UserMenuProps {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
+  creditUsageState?: CreditUsageState | null;
 }
 
-export function UserMenu({ user, owner, subscription }: UserMenuProps) {
+export function UserMenu({
+  user,
+  owner,
+  subscription,
+  creditUsageState,
+}: UserMenuProps) {
   const router = useAppRouter();
   const { featureFlags } = useFeatureFlags();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -272,6 +282,13 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
           sideOffset={8}
           className="w-64"
         >
+          {creditUsageState && (
+            <>
+              <CreditUsage state={creditUsageState} variant="profile_menu" />
+              <Separator className="my-1" />
+            </>
+          )}
+
           {hasMultipleWorkspaces && (
             <>
               <DropdownMenuLabel label="Workspace" />
