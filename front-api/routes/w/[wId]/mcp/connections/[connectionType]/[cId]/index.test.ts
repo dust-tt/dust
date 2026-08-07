@@ -67,6 +67,45 @@ describe("MCP connections handler", () => {
     expect((await response.json()).connection.sId).toBe(connection.sId);
   });
 
+  it("GET should return 404 when the connection type does not match", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+
+    const remoteServer = await RemoteMCPServerFactory.create(workspace);
+    const connection = await MCPServerConnectionFactory.remote(
+      auth,
+      remoteServer,
+      "personal"
+    );
+
+    const response = await get(workspace, "workspace", connection.sId);
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "mcp_server_connection_not_found",
+        message: "Connection not found",
+      },
+    });
+  });
+
+  it("GET should return 400 for an invalid connection type", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+
+    const response = await get(workspace, "invalid", "connection_id");
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Invalid connection type",
+      },
+    });
+  });
+
   it("GET cannot return a connection from another workspace", async () => {
     const { workspace: workspace1, auth: auth1 } =
       await createPrivateApiMockRequest({ method: "GET" });
@@ -165,6 +204,27 @@ describe("MCP connections handler", () => {
         connectionType: "personal",
       });
     expect(remainingForSecondUser).toHaveLength(1);
+  });
+
+  it("DELETE should not delete a connection when the connection type does not match", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "DELETE",
+    });
+    const remoteServer = await RemoteMCPServerFactory.create(workspace);
+    const connection = await MCPServerConnectionFactory.remote(
+      auth,
+      remoteServer,
+      "personal"
+    );
+
+    const response = await del(workspace, "workspace", connection.sId);
+
+    expect(response.status).toBe(404);
+    const connectionRes = await MCPServerConnectionResource.fetchById(
+      auth,
+      connection.sId
+    );
+    expect(connectionRes.isOk()).toBe(true);
   });
 
   it("DELETE workspace connection deletes all connections for the same server", async () => {
