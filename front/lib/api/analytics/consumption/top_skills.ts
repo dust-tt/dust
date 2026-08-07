@@ -1,0 +1,84 @@
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import {
+  avgCreditsPerUnit,
+  fetchConsumptionTopGroups,
+} from "@app/lib/api/analytics/consumption/top";
+import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import { resolveDimensionLabels } from "./labels";
+
+/**
+ * Skills ranked by the credits they consumed over the period, averaged per
+ * invocation, on the same footing as the tools: a skill is credited with the
+ * tool calls it is responsible for, so its unit is the invocation, not the
+ * message.
+ *
+ * Attribution is multi-valued — one tool call can be attributed to several
+ * skills at once — so each of them is credited with the full call and the rows
+ * can add up to more than the credits the tool documents hold. They also add up
+ * to less than the period's total, for the same reason the tools do: the model
+ * work around a tool call belongs to the LLM documents.
+ */
+
+export type ConsumptionTopSkillRow = {
+  skillId: string;
+  name: string;
+  credits: number;
+  invocationCount: number;
+  avgCreditsPerInvocation: number;
+};
+
+export type ConsumptionTopSkills = {
+  period: ConsumptionPeriod;
+  totalCredits: number;
+  // Highest credits first.
+  skills: ConsumptionTopSkillRow[];
+};
+
+export type GetConsumptionTopSkillsResponse = ConsumptionTopSkills;
+
+export async function fetchConsumptionTopSkills(
+  auth: Authenticator,
+  {
+    period,
+    limit,
+    filter,
+  }: {
+    period: ConsumptionPeriod;
+    limit: number;
+    filter?: ConsumptionScopeFilter;
+  }
+): Promise<Result<ConsumptionTopSkills, ElasticsearchError>> {
+  const result = await fetchConsumptionTopGroups(auth, {
+    dimension: "skill",
+    unit: "invocation",
+    period,
+    limit,
+    filter,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  const { groups, totalCredits } = result.value;
+
+  const labels = await resolveDimensionLabels(
+    auth,
+    "skill",
+    groups.map((group) => group.key)
+  );
+
+  return new Ok({
+    period,
+    totalCredits,
+    skills: groups.map((group) => ({
+      skillId: group.key,
+      name: labels.get(group.key)?.name ?? group.key,
+      credits: group.credits,
+      invocationCount: group.count,
+      avgCreditsPerInvocation: avgCreditsPerUnit(group.credits, group.count),
+    })),
+  });
+}

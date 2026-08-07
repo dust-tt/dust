@@ -1,4 +1,4 @@
-import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
+import { resolveDimensionDisplayNames } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FIELDS } from "@app/lib/api/analytics/consumption/scope";
@@ -23,7 +23,7 @@ vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
 
 vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
   const mod = await orig();
-  return { ...mod, resolveDimensionLabels: vi.fn() };
+  return { ...mod, resolveDimensionDisplayNames: vi.fn() };
 });
 
 const PERIOD_START_MS = Date.UTC(2026, 6, 1);
@@ -78,7 +78,7 @@ function mockBreakdown({
 }
 
 function mockGroupNames(names: Record<string, string>) {
-  vi.mocked(resolveDimensionLabels).mockResolvedValue(
+  vi.mocked(resolveDimensionDisplayNames).mockResolvedValue(
     new Map(Object.entries(names))
   );
 }
@@ -97,7 +97,7 @@ describe("fetchConsumptionTimeseries", () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.mocked(resolveDimensionLabels).mockReset();
+    vi.mocked(resolveDimensionDisplayNames).mockReset();
     vi.mocked(searchConsumptionAnalytics).mockReset();
   });
 
@@ -113,14 +113,14 @@ describe("fetchConsumptionTimeseries", () => {
 
     const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
     expect(options?.aggregations?.by_date?.aggs?.metric).toEqual({
-      sum: { field: "gross_credit_micro.total" },
+      sum: { field: "credit_micro" },
     });
 
     expect(result.isOk()).toBe(true);
     if (!result.isOk()) {
       return;
     }
-    expect(result.value.metric).toBe("gross_credits");
+    expect(result.value.metric).toBe("credit_micro");
     expect(
       result.value.points.map((point) => point.values[TOTAL_GROUP_KEY])
     ).toEqual([2, 1.5]);
@@ -276,7 +276,7 @@ describe("fetchConsumptionTimeseries", () => {
         histogramOptions?.aggregations?.by_date?.aggs?.by_group?.terms
       ).toMatchObject({ field, include: ["k1"] });
 
-      expect(vi.mocked(resolveDimensionLabels)).toHaveBeenCalledWith(
+      expect(vi.mocked(resolveDimensionDisplayNames)).toHaveBeenCalledWith(
         auth,
         dimension,
         ["k1"]
@@ -399,7 +399,7 @@ describe("fetchConsumptionTimeseries", () => {
       expect(result.value.groups).toEqual([
         { groupKey: TOTAL_GROUP_KEY, name: "Total" },
       ]);
-      expect(vi.mocked(resolveDimensionLabels)).not.toHaveBeenCalled();
+      expect(vi.mocked(resolveDimensionDisplayNames)).not.toHaveBeenCalled();
     });
 
     it("accumulates each series independently in cumulative mode", async () => {
