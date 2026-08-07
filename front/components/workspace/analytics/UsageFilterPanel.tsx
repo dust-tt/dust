@@ -30,6 +30,7 @@ import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analyti
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionRelevantGroups } from "@app/hooks/useConsumptionRelevantGroups";
+import type { ConsumptionAgentTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -46,12 +47,11 @@ import { useMemo, useState } from "react";
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
-  // Agents/models/tools/skills/sources are still mock data (see
+  // Models/tools/skills/sources are still mock data (see
   // usageFilterMockData.ts — sources are fake connectors standing in for a
-  // real db call); members and groups are fetched live below, scoped to
-  // `period` (useConsumptionTop, useConsumptionRelevantGroups).
+  // real db call); agents, members and groups are fetched live below, scoped
+  // to `period` (useConsumptionTop, useConsumptionRelevantGroups).
   categoryOptions: {
-    agent: UsageFilterAgentOption[];
     model: UsageFilterModelOption[];
     tool: UsageFilterToolOption[];
     skill: UsageFilterSkillOption[];
@@ -97,6 +97,7 @@ export function UsageFilterPanel({
   const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
 
   const isMemberCategoryActive = isOpen && activeCategory === "user";
+  const isAgentCategoryActive = isOpen && activeCategory === "agent";
 
   const { rows: topUserRows } = useConsumptionTop({
     workspaceId: owner.sId,
@@ -106,6 +107,16 @@ export function UsageFilterPanel({
     // coverage of the period's active population than a ranking display does.
     limit: 100,
     disabled: !isMemberCategoryActive,
+  });
+
+  const { rows: topAgentRows } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "agent",
+    period,
+    // Same rationale as members: broader than the Attribution table's own
+    // top-N so the picker covers most of the period's active agents.
+    limit: 100,
+    disabled: !isAgentCategoryActive,
   });
 
   const { groups } = useConsumptionRelevantGroups({
@@ -128,14 +139,33 @@ export function UsageFilterPanel({
     [topUserRows]
   );
 
+  // Same client-side search caveat as members: an agent outside the top 100
+  // by credits over the period will not be searchable here.
+  const agentOptions = useMemo<UsageFilterAgentOption[]>(
+    () =>
+      topAgentRows
+        .filter(
+          (row): row is ConsumptionAgentTopRow => row.dimension === "agent"
+        )
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          kind: "agent",
+          image: row.pictureUrl,
+          scope: row.scope,
+        })),
+    [topAgentRows]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
     () => ({
       ...categoryOptions,
       user: memberOptions,
+      agent: agentOptions,
     }),
-    [categoryOptions, memberOptions]
+    [categoryOptions, memberOptions, agentOptions]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];

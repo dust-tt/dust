@@ -1,4 +1,5 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
 import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
@@ -73,7 +74,7 @@ const PERIOD: ConsumptionPeriod = {
   endDate: "2026-08-01T00:00:00.000Z",
 };
 
-const TOP_AGENTS = {
+const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
   period: PERIOD,
   totalCredits: 5000,
   agents: [
@@ -81,6 +82,7 @@ const TOP_AGENTS = {
       agentId: "agent1",
       name: "@dust",
       pictureUrl: null,
+      scope: "company",
       credits: 2230,
       messageCount: 10,
       avgCreditsPerMessage: 223,

@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/analytics/consumption/top";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
@@ -20,6 +21,7 @@ export type ConsumptionTopAgentRow = {
   agentId: string;
   name: string;
   pictureUrl: string | null;
+  scope: AgentConfigurationScope;
   credits: number;
   messageCount: number;
   avgCreditsPerMessage: number;
@@ -71,6 +73,7 @@ export async function fetchConsumptionTopAgents(
       agentId: group.key,
       name: labels.get(group.key)?.name ?? group.key,
       pictureUrl: labels.get(group.key)?.pictureUrl ?? null,
+      scope: labels.get(group.key)?.scope ?? "hidden",
       credits: group.credits,
       messageCount: group.count,
       avgCreditsPerMessage: avgCreditsPerUnit(group.credits, group.count),
