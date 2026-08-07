@@ -14,7 +14,6 @@ const {
   storeAgentAnalyticsActivity,
   storeAgentMessageFeedbackActivity,
   storeAgentMessageConsumptionAttributionActivity,
-  storeAgentMessageConsumptionAnalyticsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
   retry: {
@@ -23,6 +22,13 @@ const {
     initialInterval: "30 seconds",
     backoffCoefficient: 2,
   },
+});
+
+// Consumption indexing is idempotent. The default policy retries without an attempt limit.
+const { storeAgentMessageConsumptionAnalyticsActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "5 minutes",
 });
 
 export async function storeAgentAnalyticsWorkflow(

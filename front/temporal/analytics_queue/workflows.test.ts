@@ -4,10 +4,12 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockProxyActivityOptions,
   mockSetHandler,
   mockStoreConsumptionAnalytics,
   mockStoreConsumptionAttribution,
 } = vi.hoisted(() => ({
+  mockProxyActivityOptions: [] as Array<Record<string, unknown>>,
   mockSetHandler: vi.fn(),
   mockStoreConsumptionAnalytics: vi.fn(),
   mockStoreConsumptionAttribution: vi.fn(),
@@ -15,20 +17,29 @@ const {
 
 vi.mock("@temporalio/workflow", () => ({
   defineSignal: (name: string) => name,
-  proxyActivities: () => ({
-    storeAgentAnalyticsActivity: vi.fn(),
-    storeAgentMessageFeedbackActivity: vi.fn(),
-    storeAgentMessageConsumptionAttributionActivity:
-      mockStoreConsumptionAttribution,
-    storeAgentMessageConsumptionAnalyticsActivity:
-      mockStoreConsumptionAnalytics,
-  }),
+  proxyActivities: (options: Record<string, unknown>) => {
+    mockProxyActivityOptions.push(options);
+    return {
+      storeAgentAnalyticsActivity: vi.fn(),
+      storeAgentMessageFeedbackActivity: vi.fn(),
+      storeAgentMessageConsumptionAttributionActivity:
+        mockStoreConsumptionAttribution,
+      storeAgentMessageConsumptionAnalyticsActivity:
+        mockStoreConsumptionAnalytics,
+    };
+  },
   setHandler: mockSetHandler,
 }));
 
 describe("storeAgentMessageConsumptionAttributionV3Workflow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("does not cap consumption indexing retries", () => {
+    expect(mockProxyActivityOptions).toContainEqual({
+      startToCloseTimeout: "5 minutes",
+    });
   });
 
   it("indexes after attribution and repeats both activities when signalled", async () => {
