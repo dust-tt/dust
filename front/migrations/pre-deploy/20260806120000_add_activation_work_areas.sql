@@ -1,0 +1,115 @@
+/*
+Statement 0
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+CREATE SEQUENCE "public"."activation_work_areas_id_seq"
+	AS bigint
+	INCREMENT BY 1
+	MINVALUE 1 MAXVALUE 9223372036854775807
+	START WITH 1 CACHE 1 NO CYCLE
+;
+
+/*
+Statement 1
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+CREATE TABLE "public"."activation_work_areas" (
+	"createdAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+	"updatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+	"workspaceId" bigint NOT NULL,
+	"userId" bigint NOT NULL,
+	"podId" bigint,
+	"title" character varying(255) NOT NULL,
+	"intent" character varying(512) NOT NULL,
+	"status" character varying(50) NOT NULL,
+	"id" bigint DEFAULT nextval('activation_work_areas_id_seq'::regclass) NOT NULL
+);
+
+/*
+Statement 2
+*/
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+CREATE UNIQUE INDEX CONCURRENTLY activation_work_areas_pkey ON public.activation_work_areas USING btree (id);
+
+/*
+Statement 3
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."activation_work_areas" ADD CONSTRAINT "activation_work_areas_pkey" PRIMARY KEY USING INDEX "activation_work_areas_pkey";
+
+/*
+Statement 4
+  - INDEX_BUILD: This might affect database performance. Concurrent index builds require a non-trivial amount of CPU, potentially affecting database performance. They also can take a while but do not lock out writes.
+*/
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+CREATE INDEX CONCURRENTLY activation_work_areas_user_id ON public.activation_work_areas USING btree ("userId");
+
+/*
+Statement 5
+  - INDEX_BUILD: This might affect database performance. Concurrent index builds require a non-trivial amount of CPU, potentially affecting database performance. They also can take a while but do not lock out writes.
+*/
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+CREATE INDEX CONCURRENTLY activation_work_areas_pod_id ON public.activation_work_areas USING btree ("podId");
+
+/*
+Statement 6
+  - INDEX_BUILD: This might affect database performance. Concurrent index builds require a non-trivial amount of CPU, potentially affecting database performance. They also can take a while but do not lock out writes.
+*/
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+CREATE INDEX CONCURRENTLY activation_work_areas_workspace_user_status ON public.activation_work_areas USING btree ("workspaceId", "userId", "status");
+
+/*
+Statement 7
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER SEQUENCE "public"."activation_work_areas_id_seq" OWNED BY "public"."activation_work_areas"."id";
+
+/*
+Statement 8
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."activation_work_areas" ADD CONSTRAINT "activation_work_areas_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+
+/*
+Statement 9
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."activation_work_areas" VALIDATE CONSTRAINT "activation_work_areas_workspaceId_fkey";
+
+/*
+Statement 10
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."activation_work_areas" ADD CONSTRAINT "activation_work_areas_userId_fkey" FOREIGN KEY ("userId") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+
+/*
+Statement 11
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."activation_work_areas" VALIDATE CONSTRAINT "activation_work_areas_userId_fkey";
+
+/*
+Statement 12
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."activation_work_areas" ADD CONSTRAINT "activation_work_areas_podId_fkey" FOREIGN KEY ("podId") REFERENCES activation_pods(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+
+/*
+Statement 13
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."activation_work_areas" VALIDATE CONSTRAINT "activation_work_areas_podId_fkey";
