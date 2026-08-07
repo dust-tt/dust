@@ -9,11 +9,18 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { mockFullAgentMessage } from "@app/tests/utils/conversation_test_factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import type { TextContent } from "@app/types/assistant/generation";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 import { getSteps, renderUserMessage } from "./helpers";
+
+// These cases render tool results that carry no attachment, so the mode does not matter.
+const LEGACY_CAPABILITIES: AttachmentCapabilityContext = {
+  isNewFileExplorer: false,
+  hasSandboxTools: false,
+};
 
 describe("renderUserMessage", () => {
   async function buildMessage(overrides: Partial<any> = {}) {
@@ -298,6 +305,7 @@ The following skills were set as favorites by the user and are also available fo
       workspaceId: "workspace_123",
       conversationId: "conv_1",
       onMissingAction: "skip",
+      capabilities: LEGACY_CAPABILITIES,
     });
 
     expect(steps).toHaveLength(1);
@@ -351,6 +359,7 @@ The following skills were set as favorites by the user and are also available fo
       workspaceId: "workspace_123",
       conversationId: "conv_1",
       onMissingAction: "skip",
+      capabilities: LEGACY_CAPABILITIES,
     });
 
     expect(steps).toHaveLength(1);
@@ -440,6 +449,7 @@ describe("vision image rendering in getSteps", () => {
       conversationId,
       enabledSkillById: new Map(),
       onMissingAction: "skip",
+      capabilities: LEGACY_CAPABILITIES,
     });
 
     expect(steps).toHaveLength(1);
@@ -468,6 +478,7 @@ describe("vision image rendering in getSteps", () => {
       conversationId,
       enabledSkillById: new Map(),
       onMissingAction: "skip",
+      capabilities: LEGACY_CAPABILITIES,
     });
 
     const result = steps[0].actions[0].result;
@@ -499,6 +510,7 @@ describe("vision image rendering in getSteps", () => {
       conversationId,
       enabledSkillById: new Map(),
       onMissingAction: "skip",
+      capabilities: LEGACY_CAPABILITIES,
     });
 
     const result = steps[0].actions[0].result;
@@ -578,6 +590,7 @@ describe("websearch resource array compaction in getSteps", () => {
       conversationId: "conv_1",
       enabledSkillById: new Map(),
       onMissingAction: "skip",
+      capabilities: LEGACY_CAPABILITIES,
     });
 
     const result = steps[0].actions[0].result;

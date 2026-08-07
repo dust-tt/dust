@@ -10,6 +10,18 @@ export type AttachmentCreator = {
   pictureUrl: string;
 };
 
+/**
+ * Conversation-wide inputs deciding which JIT capabilities a file attachment can expose. Resolved
+ * once per conversation (see `getAttachmentCapabilityContext`) and passed down so the capability
+ * flags on an attachment can be trusted without re-checking the conversation or the workspace.
+ */
+export type AttachmentCapabilityContext = {
+  /** The conversation exposes its files through the `files` MCP server rather than by fileId. */
+  isNewFileExplorer: boolean;
+  /** The workspace can run the Computer, which handles tabular files itself. */
+  hasSandboxTools: boolean;
+};
+
 export type BaseConversationAttachmentType = {
   title: string;
   contentType: SupportedContentFragmentType;

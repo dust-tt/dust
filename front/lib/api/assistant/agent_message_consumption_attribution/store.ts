@@ -6,6 +6,7 @@ import {
   buildToolAttribution,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
+import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { toolAwuFromAction } from "@app/lib/metronome/events";
@@ -95,6 +96,10 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     return;
   }
 
+  // Tool results are re-rendered below to measure them, so they need the same attachment
+  // capabilities the conversation used when the results were sent to the model.
+  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+
   // Every usage is reached through this message's own runIds, so each one belongs to this message.
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
   const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
@@ -161,6 +166,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     // each call and the input its result occupied. Everything is priced against this one usage below.
     const footprintsRes = await measureToolCallFootprints(auth, {
       modelId: usage.modelId,
+      capabilities,
       // TODO(2026-07-31 FLAV) Refactor `enrichActionsWithOutputItems` so it still returns the
       // resource.
       toolCalls: modelVisibleRunActionPairs.map(
