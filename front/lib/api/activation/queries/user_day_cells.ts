@@ -1,7 +1,9 @@
+import { INTERACTIVE_CONTENT_SERVER_NAME } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
-import { USAGE_ORIGINS_CLASSIFICATION } from "@app/lib/api/programmatic_usage/common";
+import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { TOOL_COST_CATEGORY_AWU_WEIGHTS } from "@app/lib/metronome/events";
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -16,27 +18,10 @@ import type { estypes } from "@elastic/elasticsearch";
 // high-value use case signal (≥1 succeeded tool call that is either
 // advanced-cost, a frame touch (interactive_content), or run_agent).
 
-const FRAME_SERVER_NAME = "interactive_content";
-const RUN_AGENT_SERVER_NAME = "run_agent";
-const TRIGGERED_ORIGIN: UserMessageOrigin = "triggered";
-
-// Programmatic origins are dropped from the query entirely
-const PROGRAMMATIC_ORIGINS: UserMessageOrigin[] = (
-  Object.keys(
-    USAGE_ORIGINS_CLASSIFICATION
-  ) as (keyof typeof USAGE_ORIGINS_CLASSIFICATION)[]
-).filter((origin) => USAGE_ORIGINS_CLASSIFICATION[origin] === "programmatic");
-
 // Origins that make a day count as a daily active user day: human-initiated
 // organic ("user") origins, with `triggered` deliberately EXCLUDED.
-const DAU_ORIGINS: UserMessageOrigin[] = (
-  Object.keys(
-    USAGE_ORIGINS_CLASSIFICATION
-  ) as (keyof typeof USAGE_ORIGINS_CLASSIFICATION)[]
-).filter(
-  (origin) =>
-    USAGE_ORIGINS_CLASSIFICATION[origin] === "user" &&
-    origin !== TRIGGERED_ORIGIN
+const DAILY_ACTIVE_USER_ORIGINS = USER_USAGE_ORIGINS.filter(
+  (origin) => origin !== "triggered"
 );
 
 // Hard cap on users per call. The composite page size is sized so that the
@@ -133,8 +118,15 @@ export async function fetchUserDayCells({
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
-        { term: { workspace_id: workspaceId } },
-        { terms: { user_id: uniqueUserIds } },
+        // Reuse the workspace-scoped analytics query so this aggregation can
+        // never search documents from another workspace.
+        buildAgentAnalyticsBaseQuery({
+          workspaceId,
+          userIds: uniqueUserIds,
+          // Include only known human/user origins rather than excluding
+          // programmatic ones with a costly must_not clause.
+          contextOrigin: USER_USAGE_ORIGINS,
+        }),
         {
           range: {
             timestamp: {
@@ -144,10 +136,6 @@ export async function fetchUserDayCells({
           },
         },
         { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
-      ],
-      must_not: [
-        // Organic constraint: drop programmatic-origin activity entirely.
-        { terms: { context_origin: PROGRAMMATIC_ORIGINS } },
       ],
     },
   };
@@ -168,8 +156,16 @@ export async function fetchUserDayCells({
                 },
               },
             },
-            { term: { "tools_used.server_name": FRAME_SERVER_NAME } },
-            { term: { "tools_used.server_name": RUN_AGENT_SERVER_NAME } },
+            {
+              term: {
+                "tools_used.server_name": INTERACTIVE_CONTENT_SERVER_NAME,
+              },
+            },
+            {
+              term: {
+                "tools_used.server_name": RUN_AGENT_SERVER_NAME,
+              },
+            },
           ],
           minimum_should_match: 1,
         },
@@ -202,7 +198,11 @@ export async function fetchUserDayCells({
         by_user_day: {
           composite,
           aggregations: {
-            dau: { filter: { terms: { context_origin: DAU_ORIGINS } } },
+            dau: {
+              filter: {
+                terms: { context_origin: DAILY_ACTIVE_USER_ORIGINS },
+              },
+            },
             hvuc_signal: { filter: hvucNestedQuery },
           },
         },

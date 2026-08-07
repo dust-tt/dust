@@ -1,7 +1,7 @@
 import { evaluateActivation } from "@app/lib/api/activation/evaluator";
 import { isEligibleForNudge } from "@app/lib/api/activation/nudge";
 import { emitActivationEvent } from "@app/lib/api/activation/trigger";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -53,7 +53,7 @@ export async function determineEligibleActivationUsers(
   // Build the candidate (pod, member) list and the deduped set of user sIds to
   // evaluate in a single batch.
   const candidates: { podId: string; spaceId: string; userId: string }[] = [];
-  const userSIds = new Set<string>();
+  const userIds = new Set<string>();
   for (const pod of pods) {
     const space = spaceByModelId.get(pod.spaceId);
     if (!space) {
@@ -69,7 +69,7 @@ export async function determineEligibleActivationUsers(
         spaceId: space.sId,
         userId: member.sId,
       });
-      userSIds.add(member.sId);
+      userIds.add(member.sId);
     }
   }
 
@@ -78,7 +78,7 @@ export async function determineEligibleActivationUsers(
   }
 
   const activationResult = await evaluateActivation(auth, {
-    userIds: [...userSIds],
+    userIds: Array.from(userIds),
     asOf,
   });
   if (activationResult.isErr()) {
@@ -122,22 +122,19 @@ export async function determineEligibleActivationUsers(
   return new Ok({ eligible, skipped });
 }
 
-export async function runActivationForWorkspace({
-  workspaceId,
-  userId = null,
-  dryRun,
-  asOf,
-}: {
-  workspaceId: string;
-  userId?: string | null;
-  dryRun: boolean;
-  asOf?: Date;
-}): Promise<Result<OrchestratorResult, Error>> {
-  // Activation conversations live in Pods, which are restricted spaces: request
-  // all groups so admin auth can read/write them.
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
-    dangerouslyRequestAllGroups: true,
-  });
+export async function runActivationForWorkspace(
+  auth: Authenticator,
+  {
+    userId = null,
+    dryRun,
+    asOf,
+  }: {
+    userId?: string | null;
+    dryRun: boolean;
+    asOf?: Date;
+  }
+): Promise<Result<OrchestratorResult, Error>> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const planResult = await determineEligibleActivationUsers(auth, {
     userId,
@@ -159,7 +156,7 @@ export async function runActivationForWorkspace({
   }
   const uniqueSpaceIds = [...new Set(plan.eligible.map((p) => p.spaceId))];
   const pods = await SpaceResource.fetchByIds(auth, uniqueSpaceIds);
-  const podBySId = new Map(pods.map((pod) => [pod.sId, pod]));
+  const podById = new Map(pods.map((pod) => [pod.sId, pod]));
 
   const users = await UserResource.fetchByIds([
     ...new Set(plan.eligible.map((p) => p.targetUserId)),
@@ -173,7 +170,7 @@ export async function runActivationForWorkspace({
   await concurrentExecutor(
     plan.eligible,
     async ({ spaceId, targetUserId }) => {
-      const pod = podBySId.get(spaceId);
+      const pod = podById.get(spaceId);
       if (!pod) {
         logger.error(
           { workspaceId, spaceId },
