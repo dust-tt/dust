@@ -504,17 +504,22 @@ pub(super) fn normalized_authority(
         }
     };
 
-    if let RewriteMode::Tls { sni } = mode {
-        let normalized_sni = normalize_host(sni, 443)
-            .map_err(|_| deny_entry(mode, DenyReason::HostSniMismatch, None, Some(&host)))?;
-        if normalized_sni != host {
-            return Err(deny_entry(
-                mode,
-                DenyReason::HostSniMismatch,
-                None,
-                Some(&host),
-            ));
-        }
+    // Pin every request's authority to the domain the proxy approved for this
+    // connection: the ClientHello SNI on 443, the first request's `Host` on 80
+    // (which is the name the proxy resolved and connected to). Both are checked
+    // here because the approved domain is decided once per connection while a
+    // keep-alive connection carries many requests: without this, a port-80
+    // connection opened to an allowlisted CDN-fronted domain can front
+    // arbitrary hosts through that CDN edge, since the proxy only splices bytes
+    // after the handshake.
+    let (approved, reason) = match mode {
+        RewriteMode::Tls { sni } => (sni, DenyReason::HostSniMismatch),
+        RewriteMode::PlainHttp { domain } => (domain, DenyReason::HostDomainMismatch),
+    };
+    let normalized_approved = normalize_host(approved, mode.port())
+        .map_err(|_| deny_entry(mode, reason, None, Some(&host)))?;
+    if normalized_approved != host {
+        return Err(deny_entry(mode, reason, None, Some(&host)));
     }
 
     Ok(host)
