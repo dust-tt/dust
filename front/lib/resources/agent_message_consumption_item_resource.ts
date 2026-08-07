@@ -7,6 +7,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { AgentMessageConsumptionItemType } from "@app/types/assistant/agent_message_consumption";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -79,6 +80,20 @@ type ConsumptionItemCreationAttributes =
 export interface AgentMessageConsumptionItemResource
   extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
 
+export interface AgentMessageModelConsumptionItemResource
+  extends AgentMessageConsumptionItemResource {
+  readonly itemType: Exclude<AgentMessageConsumptionItemType, "tool">;
+  readonly agentMCPActionId: null;
+  readonly directCreditAmountMicro: null;
+  readonly completedAt: Date;
+}
+
+export interface AgentMessageToolConsumptionItemResource
+  extends AgentMessageConsumptionItemResource {
+  readonly itemType: "tool";
+  readonly agentMCPActionId: ModelId;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessageConsumptionItemModel> {
   static model: ModelStaticWorkspaceAware<AgentMessageConsumptionItemModel> =
@@ -89,6 +104,40 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     blob: Attributes<AgentMessageConsumptionItemModel>
   ) {
     super(model, blob);
+  }
+
+  isModelItem(): this is AgentMessageModelConsumptionItemResource {
+    switch (this.itemType) {
+      case "system":
+      case "input":
+      case "output":
+      case "reasoning":
+        assert(
+          this.agentMCPActionId === null &&
+            this.directCreditAmountMicro === null &&
+            this.completedAt !== null,
+          "Model consumption item has invalid shape"
+        );
+        return true;
+
+      case "tool":
+        return false;
+
+      default:
+        return assertNever(this.itemType);
+    }
+  }
+
+  isToolItem(): this is AgentMessageToolConsumptionItemResource {
+    if (this.itemType !== "tool") {
+      return false;
+    }
+
+    assert(
+      this.agentMCPActionId !== null,
+      "Tool consumption item is missing its action"
+    );
+    return true;
   }
 
   private static itemKey(record: CompletedAgentMessageConsumptionItem): string {
