@@ -9,6 +9,10 @@ export interface RequestInput {
   headers: Record<string, string>;
   body?: string;
   encoding: Encoding;
+  // Sha256 hex of the bundle the publisher expects to run. The warm server
+  // refuses to serve an import that does not match (see serve.ts); the cold
+  // runner ignores it, since a cold run reads the bundle straight from disk.
+  bundleSha256?: string;
 }
 
 export const RUNNER_ERROR_CODES = [
@@ -76,7 +80,12 @@ export function parseInput(raw: string): RequestInput {
   if (encoding !== "utf8" && encoding !== "base64") {
     throw new BadInputError('input.encoding must be "utf8" or "base64"');
   }
-  return { method, url, headers, body, encoding };
+  if (obj.bundleSha256 !== undefined && typeof obj.bundleSha256 !== "string") {
+    throw new BadInputError("input.bundleSha256 must be a string");
+  }
+  const bundleSha256 =
+    typeof obj.bundleSha256 === "string" ? obj.bundleSha256 : undefined;
+  return { method, url, headers, body, encoding, bundleSha256 };
 }
 
 export function decodeRequestBody(input: RequestInput): Uint8Array | undefined {
