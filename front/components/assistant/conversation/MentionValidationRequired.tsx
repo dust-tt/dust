@@ -159,9 +159,7 @@ export function MentionValidationRequired({
   const memoryWarning = showMemoryWarning ? (
     <span className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
       <InfoCircle className="h-4 w-4 shrink-0" />
-      <span>
-        The content of your personal memory may be disclosed to invited users.
-      </span>
+      <span>Your personal memory may be disclosed to invited users.</span>
     </span>
   ) : null;
 
