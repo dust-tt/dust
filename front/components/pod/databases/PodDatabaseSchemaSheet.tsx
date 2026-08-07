@@ -28,7 +28,7 @@ export function PodDatabaseSchemaSheet({
   database,
   onClose,
 }: PodDatabaseSchemaSheetProps) {
-  const { schema, isPodDatabaseSchemaLoading, isPodDatabaseSchemaError } =
+  const { schema, isPodDatabaseSchemaLoading, podDatabaseSchemaError } =
     usePodDatabaseSchema({
       owner,
       podId,
@@ -48,9 +48,9 @@ export function PodDatabaseSchemaSheet({
         </SheetHeader>
         <SheetContainer>
           {isPodDatabaseSchemaLoading && <Spinner />}
-          {isPodDatabaseSchemaError && (
+          {podDatabaseSchemaError && (
             <ContentMessage variant="warning" title="Could not read the schema">
-              The pod sandbox did not return a schema for this database.
+              {podDatabaseSchemaError}
             </ContentMessage>
           )}
           {schema && (

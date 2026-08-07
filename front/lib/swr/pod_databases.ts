@@ -15,6 +15,7 @@ import type {
   LiveDatabaseEntry,
   PostPodDatabaseQueryResponseBody,
 } from "@app/types/api/sandbox/pod_databases";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 import type { Fetcher } from "swr";
@@ -25,6 +26,23 @@ import type { Fetcher } from "swr";
  */
 function podDatabasesUrl(workspaceId: string, podId: string): string {
   return `/api/w/${workspaceId}/spaces/${podId}/databases`;
+}
+
+/**
+ * The fetcher throws the parsed API error envelope, and these failures come from the sandbox with
+ * a specific diagnostic attached (`drizzle-kit pull failed: ...`, `no such table`, …). Keep the
+ * message so panes can show what actually went wrong instead of a canned sentence.
+ */
+function errorMessage(error: unknown): string | null {
+  if (!error) {
+    return null;
+  }
+  if (isAPIErrorResponse(error)) {
+    return error.error.message;
+  }
+  return error instanceof Error
+    ? error.message
+    : "An unexpected error occurred.";
 }
 
 export function usePodDatabases({
@@ -47,7 +65,7 @@ export function usePodDatabases({
   return {
     databases: data?.databases ?? emptyArray<LiveDatabaseEntry>(),
     isPodDatabasesLoading: disabled ? false : isLoading,
-    isPodDatabasesError: !!error,
+    podDatabasesError: errorMessage(error),
     mutatePodDatabases: mutate,
   };
 }
@@ -77,7 +95,7 @@ export function usePodDatabaseTables({
   return {
     tables: data?.tables ?? emptyArray<DatabaseTableEntry>(),
     isPodDatabaseTablesLoading: isDisabled ? false : isLoading,
-    isPodDatabaseTablesError: !!error,
+    podDatabaseTablesError: errorMessage(error),
     mutatePodDatabaseTables: mutate,
   };
 }
@@ -107,7 +125,7 @@ export function usePodDatabaseSchema({
   return {
     schema: data?.schema ?? null,
     isPodDatabaseSchemaLoading: isDisabled ? false : isLoading,
-    isPodDatabaseSchemaError: !!error,
+    podDatabaseSchemaError: errorMessage(error),
   };
 }
 
@@ -145,7 +163,7 @@ export function usePodTableRows({
     rows: data?.rows ?? emptyArray<Record<string, unknown>>(),
     hasMore: data?.hasMore ?? false,
     isPodTableRowsLoading: isDisabled ? false : isLoading,
-    isPodTableRowsError: !!error,
+    podTableRowsError: errorMessage(error),
     mutatePodTableRows: mutate,
   };
 }

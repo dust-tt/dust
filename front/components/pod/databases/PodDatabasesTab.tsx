@@ -39,7 +39,7 @@ export function PodDatabasesTab({ owner, pod }: PodDatabasesTabProps) {
     useState<PaginationState>(INITIAL_PAGINATION);
   const [schemaDatabase, setSchemaDatabase] = useState<string | null>(null);
 
-  const { databases, isPodDatabasesLoading, isPodDatabasesError } =
+  const { databases, isPodDatabasesLoading, podDatabasesError } =
     usePodDatabases({ owner, podId: pod.sId });
 
   const activeDatabase = selection.database ?? databases[0]?.name ?? null;
@@ -47,7 +47,7 @@ export function PodDatabasesTab({ owner, pod }: PodDatabasesTabProps) {
   const {
     tables,
     isPodDatabaseTablesLoading,
-    isPodDatabaseTablesError,
+    podDatabaseTablesError,
     mutatePodDatabaseTables,
   } = usePodDatabaseTables({
     owner,
@@ -60,15 +60,20 @@ export function PodDatabasesTab({ owner, pod }: PodDatabasesTabProps) {
     (table) => table.name === activeTable
   )?.rowCount;
 
-  const { columns, rows, isPodTableRowsLoading, mutatePodTableRows } =
-    usePodTableRows({
-      owner,
-      podId: pod.sId,
-      database: activeDatabase,
-      table: activeTable,
-      limit: pagination.pageSize,
-      offset: pagination.pageIndex * pagination.pageSize,
-    });
+  const {
+    columns,
+    rows,
+    isPodTableRowsLoading,
+    podTableRowsError,
+    mutatePodTableRows,
+  } = usePodTableRows({
+    owner,
+    podId: pod.sId,
+    database: activeDatabase,
+    table: activeTable,
+    limit: pagination.pageSize,
+    offset: pagination.pageIndex * pagination.pageSize,
+  });
 
   const onSelectDatabase = (database: string) => {
     setSelection({ database, table: null });
@@ -96,12 +101,11 @@ export function PodDatabasesTab({ owner, pod }: PodDatabasesTabProps) {
     );
   }
 
-  if (isPodDatabasesError) {
+  if (podDatabasesError) {
     return (
       <div className="px-6 py-8">
-        <ContentMessage variant="warning" title="Could not reach the pod">
-          The pod sandbox did not respond. It may still be starting up — try
-          again in a moment.
+        <ContentMessage variant="warning" title="Could not list the databases">
+          {podDatabasesError}
         </ContentMessage>
       </div>
     );
@@ -137,9 +141,9 @@ export function PodDatabasesTab({ owner, pod }: PodDatabasesTabProps) {
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto">
-          {isPodDatabaseTablesError && (
+          {podDatabaseTablesError && (
             <ContentMessage variant="warning" title="Could not list tables">
-              {`Reading the tables of "${activeDatabase}" failed.`}
+              {podDatabaseTablesError}
             </ContentMessage>
           )}
 
@@ -158,6 +162,11 @@ export function PodDatabasesTab({ owner, pod }: PodDatabasesTabProps) {
                 )}
                 {isPodTableRowsLoading && <Spinner size="xs" />}
               </div>
+              {podTableRowsError && (
+                <ContentMessage variant="warning" title="Could not read rows">
+                  {podTableRowsError}
+                </ContentMessage>
+              )}
               <PodDatabaseRowsTable
                 columns={columns}
                 rows={rows}
