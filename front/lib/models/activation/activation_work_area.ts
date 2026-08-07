@@ -5,10 +5,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
-export type ActivationWorkAreaStatus =
-  | "candidate"
-  | "confirmed"
-  | "dismissed";
+export type ActivationWorkAreaStatus = "candidate" | "confirmed" | "dismissed";
 
 export class ActivationWorkAreaModel extends WorkspaceAwareModel<ActivationWorkAreaModel> {
   declare createdAt: CreationOptional<Date>;
