@@ -4,6 +4,7 @@ import type {
 } from "@app/components/workspace/analytics/usageFilter";
 import { USAGE_FILTER_CATEGORY_LABEL } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   ChevronDown,
@@ -54,10 +55,10 @@ export function UsageFilterSelectionSummary({
   );
 
   return (
-    <div className="flex h-full w-[200px] flex-col p-2">
+    <div className="flex h-full w-52 flex-col p-2">
       <NavigationListLabel
         className="bg-transparent pt-1.5 font-medium"
-        label={`${selectionCount} filter${selectionCount === 1 ? "" : "s"} selected`}
+        label={`${selectionCount} filter${pluralize(selectionCount)} selected`}
       />
       <NavigationList className="min-h-0 flex-1">
         {categoriesWithSelection.length > 0 ? (
