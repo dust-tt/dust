@@ -458,6 +458,7 @@ export function AgentSidebarMenu({
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
   const [agentSearchText, setAgentSearchText] = useState("");
   const [skillSearchText, setSkillSearchText] = useState("");
+  const [podSearchText, setPodSearchText] = useState("");
   const [hasOpenedActionsMenu, setHasOpenedActionsMenu] = useState(false);
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
@@ -672,8 +673,13 @@ export function AgentSidebarMenu({
   }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
 
   const availablePods = useMemo(
-    () => summary.map(({ space }) => space),
-    [summary]
+    () =>
+      summary
+        .map(({ space }) => space)
+        .filter((space) =>
+          space.name.toLowerCase().includes(podSearchText.toLowerCase().trim())
+        ),
+    [summary, podSearchText]
   );
 
   const moveSelectionToPod = useCallback(
@@ -990,7 +996,14 @@ export function AgentSidebarMenu({
             {isMultiSelect ? (
               <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 mb-4">
                 <div className="flex gap-2">
-                  <DropdownMenu modal={false}>
+                  <DropdownMenu
+                    modal={false}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setPodSearchText("");
+                      }
+                    }}
+                  >
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
@@ -1003,6 +1016,15 @@ export function AgentSidebarMenu({
                     <DropdownMenuContent
                       className="max-w-60"
                       onFocusOutside={(e) => e.preventDefault()}
+                      dropdownHeaders={
+                        <DropdownMenuSearchbar
+                          name="pod-search"
+                          placeholder="Search Pods"
+                          value={podSearchText}
+                          onChange={setPodSearchText}
+                          autoFocus
+                        />
+                      }
                     >
                       <DropdownMenuItem
                         icon={Plus}
@@ -1012,20 +1034,22 @@ export function AgentSidebarMenu({
                           setIsCreatePodModalOpen(true);
                         }}
                       />
-                      {availablePods.length > 0 && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel label="Pods" />
-                          {availablePods.map((pod) => (
-                            <DropdownMenuItem
-                              key={pod.sId}
-                              icon={getSpaceIcon(pod)}
-                              label={pod.name}
-                              truncateText
-                              onClick={() => moveSelectionToPod(pod)}
-                            />
-                          ))}
-                        </>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel label="Pods" />
+                      {availablePods.length > 0 ? (
+                        availablePods.map((pod) => (
+                          <DropdownMenuItem
+                            key={pod.sId}
+                            icon={getSpaceIcon(pod)}
+                            label={pod.name}
+                            truncateText
+                            onClick={() => moveSelectionToPod(pod)}
+                          />
+                        ))
+                      ) : (
+                        <div className="px-3 py-4 text-center text-xs italic text-muted-foreground">
+                          {!!podSearchText ? "No matches" : "No Pods"}
+                        </div>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
