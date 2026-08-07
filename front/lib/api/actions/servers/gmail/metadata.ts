@@ -227,7 +227,7 @@ export const GMAIL_TOOLS_METADATA = [
 - The email will include proper headers and formatting.`,
     schema: GMAIL_SEND_MAIL_SCHEMA,
     stake: "high",
-    editableArguments: ["subject"],
+    editableArguments: ["subject", "body"],
     displayLabels: {
       running: "Sending Gmail email",
       done: "Send Gmail email",
