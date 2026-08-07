@@ -347,8 +347,6 @@ export const subNavigationAdmin = ({
         current: isCurrent("analytics"),
         disabled: !hasManagerRole,
       },
-      // Sits alongside the current Analytics entry while the consumption-backed
-      // dashboard is brought to parity; it replaces it at cut-over.
       ...(featureFlags.includes("enable_analytics_consumption")
         ? [
             {
