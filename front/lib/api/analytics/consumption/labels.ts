@@ -6,11 +6,15 @@ import {
 } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { getModelMaker } from "@app/types/assistant/models/providers";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
@@ -32,6 +36,10 @@ export type ConsumptionGroupLabel = {
   pictureUrl: string | null;
   // Only agents have one; null for every other dimension.
   scope: AgentConfigurationScope | null;
+  // Only models have one; null for every other dimension.
+  modelMaker: ModelMakerIdType | null;
+  // Only models have one; null for every other dimension.
+  tier: ModelsTierName | null;
 };
 
 function labelsFromNames(
@@ -40,7 +48,7 @@ function labelsFromNames(
   return new Map(
     [...names].map(([key, name]) => [
       key,
-      { name, pictureUrl: null, scope: null },
+      { name, pictureUrl: null, scope: null, modelMaker: null, tier: null },
     ])
   );
 }
@@ -66,6 +74,8 @@ export async function resolveConsumptionGroupLabels(
               name: label.name,
               pictureUrl: label.pictureUrl,
               scope: label.scope,
+              modelMaker: null,
+              tier: null,
             },
           ];
         })
@@ -84,21 +94,36 @@ export async function resolveConsumptionGroupLabels(
               name: getUserDisplayName(user),
               pictureUrl: user?.imageUrl ?? null,
               scope: null,
+              modelMaker: null,
+              tier: null,
             },
           ];
         })
       );
     }
 
-    case "model":
-      return labelsFromNames(
-        new Map(
-          groupKeys.map((key) => [
+    case "model": {
+      return new Map(
+        groupKeys.map((key) => {
+          const config = getModelConfigByModelId(key);
+          return [
             key,
-            getModelConfigByModelId(key)?.displayName ?? key,
-          ])
-        )
+            {
+              name: config?.displayName ?? key,
+              pictureUrl: null,
+              scope: null,
+              modelMaker: config ? getModelMaker(config) : null,
+              tier: config
+                ? ModelsTierResource.getTierForModel(
+                    config.modelId,
+                    config.defaultReasoningEffort
+                  )
+                : null,
+            },
+          ];
+        })
       );
+    }
 
     case "tool": {
       // The key is the MCP server name. Internal servers get their display name

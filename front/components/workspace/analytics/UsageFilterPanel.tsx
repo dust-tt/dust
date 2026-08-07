@@ -20,6 +20,7 @@ import {
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_FILTER_SCOPES,
   USAGE_MODEL_TIERS,
+  usageModelTierFromModelsTierName,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
@@ -30,8 +31,14 @@ import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analyti
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionRelevantGroups } from "@app/hooks/useConsumptionRelevantGroups";
-import type { ConsumptionAgentTopRow } from "@app/hooks/useConsumptionTop";
+import type {
+  ConsumptionAgentTopRow,
+  ConsumptionModelTopRow,
+} from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
+import { useModels } from "@app/lib/swr/models";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   BarChart05,
@@ -47,12 +54,12 @@ import { useMemo, useState } from "react";
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
-  // Models/tools/skills/sources are still mock data (see
-  // usageFilterMockData.ts — sources are fake connectors standing in for a
-  // real db call); agents, members and groups are fetched live below, scoped
-  // to `period` (useConsumptionTop, useConsumptionRelevantGroups).
+  // Tools/skills/sources are still mock data (see usageFilterMockData.ts —
+  // sources are fake connectors standing in for a real db call); agents,
+  // members, groups and models are fetched live below, scoped to `period`
+  // (useConsumptionTop, useConsumptionRelevantGroups) or, for the full model
+  // catalog backing "More models", to the workspace (useModels).
   categoryOptions: {
-    model: UsageFilterModelOption[];
     tool: UsageFilterToolOption[];
     skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
@@ -98,6 +105,7 @@ export function UsageFilterPanel({
 
   const isMemberCategoryActive = isOpen && activeCategory === "user";
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
+  const isModelCategoryActive = isOpen && activeCategory === "model";
 
   const { rows: topUserRows } = useConsumptionTop({
     workspaceId: owner.sId,
@@ -117,6 +125,24 @@ export function UsageFilterPanel({
     // top-N so the picker covers most of the period's active agents.
     limit: 100,
     disabled: !isAgentCategoryActive,
+  });
+
+  const { rows: topModelRows } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "model",
+    period,
+    // Same rationale as members/agents: broader than the Attribution table's
+    // own top-N so the picker covers most of the period's active models.
+    limit: 100,
+    disabled: !isModelCategoryActive,
+  });
+
+  // The full workspace catalog (not period-scoped), used only for the "More
+  // models" browse-by-maker escape hatch — a model the period's top-100
+  // missed is still reachable there.
+  const { models: modelCatalog } = useModels({
+    owner,
+    disabled: !isModelCategoryActive,
   });
 
   const { groups } = useConsumptionRelevantGroups({
@@ -157,6 +183,33 @@ export function UsageFilterPanel({
     [topAgentRows]
   );
 
+  // Same client-side search caveat as members/agents: a model outside the
+  // top 100 by credits over the period will not be searchable here (it's
+  // still reachable through "More models", which browses the full catalog).
+  // Rows whose model maker can't be resolved are dropped — they'd have no
+  // logo and no tier bucket to live in.
+  const modelOptions = useMemo<UsageFilterModelOption[]>(
+    () =>
+      topModelRows
+        .filter(
+          (row): row is ConsumptionModelTopRow => row.dimension === "model"
+        )
+        .flatMap((row) =>
+          row.modelMaker
+            ? [
+                {
+                  id: row.id,
+                  name: row.name,
+                  kind: "model" as const,
+                  lab: row.modelMaker,
+                  tier: usageModelTierFromModelsTierName(row.tier),
+                },
+              ]
+            : []
+        ),
+    [topModelRows]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -164,8 +217,9 @@ export function UsageFilterPanel({
       ...categoryOptions,
       user: memberOptions,
       agent: agentOptions,
+      model: modelOptions,
     }),
-    [categoryOptions, memberOptions, agentOptions]
+    [categoryOptions, memberOptions, agentOptions, modelOptions]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
@@ -198,6 +252,25 @@ export function UsageFilterPanel({
     activeCategory,
     selectedGroups,
   ]);
+
+  // "More models" browses the workspace's full model catalog grouped by
+  // maker, independent of the Fast/Standard/Complex quick filter above and of
+  // the period (unlike the primary checklist above it, sourced from
+  // `topModelRows`). Search/grouping over this catalog is handled inside
+  // UsageFilterModelComplexityControls itself.
+  const moreModelsCatalog = useMemo<UsageFilterModelOption[]>(
+    () =>
+      modelCatalog
+        .filter((model) => !isModelStreamId(model.modelId))
+        .map((model) => ({
+          id: model.modelId,
+          name: model.displayName,
+          kind: "model" as const,
+          lab: getModelMaker(model),
+          tier: undefined,
+        })),
+    [modelCatalog]
+  );
 
   const selectedIdsForActiveCategory = useMemo(
     () =>
@@ -307,7 +380,7 @@ export function UsageFilterPanel({
             )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
-                models={categoryOptions.model}
+                moreModelsCatalog={moreModelsCatalog}
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}
