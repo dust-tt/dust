@@ -16,8 +16,7 @@ import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/
  * A regular tool document includes the cost of emitting its call, carrying its result into model
  * context, and its direct charge. Current attribution records a tool called through Computer with
  * only its direct charge because the parent Computer action owns the model-visible call and result
- * footprint. A tool is linked to every skill that exposes it without splitting its credits across
- * those skills.
+ * footprint.
  *
  * LLM documents receive the remaining model cost. Together, all credit_micro values reconcile to
  * the authoritative message charge.
@@ -47,8 +46,9 @@ export function buildAgentMessageConsumptionAnalyticsDocuments(
     0
   );
 
-  // This is the final safety check before indexing: every per-usage/action
-  // document must reconcile exactly to the authoritative message charge.
+  // This is the final safety check before indexing: every per-usage/action document must reconcile
+  // exactly to the authoritative message charge.
+  // TODO(2026-08-07 OBSERVABILITY): Replace with an assert once done implementing.
   const billedCreditMicro = roundCreditsToMicroCredits(input.billedCredits);
   if (indexedCreditMicro !== billedCreditMicro) {
     logger.warn(

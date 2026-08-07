@@ -38,6 +38,8 @@ function skillIdsAttributedToAction(
   action: AgentMCPActionResource,
   enabledSkillIds: string[]
 ): string[] {
+  // Attribute every skill that exposes the tool and any skill enabled by the action.
+  // The tool document keeps its full credit amount instead of splitting it across these skills.
   return [
     ...new Set([
       ...skills
@@ -74,8 +76,8 @@ function summarizeToolConsumptionItem({
     "Tool credit is smaller than its direct charge"
   );
 
-  // TODO(2026-08-07 flav): Populate this split once it is persisted with the attribution.
-  // Repricing stored tokens here would make historical analytics depend on current model pricing.
+  // TODO(2026-08-07 OBSERVABILITY): We currently exclusively store the direct charge credits and
+  // gross credits but we don't have credit consumption just for the result footprint.
   return {
     credit_micro: attributedCreditMicro,
     gross_credit_micro: {
