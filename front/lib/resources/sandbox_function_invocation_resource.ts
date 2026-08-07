@@ -19,7 +19,6 @@ import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { parseStdoutResultEnvelope } from "@app/lib/api/sandbox_functions/result_delivery";
-import { parseResultEnvelopeTimings } from "@app/lib/api/sandbox_functions/result_envelope";
 import {
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
@@ -680,6 +679,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         user: "agent-proxied",
       });
       if (execResult.isErr()) {
+        // Exec-level failures (timeouts included) must land in the same metric as served runs,
+        // or the duration distribution silently drops the slowest attempts.
+        recordSandboxFunctionRun({
+          runnerKind: "unknown",
+          status: "error",
+          durationMs: Date.now() - execStartedAtMs,
+        });
         if (inline) {
           // An inline exec that fails is usually one that ran past its ceiling, but nothing in the
           // provider result says so: the timeout is handed to the sandbox provider and comes back
@@ -716,10 +722,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         );
         // Persist from the envelope even on non-zero exit: dsbx may still have
         // written a well-formed invocation_failed envelope the worker should keep.
-        const normalized = parseStdoutResultEnvelope(stdout);
-        const timings = parseResultEnvelopeTimings(stdout);
+        const { outcome: normalized, timings } =
+          parseStdoutResultEnvelope(stdout);
         recordSandboxFunctionRun({
           runnerKind: timings?.runnerKind ?? "unknown",
+          status: normalized.ok ? "success" : "error",
           durationMs: Date.now() - execStartedAtMs,
         });
         if (!normalized.ok || exitCode !== 0) {

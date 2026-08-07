@@ -1,7 +1,6 @@
 import logger from "@app/logger/logger";
 import type { SandboxFunctionCallError } from "@app/types/api/sandbox_functions";
 import { SANDBOX_FUNCTION_RUNNER_ERROR_CODES } from "@app/types/api/sandbox_functions";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import { z } from "zod";
 
@@ -88,36 +87,22 @@ const ProtocolVersionProbeSchema = z.object({
 });
 
 // Lenient by design: timings are diagnostics from whatever dsbx version runs in the sandbox, and
-// absence or new shapes must never affect result handling.
+// absence or new shapes must never affect result handling. Only the consumed field is modeled.
 const ResultTimingsSchema = z.object({
-  total: z.number().optional(),
-  runner: z.number().optional(),
   runnerKind: z.enum(["warm", "cold"]).optional(),
 });
 
 export type SandboxFunctionResultTimings = z.infer<typeof ResultTimingsSchema>;
 
 /**
- * Extract the timings block from a stdout result envelope, if any. Purely observational: used to
- * tag latency metrics with the runner kind (warm server vs cold spawn); never affects the outcome.
+ * Extract the timings block from an already-parsed stdout envelope value. Purely observational:
+ * used to tag latency metrics with the runner kind (warm server vs cold spawn); never affects the
+ * outcome, and never throws.
  */
-export function parseResultEnvelopeTimings(
-  stdout: string
+export function extractResultEnvelopeTimings(
+  parsedEnvelope: unknown
 ): SandboxFunctionResultTimings | null {
-  const lastLine =
-    stdout
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .at(-1) ?? "";
-  if (lastLine.length === 0) {
-    return null;
-  }
-  const json = safeParseJSON(lastLine);
-  if (json.isErr()) {
-    return null;
-  }
-  const envelope = ResultEnvelopeV3Schema.safeParse(json.value);
+  const envelope = ResultEnvelopeV3Schema.safeParse(parsedEnvelope);
   if (!envelope.success) {
     return null;
   }
@@ -245,7 +230,7 @@ export function normalizeSandboxFunctionResult(
       });
     }
 
-    // timingsMs is accepted on the wire for forward compatibility but not consumed yet.
+    // timingsMs is not consumed here: extractResultEnvelopeTimings reads it for metrics.
     return normalizeRunnerOutcome(v3.data.outcome);
   }
 
