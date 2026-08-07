@@ -14,6 +14,8 @@ interface WithSpaceOptions {
   requireCanReadOrAdministrate?: boolean;
   requireCanRead?: boolean;
   requireCanWrite?: boolean;
+  // Pods are project spaces — pod-scoped surfaces 404 on any other kind.
+  requireProject?: boolean;
   routeParam?: "spaceId" | "podId";
 }
 
@@ -73,13 +75,16 @@ export function withSpace(options: WithSpaceOptions) {
     if (
       !space ||
       space.isConversations() ||
+      (options.requireProject && !space.isProject()) ||
       !hasPermission(auth, space, options)
     ) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "space_not_found",
-          message: "The space you requested was not found.",
+          message: options.requireProject
+            ? "The pod you requested was not found."
+            : "The space you requested was not found.",
         },
       });
     }
