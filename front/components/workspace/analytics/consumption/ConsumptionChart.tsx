@@ -6,6 +6,7 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionTimeseriesGroup,
   ConsumptionTimeseriesPoint,
@@ -116,12 +117,14 @@ interface ConsumptionChartProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   dimension: ConsumptionDimension;
+  filter?: ConsumptionScopeFilter;
 }
 
 export function ConsumptionChart({
   workspaceId,
   period,
   dimension,
+  filter,
 }: ConsumptionChartProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
@@ -129,6 +132,7 @@ export function ConsumptionChart({
       period,
       mode: "daily",
       breakdownBy: dimension,
+      filter,
     });
 
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);

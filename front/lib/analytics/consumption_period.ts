@@ -1,3 +1,5 @@
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+
 export const CONSUMPTION_PERIOD_DAY_OPTIONS = [7, 30, 90] as const;
 
 export type ConsumptionPeriodDays =
@@ -57,11 +59,15 @@ export function consumptionPeriodFromKey(
  * the window would show numbers that do not add up.
  */
 export function consumptionQueryString(
-  selection: ConsumptionPeriodSelection
+  selection: ConsumptionPeriodSelection,
+  filter?: ConsumptionScopeFilter
 ): string {
   const params = new URLSearchParams({ period: selection.kind });
   if (selection.kind === "days") {
     params.set("days", String(selection.days));
+  }
+  if (filter && Object.keys(filter).length > 0) {
+    params.set("filter", JSON.stringify(filter));
   }
   return params.toString();
 }

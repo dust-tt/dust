@@ -1,3 +1,4 @@
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
@@ -153,4 +154,13 @@ export function removeUsageFilterGroup(
   id: string
 ): UsageFilterGroup[] {
   return groups.filter((g) => g.id !== id);
+}
+
+// Only "member" is wired to a real consumption scope dimension ("user") so
+// far; the other categories stay mock data and are not sent as query filters.
+export function toConsumptionScopeFilter(
+  filter: UsageFilter
+): ConsumptionScopeFilter {
+  const memberIds = filter.member?.map((entity) => entity.id);
+  return memberIds && memberIds.length > 0 ? { user: memberIds } : {};
 }
