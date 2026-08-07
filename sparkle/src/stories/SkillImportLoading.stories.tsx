@@ -1,7 +1,7 @@
-import { Button } from "@dust-tt/sparkle";
 import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
 
-import { SkillImportLoading } from "./SkillImportLoading";
+import { Button, SkillImportLoading } from "../index_with_tw_base";
 
 const meta = {
   title: "Product/Skills/SkillImportLoading",
@@ -22,7 +22,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const InImportButton: Story = {
-  render: () => (
+  render: (): React.ReactElement => (
     <Button
       className="w-20"
       icon={<SkillImportLoading />}

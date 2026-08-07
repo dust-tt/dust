@@ -8,7 +8,6 @@ import {
 } from "@app/components/skills/import/formSchema";
 import { ImportFromFilesTab } from "@app/components/skills/import/ImportFromFilesTab";
 import { ImportFromRepositoryTab } from "@app/components/skills/import/ImportFromRepositoryTab";
-import { SkillImportLoading } from "@app/components/skills/import/SkillImportLoading";
 import { useImportSkills } from "@app/lib/swr/skill_configurations";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -21,6 +20,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  SkillImportLoading,
   Tabs,
   TabsContent,
   TabsList,
