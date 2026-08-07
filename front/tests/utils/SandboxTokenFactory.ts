@@ -2,6 +2,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   generateSandboxExecToken,
   generateSandboxFunctionInvocationToken,
+  generateSandboxPollerToken,
 } from "@app/lib/api/sandbox/access_tokens";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -166,6 +167,19 @@ export async function createSandboxFunctionInvocationTokenTestContext({
     },
     invocationId: `test-invocation-${context.sandbox.sId}`,
     execId: `test-function-exec-${context.sandbox.sId}`,
+  });
+
+  return {
+    ...context,
+    token,
+  };
+}
+
+// The pod's poller principal: authenticates the sandbox's work channel, and names no invocation.
+export async function createSandboxPollerTokenTestContext() {
+  const context = await createSandboxTokenTestContext();
+  const token = await generateSandboxPollerToken(context.auth, {
+    sandbox: context.sandbox,
   });
 
   return {

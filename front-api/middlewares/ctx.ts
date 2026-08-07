@@ -5,6 +5,7 @@ import type { PokeRole } from "@app/lib/poke/roles";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createHono } from "@front-api/lib/hono";
@@ -52,6 +53,9 @@ export type SandboxCtx = {
   Variables: {
     auth: Authenticator;
     sandboxClaims: SandboxTokenPayload;
+    // Only set for poller tokens, whose verification has to resolve the sandbox anyway to check
+    // the token still matches it. Every other sandbox route reads undefined here.
+    sandbox?: SandboxResource;
   };
 };
 

@@ -8,6 +8,7 @@ import type {
 import {
   isSandboxExecTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
+  isSandboxPollerTokenPayload,
   SANDBOX_TOKEN_PREFIX,
 } from "@app/lib/api/sandbox/access_tokens";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
@@ -553,7 +554,17 @@ export class Authenticator {
     let baseGroupModelIds: ModelId[];
     let subscription: SubscriptionResource | null;
 
-    if (user) {
+    if (isSandboxPollerTokenPayload(claims)) {
+      // The poller is a pod process, not a member of the workspace: it receives work for one
+      // sandbox and claims it, and needs no standing to do either. Giving it the "user" floor the
+      // userless workload branch uses would leave anything role-gated but not group-gated open to
+      // it, so it gets no role and no groups at all.
+      role = "none";
+      baseGroupModelIds = [];
+      subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+        workspace.id
+      );
+    } else if (user) {
       const authData = await this.fetchRoleGroupsAndSubscription({
         user,
         workspace,
@@ -623,6 +634,12 @@ export class Authenticator {
         return new Err(groupModelIdsRes.error);
       }
       groupModelIdSets.push(groupModelIdsRes.value);
+    }
+    // The poller is not a workload: it runs no function code, names no space, and reads nothing
+    // space-scoped, so it gets the workspace and no groups at all. Handled explicitly rather than
+    // left to fall through, since the branch below exists to reject token shapes nobody scoped.
+    if (isSandboxPollerTokenPayload(claims)) {
+      groupModelIdSets.push([]);
     }
     if (groupModelIdSets.length === 0) {
       return new Err({

@@ -1,6 +1,7 @@
 import { sandboxApp } from "@front-api/middlewares/ctx";
 
 import actions from "./actions";
+import poller from "./poller";
 import sandboxFunctions from "./sandbox-functions";
 
 // Mounted at /api/v1/w/:wId/sandbox. This sub-tree is mounted before
@@ -10,6 +11,7 @@ import sandboxFunctions from "./sandbox-functions";
 const app = sandboxApp();
 
 app.route("/actions", actions);
+app.route("/poller", poller);
 app.route("/sandbox-functions", sandboxFunctions);
 
 export default app;

@@ -2,6 +2,7 @@ import type { SandboxTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import {
   isSandboxExecTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
+  isSandboxPollerTokenPayload,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
 import {
@@ -9,6 +10,7 @@ import {
   getAuthTokenKind,
   getFeatureFlags,
 } from "@app/lib/auth";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { SandboxCtx } from "@front-api/middlewares/ctx";
@@ -17,7 +19,7 @@ import { createMiddleware } from "hono/factory";
 
 import { apiError } from "./utils";
 
-type SandboxTokenKind = "action" | "function_invocation";
+type SandboxTokenKind = "action" | "function_invocation" | "poller";
 type SandboxAuthOptions = {
   allowedTokenKinds: SandboxTokenKind[];
 };
@@ -30,6 +32,9 @@ function getSandboxTokenKind(
   }
   if (isSandboxFunctionInvocationTokenPayload(claims)) {
     return "function_invocation";
+  }
+  if (isSandboxPollerTokenPayload(claims)) {
+    return "poller";
   }
   return null;
 }
@@ -124,6 +129,25 @@ export function sandboxAuth({
           },
         });
       }
+    }
+
+    // A poller token is bound to the sandbox incarnation it was minted for. Destroying a sandbox
+    // revokes its tokens, but only on a fire-and-forget path, so this is what actually stops a
+    // token that outlived its sandbox from authenticating against the one that replaced it.
+    if (isSandboxPollerTokenPayload(claims)) {
+      const sandbox = await SandboxResource.fetchById(auth, claims.sbId);
+      if (!sandbox || sandbox.providerId !== claims.providerId) {
+        return apiError(ctx, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_sandbox_token_error",
+            message: "The sandbox token no longer matches its sandbox.",
+          },
+        });
+      }
+      // Handed to the route rather than looked up again: this fetch already proved the sandbox
+      // exists and matches the token.
+      ctx.set("sandbox", sandbox);
     }
 
     const ip = getClientIp({ headers: readHeaders(ctx) });

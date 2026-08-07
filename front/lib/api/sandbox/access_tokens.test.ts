@@ -1,8 +1,10 @@
 import {
   generateSandboxExecToken,
   generateSandboxFunctionInvocationToken,
+  generateSandboxPollerToken,
   isSandboxExecTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
+  isSandboxPollerTokenPayload,
   SANDBOX_TOKEN_PREFIX,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -237,6 +239,172 @@ describe("sandbox access tokens", () => {
     expect(payload.spaceId).toBe(pod.sId);
     expect(payload.sandboxFunctionId).toBe("sfn_test");
     expect(payload.invocationId).toBe("test-invocation-id");
+  });
+
+  it("round-trip: generate poller token → verify → check claims", async () => {
+    const { auth, sandbox } = await setupTest();
+
+    const token = await generateSandboxPollerToken(auth, { sandbox });
+
+    expect(token.startsWith(SANDBOX_TOKEN_PREFIX)).toBe(true);
+
+    const payload = await verifySandboxExecToken(token);
+
+    expect(payload).not.toBeNull();
+    if (!payload || !isSandboxPollerTokenPayload(payload)) {
+      throw new Error("Expected a poller token payload.");
+    }
+    expect(payload.wId).toBe(auth.getNonNullableWorkspace().sId);
+    expect(payload.sbId).toBe(sandbox.sId);
+    expect(payload.providerId).toBe(sandbox.providerId);
+  });
+
+  it("a poller token is not an action or invocation token", async () => {
+    const { auth, sandbox } = await setupTest();
+
+    const payload = await verifySandboxExecToken(
+      await generateSandboxPollerToken(auth, { sandbox })
+    );
+
+    expect(payload).not.toBeNull();
+    if (!payload) {
+      throw new Error("Expected a poller token payload.");
+    }
+    // What keeps the poller's routes out of reach of a workload token, and the workload's routes
+    // out of reach of the poller's, is that no token satisfies two of these at once.
+    expect(isSandboxPollerTokenPayload(payload)).toBe(true);
+    expect(isSandboxExecTokenPayload(payload)).toBe(false);
+    expect(isSandboxFunctionInvocationTokenPayload(payload)).toBe(false);
+  });
+
+  it("an invocation token is not a poller token", async () => {
+    const { auth, sandbox } = await setupTest();
+    const pod = await SpaceFactory.project(auth.getNonNullableWorkspace());
+
+    const payload = await verifySandboxExecToken(
+      await generateSandboxFunctionInvocationToken(auth, {
+        noTools: false,
+        sandbox,
+        sandboxFunction: { sId: "sfn_test", space: { sId: pod.sId } },
+        invocationId: "test-invocation-id",
+        execId: "test-exec-id",
+      })
+    );
+
+    expect(payload).not.toBeNull();
+    if (!payload) {
+      throw new Error("Expected an invocation token payload.");
+    }
+    expect(isSandboxPollerTokenPayload(payload)).toBe(false);
+  });
+
+  it("rejects a token that claims to be both a poller and an invocation", async () => {
+    const { auth, sandbox } = await setupTest();
+    const pod = await SpaceFactory.project(auth.getNonNullableWorkspace());
+
+    // A forged payload: signed with the real secret, but mixing the poller's claims into a
+    // workload token to reach the poller's routes.
+    const forged = jwt.sign(
+      {
+        wId: auth.getNonNullableWorkspace().sId,
+        sbId: sandbox.sId,
+        execId: "test-exec-id",
+        spaceId: pod.sId,
+        sandboxFunctionId: "sfn_test",
+        invocationId: "test-invocation-id",
+        purpose: "sandbox_function_poller",
+        providerId: sandbox.providerId,
+      },
+      TEST_SECRET,
+      { algorithm: "HS256", expiresIn: 120 }
+    );
+
+    expect(
+      await verifySandboxExecToken(`${SANDBOX_TOKEN_PREFIX}${forged}`)
+    ).toBeNull();
+  });
+
+  it("rejects a poller token naming a user", async () => {
+    const { auth, sandbox } = await setupTest();
+
+    // The authenticator resolves `uId` and adopts that user's role, so a poller token naming an
+    // admin would authenticate as one. The poller is a pod process and must not speak for a
+    // person.
+    const forged = jwt.sign(
+      {
+        wId: auth.getNonNullableWorkspace().sId,
+        sbId: sandbox.sId,
+        execId: "test-exec-id",
+        purpose: "sandbox_function_poller",
+        providerId: sandbox.providerId,
+        uId: auth.getNonNullableUser().sId,
+      },
+      TEST_SECRET,
+      { algorithm: "HS256", expiresIn: 120 }
+    );
+
+    expect(
+      await verifySandboxExecToken(`${SANDBOX_TOKEN_PREFIX}${forged}`)
+    ).toBeNull();
+  });
+
+  it("rejects a poller token that grants itself tools", async () => {
+    const { auth, sandbox } = await setupTest();
+
+    const forged = jwt.sign(
+      {
+        wId: auth.getNonNullableWorkspace().sId,
+        sbId: sandbox.sId,
+        execId: "test-exec-id",
+        purpose: "sandbox_function_poller",
+        providerId: sandbox.providerId,
+        cId: "conv_test",
+      },
+      TEST_SECRET,
+      { algorithm: "HS256", expiresIn: 120 }
+    );
+
+    expect(
+      await verifySandboxExecToken(`${SANDBOX_TOKEN_PREFIX}${forged}`)
+    ).toBeNull();
+  });
+
+  it("revokes the superseded token when rotating", async () => {
+    const { auth, sandbox } = await setupTest();
+
+    const first = await generateSandboxPollerToken(auth, { sandbox });
+    const firstPayload = await verifySandboxExecToken(first);
+    expect(firstPayload).not.toBeNull();
+    if (!firstPayload) {
+      throw new Error("Expected a poller token payload.");
+    }
+
+    const second = await generateSandboxPollerToken(auth, {
+      sandbox,
+      supersedes: firstPayload,
+    });
+
+    expect(await verifySandboxExecToken(second)).not.toBeNull();
+    expect(await verifySandboxExecToken(first)).toBeNull();
+  });
+
+  it("rejects a poller token that omits its sandbox binding", async () => {
+    const { auth, sandbox } = await setupTest();
+
+    const forged = jwt.sign(
+      {
+        wId: auth.getNonNullableWorkspace().sId,
+        sbId: sandbox.sId,
+        execId: "test-exec-id",
+        purpose: "sandbox_function_poller",
+      },
+      TEST_SECRET,
+      { algorithm: "HS256", expiresIn: 120 }
+    );
+
+    expect(
+      await verifySandboxExecToken(`${SANDBOX_TOKEN_PREFIX}${forged}`)
+    ).toBeNull();
   });
 
   it("tampered token is rejected", async () => {

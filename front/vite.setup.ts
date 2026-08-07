@@ -74,10 +74,34 @@ function createStatefulMockRedisClient() {
       }
       return entry.value;
     }),
-    set: vi.fn(async (key: string, value: string, opts?: { EX?: number }) => {
-      const expiresAtMs = opts?.EX ? Date.now() + opts.EX * 1000 : 0;
-      redisStore.set(key, { value, expiresAtMs });
-    }),
+    set: vi.fn(
+      async (
+        key: string,
+        value: string,
+        opts?: { EX?: number; PX?: number; NX?: boolean }
+      ) => {
+        const existing = redisStore.get(key);
+        const isLive =
+          existing !== undefined &&
+          (existing.expiresAtMs === 0 || Date.now() <= existing.expiresAtMs);
+        // NX is what makes SET usable as a lock, so it has to be modelled rather than ignored:
+        // silently overwriting would make every contender believe it won.
+        if (opts?.NX && isLive) {
+          return null;
+        }
+        // Compared against undefined rather than truthiness: real Redis rejects a zero expiry
+        // outright, so treating it as "no expiry" would turn a computed-zero TTL into a key that
+        // lives forever under test and an error in production.
+        const expiresAtMs =
+          opts?.EX !== undefined
+            ? Date.now() + opts.EX * 1000
+            : opts?.PX !== undefined
+              ? Date.now() + opts.PX
+              : 0;
+        redisStore.set(key, { value, expiresAtMs });
+        return "OK";
+      }
+    ),
     del: vi.fn(async (key: string) => {
       redisStore.delete(key);
       redisHashStore.delete(key);
@@ -104,7 +128,35 @@ function createStatefulMockRedisClient() {
     subscribe: vi.fn().mockResolvedValue(undefined),
     unsubscribe: vi.fn().mockResolvedValue(undefined),
     ping: vi.fn().mockResolvedValue("PONG"),
-    eval: vi.fn().mockResolvedValue(1),
+    // Only the compare-and-delete script is modelled, which is the one the codebase actually runs
+    // (`distributedUnlock`, and the poller channel's presence release). A blanket stub would make
+    // every lock acquirable but never releasable now that `set` honours NX, which surfaces as a
+    // test that stalls until its timeout rather than one that fails.
+    eval: vi.fn(
+      async (
+        script: string,
+        options?: { keys?: string[]; arguments?: string[] }
+      ) => {
+        const key = options?.keys?.[0];
+        const expected = options?.arguments?.[0];
+        if (
+          !script.includes('redis.call("get", KEYS[1]) == ARGV[1]') ||
+          key === undefined ||
+          expected === undefined
+        ) {
+          return 1;
+        }
+        const entry = redisStore.get(key);
+        const isLive =
+          entry !== undefined &&
+          (entry.expiresAtMs === 0 || Date.now() <= entry.expiresAtMs);
+        if (!isLive || entry?.value !== expected) {
+          return 0;
+        }
+        redisStore.delete(key);
+        return 1;
+      }
+    ),
     exists: vi.fn(async (key: string) => {
       const entry = redisStore.get(key);
       if (!entry) {
