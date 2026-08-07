@@ -112,7 +112,7 @@ export const userMemorySkill = {
     "user's preferences, facts, and context across conversations.",
   instructions: USER_MEMORY_INSTRUCTIONS,
   mcpServers: [{ name: USER_MEMORY_SERVER_NAME }],
-  version: 1,
+  version: 2,
   icon: "ActionLightbulbIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
