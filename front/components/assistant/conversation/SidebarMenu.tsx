@@ -1099,6 +1099,7 @@ export function AgentSidebarMenu({
                     "manage_agents",
                     () => setSidebarOpen(false)
                   )}
+                  keepHoverOnMoreMenu
                   moreMenu={
                     canCreateAgent ? (
                       <div
@@ -1189,6 +1190,7 @@ export function AgentSidebarMenu({
                     "manage_skills",
                     () => setSidebarOpen(false)
                   )}
+                  keepHoverOnMoreMenu
                   moreMenu={
                     canCreateSkill ? (
                       <div
