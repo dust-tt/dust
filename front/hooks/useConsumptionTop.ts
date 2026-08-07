@@ -1,9 +1,5 @@
-// Type-only: importing a value from these modules would pull the Elasticsearch
-// client into the browser bundle (see the note in `series.ts`).
-import {
-  type ConsumptionPeriodSelection,
-  consumptionQueryString,
-} from "@app/lib/analytics/consumption_period";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
