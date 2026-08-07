@@ -259,9 +259,20 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     webhookSourceViewId: ModelId
   ) {
+    return this.listByWebhookSourceViewIds(auth, [webhookSourceViewId]);
+  }
+
+  static async listByWebhookSourceViewIds(
+    auth: Authenticator,
+    webhookSourceViewIds: ModelId[]
+  ) {
+    if (webhookSourceViewIds.length === 0) {
+      return [];
+    }
+
     return this.baseFetch(auth, {
       where: {
-        webhookSourceViewId,
+        webhookSourceViewId: { [Op.in]: webhookSourceViewIds },
         kind: "webhook",
       },
     });
@@ -415,77 +426,115 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
   ): Promise<Result<undefined, Error>> {
+    return TriggerResource.deleteMany(auth, [this], { transaction });
+  }
+
+  static async deleteMany(
+    auth: Authenticator,
+    triggers: TriggerResource[],
+    { transaction }: { transaction?: Transaction | undefined } = {}
+  ): Promise<Result<undefined, Error>> {
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
     const owner = auth.getNonNullableWorkspace();
 
-    const r = await this.removeTemporalWorkflow(auth);
-    if (r.isErr()) {
-      return r;
+    for (const trigger of triggers) {
+      const r = await trigger.removeTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
     }
 
     try {
-      if (this.kind === "webhook" && this.webhookSourceViewId) {
-        const webhookSourceView = await WebhookSourcesViewModel.findOne({
+      const webhookSourceViewIds = [
+        ...new Set(
+          triggers.flatMap((trigger) =>
+            trigger.kind === "webhook" && trigger.webhookSourceViewId
+              ? [trigger.webhookSourceViewId]
+              : []
+          )
+        ),
+      ];
+
+      if (webhookSourceViewIds.length > 0) {
+        const webhookSourceViews = await WebhookSourcesViewModel.findAll({
+          attributes: ["id", "webhookSourceId"],
           where: {
-            id: this.webhookSourceViewId,
+            id: { [Op.in]: webhookSourceViewIds },
             workspaceId: owner.id,
           },
+          transaction,
         });
 
-        if (!webhookSourceView) {
+        if (webhookSourceViews.length !== webhookSourceViewIds.length) {
           return new Err(new Error("Webhook source view not found"));
         }
 
         const webhookRequests = await WebhookRequestModel.findAll({
+          attributes: ["id"],
           where: {
             workspaceId: owner.id,
-            webhookSourceId: webhookSourceView.webhookSourceId,
-          },
-        });
-
-        await WebhookRequestTriggerModel.destroy({
-          where: {
-            workspaceId: owner.id,
-            webhookRequestId: {
-              [Op.in]: webhookRequests.map((w) => w.id),
+            webhookSourceId: {
+              [Op.in]: webhookSourceViews.map((view) => view.webhookSourceId),
             },
           },
+          transaction,
         });
-        await WebhookRequestModel.destroy({
-          where: {
-            workspaceId: owner.id,
-            id: { [Op.in]: webhookRequests.map((w) => w.id) },
-          },
-        });
+
+        if (webhookRequests.length > 0) {
+          const webhookRequestIds = webhookRequests.map(
+            (request) => request.id
+          );
+          await WebhookRequestTriggerModel.destroy({
+            where: {
+              workspaceId: owner.id,
+              webhookRequestId: { [Op.in]: webhookRequestIds },
+            },
+            transaction,
+          });
+          await WebhookRequestModel.destroy({
+            where: {
+              workspaceId: owner.id,
+              id: { [Op.in]: webhookRequestIds },
+            },
+            transaction,
+          });
+        }
       }
 
+      const triggerIds = triggers.map((trigger) => trigger.id);
       await ActivationNudgeModel.destroy({
-        where: { triggerId: this.id, workspaceId: owner.id },
+        where: { triggerId: { [Op.in]: triggerIds }, workspaceId: owner.id },
         transaction,
       });
 
       await TriggerModel.destroy({
         where: {
-          id: this.id,
+          id: { [Op.in]: triggerIds },
           workspaceId: owner.id,
         },
         transaction,
       });
 
-      void emitAuditLogEvent({
-        auth,
-        action: "trigger.deleted",
-        targets: [
-          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-          buildAuditLogTarget("trigger", {
-            sId: this.sId,
-            name: this.name,
-          }),
-        ],
-        metadata: {
-          trigger_type: this.kind,
-          agent_id: this.agentConfigurationId,
-        },
-      });
+      for (const trigger of triggers) {
+        void emitAuditLogEvent({
+          auth,
+          action: "trigger.deleted",
+          targets: [
+            buildAuditLogTarget("workspace", owner),
+            buildAuditLogTarget("trigger", {
+              sId: trigger.sId,
+              name: trigger.name,
+            }),
+          ],
+          metadata: {
+            trigger_type: trigger.kind,
+            agent_id: trigger.agentConfigurationId,
+          },
+        });
+      }
 
       return new Ok(undefined);
     } catch (error) {
