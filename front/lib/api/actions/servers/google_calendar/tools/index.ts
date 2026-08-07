@@ -13,13 +13,41 @@ import {
   isGoogleCalendarEvent,
   mergeIntervals,
 } from "@app/lib/api/actions/servers/google_calendar/helpers";
+import type { GoogleCalendarConference } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import { randomUUID } from "crypto";
-import { google } from "googleapis";
+import { type calendar_v3, google } from "googleapis";
 import { DateTime, Interval } from "luxon";
+
+function buildConferenceData(
+  conference: GoogleCalendarConference
+): calendar_v3.Schema$ConferenceData | undefined {
+  switch (conference.type) {
+    case "google_meet":
+      return {
+        createRequest: {
+          requestId: `conference-${randomUUID()}`,
+          conferenceSolutionKey: { type: "hangoutsMeet" },
+        },
+      };
+    case "custom":
+      return {
+        conferenceSolution: {
+          key: { type: "addOn" },
+          name: conference.name,
+        },
+        entryPoints: conference.entryPoints,
+      };
+    case "none":
+      return undefined;
+    default:
+      return assertNever(conference);
+  }
+}
 
 const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
   list_calendars: async ({ pageToken, maxResults }, { authInfo }) => {
@@ -135,8 +163,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       attendees,
       location,
       colorId,
-      createConference = true,
-      conferenceData,
+      conference,
       transparency,
       visibility,
       reminders,
@@ -153,17 +180,10 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
 
     try {
       const conferenceDataRequest =
-        conferenceData ??
-        (createConference &&
-        eventType !== "focusTime" &&
-        eventType !== "outOfOffice"
-          ? {
-              createRequest: {
-                requestId: `conference-${randomUUID()}`,
-                conferenceSolutionKey: { type: "hangoutsMeet" },
-              },
-            }
-          : undefined);
+        conference.type === "google_meet" &&
+        (eventType === "focusTime" || eventType === "outOfOffice")
+          ? undefined
+          : buildConferenceData(conference);
 
       const res = await calendar.events.insert({
         calendarId,
@@ -234,8 +254,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       attendees,
       location,
       colorId,
-      createConference,
-      conferenceData,
+      conference,
       transparency,
       visibility,
       reminders,
@@ -250,16 +269,9 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     );
 
     try {
-      const conferenceDataRequest =
-        conferenceData ??
-        (createConference
-          ? {
-              createRequest: {
-                requestId: `conference-${randomUUID()}`,
-                conferenceSolutionKey: { type: "hangoutsMeet" },
-              },
-            }
-          : undefined);
+      const conferenceDataRequest = conference
+        ? buildConferenceData(conference)
+        : undefined;
 
       const res = await calendar.events.patch({
         calendarId,

@@ -1,41 +1,60 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
-const conferenceDataSchema = z.object({
-  conferenceSolution: z.object({
-    key: z.object({
-      type: z
-        .enum(["eventHangout", "eventNamedHangout", "hangoutsMeet", "addOn"])
+const conferenceEntryPointsSchema = z
+  .array(
+    z.object({
+      entryPointType: z
+        .enum(["video", "phone", "sip", "more"])
+        .describe("How attendees join the conference."),
+      uri: z
+        .string()
+        .max(1300)
         .describe(
-          "The conference solution type. Use 'addOn' for a third-party conference provider."
+          "The entry point URI. Use http(s): for video/more, tel: for phone, or sip: for SIP."
         ),
-    }),
-    name: z.string().describe("The user-visible conference solution name."),
-  }),
-  entryPoints: z
-    .array(
-      z.object({
-        entryPointType: z
-          .enum(["video", "phone", "sip", "more"])
-          .describe("How attendees join the conference."),
-        uri: z
-          .string()
-          .max(1300)
-          .describe(
-            "The entry point URI. Use http(s): for video/more, tel: for phone, or sip: for SIP."
-          ),
-        label: z
-          .string()
-          .max(512)
-          .optional()
-          .describe("The user-visible label for the entry point."),
-      })
-    )
-    .min(1)
-    .describe(
-      "Ways to join the conference. All must belong to the same conference."
-    ),
+      label: z
+        .string()
+        .max(512)
+        .optional()
+        .describe("The user-visible label for the entry point."),
+    })
+  )
+  .min(1)
+  .describe(
+    "Ways to join the conference. All must belong to the same conference."
+  );
+
+const googleMeetConferenceSchema = z.object({
+  type: z
+    .literal("google_meet")
+    .describe("Create a new Google Meet conference."),
 });
+
+const customConferenceSchema = z.object({
+  type: z.literal("custom").describe("Use a custom or third-party conference."),
+  name: z.string().describe("The user-visible conference solution name."),
+  entryPoints: conferenceEntryPointsSchema,
+});
+
+const noConferenceSchema = z.object({
+  type: z.literal("none").describe("Create the event without a conference."),
+});
+
+const createEventConferenceSchema = z.discriminatedUnion("type", [
+  googleMeetConferenceSchema,
+  customConferenceSchema,
+  noConferenceSchema,
+]);
+
+const updateEventConferenceSchema = z.discriminatedUnion("type", [
+  googleMeetConferenceSchema,
+  customConferenceSchema,
+]);
+
+export type GoogleCalendarConference = z.infer<
+  typeof createEventConferenceSchema
+>;
 
 const sharedEventFields = {
   transparency: z
@@ -176,16 +195,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
-      createConference: z
-        .boolean()
-        .default(true)
+      conference: createEventConferenceSchema
+        .default({ type: "google_meet" })
         .describe(
-          "Whether to create a Google Meet conference. Defaults to true. Ignored when conferenceData is provided."
-        ),
-      conferenceData: conferenceDataSchema
-        .optional()
-        .describe(
-          "Google Calendar conference solution and meeting entry points. Use for phone, SIP, video, or third-party conferencing. Takes precedence over createConference."
+          "Conference setup. Defaults to a new Google Meet conference. Use 'custom' for phone, SIP, video, or third-party conferencing, or 'none' to create the event without a conference."
         ),
       eventType: z
         .enum(["default", "focusTime", "outOfOffice"])
@@ -234,16 +247,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
-      createConference: z
-        .boolean()
+      conference: updateEventConferenceSchema
         .optional()
         .describe(
-          "Whether to create a Google Meet conference. If not provided, existing conference settings are preserved. Ignored when conferenceData is provided."
-        ),
-      conferenceData: conferenceDataSchema
-        .optional()
-        .describe(
-          "Google Calendar conference solution and meeting entry points. Use for phone, SIP, video, or third-party conferencing. Takes precedence over createConference."
+          "Conference setup. Use 'google_meet' to create a new Google Meet conference or 'custom' for phone, SIP, video, or third-party conferencing. Omit to preserve the existing conference."
         ),
       ...sharedEventFields,
     },
