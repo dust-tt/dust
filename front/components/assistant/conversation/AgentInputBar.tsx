@@ -545,7 +545,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
             />
           )}
       </div>
-      {blockedActions.length > 0 && !userAnswerRequiredItem (
+      {blockedActions.length > 0 && !userAnswerRequiredItem && (
         <ContentMessageInline
           icon={InfoCircle}
           variant="primary"
