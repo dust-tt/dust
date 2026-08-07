@@ -83,8 +83,8 @@ export function UsageFilterModelComplexityControls({
   const moreModelsSearchResults = useMemo(
     () =>
       isSearchingMoreModels
-        ? models.filter((entity) =>
-            entity.name.toLowerCase().includes(moreModelsQuery)
+        ? models.filter((model) =>
+            model.name.toLowerCase().includes(moreModelsQuery)
           )
         : [],
     [models, isSearchingMoreModels, moreModelsQuery]
@@ -93,7 +93,7 @@ export function UsageFilterModelComplexityControls({
   const moreModelsGroups = useMemo(
     () =>
       MODEL_MAKER_IDS.flatMap((lab) => {
-        const labModels = models.filter((entity) => entity.lab === lab);
+        const labModels = models.filter((model) => model.lab === lab);
         return labModels.length > 0 ? [{ lab, models: labModels }] : [];
       }),
     [models]
