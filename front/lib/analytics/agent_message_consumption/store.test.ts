@@ -1,4 +1,4 @@
-import { replaceAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
+import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
 import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
   ElasticsearchError,
@@ -18,20 +18,9 @@ vi.mock("@app/lib/api/elasticsearch", async (importActual) => {
 });
 
 const client = new Client({ node: "http://localhost:9200" });
-const deleteByQueryMock = vi.spyOn(client, "deleteByQuery");
 const bulkMock = vi.spyOn(client, "bulk");
 
-function makeDocument({
-  agentMessageId = "agent_message_1",
-  consumptionKey = "run-usage:1",
-  messageVersion = "0",
-  workspaceId = "workspace_1",
-}: {
-  agentMessageId?: string;
-  consumptionKey?: string;
-  messageVersion?: string;
-  workspaceId?: string;
-} = {}): AgentMessageConsumptionAnalyticsData {
+function makeDocument(): AgentMessageConsumptionAnalyticsData {
   return {
     agent: {
       id: "agent_1",
@@ -42,11 +31,11 @@ function makeDocument({
       root_id: "agent_1",
       depth: 0,
     },
-    agent_message_id: agentMessageId,
+    agent_message_id: "agent_message_1",
     api_key_name: null,
     attribution_version: 4,
     completed_at: "2026-08-07T12:00:00.000Z",
-    consumption_key: consumptionKey,
+    consumption_key: "run-usage:1",
     consumption_type: "llm",
     context_origin: "web",
     conversation_id: "conversation_1",
@@ -61,7 +50,7 @@ function makeDocument({
       direct: 0,
       total: 1_000_000,
     },
-    message_version: messageVersion,
+    message_version: "2",
     model: null,
     run_usage_id: "1",
     space_id: null,
@@ -78,17 +67,13 @@ function makeDocument({
     trigger_id: null,
     usage_type: USAGE_TYPE_USER,
     user: null,
-    workspace_id: workspaceId,
+    workspace_id: "workspace_1",
   };
 }
 
-describe("replaceAgentMessageConsumptionAnalyticsDocuments", () => {
+describe("upsertAgentMessageConsumptionAnalyticsDocuments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    deleteByQueryMock.mockResolvedValue({
-      failures: [],
-      version_conflicts: 0,
-    });
     bulkMock.mockResolvedValue({ errors: false, items: [], took: 1 });
     vi.mocked(withEs).mockImplementation(async (fn) => {
       try {
@@ -105,82 +90,38 @@ describe("replaceAgentMessageConsumptionAnalyticsDocuments", () => {
     await client.close();
   });
 
-  it("deletes the previous message snapshot before indexing the replacement", async () => {
-    const document = makeDocument({ messageVersion: "2" });
+  it("uses a stable identity for idempotent upserts", async () => {
+    const document = makeDocument();
 
-    await replaceAgentMessageConsumptionAnalyticsDocuments({
-      agentMessageId: document.agent_message_id,
-      documents: [document],
-      workspaceId: document.workspace_id,
-    });
+    await upsertAgentMessageConsumptionAnalyticsDocuments([document]);
 
-    expect(deleteByQueryMock).toHaveBeenCalledWith({
-      index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
-      query: {
-        bool: {
-          filter: [
-            { term: { workspace_id: document.workspace_id } },
-            { term: { agent_message_id: document.agent_message_id } },
-          ],
-        },
-      },
-      refresh: false,
-    });
     expect(bulkMock).toHaveBeenCalledWith({
       body: [
         {
           index: {
             _index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
-            _id: "workspace_1_agent_message_1_2_run-usage:1",
+            _id: "workspace_1_agent_message_1_run-usage:1",
           },
         },
         document,
       ],
-      refresh: "wait_for",
+      refresh: false,
     });
-    expect(deleteByQueryMock.mock.invocationCallOrder[0]).toBeLessThan(
-      bulkMock.mock.invocationCallOrder[0] ?? 0
-    );
   });
 
-  it("deletes the previous snapshot when the replacement is empty", async () => {
-    await replaceAgentMessageConsumptionAnalyticsDocuments({
-      agentMessageId: "agent_message_1",
-      documents: [],
-      workspaceId: "workspace_1",
-    });
-
-    expect(deleteByQueryMock).toHaveBeenCalledWith(
-      expect.objectContaining({ refresh: true })
-    );
-    expect(bulkMock).not.toHaveBeenCalled();
-  });
-
-  it("rejects documents from another message", async () => {
-    await expect(
-      replaceAgentMessageConsumptionAnalyticsDocuments({
-        agentMessageId: "agent_message_1",
-        documents: [makeDocument({ agentMessageId: "agent_message_2" })],
-        workspaceId: "workspace_1",
-      })
-    ).rejects.toThrow(
-      "Consumption documents belong to different agent messages"
-    );
+  it("does nothing when there are no documents", async () => {
+    await upsertAgentMessageConsumptionAnalyticsDocuments([]);
 
     expect(withEs).not.toHaveBeenCalled();
   });
 
-  it("fails the activity when Elasticsearch rejects the replacement", async () => {
+  it("fails the activity when Elasticsearch rejects the upsert", async () => {
     vi.mocked(withEs).mockResolvedValueOnce(
       new Err(new ElasticsearchError("query_error", "write failed"))
     );
 
     await expect(
-      replaceAgentMessageConsumptionAnalyticsDocuments({
-        agentMessageId: "agent_message_1",
-        documents: [makeDocument()],
-        workspaceId: "workspace_1",
-      })
-    ).rejects.toThrow("Failed to replace consumption analytics snapshot");
+      upsertAgentMessageConsumptionAnalyticsDocuments([makeDocument()])
+    ).rejects.toThrow("Failed to upsert consumption analytics documents");
   });
 });

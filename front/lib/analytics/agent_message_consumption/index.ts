@@ -1,6 +1,6 @@
 import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
-import { replaceAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
+import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
 import type { Authenticator } from "@app/lib/auth";
 import assert from "assert";
 
@@ -26,9 +26,5 @@ export async function indexAgentMessageConsumptionAnalytics(
     "Consumption attribution is incomplete for analytics"
   );
 
-  await replaceAgentMessageConsumptionAnalyticsDocuments({
-    agentMessageId: input.agentMessageId,
-    documents,
-    workspaceId: input.workspaceId,
-  });
+  await upsertAgentMessageConsumptionAnalyticsDocuments(documents);
 }
