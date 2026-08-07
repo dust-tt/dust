@@ -15,10 +15,10 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
+import type { ConsumptionDimension } from "./consumptionDimensions";
 import {
   CONSUMPTION_DIMENSION_CONFIG,
   CONSUMPTION_DIMENSIONS,
-  type ConsumptionDimension,
   isConsumptionDimension,
 } from "./consumptionDimensions";
 

@@ -24,10 +24,8 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-import {
-  CONSUMPTION_DIMENSION_CONFIG,
-  type ConsumptionDimension,
-} from "./consumptionDimensions";
+import type { ConsumptionDimension } from "./consumptionDimensions";
+import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 
 // The bucket in progress (if mapped to today) is drawn faded across every series.
 const PARTIAL_BAR_OPACITY = "opacity-40";
