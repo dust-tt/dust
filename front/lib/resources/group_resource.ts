@@ -2444,8 +2444,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     poolCapAwuCredits: number | null
   ): Promise<Result<undefined, Error>> {
-    if (!auth.canAdministrate(this.requestedPermissions())) {
-      return new Err(new Error("Only admins can update group spend limits."));
+    if (!auth.isManager()) {
+      return new Err(
+        new Error("Only admins and managers can update group spend limits.")
+      );
     }
 
     await this.update({ poolCapAwuCredits });

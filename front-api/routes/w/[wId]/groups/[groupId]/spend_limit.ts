@@ -9,7 +9,7 @@ import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -80,7 +80,7 @@ const app = workspaceApp();
 app.put(
   "/",
   validate("param", ParamsSchema),
-  ensureIsAdmin(),
+  ensureIsManager(),
   validate("json", UpdateGroupSpendLimitBodySchema),
   async (ctx): HandlerResult<PutGroupSpendLimitResponseBody> => {
     const auth = ctx.get("auth");

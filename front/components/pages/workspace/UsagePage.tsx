@@ -1082,7 +1082,7 @@ export function UsagePage() {
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
             <TabsTrigger value="members" label="Members" />
-            {isWorkspaceAdmin && <TabsTrigger value="groups" label="Groups" />}
+            <TabsTrigger value="groups" label="Groups" />
             {isWorkspaceAdmin && isCreditPriced && (
               <TabsTrigger value="top-ups" label="Top-ups history" />
             )}
@@ -1150,16 +1150,13 @@ export function UsagePage() {
               </div>
             </Page.Vertical>
           </TabsContent>
-
-          {isWorkspaceAdmin && (
-            <TabsContent value="groups">
-              <GroupsUsageTable
-                owner={owner}
-                readOnly={isReadOnly}
-                showModelTiersColumn={modelsPickerEnabled}
-              />
-            </TabsContent>
-          )}
+          <TabsContent value="groups">
+            <GroupsUsageTable
+              owner={owner}
+              readOnly={isReadOnly}
+              showModelTiersColumn={modelsPickerEnabled}
+            />
+          </TabsContent>
 
           {isWorkspaceAdmin && isCreditPriced && (
             <TabsContent value="top-ups">
