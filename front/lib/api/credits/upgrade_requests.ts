@@ -3,6 +3,10 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { isEligibleForAutoSeatUpgrade } from "@app/lib/api/credits/auto_seat_upgrade";
+import {
+  setUserSpendLimit,
+  type UserSpendLimitError,
+} from "@app/lib/api/users/spend_limit";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,13 +15,13 @@ import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
+import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import logger from "@app/logger/logger";
-import type {
-  MembershipUpgradeRequestStatus,
-  MembershipUpgradeRequestType,
-} from "@app/types/memberships";
+import type { UpgradeRequestResolution } from "@app/types/api/credits/upgrade_requests";
+import type { MembershipUpgradeRequestType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 type UpgradeRequestErrorType =
   | "workspace_not_metronome_billed"
@@ -34,6 +38,10 @@ export class UpgradeRequestError extends Error {
     super(message);
   }
 }
+
+export type ResolveUpgradeRequestError =
+  | UpgradeRequestError
+  | UserSpendLimitError;
 
 async function isMemberUpgradeRequestAllowed(
   auth: Authenticator
@@ -234,20 +242,19 @@ export async function listPendingUpgradeRequests(
   return requests.map((r) => r.toJSON());
 }
 
-// Admin-only: record the outcome of a request. The actual spend-limit / seat
-// change is performed by the existing flows; this only marks the request.
+// Admin-only: record the outcome of a request.
 export async function resolveUpgradeRequest(
   auth: Authenticator,
   {
     requestId,
-    status,
+    resolution,
     auditContext,
   }: {
     requestId: string;
-    status: Exclude<MembershipUpgradeRequestStatus, "pending">;
+    resolution: UpgradeRequestResolution;
     auditContext?: AuditLogContext;
   }
-): Promise<Result<MembershipUpgradeRequestType, UpgradeRequestError>> {
+): Promise<Result<MembershipUpgradeRequestType, ResolveUpgradeRequestError>> {
   const request = await MembershipUpgradeRequestResource.fetchById(
     auth,
     requestId
@@ -257,13 +264,66 @@ export async function resolveUpgradeRequest(
       new UpgradeRequestError("request_not_found", "Upgrade request not found.")
     );
   }
+  if (request.status !== "pending") {
+    return new Err(
+      new UpgradeRequestError(
+        "request_not_pending",
+        "Upgrade request is not pending."
+      )
+    );
+  }
 
+  // Persist the resolution first: it's the source of truth for the request.
+  // The Metronome sync below is a derived effect — if it fails, the
+  // resolution is reverted back to `pending` so the two don't drift apart.
   const resolvedByUser = auth.getNonNullableUser();
-  const result = await request.markAsResolved(auth, { status, resolvedByUser });
+  const result = await request.markAsResolved(auth, {
+    status: resolution.status,
+    resolvedByUser,
+  });
   if (result.isErr()) {
     return new Err(
       new UpgradeRequestError("request_not_pending", result.error.message)
     );
+  }
+
+  if (resolution.status === "approved" && resolution.limit) {
+    const spendLimitResult = await revertOnSyncFailure(
+      await setUserSpendLimit(auth, {
+        userId: request.requester.sId,
+        limit: resolution.limit,
+        auditContext: auditContext ?? { location: "internal" },
+      }),
+      {
+        revert: async () => {
+          try {
+            await request.revertToPending();
+          } catch (err) {
+            // The rollback itself failed: the request is now stuck resolved
+            // without the spend limit actually applied in Metronome. Log
+            // loudly with enough context.
+            logger.error(
+              {
+                err: normalizeError(err),
+                requestId: request.sId,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                resolutionStatus: resolution.status,
+              },
+              "[UpgradeRequest] Failed to revert request to pending after Metronome sync failure; request needs manual reconciliation"
+            );
+            throw err;
+          }
+        },
+        logContext: {
+          scope: "upgrade_request",
+          operation: "resolve",
+          requestId: request.sId,
+        },
+      }
+    );
+    if (spendLimitResult.isErr()) {
+      return new Err(spendLimitResult.error);
+    }
   }
 
   void emitAuditLogEvent({
@@ -277,7 +337,7 @@ export async function resolveUpgradeRequest(
       }),
     ],
     context: auditContext,
-    metadata: { status, request_sid: request.sId },
+    metadata: { status: resolution.status, request_sid: request.sId },
   });
 
   return new Ok(request.toJSON());

@@ -217,6 +217,21 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return new Ok(undefined);
   }
 
+  // Revert a resolution back to `pending`. Used when a resolution's downstream
+  // effect (e.g. syncing the approved spend limit to Metronome) fails after
+  // this row was already marked resolved, so the DB and the effect it gates
+  // don't end up out of sync.
+  async revertToPending(transaction?: Transaction): Promise<void> {
+    await this.update(
+      {
+        status: "pending",
+        resolvedByUserId: null,
+        resolvedAt: null,
+      },
+      transaction
+    );
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
