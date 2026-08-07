@@ -54,13 +54,12 @@ import { useMemo, useState } from "react";
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
-  // Tools/skills/sources are still mock data (see usageFilterMockData.ts —
-  // sources are fake connectors standing in for a real db call); agents,
-  // members, groups and models are fetched live below, scoped to `period`
+  // Skills/sources are still mock data (see usageFilterMockData.ts — sources
+  // are fake connectors standing in for a real db call); agents, members,
+  // groups, models and tools are fetched live below, scoped to `period`
   // (useConsumptionTop, useConsumptionRelevantGroups) or, for the full model
   // catalog backing "More models", to the workspace (useModels).
   categoryOptions: {
-    tool: UsageFilterToolOption[];
     skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
   };
@@ -106,6 +105,7 @@ export function UsageFilterPanel({
   const isMemberCategoryActive = isOpen && activeCategory === "user";
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
   const isModelCategoryActive = isOpen && activeCategory === "model";
+  const isToolCategoryActive = isOpen && activeCategory === "tool";
 
   const { rows: topUserRows } = useConsumptionTop({
     workspaceId: owner.sId,
@@ -135,6 +135,17 @@ export function UsageFilterPanel({
     // own top-N so the picker covers most of the period's active models.
     limit: 100,
     disabled: !isModelCategoryActive,
+  });
+
+  const { rows: topToolRows } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "tool",
+    period,
+    // Same rationale as members/agents/models: broader than the Attribution
+    // table's own top-N so the picker covers most of the period's active
+    // tools.
+    limit: 100,
+    disabled: !isToolCategoryActive,
   });
 
   // The full workspace catalog (not period-scoped), used only for the "More
@@ -210,6 +221,18 @@ export function UsageFilterPanel({
     [topModelRows]
   );
 
+  // Same client-side search caveat as members/agents/models: a tool outside
+  // the top 100 by credits over the period will not be searchable here.
+  const toolOptions = useMemo<UsageFilterToolOption[]>(
+    () =>
+      topToolRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        kind: "tool" as const,
+      })),
+    [topToolRows]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -218,8 +241,9 @@ export function UsageFilterPanel({
       user: memberOptions,
       agent: agentOptions,
       model: modelOptions,
+      tool: toolOptions,
     }),
-    [categoryOptions, memberOptions, agentOptions, modelOptions]
+    [categoryOptions, memberOptions, agentOptions, modelOptions, toolOptions]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
