@@ -42,10 +42,14 @@ export async function publishHandler(
     return new Err(toMCPError(result.error));
   }
 
+  // The slug carries the app prefix publish derived from `path`, so state it and the reference a
+  // Frame needs rather than letting the model assume the name it passed.
+  const { slug: publishedSlug } = result.value;
+
   return new Ok([
     {
       type: "text",
-      text: `Published pod function "${result.value.slug}".`,
+      text: `Published pod function "${publishedSlug}". Call it by reference "${podResult.value.pod.sId}/${publishedSlug}".`,
     },
   ]);
 }

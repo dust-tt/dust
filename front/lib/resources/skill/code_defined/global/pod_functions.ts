@@ -78,7 +78,8 @@ Pod file system rather than splitting it between the conversation and the Pod ro
   MyApp/
     MyApp.tsx          the Frame's source; its directory is the Frame's bundling root
     functions/
-      list-notes.ts    one file per function, named after the function's slug
+      list-notes.ts    one file per function, named after the function; the app folder
+                       above becomes the published slug's prefix (myapp__list-notes)
       post-note.ts
       lib/
         notes.ts       helpers shared by several functions
@@ -97,9 +98,10 @@ Functions that no Frame calls still get an app folder, named after what they do 
 #### Authoring a function
 
 Write the source as a TypeScript file in the app's \`functions\` folder, at
-\`pod-<podId>/<AppName>/functions/<slug>.ts\` (the Computer mounts it at
-\`/files/pod-<podId>/<AppName>/functions/<slug>.ts\`; the \`files\` MCP server reaches it under the
-same scoped path). The module must:
+\`pod-<podId>/<AppName>/functions/<name>.ts\` (the Computer mounts it at
+\`/files/pod-<podId>/<AppName>/functions/<name>.ts\`; the \`files\` MCP server reaches it under the
+same scoped path). The app folder is required: a source at the Pod root is rejected at publish
+time, because the app folder is what namespaces the function. The module must:
 
 - export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas,
 - default-export an object with a \`fetch(request: Request): Promise<Response>\` method (the Bun and
@@ -245,10 +247,20 @@ loading state.
 
 Once the source is on the Pod, use \`${toolName("publish")}\` to build it. It requires you to state
 \`executionMode\` on every publish. Publishing bundles and type-checks the source on the Computer
-and extracts the input and output JSON schemas from the \`schema\` export. Publishing again under
-the same name replaces the previous version. The stored bundle is owned by the platform and runs
-from a read-only mount, so a published function can be executed but never overwritten from within
-the Computer.
+and extracts the input and output JSON schemas from the \`schema\` export. The stored bundle is owned
+by the platform and runs from a read-only mount, so a published function can be executed but never
+overwritten from within the Computer.
+
+**The published slug is \`<app>__<name>\`.** You pass the bare \`<name>\`; publish derives the prefix
+from the app folder in \`path\` (\`TaskList\` becomes \`tasklist\`, \`Task List\` becomes \`task-list\`) and
+reports the full slug back. Use that reported slug everywhere afterwards: \`${toolName("get")}\`,
+\`${toolName("call")}\`, \`${toolName("unpublish")}\`, and a Frame's reference. Only the app folder
+contributes, so \`functions/\` and any folder nested under it never appear in the slug, and moving a
+source inside its app does not rename the function.
+
+Publishing again under the same app and name replaces that version. Two different apps can each
+publish a \`refresh\` and they stay separate functions, so you never have to invent
+\`refresh-tasklist\` to dodge a clash.
 
 Use \`${toolName("list")}\` and \`${toolName("get")}\` to see what the Pod has already
 published and to inspect a function's contract before relying on it or publishing a near-duplicate.
@@ -271,9 +283,9 @@ return inline is written to a pod file whose path it reports), and \`${toolName(
 A Frame calls published functions through the injected \`@dust/react-hooks\` module, not the
 \`call\` tool. Always pass the fully qualified \`<podId>/<slug>\` reference reported by
 \`${toolName("get")}\`. Never pass a bare slug or infer the function from the Frame's current Pod.
-This keeps the reference stable if the Frame is moved. The app folder is only where the sources
-live: it does not namespace the slug, so the reference stays \`<podId>/<slug>\` and never includes
-the app name.
+This keeps the reference stable if the Frame is moved. The slug in that reference is the full
+published slug, app prefix included (\`<podId>/tasklist__add-task\`), never the bare name you passed
+to \`${toolName("publish")}\`.
 
 ##### Designing functions for a Frame
 
