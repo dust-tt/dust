@@ -18,6 +18,7 @@ interface UserAnswerRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   retryHandler: () => Promise<void>;
+  isMobile?: boolean;
 }
 
 type SubmissionState = {
@@ -44,6 +45,7 @@ export function UserAnswerRequired({
   triggeringUser,
   owner,
   retryHandler,
+  isMobile = false,
 }: UserAnswerRequiredProps) {
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
@@ -288,7 +290,7 @@ export function UserAnswerRequired({
         }
       }}
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
+        "flex flex-col gap-3 rounded-2xl border border-border-dark bg-muted-background p-3 outline-hidden md:border-border-dark/50 md:p-4 md:focus-within:border-highlight-300",
         "ease-enter motion-reduce:animate-none",
         submission?.phase === "exiting" &&
           "animate-out fill-mode-forwards fade-out-0 duration-exit",
@@ -313,7 +315,6 @@ export function UserAnswerRequired({
               key={index}
               label={option.label}
               description={option.description}
-              counterValue={index + 1}
               selected={answerDraft.selectedOptions.includes(index)}
               disableHover={isKeyboardNavigating}
               selectionIndicator={question.multiSelect ? "checkbox" : "radio"}
@@ -332,7 +333,6 @@ export function UserAnswerRequired({
           ))}
           <OptionCard
             type="input"
-            counterValue={question.options.length + 1}
             selected={isCustomResponseActive}
             disableHover={isKeyboardNavigating}
             className={cn(isKeyboardNavigating && "cursor-none")}
@@ -377,8 +377,8 @@ export function UserAnswerRequired({
       <div className="flex items-center justify-between gap-3">
         <Button
           label="Skip"
-          variant="outline"
-          size="sm"
+          variant="ghost-secondary"
+          size={isMobile ? "sm" : "xs"}
           onClick={handleSkip}
           isLoading={submission?.kind === "skip"}
           disabled={isSubmitting}
@@ -386,11 +386,12 @@ export function UserAnswerRequired({
         <Button
           icon={ArrowUp}
           variant="highlight"
-          size="sm"
+          size={isMobile ? "sm" : "xs"}
           isLoading={submission?.kind === "answer"}
           disabled={isSubmitting || answerDraft.answerToSubmit === null}
           onClick={handleSubmit}
           aria-label="Send answer"
+          className="rounded-full"
         />
       </div>
     </div>
