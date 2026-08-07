@@ -1407,14 +1407,9 @@ function UnreadConversationsSection({
                     )}
                   >
                     <NavigationListLabel
-                      // The pod name is a static group header, not a link:
-                      // keep the arrow cursor instead of the text I-beam so it
-                      // doesn't read as interactive or selectable. The mt-2/
-                      // pt-2 split of the label's default pt-4 keeps half of
-                      // the inter-group spacing outside the highlight block.
-                      // bg-transparent overrides the label's own background so
-                      // the section card and the mark-as-read hover block show
-                      // through.
+                      // Static group header: no text cursor, and bg-transparent
+                      // lets the hover block show through. mt-2/pt-2 splits the
+                      // label's pt-4 to keep half the spacing outside the block.
                       className="bg-transparent cursor-default select-none mt-2 pt-2"
                       label={group.podName}
                       icon={pod ? getSpaceIcon(pod) : undefined}
