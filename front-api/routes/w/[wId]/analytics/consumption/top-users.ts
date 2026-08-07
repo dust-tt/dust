@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { fetchConsumptionTopUsers } from "@app/lib/api/analytics/consumption/top_users";
+import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -35,11 +36,18 @@ app.get(
       filter,
     });
     if (result.isErr()) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          err: result.error,
+        },
+        "[ConsumptionAnalytics] Failed to retrieve top-users."
+      );
       return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: `Failed to retrieve top users by consumption: ${result.error.message}`,
+          message: "Failed to retrieve top users.",
         },
       });
     }
