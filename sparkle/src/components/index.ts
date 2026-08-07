@@ -233,6 +233,7 @@ export {
   PopoverTrigger,
 } from "./Popover";
 export { PriceTable } from "./PriceTable";
+export { PuzzleSpinner } from "./PuzzleSpinner";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
 export {
@@ -263,7 +264,6 @@ export {
 } from "./Sheet";
 export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
 export { SidebarLayout } from "./SidebarLayout";
-export { SkillImportLoading } from "./SkillImportLoading";
 export type { SliderStepsProps } from "./SliderSteps";
 export { SliderSteps } from "./SliderSteps";
 export { SliderToggle } from "./SliderToggle";
