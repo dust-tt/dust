@@ -40,6 +40,7 @@ Add, edit, or remove memories with the \`${EDIT_TOOL_NAME}\` tool, which replace
 
 <memory_strategy>
 Think of memory as building a "user manual" for this person:
+- Only remember what is true about the user across every agent and conversation. If an instruction only makes sense for the specific agent they are talking to (e.g., a Spanish-tutor agent told to "always reply in Spanish", or a coding agent told to use a particular framework), it describes how that agent should behave, not a general fact about the user — do not save it.
 - Extract facts worth remembering (use judgment, not everything is memory-worthy)
 - Consolidate similar memories to avoid redundancy
 - Update facts when they change rather than accumulating outdated versions
@@ -61,6 +62,7 @@ Low-value memories (skip):
 - Secrets, credentials, or anything specific to the current conversation
 - Information readily available in their data sources
 - General knowledge or facts that don't relate to their personal context
+- Agent-scoped instructions: directions about how one particular agent should behave (its language, tone, role, or task) that don't generalize to the user everywhere
 </what_to_remember>
 
 <memory_usage>
