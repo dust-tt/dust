@@ -18,7 +18,7 @@ export class ActivationWorkAreaModel extends WorkspaceAwareModel<ActivationWorkA
   declare podId: ForeignKey<ActivationPodModel["id"]> | null;
 
   declare title: string;
-  declare intent: string;
+  declare description: string;
   declare status: ActivationWorkAreaStatus;
 }
 
@@ -38,7 +38,7 @@ ActivationWorkAreaModel.init(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
-    intent: {
+    description: {
       type: DataTypes.STRING(512),
       allowNull: false,
     },

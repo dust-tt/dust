@@ -22,7 +22,7 @@ CREATE TABLE "public"."activation_work_areas" (
 	"userId" bigint NOT NULL,
 	"podId" bigint,
 	"title" character varying(255) NOT NULL,
-	"intent" character varying(512) NOT NULL,
+	"description" character varying(512) NOT NULL,
 	"status" character varying(50) NOT NULL,
 	"id" bigint DEFAULT nextval('activation_work_areas_id_seq'::regclass) NOT NULL
 );
