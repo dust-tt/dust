@@ -2,6 +2,11 @@ import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
 import { deleteLegacySandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
+import {
+  readSandboxExecActivity,
+  recordSandboxExecEnd,
+  recordSandboxExecStart,
+} from "@app/lib/api/sandbox/exec_activity";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
@@ -799,6 +804,25 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
 
+      // The lifecycle lock never covered a running exec, so an exec can be committing pod-state
+      // writes while this flow flushes and pauses — writes the flush never saw, silently dropped
+      // when the sleeper is later destroyed without a re-flush. The exec-activity counters close
+      // that: skip the sleep when an exec is in flight before the flush, and re-check after it —
+      // `started` is monotonic, so even an exec that began and finished during the flush moves
+      // it. Skipping is not an error: status stays `running` and the reaper retries next cycle,
+      // exactly like a pod that was never idle. An unreadable signal fails closed the same way.
+      const activityBefore = await readSandboxExecActivity(sandbox.sId);
+      if (activityBefore.isErr()) {
+        return activityBefore;
+      }
+      if (activityBefore.value.inFlight > 0) {
+        logger.info(
+          { sandbox: sandbox.toLogJSON() },
+          "Sandbox has an exec in flight — not sleeping."
+        );
+        return new Ok(undefined);
+      }
+
       const checkResult = await this.runPreSleepCheck(
         opts.beforeSleep,
         sandbox
@@ -811,6 +835,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           "Sandbox pre-sleep health check failed — not sleeping."
         );
         return checkResult;
+      }
+
+      const activityAfter = await readSandboxExecActivity(sandbox.sId);
+      if (activityAfter.isErr()) {
+        return activityAfter;
+      }
+      if (
+        activityAfter.value.inFlight > 0 ||
+        activityAfter.value.started !== activityBefore.value.started
+      ) {
+        logger.info(
+          { sandbox: sandbox.toLogJSON() },
+          "Sandbox exec activity during pre-sleep flush — not sleeping."
+        );
+        return new Ok(undefined);
       }
 
       const result = await provider.sleep(sandbox.providerId, tracingOpts);
@@ -1113,6 +1152,23 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
 
+      // Same guard as the sleep flow, and destroy is the worse race to lose: there is no later
+      // wake or re-flush, so an exec whose writes land after the flush loses them permanently.
+      // Deferring is safe — a busy pod's next invocation escalates through ensureActive's
+      // kill-requested branch, which recreates on access regardless, and a quiet pod is caught
+      // by the next sweep.
+      const activityBefore = await readSandboxExecActivity(sandbox.sId);
+      if (activityBefore.isErr()) {
+        return activityBefore;
+      }
+      if (activityBefore.value.inFlight > 0) {
+        logger.info(
+          { sandbox: sandbox.toLogJSON() },
+          "Kill-requested sandbox has an exec in flight — deferring destroy."
+        );
+        return new Ok(undefined);
+      }
+
       // Pre-destroy flush: kill-requested destroys (image rollouts) would
       // otherwise lose state that never reached its replica.
       const checkResult = await this.runPreSleepCheck(
@@ -1130,6 +1186,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           "Kill-requested destroy: pre-destroy health check failed — skipping destroy this sweep."
         );
         return checkResult;
+      }
+
+      const activityAfter = await readSandboxExecActivity(sandbox.sId);
+      if (activityAfter.isErr()) {
+        return activityAfter;
+      }
+      if (
+        activityAfter.value.inFlight > 0 ||
+        activityAfter.value.started !== activityBefore.value.started
+      ) {
+        logger.info(
+          { sandbox: sandbox.toLogJSON() },
+          "Exec activity during kill-requested pre-destroy flush — deferring destroy."
+        );
+        return new Ok(undefined);
       }
 
       const result = await provider.destroy(sandbox.providerId, tracingOpts);
@@ -1180,22 +1251,30 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
-    const result = await provider.exec(
-      this.providerId,
-      command,
-      opts,
-      tracingOpts
-    );
-
-    if (result.isErr() && result.error instanceof SandboxNotFoundError) {
-      logger.error(
-        { sandbox: this.toLogJSON() },
-        "Sandbox not found at provider during exec — marking as deleted"
+    // Workload execs only, not execRoot: root commands are lifecycle plumbing — the pre-sleep
+    // flush itself runs root commands, which would otherwise trip the very guard that consults
+    // these counters.
+    await recordSandboxExecStart(this.sId);
+    try {
+      const result = await provider.exec(
+        this.providerId,
+        command,
+        opts,
+        tracingOpts
       );
-      await this.updateStatus("deleted");
-    }
 
-    return result;
+      if (result.isErr() && result.error instanceof SandboxNotFoundError) {
+        logger.error(
+          { sandbox: this.toLogJSON() },
+          "Sandbox not found at provider during exec — marking as deleted"
+        );
+        await this.updateStatus("deleted");
+      }
+
+      return result;
+    } finally {
+      await recordSandboxExecEnd(this.sId);
+    }
   }
 
   /**
