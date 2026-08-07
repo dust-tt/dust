@@ -53,6 +53,7 @@ interface UsageFilterOptionBase {
 export interface UsageFilterAgentOption extends UsageFilterOptionBase {
   kind: "agent";
   scope: UsageFilterScope;
+  image: string | null;
 }
 
 export interface UsageFilterUserOption extends UsageFilterOptionBase {
@@ -162,11 +163,22 @@ export function removeUsageFilterGroup(
   return groups.filter((g) => g.id !== id);
 }
 
-// Only "user" is wired to a real consumption scope dimension so far; the
-// other categories stay mock data and are not sent as query filters.
+// Only "user" and "agent" are wired to real consumption scope dimensions so
+// far; the other categories stay mock data and are not sent as query filters.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
+  const scopeFilter: ConsumptionScopeFilter = {};
+
   const userIds = filter.user?.map((entity) => entity.id);
-  return userIds && userIds.length > 0 ? { user: userIds } : {};
+  if (userIds && userIds.length > 0) {
+    scopeFilter.user = userIds;
+  }
+
+  const agentIds = filter.agent?.map((entity) => entity.id);
+  if (agentIds && agentIds.length > 0) {
+    scopeFilter.agent = agentIds;
+  }
+
+  return scopeFilter;
 }

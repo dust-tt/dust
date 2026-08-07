@@ -13,6 +13,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
   const { isDark } = useTheme();
 
   switch (option.kind) {
+    case "agent":
     case "user":
       return (
         <Avatar
@@ -31,7 +32,6 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
     }
     case "model":
       return <Icon visual={getModelMakerLogo(option.lab, isDark)} size="sm" />;
-    case "agent":
     case "tool":
     case "skill":
       return null;

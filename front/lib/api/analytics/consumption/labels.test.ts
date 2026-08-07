@@ -4,6 +4,8 @@ import {
 } from "@app/lib/api/analytics/consumption/labels";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -87,10 +89,34 @@ describe("resolveConsumptionGroupNames", () => {
     expect(users.get(user.sId)).toEqual({
       name: user.fullName(),
       pictureUrl: user.imageUrl,
+      scope: null,
     });
     expect(sources.get("slack")).toEqual({
       name: "Slack",
       pictureUrl: null,
+      scope: null,
     });
+  });
+
+  it("carries a visibility scope for agents, derived from their real scope", async () => {
+    // Needs an author, unlike the rest of this file's admin-only `auth`.
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const published = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Published Agent", scope: "visible" }
+    );
+    const unpublished = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Unpublished Agent", scope: "hidden" }
+    );
+
+    const labels = await resolveConsumptionGroupLabels(authenticator, "agent", [
+      published.sId,
+      unpublished.sId,
+    ]);
+
+    expect(labels.get(published.sId)?.scope).toBe("shared");
+    expect(labels.get(unpublished.sId)?.scope).toBe("private");
   });
 });

@@ -10,6 +10,7 @@ import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/con
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
+import type { AgentVisibilityScope } from "@app/lib/api/assistant/observability/agent_labels";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
@@ -28,6 +29,8 @@ export type ConsumptionTopRow = {
   id: string;
   name: string;
   pictureUrl: string | null;
+  // Only present for the "agent" dimension.
+  scope?: AgentVisibilityScope;
   credits: number;
   avgCredits: number;
 };
@@ -49,6 +52,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.agentId,
       name: row.name,
       pictureUrl: row.pictureUrl,
+      scope: row.scope,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));

@@ -1,5 +1,6 @@
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
+import type { AgentVisibilityScope } from "@app/lib/api/assistant/observability/agent_labels";
 import {
   resolveAnalyticsAgentLabels,
   UNKNOWN_AGENT_LABEL,
@@ -29,13 +30,18 @@ export type ConsumptionGroupLabel = {
   name: string;
   // Only agents and users have one; null for every other dimension.
   pictureUrl: string | null;
+  // Only agents have one; null for every other dimension.
+  scope: AgentVisibilityScope | null;
 };
 
 function labelsFromNames(
   names: Map<string, string>
 ): Map<string, ConsumptionGroupLabel> {
   return new Map(
-    [...names].map(([key, name]) => [key, { name, pictureUrl: null }])
+    [...names].map(([key, name]) => [
+      key,
+      { name, pictureUrl: null, scope: null },
+    ])
   );
 }
 
@@ -54,7 +60,14 @@ export async function resolveConsumptionGroupLabels(
       return new Map(
         groupKeys.map((key) => {
           const label = labels.get(key) ?? UNKNOWN_AGENT_LABEL;
-          return [key, { name: label.name, pictureUrl: label.pictureUrl }];
+          return [
+            key,
+            {
+              name: label.name,
+              pictureUrl: label.pictureUrl,
+              scope: label.scope,
+            },
+          ];
         })
       );
     }
@@ -70,6 +83,7 @@ export async function resolveConsumptionGroupLabels(
             {
               name: getUserDisplayName(user),
               pictureUrl: user?.imageUrl ?? null,
+              scope: null,
             },
           ];
         })
