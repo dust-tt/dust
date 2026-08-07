@@ -708,22 +708,33 @@ export const InputBar = React.memo(function InputBar({
                 !disableInput && "cursor-pointer"
               )
             : classNames(
-                "w-full rounded-2xl",
-                "bg-muted-background",
+                "w-full overflow-hidden rounded-[40px] [corner-shape:squircle]",
                 "border",
-                "border-border-dark",
-                "md:border-border-dark/50 md:has-[.tiptap:focus]:border-border-dark",
-                "md:has-[.tiptap:focus]:border-border-dark",
+                "has-[.tiptap:focus]:bg-stone-25 bg-[oklch(0.988_0_89.876)]",
+                "dark:has-[.tiptap:focus]:bg-[oklch(0.310_0.007_75)] dark:bg-[oklch(0.294_0.008_84.593)]",
                 isFloating
-                  ? classNames(
-                      "has-[.tiptap:focus]:ring-1",
-                      "has-[.tiptap:focus]:ring-highlight/30",
-                      "md:has-[.tiptap:focus]:ring-2"
-                    )
-                  : classNames("has-[.tiptap:focus]:border-highlight-300")
+                  ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark max-md:dark:has-[.tiptap:focus]:border-stone-750"
+                  : "border-border has-[.tiptap:focus]:border-border-dark dark:has-[.tiptap:focus]:border-stone-750",
+                "transition-colors duration-100 ease-emphasized motion-reduce:transition-none",
+                isFloating &&
+                  classNames(
+                    "md:border-white/90",
+                    "md:transition-[background-color,box-shadow] md:duration-150 md:ease-emphasized md:motion-reduce:transition-none",
+                    "md:shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
+                    "md:has-[.tiptap:focus]:shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
+                    "md:dark:border-transparent",
+                    "md:dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
+                    "md:dark:has-[.tiptap:focus]:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.035),inset_0px_0px_0px_1px_rgba(255,255,255,0.055),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
+                  )
               )
         )}
       >
+        {!effectiveIsCompact && isFloating && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-px hidden rounded-[inherit] [corner-shape:inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] md:block md:dark:hidden"
+          />
+        )}
         <div
           className={classNames(
             "relative flex flex-col",

@@ -1,22 +1,21 @@
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import {
-  Button,
-  DropdownMenu,
   DropdownMenuCheckboxItem,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  Icon,
   Planet,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface InputBarSpacesPickerProps {
-  buttonSize: "xs" | "sm";
   canDeselectSelectedSpaces: boolean;
   disabled: boolean;
   isLoading: boolean;
@@ -27,7 +26,6 @@ interface InputBarSpacesPickerProps {
 }
 
 export function InputBarSpacesPicker({
-  buttonSize,
   canDeselectSelectedSpaces,
   disabled,
   isLoading,
@@ -36,6 +34,8 @@ export function InputBarSpacesPicker({
   selectedSpaceIds,
   spaces,
 }: InputBarSpacesPickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   const selectedSpaceIdsSet = useMemo(
     () => new Set(selectedSpaceIds),
     [selectedSpaceIds]
@@ -52,10 +52,10 @@ export function InputBarSpacesPicker({
     );
   }, [searchText, spaces]);
 
-  const tooltip =
+  const label =
     selectedSpaceIds.length > 0
       ? `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`
-      : "Add Spaces";
+      : "Spaces";
 
   const handleSpaceCheckedChange = (spaceId: string, checked: boolean) => {
     if (!checked && !canDeselectSelectedSpaces) {
@@ -75,26 +75,29 @@ export function InputBarSpacesPicker({
   };
 
   return (
-    <DropdownMenu
+    <DropdownMenuSub
+      open={isOpen}
       onOpenChange={(open) => {
+        setIsOpen(open);
         if (open) {
           setSearchText("");
         }
         onOpenChange?.(open);
       }}
     >
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost-secondary"
-          size={buttonSize}
-          icon={Planet}
-          tooltip={tooltip}
-          aria-label={tooltip}
-          disabled={disabled}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
+      <DropdownMenuSubTrigger
+        label={label}
+        icon={
+          <Icon size="xs" visual={Planet} className="text-muted-foreground" />
+        }
+        disabled={disabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setIsOpen(true);
+        }}
+      />
+      <DropdownMenuSubContent
         className="w-80"
         dropdownHeaders={
           <>
@@ -146,7 +149,7 @@ export function InputBarSpacesPicker({
             })}
           </div>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

@@ -41,7 +41,11 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Icon,
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
@@ -168,6 +172,7 @@ interface CapabilitiesPickerProps {
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
+  type?: "dropdown" | "subdropdown";
 }
 
 export function CapabilitiesPicker({
@@ -180,6 +185,7 @@ export function CapabilitiesPicker({
   disabled = false,
   buttonSize = "xs",
   onOpenChange,
+  type = "dropdown",
 }: CapabilitiesPickerProps) {
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
@@ -447,9 +453,13 @@ export function CapabilitiesPicker({
   const shouldShowCapabilityDropdownList =
     capabilityPickerItems.length > 0 || hasNoVisibleItems;
 
+  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
+  const ContentWrapper =
+    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+
   return (
     <>
-      <DropdownMenu
+      <Wrapper
         open={isOpen}
         onOpenChange={(open) => {
           setIsOpen(open);
@@ -464,18 +474,37 @@ export function CapabilitiesPicker({
           }
         }}
       >
-        <DropdownMenuTrigger asChild>
-          <Button
-            icon={ShapesPlus}
-            variant="ghost-secondary"
-            size={buttonSize}
-            tooltip="Capabilities"
+        {type === "dropdown" ? (
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={ShapesPlus}
+              variant="ghost-secondary"
+              size={buttonSize}
+              tooltip="Capabilities"
+              disabled={disabled || isLoading}
+            />
+          </DropdownMenuTrigger>
+        ) : (
+          <DropdownMenuSubTrigger
+            label="Capabilities"
+            icon={
+              <Icon
+                size="xs"
+                visual={ShapesPlus}
+                className="text-muted-foreground"
+              />
+            }
             disabled={disabled || isLoading}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setIsOpen(true);
+            }}
           />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
+        )}
+        <ContentWrapper
           className="w-80"
-          align="start"
+          {...(type === "dropdown" ? { align: "start" as const } : {})}
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
@@ -512,8 +541,8 @@ export function CapabilitiesPicker({
               }}
             />
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </ContentWrapper>
+      </Wrapper>
 
       {shouldShowSetupSheet && (
         <CreateMCPServerDialog

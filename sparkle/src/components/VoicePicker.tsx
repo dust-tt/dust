@@ -225,8 +225,45 @@ export function VoicePicker({
     }
   }
 
+  // Keyboard equivalent of the short-press/click flow: handlePointerDown/Up
+  // only fire for pointer input, so Tab+Enter/Space would otherwise be
+  // unable to start or stop a recording at all.
+  async function handleKeyDown(
+    event: React.KeyboardEvent<HTMLButtonElement>
+  ): Promise<void> {
+    buttonProps?.onKeyDown?.(event);
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if ((event.key !== "Enter" && event.key !== " ") || event.repeat) {
+      return;
+    }
+
+    stopEvent(event);
+
+    if (disabled) {
+      return;
+    }
+
+    setMode("click");
+    // The native click that follows this key press would otherwise re-run
+    // handleClick's stop logic a second time.
+    suppressNextClickRef.current = true;
+
+    if (status === "idle") {
+      await onRecordStart();
+      markRecordingStarted();
+      return;
+    }
+
+    if (status === "recording") {
+      await onRecordStop();
+    }
+  }
+
   const icon = shouldShowStop ? Square : Microphone01;
-  const variant = shouldShowStop ? "highlight" : "ghost-secondary";
+  const variant = shouldShowStop || isLoading ? "highlight" : "ghost-secondary";
   const label = isTranscribing
     ? `${transcribingProgress ?? 0}%`
     : shouldShowStop && showStopLabel
@@ -238,7 +275,7 @@ export function VoicePicker({
     <div className="flex items-center">
       <div
         className={cn(
-          "duration-600 flex items-center justify-end gap-2 overflow-hidden transition-all ease-in-out",
+          "flex items-center justify-end gap-2 overflow-hidden",
           compact ? "px-1" : "px-2",
           isRecording ? "opacity-100" : "hidden"
         )}
@@ -259,6 +296,7 @@ export function VoicePicker({
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
       />
     </div>
   );
@@ -295,8 +333,8 @@ function VoiceLevelDisplay({
       {heights.map((height, index) => (
         <div
           key={index}
-          className="min-h-1 w-0.5 rounded-full bg-muted-foreground transition-all duration-150 ease-out"
-          style={{ height: `${height}%` }}
+          className="h-full w-0.5 origin-bottom rounded-full bg-muted-foreground transition-transform duration-150 ease-out motion-reduce:transition-none"
+          style={{ transform: `scaleY(${Math.max(height, 20) / 100})` }}
         />
       ))}
     </div>
@@ -309,7 +347,7 @@ function computeTooltip(
   isTranscribing: boolean
 ): string {
   if (isTranscribing) {
-    return "Transcribing...";
+    return "Transcribing…";
   }
   if (mode === "hold" && isRecording) {
     return "Release to stop";
