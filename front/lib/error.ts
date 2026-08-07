@@ -51,7 +51,6 @@ export type DustErrorCode =
   // Triggers errors
   | "webhook_source_not_found"
   // Activation errors
-  | "activation_pod_not_found"
   | "activation_work_area_not_found"
   // Space errors
   | "space_already_exists"

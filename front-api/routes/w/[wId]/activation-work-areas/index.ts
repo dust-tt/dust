@@ -1,10 +1,8 @@
 import type {
-  CreateActivationWorkAreasResponseBody,
   GetActivationWorkAreasResponseBody,
   UpdateActivationWorkAreaResponseBody,
 } from "@app/lib/api/activation/work_areas";
 import {
-  createActivationWorkAreasForUser,
   listActivationWorkAreasForUser,
   updateActivationWorkAreaForUser,
 } from "@app/lib/api/activation/work_areas";
@@ -16,15 +14,6 @@ import { z } from "zod";
 
 const ListWorkAreasQuerySchema = z.object({
   status: z.enum(["candidate", "confirmed", "dismissed"]).optional(),
-});
-
-const CreateWorkAreaItemSchema = z.object({
-  title: z.string().max(255),
-  description: z.string().max(512),
-});
-
-const CreateWorkAreasBodySchema = z.object({
-  workAreas: z.array(CreateWorkAreaItemSchema).min(1).max(10),
 });
 
 const UpdateWorkAreaBodySchema = z.object({
@@ -47,35 +36,6 @@ app.get(
     const workAreas = await listActivationWorkAreasForUser(auth, { status });
 
     return ctx.json({ workAreas });
-  }
-);
-
-/** @ignoreswagger */
-app.post(
-  "/",
-  validate("json", CreateWorkAreasBodySchema),
-  async (ctx): HandlerResult<CreateActivationWorkAreasResponseBody> => {
-    const auth = ctx.get("auth");
-    const { workAreas: items } = ctx.req.valid("json");
-
-    const result = await createActivationWorkAreasForUser(auth, items);
-
-    if (result.isErr()) {
-      switch (result.error.code) {
-        case "activation_pod_not_found":
-          return apiError(ctx, {
-            status_code: 404,
-            api_error: {
-              type: "activation_pod_not_found",
-              message: result.error.message,
-            },
-          });
-        default:
-          assertNever(result.error.code);
-      }
-    }
-
-    return ctx.json({ workAreas: result.value });
   }
 );
 
