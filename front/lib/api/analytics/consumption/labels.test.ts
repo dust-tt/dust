@@ -90,12 +90,28 @@ describe("resolveConsumptionGroupNames", () => {
       name: user.fullName(),
       pictureUrl: user.imageUrl,
       scope: null,
+      modelMaker: null,
+      tier: null,
     });
     expect(sources.get("slack")).toEqual({
       name: "Slack",
       pictureUrl: null,
       scope: null,
+      modelMaker: null,
+      tier: null,
     });
+  });
+
+  it("carries a maker and pricing tier for models, null for the rest", async () => {
+    const [model] = getSupportedModelConfigs();
+
+    const labels = await resolveConsumptionGroupLabels(auth, "model", [
+      model.modelId,
+    ]);
+
+    const label = labels.get(model.modelId);
+    expect(label?.modelMaker).toBe(model.modelMaker ?? model.providerId);
+    expect(label?.tier).not.toBeNull();
   });
 
   it("carries a visibility scope for agents, derived from their real scope", async () => {

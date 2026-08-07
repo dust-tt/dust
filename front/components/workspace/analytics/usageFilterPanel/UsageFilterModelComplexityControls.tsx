@@ -39,7 +39,7 @@ const MODEL_TIER_ICON: Record<UsageModelTier, ComponentType> = {
 };
 
 interface UsageFilterModelComplexityControlsProps {
-  models: UsageFilterModelOption[];
+  moreModelsCatalog: UsageFilterModelOption[];
   selectedModelIds: Set<string>;
   onToggleModel: (model: UsageFilterModelOption) => void;
   activeTier: UsageModelTier;
@@ -47,7 +47,7 @@ interface UsageFilterModelComplexityControlsProps {
 }
 
 export function UsageFilterModelComplexityControls({
-  models,
+  moreModelsCatalog,
   selectedModelIds,
   onToggleModel,
   activeTier,
@@ -77,20 +77,20 @@ export function UsageFilterModelComplexityControls({
   const moreModelsSearchResults = useMemo(
     () =>
       isSearchingMoreModels
-        ? models.filter((model) =>
+        ? moreModelsCatalog.filter((model) =>
             model.name.toLowerCase().includes(moreModelsQuery)
           )
         : [],
-    [models, isSearchingMoreModels, moreModelsQuery]
+    [moreModelsCatalog, isSearchingMoreModels, moreModelsQuery]
   );
 
   const moreModelsGroups = useMemo(
     () =>
       MODEL_MAKER_IDS.flatMap((lab) => {
-        const labModels = models.filter((model) => model.lab === lab);
-        return labModels.length > 0 ? [{ lab, models: labModels }] : [];
+        const models = moreModelsCatalog.filter((model) => model.lab === lab);
+        return models.length > 0 ? [{ lab, models }] : [];
       }),
-    [models]
+    [moreModelsCatalog]
   );
 
   return (

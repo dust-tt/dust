@@ -1,4 +1,5 @@
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
@@ -71,7 +72,10 @@ export interface UsageFilterSourceOption extends UsageFilterOptionBase {
 export interface UsageFilterModelOption extends UsageFilterOptionBase {
   kind: "model";
   lab: ModelMakerIdType;
-  tier: UsageModelTier;
+  // Undefined for a model outside the static tier table — it doesn't match
+  // any Fast/Standard/Complex quick filter, so it's absent from the main
+  // checklist but still reachable through the "More models" browse dropdown.
+  tier: UsageModelTier | undefined;
 }
 
 export interface UsageFilterToolOption extends UsageFilterOptionBase {
@@ -165,8 +169,9 @@ export function removeUsageFilterGroup(
   return groups.filter((g) => g.id !== id);
 }
 
-// Only "user" and "agent" are wired to real consumption scope dimensions so
-// far; the other categories stay mock data and are not sent as query filters.
+// Only "user", "agent" and "model" are wired to real consumption scope
+// dimensions so far; the other categories stay mock data and are not sent as
+// query filters.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
@@ -182,5 +187,30 @@ export function toConsumptionScopeFilter(
     scopeFilter.agent = agentIds;
   }
 
+  const modelIds = filter.model?.map((entity) => entity.id);
+  if (modelIds && modelIds.length > 0) {
+    scopeFilter.model = modelIds;
+  }
+
   return scopeFilter;
+}
+
+// Maps the backend's reasoning-effort-aware pricing tier onto the filter
+// panel's simpler Fast/Standard/Complex bucket. Null propagates (a model
+// outside the static tier table, or a raw catalog entry with no config match)
+// as "no bucket", so it's excluded from every quick-filter tier rather than
+// landing in one arbitrarily.
+export function usageModelTierFromModelsTierName(
+  tier: ModelsTierName | null | undefined
+): UsageModelTier | undefined {
+  switch (tier) {
+    case "cost_efficient":
+      return "fast";
+    case "balanced":
+      return "standard";
+    case "premium":
+      return "complex";
+    default:
+      return undefined;
+  }
 }

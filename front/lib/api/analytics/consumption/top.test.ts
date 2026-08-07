@@ -53,7 +53,7 @@ function mockLabels(labels: Record<string, string>) {
     new Map(
       Object.entries(labels).map(([key, name]) => [
         key,
-        { name, pictureUrl: null, scope: null },
+        { name, pictureUrl: null, scope: null, modelMaker: null, tier: null },
       ])
     )
   );
@@ -83,7 +83,13 @@ describe("consumption top rankings", () => {
       new Map([
         [
           "agent1",
-          { name: "@dust", pictureUrl: "http://pic/dust", scope: "global" },
+          {
+            name: "@dust",
+            pictureUrl: "http://pic/dust",
+            scope: "global",
+            modelMaker: null,
+            tier: null,
+          },
         ],
       ])
     );
@@ -271,6 +277,8 @@ describe("consumption top rankings", () => {
     expect(models.value.models[0]).toEqual({
       modelId: "key1",
       name: "Claude 4 Sonnet",
+      modelMaker: null,
+      tier: null,
       credits: 2,
       messageCount: 4,
       avgCreditsPerMessage: 0.5,

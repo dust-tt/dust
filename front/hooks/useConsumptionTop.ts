@@ -10,8 +10,10 @@ import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/con
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -33,18 +35,26 @@ type ConsumptionTopRowBase = {
   avgCredits: number;
 };
 
-// `scope` only makes sense for the "agent" dimension, so it is tied to that
-// dimension in the type itself rather than left as an optional field every
-// dimension could accidentally set (or forget to set).
+// `scope` only makes sense for the "agent" dimension and `modelMaker`/`tier`
+// only for "model", so each is tied to its own dimension in the type rather
+// than left as a field every dimension could accidentally set (or forget to
+// set).
 export type ConsumptionAgentTopRow = ConsumptionTopRowBase & {
   dimension: "agent";
   scope: AgentConfigurationScope;
 };
 
+export type ConsumptionModelTopRow = ConsumptionTopRowBase & {
+  dimension: "model";
+  modelMaker: ModelMakerIdType | null;
+  tier: ModelsTierName | null;
+};
+
 export type ConsumptionTopRow =
   | ConsumptionAgentTopRow
+  | ConsumptionModelTopRow
   | (ConsumptionTopRowBase & {
-      dimension: Exclude<ConsumptionDimension, "agent">;
+      dimension: Exclude<ConsumptionDimension, "agent" | "model">;
     });
 
 type ConsumptionTopResponse =
@@ -86,11 +96,13 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
   }
   if ("models" in data) {
     return data.models.map(
-      (row): ConsumptionTopRow => ({
+      (row): ConsumptionModelTopRow => ({
         id: row.modelId,
         name: row.name,
         pictureUrl: null,
         dimension: "model",
+        modelMaker: row.modelMaker,
+        tier: row.tier,
         credits: row.credits,
         avgCredits: row.avgCreditsPerMessage,
       })
