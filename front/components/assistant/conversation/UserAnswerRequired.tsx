@@ -18,7 +18,6 @@ interface UserAnswerRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   retryHandler: () => Promise<void>;
-  isMobile?: boolean;
 }
 
 type SubmissionState = {
@@ -45,7 +44,6 @@ export function UserAnswerRequired({
   triggeringUser,
   owner,
   retryHandler,
-  isMobile = false,
 }: UserAnswerRequiredProps) {
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
@@ -290,7 +288,7 @@ export function UserAnswerRequired({
         }
       }}
       className={cn(
-        "flex flex-col gap-3 rounded-2xl border border-border-dark bg-muted-background p-3 outline-hidden md:border-border-dark/50 md:p-4 md:focus-within:border-highlight-300",
+        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
         "ease-enter motion-reduce:animate-none",
         submission?.phase === "exiting" &&
           "animate-out fill-mode-forwards fade-out-0 duration-exit",
@@ -377,8 +375,8 @@ export function UserAnswerRequired({
       <div className="flex items-center justify-between gap-3">
         <Button
           label="Skip"
-          variant="ghost-secondary"
-          size={isMobile ? "sm" : "xs"}
+          variant="outline"
+          size="sm"
           onClick={handleSkip}
           isLoading={submission?.kind === "skip"}
           disabled={isSubmitting}
@@ -386,7 +384,7 @@ export function UserAnswerRequired({
         <Button
           icon={ArrowUp}
           variant="highlight"
-          size={isMobile ? "sm" : "xs"}
+          size="sm"
           isLoading={submission?.kind === "answer"}
           disabled={isSubmitting || answerDraft.answerToSubmit === null}
           onClick={handleSubmit}

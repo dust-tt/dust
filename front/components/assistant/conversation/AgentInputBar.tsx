@@ -679,7 +679,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
                 }
                 owner={context.owner}
                 retryHandler={retryUserAnswerRequired}
-                isMobile={isMobile}
               />
             ) : (
               <InputBar
