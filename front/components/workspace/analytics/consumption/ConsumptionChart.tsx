@@ -24,6 +24,8 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
+import type { ConsumptionDimension } from "./consumptionDimensions";
+import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 
 // The bucket in progress (if mapped to today) is drawn faded across every series.
 const PARTIAL_BAR_OPACITY = "opacity-40";
@@ -113,18 +115,20 @@ function ConsumptionChartTooltip({
 interface ConsumptionChartProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  dimension: ConsumptionDimension;
 }
 
 export function ConsumptionChart({
   workspaceId,
   period,
+  dimension,
 }: ConsumptionChartProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
       workspaceId,
       period,
       mode: "daily",
-      breakdownBy: "agent",
+      breakdownBy: dimension,
     });
 
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
@@ -172,7 +176,7 @@ export function ConsumptionChart({
 
   return (
     <ChartContainer
-      title="Daily credits"
+      title={`Daily credits by ${CONSUMPTION_DIMENSION_CONFIG[dimension].breakdownLabel}`}
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
