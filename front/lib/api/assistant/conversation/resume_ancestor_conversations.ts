@@ -1,9 +1,10 @@
+import { listAgenticAncestors } from "@app/lib/api/assistant/conversation/agentic_ancestors";
 import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustErrorCode } from "@app/lib/error";
 import { DustError } from "@app/lib/error";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 
 // Outcomes that mean "this ancestor has nothing to resume", not "resuming failed": a handover
@@ -31,36 +32,22 @@ export async function resumeAncestorConversations(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  let cursor: {
-    conversation: ConversationResource;
-    agentMessageId: string;
-  } = { conversation, agentMessageId };
+  const ancestors = await listAgenticAncestors(auth, conversation, {
+    agentMessageId,
+    maxAncestors: MAX_CONVERSATION_DEPTH,
+  });
 
-  for (let depth = 0; depth < MAX_CONVERSATION_DEPTH; depth++) {
-    const parentAgentMessage = await cursor.conversation.findAgenticParent(
-      auth,
-      {
-        agentMessageId: cursor.agentMessageId,
-      }
-    );
-    if (!parentAgentMessage) {
-      break;
-    }
-
-    const [parentConversation] = await ConversationResource.fetchByModelIds(
-      auth,
-      [parentAgentMessage.conversationId],
-      { loadSpaces: true }
-    );
-    if (!parentConversation) {
-      break;
-    }
+  for (const ancestor of ancestors) {
+    const {
+      agentMessageId: parentAgentMessageId,
+      conversation: parentConversation,
+    } = ancestor;
 
     const retryRes = await retryBlockedActions(
       auth,
       parentConversation.toJSON(),
       {
-        messageId: parentAgentMessage.sId,
+        messageId: parentAgentMessageId,
         waitForCompletion: true,
       }
     );
@@ -69,7 +56,7 @@ export async function resumeAncestorConversations(
       const logBlob = {
         workspaceId: owner.sId,
         parentConversationId: parentConversation.sId,
-        parentAgentMessageId: parentAgentMessage.sId,
+        parentAgentMessageId,
         err: retryRes.error,
       };
 
@@ -85,10 +72,5 @@ export async function resumeAncestorConversations(
         );
       }
     }
-
-    cursor = {
-      conversation: parentConversation,
-      agentMessageId: parentAgentMessage.sId,
-    };
   }
 }
