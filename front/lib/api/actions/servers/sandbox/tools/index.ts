@@ -125,23 +125,40 @@ function safeJsonParse(value: string): unknown {
 // so we keep only allowlist denials for the agent and present them as a clean,
 // unambiguous line. Unrecognized lines are kept verbatim (fail open) so we
 // never silently swallow a real denial we don't understand.
-function filterAgentFacingDenyLogEntries(rawLines: string[]): string[] {
-  return rawLines.flatMap((line) => {
+//
+// Harness denials are hidden from the agent but still returned here so the
+// caller can log them: they are how we notice a request-policy check firing in
+// production, whether that is a real attack or legitimate traffic we broke.
+function partitionDenyLogEntries(rawLines: string[]): {
+  agentFacing: string[];
+  harnessDenials: { reason: string; domain: string | null }[];
+} {
+  const agentFacing: string[] = [];
+  const harnessDenials: { reason: string; domain: string | null }[] = [];
+
+  for (const line of rawLines) {
     const parsed = DenyLogLineSchema.safeParse(safeJsonParse(line));
     if (!parsed.success) {
-      return [line];
+      agentFacing.push(line);
+      continue;
     }
-    if (parsed.data.reason !== PROXY_ALLOWLIST_DENY_REASON) {
-      return [];
+
+    const { reason, domain, port } = parsed.data;
+    if (reason !== PROXY_ALLOWLIST_DENY_REASON) {
+      harnessDenials.push({ reason, domain: domain ?? null });
+      continue;
     }
-    const { domain, port } = parsed.data;
     if (!domain) {
-      return [line];
+      agentFacing.push(line);
+      continue;
     }
-    return [
-      `denied ${domain}${port ? `:${port}` : ""} (blocked by egress allowlist)`,
-    ];
-  });
+
+    agentFacing.push(
+      `denied ${domain}${port ? `:${port}` : ""} (blocked by egress allowlist)`
+    );
+  }
+
+  return { agentFacing, harnessDenials };
 }
 
 // Shannon entropy in bits/char. Uniform random characters approach
@@ -464,9 +481,21 @@ export async function runSandboxBashTool(
       "Failed to read egress deny log"
     );
   } else if (denyResult.value.length > 0) {
-    const filtered = filterAgentFacingDenyLogEntries(denyResult.value);
-    if (filtered.length > 0) {
-      denyLogEntries = filtered;
+    const { agentFacing, harnessDenials } = partitionDenyLogEntries(
+      denyResult.value
+    );
+    if (harnessDenials.length > 0) {
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          sandboxId: sandbox.sId,
+          harnessDenials,
+        },
+        "Sandbox egress request policy denied requests"
+      );
+    }
+    if (agentFacing.length > 0) {
+      denyLogEntries = agentFacing;
     }
   }
 

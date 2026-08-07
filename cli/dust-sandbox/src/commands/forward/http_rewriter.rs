@@ -163,6 +163,10 @@ where
             UpgradeVerdict::NotAnUpgrade => continue,
             UpgradeVerdict::AwaitingResponse(accepted_rx) => {
                 if accepted_rx.await.unwrap_or(false) {
+                    // The authority pin ends here: post-101 bytes are opaque
+                    // frames we splice unparsed. Upstream has already handed
+                    // the socket to a WebSocket backend by then, so it no
+                    // longer routes on anything we could inject.
                     copy_raw_client_to_upstream(&mut reader, upstream).await?;
                 } else {
                     shutdown_upstream(upstream).await?;
@@ -1296,7 +1300,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn drops_plain_http_absolute_uri_to_other_host() -> Result<()> {
+    async fn drops_plain_http_absolute_uri_disagreeing_with_host() -> Result<()> {
         let table = empty_table()?;
         let err = rewrite_once(
             b"GET http://evil.example/ HTTP/1.1\r\nHost: api.openai.com\r\n\r\n",
@@ -1306,9 +1310,29 @@ mod tests {
             },
         )
         .await
-        .expect_err("absolute URI to another host should deny on port 80");
+        .expect_err("absolute URI disagreeing with Host should deny on port 80");
 
         assert_deny_reason(err, DenyReason::AbsoluteUriAuthorityMismatch);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_plain_http_absolute_uri_agreeing_with_fronted_host() -> Result<()> {
+        // The absolute-URI check only compares the target against the request's
+        // own Host, so a self-consistent proxy-form request to another host used
+        // to pass both checks on port 80. The domain pin is what stops it.
+        let table = empty_table()?;
+        let err = rewrite_once(
+            b"GET http://evil.example/ HTTP/1.1\r\nHost: evil.example\r\n\r\n",
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("absolute URI to another host should deny on port 80");
+
+        assert_deny_reason(err, DenyReason::HostDomainMismatch);
         Ok(())
     }
 
