@@ -3,6 +3,8 @@ import { MCPServerPersonalAuthenticationRequired } from "@app/components/assista
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
 import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
@@ -24,6 +26,8 @@ export function BlockedAction({
   conversationId,
   retryHandler,
 }: BlockedActionProps) {
+  const { user } = useAuth();
+
   switch (blockedAction.status) {
     case "blocked_validation_required":
       return (
@@ -65,6 +69,15 @@ export function BlockedAction({
       );
 
     case "blocked_user_answer_required":
+      if (
+        canCurrentUserRespondToParentUserMessage({
+          parentUserId: blockedAction.userId,
+          currentUserId: user?.sId,
+        })
+      ) {
+        return null;
+      }
+
       return (
         <UserAnswerRequired
           blockedAction={blockedAction}
