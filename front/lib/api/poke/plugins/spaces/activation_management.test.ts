@@ -99,14 +99,18 @@ async function makeWorkspaceWithEditor() {
 describe("activationManagementPlugin.execute", () => {
   it("starts the workspace's Activation schedule once provisioning succeeds", async () => {
     const { workspace, adminAuth, editor } = await makeWorkspaceWithEditor();
+    const workAreas =
+      "Enterprise account planning — Prepare account plans for strategic customers.";
+    const activationPlaybook =
+      "Prioritize actions that reduce time spent preparing account plans.";
 
     const result = await activationManagementPlugin.execute(adminAuth, null, {
       targetUserIds: [editor.sId],
       groupId: [],
       sessionGoal: "",
       pushedResource: [],
-      userContext: "",
-      activationPlaybook: "",
+      workAreas,
+      activationPlaybook,
       podName: "",
       forceRecreate: false,
     });
@@ -115,6 +119,12 @@ describe("activationManagementPlugin.execute", () => {
     expect(mockStartActivationWorkspaceSchedule).toHaveBeenCalledWith({
       workspaceId: workspace.sId,
     });
+    expect(mockFireActivationNudge).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        context: expect.objectContaining({ workAreas, activationPlaybook }),
+      })
+    );
   });
 
   it("returns Err and does not report success when starting the schedule fails", async () => {
@@ -128,7 +138,7 @@ describe("activationManagementPlugin.execute", () => {
       groupId: [],
       sessionGoal: "",
       pushedResource: [],
-      userContext: "",
+      workAreas: "",
       activationPlaybook: "",
       podName: "",
       forceRecreate: false,
