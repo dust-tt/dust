@@ -71,7 +71,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { PodListItemType, PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionSparklesIcon,
   ArrowRight,
   Avatar,
   Brackets,
