@@ -4,7 +4,10 @@ import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { deriveSandboxFunctionSlug } from "@app/lib/api/sandbox_functions/slug";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import {
+  computeSandboxFunctionBundleSha256,
+  SandboxFunctionResource,
+} from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
@@ -120,6 +123,7 @@ export async function publishSandboxFunction(
     description,
     userIdentity,
     executionMode,
+    bundleSha256: computeSandboxFunctionBundleSha256(bundleCode),
     inputSchema,
     outputSchema,
   });

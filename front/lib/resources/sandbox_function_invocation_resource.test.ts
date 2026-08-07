@@ -91,6 +91,9 @@ const outputSchema: JSONSchema = {
   required: ["commentId"],
 };
 
+// Stamped on the function at creation and expected back on every exec envelope.
+const TEST_BUNDLE_SHA256 = "a".repeat(64);
+
 beforeEach(() => {
   vi.clearAllMocks();
   fileStorageMock.reset();
@@ -121,6 +124,7 @@ async function setupExecutionTest(
     description: "Add a comment.",
     userIdentity,
     executionMode,
+    bundleSha256: TEST_BUNDLE_SHA256,
     inputSchema,
     outputSchema,
   });
@@ -750,6 +754,7 @@ describe("SandboxFunctionInvocationResource", () => {
       },
       body: JSON.stringify({ message: "hello" }),
       encoding: "utf8",
+      bundleSha256: TEST_BUNDLE_SHA256,
     });
   });
 

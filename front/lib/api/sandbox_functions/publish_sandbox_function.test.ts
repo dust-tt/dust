@@ -12,6 +12,7 @@ import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
+import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -96,6 +97,9 @@ describe("publishSandboxFunction", () => {
     expect(fn.slug).toBe("greeter__greet");
     expect(fn.description).toBe("Greet someone.");
     expect(fn.userIdentity).toBe("interactive_workspace_user_required");
+    expect(fn.bundleSha256).toBe(
+      createHash("sha256").update("export default {};", "utf8").digest("hex")
+    );
     expect(fn.inputSchema).toEqual(inputSchema);
     expect(fn.outputSchema).toEqual(outputSchema);
 
@@ -261,6 +265,11 @@ describe("publishSandboxFunction", () => {
     expect(second.value.id).toBe(first.value.id);
     expect(second.value.description).toBe("v2");
     expect(second.value.userIdentity).toBe("optional");
+    // The hash follows the bundle: a republish must restamp it, or warm servers holding the old
+    // import would keep matching and serve stale code.
+    expect(second.value.bundleSha256).toBe(
+      createHash("sha256").update("v2", "utf8").digest("hex")
+    );
     expect(second.value.outputSchema).toEqual(newOutputSchema);
     // The bundle file is reused in place, not replaced: same row, canonical mount path retained, and
     // its version bumped by the re-upload.
