@@ -28,6 +28,12 @@ function normalizeAppPrefix(folderName: string): string {
  * and anything nested below it) are the app's own business, so moving a source inside its app never
  * renames the published function and never orphans a Frame's `<podId>/<slug>` reference.
  *
+ * A source sitting directly at the pod root has no app folder and keeps the bare name. That cannot
+ * collide with an app's function: `name` is a single segment so it carries no `__`, and a prefix
+ * never contains one either, so a prefixed slug always has exactly one and the two namespaces stay
+ * disjoint. Moving such a source into an app folder does rename its function, which is the one
+ * rename this scheme does not absorb.
+ *
  * This checks shape, not access: callers resolve `sourcePath` through `DustFileSystem`, which is
  * what rejects traversal, foreign pods and scopes that are not sandbox-mounted.
  */
@@ -62,12 +68,13 @@ export function deriveSandboxFunctionSlug({
   }
 
   const segments = parsed.relPath.split("/").filter((s) => s.length > 0);
-  if (segments.length < 2) {
+  if (segments.length === 0) {
     return new Err(
-      new Error(
-        `A function's source must live in its app folder, e.g. 'pod-${podId}/MyApp/functions/${name}.ts': got '${sourcePath}'.`
-      )
+      new Error(`Path has no file component: got '${sourcePath}'.`)
     );
+  }
+  if (segments.length === 1) {
+    return new Ok(name);
   }
 
   const prefix = normalizeAppPrefix(segments[0]);

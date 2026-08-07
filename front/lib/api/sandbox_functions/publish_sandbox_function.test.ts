@@ -327,8 +327,16 @@ describe("publishSandboxFunction", () => {
     ]);
   });
 
-  it("rejects a source that sits directly at the pod root", async () => {
-    const { space, auth } = await setupPod();
+  it("publishes a source at the pod root under its bare name", async () => {
+    const { workspace, space, auth } = await setupPod();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "export default {};",
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema,
+      })
+    );
 
     const result = await publishSandboxFunction(auth, {
       space,
@@ -337,12 +345,18 @@ describe("publishSandboxFunction", () => {
       path: `pod-${space.sId}/greet.ts`,
     });
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
       return;
     }
-    expect(result.error.code).toBe("invalid_path");
-    expect(buildSandboxFunctionOnSandbox).not.toHaveBeenCalled();
+    expect(result.value.slug).toBe("greet");
+
+    const files = await FileModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(files[0].mountFilePath).toBe(
+      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
+    );
   });
 
   it("rejects a path that escapes the pod mount", async () => {

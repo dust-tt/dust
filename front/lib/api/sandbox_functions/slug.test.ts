@@ -61,8 +61,37 @@ describe("deriveSandboxFunctionSlug", () => {
     expect(result.value).toBe("tasklist__add-task");
   });
 
-  it("rejects a source that sits directly at the pod root", () => {
+  it("leaves a source at the pod root unprefixed", () => {
     const result = derive(`pod-${POD_ID}/greet.ts`, "greet");
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value).toBe("greet");
+  });
+
+  // An unprefixed slug can never collide with an app's: the name is one segment so it carries no
+  // `__`, and a prefix never contains one either, so every prefixed slug has exactly one.
+  it("keeps root and app namespaces disjoint", () => {
+    const root = derive(`pod-${POD_ID}/refresh.ts`, "refresh");
+    const app = derive(
+      `pod-${POD_ID}/TaskList/functions/refresh.ts`,
+      "refresh"
+    );
+
+    expect(root.isOk()).toBe(true);
+    expect(app.isOk()).toBe(true);
+    if (root.isErr() || app.isErr()) {
+      return;
+    }
+    expect(root.value).not.toBe(app.value);
+    expect(root.value).not.toContain("__");
+    expect(app.value.match(/__/g)).toHaveLength(1);
+  });
+
+  it("rejects a path with no file component", () => {
+    const result = derive(`pod-${POD_ID}`, "greet");
 
     expect(result.isErr()).toBe(true);
   });

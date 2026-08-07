@@ -100,8 +100,8 @@ Functions that no Frame calls still get an app folder, named after what they do 
 Write the source as a TypeScript file in the app's \`functions\` folder, at
 \`pod-<podId>/<AppName>/functions/<name>.ts\` (the Computer mounts it at
 \`/files/pod-<podId>/<AppName>/functions/<name>.ts\`; the \`files\` MCP server reaches it under the
-same scoped path). The app folder is required: a source at the Pod root is rejected at publish
-time, because the app folder is what namespaces the function. The module must:
+same scoped path). Keep it in an app folder: that folder is what namespaces the function, and a
+source left at the Pod root publishes under its bare name instead. The module must:
 
 - export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas,
 - default-export an object with a \`fetch(request: Request): Promise<Response>\` method (the Bun and
@@ -256,7 +256,9 @@ from the app folder in \`path\` (\`TaskList\` becomes \`tasklist\`, \`Task List\
 reports the full slug back. Use that reported slug everywhere afterwards: \`${toolName("get")}\`,
 \`${toolName("call")}\`, \`${toolName("unpublish")}\`, and a Frame's reference. Only the app folder
 contributes, so \`functions/\` and any folder nested under it never appear in the slug, and moving a
-source inside its app does not rename the function.
+source inside its app does not rename the function. A source at the Pod root has no app folder and
+keeps its bare name; moving it into one later *does* rename its function, leaving the old slug
+published and stale, so put it in its app folder from the start.
 
 Publishing again under the same app and name replaces that version. Two different apps can each
 publish a \`refresh\` and they stay separate functions, so you never have to invent
