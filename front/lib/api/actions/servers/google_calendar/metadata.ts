@@ -170,7 +170,9 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
   {
     name: "create_event",
     description:
-      "Create and schedule a meeting, event, or appointment on Google Calendar. By default, add the calling user as organizer and attendee, call check_availability first, and call get_user_timezones before scheduling.",
+      "Create and schedule a meeting, event, or appointment on Google Calendar. " +
+      "By default, add the calling user as organizer and attendee, call " +
+      "check_availability first, and call get_user_timezones before scheduling.",
     schema: {
       calendarId: z
         .string()
@@ -198,7 +200,9 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
       conference: createEventConferenceSchema
         .default({ type: "google_meet" })
         .describe(
-          "Conference setup. Defaults to a new Google Meet conference. Use 'custom' for phone, SIP, video, or third-party conferencing, or 'none' to create the event without a conference."
+          "Conference setup. Defaults to a new Google Meet conference. Use " +
+            "'custom' for phone, SIP, video, or third-party conferencing, or " +
+            "'none' to create the event without a conference."
         ),
       eventType: z
         .enum(["default", "focusTime", "outOfOffice"])
@@ -219,7 +223,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
   {
     name: "update_event",
     description:
-      "Update or reschedule a Google Calendar event or meeting to a new time, location, set of attendees, or conference.",
+      "Update or reschedule a Google Calendar event or meeting to a new time, " +
+      "location, set of attendees, or conference.",
     schema: {
       calendarId: z
         .string()
@@ -250,7 +255,9 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
       conference: updateEventConferenceSchema
         .optional()
         .describe(
-          "Conference setup. Use 'google_meet' to create a new Google Meet conference or 'custom' for phone, SIP, video, or third-party conferencing. Omit to preserve the existing conference."
+          "Conference setup. Use 'google_meet' to create a new Google Meet " +
+            "conference or 'custom' for phone, SIP, video, or third-party " +
+            "conferencing. Omit to preserve the existing conference."
         ),
       ...sharedEventFields,
     },

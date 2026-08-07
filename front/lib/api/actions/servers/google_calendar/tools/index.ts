@@ -13,8 +13,10 @@ import {
   isGoogleCalendarEvent,
   mergeIntervals,
 } from "@app/lib/api/actions/servers/google_calendar/helpers";
-import type { GoogleCalendarConference } from "@app/lib/api/actions/servers/google_calendar/metadata";
-import { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import {
+  GOOGLE_CALENDAR_TOOLS_METADATA,
+  type GoogleCalendarConference,
+} from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
