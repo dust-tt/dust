@@ -1485,9 +1485,11 @@ const ConversationListItem = memo(
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
     const {
       isMenuOpen,
+      isMenuOpenOrClosing,
       menuTriggerPosition,
       handleRightClick,
       handleMenuOpenChange,
+      handleMenuCloseComplete,
     } = useConversationMenu();
 
     const [showTypingAnimation, setShowTypingAnimation] = useState(false);
@@ -1580,7 +1582,9 @@ const ConversationListItem = memo(
             trigger={() => <NavigationListItemAction />}
             isConversationDisplayed={activeConversationId === conversation.sId}
             isOpen={isMenuOpen}
+            isOpenOrClosing={isMenuOpenOrClosing}
             onOpenChange={handleMenuOpenChange}
+            onCloseComplete={handleMenuCloseComplete}
             triggerPosition={menuTriggerPosition}
           />
         }

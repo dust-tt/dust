@@ -70,7 +70,7 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -88,20 +88,12 @@ export function useConversationMenu() {
     { x: number; y: number } | undefined
   >();
 
-  // Tracks if the menu was just closed to prevent immediate reopening
-  // This flag creates a brief "cooldown" period after menu closure
+  // Tracks the closing animation so the menu stays stable and cannot reopen mid-exit.
   const [wasMenuJustClosed, setWasMenuJustClosed] = useState(false);
 
   const handleMenuOpenChange = useCallback((open: boolean) => {
     setIsMenuOpen(open);
-    if (!open) {
-      // When menu closes, set the "just closed" flag for 100ms
-      // This prevents right-click handlers from immediately reopening the menu
-      setWasMenuJustClosed(true);
-      setTimeout(() => {
-        setWasMenuJustClosed(false);
-      }, 100);
-    }
+    setWasMenuJustClosed(!open);
   }, []);
 
   const handleRightClick = useCallback(
@@ -122,21 +114,18 @@ export function useConversationMenu() {
     [isMenuOpen, wasMenuJustClosed]
   );
 
-  // Clear the trigger position when menu closes to allow animations to complete
-  // The 150ms delay ensures smooth closing animation before position reset
-  useEffect(() => {
-    if (!isMenuOpen) {
-      setTimeout(() => {
-        setMenuTriggerPosition(undefined);
-      }, 150);
-    }
-  }, [isMenuOpen]);
+  const handleMenuCloseComplete = useCallback(() => {
+    setWasMenuJustClosed(false);
+    setMenuTriggerPosition(undefined);
+  }, []);
 
   return {
     isMenuOpen,
+    isMenuOpenOrClosing: isMenuOpen || wasMenuJustClosed,
     menuTriggerPosition,
     handleRightClick,
     handleMenuOpenChange,
+    handleMenuCloseComplete,
   };
 }
 
@@ -149,7 +138,9 @@ interface ConversationMenuProps {
     | (({ isPendingAction }: { isPendingAction: boolean }) => ReactElement);
   isConversationDisplayed: boolean;
   isOpen: boolean;
+  isOpenOrClosing: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseComplete: () => void;
   triggerPosition?: { x: number; y: number };
   displayOpenInBrowser?: boolean;
   openDetailsInNewTab?: boolean;
@@ -162,7 +153,9 @@ export function ConversationMenu({
   trigger,
   isConversationDisplayed,
   isOpen,
+  isOpenOrClosing,
   onOpenChange,
+  onCloseComplete,
   triggerPosition,
   displayOpenInBrowser,
   openDetailsInNewTab,
@@ -220,7 +213,9 @@ export function ConversationMenu({
   };
 
   const shouldWaitBeforeFetching =
-    activeConversationId === null || user?.sId === undefined || !isOpen;
+    activeConversationId === null ||
+    user?.sId === undefined ||
+    !isOpenOrClosing;
   const { mutateConversation } = useConversation({
     conversationId: isConversationDisplayed ? activeConversationId : null,
     workspaceId: owner.sId,
@@ -430,7 +425,10 @@ export function ConversationMenu({
         ) : (
           <DropdownMenuTrigger asChild>{menuTrigger}</DropdownMenuTrigger>
         )}
-        <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
+        <DropdownMenuContent
+          onCloseAutoFocus={onCloseComplete}
+          onFocusOutside={(e) => e.preventDefault()}
+        >
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
