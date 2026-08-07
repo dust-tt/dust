@@ -123,6 +123,23 @@ describe("usePodFunction", () => {
     expect(callFunction).toHaveBeenCalledTimes(1);
   });
 
+  it("calls a slug carrying its app prefix", async () => {
+    const callFunction = vi.fn().mockResolvedValue([{ id: 1, title: "Task" }]);
+    const dataAPI = makeDataAPI(callFunction);
+    const { result } = renderHook(
+      () => usePodFunction("vlt_123/tasklist__list-tasks", { done: false }),
+      { wrapper: makeWrapper(dataAPI) }
+    );
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual([{ id: 1, title: "Task" }]);
+    });
+    expect(result.current.error).toBeUndefined();
+    expect(callFunction).toHaveBeenCalledWith("vlt_123/tasklist__list-tasks", {
+      done: false,
+    });
+  });
+
   it("does not call the function when disabled", async () => {
     const callFunction = vi.fn();
     const { result } = renderHook(

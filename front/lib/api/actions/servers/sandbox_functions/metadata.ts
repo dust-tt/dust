@@ -3,6 +3,7 @@ import {
   POD_DATABASE_NAME_REGEX,
   SANDBOX_FUNCTION_EXECUTION_MODES,
   SANDBOX_FUNCTION_SLUG_REGEX,
+  SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
 } from "@app/types/api/sandbox_functions";
 import { z } from "zod";
 
@@ -50,14 +51,17 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
       "`schema` with zod `input` and `output`. Set `schema.userIdentity` to `optional`, " +
       "`workspace_user_required`, or `interactive_workspace_user_required`. It is bundled on the " +
       "pod sandbox (only `zod` is available to import), and its contract is extracted from the " +
-      "`schema` export. Re-publishing the same slug replaces the previous version.",
+      "`schema` export. The published slug is prefixed with the app the source lives in, so " +
+      "re-publishing the same name from the same app replaces the previous version while another " +
+      "app's function of the same name is left alone.",
     schema: {
       slug: z
         .string()
-        .regex(SANDBOX_FUNCTION_SLUG_REGEX)
+        .regex(SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX)
         .describe(
-          "Unique function identifier within the pod: lowercase alphanumeric with single hyphen " +
-            "separators (e.g. `send-slack-message`)."
+          "The function's name within its app: lowercase alphanumeric with single hyphen " +
+            "separators (e.g. `send-slack-message`). Do not include the app prefix; publish " +
+            "derives it from `path` and reports the full slug back."
         ),
       description: z
         .string()
@@ -71,7 +75,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .describe(
           "Scoped path to the function's TypeScript source in the pod, as shown by the files " +
             "tools. It lives in its app's `functions` folder (e.g. " +
-            "`pod-<id>/MyApp/functions/greet.ts`)."
+            "`pod-<id>/MyApp/functions/greet.ts`). The app folder's name becomes the published " +
+            "slug's prefix; a source at the pod root keeps its bare name."
         ),
       executionMode: z
         .enum(SANDBOX_FUNCTION_EXECUTION_MODES)

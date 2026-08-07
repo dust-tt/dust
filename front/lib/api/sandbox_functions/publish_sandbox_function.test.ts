@@ -85,7 +85,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "greet",
       description: "Greet someone.",
-      path: `pod-${space.sId}/greet.ts`,
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
     });
 
     expect(result.isOk()).toBe(true);
@@ -93,7 +93,7 @@ describe("publishSandboxFunction", () => {
       return;
     }
     const fn = result.value;
-    expect(fn.slug).toBe("greet");
+    expect(fn.slug).toBe("greeter__greet");
     expect(fn.description).toBe("Greet someone.");
     expect(fn.userIdentity).toBe("interactive_workspace_user_required");
     expect(fn.inputSchema).toEqual(inputSchema);
@@ -101,7 +101,7 @@ describe("publishSandboxFunction", () => {
 
     expect(buildSandboxFunctionOnSandbox).toHaveBeenCalledWith(auth, {
       space,
-      srcSandboxPath: `/files/pod-${space.sId}/greet.ts`,
+      srcSandboxPath: `/files/pod-${space.sId}/Greeter/functions/greet.ts`,
     });
 
     // The source stays on the mount, so the bundle is the only FileResource.
@@ -113,10 +113,10 @@ describe("publishSandboxFunction", () => {
     expect(bundle.id).toBe(fn.fileId);
     expect(bundle.contentType).toBe(sandboxFunctionContentType);
     expect(bundle.useCase).toBe("project_context");
-    expect(bundle.fileName).toBe("greet.ts");
+    expect(bundle.fileName).toBe("greeter__greet.ts");
     expect(bundle.useCaseMetadata?.spaceId).toBe(space.sId);
     expect(bundle.mountFilePath).toBe(
-      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
+      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greeter__greet.ts`
     );
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
@@ -138,7 +138,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "greet",
       description: "Greet someone.",
-      path: `pod-${space.sId}/greet.ts`,
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
     });
     expect(durable.isOk()).toBe(true);
     if (durable.isErr()) {
@@ -150,7 +150,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "read-state",
       description: "Read pod state.",
-      path: `pod-${space.sId}/read-state.ts`,
+      path: `pod-${space.sId}/Greeter/functions/read-state.ts`,
       executionMode: "fast",
     });
     expect(fast.isOk()).toBe(true);
@@ -175,7 +175,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "greet",
       description: "Greet someone.",
-      path: `pod-${space.sId}/greet.ts`,
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
       executionMode: "fast",
     });
     expect(created.isOk()).toBe(true);
@@ -185,7 +185,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "greet",
       description: "Greet someone, again.",
-      path: `pod-${space.sId}/greet.ts`,
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
     });
     expect(republished.isOk()).toBe(true);
     if (republished.isErr()) {
@@ -197,7 +197,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "greet",
       description: "Greet someone, again.",
-      path: `pod-${space.sId}/greet.ts`,
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
       executionMode: "fast",
     });
     expect(restated.isOk()).toBe(true);
@@ -222,7 +222,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "greet",
       description: "v1",
-      path: `pod-${space.sId}/greet.ts`,
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
     });
     expect(first.isOk()).toBe(true);
     if (first.isErr()) {
@@ -251,7 +251,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "greet",
       description: "v2",
-      path: `pod-${space.sId}/greet.ts`,
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
     });
     expect(second.isOk()).toBe(true);
     if (second.isErr()) {
@@ -273,9 +273,90 @@ describe("publishSandboxFunction", () => {
     });
     expect(files.map((file) => file.id)).toEqual([firstFileId]);
     expect(files[0].mountFilePath).toBe(
-      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
+      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greeter__greet.ts`
     );
     expect(files[0].version).toBeGreaterThan(firstVersion ?? 0);
+  });
+
+  it("keeps two apps that publish the same name as separate functions", async () => {
+    const { workspace, space, auth } = await setupPod();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "export default {};",
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema,
+      })
+    );
+
+    const taskList = await publishSandboxFunction(auth, {
+      space,
+      slug: "refresh",
+      description: "Refresh the task list.",
+      path: `pod-${space.sId}/TaskList/functions/refresh.ts`,
+    });
+    const inbox = await publishSandboxFunction(auth, {
+      space,
+      slug: "refresh",
+      description: "Refresh the inbox.",
+      path: `pod-${space.sId}/Inbox/functions/refresh.ts`,
+    });
+
+    expect(taskList.isOk()).toBe(true);
+    expect(inbox.isOk()).toBe(true);
+    if (taskList.isErr() || inbox.isErr()) {
+      return;
+    }
+
+    // The second publish must not have replaced the first: two rows, two slugs, two bundles.
+    expect(taskList.value.slug).toBe("tasklist__refresh");
+    expect(inbox.value.slug).toBe("inbox__refresh");
+    expect(inbox.value.id).not.toBe(taskList.value.id);
+    expect(taskList.value.description).toBe("Refresh the task list.");
+    expect(inbox.value.description).toBe("Refresh the inbox.");
+
+    const listed = await SandboxFunctionResource.listBySpace(auth, space);
+    expect(listed).toHaveLength(2);
+
+    const files = await FileModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(files.map((file) => file.mountFilePath).sort()).toEqual([
+      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/inbox__refresh.ts`,
+      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/tasklist__refresh.ts`,
+    ]);
+  });
+
+  it("publishes a source at the pod root under its bare name", async () => {
+    const { workspace, space, auth } = await setupPod();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "export default {};",
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema,
+      })
+    );
+
+    const result = await publishSandboxFunction(auth, {
+      space,
+      slug: "greet",
+      description: "Greet someone.",
+      path: `pod-${space.sId}/greet.ts`,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.slug).toBe("greet");
+
+    const files = await FileModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(files[0].mountFilePath).toBe(
+      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
+    );
   });
 
   it("rejects a path that escapes the pod mount", async () => {
@@ -306,7 +387,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "greet",
       description: "Greet someone.",
-      path: `pod-${space.sId}/greet.ts`,
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
     });
 
     expect(result.isErr()).toBe(true);
@@ -332,7 +413,7 @@ describe("publishSandboxFunction", () => {
       space,
       slug: "greet",
       description: "Greet someone.",
-      path: `pod-${space.sId}/greet.ts`,
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
     });
 
     expect(result.isErr()).toBe(true);
