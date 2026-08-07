@@ -25,7 +25,7 @@ describe("launchStoreAgentMessageConsumptionAttributionWorkflow", () => {
     mockSignalWithStart.mockResolvedValue(undefined);
   });
 
-  it("signals the replay-safe V2 workflow for every finalize", async () => {
+  it("signals the replay-safe V3 workflow for every finalize", async () => {
     const { authenticator } = await createResourceTest({});
     const authType = authenticator.toJSON();
     const agentLoopArgs: AgentLoopArgs = {

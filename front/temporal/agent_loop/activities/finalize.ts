@@ -40,10 +40,8 @@ async function launchAgentMessageConsumptionAttributionAfterPersistingInputs(
 ): Promise<void> {
   // Consumption analytics needs the authoritative bill, usage type, and historical skill snapshot
   // before its attribution workflow can safely materialize Elasticsearch documents.
-  await Promise.all([
-    snapshotAgentMessageSkills(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, creditArgs),
-  ]);
+  await snapshotAgentMessageSkills(auth, agentLoopArgs);
+  await computeAndStoreAgentMessageCredits(auth, creditArgs);
 
   await launchAgentMessageConsumptionAttribution(auth, agentLoopArgs);
 }
