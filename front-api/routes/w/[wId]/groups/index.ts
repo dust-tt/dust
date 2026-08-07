@@ -46,17 +46,9 @@ app.get(
       ? await GroupResource.listForSpaceById(auth, spaceId, { groupKinds })
       : await GroupResource.listAllWorkspaceGroups(auth, { groupKinds });
 
-    const memberCounts = await GroupResource.getMemberCountsForGroups(
-      auth,
-      groups
-    );
-
-    const groupsWithMemberCount = groups.map((group) => ({
-      ...group.toJSON(),
-      memberCount: memberCounts.get(group.id) ?? 0,
-    }));
-
-    return ctx.json({ groups: groupsWithMemberCount });
+    return ctx.json({
+      groups: await GroupResource.toJSONWithMemberCounts(auth, groups),
+    });
   }
 );
 
