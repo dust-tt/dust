@@ -22,9 +22,6 @@ function validateConsumptionItemShape(
   if (isTool && this.agentMCPActionId === null) {
     throw new Error("Tool attribution items require an agent MCP action");
   }
-  if (!isTool && this.runUsageId === null) {
-    throw new Error("Non-tool attribution items require a run usage");
-  }
   if (!isTool && this.agentMCPActionId !== null) {
     throw new Error("Only tool attribution items may reference an action");
   }
@@ -84,7 +81,7 @@ export class AgentMessageConsumptionItemModel extends WorkspaceAwareModel<AgentM
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
-  declare runUsageId: ModelId | null;
+  declare runUsageId: ModelId;
   declare agentMCPActionId: ModelId | null;
   declare itemKey: string;
   declare itemType: AgentMessageConsumptionItemType;
@@ -126,7 +123,7 @@ AgentMessageConsumptionItemModel.init(
     },
     runUsageId: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
     },
     agentMCPActionId: {
       type: DataTypes.BIGINT,

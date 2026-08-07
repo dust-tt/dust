@@ -36,6 +36,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { RunFactory } from "@app/tests/utils/RunFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -825,11 +826,12 @@ describe("destroyConversation", () => {
       },
     });
 
+    const { runUsageModelId } = await RunFactory.createWithUsage(auth);
     await AgentMessageConsumptionItemModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       conversationId: conversation.id,
       agentMessageId,
-      runUsageId: null,
+      runUsageId: runUsageModelId,
       agentMCPActionId: action.id,
       itemKey: `tool-action:${action.id}`,
       itemType: "tool",

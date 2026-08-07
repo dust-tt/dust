@@ -31,7 +31,7 @@ type ConsumptionItemEvidenceBase = {
 
 export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   itemType: "tool";
-  runUsageModelId: ModelId | null;
+  runUsageModelId: ModelId;
   action: AgentMCPActionResource;
   /** Estimated tokens in the result returned by this tool execution */
   inputTokensCount: number | null;
@@ -42,7 +42,7 @@ export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
 
 export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
   action: AgentMCPActionResource;
-  runUsageModelId: ModelId | null;
+  runUsageModelId: ModelId;
   /** Estimated tokens in the model output that emitted the tool name and arguments */
   outputTokensCount: number | null;
 };
