@@ -54,13 +54,12 @@ import { useMemo, useState } from "react";
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
-  // Skills/sources are still mock data (see usageFilterMockData.ts — sources
-  // are fake connectors standing in for a real db call); agents, members,
-  // groups, models and tools are fetched live below, scoped to `period`
+  // Sources are still mock data (see usageFilterMockData.ts — fake
+  // connectors standing in for a real db call); agents, members, groups,
+  // models, tools and skills are fetched live below, scoped to `period`
   // (useConsumptionTop, useConsumptionRelevantGroups) or, for the full model
   // catalog backing "More models", to the workspace (useModels).
   categoryOptions: {
-    skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
   };
   filter: UsageFilter;
@@ -106,6 +105,7 @@ export function UsageFilterPanel({
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
   const isModelCategoryActive = isOpen && activeCategory === "model";
   const isToolCategoryActive = isOpen && activeCategory === "tool";
+  const isSkillCategoryActive = isOpen && activeCategory === "skill";
 
   const { rows: topUserRows } = useConsumptionTop({
     workspaceId: owner.sId,
@@ -146,6 +146,17 @@ export function UsageFilterPanel({
     // tools.
     limit: 100,
     disabled: !isToolCategoryActive,
+  });
+
+  const { rows: topSkillRows } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "skill",
+    period,
+    // Same rationale as members/agents/models/tools: broader than the
+    // Attribution table's own top-N so the picker covers most of the
+    // period's active skills.
+    limit: 100,
+    disabled: !isSkillCategoryActive,
   });
 
   // The full workspace catalog (not period-scoped), used only for the "More
@@ -233,6 +244,19 @@ export function UsageFilterPanel({
     [topToolRows]
   );
 
+  // Same client-side search caveat as members/agents/models/tools: a skill
+  // outside the top 100 by credits over the period will not be searchable
+  // here.
+  const skillOptions = useMemo<UsageFilterSkillOption[]>(
+    () =>
+      topSkillRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        kind: "skill" as const,
+      })),
+    [topSkillRows]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -242,8 +266,16 @@ export function UsageFilterPanel({
       agent: agentOptions,
       model: modelOptions,
       tool: toolOptions,
+      skill: skillOptions,
     }),
-    [categoryOptions, memberOptions, agentOptions, modelOptions, toolOptions]
+    [
+      categoryOptions,
+      memberOptions,
+      agentOptions,
+      modelOptions,
+      toolOptions,
+      skillOptions,
+    ]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
