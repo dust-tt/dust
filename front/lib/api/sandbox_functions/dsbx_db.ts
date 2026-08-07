@@ -11,6 +11,12 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import {
+  type StagingHashes,
+  splitStagingStdout,
+  stagingHashCaptureLines,
+  verifyStagingContent,
+} from "@app/lib/api/sandbox_functions/staging_integrity";
 import type { Authenticator } from "@app/lib/auth";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -99,7 +105,12 @@ async function execDbCommand<S extends z.ZodTypeAny>(
   }
 ): Promise<
   Result<
-    { sandbox: SandboxResource; envelope: z.infer<S> },
+    {
+      sandbox: SandboxResource;
+      envelope: z.infer<S>;
+      stagingHashes: StagingHashes;
+      execStderr: string;
+    },
     SandboxFunctionError
   >
 > {
@@ -126,11 +137,19 @@ async function execDbCommand<S extends z.ZodTypeAny>(
     );
   }
 
-  const envelope = parseDbEnvelope(execResult.value.stdout, schema, what);
+  // Staging execs append a marker and per-file sha256 lines after the dsbx output;
+  // other `dsbx db` commands leave the stdout untouched.
+  const { dsbxStdout, hashes } = splitStagingStdout(execResult.value.stdout);
+  const envelope = parseDbEnvelope(dsbxStdout, schema, what);
   if (envelope.isErr()) {
     return envelope;
   }
-  return new Ok({ sandbox, envelope: envelope.value });
+  return new Ok({
+    sandbox,
+    envelope: envelope.value,
+    stagingHashes: hashes,
+    execStderr: execResult.value.stderr,
+  });
 }
 
 // Success mirrors the reconcile result in cli/dust-sandbox/functions-runner/db/reconcile.ts.
@@ -334,6 +353,10 @@ export async function getDatabaseSchemaOnSandbox(
       `mkdir -p -- ${shellEscape(outDir)}`,
       // `--` stops the model-influenced database name from being read as a flag.
       `${DSBX_BIN_PATH} db schema -- ${shellEscape(database)} ${shellEscape(outPath)}`,
+      // Pin the artifact hash in the same exec; verified after the provider
+      // read-back below (the read-back runs as root and follows symlinks, so a
+      // swapped staging file would otherwise read an arbitrary root file).
+      ...stagingHashCaptureLines([outPath]),
     ].join("\n"),
     schema: schemaEnvelopeSchema,
     what: `dsbx db schema ${database}`,
@@ -341,7 +364,12 @@ export async function getDatabaseSchemaOnSandbox(
   if (result.isErr()) {
     return result;
   }
-  const { sandbox, envelope } = result.value;
+  const {
+    sandbox,
+    envelope,
+    stagingHashes,
+    execStderr: execStderrForIntegrity,
+  } = result.value;
   if (!("ok" in envelope) || !envelope.ok) {
     return new Err(
       dbErrorToSandboxFunctionError(database, envelope, "internal")
@@ -353,6 +381,15 @@ export async function getDatabaseSchemaOnSandbox(
     return new Err(
       new SandboxFunctionError("internal", fileResult.error.message)
     );
+  }
+  const integrity = verifyStagingContent(
+    outPath,
+    fileResult.value,
+    stagingHashes,
+    { execStderr: execStderrForIntegrity }
+  );
+  if (integrity.isErr()) {
+    return integrity;
   }
   return new Ok(fileResult.value.toString("utf8"));
 }
