@@ -52,7 +52,7 @@ export async function fetchConsumptionOverview(
   const period = await resolveConsumptionPeriod(auth, periodInput);
 
   const query = buildConsumptionScopeQuery({
-    workspaceId: workspace.sId,
+    auth: auth,
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
