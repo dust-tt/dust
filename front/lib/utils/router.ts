@@ -93,5 +93,5 @@ export const getPodRoute = (workspaceId: string, spaceId: string) => {
 };
 
 export const getGetStartedRoute = (workspaceId: string) => {
-  return `/w/${workspaceId}/get-started`;
+  return `/w/${workspaceId}/for-you`;
 };

@@ -76,6 +76,7 @@ import {
   CheckDone01,
   Chip,
   Clock,
+  Counter,
   cn,
   DotsHorizontal,
   DropdownMenu,
@@ -89,6 +90,7 @@ import {
   FolderOpen,
   Icon,
   Label,
+  Lightbulb04,
   MagicWand02,
   MessagePlusCircle,
   NavigationList,
@@ -444,6 +446,7 @@ export function AgentSidebarMenu({
   const { recommendations: activationRecsForBadge } =
     useActivationRecommendations({
       workspaceId: owner.sId,
+      podId: activationPodId ?? undefined,
       disabled: !showGetStarted,
     });
 
@@ -1024,217 +1027,232 @@ export function AgentSidebarMenu({
                 </div>
               </div>
             )}
-            {showGetStarted && (
-              <NavigationList className="px-sidebar-side-spacing py-1">
-                <NavigationListItem
-                  label="Get started"
-                  icon={MagicWand02}
-                  href={getGetStartedRoute(owner.sId)}
-                  selected={router.asPath?.startsWith(
-                    getGetStartedRoute(owner.sId)
-                  )}
-                  count={
-                    activationRecsForBadge.length > 0
-                      ? activationRecsForBadge.length
-                      : undefined
-                  }
-                />
-              </NavigationList>
-            )}
-            {!isMultiSelect && !hideActions && (
+            {(showGetStarted || (!isMultiSelect && !hideActions)) && (
               <NavigationList className="mx-sidebar-side-spacing mb-4 flex-shrink-0 pt-1">
-                <NavigationListItem
-                  href={getAgentBuilderRoute(owner.sId, "manage")}
-                  icon={Robot}
-                  label="Agents"
-                  selected={router.asPath.startsWith(
-                    `/w/${owner.sId}/builder/agents`
-                  )}
-                  data-gtm-label="assistantManagementButton"
-                  data-gtm-location="sidebarMenu"
-                  onClick={withTracking(
-                    TRACKING_AREAS.BUILDER,
-                    "manage_agents",
-                    () => setSidebarOpen(false)
-                  )}
-                  keepHoverOnMoreMenu
-                  moreMenu={
-                    canCreateAgent ? (
-                      <div
-                        className={cn(
-                          "absolute right-2 top-1.5",
-                          "transition-opacity",
-                          "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                          "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                          "has-[[data-state=open]]:opacity-100"
-                        )}
-                      >
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="xs"
-                              icon={Plus}
-                              label="New"
-                              variant="ghost-secondary"
-                              className="data-[state=open]:bg-hover"
-                              disabled={noHealthyProviders}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            side="bottom"
-                            align="center"
-                            onClick={(e) => e.stopPropagation()}
+                {showGetStarted && (
+                  <NavigationListItem
+                    label="For you"
+                    icon={Lightbulb04}
+                    href={getGetStartedRoute(owner.sId)}
+                    selected={router.asPath?.startsWith(
+                      getGetStartedRoute(owner.sId)
+                    )}
+                    suffix={
+                      activationRecsForBadge.length > 0 ? (
+                        <Counter
+                          value={activationRecsForBadge.length}
+                          size="xs"
+                          variant="highlight"
+                        />
+                      ) : undefined
+                    }
+                  />
+                )}
+                {!isMultiSelect && !hideActions && (
+                  <>
+                    <NavigationListItem
+                      href={getAgentBuilderRoute(owner.sId, "manage")}
+                      icon={Robot}
+                      label="Agents"
+                      selected={router.asPath.startsWith(
+                        `/w/${owner.sId}/builder/agents`
+                      )}
+                      data-gtm-label="assistantManagementButton"
+                      data-gtm-location="sidebarMenu"
+                      onClick={withTracking(
+                        TRACKING_AREAS.BUILDER,
+                        "manage_agents",
+                        () => setSidebarOpen(false)
+                      )}
+                      keepHoverOnMoreMenu
+                      moreMenu={
+                        canCreateAgent ? (
+                          <div
+                            className={cn(
+                              "absolute right-2 top-1.5",
+                              "transition-opacity",
+                              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                              "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                              "has-[[data-state=open]]:opacity-100"
+                            )}
                           >
-                            <DropdownMenuLabel label="New agent" />
-                            <DropdownMenuItem
-                              href={getAgentBuilderRoute(owner.sId, "new")}
-                              icon={File02}
-                              label="From scratch"
-                              data-gtm-label="assistantCreationButton"
-                              data-gtm-location="sidebarMenu"
-                              onClick={withTracking(
-                                TRACKING_AREAS.BUILDER,
-                                "create_from_scratch",
-                                () => setSidebarOpen(false)
-                              )}
-                            />
-                            <DropdownMenuItem
-                              href={getAgentBuilderRoute(owner.sId, "create")}
-                              icon={MagicWand02}
-                              label="From template"
-                              data-gtm-label="assistantCreationButton"
-                              data-gtm-location="sidebarMenu"
-                              onClick={withTracking(
-                                TRACKING_AREAS.BUILDER,
-                                "create_from_template",
-                                () => setSidebarOpen(false)
-                              )}
-                            />
-                            <DropdownMenuItem
-                              icon={
-                                isUploadingYAML ? (
-                                  <Spinner size="xs" />
-                                ) : (
-                                  Brackets
-                                )
-                              }
-                              label={
-                                isUploadingYAML ? "Uploading..." : "From YAML"
-                              }
-                              disabled={isUploadingYAML}
-                              onClick={triggerYAMLUpload}
-                              data-gtm-label="yamlUploadButton"
-                              data-gtm-location="sidebarMenu"
-                            />
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ) : undefined
-                  }
-                />
-                <NavigationListItem
-                  href={getSkillBuilderRoute(owner.sId, "manage")}
-                  icon={SKILL_ICON}
-                  label="Skills"
-                  selected={router.asPath.startsWith(
-                    `/w/${owner.sId}/builder/skills`
-                  )}
-                  onClick={withTracking(
-                    TRACKING_AREAS.BUILDER,
-                    "manage_skills",
-                    () => setSidebarOpen(false)
-                  )}
-                  keepHoverOnMoreMenu
-                  moreMenu={
-                    canCreateSkill ? (
-                      <div
-                        className={cn(
-                          "absolute right-2 top-1.5",
-                          "transition-opacity",
-                          "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                          "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                          "has-[[data-state=open]]:opacity-100"
-                        )}
-                      >
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="xs"
-                              icon={Plus}
-                              label="New"
-                              variant="ghost-secondary"
-                              className="data-[state=open]:bg-hover"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            side="bottom"
-                            align="center"
-                            onClick={(e) => e.stopPropagation()}
+                            <DropdownMenu modal={false}>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="xs"
+                                  icon={Plus}
+                                  label="New"
+                                  variant="ghost-secondary"
+                                  className="data-[state=open]:bg-hover"
+                                  disabled={noHealthyProviders}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                side="bottom"
+                                align="center"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <DropdownMenuLabel label="New agent" />
+                                <DropdownMenuItem
+                                  href={getAgentBuilderRoute(owner.sId, "new")}
+                                  icon={File02}
+                                  label="From scratch"
+                                  data-gtm-label="assistantCreationButton"
+                                  data-gtm-location="sidebarMenu"
+                                  onClick={withTracking(
+                                    TRACKING_AREAS.BUILDER,
+                                    "create_from_scratch",
+                                    () => setSidebarOpen(false)
+                                  )}
+                                />
+                                <DropdownMenuItem
+                                  href={getAgentBuilderRoute(
+                                    owner.sId,
+                                    "create"
+                                  )}
+                                  icon={MagicWand02}
+                                  label="From template"
+                                  data-gtm-label="assistantCreationButton"
+                                  data-gtm-location="sidebarMenu"
+                                  onClick={withTracking(
+                                    TRACKING_AREAS.BUILDER,
+                                    "create_from_template",
+                                    () => setSidebarOpen(false)
+                                  )}
+                                />
+                                <DropdownMenuItem
+                                  icon={
+                                    isUploadingYAML ? (
+                                      <Spinner size="xs" />
+                                    ) : (
+                                      Brackets
+                                    )
+                                  }
+                                  label={
+                                    isUploadingYAML
+                                      ? "Uploading..."
+                                      : "From YAML"
+                                  }
+                                  disabled={isUploadingYAML}
+                                  onClick={triggerYAMLUpload}
+                                  data-gtm-label="yamlUploadButton"
+                                  data-gtm-location="sidebarMenu"
+                                />
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        ) : undefined
+                      }
+                    />
+                    <NavigationListItem
+                      href={getSkillBuilderRoute(owner.sId, "manage")}
+                      icon={SKILL_ICON}
+                      label="Skills"
+                      selected={router.asPath.startsWith(
+                        `/w/${owner.sId}/builder/skills`
+                      )}
+                      onClick={withTracking(
+                        TRACKING_AREAS.BUILDER,
+                        "manage_skills",
+                        () => setSidebarOpen(false)
+                      )}
+                      keepHoverOnMoreMenu
+                      moreMenu={
+                        canCreateSkill ? (
+                          <div
+                            className={cn(
+                              "absolute right-2 top-1.5",
+                              "transition-opacity",
+                              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                              "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                              "has-[[data-state=open]]:opacity-100"
+                            )}
                           >
-                            <DropdownMenuLabel label="New skill" />
-                            <DropdownMenuItem
-                              href={getSkillBuilderRoute(owner.sId, "new")}
-                              icon={SKILL_ICON}
-                              label="From scratch"
-                              onClick={() => setSidebarOpen(false)}
-                            />
-                            <DropdownMenuItem
-                              icon={FolderOpen}
-                              label="From existing"
-                              onClick={() => setIsImportSkillDialogOpen(true)}
-                            />
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ) : undefined
-                  }
-                />
+                            <DropdownMenu modal={false}>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="xs"
+                                  icon={Plus}
+                                  label="New"
+                                  variant="ghost-secondary"
+                                  className="data-[state=open]:bg-hover"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                side="bottom"
+                                align="center"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <DropdownMenuLabel label="New skill" />
+                                <DropdownMenuItem
+                                  href={getSkillBuilderRoute(owner.sId, "new")}
+                                  icon={SKILL_ICON}
+                                  label="From scratch"
+                                  onClick={() => setSidebarOpen(false)}
+                                />
+                                <DropdownMenuItem
+                                  icon={FolderOpen}
+                                  label="From existing"
+                                  onClick={() =>
+                                    setIsImportSkillDialogOpen(true)
+                                  }
+                                />
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        ) : undefined
+                      }
+                    />
+                  </>
+                )}
               </NavigationList>
             )}
-            {isConversationsError && (
-              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
-                Error loading conversations
-              </Label>
-            )}
-            {isSearchActive ? (
-              <SearchResults
-                owner={owner}
-                allPods={pods}
-                isSearchingPods={isSearchingPods}
-                hasMorePods={hasMorePods}
-                loadMorePods={loadMorePods}
-                isLoadingMorePods={isLoadingMorePods}
-                podConversationResults={podConversationSearchResults}
-                privateConversations={privateConversationSearchResults}
-                isSearchingPrivateConversations={
-                  isSearchingPrivateConversations
-                }
-                hasMorePrivateConversations={hasMorePrivateConversations}
-                loadMorePrivateConversations={loadMorePrivateConversations}
-                isLoadingMorePrivateConversations={
-                  isLoadingMorePrivateConversations
-                }
-                isSearchingPodConversations={isSearchingPodConversations}
-                onCreatePod={() => setIsCreatePodModalOpen(true)}
-                activeConversationId={activeConversationId}
-                activeSpaceId={activePodId}
-                hideTriggeredConversations={hideTriggeredConversations}
-                setHideTriggeredConversations={setHideTriggeredConversations}
-                isMultiSelect={isMultiSelect}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-              />
-            ) : (
-              conversationsList
-            )}
+            <div className="min-h-0 flex-1 overflow-hidden">
+              {isConversationsError && (
+                <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
+                  Error loading conversations
+                </Label>
+              )}
+              {isSearchActive ? (
+                <SearchResults
+                  owner={owner}
+                  allPods={pods}
+                  isSearchingPods={isSearchingPods}
+                  hasMorePods={hasMorePods}
+                  loadMorePods={loadMorePods}
+                  isLoadingMorePods={isLoadingMorePods}
+                  podConversationResults={podConversationSearchResults}
+                  privateConversations={privateConversationSearchResults}
+                  isSearchingPrivateConversations={
+                    isSearchingPrivateConversations
+                  }
+                  hasMorePrivateConversations={hasMorePrivateConversations}
+                  loadMorePrivateConversations={loadMorePrivateConversations}
+                  isLoadingMorePrivateConversations={
+                    isLoadingMorePrivateConversations
+                  }
+                  isSearchingPodConversations={isSearchingPodConversations}
+                  onCreatePod={() => setIsCreatePodModalOpen(true)}
+                  activeConversationId={activeConversationId}
+                  activeSpaceId={activePodId}
+                  hideTriggeredConversations={hideTriggeredConversations}
+                  setHideTriggeredConversations={setHideTriggeredConversations}
+                  isMultiSelect={isMultiSelect}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                />
+              ) : (
+                conversationsList
+              )}
+            </div>
 
             {!hideInAppBanner && (
               <StackedInAppBanners

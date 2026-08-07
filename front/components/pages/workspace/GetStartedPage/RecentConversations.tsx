@@ -5,7 +5,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { WorkspaceType } from "@app/types/user";
-import { Avatar, cn, ListItemSection } from "@dust-tt/sparkle";
+import { Avatar, cn } from "@dust-tt/sparkle";
 import { format } from "date-fns";
 import { useMemo } from "react";
 
@@ -33,11 +33,11 @@ function RecentConversationRow({
           }
         );
       }}
-      className="flex w-full items-center gap-3 rounded-lg py-2.5 pr-2 text-left hover:bg-muted-background"
+      className="relative flex w-full items-center gap-2 p-3 text-left hover:bg-muted-background"
     >
       <span
         className={cn(
-          "h-8 w-0.5 shrink-0 rounded-full",
+          "h-4 w-0.5 shrink-0 rounded-r-full",
           unread ? "bg-highlight" : "bg-transparent"
         )}
       />
@@ -52,7 +52,7 @@ function RecentConversationRow({
           {conversation.creator.name}
         </span>
       )}
-      <span className="shrink-0 text-sm font-semibold text-foreground">
+      <span className="shrink-0 text-sm font-medium text-foreground">
         {conversation.title}
       </span>
       <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
@@ -89,16 +89,18 @@ export function RecentConversations({
   }
 
   return (
-    <div className="mt-10">
-      <h2 className="text-xl font-bold text-foreground">
+    <div className="mt-14">
+      <h2 className="text-base font-semibold leading-6 tracking-tight text-foreground">
         Recent conversations
       </h2>
-      <div className="mt-3">
+      <div className="mt-2 flex flex-col gap-2">
         {Object.entries(grouped).map(([label, items]) =>
           items.length === 0 ? null : (
             <div key={label}>
-              <ListItemSection>{label}</ListItemSection>
-              <div className="flex flex-col">
+              <p className="mb-2 text-sm font-semibold leading-5 text-muted-foreground">
+                {label}
+              </p>
+              <div className="overflow-hidden rounded-xl border border-border">
                 {items
                   .toSorted((a, b) => b.updated - a.updated)
                   .map((c) => (

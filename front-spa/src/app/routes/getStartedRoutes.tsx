@@ -8,7 +8,7 @@ const GetStartedPage = withSuspense(
 
 export const getStartedRoutes: RouteObject[] = [
   {
-    path: "get-started",
+    path: "for-you",
     element: <GetStartedPage />,
   },
 ];

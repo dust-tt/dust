@@ -29,17 +29,17 @@ export function PreviouslyDoneRow({ owner, podId }: PreviouslyDoneRowProps) {
   }
 
   return (
-    <div className="py-6">
+    <div className="py-4">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center justify-between gap-3 text-left"
       >
         <div className="flex items-center gap-2">
-          <span className="text-base font-semibold text-foreground">
+          <span className="text-base font-semibold leading-6 tracking-tight text-foreground">
             Previously done
           </span>
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-highlight-50 px-1.5 text-xs font-medium text-highlight">
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-lg bg-highlight-50 px-1.5 text-xs font-medium text-highlight">
             {recommendations.length}
           </span>
         </div>

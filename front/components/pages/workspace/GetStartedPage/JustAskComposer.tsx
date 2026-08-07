@@ -2,10 +2,7 @@ import { FilePreviewProvider } from "@app/components/assistant/conversation/File
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import {
-  InputBarContext,
-  InputBarProvider,
-} from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
@@ -18,16 +15,7 @@ import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { Button } from "@dust-tt/sparkle";
-import { useCallback, useContext } from "react";
-
-// One-tap starters under "Or just ask" — activation-oriented, phrased as things
-// the user can ask their learning space to do.
-const ASK_SUGGESTIONS = [
-  "Scan my connected sources for repetitive work I can automate",
-  "Ask me questions to learn how I work",
-  "How does my learning space work?",
-];
+import { useCallback } from "react";
 
 interface JustAskComposerProps {
   owner: WorkspaceType;
@@ -99,41 +87,18 @@ export function JustAskComposer({
       <FilePreviewProvider owner={owner}>
         <FileDropProvider>
           <GenerationContextProvider>
-            {/* Chips live inside the InputBarProvider so they can prefill the
-                composer below via shared context. */}
-            <AskChips />
-            <div className="mt-4">
-              <InputBar
-                owner={owner}
-                user={user}
-                onSubmit={startConversation}
-                draftKey="get-started-new-conversation"
-                disableAutoFocus
-                defaultAgentId={defaultAgentId}
-                placeholder="Ask your agents anything, or describe a task…"
-              />
-            </div>
+            <InputBar
+              owner={owner}
+              user={user}
+              onSubmit={startConversation}
+              draftKey="get-started-new-conversation"
+              disableAutoFocus
+              defaultAgentId={defaultAgentId}
+              placeholder="Ask your agents anything, or describe a task…"
+            />
           </GenerationContextProvider>
         </FileDropProvider>
       </FilePreviewProvider>
     </InputBarProvider>
-  );
-}
-
-function AskChips() {
-  const { setPendingInputText } = useContext(InputBarContext);
-  return (
-    <div className="flex flex-wrap gap-2">
-      {ASK_SUGGESTIONS.map((suggestion) => (
-        <Button
-          key={suggestion}
-          variant="outline"
-          size="sm"
-          isRounded
-          label={suggestion}
-          onClick={() => setPendingInputText(suggestion, { replace: true })}
-        />
-      ))}
-    </div>
   );
 }
