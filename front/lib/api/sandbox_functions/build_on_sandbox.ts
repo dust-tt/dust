@@ -144,7 +144,8 @@ export async function buildSandboxFunctionOnSandbox(
   const bundleIntegrity = verifyStagingContent(
     bundlePath,
     bundleResult.value,
-    hashes
+    hashes,
+    { execStderr: execResult.value.stderr }
   );
   if (bundleIntegrity.isErr()) {
     return bundleIntegrity;
@@ -158,7 +159,8 @@ export async function buildSandboxFunctionOnSandbox(
   const schemaIntegrity = verifyStagingContent(
     schemaPath,
     schemaResult.value,
-    hashes
+    hashes,
+    { execStderr: execResult.value.stderr }
   );
   if (schemaIntegrity.isErr()) {
     return schemaIntegrity;

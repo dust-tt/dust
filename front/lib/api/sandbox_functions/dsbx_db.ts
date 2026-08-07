@@ -109,6 +109,7 @@ async function execDbCommand<S extends z.ZodTypeAny>(
       sandbox: SandboxResource;
       envelope: z.infer<S>;
       stagingHashes: StagingHashes;
+      execStderr: string;
     },
     SandboxFunctionError
   >
@@ -143,7 +144,12 @@ async function execDbCommand<S extends z.ZodTypeAny>(
   if (envelope.isErr()) {
     return envelope;
   }
-  return new Ok({ sandbox, envelope: envelope.value, stagingHashes: hashes });
+  return new Ok({
+    sandbox,
+    envelope: envelope.value,
+    stagingHashes: hashes,
+    execStderr: execResult.value.stderr,
+  });
 }
 
 // Success mirrors the reconcile result in cli/dust-sandbox/functions-runner/db/reconcile.ts.
@@ -358,7 +364,12 @@ export async function getDatabaseSchemaOnSandbox(
   if (result.isErr()) {
     return result;
   }
-  const { sandbox, envelope, stagingHashes } = result.value;
+  const {
+    sandbox,
+    envelope,
+    stagingHashes,
+    execStderr: execStderrForIntegrity,
+  } = result.value;
   if (!("ok" in envelope) || !envelope.ok) {
     return new Err(
       dbErrorToSandboxFunctionError(database, envelope, "internal")
@@ -374,7 +385,8 @@ export async function getDatabaseSchemaOnSandbox(
   const integrity = verifyStagingContent(
     outPath,
     fileResult.value,
-    stagingHashes
+    stagingHashes,
+    { execStderr: execStderrForIntegrity }
   );
   if (integrity.isErr()) {
     return integrity;
