@@ -254,9 +254,35 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       ]);
     },
 
-    list_work_areas: async ({ status }, { auth }) => {
+    list_work_areas: async ({ podId, status }, { auth, runContext }) => {
+      const podSpaceId = isAgentLoopRunContext(runContext)
+        ? runContext.conversation.spaceId
+        : null;
+      const pod = podSpaceId
+        ? await SpaceResource.fetchById(auth, podSpaceId)
+        : null;
+      const activationPod = pod
+        ? await ActivationPodResource.fetchBySpace(auth, pod)
+        : null;
+
+      if (!pod || !activationPod) {
+        return new Err(
+          new MCPError(
+            "Work areas are only available inside an Activation Pod conversation."
+          )
+        );
+      }
+      if (pod.sId !== podId) {
+        return new Err(
+          new MCPError(
+            "podId must match the current Activation Pod conversation."
+          )
+        );
+      }
+
       const rows = await ActivationWorkAreaResource.listByUserAndStatus(auth, {
         status,
+        activationPodModelId: activationPod.id,
       });
 
       if (rows.length === 0) {
@@ -281,8 +307,24 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       ]);
     },
 
-    create_work_areas: async ({ workAreas }, { auth }) => {
-      const pod = await ActivationPodResource.fetchByUser(auth);
+    create_work_areas: async ({ workAreas }, { auth, runContext }) => {
+      const podSpaceId = isAgentLoopRunContext(runContext)
+        ? runContext.conversation.spaceId
+        : null;
+      const pod = podSpaceId
+        ? await SpaceResource.fetchById(auth, podSpaceId)
+        : null;
+      const activationPod = pod
+        ? await ActivationPodResource.fetchBySpace(auth, pod)
+        : null;
+
+      if (!activationPod) {
+        return new Err(
+          new MCPError(
+            "Work areas can only be created inside an Activation Pod conversation."
+          )
+        );
+      }
 
       const created = await concurrentExecutor(
         workAreas,
@@ -290,7 +332,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
           ActivationWorkAreaResource.makeNew(auth, {
             title: item.title,
             description: item.description,
-            podId: pod?.id ?? null,
+            podId: activationPod.id,
           }),
         { concurrency: 8 }
       );

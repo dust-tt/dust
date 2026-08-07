@@ -163,9 +163,14 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "list_work_areas",
     description:
-      "List the current user's work areas. Returns each work area's id, " +
+      "List work areas for the current Activation Pod. Returns each work area's id, " +
       "title, description, and status.",
     schema: {
+      podId: z
+        .string()
+        .describe(
+          "The current Pod ID from the activation context. Always pass it to scope results to this Pod."
+        ),
       status: z
         .enum(["candidate", "confirmed", "dismissed"])
         .optional()
@@ -182,7 +187,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "create_work_areas",
     description:
-      "Create one or more work areas for the current user. Each is created " +
+      "Create one or more work areas for the current Activation Pod. Each is created " +
       "with status 'candidate'. Returns the created work areas with their ids.",
     schema: {
       workAreas: z

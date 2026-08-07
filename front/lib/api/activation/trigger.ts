@@ -37,6 +37,8 @@ export type ActivationNudgeContext = {
   sessionGoal: string | null;
   pushedResourceType: ActivationNudgePushedResourceType | null;
   pushedResourceName: string | null;
+  workAreas: string | null;
+  activationPlaybook: string | null;
 };
 
 // Filtering on both podId and userId ensures a given event only fires the target user.
@@ -60,6 +62,8 @@ function activationEventBody(
     sessionGoal: context?.sessionGoal ?? null,
     pushedResourceType: context?.pushedResourceType ?? null,
     pushedResourceName: context?.pushedResourceName ?? null,
+    workAreas: context?.workAreas ?? null,
+    activationPlaybook: context?.activationPlaybook ?? null,
   };
 }
 

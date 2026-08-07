@@ -10,13 +10,7 @@ import {
 } from "@app/lib/api/activation/trigger";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { DustFileSystem } from "@app/lib/api/file_system";
-import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { createPlugin } from "@app/lib/api/poke/types";
-import {
-  getPodAgentsMdScopedPath,
-  POD_AGENTS_MD_MAX_CHARACTER_COUNT,
-} from "@app/lib/api/projects/constants";
 import {
   createSpaceAndGroup,
   softDeleteSpaceAndLaunchScrubWorkflow,
@@ -30,7 +24,6 @@ import { activationSkill } from "@app/lib/resources/skill/code_defined/global/ac
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { startActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
@@ -146,60 +139,9 @@ async function pinActivationSkill(
   await metadata.setDefaultSkills(skills);
 }
 
-async function setAgentMdFile(
-  auth: Authenticator,
-  pod: SpaceResource,
-  user: UserResource,
-  fileContent: string
-): Promise<Result<{ written: boolean }, Error>> {
-  const trimmed = fileContent.trim();
-  if (trimmed.length === 0) {
-    return new Ok({ written: false });
-  }
-
-  if (trimmed.length > POD_AGENTS_MD_MAX_CHARACTER_COUNT) {
-    return new Err(
-      new Error(
-        `User context exceeds the ${POD_AGENTS_MD_MAX_CHARACTER_COUNT}-character limit.`
-      )
-    );
-  }
-
-  const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    auth.getNonNullableWorkspace().sId
-  );
-
-  const scopedPath = getPodAgentsMdScopedPath(pod.sId);
-  const fsResult = await DustFileSystem.fromScopedPath(editorAuth, scopedPath);
-  if (fsResult.isErr()) {
-    return new Err(
-      new Error(`Failed to open the Pod file system: ${fsResult.error.message}`)
-    );
-  }
-
-  const writeResult = await writeCanonicalFileContent(
-    editorAuth,
-    fsResult.value,
-    scopedPath,
-    Buffer.from(trimmed, "utf8"),
-    "text/markdown"
-  );
-  if (writeResult.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to write the Pod AGENTS.md: ${writeResult.error.message}`
-      )
-    );
-  }
-
-  return new Ok({ written: true });
-}
-
 // Provisions a fresh Learning Space owned by `creator`: creates the restricted
-// project, pins the Activation skill, writes user context to AGENTS.md, stars
-// it for the owner, creates the user-owned activation trigger, and records the
-// canonical ActivationPod row.
+// project, pins the Activation skill, creates the user-owned activation trigger,
+// and records the canonical ActivationPod row.
 async function provisionTrainingPod(
   auth: Authenticator,
   adminAuth: Authenticator,
@@ -207,12 +149,10 @@ async function provisionTrainingPod(
     creator,
     otherUsers,
     podNameOverride,
-    userContext,
   }: {
     creator: UserResource;
     otherUsers: UserResource[];
     podNameOverride: string | null;
-    userContext: string;
   }
 ): Promise<Result<{ pod: SpaceResource; trigger: TriggerResource }, Error>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -237,24 +177,7 @@ async function provisionTrainingPod(
   }
   const pod = createResult.value;
 
-  // Star the pod for its owner so it surfaces in their sidebar.
-  await UserProjectPreferencesResource.setStarredForUsers(auth, {
-    spaceModelId: pod.id,
-    userModelIds: [creator.id],
-    isStarred: true,
-  });
-
   await pinActivationSkill(auth, pod);
-
-  const userContextResult = await setAgentMdFile(
-    auth,
-    pod,
-    creator,
-    userContext
-  );
-  if (userContextResult.isErr()) {
-    return userContextResult;
-  }
 
   const podViewResult = await getOrCreateActivationWebhookSourceView(
     adminAuth,
@@ -340,7 +263,8 @@ export const activationManagementPlugin = createPlugin({
       "them one concrete step forward. " +
       "Use this tool to drive that by hand. Each user without a Pod gets one provisioned. " +
       "Each user who already has one is reused, then " +
-      "everyone selected is nudged with the Session Goal. Check 'Force " +
+      "everyone selected is nudged with the Session Goal. Use Work Areas to seed the user's " +
+      "Work Areas for the first conversation. Check 'Force " +
       "recreate' to delete and rebuild an existing Pod from scratch.",
     resourceTypes: ["workspaces"],
     args: {
@@ -373,7 +297,7 @@ export const activationManagementPlugin = createPlugin({
           "next session. Write it as a specific task tied to their real work, " +
           'e.g. "Help with GTM use cases" or "Set up a Monday digest of open support tickets". It is injected into the ' +
           "conversation as the focus for this run only. Leave blank to let the agent pick the next step " +
-          "from the Pod's history and goal.",
+          "from the Pod's history and Work Areas.",
       },
       pushedResource: {
         type: "enum",
@@ -385,9 +309,9 @@ export const activationManagementPlugin = createPlugin({
         values: [],
         multiple: false,
       },
-      userContext: {
+      workAreas: {
         type: "text",
-        label: "[Optional] User context",
+        label: "[Optional] Work Areas",
         description:
           "Background about the user that Dust keeps in mind across every nudge — " +
           "job title, team, responsibilities, current projects. " +
@@ -397,8 +321,7 @@ export const activationManagementPlugin = createPlugin({
         type: "text",
         label: "[Optional] Activation playbook",
         description:
-          "Step-by-step playbook or onboarding instructions for activating this user on Dust. " +
-          "Appended to User context in the Pod AGENTS.md file.",
+          "Step-by-step playbook or onboarding instructions for activating this user on Dust",
       },
       podName: {
         type: "string",
@@ -470,7 +393,7 @@ export const activationManagementPlugin = createPlugin({
       groupId,
       sessionGoal,
       pushedResource,
-      userContext,
+      workAreas,
       activationPlaybook,
       podName,
       forceRecreate,
@@ -544,6 +467,10 @@ export const activationManagementPlugin = createPlugin({
       sessionGoal: sessionGoal?.trim() ? sessionGoal.trim() : null,
       pushedResourceType: pushed?.type ?? null,
       pushedResourceName: pushed?.name ?? null,
+      workAreas: workAreas?.trim() ? workAreas.trim() : null,
+      activationPlaybook: activationPlaybook?.trim()
+        ? activationPlaybook.trim()
+        : null,
     };
 
     const adminAuth = await Authenticator.internalAdminForWorkspace(
@@ -632,15 +559,10 @@ export const activationManagementPlugin = createPlugin({
       }
 
       const otherUsers = users.filter((u) => u.sId !== user.sId);
-      const combinedUserContext = [userContext, activationPlaybook]
-        .map((s) => s?.trim())
-        .filter(Boolean)
-        .join("\n\n");
       const provisionResult = await provisionTrainingPod(auth, adminAuth, {
         creator: user,
         otherUsers,
         podNameOverride,
-        userContext: combinedUserContext,
       });
       if (provisionResult.isErr()) {
         outcomes.push({
