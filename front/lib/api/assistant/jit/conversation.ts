@@ -5,7 +5,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import assert from "assert";
 
@@ -63,17 +62,12 @@ export async function getConversationMCPServers(
 
 /**
  * Get the conversation_files MCP server for accessing conversation files.
- * Only created if conversation has attachments.
+ * Caller must only invoke this when the conversation_files view was prefetched.
  */
 export async function getConversationFilesServer(
   auth: Authenticator,
-  attachments: ConversationAttachmentType[],
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
-): Promise<ServerSideMCPServerConfigurationType | null> {
-  if (attachments.length === 0) {
-    return null;
-  }
-
+): Promise<ServerSideMCPServerConfigurationType> {
   const conversationFilesView =
     autoInternalViews.get("conversation_files") ?? null;
 
