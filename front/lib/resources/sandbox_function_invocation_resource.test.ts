@@ -1157,8 +1157,10 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
       status: "succeeded",
       result: { commentId: "inline" },
     });
-    // The initial blob write is deferred on the inline path; the terminal write must still leave
-    // a complete blob (input and result) behind for later fetches.
+    // Both blob writes are behind the response on the inline path (deferred initial write,
+    // write-behind terminal write); settling drains them, after which the blob must be complete
+    // (input and result) for later fetches.
+    await result.value.settleInitialPersistence();
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: result.value.sId }
@@ -1176,6 +1178,39 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
       expect.anything(),
       expect.objectContaining({ noTools: true })
     );
+  });
+
+  it("delivers the inline outcome even when write-behind persistence fails", async () => {
+    const { authenticator, sandboxFunction, execSpy } = await setupInlineTest();
+    enableFlags([
+      "sandbox_function_fast_execution",
+      "sandbox_function_stdout_result",
+    ]);
+    // Every blob write for this invocation fails: the deferred initial write and the
+    // write-behind terminal write. Neither may take down the caller's response — the outcome
+    // already reached the caller and the event stream, and the loss is logged, not thrown.
+    fileStorageMock.setFileSaveFails((filePath) =>
+      filePath.includes("sandbox_functions")
+    );
+
+    const result =
+      await SandboxFunctionInvocationResource.createAndStartExecution(
+        authenticator,
+        { sandboxFunction, body: { input: { message: "hello" } } }
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(execSpy).toHaveBeenCalledOnce();
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.status).toBe("succeeded");
+    expect(result.value.settledOutcome()).toEqual({
+      status: "succeeded",
+      result: { commentId: "inline" },
+    });
+    // Draining the chain must also not throw: the failure is contained to the log.
+    await result.value.settleInitialPersistence();
   });
 
   it("runs a durable function under a token that can call tools", async () => {
