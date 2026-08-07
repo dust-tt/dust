@@ -175,6 +175,26 @@ export async function scrubSpaceActivity({
       throw deleteSandboxFunctionsResult.error;
     }
 
+    // Destroy the pod sandbox at the provider and drop its ownership row. The
+    // FK from sandbox_owners to spaces is `onDelete: "RESTRICT"`, so the row
+    // must be gone before the space can be hard-deleted. Runs before the pod
+    // state prefix is wiped: a live sandbox keeps replicating into it.
+    // Skipped when the pod never booted one, so pods stay scrubbable in
+    // deployments with no sandbox provider configured.
+    const sandbox = await PodSandboxAdapter.fetchSandbox(auth, space);
+    if (sandbox) {
+      const deleteSandboxResult = await PodSandboxAdapter.deleteSandbox(
+        auth,
+        space
+      );
+      if (deleteSandboxResult.isErr()) {
+        throw deleteSandboxResult.error;
+      }
+    }
+
+    // Same for the pod-scoped env vars.
+    await SandboxEnvVarResource.deleteAllForPod(auth, space);
+
     // Pod state (litestream replica) objects are never FileResources, so the
     // per-function deletes above cannot reach them — scrub the whole GCS
     // prefix or the replica chain leaks forever.
@@ -182,20 +202,6 @@ export async function scrubSpaceActivity({
     if (deletePodStateResult.isErr()) {
       throw deletePodStateResult.error;
     }
-
-    // Destroy the pod sandbox at the provider and drop its ownership row. The
-    // FK from sandbox_owners to spaces is `onDelete: "RESTRICT"`, so the row
-    // must be gone before the space can be hard-deleted.
-    const deleteSandboxResult = await PodSandboxAdapter.deleteSandbox(
-      auth,
-      space
-    );
-    if (deleteSandboxResult.isErr()) {
-      throw deleteSandboxResult.error;
-    }
-
-    // Same for the pod-scoped env vars.
-    await SandboxEnvVarResource.deleteAllForPod(auth, space);
   }
 
   // Delete all the data sources of the spaces.

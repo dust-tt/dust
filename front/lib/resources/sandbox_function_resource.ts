@@ -374,17 +374,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   static async listBySpace(
     auth: Authenticator,
-    space: SpaceResource,
-    { includeDeletedSpace }: { includeDeletedSpace?: boolean } = {}
+    space: SpaceResource
   ): Promise<SandboxFunctionResource[]> {
     if (!space.isProject()) {
       return [];
     }
 
-    return this.baseFetch(auth, {
-      where: { spaceId: space.id },
-      includeDeletedSpace,
-    });
+    return this.baseFetch(auth, { where: { spaceId: space.id } });
   }
 
   static async fetchBySpaceAndSlug(
@@ -435,7 +431,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     assert(space.isProject(), "Sandbox functions can only belong to pods.");
 
     // The pod is already soft-deleted when the scrub runs, hence `includeDeletedSpace`.
-    const sandboxFunctions = await this.listBySpace(auth, space, {
+    const sandboxFunctions = await this.baseFetch(auth, {
+      where: { spaceId: space.id },
       includeDeletedSpace: true,
     });
     for (const sandboxFunction of sandboxFunctions) {
@@ -447,19 +444,21 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       }
     }
 
-    // `listBySpace` drops rows it cannot fully hydrate, so a partial list would leave rows behind
-    // and surface much later as a foreign key violation on the pod hard delete. Fail here instead,
-    // naming what was left.
-    const remaining = await this.model.count({
+    // `baseFetch` drops rows it cannot fully hydrate, so a partial list would leave rows behind and
+    // surface much later as a foreign key violation on the pod hard delete. Fail here instead, with
+    // the ids an operator needs to unblock the scrub.
+    const remaining = await this.model.findAll({
+      attributes: ["id"],
       where: {
         spaceId: space.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
-    if (remaining > 0) {
+    if (remaining.length > 0) {
       return new Err(
         new Error(
-          `${remaining} sandbox function(s) of pod ${space.sId} could not be deleted.`
+          `Sandbox function(s) of pod ${space.sId} could not be deleted: ` +
+            `${remaining.map(({ id }) => id).join(", ")}.`
         )
       );
     }
