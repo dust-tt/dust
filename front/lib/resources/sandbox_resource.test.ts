@@ -10,6 +10,9 @@ const {
   mockProviderDestroy,
   mockProviderExec,
   mockProviderWake,
+  mockReadSandboxExecActivity,
+  mockRecordSandboxExecEnd,
+  mockRecordSandboxExecStart,
   mockRevokeAllExecTokensForSandbox,
 } = vi.hoisted(() => ({
   mockDeleteLegacySandboxPolicy: vi.fn(),
@@ -21,6 +24,9 @@ const {
   mockProviderDestroy: vi.fn(),
   mockProviderExec: vi.fn(),
   mockProviderWake: vi.fn(),
+  mockReadSandboxExecActivity: vi.fn(),
+  mockRecordSandboxExecEnd: vi.fn(),
+  mockRecordSandboxExecStart: vi.fn(),
   mockRevokeAllExecTokensForSandbox: vi.fn(),
 }));
 
@@ -41,6 +47,12 @@ vi.mock("@app/lib/api/sandbox/access_tokens", () => ({
 
 vi.mock("@app/lib/api/sandbox/egress_policy", () => ({
   deleteLegacySandboxPolicy: mockDeleteLegacySandboxPolicy,
+}));
+
+vi.mock("@app/lib/api/sandbox/exec_activity", () => ({
+  readSandboxExecActivity: mockReadSandboxExecActivity,
+  recordSandboxExecEnd: mockRecordSandboxExecEnd,
+  recordSandboxExecStart: mockRecordSandboxExecStart,
 }));
 
 vi.mock("@app/lib/api/sandbox/image", () => ({
@@ -68,7 +80,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { encrypt } from "@app/types/shared/utils/encryption";
 import type { WhereOptions } from "sequelize";
 
@@ -1325,5 +1337,178 @@ describe("SandboxResource.updateLastActivityAt", () => {
     Object.assign(sandbox, { lastActivityAt: new Date(Date.now() - 60_000) });
     const [affectedStale] = await sandbox.updateLastActivityAt();
     expect(affectedStale).toBe(1);
+  });
+});
+
+describe("SandboxResource.dangerouslySleepIfRunning", () => {
+  let authenticator: Authenticator;
+  const mockProviderSleep = vi.fn();
+  const mockBeforeSleep = vi.fn();
+
+  // The adapter's real beforeSleep flushes pod state through the provider; a
+  // stub keeps these tests on the flow under test (activity read -> flush ->
+  // activity re-read -> pause) without mocking the whole pod-state stack.
+  async function sleepPod(pod: Awaited<ReturnType<typeof SpaceFactory.project>>) {
+    return SandboxResource.dangerouslySleepIfRunning(
+      authenticator,
+      {
+        lockKey: pod.sId,
+        fetchSandbox: () => PodSandboxAdapter.fetchSandbox(authenticator, pod),
+      },
+      { beforeSleep: mockBeforeSleep }
+    );
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockExecuteWithLock.mockImplementation(
+      async (_key: string, fn: () => Promise<unknown>) => fn()
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      sleep: mockProviderSleep,
+    });
+    mockProviderSleep.mockResolvedValue(new Ok(undefined));
+    mockBeforeSleep.mockResolvedValue(new Ok(undefined));
+    // Default: no exec activity, stable across the pre/post-flush reads.
+    mockReadSandboxExecActivity.mockResolvedValue(
+      new Ok({ started: 4, inFlight: 0 })
+    );
+
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+  });
+
+  it("sleeps a quiet running sandbox", async () => {
+    const pod = await SpaceFactory.project(
+      authenticator.getNonNullableWorkspace()
+    );
+    await SandboxFactory.createForPod(authenticator, pod, {
+      status: "running",
+    });
+
+    const result = await sleepPod(pod);
+
+    expect(result.isOk()).toBe(true);
+    expect(mockBeforeSleep).toHaveBeenCalledTimes(1);
+    expect(mockProviderSleep).toHaveBeenCalledTimes(1);
+    const reloaded = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
+    expect(reloaded?.status).toBe("sleeping");
+    // Once before the flush, once after: an exec landing during the flush
+    // writes pod state the flush never saw.
+    expect(mockReadSandboxExecActivity).toHaveBeenCalledTimes(2);
+  });
+
+  it("skips the sleep when an exec is in flight", async () => {
+    const pod = await SpaceFactory.project(
+      authenticator.getNonNullableWorkspace()
+    );
+    await SandboxFactory.createForPod(authenticator, pod, {
+      status: "running",
+    });
+    mockReadSandboxExecActivity.mockResolvedValue(
+      new Ok({ started: 5, inFlight: 1 })
+    );
+
+    const result = await sleepPod(pod);
+
+    // Not an error: the reaper retries on its next cycle, like a pod that
+    // was never idle. The flush is skipped too, not just the pause.
+    expect(result.isOk()).toBe(true);
+    expect(mockBeforeSleep).not.toHaveBeenCalled();
+    expect(mockProviderSleep).not.toHaveBeenCalled();
+    const reloaded = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
+    expect(reloaded?.status).toBe("running");
+  });
+
+  it("skips the sleep when an exec started during the pre-sleep flush", async () => {
+    const pod = await SpaceFactory.project(
+      authenticator.getNonNullableWorkspace()
+    );
+    await SandboxFactory.createForPod(authenticator, pod, {
+      status: "running",
+    });
+    // Clean before the flush; a whole exec (started AND finished) lands
+    // during it. The monotonic `started` counter is what catches this —
+    // in-flight is already back to 0.
+    mockReadSandboxExecActivity
+      .mockResolvedValueOnce(new Ok({ started: 4, inFlight: 0 }))
+      .mockResolvedValueOnce(new Ok({ started: 5, inFlight: 0 }));
+
+    const result = await sleepPod(pod);
+
+    expect(result.isOk()).toBe(true);
+    expect(mockBeforeSleep).toHaveBeenCalledTimes(1);
+    expect(mockProviderSleep).not.toHaveBeenCalled();
+    const reloaded = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
+    expect(reloaded?.status).toBe("running");
+  });
+
+  it("fails closed when the activity signal is unreadable", async () => {
+    const pod = await SpaceFactory.project(
+      authenticator.getNonNullableWorkspace()
+    );
+    await SandboxFactory.createForPod(authenticator, pod, {
+      status: "running",
+    });
+    mockReadSandboxExecActivity.mockResolvedValue(
+      new Err(new Error("redis unreachable"))
+    );
+
+    const result = await sleepPod(pod);
+
+    expect(result.isErr()).toBe(true);
+    expect(mockProviderSleep).not.toHaveBeenCalled();
+    const reloaded = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
+    expect(reloaded?.status).toBe("running");
+  });
+});
+
+describe("SandboxResource.exec activity accounting", () => {
+  let authenticator: Authenticator;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockGetSandboxProvider.mockReturnValue({
+      exec: mockProviderExec,
+    });
+
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+  });
+
+  it("brackets a successful exec with start and end records", async () => {
+    const pod = await SpaceFactory.project(
+      authenticator.getNonNullableWorkspace()
+    );
+    const sandbox = await SandboxFactory.createForPod(authenticator, pod, {
+      status: "running",
+    });
+    mockProviderExec.mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: "", stderr: "" })
+    );
+
+    const result = await sandbox.exec(authenticator, "true");
+
+    expect(result.isOk()).toBe(true);
+    expect(mockRecordSandboxExecStart).toHaveBeenCalledWith(sandbox.sId);
+    expect(mockRecordSandboxExecEnd).toHaveBeenCalledWith(sandbox.sId);
+  });
+
+  it("records the end even when the provider exec throws", async () => {
+    const pod = await SpaceFactory.project(
+      authenticator.getNonNullableWorkspace()
+    );
+    const sandbox = await SandboxFactory.createForPod(authenticator, pod, {
+      status: "running",
+    });
+    mockProviderExec.mockRejectedValue(new Error("provider blew up"));
+
+    await expect(sandbox.exec(authenticator, "true")).rejects.toThrow(
+      "provider blew up"
+    );
+    expect(mockRecordSandboxExecStart).toHaveBeenCalledWith(sandbox.sId);
+    // A start without a matching end would report a phantom in-flight exec
+    // and block the reaper's sleep until the Redis TTL clears it.
+    expect(mockRecordSandboxExecEnd).toHaveBeenCalledWith(sandbox.sId);
   });
 });
