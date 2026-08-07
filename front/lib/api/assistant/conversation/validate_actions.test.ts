@@ -44,6 +44,7 @@ import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
@@ -815,6 +816,7 @@ describe("validateAction", () => {
     permission = "low",
     argumentsRequiringApproval,
     augmentedInputs = {},
+    toolServerId = "test-server",
   }: {
     agentMessageId: number;
     status?: ToolExecutionStatus;
@@ -823,6 +825,7 @@ describe("validateAction", () => {
     permission?: MCPToolStakeLevelType;
     argumentsRequiringApproval?: string[];
     augmentedInputs?: Record<string, unknown>;
+    toolServerId?: string;
   }) {
     const functionCallId = generateRandomModelSId();
     const currentIndex = stepContentIndex++;
@@ -864,7 +867,7 @@ describe("validateAction", () => {
       internalMCPServerId: null,
       availability: "auto",
       permission,
-      toolServerId: "test-server",
+      toolServerId,
       retryPolicy: "no_retry",
       originalName: configurationName,
       mcpServerName: "test_server",
@@ -904,6 +907,36 @@ describe("validateAction", () => {
     });
 
     return { action, actionId, stepContent };
+  }
+
+  async function createAgentMessageForResolution() {
+    const userMessage = await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 0,
+      content: "Test message",
+    });
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
+
+    const agentMessage = await ConversationFactory.createAgentMessageWithRank({
+      workspace,
+      conversationId: conversation.id,
+      rank: 1,
+      agentConfigurationId: agentConfig.sId,
+      agentConfigurationVersion: agentConfig.version,
+      parentId: userMessage.id,
+    });
+    if (!agentMessage.agentMessageId) {
+      throw new Error("Just-created agent message is missing its model ID.");
+    }
+
+    return {
+      agentMessage,
+      agentMessageModelId: agentMessage.agentMessageId,
+    };
   }
 
   async function createAgentMessageWithNullUserParent() {
@@ -1724,6 +1757,109 @@ describe("validateAction", () => {
   });
 
   describe("agent loop launching", () => {
+    it("resolves parallel authentication blocks for the same MCP server", async () => {
+      const { agentMessage, agentMessageModelId } =
+        await createAgentMessageForResolution();
+      const { action: firstAction, actionId: firstActionId } =
+        await createBlockedAction({
+          agentMessageId: agentMessageModelId,
+          status: "blocked_authentication_required",
+        });
+      const { action: secondAction, actionId: secondActionId } =
+        await createBlockedAction({
+          agentMessageId: agentMessageModelId,
+          status: "blocked_authentication_required",
+        });
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await resolveAuthentication(auth, conversationResource!, {
+        actionId: firstActionId,
+        messageId: agentMessage.sId,
+        outcome: "completed",
+      });
+
+      expect(result.isOk()).toBe(true);
+      await firstAction.reload();
+      await secondAction.reload();
+      expect(firstAction.status).toBe("ready_allowed_explicitly");
+      expect(secondAction.status).toBe("ready_allowed_explicitly");
+      expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalledTimes(1);
+
+      const removeEventMock = vi.mocked(getRedisHybridManager().removeEvent);
+      expect(removeEventMock).toHaveBeenCalledTimes(1);
+      const [removeEventPredicate] = removeEventMock.mock.calls[0];
+      const makeAuthenticationEvent = (actionId: string) => ({
+        id: generateRandomModelSId(),
+        message: {
+          payload: JSON.stringify({
+            type: "tool_personal_auth_required",
+            actionId,
+          }),
+        },
+      });
+      expect(removeEventPredicate(makeAuthenticationEvent(firstActionId))).toBe(
+        true
+      );
+      expect(
+        removeEventPredicate(makeAuthenticationEvent(secondActionId))
+      ).toBe(true);
+    });
+
+    it("does not resolve authentication blocks for another MCP server", async () => {
+      const { agentMessage, agentMessageModelId } =
+        await createAgentMessageForResolution();
+      const { actionId: firstActionId } = await createBlockedAction({
+        agentMessageId: agentMessageModelId,
+        status: "blocked_authentication_required",
+      });
+      const { action: otherServerAction, actionId: otherServerActionId } =
+        await createBlockedAction({
+          agentMessageId: agentMessageModelId,
+          status: "blocked_authentication_required",
+          toolServerId: "other-test-server",
+        });
+      // Keep a serializable blocked action in the test conversation: auth actions whose fake MCP
+      // server has no corresponding view are intentionally omitted from the UI response.
+      await createBlockedAction({
+        agentMessageId: agentMessageModelId,
+        status: "blocked_validation_required",
+      });
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await resolveAuthentication(auth, conversationResource!, {
+        actionId: firstActionId,
+        messageId: agentMessage.sId,
+        outcome: "completed",
+      });
+
+      expect(result.isOk()).toBe(true);
+      await otherServerAction.reload();
+      expect(otherServerAction.status).toBe("blocked_authentication_required");
+      expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
+
+      const removeEventMock = vi.mocked(getRedisHybridManager().removeEvent);
+      const [removeEventPredicate] = removeEventMock.mock.calls[0];
+      expect(
+        removeEventPredicate({
+          id: generateRandomModelSId(),
+          message: {
+            payload: JSON.stringify({
+              type: "tool_personal_auth_required",
+              actionId: otherServerActionId,
+            }),
+          },
+        })
+      ).toBe(false);
+    });
+
     it("should not launch agent loop when there are remaining blocked actions", async () => {
       // Create a user message and agent message
       const { messageRow } = await ConversationFactory.createUserMessage({
