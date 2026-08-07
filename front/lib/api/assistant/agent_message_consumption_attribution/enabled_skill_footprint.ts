@@ -16,7 +16,7 @@ const EMPTY_INPUT_SCHEMA: JSONSchema = {
   required: [],
 };
 
-function enabledSkillIdsFromAction(
+export function getEnabledSkillIdsFromAction(
   action: AgentMCPActionWithOutputType
 ): string[] {
   return [
@@ -108,7 +108,7 @@ export async function getEnabledSkillInputTextByActionId(
 ): Promise<ReadonlyMap<string, string>> {
   const enabledSkillIdsByAction = actions.map((action) => ({
     action,
-    skillIds: enabledSkillIdsFromAction(action),
+    skillIds: getEnabledSkillIdsFromAction(action),
   }));
   const skillIds = [
     ...new Set(enabledSkillIdsByAction.flatMap(({ skillIds }) => skillIds)),
