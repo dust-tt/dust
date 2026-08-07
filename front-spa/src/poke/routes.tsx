@@ -36,13 +36,14 @@ import { WebhookSourceDetailsPage } from "@dust-tt/front/components/poke/pages/W
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
+import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { PokePage } from "@spa/poke/layouts/PokePage";
 import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
 import type { RouteObject } from "react-router-dom";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 
-// Redirect component that strips /poke prefix
-function PokeRedirect() {
+// Redirect component that strips a compatibility prefix.
+function PrefixRedirect() {
   const params = useParams();
   const location = useLocation();
   const rest = params["*"] || "";
@@ -161,9 +162,13 @@ export const routes: RouteObject[] = [
           },
         ],
       },
-      // Redirect /poke/* to /* (strip /poke prefix)
-      { path: "poke/*", element: <PokeRedirect /> },
-      { path: "*", element: <Custom404 /> },
+      // Redirect compatibility prefixes to canonical Poke routes.
+      { path: "poke/*", element: <PrefixRedirect /> },
+      { path: "w/*", element: <PrefixRedirect /> },
+      {
+        element: <UnauthenticatedPage />,
+        children: [{ path: "*", element: <Custom404 /> }],
+      },
     ],
   },
 ];
