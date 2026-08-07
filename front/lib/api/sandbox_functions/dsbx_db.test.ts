@@ -2,7 +2,17 @@ import {
   buildTableRowCountsQuery,
   quoteSqliteIdentifier,
 } from "@app/lib/api/sandbox_functions/dsbx_db";
+import { RESERVED_TABLE_PREFIXES } from "@app/types/api/sandbox_functions";
 import { describe, expect, it } from "vitest";
+import { RESERVED_TABLE_PREFIXES as RUNNER_RESERVED_TABLE_PREFIXES } from "../../../../cli/dust-sandbox/functions-runner/types/db";
+
+// Table enumeration hides these prefixes; the runner refuses to let a pod schema claim them.
+// Front cannot runtime-import cli code, so the mirrored copy's equality is asserted here.
+describe("RESERVED_TABLE_PREFIXES", () => {
+  it("stays identical to the runner's list", () => {
+    expect(RESERVED_TABLE_PREFIXES).toEqual(RUNNER_RESERVED_TABLE_PREFIXES);
+  });
+});
 
 describe("quoteSqliteIdentifier", () => {
   it("wraps a plain name in double quotes", () => {

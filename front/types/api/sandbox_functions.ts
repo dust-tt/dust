@@ -77,6 +77,18 @@ export const SANDBOX_FUNCTION_SLUG_REGEX = new RegExp(
 // build_on_sandbox.test.ts.
 export const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
 
+// Mirrors RESERVED_TABLE_PREFIXES in cli/dust-sandbox/functions-runner/types/db.ts (same
+// no-runtime-import constraint; equality is asserted in dsbx_db.test.ts). Tables named this way
+// belong to SQLite, drizzle, litestream or another engine's bookkeeping — the runner refuses them
+// at build time, and enumeration hides the ones the machinery creates behind our back.
+export const RESERVED_TABLE_PREFIXES = [
+  "sqlite_",
+  "__drizzle",
+  "_litestream",
+  "_cf_",
+  "libsql_",
+];
+
 export function isValidSandboxFunctionSlug(value: unknown): value is string {
   return typeof value === "string" && SANDBOX_FUNCTION_SLUG_REGEX.test(value);
 }
