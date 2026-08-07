@@ -9,6 +9,7 @@ import {
   makeExtra,
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -114,6 +115,8 @@ describe("listHandler", () => {
 
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
       getAllFilesByPrefix: getAllFilesByPrefixMock,
+      // FileFactory copies ready conversation files to their mount path.
+      copyFile: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
   });
 
@@ -201,7 +204,7 @@ describe("listHandler", () => {
     expect(text.text).toContain(`conversation-${conversation.sId}/report.pdf`);
   });
 
-  it("shows [id: ...] suffix for interactive content types when fileId is set", async () => {
+  it("omits the [id: ...] suffix when no FileResource is linked", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
     const workspaceId = auth.getNonNullableWorkspace().sId;
 
@@ -231,12 +234,48 @@ describe("listHandler", () => {
     const text = result.value[0];
     assert(text.type === "text");
 
-    // fileId is null until the DB migration (the backend always returns null for now).
-    // Verify the interactive files are listed but without an ID suffix.
+    // No FileResource rows exist for these GCS objects, so no id can be surfaced.
     expect(text.text).toContain("chart.html");
     expect(text.text).toContain("slides.html");
     expect(text.text).toContain("report.pdf");
     expect(text.text).not.toContain("[id:");
+  });
+
+  it("shows the [id: ...] suffix for any file with a linked FileResource", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+
+    const conversation = await createConversation(auth, {
+      title: "Test",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    // A ready conversation file claims its mount path, which is what the listing
+    // enrichment joins on.
+    const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: "application/pdf",
+      fileName: "report.pdf",
+      fileSize: 8192,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const prefix = `w/${workspaceId}/conversations/${conversation.sId}/files/`;
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [makeStorageFile(`${prefix}report.pdf`, "application/pdf", 8192)],
+      pageFetchCount: 1,
+    });
+
+    const result = await listHandler({}, makeExtra(auth, conversation));
+
+    assert(result.isOk());
+    const text = result.value[0];
+    assert(text.type === "text");
+    expect(text.text).toContain(
+      `conversation-${conversation.sId}/report.pdf (application/pdf, 8 KB) [id: ${file.sId}]`
+    );
   });
 
   it("lists another conversation when conversation_id is set", async () => {
