@@ -9,6 +9,8 @@ esac
 
 start_seconds=$(date +%s)
 
+# If the API call fails, sleep for the remainder so the hook still observes
+# the configured minimum drain duration.
 if ! curl \
   --fail \
   --silent \
