@@ -21,10 +21,6 @@ export function UsageFilterMemberGroupsControls({
   groups,
 }: UsageFilterMemberGroupsControlsProps) {
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
-  // Narrows the displayed members down to those belonging to at least one of
-  // these groups. Not currently backed by real group-membership data (the
-  // search endpoint has no such concept yet), so it's UI-only until that
-  // exists.
   const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
 
   const availableGroups = useMemo(
