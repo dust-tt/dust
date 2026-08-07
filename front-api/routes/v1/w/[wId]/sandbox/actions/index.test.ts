@@ -1,3 +1,4 @@
+import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
@@ -144,5 +145,29 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
         .map((sv: { server: { name: string } }) => sv.server.name)
         .sort()
     ).toEqual(["common_utilities", "remote_server", "search"]);
+  });
+
+  it("hides the files server", async () => {
+    const { auth, token, workspace, globalSpace } =
+      await createSandboxFunctionInvocationTokenTestContext();
+
+    const files = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: FILES_SERVER_NAME,
+      useCase: null,
+    });
+    await MCPServerViewFactory.create(workspace, files.id, globalSpace);
+    const search = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "search",
+      useCase: null,
+    });
+    await MCPServerViewFactory.create(workspace, search.id, globalSpace);
+
+    const response = await getSandboxActions(workspace, token);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(
+      body.serverViews.map((sv: { server: { name: string } }) => sv.server.name)
+    ).toEqual(["search"]);
   });
 });
