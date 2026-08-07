@@ -16,6 +16,7 @@ import {
   isHiddenMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
 import { WakeUpBanner } from "@app/components/assistant/conversation/WakeUpBanner";
 import { PodJoinCTA } from "@app/components/pod/conversation/PodJoinCTA";
 import {
@@ -24,6 +25,7 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
+import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { useAccessibleAgentIds } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
@@ -61,7 +63,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const pendingActionRef = useRef(pendingAction);
   pendingActionRef.current = pendingAction;
   const generationContext = useGenerationContext();
-  const { getBlockedActions, hasPendingValidations, startPulsingAction } =
+  const { getBlockedActionItems, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
 
   const { mutateConversation } = useConversation({
@@ -73,6 +75,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     owner: context.owner,
     conversationId: context.conversation?.sId,
   });
+  const retryMessage = useRetryMessage({ owner: context.owner });
 
   const agentBuilderContext = context.agentBuilderContext;
 
@@ -298,9 +301,10 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     };
   }, [methods, listOffset, visibleListHeight, bottomOffset]);
 
-  const blockedActions = getBlockedActions(context.user.sId);
-  const hasUserAnswerRequired = blockedActions.some(
-    (action) => action.status === "blocked_user_answer_required"
+  const blockedActionItems = getBlockedActionItems(context.user.sId);
+  const blockedActions = blockedActionItems.map((item) => item.blockedAction);
+  const userAnswerRequiredItem = blockedActionItems.find(
+    (item) => item.blockedAction.status === "blocked_user_answer_required"
   );
 
   // Keep blockedActionIndex in sync when blockedActions array changes.
@@ -448,6 +452,57 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     }
   };
 
+  const retryUserAnswerRequired = async () => {
+    if (!context.conversation || !userAnswerRequiredItem) {
+      return;
+    }
+
+    const { blockedAction, messageId: outerMessageId } = userAnswerRequiredItem;
+
+    methods.data.map((message) =>
+      isAgentMessageWithStreaming(message) && message.sId === outerMessageId
+        ? {
+            ...message,
+            status: "created",
+            error: null,
+            streaming: {
+              ...message.streaming,
+              agentState: "acting",
+            },
+          }
+        : message
+    );
+
+    const retryBlockedMessage = async ({
+      conversationId,
+      messageId,
+    }: {
+      conversationId: string;
+      messageId: string;
+    }) => {
+      const result = await retryMessage({
+        conversationId,
+        messageId,
+        blockedOnly: true,
+      });
+      if (result.isErr()) {
+        context.setLimitReachedCode?.(result.error);
+      }
+    };
+
+    if (blockedAction.conversationId !== context.conversation.sId) {
+      await retryBlockedMessage({
+        conversationId: blockedAction.conversationId,
+        messageId: blockedAction.messageId,
+      });
+    }
+
+    await retryBlockedMessage({
+      conversationId: context.conversation.sId,
+      messageId: outerMessageId,
+    });
+  };
+
   const messageNavigationProps = {
     showStopButton,
     showMessageNavigation,
@@ -482,12 +537,13 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       )}
     >
       <div className="flex w-full justify-center gap-2">
-        {showNavigationContainer && !effectiveIsCompact && (
-          <InputBarMessageNavigation
-            variant="floating"
-            {...messageNavigationProps}
-          />
-        )}
+        {showNavigationContainer &&
+          (!effectiveIsCompact || !!userAnswerRequiredItem) && (
+            <InputBarMessageNavigation
+              variant="floating"
+              {...messageNavigationProps}
+            />
+          )}
       </div>
       {blockedActions.length > 0 && (
         <ContentMessageInline
@@ -507,15 +563,14 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
               variant="outline"
               size="xs"
               onClick={() => {
-                const blockedAction = blockedActions[blockedActionIndex];
-                const blockedActionTargetMessageId = blockedAction.messageId;
+                const { blockedAction, messageId: outerMessageId } =
+                  blockedActionItems[blockedActionIndex];
 
                 startPulsingAction(blockedAction.actionId);
 
                 const blockedActionMessageIndex = methods.data.findIndex(
                   (m) =>
-                    isAgentMessageWithStreaming(m) &&
-                    blockedActionTargetMessageId === m.sId
+                    isAgentMessageWithStreaming(m) && outerMessageId === m.sId
                 );
 
                 methods.scrollToItem({
@@ -559,44 +614,63 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       <div
         className={classNames(
           "relative w-full",
-          effectiveIsCompact && "flex items-center gap-2"
+          effectiveIsCompact &&
+            !userAnswerRequiredItem &&
+            "flex items-center gap-2"
         )}
       >
-        <InputBar
-          owner={context.owner}
-          user={context.user}
-          onSubmit={context.handleSubmit}
-          stickyMentions={autoMentions}
-          lastRequestedModel={lastRequestedModel}
-          conversation={context.conversation}
-          draftKey={context.draftKey}
-          disableAutoFocus={isMobile || hasUserAnswerRequired}
-          disableUserMentions={!!agentBuilderContext}
-          disableAgentMentions={
-            agentBuilderContext?.disableAgentMentions === true
-          }
-          actions={agentBuilderContext?.actionsToShow}
-          isSubmitting={agentBuilderContext?.isSubmitting === true}
-          isAgentBuilder={!!agentBuilderContext}
-          submitBlockMessage={
-            forkBlockMessage ?? wakeUpBlockMessage ?? compactionBlockMessage
-          }
-          effectiveIsCompact={effectiveIsCompact}
-          onExpandInputBar={expandInputBar}
-          onEditorFocusChange={onEditorFocusChange}
-          onOverlayOpenChange={onOverlayOpenChange}
-          onVoiceActiveChange={onVoiceActiveChange}
-        />
-        {effectiveIsCompact && showNavigationContainer && (
-          <div className="shrink-0">
-            <div className={INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES}>
-              <InputBarMessageNavigation
-                variant="compact"
-                {...messageNavigationProps}
-              />
-            </div>
-          </div>
+        {userAnswerRequiredItem?.blockedAction.status ===
+        "blocked_user_answer_required" ? (
+          <UserAnswerRequired
+            key={userAnswerRequiredItem.blockedAction.actionId}
+            blockedAction={userAnswerRequiredItem.blockedAction}
+            triggeringUser={
+              userAnswerRequiredItem.blockedAction.userId === context.user.sId
+                ? context.user
+                : null
+            }
+            owner={context.owner}
+            retryHandler={retryUserAnswerRequired}
+          />
+        ) : (
+          <InputBar
+            owner={context.owner}
+            user={context.user}
+            onSubmit={context.handleSubmit}
+            stickyMentions={autoMentions}
+            lastRequestedModel={lastRequestedModel}
+            conversation={context.conversation}
+            draftKey={context.draftKey}
+            disableAutoFocus={isMobile}
+            disableUserMentions={!!agentBuilderContext}
+            disableAgentMentions={
+              agentBuilderContext?.disableAgentMentions === true
+            }
+            actions={agentBuilderContext?.actionsToShow}
+            isSubmitting={agentBuilderContext?.isSubmitting === true}
+            isAgentBuilder={!!agentBuilderContext}
+            submitBlockMessage={
+              forkBlockMessage ?? wakeUpBlockMessage ?? compactionBlockMessage
+            }
+            effectiveIsCompact={effectiveIsCompact}
+            onExpandInputBar={expandInputBar}
+            onEditorFocusChange={onEditorFocusChange}
+            onOverlayOpenChange={onOverlayOpenChange}
+            onVoiceActiveChange={onVoiceActiveChange}
+          />
         )}
+        {effectiveIsCompact &&
+          !userAnswerRequiredItem &&
+          showNavigationContainer && (
+            <div className="shrink-0">
+              <div className={INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES}>
+                <InputBarMessageNavigation
+                  variant="compact"
+                  {...messageNavigationProps}
+                />
+              </div>
+            </div>
+          )}
       </div>
     </div>
   );
