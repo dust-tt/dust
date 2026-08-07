@@ -42,8 +42,8 @@ import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
 import type { RouteObject } from "react-router-dom";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 
-// Redirect component that strips a compatibility prefix.
-function PrefixRedirect() {
+// Redirect component that strips /poke prefix
+function PokeRedirect() {
   const params = useParams();
   const location = useLocation();
   const rest = params["*"] || "";
@@ -162,9 +162,9 @@ export const routes: RouteObject[] = [
           },
         ],
       },
-      // Redirect compatibility prefixes to canonical Poke routes.
-      { path: "poke/*", element: <PrefixRedirect /> },
-      { path: "w/*", element: <PrefixRedirect /> },
+      // Redirect /poke/* to /* (strip /poke prefix)
+      { path: "poke/*", element: <PokeRedirect /> },
+      { path: "w/*", element: <PokeRedirect /> },
       {
         element: <UnauthenticatedPage />,
         children: [{ path: "*", element: <Custom404 /> }],
