@@ -19,6 +19,14 @@ export const CONSUMPTION_PERIOD_OPTIONS: ConsumptionPeriodSelection[] = [
   })),
 ];
 
+export function formatConsumptionDate(date: string | number): string {
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function consumptionPeriodLabel(
   selection: ConsumptionPeriodSelection
 ): string {

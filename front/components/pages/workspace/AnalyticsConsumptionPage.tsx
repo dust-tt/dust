@@ -3,8 +3,23 @@ import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/c
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
-import { BarChart01, cn, Page } from "@dust-tt/sparkle";
+import { isNavigationLocked } from "@app/lib/navigation-lock";
+import { BarChart01, cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
 import { useState } from "react";
+
+const canReload = () => !isNavigationLocked();
+
+const ConsumptionChart = safeLazy(
+  () =>
+    import(
+      "@app/components/workspace/analytics/consumption/ConsumptionChart"
+    ).then((mod) => ({ default: mod.ConsumptionChart })),
+  { canReload }
+);
+
+function ChartFallback() {
+  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
+}
 
 export function AnalyticsConsumptionPage() {
   const owner = useWorkspace();
@@ -49,7 +64,12 @@ export function AnalyticsConsumptionPage() {
         }
         icon={BarChart01}
       />
-      <ConsumptionOverview workspaceId={owner.sId} period={period} />
+      <div className="flex flex-col gap-8 pb-8">
+        <ConsumptionOverview workspaceId={owner.sId} period={period} />
+        <SafeSuspense fallback={<ChartFallback />}>
+          <ConsumptionChart workspaceId={owner.sId} period={period} />
+        </SafeSuspense>
+      </div>
     </Page.Vertical>
   );
 }
