@@ -21,12 +21,28 @@ const argumentSpecs: ArgumentSpecs = {
     description: "Workspace ID to archive agents from",
     demandOption: true,
   },
+  includeRestrictedSpaces: {
+    type: "boolean",
+    description:
+      "Also archive agents that request a restricted space (grants the script read access to every space in the workspace)",
+    default: false,
+  },
 };
 
 makeScript(
   argumentSpecs,
-  async ({ csvPath, workspaceId, execute }, scriptLogger) => {
-    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  async (
+    { csvPath, workspaceId, includeRestrictedSpaces, execute },
+    scriptLogger
+  ) => {
+    // Agents requesting a restricted space are filtered out of getAgentConfiguration unless the
+    // auth holds that space's group, and the default admin auth only holds the global group.
+    const auth = await Authenticator.internalAdminForWorkspace(
+      workspaceId,
+      includeRestrictedSpaces
+        ? { dangerouslyRequestAllGroups: true }
+        : undefined
+    );
 
     // Read and parse CSV file
     const fileContent = readFileSync(csvPath, "utf-8");
@@ -36,7 +52,7 @@ makeScript(
     }) as AgentRecord[];
 
     scriptLogger.info(
-      { workspaceId, recordCount: records.length },
+      { workspaceId, recordCount: records.length, includeRestrictedSpaces },
       "Starting agent archival process"
     );
 
