@@ -4,9 +4,13 @@ import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_a
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelId } from "@app/types/shared/model_id";
 
-export type ActivationWorkAreaForUserType = ReturnType<
-  ActivationWorkAreaResource["toJSON"]
->;
+export interface ActivationWorkAreaForUserType {
+  sId: string;
+  title: string;
+  description: string;
+  status: ActivationWorkAreaStatus;
+  createdAt: number;
+}
 
 export interface GetActivationWorkAreasResponseBody {
   workAreas: ActivationWorkAreaForUserType[];
