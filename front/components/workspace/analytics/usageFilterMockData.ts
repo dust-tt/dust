@@ -151,7 +151,7 @@ const MOCK_SOURCE_CONNECTORS: Array<{
   { name: "Uploaded files — Legal templates", connectorProvider: undefined },
 ];
 
-function buildAgentEntities(names: string[]): UsageFilterAgentOption[] {
+function buildAgentOptions(names: string[]): UsageFilterAgentOption[] {
   return names.map((name, index) => ({
     id: `agent_${index + 1}`,
     name,
@@ -160,7 +160,7 @@ function buildAgentEntities(names: string[]): UsageFilterAgentOption[] {
   }));
 }
 
-function buildModelEntities(names: string[]): UsageFilterModelOption[] {
+function buildModelOptions(names: string[]): UsageFilterModelOption[] {
   return names.map((name, index) => ({
     id: `model_${index + 1}`,
     name,
@@ -170,7 +170,7 @@ function buildModelEntities(names: string[]): UsageFilterModelOption[] {
   }));
 }
 
-function buildToolEntities(names: string[]): UsageFilterToolOption[] {
+function buildToolOptions(names: string[]): UsageFilterToolOption[] {
   return names.map((name, index) => ({
     id: `tool_${index + 1}`,
     name,
@@ -178,7 +178,7 @@ function buildToolEntities(names: string[]): UsageFilterToolOption[] {
   }));
 }
 
-function buildSkillEntities(names: string[]): UsageFilterSkillOption[] {
+function buildSkillOptions(names: string[]): UsageFilterSkillOption[] {
   return names.map((name, index) => ({
     id: `skill_${index + 1}`,
     name,
@@ -186,11 +186,11 @@ function buildSkillEntities(names: string[]): UsageFilterSkillOption[] {
   }));
 }
 
-export const USAGE_FILTER_MOCK_ENTITIES = {
-  agent: buildAgentEntities(MOCK_ENTITY_NAMES.agent),
-  model: buildModelEntities(MOCK_ENTITY_NAMES.model),
-  tool: buildToolEntities(MOCK_ENTITY_NAMES.tool),
-  skill: buildSkillEntities(MOCK_ENTITY_NAMES.skill),
+export const USAGE_FILTER_MOCK_OPTIONS = {
+  agent: buildAgentOptions(MOCK_ENTITY_NAMES.agent),
+  model: buildModelOptions(MOCK_ENTITY_NAMES.model),
+  tool: buildToolOptions(MOCK_ENTITY_NAMES.tool),
+  skill: buildSkillOptions(MOCK_ENTITY_NAMES.skill),
   source: MOCK_SOURCE_CONNECTORS.map<UsageFilterSourceOption>(
     (connector, index) => ({
       id: `source_${index + 1}`,

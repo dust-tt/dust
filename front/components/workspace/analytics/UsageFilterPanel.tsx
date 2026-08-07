@@ -14,9 +14,9 @@ import type {
 } from "@app/components/workspace/analytics/usageFilter";
 import {
   clearUsageFilterCategory,
-  removeUsageFilterEntity,
-  selectAllUsageFilterEntities,
-  toggleUsageFilterEntity,
+  removeUsageFilterOption,
+  selectAllUsageFilterOptions,
+  toggleUsageFilterOption,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_FILTER_SCOPES,
@@ -24,10 +24,10 @@ import {
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
-import { UsageFilterEntityCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterEntityCheckboxList";
 import { UsageFilterFooter } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterFooter";
 import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
+import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -44,10 +44,7 @@ import { useMemo, useState } from "react";
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Agents/models/tools/skills/sources are still mock data (see
-  // usageFilterMockData.ts — sources are fake connectors standing in for a
-  // real db call); members are fetched live below (useSearchMembers).
-  categoryEntities: {
+  categoryOptions: {
     agent: UsageFilterAgentOption[];
     model: UsageFilterModelOption[];
     tool: UsageFilterToolOption[];
@@ -61,16 +58,14 @@ interface UsageFilterPanelProps {
 
 export function UsageFilterPanel({
   owner,
-  categoryEntities,
+  categoryOptions,
   groups,
   filter,
   onFilterChange,
 }: UsageFilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
-  // Selections are staged here while the panel is open and only propagated to
-  // `onFilterChange` when the user clicks Apply. Cancel (or dismissing the
-  // popover any other way) simply drops the draft: it gets re-synced from
-  // `filter` the next time the panel opens.
+  // Selections are staged while the panel is open and only propagated
+  // when the user clicks Apply.
   const [draftFilter, setDraftFilter] = useState<UsageFilter>(filter);
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
@@ -90,7 +85,7 @@ export function UsageFilterPanel({
     disabled: !isOpen || activeCategory !== "member",
   });
 
-  const memberEntities = useMemo<UsageFilterMemberOption[]>(
+  const memberOptions = useMemo<UsageFilterMemberOption[]>(
     () =>
       members.map((m) => ({
         id: m.sId,
@@ -101,36 +96,36 @@ export function UsageFilterPanel({
     [members]
   );
 
-  const resolvedCategoryEntities = useMemo<
+  const resolvedCategoryOptions = useMemo<
     Record<UsageFilterCategory, UsageFilterOption[]>
   >(
     () => ({
-      ...categoryEntities,
-      member: memberEntities,
+      ...categoryOptions,
+      member: memberOptions,
     }),
-    [categoryEntities, memberEntities]
+    [categoryOptions, memberOptions]
   );
 
-  const activeEntities = resolvedCategoryEntities[activeCategory];
-  const filteredEntities = useMemo(() => {
+  const activeOptions = resolvedCategoryOptions[activeCategory];
+  const filteredOptions = useMemo(() => {
     const search = searchText.trim().toLowerCase();
-    return activeEntities.filter((entity) => {
-      if (entity.kind === "agent" && entity.scope !== activeScope) {
+    return activeOptions.filter((option) => {
+      if (option.kind === "agent" && option.scope !== activeScope) {
         return false;
       }
-      if (entity.kind === "model" && entity.tier !== activeTier) {
+      if (option.kind === "model" && option.tier !== activeTier) {
         return false;
       }
-      if (search && !entity.name.toLowerCase().includes(search)) {
+      if (search && !option.name.toLowerCase().includes(search)) {
         return false;
       }
       return true;
     });
-  }, [activeEntities, searchText, activeScope, activeTier]);
+  }, [activeOptions, searchText, activeScope, activeTier]);
 
   const selectedIdsForActiveCategory = useMemo(
     () =>
-      new Set((draftFilter[activeCategory] ?? []).map((entity) => entity.id)),
+      new Set((draftFilter[activeCategory] ?? []).map((option) => option.id)),
     [draftFilter, activeCategory]
   );
 
@@ -174,11 +169,7 @@ export function UsageFilterPanel({
 
   const handleSelectAllFiltered = () => {
     setDraftFilter(
-      selectAllUsageFilterEntities(
-        draftFilter,
-        activeCategory,
-        filteredEntities
-      )
+      selectAllUsageFilterOptions(draftFilter, activeCategory, filteredOptions)
     );
   };
 
@@ -195,15 +186,15 @@ export function UsageFilterPanel({
     setIsOpen(false);
   };
 
-  const handleToggleEntity = (
+  const handleToggleOption = (
     category: UsageFilterCategory,
-    entity: UsageFilterOption
+    option: UsageFilterOption
   ) => {
-    setDraftFilter(toggleUsageFilterEntity(draftFilter, category, entity));
+    setDraftFilter(toggleUsageFilterOption(draftFilter, category, option));
   };
 
-  const handleRemoveEntity = (category: UsageFilterCategory, id: string) => {
-    setDraftFilter(removeUsageFilterEntity(draftFilter, category, id));
+  const handleRemoveOption = (category: UsageFilterCategory, id: string) => {
+    setDraftFilter(removeUsageFilterOption(draftFilter, category, id));
   };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
@@ -256,9 +247,9 @@ export function UsageFilterPanel({
             )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
-                models={categoryEntities.model}
+                models={categoryOptions.model}
                 selectedModelIds={selectedIdsForActiveCategory}
-                onToggleModel={(model) => handleToggleEntity("model", model)}
+                onToggleModel={(model) => handleToggleOption("model", model)}
                 activeTier={activeTier}
                 onTierChange={setActiveTier}
               />
@@ -269,13 +260,13 @@ export function UsageFilterPanel({
                 onScopeChange={setActiveScope}
               />
             )}
-            <UsageFilterEntityCheckboxList
+            <UsageFilterOptionCheckboxList
               category={activeCategory}
               categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-              entities={filteredEntities}
+              options={filteredOptions}
               selectedIds={selectedIdsForActiveCategory}
-              onToggleEntity={(entity) =>
-                handleToggleEntity(activeCategory, entity)
+              onToggleOption={(option) =>
+                handleToggleOption(activeCategory, option)
               }
               onSelectAll={handleSelectAllFiltered}
             />
@@ -284,7 +275,7 @@ export function UsageFilterPanel({
             categoriesWithSelection={categoriesWithSelection}
             draftFilter={draftFilter}
             onClearCategory={handleClearCategory}
-            onRemoveEntity={handleRemoveEntity}
+            onRemoveOption={handleRemoveOption}
           />
         </div>
         <UsageFilterFooter

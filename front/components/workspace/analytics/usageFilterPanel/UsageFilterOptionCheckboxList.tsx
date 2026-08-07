@@ -2,7 +2,7 @@ import type {
   UsageFilterCategory,
   UsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
-import { UsageFilterEntityIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterEntityIcon";
+import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
 import {
   Button,
   Checkbox,
@@ -11,23 +11,23 @@ import {
   NavigationListLabel,
 } from "@dust-tt/sparkle";
 
-interface UsageFilterEntityCheckboxListProps {
+interface UsageFilterOptionCheckboxListProps {
   category: UsageFilterCategory;
   categoryLabel: string;
-  entities: UsageFilterOption[];
+  options: UsageFilterOption[];
   selectedIds: Set<string>;
-  onToggleEntity: (entity: UsageFilterOption) => void;
+  onToggleOption: (option: UsageFilterOption) => void;
   onSelectAll: () => void;
 }
 
-export function UsageFilterEntityCheckboxList({
+export function UsageFilterOptionCheckboxList({
   category,
   categoryLabel,
-  entities,
+  options,
   selectedIds,
-  onToggleEntity,
+  onToggleOption,
   onSelectAll,
-}: UsageFilterEntityCheckboxListProps) {
+}: UsageFilterOptionCheckboxListProps) {
   return (
     <>
       <NavigationListLabel
@@ -39,31 +39,31 @@ export function UsageFilterEntityCheckboxList({
             size="xmini"
             variant="ghost-secondary"
             onClick={onSelectAll}
-            disabled={entities.length === 0}
+            disabled={options.length === 0}
           />
         }
       />
       <NavigationList className="min-h-0 flex-1">
-        {entities.length > 0 ? (
-          entities.map((entity) => {
-            const checked = selectedIds.has(entity.id);
-            const checkboxId = `usage-filter-entity-${category}-${entity.id}`;
+        {options.length > 0 ? (
+          options.map((option) => {
+            const checked = selectedIds.has(option.id);
+            const checkboxId = `usage-filter-option-${category}-${option.id}`;
             return (
               <div
-                key={entity.id}
+                key={option.id}
                 className="flex items-center gap-2 py-1 pl-1 pr-2"
               >
                 <Checkbox
                   id={checkboxId}
                   checked={checked}
-                  onCheckedChange={() => onToggleEntity(entity)}
+                  onCheckedChange={() => onToggleOption(option)}
                 />
-                <UsageFilterEntityIcon entity={entity} />
+                <UsageFilterOptionIcon option={option} />
                 <Label
                   htmlFor={checkboxId}
                   className="cursor-pointer text-sm leading-none"
                 >
-                  {entity.name}
+                  {option.name}
                 </Label>
               </div>
             );

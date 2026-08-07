@@ -8,8 +8,8 @@ import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_perio
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
-  USAGE_FILTER_MOCK_ENTITIES,
   USAGE_FILTER_MOCK_GROUPS,
+  USAGE_FILTER_MOCK_OPTIONS,
 } from "@app/components/workspace/analytics/usageFilterMockData";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
@@ -86,7 +86,7 @@ export function AnalyticsConsumptionPage() {
           <div className="flex justify-end">
             <UsageFilterPanel
               owner={owner}
-              categoryEntities={USAGE_FILTER_MOCK_ENTITIES}
+              categoryOptions={USAGE_FILTER_MOCK_OPTIONS}
               groups={USAGE_FILTER_MOCK_GROUPS}
               filter={filter}
               onFilterChange={setFilter}

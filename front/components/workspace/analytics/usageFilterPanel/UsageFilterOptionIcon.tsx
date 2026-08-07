@@ -5,38 +5,38 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Avatar, Icon } from "@dust-tt/sparkle";
 
-interface UsageFilterEntityIconProps {
-  entity: UsageFilterOption;
+interface UsageFilterOptionIconProps {
+  option: UsageFilterOption;
 }
 
-export function UsageFilterEntityIcon({ entity }: UsageFilterEntityIconProps) {
+export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
   const { isDark } = useTheme();
 
-  switch (entity.kind) {
+  switch (option.kind) {
     case "member":
       return (
         <Avatar
-          name={entity.name}
-          visual={entity.image ?? undefined}
+          name={option.name}
+          visual={option.image ?? undefined}
           size="xxs"
           isRounded
         />
       );
     case "source": {
       const logo = getConnectorProviderLogoWithFallback({
-        provider: entity.connectorProvider ?? null,
+        provider: option.connectorProvider ?? null,
         isDark,
       });
       return <Icon visual={logo} size="sm" />;
     }
     case "model":
-      return <Icon visual={getModelMakerLogo(entity.lab, isDark)} size="sm" />;
+      return <Icon visual={getModelMakerLogo(option.lab, isDark)} size="sm" />;
     case "agent":
     case "tool":
     case "skill":
       return null;
     default:
-      assertNeverAndIgnore(entity);
+      assertNeverAndIgnore(option);
       return null;
   }
 }
