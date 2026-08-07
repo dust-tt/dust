@@ -93,10 +93,7 @@ export function UsageFilterSelectionSummary({
                         key={`${category}:${entity.id}`}
                         avatar={
                           <div className="flex grow items-center gap-2 overflow-hidden">
-                            <UsageFilterEntityIcon
-                              category={category}
-                              entity={entity}
-                            />
+                            <UsageFilterEntityIcon entity={entity} />
                             <span className="label-sm overflow-hidden text-ellipsis whitespace-nowrap text-gray-950">
                               {entity.name}
                             </span>

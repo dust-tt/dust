@@ -1,25 +1,18 @@
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type {
-  UsageFilterCategory,
-  UsageFilterEntity,
-} from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilterOption } from "@app/components/workspace/analytics/usageFilter";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Avatar, Icon } from "@dust-tt/sparkle";
 
 interface UsageFilterEntityIconProps {
-  category: UsageFilterCategory;
-  entity: UsageFilterEntity;
+  entity: UsageFilterOption;
 }
 
-export function UsageFilterEntityIcon({
-  category,
-  entity,
-}: UsageFilterEntityIconProps) {
+export function UsageFilterEntityIcon({ entity }: UsageFilterEntityIconProps) {
   const { isDark } = useTheme();
 
-  switch (category) {
+  switch (entity.kind) {
     case "member":
       return (
         <Avatar
@@ -37,15 +30,13 @@ export function UsageFilterEntityIcon({
       return <Icon visual={logo} size="sm" />;
     }
     case "model":
-      return entity.lab ? (
-        <Icon visual={getModelMakerLogo(entity.lab, isDark)} size="sm" />
-      ) : null;
+      return <Icon visual={getModelMakerLogo(entity.lab, isDark)} size="sm" />;
     case "agent":
     case "tool":
     case "skill":
       return null;
     default:
-      assertNeverAndIgnore(category);
+      assertNeverAndIgnore(entity);
       return null;
   }
 }

@@ -1,15 +1,19 @@
 import type {
-  UsageFilterEntity,
+  UsageFilterAgentOption,
   UsageFilterGroup,
-  UsageModelLab,
+  UsageFilterModelOption,
+  UsageFilterSkillOption,
+  UsageFilterSourceOption,
+  UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
   USAGE_FILTER_SCOPES,
   USAGE_MODEL_TIERS,
 } from "@app/components/workspace/analytics/usageFilter";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
-const MOCK_MODEL_LAB: Record<string, UsageModelLab> = {
+const MOCK_MODEL_LAB: Record<string, ModelMakerIdType> = {
   "Claude Sonnet 5": "anthropic",
   "Claude Opus 5": "anthropic",
   "Claude Haiku 4.5": "anthropic",
@@ -147,33 +151,52 @@ const MOCK_SOURCE_CONNECTORS: Array<{
   { name: "Uploaded files — Legal templates", connectorProvider: undefined },
 ];
 
-function buildMockEntities(
-  category: keyof typeof MOCK_ENTITY_NAMES,
-  names: string[]
-): UsageFilterEntity[] {
+function buildAgentEntities(names: string[]): UsageFilterAgentOption[] {
   return names.map((name, index) => ({
-    id: `${category}_${index + 1}`,
+    id: `agent_${index + 1}`,
     name,
-    scope:
-      category === "agent"
-        ? USAGE_FILTER_SCOPES[index % USAGE_FILTER_SCOPES.length]
-        : undefined,
-    lab: category === "model" ? MOCK_MODEL_LAB[name] : undefined,
-    tier:
-      category === "model"
-        ? USAGE_MODEL_TIERS[index % USAGE_MODEL_TIERS.length]
-        : undefined,
+    kind: "agent",
+    scope: USAGE_FILTER_SCOPES[index % USAGE_FILTER_SCOPES.length],
+  }));
+}
+
+function buildModelEntities(names: string[]): UsageFilterModelOption[] {
+  return names.map((name, index) => ({
+    id: `model_${index + 1}`,
+    name,
+    kind: "model",
+    lab: MOCK_MODEL_LAB[name],
+    tier: USAGE_MODEL_TIERS[index % USAGE_MODEL_TIERS.length],
+  }));
+}
+
+function buildToolEntities(names: string[]): UsageFilterToolOption[] {
+  return names.map((name, index) => ({
+    id: `tool_${index + 1}`,
+    name,
+    kind: "tool",
+  }));
+}
+
+function buildSkillEntities(names: string[]): UsageFilterSkillOption[] {
+  return names.map((name, index) => ({
+    id: `skill_${index + 1}`,
+    name,
+    kind: "skill",
   }));
 }
 
 export const USAGE_FILTER_MOCK_ENTITIES = {
-  agent: buildMockEntities("agent", MOCK_ENTITY_NAMES.agent),
-  model: buildMockEntities("model", MOCK_ENTITY_NAMES.model),
-  tool: buildMockEntities("tool", MOCK_ENTITY_NAMES.tool),
-  skill: buildMockEntities("skill", MOCK_ENTITY_NAMES.skill),
-  source: MOCK_SOURCE_CONNECTORS.map((connector, index) => ({
-    id: `source_${index + 1}`,
-    name: connector.name,
-    connectorProvider: connector.connectorProvider,
-  })),
+  agent: buildAgentEntities(MOCK_ENTITY_NAMES.agent),
+  model: buildModelEntities(MOCK_ENTITY_NAMES.model),
+  tool: buildToolEntities(MOCK_ENTITY_NAMES.tool),
+  skill: buildSkillEntities(MOCK_ENTITY_NAMES.skill),
+  source: MOCK_SOURCE_CONNECTORS.map<UsageFilterSourceOption>(
+    (connector, index) => ({
+      id: `source_${index + 1}`,
+      name: connector.name,
+      kind: "source",
+      connectorProvider: connector.connectorProvider,
+    })
+  ),
 };
