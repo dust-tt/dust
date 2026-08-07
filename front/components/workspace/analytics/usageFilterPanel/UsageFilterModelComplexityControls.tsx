@@ -54,10 +54,6 @@ export function UsageFilterModelComplexityControls({
   onTierChange,
 }: UsageFilterModelComplexityControlsProps) {
   const { isDark } = useTheme();
-  // "More models" opens collapsed to just the maker rows; picking one expands
-  // its model list. State lives here since it's local to this dropdown and
-  // naturally resets whenever the panel is reopened (the popover unmounts
-  // its content on close).
   const [isMoreModelsOpen, setIsMoreModelsOpen] = useState(false);
   const [moreModelsSearch, setMoreModelsSearch] = useState("");
   const [expandedModelLab, setExpandedModelLab] =
@@ -75,8 +71,6 @@ export function UsageFilterModelComplexityControls({
     setExpandedModelLab((current) => (current === lab ? null : lab));
   };
 
-  // A search bypasses maker grouping entirely and lists matches flat,
-  // mirroring the message composer's model picker.
   const moreModelsQuery = moreModelsSearch.trim().toLowerCase();
   const isSearchingMoreModels = moreModelsQuery !== "";
 
