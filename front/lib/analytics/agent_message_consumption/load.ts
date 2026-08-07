@@ -12,6 +12,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import {
   RunResource,
@@ -20,6 +21,7 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentMessageAnalyticsModel,
   AgentMessageConsumptionAnalyticsAgent,
@@ -35,8 +37,11 @@ import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
   isTerminalAgentMessageStatus,
 } from "@app/types/assistant/conversation";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
 
 export type BilledRunUsage = RunUsageWithRunKeyType & {
   usageType: AgentMessageConsumptionAnalyticsUsageType;
@@ -128,6 +133,38 @@ async function loadAgentTagIds(
   return tags.map((tag) => tag.sId);
 }
 
+async function loadAnalyticsUser({
+  completedAt,
+  userId,
+  workspace,
+}: {
+  completedAt: Date;
+  userId: string | null;
+  workspace: LightWorkspaceType;
+}): Promise<AgentMessageConsumptionAnalyticsUser | null> {
+  if (userId === null) {
+    return null;
+  }
+
+  const [user] = await UserResource.fetchByIds([userId]);
+  assert(
+    user,
+    "Triggering user is missing while loading consumption analytics"
+  );
+
+  const groups = await GroupResource.listUserGroupsInWorkspace({
+    user,
+    workspace,
+    groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
+    at: completedAt,
+  });
+
+  return {
+    id: user.sId,
+    group_ids: groups.map((group) => group.sId).sort(),
+  };
+}
+
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
   { agentMessageId }: { agentMessageId: string }
@@ -211,6 +248,11 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     .map((ancestor) => ancestor.agentConfigurationId)
     .reverse();
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
+  const user = await loadAnalyticsUser({
+    completedAt: agentMessage.completedAt,
+    userId: triggeringUserMessage.userId,
+    workspace,
+  });
 
   const resolvedModel = resolvedModelFromAgentMessageRow({
     resolvedModelId: agentMessage.resolvedModelId,
@@ -264,10 +306,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     ),
     usages: billedUsages,
     // userId is a nullable FK with ON DELETE SET NULL. Never substitute the worker identity.
-    user:
-      triggeringUserMessage.userId === null
-        ? null
-        : { id: triggeringUserMessage.userId },
+    user,
     workspaceId: workspace.sId,
   };
 }
