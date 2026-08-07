@@ -450,8 +450,9 @@ fn validate_absolute_uri_authority(
             Some(host),
         )
     })?;
-    // `host` was already verified to equal SNI by `normalized_single_host` in
-    // TLS mode, so comparing `normalized_authority == host` is sufficient.
+    // `host` was already pinned to the connection's approved domain (SNI on
+    // 443, first-request `Host` on 80) by `normalized_authority`, so comparing
+    // `normalized_authority == host` is sufficient.
     if normalized_authority != host {
         return Err(HttpRewriteError::denied(
             mode,
@@ -1197,10 +1198,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn forwards_plain_http_with_non_default_port_in_host() -> Result<()> {
+    async fn forwards_plain_http_with_default_port_in_host() -> Result<()> {
         let table = empty_table()?;
         let output = rewrite_once(
-            b"GET / HTTP/1.1\r\nHost: api.openai.com:8080\r\n\r\n",
+            b"GET / HTTP/1.1\r\nHost: api.openai.com:80\r\n\r\n",
             &table,
             HttpRewriteMode::PlainHttp {
                 domain: "api.openai.com",
@@ -1209,7 +1210,124 @@ mod tests {
         .await?;
         let text = String::from_utf8(output)?;
 
-        assert!(text.contains("Host: api.openai.com:8080\r\n"));
+        assert!(text.contains("Host: api.openai.com:80\r\n"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn forwards_plain_http_with_case_and_trailing_dot_host() -> Result<()> {
+        let table = empty_table()?;
+        let output = rewrite_once(
+            b"GET / HTTP/1.1\r\nHost: API.OpenAI.com.\r\n\r\n",
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.contains("Host: API.OpenAI.com.\r\n"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_plain_http_non_default_port_in_host() -> Result<()> {
+        // The plain-HTTP guard only runs on connections whose original
+        // destination was port 80, so a Host claiming another port
+        // misrepresents the authority the proxy approved and connected to.
+        let table = empty_table()?;
+        let err = rewrite_once(
+            b"GET / HTTP/1.1\r\nHost: api.openai.com:8080\r\n\r\n",
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("non-default port in Host should deny");
+
+        assert_deny_reason(err, DenyReason::HostDomainMismatch);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_plain_http_host_domain_mismatch() -> Result<()> {
+        let table = empty_table()?;
+        let err = rewrite_once(
+            b"GET / HTTP/1.1\r\nHost: evil.example\r\n\r\n",
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("host mismatch should deny on port 80");
+
+        assert_deny_reason(err, DenyReason::HostDomainMismatch);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_plain_http_host_change_on_keep_alive_connection() -> Result<()> {
+        // Domain-fronting regression: the approved domain is decided once from
+        // the first request, so a second request on the same keep-alive
+        // connection must not be able to swap in another host and ride the
+        // approved domain's CDN edge to a non-allowlisted zone.
+        let table = empty_table()?;
+        let (result, output) = rewrite_once_capturing(
+            b"GET /one HTTP/1.1\r\nHost: api.openai.com\r\n\r\nGET /two HTTP/1.1\r\nHost: evil.example\r\n\r\n",
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "api.openai.com",
+            },
+        )
+        .await?;
+        let error = result.expect_err("fronted second request should deny");
+
+        assert_deny_reason(error, DenyReason::HostDomainMismatch);
+        let text = String::from_utf8(output)?;
+        assert!(text.contains("GET /one HTTP/1.1\r\n"));
+        assert!(
+            !text.contains("evil.example"),
+            "fronted request must not reach upstream, got: {text}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_plain_http_absolute_uri_to_other_host() -> Result<()> {
+        let table = empty_table()?;
+        let err = rewrite_once(
+            b"GET http://evil.example/ HTTP/1.1\r\nHost: api.openai.com\r\n\r\n",
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("absolute URI to another host should deny on port 80");
+
+        assert_deny_reason(err, DenyReason::AbsoluteUriAuthorityMismatch);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_plain_http_h2c_prior_knowledge_preface() -> Result<()> {
+        // The non-HTTP/1.1 fallback is TLS-only, so an h2c preface on port 80
+        // must not slip past the Host pin as opaque bytes.
+        let table = empty_table()?;
+        let err = rewrite_once(
+            b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("h2c preface should deny on port 80");
+
+        assert_deny_reason(err, DenyReason::MalformedHeaders);
         Ok(())
     }
 
@@ -1726,6 +1844,19 @@ mod tests {
         table: &SecretTable,
         mode: HttpRewriteMode<'_>,
     ) -> std::result::Result<Vec<u8>, HttpRewriteError> {
+        let (result, output) = rewrite_once_capturing(input, table, mode).await?;
+        result?;
+        Ok(output)
+    }
+
+    // Same as `rewrite_once`, but hands back the bytes that reached upstream
+    // alongside the verdict, so a test can assert that a denied request never
+    // crossed the boundary.
+    async fn rewrite_once_capturing(
+        input: &[u8],
+        table: &SecretTable,
+        mode: HttpRewriteMode<'_>,
+    ) -> std::result::Result<(RewriteResult<()>, Vec<u8>), HttpRewriteError> {
         let (mut client_write, mut client_read) = tokio::io::duplex(16 * 1024);
         let (mut upstream_write, mut upstream_read) = tokio::io::duplex(16 * 1024);
         // The duplex pipe is intentionally smaller than some test inputs, so
@@ -1782,14 +1913,12 @@ mod tests {
             }
         }
 
-        rewrite_result?;
-
         let mut output = Vec::new();
         upstream_read
             .read_to_end(&mut output)
             .await
             .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
-        Ok(output)
+        Ok((rewrite_result, output))
     }
 
     async fn forward_chunked_once(input: &[u8]) -> Result<(RewriteResult<()>, Vec<u8>)> {
