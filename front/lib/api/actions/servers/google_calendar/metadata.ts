@@ -41,16 +41,14 @@ const sharedEventFields = {
 const eventStartSchema = z.union([
   z.object({ dateTime: z.string().describe("RFC3339 start time") }),
   z.object({
-    date: z.string().describe("All-day start date in YYYY-MM-DD format"),
+    date: z.string().describe("All-day start date (YYYY-MM-DD)"),
   }),
 ]);
 
 const eventEndSchema = z.union([
   z.object({ dateTime: z.string().describe("RFC3339 end time") }),
   z.object({
-    date: z
-      .string()
-      .describe("Exclusive all-day end date in YYYY-MM-DD format"),
+    date: z.string().describe("Exclusive all-day end date (YYYY-MM-DD)"),
   }),
 ]);
 
@@ -144,12 +142,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         .describe(
           "Description of the event. Supports basic HTML tags (<b>, <i>, <br>, <ul>, <li>, <a href='...'>). Use raw HTML tags — never escape them as entities. Use plain text only when no formatting is needed."
         ),
-      start: eventStartSchema.describe(
-        "Start time for a timed event or start date for an all-day event."
-      ),
-      end: eventEndSchema.describe(
-        "End time for a timed event or exclusive end date for an all-day event."
-      ),
+      start: eventStartSchema.describe("Timed or all-day event start."),
+      end: eventEndSchema.describe("Timed or all-day event end (exclusive)."),
       attendees: z
         .array(z.string())
         .optional()
@@ -197,14 +191,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         ),
       start: eventStartSchema
         .optional()
-        .describe(
-          "Start time for a timed event or start date for an all-day event."
-        ),
+        .describe("Timed or all-day event start."),
       end: eventEndSchema
         .optional()
-        .describe(
-          "End time for a timed event or exclusive end date for an all-day event."
-        ),
+        .describe("Timed or all-day event end (exclusive)."),
       attendees: z
         .array(z.string())
         .optional()
