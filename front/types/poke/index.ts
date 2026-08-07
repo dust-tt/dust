@@ -7,6 +7,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import type {
   AgentMessageType,
+  CompactionMessageType,
   ConversationType,
   UserMessageType,
 } from "../assistant/conversation";
@@ -96,5 +97,6 @@ export type PokeConversationType = Omit<ConversationType, "content"> & {
     | UserMessageType[]
     | PokeAgentMessageType[]
     | ContentFragmentType[]
+    | CompactionMessageType[]
   )[];
 };

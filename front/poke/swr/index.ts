@@ -1,8 +1,13 @@
 import type { LLMTrace } from "@app/lib/api/llm/traces/types";
+import type { PokeGetConversationResponseBody } from "@app/lib/api/poke/conversations";
 import type { PokeFetchAssistantTemplateResponse } from "@app/lib/api/poke/templates";
 import { clientFetch } from "@app/lib/egress/client";
 import type { FetchAssistantTemplatesResponse } from "@app/lib/resources/template_resource";
-import { emptyArray, useFetcher } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  useFetcher,
+  useSWRInfiniteWithDefaults,
+} from "@app/lib/swr/swr";
 import type {
   GetDocumentsResponseBody,
   GetTablesResponseBody,
@@ -17,9 +22,10 @@ interface PokeAssistantTemplatesResponse
   dustRegionSyncEnabled: boolean;
 }
 
-import type { ConversationType } from "@app/types/assistant/conversation";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
+
+const POKE_CONVERSATION_PAGE_SIZE = 50;
 
 export function usePokePullTemplates() {
   const { mutateAssistantTemplates } = usePokeAssistantTemplates();
@@ -101,20 +107,63 @@ export function usePokeConversation({
   conversationId: string | null;
 }) {
   const { fetcher } = useFetcher();
-  const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
-    fetcher;
+  const conversationFetcher: Fetcher<PokeGetConversationResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWR(
-    conversationId
-      ? `/api/poke/workspaces/${workspaceId}/conversations/${conversationId}`
-      : null,
-    conversationFetcher
-  );
+  const { data, error, isValidating, mutate, setSize, size } =
+    useSWRInfiniteWithDefaults(
+      (
+        _pageIndex: number,
+        previousPageData: PokeGetConversationResponseBody | null
+      ) => {
+        if (
+          !conversationId ||
+          (previousPageData && !previousPageData.hasMore)
+        ) {
+          return null;
+        }
+
+        const baseUrl = `/api/poke/workspaces/${workspaceId}/conversations/${conversationId}?limit=${POKE_CONVERSATION_PAGE_SIZE}`;
+        if (previousPageData === null) {
+          return baseUrl;
+        }
+
+        return previousPageData.lastValue !== null &&
+          previousPageData.lastValue !== undefined
+          ? `${baseUrl}&lastValue=${previousPageData.lastValue}`
+          : null;
+      },
+      conversationFetcher,
+      { revalidateAll: false }
+    );
+
+  const conversation = useMemo(() => {
+    const firstPage = data?.[0];
+    if (!firstPage) {
+      return null;
+    }
+
+    return {
+      ...firstPage.conversation,
+      content: [...data].reverse().flatMap((page) => page.conversation.content),
+    };
+  }, [data]);
+
+  const hasOlderMessages = data
+    ? (data[data.length - 1]?.hasMore ?? false)
+    : false;
+  const loadOlderMessages = useCallback(() => {
+    if (hasOlderMessages && !isValidating) {
+      void setSize(size + 1);
+    }
+  }, [hasOlderMessages, isValidating, setSize, size]);
 
   return {
-    conversation: data ? data.conversation : null,
+    conversation,
+    hasOlderMessages,
     isConversationLoading: !error && !data,
     isConversationError: error,
+    isLoadingOlderMessages: isValidating && size > 1,
+    loadOlderMessages,
     mutateConversation: mutate,
   };
 }

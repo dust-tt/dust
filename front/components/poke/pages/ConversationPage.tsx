@@ -7,6 +7,7 @@ import { useRequiredPathParam } from "@app/lib/platform";
 import { makeSandboxConnectCommand } from "@app/lib/poke/sandbox";
 import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
+import { usePokeConversationAction } from "@app/poke/swr/conversation_action";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { useCopyReinforcementTestCase } from "@app/poke/swr/reinforcement_test_case";
@@ -24,7 +25,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  Check,
   ChevronDown,
   Chip,
   Clipboard,
@@ -319,8 +319,19 @@ function getActionStatus(
 
 interface ToolActionViewProps {
   action: PokeAgentMessageType["actions"][number];
+  conversationId: string;
   cost?: AgentMessageCreditsToolBreakdown;
   isExpanded: boolean;
+  messageId: string;
+  onToggle: () => void;
+  owner: LightWorkspaceType;
+}
+
+interface ToolActionContentProps {
+  action: ToolActionViewProps["action"];
+  cost: ToolActionViewProps["cost"];
+  isExpanded: boolean;
+  isLoading: boolean;
   onToggle: () => void;
 }
 
@@ -328,10 +339,10 @@ function ToolActionContent({
   action,
   cost,
   isExpanded,
+  isLoading,
   onToggle,
-}: ToolActionViewProps) {
+}: ToolActionContentProps) {
   const actionStatus = getActionStatus(action.status);
-  const ActionIcon = action.status === "errored" ? XClose : Check;
   const actionLabel = getActionLabel(action);
   const duration =
     "executionDurationMs" in action &&
@@ -342,29 +353,29 @@ function ToolActionContent({
   return (
     <>
       <span className="shrink-0">
-        {action.mcpIO ? (
-          <Button
-            variant="outline"
-            size="icon"
-            icon={
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform",
-                  !isExpanded ? "-rotate-90" : null
-                )}
-              />
-            }
-            onClick={onToggle}
-            aria-expanded={isExpanded}
-            aria-label={
-              isExpanded ? "Collapse tool details" : "Expand tool details"
-            }
-          />
-        ) : (
-          <span className="flex h-7 w-7 items-center justify-center rounded-md border border-separator bg-background">
-            <ActionIcon className="h-4 w-4 text-muted-foreground" />
-          </span>
-        )}
+        <Button
+          variant="outline"
+          size="icon"
+          icon={
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform",
+                !isExpanded ? "-rotate-90" : null
+              )}
+            />
+          }
+          isLoading={isLoading}
+          disabled={isLoading}
+          onClick={onToggle}
+          aria-expanded={isExpanded}
+          aria-label={
+            isLoading
+              ? "Loading tool details"
+              : isExpanded
+                ? "Collapse tool details"
+                : "Expand tool details"
+          }
+        />
       </span>
       <span className="flex min-w-0 flex-1 items-center gap-3">
         <span className="w-24 shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
@@ -422,10 +433,33 @@ function ToolActionContent({
 
 function ToolActionView({
   action,
+  conversationId,
   cost,
   isExpanded,
+  messageId,
   onToggle,
+  owner,
 }: ToolActionViewProps) {
+  const {
+    action: detailedAction,
+    isError,
+    isLoading,
+    retry,
+  } = usePokeConversationAction({
+    actionId: action.sId,
+    conversationId,
+    disabled: !isExpanded || Boolean(action.mcpIO),
+    messageId,
+    owner,
+  });
+  const mcpIO = detailedAction
+    ? {
+        params: detailedAction.params,
+        output: detailedAction.output,
+        generatedFiles: detailedAction.generatedFiles,
+      }
+    : action.mcpIO;
+
   return (
     <div>
       <div
@@ -440,17 +474,31 @@ function ToolActionView({
           action={action}
           cost={cost}
           isExpanded={isExpanded}
+          isLoading={isLoading}
           onToggle={onToggle}
         />
       </div>
-      {action.mcpIO && isExpanded && (
+      {isExpanded && isError && (
+        <div className="ml-9 mt-2 flex items-center gap-2 rounded-md border border-border-warning bg-background px-3 py-2 text-sm font-medium text-warning">
+          <span>Failed to load tool details.</span>
+          <Button
+            label="Retry"
+            variant="outline"
+            size="xs"
+            isLoading={isLoading}
+            disabled={isLoading}
+            onClick={() => void retry()}
+          />
+        </div>
+      )}
+      {mcpIO && isExpanded && (
         <div className="ml-9 mt-2 overflow-hidden rounded-md border border-separator bg-background">
           <CodeBlock wrapLongLines className="language-json">
             {JSON.stringify(
               {
-                params: action.mcpIO.params,
-                output: action.mcpIO.output,
-                generatedFiles: action.mcpIO.generatedFiles,
+                params: mcpIO.params,
+                output: mcpIO.output,
+                generatedFiles: mcpIO.generatedFiles,
               },
               undefined,
               2
@@ -630,6 +678,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 };
 
 interface AgentMessageViewProps {
+  conversationId: string;
   message: PokeAgentMessageType;
   useMarkdown: boolean;
   owner: LightWorkspaceType;
@@ -637,6 +686,7 @@ interface AgentMessageViewProps {
 }
 
 const AgentMessageView = ({
+  conversationId,
   message,
   useMarkdown,
   owner,
@@ -768,9 +818,12 @@ const AgentMessageView = ({
             <ToolActionView
               key={a.sId}
               action={a}
+              conversationId={conversationId}
               cost={costByActionId.get(a.sId)}
               isExpanded={isExpanded}
+              messageId={message.sId}
               onToggle={() => toggleAction(a.sId)}
+              owner={owner}
             />
           );
         })}
@@ -850,17 +903,20 @@ export function ConversationPage() {
   const owner = useWorkspace();
 
   const conversationId = useRequiredPathParam("cId");
-  const {
-    data: conversationConfig,
-    isLoading: isConfigLoading,
-    isError: isConfigError,
-  } = usePokeConversationConfig({
+  const { data: conversationConfig } = usePokeConversationConfig({
     owner,
     conversationId,
     disabled: false,
   });
 
-  const { conversation } = usePokeConversation({
+  const {
+    conversation,
+    hasOlderMessages,
+    isConversationError,
+    isConversationLoading,
+    isLoadingOlderMessages,
+    loadOlderMessages,
+  } = usePokeConversation({
     workspaceId: owner.sId,
     conversationId,
   });
@@ -880,9 +936,11 @@ export function ConversationPage() {
     spaceDetails?.space.kind === "project" ? spaceDetails.space : null;
 
   const [useMarkdown, setUseMarkdown] = useState(false);
+  const [showRenderControls, setShowRenderControls] = useState(false);
   const { data: agents } = usePokeAgentConfigurations({
     owner,
     agentsGetView: "admin_internal",
+    disabled: !showRenderControls,
   });
 
   const defaultAgentId = (() => {
@@ -914,7 +972,6 @@ export function ConversationPage() {
     systemPrompt: string;
     toolsTokenCountApprox: number;
   }>(null);
-  const [showRenderControls, setShowRenderControls] = useState(false);
   const [isCopiedJSON, copyJSON] = useCopyToClipboard();
   const [isCopiedSandboxCommand, copySandboxCommand] = useCopyToClipboard();
 
@@ -963,7 +1020,7 @@ export function ConversationPage() {
     }
   }
 
-  if (isConfigLoading) {
+  if (isConversationLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Spinner />
@@ -971,20 +1028,20 @@ export function ConversationPage() {
     );
   }
 
-  if (isConfigError || !conversationConfig) {
+  if (isConversationError || !conversation) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <p>Error loading conversation config.</p>
+        <p>Error loading conversation.</p>
       </div>
     );
   }
 
   const {
-    conversationDataSourceId,
-    langfuseUiBaseUrl,
-    sandbox,
-    temporalWorkspace,
-  } = conversationConfig;
+    conversationDataSourceId = null,
+    langfuseUiBaseUrl = null,
+    sandbox = null,
+    temporalWorkspace = "",
+  } = conversationConfig ?? {};
 
   const sandboxConnect = sandbox
     ? { command: makeSandboxConnectCommand(sandbox), status: sandbox.status }
@@ -1046,11 +1103,16 @@ export function ConversationPage() {
                 target="_blank"
               />
               <Button
-                href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
+                href={
+                  temporalWorkspace
+                    ? `https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`
+                    : undefined
+                }
                 label="Temporal Workflows"
                 variant="primary"
                 size="xs"
                 target="_blank"
+                disabled={!temporalWorkspace}
               />
               <Button
                 href={getDatadogSandboxLogsUrl(conversationId)}
@@ -1282,15 +1344,30 @@ export function ConversationPage() {
             </div>
           )}
           <div className="flex w-full flex-1 flex-col justify-start gap-8 py-4">
+            {hasOlderMessages && (
+              <div className="flex justify-center">
+                <Button
+                  label="Load older messages"
+                  variant="outline"
+                  isLoading={isLoadingOlderMessages}
+                  disabled={isLoadingOlderMessages}
+                  onClick={loadOlderMessages}
+                />
+              </div>
+            )}
             {conversation.content.map((messages, i) => {
               return (
-                <div key={`messages-${i}`} className="flex flex-col gap-4">
-                  {messages.map((m, j) => {
+                <div
+                  key={`messages-${messages.at(0)?.rank ?? i}`}
+                  className="flex flex-col gap-4"
+                >
+                  {messages.map((m) => {
                     switch (m.type) {
                       case "agent_message": {
                         return (
                           <AgentMessageView
-                            key={`message-${i}-${j}`}
+                            key={`${m.sId}-${m.version}`}
+                            conversationId={conversationId}
                             message={m}
                             useMarkdown={useMarkdown}
                             owner={owner}
@@ -1302,7 +1379,7 @@ export function ConversationPage() {
                         return (
                           <UserMessageView
                             message={m}
-                            key={`message-${i}-${j}`}
+                            key={`${m.sId}-${m.version}`}
                             useMarkdown={useMarkdown}
                           />
                         );
@@ -1311,7 +1388,7 @@ export function ConversationPage() {
                         return (
                           <ContentFragmentView
                             message={m}
-                            key={`message-${i}-${j}`}
+                            key={`${m.sId}-${m.version}`}
                           />
                         );
                       }
@@ -1319,7 +1396,7 @@ export function ConversationPage() {
                         return (
                           <CompactionMessageView
                             message={m}
-                            key={`message-${i}-${j}`}
+                            key={`${m.sId}-${m.version}`}
                           />
                         );
                       }

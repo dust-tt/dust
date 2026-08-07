@@ -14,47 +14,54 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
+type PokeConversationWithPagination = PokeConversationType & {
+  hasMore?: boolean;
+  lastValue?: number | null;
+};
+
 export async function getPokeConversation(
   auth: Authenticator,
   conversationId: string,
-  includeDeleted?: boolean
-): Promise<Result<PokeConversationType, ConversationError>> {
+  includeDeleted?: boolean,
+  messagePagination?: { limit: number; lastRank: number | null },
+  includeActionOutputContent: boolean = true
+): Promise<Result<PokeConversationWithPagination, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: Poke UI requests are paginated; tool callers intentionally load the full conversation.
   const conversation = await getConversation(
     auth,
     conversationId,
-    includeDeleted
+    includeDeleted,
+    includeActionOutputContent ? null : 0,
+    messagePagination
   );
 
   // Enrich the returned conversation with the apps runs linked to the agent messages
   // Decided to do it as a separate step because I didn't want to modify the getConversation to make it more complex based on the use case
   // and I still wanted to use the existing getConversation code for rendering.
   if (conversation.isOk()) {
-    const pokeConversation = conversation.value as PokeConversationType;
+    const pokeConversation =
+      conversation.value as PokeConversationWithPagination;
 
     const agentMessages = pokeConversation.content
       .flat()
       .filter((m): m is PokeAgentMessageType => m.type === "agent_message");
 
-    const agentMessagesWithRunIds = await AgentMessageModel.findAll({
-      where: {
-        id: [...new Set(agentMessages.map((m) => m.agentMessageId))],
-        workspaceId: owner.id,
-      },
-      attributes: ["id", "runIds"],
-    });
+    const [agentMessagesWithRunIds, analyticsByMessageId] = await Promise.all([
+      AgentMessageModel.findAll({
+        where: {
+          id: [...new Set(agentMessages.map((m) => m.agentMessageId))],
+          workspaceId: owner.id,
+        },
+        attributes: ["id", "runIds"],
+      }),
+      fetchAgentMessageCostAnalyticsByMessageIds(auth, {
+        messageIds: agentMessages.map((m) => m.sId),
+      }),
+    ]);
     const runIdsByAgentMessageId = new Map(
       agentMessagesWithRunIds.map((m) => [m.id, m.runIds])
     );
-
-    // Batch-fetch the stored cost analytics document for every agent message in the
-    // conversation in one shot (rather than per message), so each message's cost
-    // breakdown can be attached with zero additional queries per message.
-    const analyticsByMessageId =
-      await fetchAgentMessageCostAnalyticsByMessageIds(auth, {
-        messageIds: agentMessages.map((m) => m.sId),
-      });
 
     // Cycle through the messages and actions and enrich them with runId(s) and timestamps.
     for (const messages of pokeConversation.content) {
@@ -75,12 +82,14 @@ export async function getPokeConversation(
 
           if (m.actions.length > 0) {
             for (const a of m.actions) {
-              a.mcpIO = {
-                params: a.params,
-                output: a.output,
-                generatedFiles: a.generatedFiles,
-                isError: a.status === "errored",
-              };
+              if (includeActionOutputContent) {
+                a.mcpIO = {
+                  params: a.params,
+                  output: a.output,
+                  generatedFiles: a.generatedFiles,
+                  isError: a.status === "errored",
+                };
+              }
               a.created = a.createdAt;
             }
           }

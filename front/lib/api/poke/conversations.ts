@@ -3,7 +3,7 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
-import type { PokeSandboxType } from "@app/types/poke";
+import type { PokeConversationType, PokeSandboxType } from "@app/types/poke";
 
 export type PokeListConversationItem = ConversationWithoutContentType & {
   visibility?: ConversationVisibility;
@@ -11,6 +11,12 @@ export type PokeListConversationItem = ConversationWithoutContentType & {
 
 export type PokeListConversations = {
   conversations: PokeListConversationItem[];
+};
+
+export type PokeGetConversationResponseBody = {
+  conversation: PokeConversationType;
+  hasMore?: boolean;
+  lastValue?: number | null;
 };
 
 export type PokeGetConversationConfig = {
