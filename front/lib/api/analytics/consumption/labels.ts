@@ -1,9 +1,6 @@
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
-import {
-  resolveAnalyticsAgentLabels,
-  UNKNOWN_AGENT_LABEL,
-} from "@app/lib/api/assistant/observability/agent_labels";
+import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import type { Authenticator } from "@app/lib/auth";
@@ -53,7 +50,7 @@ export async function resolveDimensionLabels(
       const labels = await resolveAnalyticsAgentLabels(auth, keys);
       return new Map(
         keys.map((key) => {
-          const label = labels.get(key) ?? UNKNOWN_AGENT_LABEL;
+          const label = labels.get(key) ?? { name: key, pictureUrl: null };
           return [key, { name: label.name, pictureUrl: label.pictureUrl }];
         })
       );
@@ -113,7 +110,7 @@ export async function resolveDimensionLabels(
   }
 }
 
-export async function resolveConsumptionGroupNames(
+export async function resolveDimensionDisplayNames(
   auth: Authenticator,
   dimension: ConsumptionScopeDimension,
   groupKeys: string[]

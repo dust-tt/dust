@@ -1,4 +1,4 @@
-import { resolveConsumptionGroupLabels } from "@app/lib/api/analytics/consumption/labels";
+import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
@@ -19,7 +19,7 @@ vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
 
 vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
   const mod = await orig();
-  return { ...mod, resolveConsumptionGroupLabels: vi.fn() };
+  return { ...mod, resolveDimensionLabels: vi.fn() };
 });
 
 const PERIOD: ConsumptionPeriod = {
@@ -49,7 +49,7 @@ function mockAggs({
 }
 
 function mockLabels(labels: Record<string, string>) {
-  vi.mocked(resolveConsumptionGroupLabels).mockResolvedValue(
+  vi.mocked(resolveDimensionLabels).mockResolvedValue(
     new Map(
       Object.entries(labels).map(([key, name]) => [
         key,
@@ -74,12 +74,12 @@ function lastSearchCall() {
 describe("consumption top rankings", () => {
   afterEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();
-    vi.mocked(resolveConsumptionGroupLabels).mockReset();
+    vi.mocked(resolveDimensionLabels).mockReset();
   });
 
   it("ranks agents on gross credits and averages over distinct messages", async () => {
     const { auth } = await setup();
-    vi.mocked(resolveConsumptionGroupLabels).mockResolvedValue(
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(
       new Map([["agent1", { name: "@dust", pictureUrl: "http://pic/dust" }]])
     );
     mockAggs({

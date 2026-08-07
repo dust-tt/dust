@@ -1,4 +1,3 @@
-import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionMetric,
@@ -24,6 +23,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
+import { resolveDimensionDisplayNames } from "./labels";
 
 export type ConsumptionGranularity = "day" | "week" | "month";
 export type ConsumptionTimeseriesMode = "daily" | "cumulative";
@@ -200,7 +200,7 @@ async function fetchTimeseriesBreakdown(
     topDimensionKeys
   );
 
-  const names = await resolveDimensionLabels(
+  const names = await resolveDimensionDisplayNames(
     auth,
     breakdownBy,
     topDimensionKeys

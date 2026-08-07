@@ -1,4 +1,3 @@
-import { resolveConsumptionGroupLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
@@ -9,6 +8,7 @@ import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { resolveDimensionLabels } from "./labels";
 
 /**
  * Skills ranked by the credits they consumed over the period, averaged per
@@ -64,7 +64,7 @@ export async function fetchConsumptionTopSkills(
   }
   const { groups, totalCredits } = result.value;
 
-  const labels = await resolveConsumptionGroupLabels(
+  const labels = await resolveDimensionLabels(
     auth,
     "skill",
     groups.map((group) => group.key)
