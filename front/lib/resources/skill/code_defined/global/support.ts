@@ -39,10 +39,11 @@ export const supportSkill = {
   userFacingDescription:
     "Get help with Dust using public docs, open-source issues, and community knowledge.",
   agentFacingDescription:
-    "Use when the user asks how to use Dust, asks about Dust capabilities or limits, " +
-    "hits unexpected Dust behavior, sees errors, or may need help qualifying a public " +
-    "bug report. Ground answers on public Dust docs, public code/issues, and " +
-    "community knowledge.",
+    "Use for support requests about the Dust platform: how to use Dust; " +
+    "questions about features, capabilities, or limits; troubleshooting " +
+    "unexpected behavior or errors. Do not use for generic help, products " +
+    "other than Dust, ambiguous mentions of Dust. Do not use if the user is " +
+    "an expert in Dust, for instance if they have a @dust.tt email address.",
   instructions: SUPPORT_INSTRUCTIONS,
   mcpServers: [{ name: WEB_SEARCH_BROWSE_SERVER_NAME }],
   version: 1,
