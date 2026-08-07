@@ -13,11 +13,13 @@ import {
   generateSandboxFunctionInvocationToken,
 } from "@app/lib/api/sandbox/access_tokens";
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
+import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { parseStdoutResultEnvelope } from "@app/lib/api/sandbox_functions/result_delivery";
+import { parseResultEnvelopeTimings } from "@app/lib/api/sandbox_functions/result_envelope";
 import {
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
@@ -652,6 +654,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         this
       );
 
+      const execStartedAtMs = Date.now();
       const execResult = await sandbox.exec(auth, command, {
         workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
         envVars: {
@@ -714,6 +717,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         // Persist from the envelope even on non-zero exit: dsbx may still have
         // written a well-formed invocation_failed envelope the worker should keep.
         const normalized = parseStdoutResultEnvelope(stdout);
+        const timings = parseResultEnvelopeTimings(stdout);
+        recordSandboxFunctionRun({
+          runnerKind: timings?.runnerKind ?? "unknown",
+          durationMs: Date.now() - execStartedAtMs,
+        });
         if (!normalized.ok || exitCode !== 0) {
           // Mirror the callback path's failure logging: without the raw
           // stdout/stderr there is no way to diagnose a rejected envelope.

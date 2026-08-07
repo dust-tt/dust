@@ -99,6 +99,27 @@ export function recordLifecycleOperation(
   ]);
 }
 
+/**
+ * One fast Pod function run, tagged by which runner served it (resident warm
+ * server vs cold spawn). The warm share is the number the warm-runner rollout
+ * turns on; duration is the exec's wall time as front saw it.
+ */
+export function recordSandboxFunctionRun({
+  runnerKind,
+  durationMs,
+}: {
+  runnerKind: "warm" | "cold" | "unknown";
+  durationMs: number;
+}): void {
+  const tags = [regionTag(), `runner_kind:${runnerKind}`];
+  getStatsDClient().increment("sandbox.functions.run", 1, tags);
+  getStatsDClient().distribution(
+    "sandbox.functions.run.duration",
+    durationMs,
+    tags
+  );
+}
+
 export function recordStateDuration(
   previousStatus: SandboxStatus,
   durationMs: number
