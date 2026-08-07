@@ -36,19 +36,9 @@ export async function getQueryTablesServer(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
   attachments: ConversationAttachmentType[],
-  autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>,
-  { hasSandboxTools }: { hasSandboxTools: boolean }
+  autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
-  const filesUsableAsTableQuery = attachments.filter((f) => {
-    if (!f.isQueryable) {
-      return false;
-    }
-    // Computer handles tabular file attachments; keep content nodes on query_tables.
-    if (hasSandboxTools && isFileAttachmentType(f)) {
-      return false;
-    }
-    return true;
-  });
+  const filesUsableAsTableQuery = attachments.filter((f) => f.isQueryable);
 
   if (filesUsableAsTableQuery.length === 0) {
     return null;

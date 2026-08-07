@@ -7,7 +7,9 @@ export const CONVERSATION_FILES_SERVER_NAME = "conversation_files" as const;
 // Legacy listing action (pre file-system mode). Lists every attachment in the conversation.
 export const CONVERSATION_LIST_FILES_ACTION_NAME = "list";
 // File-system mode listing action. The conversation's regular files have moved to the `files`
-// MCP server, so this listing is narrowed to content nodes and queryable tables.
+// MCP server, so this listing is narrowed to content nodes.
+// TODO(20260504 FILE SYSTEM): the name still mentions tables. Renaming it changes a model-facing
+// tool name recorded on past actions, so it is left alone until the legacy mode is removed.
 export const CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME =
   "list_content_nodes_and_tables";
 export const CONVERSATION_CAT_FILE_ACTION_NAME = "cat";
@@ -16,6 +18,11 @@ export const CONVERSATION_SEARCH_FILES_ACTION_NAME = "semantic_search";
 const CONVERSATION_LIST_FILES_TOOL_NAME = getPrefixedToolName(
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_LIST_FILES_ACTION_NAME
+);
+
+const CONVERSATION_LIST_CONTENT_NODES_TOOL_NAME = getPrefixedToolName(
+  CONVERSATION_FILES_SERVER_NAME,
+  CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME
 );
 
 const CAT_FILE_TOOL = {
@@ -28,7 +35,8 @@ const CAT_FILE_TOOL = {
       .string()
       .describe(
         "The fileId of the conversation attachment to retrieve and read, as " +
-          `returned by \`${CONVERSATION_LIST_FILES_TOOL_NAME}\``
+          `returned by \`${CONVERSATION_LIST_FILES_TOOL_NAME}\` or ` +
+          `\`${CONVERSATION_LIST_CONTENT_NODES_TOOL_NAME}\``
       ),
     offset: z
       .number()
@@ -103,16 +111,14 @@ export const CONVERSATION_FILES_TOOLS_METADATA = [
 
 // In file-system mode, regular files are accessed via the `files` MCP server. This server is
 // narrowed to listing the attachments that don't live on the file mount: content nodes
-// (Notion pages, Slack threads, etc.) and queryable tables. The `cat` tool is kept so agents
-// can read content node attachments.
+// (Notion pages, Slack threads, etc.). The `cat` tool is kept so agents can read them.
 export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM = [
   {
     name: CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME,
     description:
       "List content-node references (for example Notion pages and Slack " +
-      "threads) and queryable tables available " +
-      "in the current conversation. Regular files are not listed here; " +
-      `they are accessible via the \`${FILES_SERVER_NAME}\` MCP server.`,
+      "threads) available in the current conversation. Regular files are not " +
+      `listed here; they are accessible via the \`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {},
     stake: "never_ask",
     displayLabels: {

@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -42,6 +43,9 @@ export interface ToolCallFootprintInput {
 
 export function toolCallFootprintTexts(
   { action, functionCallArguments }: ToolCallFootprintInput,
+  // Attachment capabilities shape the rendered result, so they must match the ones used when the
+  // result was sent to the model, otherwise the measured footprint drifts from what was billed.
+  capabilities: AttachmentCapabilityContext,
   additionalInputText?: string
 ): ToolFootprintTexts {
   return {
@@ -50,7 +54,10 @@ export function toolCallFootprintTexts(
     // Tool input means the model input created by this execution. Most tools contribute only their
     // rendered result. Enabling a skill also adds its instructions and tool definitions to later
     // requests, so those consequences belong to the same tool row.
-    inputText: [renderToolResultForModelAsText(action), additionalInputText]
+    inputText: [
+      renderToolResultForModelAsText(action, capabilities),
+      additionalInputText,
+    ]
       .filter((text): text is string => text !== undefined)
       .join("\n"),
   };
@@ -68,9 +75,11 @@ export async function measureToolCallFootprints(
   {
     modelId,
     toolCalls,
+    capabilities,
   }: {
     modelId: string;
     toolCalls: ToolCallFootprintInput[];
+    capabilities: AttachmentCapabilityContext;
   }
 ): Promise<Result<ToolFootprintMeasurement[], Error>> {
   if (toolCalls.length === 0) {
@@ -99,6 +108,7 @@ export async function measureToolCallFootprints(
   const footprints = toolCalls.map((toolCall) =>
     toolCallFootprintTexts(
       toolCall,
+      capabilities,
       enabledSkillInputTextByActionId.get(toolCall.action.sId)
     )
   );

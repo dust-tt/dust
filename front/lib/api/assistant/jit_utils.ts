@@ -1,6 +1,7 @@
 // Okay to use public API types because here front is talking to core API.
 
 import { fetchContentFragmentsForConversation } from "@app/lib/api/assistant/content_fragments";
+import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
 import {
   getAttachmentFromContentFragment,
   makeFileAttachment,
@@ -43,8 +44,13 @@ export async function listAttachments(
     }),
   ]);
 
+  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+
   for (const m of contentFragments) {
-    const attachment = getAttachmentFromContentFragment(m);
+    const attachment = getAttachmentFromContentFragment({
+      cf: m,
+      capabilities,
+    });
     if (attachment) {
       attachments.set(
         m.contentFragmentId,
@@ -67,6 +73,7 @@ export async function listAttachments(
         isInProjectContext: f.isInProjectContext ?? false,
         hideFromUser: f.hidden ?? false,
         creator: f.creator,
+        capabilities,
       })
     );
   }
