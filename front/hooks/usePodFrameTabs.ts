@@ -9,6 +9,7 @@ import {
   moveFrameTabInTabsOrder,
   normalizeTabsOrder,
   type PodFrameTab,
+  type PodNavVisibility,
   podFrameTabBasename,
   sortPodFrameTabs,
 } from "@app/types/pod_frame_tab";
@@ -208,15 +209,18 @@ export function usePodFrameTabs({
     async (
       path: string,
       direction: "left" | "right",
-      { includeConnectedData }: { includeConnectedData: boolean }
+      visibility: PodNavVisibility
     ) => {
       if (!isEditor) {
         return false;
       }
 
-      const nextNavOrder = moveFrameTabInTabsOrder(navOrder, path, direction, {
-        includeConnectedData,
-      });
+      const nextNavOrder = moveFrameTabInTabsOrder(
+        navOrder,
+        path,
+        direction,
+        visibility
+      );
       if (!nextNavOrder) {
         return false;
       }
