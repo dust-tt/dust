@@ -28,6 +28,25 @@ import {
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
+async function launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs,
+  {
+    creditArgs = agentLoopArgs,
+  }: {
+    creditArgs?: { agentMessageId: string; dustRunIds?: string[] };
+  } = {}
+): Promise<void> {
+  // Consumption analytics needs the authoritative bill, usage type, and historical skill snapshot
+  // before its attribution workflow can safely materialize Elasticsearch documents.
+  await Promise.all([
+    snapshotAgentMessageSkills(auth, agentLoopArgs),
+    computeAndStoreAgentMessageCredits(auth, creditArgs),
+  ]);
+
+  await launchAgentMessageConsumptionAttribution(auth, agentLoopArgs);
+}
+
 export async function finalizeSuccessfulAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
@@ -35,12 +54,13 @@ export async function finalizeSuccessfulAgentLoopActivity(
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   await Promise.all([
-    snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+      auth,
+      agentLoopArgs
+    ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
     conversationUnreadNotification(auth, agentLoopArgs),
     activationNewConversationNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
@@ -63,12 +83,13 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   await Promise.all([
-    snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+      auth,
+      agentLoopArgs
+    ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
     conversationUnreadNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
   ]);
@@ -91,12 +112,13 @@ export async function finalizeInterruptedAgentLoopActivity(
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   await Promise.all([
-    snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+      auth,
+      agentLoopArgs
+    ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
     conversationUnreadNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
   ]);
@@ -111,12 +133,13 @@ export async function finalizeCancelledAgentLoopActivity(
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   await Promise.all([
-    snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+      auth,
+      agentLoopArgs
+    ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
     sendEmailReplyOnError(
       auth,
       agentLoopArgs,
@@ -134,14 +157,16 @@ export async function finalizeCreditStoppedAgentLoopActivity(
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   await Promise.all([
-    snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+      auth,
+      agentLoopArgs,
+      {
+        creditArgs: { agentMessageId: agentLoopArgs.agentMessageId },
+      }
+    ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, {
-      agentMessageId: agentLoopArgs.agentMessageId,
-    }),
     sendEmailReplyOnError(auth, agentLoopArgs, creditsExhaustedMessage(auth)),
   ]);
 }
@@ -156,12 +181,13 @@ export async function finalizeErroredAgentLoopActivity(
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   await Promise.all([
-    snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+      auth,
+      agentLoopArgs
+    ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
     sendEmailReplyOnError(
       auth,
       agentLoopArgs,

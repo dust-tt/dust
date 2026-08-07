@@ -7,3 +7,7 @@ import { defineSignal } from "@temporalio/workflow";
 export const storeAgentMessageConsumptionAttributionV2Signal = defineSignal<
   [void]
 >("store_agent_message_consumption_attribution_v2_signal");
+
+export const storeAgentMessageConsumptionAttributionV3Signal = defineSignal<
+  [void]
+>("store_agent_message_consumption_attribution_v3_signal");
