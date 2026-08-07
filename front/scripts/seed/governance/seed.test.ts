@@ -8,6 +8,13 @@ import {
   seedSpace,
   seedUsers,
 } from "@app/scripts/seed/factories";
+import {
+  DEV_TEAM_GROUP_NAME,
+  FRANCE_GROUP_NAME,
+  GO_TO_MARKET_GROUP_NAME,
+  LONG_NAME_GROUP_NAME,
+  seedGovernanceGroups,
+} from "@app/scripts/seed/governance/groups";
 import type { Assets } from "@app/scripts/seed/governance/seed";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import * as fs from "fs";
@@ -16,6 +23,7 @@ import { describe, expect, it } from "vitest";
 
 const ALFRED_USER_ID = "SeedUserAlfred";
 const BOB_USER_ID = "SeedUserBob";
+const CHARLY_USER_ID = "SeedUserCharly";
 const RESTRICTED_SPACE_NAME = "Governance Restricted Space";
 
 // Load assets from JSON files (same as seed.ts)
@@ -58,6 +66,11 @@ describe("governance seed script integration test", () => {
     const bob = createdUsers.get(BOB_USER_ID);
     expect(bob).toBeDefined();
 
+    const charly = createdUsers.get(CHARLY_USER_ID);
+    expect(charly).toBeDefined();
+
+    const groups = await seedGovernanceGroups(ctx, { alfred, bob, charly });
+
     const restrictedSpace = await seedSpace(ctx, {
       name: RESTRICTED_SPACE_NAME,
       members: [bob!],
@@ -77,6 +90,22 @@ describe("governance seed script integration test", () => {
     const createdAgents = await seedAgents(ctx, assets.agents, {
       skills: alfredSkill ? [alfredSkill] : [],
     });
+
+    // The groups hold the expected members, with the expected kinds.
+    for (const [name, kind, expectedMembers] of [
+      [DEV_TEAM_GROUP_NAME, "provisioned", [user.sId, alfred!.sId]],
+      [GO_TO_MARKET_GROUP_NAME, "provisioned", [alfred!.sId, bob!.sId]],
+      [FRANCE_GROUP_NAME, "regular_manual", [user.sId, charly!.sId]],
+      [LONG_NAME_GROUP_NAME, "regular_manual", [user.sId]],
+    ] as const) {
+      const group = groups.get(name);
+      expect(group).toBeDefined();
+      expect(group!.kind).toBe(kind);
+      const groupMembers = await group!.getActiveMembers(authenticator);
+      expect(new Set(groupMembers.map((m) => m.sId))).toEqual(
+        new Set(expectedMembers)
+      );
+    }
 
     // The restricted space holds the current user and Bob.
     expect(restrictedSpace).toBeDefined();

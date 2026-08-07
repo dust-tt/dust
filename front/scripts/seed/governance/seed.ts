@@ -12,6 +12,7 @@ import {
   seedSpace,
   seedUsers,
 } from "@app/scripts/seed/factories";
+import { seedGovernanceGroups } from "@app/scripts/seed/governance/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
 import * as fs from "fs";
 import * as path from "path";
@@ -42,6 +43,7 @@ function loadAssets(): Assets {
 
 const ALFRED_USER_ID = "SeedUserAlfred";
 const BOB_USER_ID = "SeedUserBob";
+const CHARLY_USER_ID = "SeedUserCharly";
 const RESTRICTED_SPACE_NAME = "Governance Restricted Space";
 
 makeScript({}, async ({ execute }, logger) => {
@@ -62,14 +64,23 @@ makeScript({}, async ({ execute }, logger) => {
     throw new Error(`User ${BOB_USER_ID} was not created`);
   }
 
-  // 2. Create a restricted space holding the current user and Bob.
+  const charly = createdUsers.get(CHARLY_USER_ID);
+  if (execute && !charly) {
+    throw new Error(`User ${CHARLY_USER_ID} was not created`);
+  }
+
+  // 2. Create the provisioned and manual groups.
+  logger.info("Seeding groups...");
+  await seedGovernanceGroups(ctx, { alfred, bob, charly });
+
+  // 3. Create a restricted space holding the current user and Bob.
   logger.info("Seeding the restricted space...");
   const restrictedSpace = await seedSpace(ctx, {
     name: RESTRICTED_SPACE_NAME,
     members: bob ? [bob] : [],
   });
 
-  // 3. Open skill creation to everyone
+  // 4. Open skill creation to everyone
   logger.info("Opening skill creation to everyone...");
   if (execute) {
     const res = await setWorkspaceGovernancePermission(ctx.auth, {
@@ -82,7 +93,7 @@ makeScript({}, async ({ execute }, logger) => {
     }
   }
 
-  // 4. Create skills. The current user's skill requires the restricted space and has both Bob and
+  // 5. Create skills. The current user's skill requires the restricted space and has both Bob and
   // Alfred as editors. Bob is a member of the space, Alfred is not, so the skill builder shows the
   // warning for Alfred only.
   logger.info("Seeding Alfred's unpublished skill...");
@@ -95,7 +106,7 @@ makeScript({}, async ({ execute }, logger) => {
     spaces: restrictedSpace ? [restrictedSpace] : [],
   });
 
-  // 5. Create an agent edited by the current user that uses Alfred's unpublished skill.
+  // 6. Create an agent edited by the current user that uses Alfred's unpublished skill.
   logger.info("Seeding agents...");
   await seedAgents(ctx, agents, {
     skills: alfredSkill ? [alfredSkill] : [],
