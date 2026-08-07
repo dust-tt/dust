@@ -1,9 +1,5 @@
 import type { UsageFilterGroup } from "@app/components/workspace/analytics/usageFilter";
 import {
-  addUsageFilterGroup,
-  removeUsageFilterGroup,
-} from "@app/components/workspace/analytics/usageFilter";
-import {
   Button,
   Chip,
   NavigationList,
@@ -15,13 +11,18 @@ import { useMemo, useState } from "react";
 
 interface UsageFilterMemberGroupsControlsProps {
   groups: UsageFilterGroup[];
+  selectedGroups: UsageFilterGroup[];
+  onAddGroup: (group: UsageFilterGroup) => void;
+  onRemoveGroup: (id: string) => void;
 }
 
 export function UsageFilterMemberGroupsControls({
   groups,
+  selectedGroups,
+  onAddGroup,
+  onRemoveGroup,
 }: UsageFilterMemberGroupsControlsProps) {
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
-  const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
 
   const availableGroups = useMemo(
     () =>
@@ -32,12 +33,8 @@ export function UsageFilterMemberGroupsControls({
   );
 
   const handleAddGroup = (group: UsageFilterGroup) => {
-    setSelectedGroups((current) => addUsageFilterGroup(current, group));
+    onAddGroup(group);
     setIsAddGroupOpen(false);
-  };
-
-  const handleRemoveGroup = (id: string) => {
-    setSelectedGroups((current) => removeUsageFilterGroup(current, id));
   };
 
   return (
@@ -83,7 +80,7 @@ export function UsageFilterMemberGroupsControls({
               key={group.id}
               label={group.name}
               size="xs"
-              onRemove={() => handleRemoveGroup(group.id)}
+              onRemove={() => onRemoveGroup(group.id)}
             />
           ))}
         </div>

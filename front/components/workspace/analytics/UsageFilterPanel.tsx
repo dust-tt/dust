@@ -1,3 +1,4 @@
+import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import type {
   UsageFilter,
   UsageFilterAgentOption,
@@ -13,6 +14,8 @@ import type {
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
+  addUsageFilterGroup,
+  removeUsageFilterGroup,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_FILTER_SCOPES,
@@ -26,7 +29,8 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
-import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useConsumptionRelevantGroups } from "@app/hooks/useConsumptionRelevantGroups";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   BarChart05,
@@ -41,6 +45,11 @@ import { useMemo, useState } from "react";
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
+  period: ConsumptionPeriodSelection;
+  // Agents/models/tools/skills/sources are still mock data (see
+  // usageFilterMockData.ts — sources are fake connectors standing in for a
+  // real db call); members and groups are fetched live below, scoped to
+  // `period` (useConsumptionTop, useConsumptionRelevantGroups).
   categoryOptions: {
     agent: UsageFilterAgentOption[];
     model: UsageFilterModelOption[];
@@ -48,15 +57,14 @@ interface UsageFilterPanelProps {
     skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
   };
-  groups: UsageFilterGroup[];
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
 }
 
 export function UsageFilterPanel({
   owner,
+  period,
   categoryOptions,
-  groups,
   filter,
   onFilterChange,
 }: UsageFilterPanelProps) {
@@ -81,24 +89,43 @@ export function UsageFilterPanel({
     USAGE_MODEL_TIERS[0]
   );
   const [searchText, setSearchText] = useState("");
+  // Only used for the "member" category: narrows the displayed members down
+  // to those belonging to at least one of these groups. Groups only narrow
+  // the picker — the user still checks individual members to add them to the
+  // filter. Lifted here (rather than owned by UsageFilterMemberGroupsControls)
+  // because filteredEntities below needs it too.
+  const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
 
-  const { members } = useSearchMembers({
+  const isMemberCategoryActive = isOpen && activeCategory === "member";
+
+  const { rows: topUserRows } = useConsumptionTop({
     workspaceId: owner.sId,
-    searchTerm: activeCategory === "member" ? searchText : "",
-    pageIndex: 0,
-    pageSize: 100,
-    disabled: !isOpen || activeCategory !== "member",
+    dimension: "user",
+    period,
+    // Wider than the Attribution table's own top-N: the picker needs broader
+    // coverage of the period's active population than a ranking display does.
+    limit: 100,
+    disabled: !isMemberCategoryActive,
   });
 
+  const { groups } = useConsumptionRelevantGroups({
+    workspaceId: owner.sId,
+    period,
+    disabled: !isMemberCategoryActive,
+  });
+
+  // Search is applied client-side below (the top-users ranking has no
+  // server-side search), so a member outside the top 100 by credits over the
+  // period will not be searchable here.
   const memberOptions = useMemo<UsageFilterMemberOption[]>(
     () =>
-      members.map((m) => ({
-        id: m.sId,
-        name: m.fullName,
+      topUserRows.map((row) => ({
+        id: row.id,
+        name: row.name,
         kind: "member",
-        image: m.image,
+        image: row.pictureUrl,
       })),
-    [members]
+    [topUserRows]
   );
 
   const resolvedCategoryOptions = useMemo<{
@@ -114,6 +141,10 @@ export function UsageFilterPanel({
   const activeOptions = resolvedCategoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
     const search = searchText.trim().toLowerCase();
+    const selectedGroupMemberIds =
+      activeCategory === "member" && selectedGroups.length > 0
+        ? new Set(selectedGroups.flatMap((group) => group.memberIds))
+        : null;
     return activeOptions.filter((option) => {
       if (option.kind === "agent" && option.scope !== activeScope) {
         return false;
@@ -121,12 +152,22 @@ export function UsageFilterPanel({
       if (option.kind === "model" && option.tier !== activeTier) {
         return false;
       }
+      if (selectedGroupMemberIds && !selectedGroupMemberIds.has(option.id)) {
+        return false;
+      }
       if (search && !option.name.toLowerCase().includes(search)) {
         return false;
       }
       return true;
     });
-  }, [activeOptions, searchText, activeScope, activeTier]);
+  }, [
+    activeOptions,
+    searchText,
+    activeScope,
+    activeTier,
+    activeCategory,
+    selectedGroups,
+  ]);
 
   const selectedIdsForActiveCategory = useMemo(
     () =>
@@ -171,6 +212,14 @@ export function UsageFilterPanel({
   const handleApply = () => {
     onFilterChange(draftFilter);
     setIsOpen(false);
+  };
+
+  const handleAddGroup = (group: UsageFilterGroup) => {
+    setSelectedGroups((current) => addUsageFilterGroup(current, group));
+  };
+
+  const handleRemoveGroup = (id: string) => {
+    setSelectedGroups((current) => removeUsageFilterGroup(current, id));
   };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
@@ -219,7 +268,12 @@ export function UsageFilterPanel({
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
             {activeCategory === "member" && (
-              <UsageFilterMemberGroupsControls groups={groups} />
+              <UsageFilterMemberGroupsControls
+                groups={groups}
+                selectedGroups={selectedGroups}
+                onAddGroup={handleAddGroup}
+                onRemoveGroup={handleRemoveGroup}
+              />
             )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
