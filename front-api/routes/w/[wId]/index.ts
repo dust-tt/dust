@@ -29,6 +29,7 @@ import { escape } from "html-escaper";
 import { z } from "zod";
 import activationPod from "./activation-pod";
 import actionRecommendations from "./activation-recommendations";
+import activationWorkAreas from "./activation-work-areas";
 import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
@@ -954,6 +955,7 @@ app.post(
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
 app.route("/activation-recommendations", actionRecommendations);
+app.route("/activation-work-areas", activationWorkAreas);
 app.route("/activation-pod", activationPod);
 app.route("/analytics", analytics);
 app.route("/model_tiers", modelTiers);

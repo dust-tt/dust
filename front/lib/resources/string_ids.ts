@@ -113,6 +113,9 @@ export const RESOURCES_PREFIX = {
 
   // Activation pods.
   activation_pod: "apo",
+
+  // Activation work areas.
+  activation_work_area: "awa",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
