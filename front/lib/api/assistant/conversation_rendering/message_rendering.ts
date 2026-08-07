@@ -2,6 +2,7 @@
  * Message rendering logic shared between legacy and enhanced implementations
  */
 
+import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
 import type { Step } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import {
   getSteps,
@@ -157,6 +158,7 @@ export async function renderAllMessages(
     enabledSkills: EnabledSkill[];
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
+  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
   const messages: ModelMessageTypeMultiActions[] = [];
   const enabledSkillById = new Map(
     enabledSkills.map((skill) => [skill.sId, skill])
@@ -194,6 +196,7 @@ export async function renderAllMessages(
             conversationId: conversation.sId,
             onMissingAction,
             enabledSkillById,
+            capabilities,
           });
 
           const agentMessages = renderAgentSteps(
@@ -224,7 +227,7 @@ export async function renderAllMessages(
           model,
           {
             excludeImages: !!excludeImages,
-            useFileSystem: conversation.metadata?.useFileSystem === true,
+            capabilities,
           }
         );
         if (renderedContentFragment) {

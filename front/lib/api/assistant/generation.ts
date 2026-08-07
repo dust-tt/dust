@@ -1,6 +1,5 @@
 import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import {
-  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   ENABLE_SKILL_TOOL_NAME,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
@@ -18,11 +17,6 @@ import {
   COMMON_UTILITIES_SERVER_NAME,
   SET_CONVERSATION_TITLE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/common_utilities/metadata";
-import {
-  CONVERSATION_CAT_FILE_ACTION_NAME,
-  CONVERSATION_FILES_SERVER_NAME,
-  CONVERSATION_SEARCH_FILES_ACTION_NAME,
-} from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
@@ -274,14 +268,10 @@ function constructAttachmentsSection({
 
   return (
     "# ATTACHMENTS\n" +
-    'The conversation history may contain file attachments, indicated by attachment tags of the form <attachment id="{FILE_ID}" type="{MIME_TYPE}" title="{TITLE}" version="{VERSION}" isIncludable="{IS_INCLUDABLE}" isQueryable="{IS_QUERYABLE}" isSearchable="{IS_SEARCHABLE}" sourceUrl="{SOURCE_URL}"> . ' +
+    'The conversation history may contain file attachments, indicated by <attachment id="{FILE_ID}" type="{MIME_TYPE}" title="{TITLE}" version="{VERSION}"> tags. ' +
     "Attachments may originate from the user directly or from tool outputs. " +
     "These tags indicate when the file was attached but often do not contain the full contents (it may contain a small snippet or description of the file).\n" +
-    "Three flags indicate how an attachment can be used:\n\n" +
-    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_CAT_FILE_ACTION_NAME)}\`;\n` +
-    `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
-    `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_SEARCH_FILES_ACTION_NAME)}\`,` +
-    " contents of this attachment will be considered in the search.\n" +
+    'When a "Use:" line is present on an attachment, call those tools with the attachment id to access its content.\n' +
     sandboxFilesPrompt +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
   );
@@ -303,6 +293,7 @@ function constructAttachmentsSectionNewFileExplorer({
     `Files attached to the conversation are accessible via the \`${FILES_SERVER_NAME}\` server.\n\n` +
     "Some attachments remain visible in the conversation history as metadata tags:\n\n" +
     "- Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags; use the available search and retrieval tools to access their full content.\n" +
+    'When a "Use:" line is present on an attachment, call those tools with the attachment id to access its content.\n' +
     sandboxFilesPrompt
   );
 }

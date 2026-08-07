@@ -8,6 +8,7 @@ import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
 import type {
@@ -16,6 +17,17 @@ import type {
   SupportedContentFragmentType,
 } from "@app/types/content_fragment";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const LEGACY: AttachmentCapabilityContext = {
+  isNewFileExplorer: false,
+  hasSandboxTools: false,
+};
+
+// Computer is enabled unless a workspace opts out, so file explorer conversations normally have it.
+const FILE_SYSTEM: AttachmentCapabilityContext = {
+  isNewFileExplorer: true,
+  hasSandboxTools: true,
+};
 
 const BASE_CONTEXT = {
   username: "user",
@@ -126,13 +138,13 @@ describe("renderLightContentFragmentForModel", () => {
     ).mockResolvedValue("https://signed.url/image.png");
   });
 
-  describe("useFileSystem: false", () => {
+  describe("legacy attachments (no file explorer)", () => {
     it("renders a regular file as <attachment>", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("application/pdf"),
         visionModel,
-        { excludeImages: false, useFileSystem: false }
+        { excludeImages: false, capabilities: LEGACY }
       );
       expect(result?.content[0]).toMatchObject({ type: "text" });
       expect((result?.content[0] as { text: string }).text).toContain(
@@ -148,7 +160,7 @@ describe("renderLightContentFragmentForModel", () => {
           snippet: "",
         }),
         visionModel,
-        { excludeImages: false, useFileSystem: false }
+        { excludeImages: false, capabilities: LEGACY }
       );
       expect((result?.content[0] as { text: string }).text).toContain(
         "<attachment"
@@ -160,7 +172,7 @@ describe("renderLightContentFragmentForModel", () => {
         authenticator,
         makeFileFragment("text/vnd.dust.attachment.pasted"),
         visionModel,
-        { excludeImages: false, useFileSystem: false }
+        { excludeImages: false, capabilities: LEGACY }
       );
       expect((result?.content[0] as { text: string }).text).toContain(
         "<pastedContent"
@@ -175,7 +187,7 @@ describe("renderLightContentFragmentForModel", () => {
           snippet: pasteContent,
         }),
         visionModel,
-        { excludeImages: false, useFileSystem: false }
+        { excludeImages: false, capabilities: LEGACY }
       );
       const text = getTextContent(result);
       expect(text).toContain(
@@ -193,7 +205,7 @@ describe("renderLightContentFragmentForModel", () => {
           path: "conversation-conv123/pasted-text-1.txt",
         }),
         visionModel,
-        { excludeImages: false, useFileSystem: false }
+        { excludeImages: false, capabilities: LEGACY }
       );
       const text = getTextContent(result);
       expect(text).toContain('truncated="true"');
@@ -208,7 +220,7 @@ describe("renderLightContentFragmentForModel", () => {
           path: "conversation-conv123/pasted-text-1.txt",
         }),
         visionModel,
-        { excludeImages: false, useFileSystem: false }
+        { excludeImages: false, capabilities: LEGACY }
       );
       const text = getTextContent(result);
       expect(text).toContain('truncated="true"');
@@ -224,7 +236,7 @@ describe("renderLightContentFragmentForModel", () => {
           path: "conversation-conv123/pasted-text-1.txt",
         }),
         visionModel,
-        { excludeImages: false, useFileSystem: false }
+        { excludeImages: false, capabilities: LEGACY }
       );
       const text = getTextContent(result);
       expect(text).not.toContain(fullPaste);
@@ -239,7 +251,7 @@ describe("renderLightContentFragmentForModel", () => {
         authenticator,
         makeFileFragment("image/png"),
         visionModel,
-        { excludeImages: true, useFileSystem: false }
+        { excludeImages: true, capabilities: LEGACY }
       );
       const text = (result?.content[0] as { text: string }).text;
       expect(text).toContain("<attachment");
@@ -253,7 +265,7 @@ describe("renderLightContentFragmentForModel", () => {
         authenticator,
         makeFileFragment("image/png"),
         nonVisionModel,
-        { excludeImages: false, useFileSystem: false }
+        { excludeImages: false, capabilities: LEGACY }
       );
       const text = (result?.content[0] as { text: string }).text;
       expect(text).toContain("<attachment");
@@ -267,7 +279,7 @@ describe("renderLightContentFragmentForModel", () => {
         authenticator,
         makeContentNodeFragment(),
         visionModel,
-        { excludeImages: false, useFileSystem: false }
+        { excludeImages: false, capabilities: LEGACY }
       );
       expect((result?.content[0] as { text: string }).text).toContain(
         "<attachment"
@@ -275,13 +287,13 @@ describe("renderLightContentFragmentForModel", () => {
     });
   });
 
-  describe("useFileSystem: true", () => {
+  describe("file explorer", () => {
     it("renders a regular file as <file> without snippet and without path when path is null", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("application/pdf"),
         visionModel,
-        { excludeImages: false, useFileSystem: true }
+        { excludeImages: false, capabilities: FILE_SYSTEM }
       );
       expect(result?.content[0]).toMatchObject({
         type: "text",
@@ -294,7 +306,7 @@ describe("renderLightContentFragmentForModel", () => {
         authenticator,
         makeFileFragment("text/plain", { snippet: "First 256 chars..." }),
         visionModel,
-        { excludeImages: false, useFileSystem: true }
+        { excludeImages: false, capabilities: FILE_SYSTEM }
       );
       expect(result?.content[0]).toMatchObject({
         type: "text",
@@ -309,7 +321,7 @@ describe("renderLightContentFragmentForModel", () => {
           path: "conversation-conv123/report_fil_abc123.pdf",
         }),
         visionModel,
-        { excludeImages: false, useFileSystem: true }
+        { excludeImages: false, capabilities: FILE_SYSTEM }
       );
       expect(result).not.toBeNull();
       expect(result?.content[0]).toMatchObject({
@@ -327,7 +339,7 @@ describe("renderLightContentFragmentForModel", () => {
             "conversation-conv123/voice-2026-07-24T11:20:00.714Z.processed.txt",
         }),
         visionModel,
-        { excludeImages: false, useFileSystem: true }
+        { excludeImages: false, capabilities: FILE_SYSTEM }
       );
       expect(result?.content[0]).toMatchObject({
         type: "text",
@@ -338,7 +350,7 @@ describe("renderLightContentFragmentForModel", () => {
       });
     });
 
-    it("renders a queryable CSV as <attachment> (bypasses new file explorer)", async () => {
+    it("renders a tabular file as <file>: the Computer reads it from the mount", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("text/csv", {
@@ -346,11 +358,11 @@ describe("renderLightContentFragmentForModel", () => {
           snippet: "",
         }),
         visionModel,
-        { excludeImages: false, useFileSystem: true }
+        { excludeImages: false, capabilities: FILE_SYSTEM }
       );
-      expect((result?.content[0] as { text: string }).text).toContain(
-        "<attachment"
-      );
+      const text = (result?.content[0] as { text: string }).text;
+      expect(text).toContain("<file");
+      expect(text).not.toContain("<attachment");
     });
 
     it("renders a content node as <attachment> (bypasses new file explorer)", async () => {
@@ -358,7 +370,7 @@ describe("renderLightContentFragmentForModel", () => {
         authenticator,
         makeContentNodeFragment(),
         visionModel,
-        { excludeImages: false, useFileSystem: true }
+        { excludeImages: false, capabilities: FILE_SYSTEM }
       );
       expect((result?.content[0] as { text: string }).text).toContain(
         "<attachment"
@@ -370,7 +382,7 @@ describe("renderLightContentFragmentForModel", () => {
         authenticator,
         makeFileFragment("text/vnd.dust.attachment.pasted"),
         visionModel,
-        { excludeImages: false, useFileSystem: true }
+        { excludeImages: false, capabilities: FILE_SYSTEM }
       );
       expect((result?.content[0] as { text: string }).text).toContain(
         "<pastedContent"
@@ -384,7 +396,7 @@ describe("renderLightContentFragmentForModel", () => {
           path: "conversation-conv123/image.png",
         }),
         visionModel,
-        { excludeImages: true, useFileSystem: true }
+        { excludeImages: true, capabilities: FILE_SYSTEM }
       );
       const text = (result?.content[0] as { text: string }).text;
       expect(text).toContain(
@@ -402,7 +414,7 @@ describe("renderLightContentFragmentForModel", () => {
           path: "conversation-conv123/image.png",
         }),
         nonVisionModel,
-        { excludeImages: false, useFileSystem: true }
+        { excludeImages: false, capabilities: FILE_SYSTEM }
       );
       const text = (result?.content[0] as { text: string }).text;
       expect(text).toContain(
@@ -420,7 +432,7 @@ describe("renderLightContentFragmentForModel", () => {
           path: "conversation-conv123/image.png",
         }),
         visionModel,
-        { excludeImages: false, useFileSystem: true }
+        { excludeImages: false, capabilities: FILE_SYSTEM }
       );
       expect(result?.content).toHaveLength(2);
       expect(result?.content[0]).toMatchObject({ type: "image_url" });

@@ -8,6 +8,7 @@ import {
   buildToolAttribution,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
+import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
@@ -23,6 +24,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
@@ -183,12 +185,14 @@ function runUsageModelIdsWithUnconsumedToolResults({
 async function buildRunUsageConsumptionEvidence(
   auth: Authenticator,
   {
+    capabilities,
     enrichedActionByModelId,
     directCreditAmountMicroByActionModelId,
     includeToolResultFootprints,
     runActions,
     usage,
   }: {
+    capabilities: AttachmentCapabilityContext;
     enrichedActionByModelId: ReadonlyMap<ModelId, AgentMCPActionWithOutputType>;
     directCreditAmountMicroByActionModelId: ReadonlyMap<ModelId, number>;
     includeToolResultFootprints: boolean;
@@ -226,6 +230,7 @@ async function buildRunUsageConsumptionEvidence(
   // output budget is partitioned consistently with the immutable evidence already stored.
   const footprintsRes = await measureToolCallFootprints(auth, {
     modelId: usage.modelId,
+    capabilities,
     // TODO(2026-07-31 FLAV) Refactor `enrichActionsWithOutputItems` so it still returns the
     // resource.
     toolCalls: modelVisibleRunActionPairs.map(({ action, enrichedAction }) => ({
@@ -526,6 +531,10 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
     return {};
   }
 
+  // Tool results are re-rendered below to measure them, so they need the same attachment
+  // capabilities the conversation used when the results were sent to the model.
+  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+
   // Every usage is reached through this message's own runIds, so each one belongs to this message.
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
   const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
@@ -624,6 +633,7 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
     const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
     const usageEvidence = await buildRunUsageConsumptionEvidence(auth, {
+      capabilities,
       enrichedActionByModelId,
       directCreditAmountMicroByActionModelId,
       includeToolResultFootprints: !unconsumedToolResultRunUsageModelIds.has(
