@@ -47,7 +47,6 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import {
   useActivationPod,
   useActivationRecommendations,
-  useActivationWorkAreas,
 } from "@app/lib/swr/activation";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -449,11 +448,6 @@ export function AgentSidebarMenu({
       podId: activationPodId ?? undefined,
       disabled: !showGetStarted,
     });
-  const { workAreas: candidateWorkAreas } = useActivationWorkAreas({
-    workspaceId: owner.sId,
-    status: "candidate",
-    disabled: !showGetStarted,
-  });
 
   const [podSearchText, setPodSearchText] = useState("");
   const { setSidebarOpen } = useContext(SidebarContext);
@@ -1042,11 +1036,8 @@ export function AgentSidebarMenu({
                     getGetStartedRoute(owner.sId)
                   )}
                   count={
-                    activationRecsForBadge.length +
-                      candidateWorkAreas.length >
-                    0
-                      ? activationRecsForBadge.length +
-                        candidateWorkAreas.length
+                    activationRecsForBadge.length > 0
+                      ? activationRecsForBadge.length
                       : undefined
                   }
                 />
