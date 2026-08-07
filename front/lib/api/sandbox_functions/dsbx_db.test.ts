@@ -1,0 +1,131 @@
+import { createHash } from "node:crypto";
+
+import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { getDatabaseSchemaOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
+  ensurePodSandboxReady: vi.fn(),
+}));
+
+const sha256Hex = (content: string): string =>
+  createHash("sha256").update(content).digest("hex");
+
+const SCHEMA_CONTENT = 'export const secAudit = sqliteTable("sec_audit", {});';
+
+async function setup(): Promise<{
+  authenticator: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["authenticator"];
+  sandbox: SandboxResource;
+  space: SpaceResource;
+}> {
+  const { authenticator, workspace } = await createResourceTest({
+    role: "admin",
+  });
+  const space = await SpaceFactory.project(workspace);
+  const sandbox = await SandboxResource.makeNew(authenticator, {
+    providerId: "test-provider-id",
+    status: "running",
+    baseImage: "dust-base",
+    version: "0.0.0-test",
+  });
+  vi.mocked(ensurePodSandboxReady).mockResolvedValue(
+    new Ok({ sandbox, freshlyCreated: false })
+  );
+
+  return { authenticator, sandbox, space };
+}
+
+function mockExecWithSchemaHash(
+  sandbox: SandboxResource,
+  schemaContent: string
+) {
+  return vi
+    .spyOn(sandbox, "exec")
+    .mockImplementation(async (_auth, command) => {
+      // The staging path is shell-quoted in the command; strip the quotes.
+      const match = /'?(\/[\w./-]+\.db\.ts)'?/.exec(command);
+      const outPath = match ? match[1] : "";
+      return new Ok({
+        exitCode: 0,
+        stdout: `${JSON.stringify({ ok: true })}\n__DUST_STAGING_SHA256__\n${sha256Hex(schemaContent)}  ${outPath}\n`,
+        stderr: "",
+      });
+    });
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("getDatabaseSchemaOnSandbox", () => {
+  it("returns the schema file content when the hash matches", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    mockExecWithSchemaHash(sandbox, SCHEMA_CONTENT);
+    vi.spyOn(sandbox, "readFile").mockResolvedValue(
+      new Ok(Buffer.from(SCHEMA_CONTENT))
+    );
+
+    const result = await getDatabaseSchemaOnSandbox(authenticator, {
+      space,
+      database: "sec_audit",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value).toBe(SCHEMA_CONTENT);
+  });
+
+  it("refuses a staging file swapped between the exec and the read-back", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    mockExecWithSchemaHash(sandbox, SCHEMA_CONTENT);
+    vi.spyOn(sandbox, "readFile").mockResolvedValue(
+      new Ok(Buffer.from('{"name":"CTF","value":"root-only-content"}'))
+    );
+
+    const result = await getDatabaseSchemaOnSandbox(authenticator, {
+      space,
+      database: "sec_audit",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("internal");
+    expect(result.error.message).toContain(
+      "changed between production and read-back"
+    );
+    expect(result.error.message).not.toContain("root-only-content");
+  });
+
+  it("fails closed when the exec output carries no integrity hash", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: JSON.stringify({ ok: true }), stderr: "" })
+    );
+    vi.spyOn(sandbox, "readFile").mockResolvedValue(
+      new Ok(Buffer.from(SCHEMA_CONTENT))
+    );
+
+    const result = await getDatabaseSchemaOnSandbox(authenticator, {
+      space,
+      database: "sec_audit",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("internal");
+    expect(result.error.message).toContain("Missing integrity hash");
+  });
+});
