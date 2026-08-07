@@ -1026,9 +1026,11 @@ describe("SandboxResource.ensureActive", () => {
   });
 
   // requireRunning is what lets a caller running inside a request use a sandbox without ever
-  // waiting on one being made ready. It is enforced under the lifecycle lock rather than by the
-  // caller, because a kill-requested sandbox reports itself as running right up until it is
-  // destroyed and recreated.
+  // waiting on one being made ready. It runs entirely off a lock-free read: it performs no
+  // lifecycle transition, and queueing concurrent invocations of a busy pod behind the lifecycle
+  // lock was measured as their dominant latency under load. A kill-requested sandbox reports
+  // itself as running right up until it is destroyed and recreated, so the kill marker is part
+  // of the check.
   describe("with requireRunning", () => {
     it("refuses a running sandbox that has a kill requested", async () => {
       const pod = await SpaceFactory.project(
@@ -1083,14 +1085,17 @@ describe("SandboxResource.ensureActive", () => {
       expect(mockProviderCreate).not.toHaveBeenCalled();
     });
 
-    it("uses a running sandbox", async () => {
+    it("uses a running sandbox without taking the lifecycle lock", async () => {
       const pod = await SpaceFactory.project(
         authenticator.getNonNullableWorkspace()
       );
       const running = await SandboxFactory.createForPod(authenticator, pod, {
         status: "running",
+        // Old enough that the fast path's throttled activity touch writes.
+        lastActivityAt: new Date(Date.now() - 60_000),
       });
 
+      mockExecuteWithLock.mockClear();
       const result = await PodSandboxAdapter.ensureSandboxActive(
         authenticator,
         pod,
@@ -1102,6 +1107,36 @@ describe("SandboxResource.ensureActive", () => {
         return;
       }
       expect(result.value.sandbox.sId).toBe(running.sId);
+      expect(mockExecuteWithLock).not.toHaveBeenCalled();
+
+      // The reaper's inactivity clock must keep running for sandboxes served
+      // entirely through the fast path.
+      const persisted = await PodSandboxAdapter.fetchSandbox(
+        authenticator,
+        pod
+      );
+      expect(persisted?.lastActivityAt?.getTime()).toBeGreaterThan(
+        Date.now() - 5_000
+      );
+    });
+
+    it("refuses without taking the lifecycle lock", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+      await SandboxFactory.createForPod(authenticator, pod, {
+        status: "sleeping",
+      });
+
+      mockExecuteWithLock.mockClear();
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockExecuteWithLock).not.toHaveBeenCalled();
     });
   });
 

@@ -70,7 +70,11 @@ export class SandboxFactory {
   static async createForPod(
     auth: Authenticator,
     pod: SpaceResource,
-    opts?: { status?: SandboxStatus; killRequestedAt?: Date }
+    opts?: {
+      status?: SandboxStatus;
+      killRequestedAt?: Date;
+      lastActivityAt?: Date;
+    }
   ): Promise<SandboxResource> {
     const sandbox = await SandboxResource.makeNew(auth, {
       providerId: `test-provider-${Date.now()}`,
@@ -81,6 +85,12 @@ export class SandboxFactory {
     if (opts?.killRequestedAt) {
       await SandboxModel.update(
         { killRequestedAt: opts.killRequestedAt } as Partial<SandboxModel>,
+        { where: { id: sandbox.id } }
+      );
+    }
+    if (opts?.lastActivityAt !== undefined) {
+      await SandboxModel.update(
+        { lastActivityAt: opts.lastActivityAt } as Partial<SandboxModel>,
         { where: { id: sandbox.id } }
       );
     }
