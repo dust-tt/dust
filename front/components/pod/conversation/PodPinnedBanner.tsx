@@ -1,9 +1,8 @@
-import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
+import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
+import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableContent";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useFileContent } from "@app/lib/swr/files";
-import { usePodFiles } from "@app/lib/swr/pods";
 import logger from "@app/logger/logger";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { WorkspaceType } from "@app/types/user";
@@ -15,7 +14,7 @@ import {
   Minimize01,
   Pin02,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 const BANNER_HEIGHT_PX = 280;
@@ -27,39 +26,6 @@ const DEFAULT_POD_PINNED_BANNER_PREFERENCES = {
 interface PodPinnedBannerProps {
   owner: WorkspaceType;
   podInfo: RichSpaceType;
-}
-
-function PodPinnedBannerFrame({
-  owner,
-  podId,
-  fileId,
-  fileContent,
-  vizUrl,
-}: {
-  owner: WorkspaceType;
-  podId: string;
-  fileId: string;
-  fileContent: string;
-  vizUrl: string;
-}) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  return (
-    <AuthenticatedVisualizationActionIframe
-      agentConfigurationId={null}
-      workspaceId={owner.sId}
-      vizUrl={vizUrl}
-      visualization={{
-        code: fileContent,
-        complete: true,
-        identifier: `viz-banner-${fileId}`,
-      }}
-      conversationId={null}
-      spaceId={podId}
-      isInDrawer={true}
-      ref={iframeRef}
-    />
-  );
 }
 
 interface PodPinnedBannerControlsProps {
@@ -177,51 +143,21 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     isEditor: podInfo.isEditor,
   });
 
-  const { files: podFiles, isPodFilesLoading } = usePodFiles({
-    owner,
-    podId: podInfo.sId,
-    disabled: !pinnedFramePath,
-  });
-
-  const pinnedFile = useMemo(() => {
-    if (!pinnedFramePath) {
-      return null;
-    }
-    return (
-      podFiles.find(
-        (f) => !f.isDirectory && f.path === pinnedFramePath && f.fileId
-      ) ?? null
-    );
-  }, [pinnedFramePath, podFiles]);
-
-  const fileId =
-    pinnedFile && !pinnedFile.isDirectory ? pinnedFile.fileId : null;
+  const { fileId, fileContent, isLoading, isNotFound } =
+    usePodFrameRenderableContent({
+      owner,
+      framePath: pinnedFramePath,
+      disabled: !pinnedFramePath,
+    });
 
   useEffect(() => {
-    if (
-      pinnedFramePath &&
-      !isPodFilesLoading &&
-      podFiles.length > 0 &&
-      !fileId
-    ) {
+    if (pinnedFramePath && isNotFound) {
       logger.warn(
         { spaceId: podInfo.sId, pinnedFramePath },
         "Pinned Pod banner file not found; skipping render."
       );
     }
-  }, [
-    fileId,
-    isPodFilesLoading,
-    pinnedFramePath,
-    podFiles.length,
-    podInfo.sId,
-  ]);
-
-  const { fileContent } = useFileContent({
-    fileId,
-    owner,
-    config: { disabled: !fileId },
-  });
+  }, [isNotFound, pinnedFramePath, podInfo.sId]);
 
   useEffect(() => {
     if (!isFullscreen) {
@@ -237,19 +173,17 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
   }, [isFullscreen]);
 
   const unpinLabel =
-    pinnedFile && !pinnedFile.isDirectory
-      ? pinnedFile.fileName
-      : pinnedFramePath;
+    pinnedFramePath?.split("/").pop() ?? pinnedFramePath ?? undefined;
 
   const handleUnpin = useCallback(() => {
-    void unpinFrame({ fileName: unpinLabel ?? undefined });
+    void unpinFrame({ fileName: unpinLabel });
   }, [unpinFrame, unpinLabel]);
 
   if (!pinnedFramePath) {
     return null;
   }
 
-  if (isPodFilesLoading || (fileId && !fileContent)) {
+  if (isLoading) {
     return (
       <div
         className="mb-4 flex h-16 items-center justify-center rounded-xl bg-muted-background"
@@ -258,16 +192,16 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     );
   }
 
-  if (!fileId || !fileContent || !vizUrl) {
+  if (isNotFound || !fileId || !fileContent || !vizUrl) {
     return null;
   }
 
   const frameProps = {
     owner,
-    podId: podInfo.sId,
-    fileId,
+    spaceId: podInfo.sId,
     fileContent,
     vizUrl,
+    identifier: `viz-banner-${fileId}`,
   };
 
   const controlsProps = {
@@ -289,7 +223,10 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
         />
         <div className="h-full p-4 pt-12">
           <div className="h-full overflow-hidden rounded-xl">
-            <PodPinnedBannerFrame key={`banner-fs-${fileId}`} {...frameProps} />
+            <PodFrameVisualization
+              key={`banner-fs-${fileId}`}
+              {...frameProps}
+            />
           </div>
         </div>
       </div>,
@@ -316,7 +253,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
         style={{ height: BANNER_HEIGHT_PX }}
       >
         <PodPinnedBannerControls {...controlsProps} />
-        <PodPinnedBannerFrame key={`banner-${fileId}`} {...frameProps} />
+        <PodFrameVisualization key={`banner-${fileId}`} {...frameProps} />
       </div>
       {fullscreenOverlay}
     </>

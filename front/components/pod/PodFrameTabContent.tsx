@@ -1,14 +1,10 @@
-import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
+import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization";
+import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableContent";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import {
-  getFilePathContentApiPath,
-  useFileContentByUrl,
-} from "@app/lib/swr/files";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import type { WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
-import { useMemo, useRef } from "react";
 
 interface PodFrameTabContentProps {
   owner: WorkspaceType;
@@ -22,20 +18,13 @@ export function PodFrameTabContent({
   tab,
 }: PodFrameTabContentProps) {
   const { vizUrl } = useAuth();
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { fileId, fileContent, isLoading, isNotFound } =
+    usePodFrameRenderableContent({
+      owner,
+      framePath: tab.path,
+    });
 
-  const contentUrl = useMemo(
-    () => getFilePathContentApiPath(owner, tab.path),
-    [owner, tab.path]
-  );
-
-  const { fileContent, isNotFound, isFileContentLoading } = useFileContentByUrl(
-    {
-      url: contentUrl,
-    }
-  );
-
-  if (isFileContentLoading) {
+  if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Spinner />
@@ -43,7 +32,7 @@ export function PodFrameTabContent({
     );
   }
 
-  if (isNotFound || !fileContent || !vizUrl) {
+  if (isNotFound || !fileId || !fileContent || !vizUrl) {
     return (
       <div className="flex h-full w-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
         This frame is no longer available in the Pod files.
@@ -54,19 +43,12 @@ export function PodFrameTabContent({
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden p-2">
       <div className="h-full overflow-hidden rounded-xl ring-1 ring-border/60">
-        <AuthenticatedVisualizationActionIframe
-          agentConfigurationId={null}
-          workspaceId={owner.sId}
-          vizUrl={vizUrl}
-          visualization={{
-            code: fileContent,
-            complete: true,
-            identifier: `viz-frame-tab-${tab.path}`,
-          }}
-          conversationId={null}
+        <PodFrameVisualization
+          owner={owner}
           spaceId={podInfo.sId}
-          isInDrawer={true}
-          ref={iframeRef}
+          fileContent={fileContent}
+          vizUrl={vizUrl}
+          identifier={`viz-frame-tab-${fileId}`}
         />
       </div>
     </div>
