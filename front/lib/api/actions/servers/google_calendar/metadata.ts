@@ -1,6 +1,42 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
+const conferenceDataSchema = z.object({
+  conferenceSolution: z.object({
+    key: z.object({
+      type: z
+        .enum(["eventHangout", "eventNamedHangout", "hangoutsMeet", "addOn"])
+        .describe(
+          "The conference solution type. Use 'addOn' for a third-party conference provider."
+        ),
+    }),
+    name: z.string().describe("The user-visible conference solution name."),
+  }),
+  entryPoints: z
+    .array(
+      z.object({
+        entryPointType: z
+          .enum(["video", "phone", "sip", "more"])
+          .describe("How attendees join the conference."),
+        uri: z
+          .string()
+          .max(1300)
+          .describe(
+            "The entry point URI. Use http(s): for video/more, tel: for phone, or sip: for SIP."
+          ),
+        label: z
+          .string()
+          .max(512)
+          .optional()
+          .describe("The user-visible label for the entry point."),
+      })
+    )
+    .min(1)
+    .describe(
+      "Ways to join the conference. All must belong to the same conference."
+    ),
+});
+
 const sharedEventFields = {
   transparency: z
     .enum(["opaque", "transparent"])
@@ -115,7 +151,7 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
   {
     name: "create_event",
     description:
-      "Create a new event on a Google Calendar to schedule a meeting or appointment. By default: (1) add the calling user as both organizer and attendee, (2) call check_availability to verify attendee availability beforehand, (3) call get_user_timezones first to determine attendee timezones for accurate scheduling.",
+      "Create and schedule a meeting, event, or appointment on Google Calendar. By default, add the calling user as organizer and attendee, call check_availability first, and call get_user_timezones before scheduling.",
     schema: {
       calendarId: z
         .string()
@@ -144,7 +180,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         .boolean()
         .default(true)
         .describe(
-          "Whether to create a conference (Google Meet) for the event. Defaults to true."
+          "Whether to create a Google Meet conference. Defaults to true. Ignored when conferenceData is provided."
+        ),
+      conferenceData: conferenceDataSchema
+        .optional()
+        .describe(
+          "Google Calendar conference solution and meeting entry points. Use for phone, SIP, video, or third-party conferencing. Takes precedence over createConference."
         ),
       eventType: z
         .enum(["default", "focusTime", "outOfOffice"])
@@ -165,7 +206,7 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
   {
     name: "update_event",
     description:
-      "Update or reschedule an existing event on a Google Calendar to a new time, location, or set of attendees.",
+      "Update or reschedule a Google Calendar event or meeting to a new time, location, set of attendees, or conference.",
     schema: {
       calendarId: z
         .string()
@@ -197,7 +238,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         .boolean()
         .optional()
         .describe(
-          "Whether to create a conference (Google Meet) for the event. If not provided, existing conference settings are preserved."
+          "Whether to create a Google Meet conference. If not provided, existing conference settings are preserved. Ignored when conferenceData is provided."
+        ),
+      conferenceData: conferenceDataSchema
+        .optional()
+        .describe(
+          "Google Calendar conference solution and meeting entry points. Use for phone, SIP, video, or third-party conferencing. Takes precedence over createConference."
         ),
       ...sharedEventFields,
     },

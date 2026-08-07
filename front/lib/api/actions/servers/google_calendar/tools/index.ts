@@ -136,6 +136,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       location,
       colorId,
       createConference = true,
+      conferenceData,
       transparency,
       visibility,
       reminders,
@@ -151,6 +152,19 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     );
 
     try {
+      const conferenceDataRequest =
+        conferenceData ??
+        (createConference &&
+        eventType !== "focusTime" &&
+        eventType !== "outOfOffice"
+          ? {
+              createRequest: {
+                requestId: `conference-${randomUUID()}`,
+                conferenceSolutionKey: { type: "hangoutsMeet" },
+              },
+            }
+          : undefined);
+
       const res = await calendar.events.insert({
         calendarId,
         conferenceDataVersion: 1,
@@ -179,16 +193,9 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
               autoDeclineMode: "declineAllConflictingInvitations",
             },
           }),
-          ...(createConference &&
-            eventType !== "focusTime" &&
-            eventType !== "outOfOffice" && {
-              conferenceData: {
-                createRequest: {
-                  requestId: `conference-${randomUUID()}`,
-                  conferenceSolutionKey: { type: "hangoutsMeet" },
-                },
-              },
-            }),
+          ...(conferenceDataRequest && {
+            conferenceData: conferenceDataRequest,
+          }),
         },
       });
 
@@ -228,6 +235,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       location,
       colorId,
       createConference,
+      conferenceData,
       transparency,
       visibility,
       reminders,
@@ -242,6 +250,17 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     );
 
     try {
+      const conferenceDataRequest =
+        conferenceData ??
+        (createConference
+          ? {
+              createRequest: {
+                requestId: `conference-${randomUUID()}`,
+                conferenceSolutionKey: { type: "hangoutsMeet" },
+              },
+            }
+          : undefined);
+
       const res = await calendar.events.patch({
         calendarId,
         eventId,
@@ -260,13 +279,8 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
           ...(visibility && { visibility }),
           ...(reminders && { reminders }),
           ...(extendedProperties && { extendedProperties }),
-          ...(createConference && {
-            conferenceData: {
-              createRequest: {
-                requestId: `conference-${randomUUID()}`,
-                conferenceSolutionKey: { type: "hangoutsMeet" },
-              },
-            },
+          ...(conferenceDataRequest && {
+            conferenceData: conferenceDataRequest,
           }),
         },
       });
