@@ -717,6 +717,21 @@ export async function processWebhookRequest(
     ({ status }) => status === "enabled"
   );
 
+  if (
+    enabledWebhookTriggers.some(
+      (t) =>
+        "includePayload" in t.configuration && t.configuration.includePayload
+    )
+  ) {
+    await storePayloadInGCS(auth, {
+      webhookSource,
+      webhookRequest,
+      headers,
+      body,
+      provider: webhookSource.provider ?? "custom",
+    });
+  }
+
   const filteredTriggersResult = await filterTriggers(auth, {
     enabledWebhookTriggers,
     webhookSource,
@@ -736,16 +751,6 @@ export async function processWebhookRequest(
     localLogger.info("No triggers matched the webhook request.");
     await webhookRequest.markAsProcessed();
     return new Ok({ triggerIds: [] });
-  }
-
-  if (filteredTriggers.some((t) => t.configuration.includePayload)) {
-    await storePayloadInGCS(auth, {
-      webhookSource,
-      webhookRequest,
-      headers,
-      body,
-      provider: webhookSource.provider ?? "custom",
-    });
   }
 
   const launchResult = await launchTriggersWorkflows(auth, {
