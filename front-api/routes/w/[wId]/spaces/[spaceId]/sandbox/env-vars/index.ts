@@ -15,6 +15,8 @@ import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
+import envVarId from "./[id]";
+
 const PostPodSandboxEnvVarBodySchema = z.object({
   name: z.string(),
   value: z.string(),
@@ -109,5 +111,7 @@ app.post(
     );
   }
 );
+
+app.route("/:id", envVarId);
 
 export default app;
