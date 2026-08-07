@@ -1027,29 +1027,29 @@ export function AgentSidebarMenu({
                 </div>
               </div>
             )}
-            {showGetStarted && (
-              <NavigationList className="px-sidebar-side-spacing py-1">
-                <NavigationListItem
-                  label="For you"
-                  icon={Lightbulb04}
-                  href={getGetStartedRoute(owner.sId)}
-                  selected={router.asPath?.startsWith(
-                    getGetStartedRoute(owner.sId)
-                  )}
-                  suffix={
-                    activationRecsForBadge.length > 0 ? (
-                      <Counter
-                        value={activationRecsForBadge.length}
-                        size="xs"
-                        variant="highlight"
-                      />
-                    ) : undefined
-                  }
-                />
-              </NavigationList>
-            )}
-            {!isMultiSelect && !hideActions && (
+            {(showGetStarted || (!isMultiSelect && !hideActions)) && (
               <NavigationList className="mx-sidebar-side-spacing mb-4 flex-shrink-0 pt-1">
+                {showGetStarted && (
+                  <NavigationListItem
+                    label="For you"
+                    icon={Lightbulb04}
+                    href={getGetStartedRoute(owner.sId)}
+                    selected={router.asPath?.startsWith(
+                      getGetStartedRoute(owner.sId)
+                    )}
+                    suffix={
+                      activationRecsForBadge.length > 0 ? (
+                        <Counter
+                          value={activationRecsForBadge.length}
+                          size="xs"
+                          variant="highlight"
+                        />
+                      ) : undefined
+                    }
+                  />
+                )}
+                {!isMultiSelect && !hideActions && (
+                  <>
                 <NavigationListItem
                   href={getAgentBuilderRoute(owner.sId, "manage")}
                   icon={Robot}
@@ -1204,44 +1204,48 @@ export function AgentSidebarMenu({
                     ) : undefined
                   }
                 />
+                  </>
+                )}
               </NavigationList>
             )}
-            {isConversationsError && (
-              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
-                Error loading conversations
-              </Label>
-            )}
-            {isSearchActive ? (
-              <SearchResults
-                owner={owner}
-                allPods={pods}
-                isSearchingPods={isSearchingPods}
-                hasMorePods={hasMorePods}
-                loadMorePods={loadMorePods}
-                isLoadingMorePods={isLoadingMorePods}
-                podConversationResults={podConversationSearchResults}
-                privateConversations={privateConversationSearchResults}
-                isSearchingPrivateConversations={
-                  isSearchingPrivateConversations
-                }
-                hasMorePrivateConversations={hasMorePrivateConversations}
-                loadMorePrivateConversations={loadMorePrivateConversations}
-                isLoadingMorePrivateConversations={
-                  isLoadingMorePrivateConversations
-                }
-                isSearchingPodConversations={isSearchingPodConversations}
-                onCreatePod={() => setIsCreatePodModalOpen(true)}
-                activeConversationId={activeConversationId}
-                activeSpaceId={activePodId}
-                hideTriggeredConversations={hideTriggeredConversations}
-                setHideTriggeredConversations={setHideTriggeredConversations}
-                isMultiSelect={isMultiSelect}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-              />
-            ) : (
-              conversationsList
-            )}
+            <div className="min-h-0 flex-1 overflow-hidden">
+              {isConversationsError && (
+                <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
+                  Error loading conversations
+                </Label>
+              )}
+              {isSearchActive ? (
+                <SearchResults
+                  owner={owner}
+                  allPods={pods}
+                  isSearchingPods={isSearchingPods}
+                  hasMorePods={hasMorePods}
+                  loadMorePods={loadMorePods}
+                  isLoadingMorePods={isLoadingMorePods}
+                  podConversationResults={podConversationSearchResults}
+                  privateConversations={privateConversationSearchResults}
+                  isSearchingPrivateConversations={
+                    isSearchingPrivateConversations
+                  }
+                  hasMorePrivateConversations={hasMorePrivateConversations}
+                  loadMorePrivateConversations={loadMorePrivateConversations}
+                  isLoadingMorePrivateConversations={
+                    isLoadingMorePrivateConversations
+                  }
+                  isSearchingPodConversations={isSearchingPodConversations}
+                  onCreatePod={() => setIsCreatePodModalOpen(true)}
+                  activeConversationId={activeConversationId}
+                  activeSpaceId={activePodId}
+                  hideTriggeredConversations={hideTriggeredConversations}
+                  setHideTriggeredConversations={setHideTriggeredConversations}
+                  isMultiSelect={isMultiSelect}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                />
+              ) : (
+                conversationsList
+              )}
+            </div>
 
             {!hideInAppBanner && (
               <StackedInAppBanners
