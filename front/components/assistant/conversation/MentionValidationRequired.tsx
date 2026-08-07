@@ -157,8 +157,8 @@ export function MentionValidationRequired({
       status === "pending_project_membership");
 
   const memoryWarning = showMemoryWarning ? (
-    <span className="mt-2 flex items-start gap-1.5 text-muted-foreground">
-      <InfoCircle className="mt-0.5 h-4 w-4 shrink-0" />
+    <span className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+      <InfoCircle className="h-4 w-4 shrink-0" />
       <span>
         The content of your personal memory may be disclosed to invited users.
       </span>
