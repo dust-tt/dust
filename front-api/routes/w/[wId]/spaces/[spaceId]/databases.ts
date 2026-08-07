@@ -2,17 +2,17 @@ import {
   getDatabaseSchemaOnSandbox,
   listDatabasesOnSandbox,
   listTablesOnSandbox,
-  MAX_TABLE_ROWS_PAGE_SIZE,
   queryDatabaseOnSandbox,
   readTableRowsOnSandbox,
 } from "@app/lib/api/sandbox_functions/dsbx_db";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import type {
-  GetPodDatabaseSchemaResponseBody,
-  GetPodDatabasesResponseBody,
-  GetPodDatabaseTablesResponseBody,
-  GetPodTableRowsResponseBody,
-  PostPodDatabaseQueryResponseBody,
+import {
+  type GetPodDatabaseSchemaResponseBody,
+  type GetPodDatabasesResponseBody,
+  type GetPodDatabaseTablesResponseBody,
+  type GetPodTableRowsResponseBody,
+  MAX_TABLE_ROWS_PAGE_SIZE,
+  type PostPodDatabaseQueryResponseBody,
 } from "@app/types/api/sandbox/pod_databases";
 import { POD_DATABASE_NAME_REGEX } from "@app/types/api/sandbox_functions";
 import type { APIErrorType } from "@app/types/error";

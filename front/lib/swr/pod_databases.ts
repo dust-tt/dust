@@ -1,8 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  DatabaseTableEntry,
-  LiveDatabaseEntry,
-} from "@app/lib/api/sandbox_functions/dsbx_db";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -11,10 +7,12 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
+  DatabaseTableEntry,
   GetPodDatabaseSchemaResponseBody,
   GetPodDatabasesResponseBody,
   GetPodDatabaseTablesResponseBody,
   GetPodTableRowsResponseBody,
+  LiveDatabaseEntry,
   PostPodDatabaseQueryResponseBody,
 } from "@app/types/api/sandbox/pod_databases";
 import type { LightWorkspaceType } from "@app/types/user";

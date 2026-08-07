@@ -1,8 +1,8 @@
+import { classNames } from "@app/lib/utils";
 import type {
   DatabaseTableEntry,
   LiveDatabaseEntry,
-} from "@app/lib/api/sandbox_functions/dsbx_db";
-import { classNames } from "@app/lib/utils";
+} from "@app/types/api/sandbox/pod_databases";
 import {
   Button,
   ChevronDown,

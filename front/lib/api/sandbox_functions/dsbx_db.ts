@@ -27,6 +27,11 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import type {
+  DatabaseTableEntry,
+  LiveDatabaseEntry,
+  TableRowsResult,
+} from "@app/types/api/sandbox/pod_databases";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -338,11 +343,6 @@ const listEnvelopeSchema = z.union([
   dbErrorEnvelopeSchema,
 ]);
 
-export interface LiveDatabaseEntry {
-  name: string;
-  sizeBytes: number;
-}
-
 /** `dsbx db list`: enumerate the live `{db}.db` files with their sizes (WAL included). */
 export async function listDatabasesOnSandbox(
   auth: Authenticator,
@@ -514,20 +514,6 @@ const HIDDEN_TABLE_PREFIXES = ["sqlite_", "__drizzle"];
 
 const TABLE_NAMES_SQL =
   "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name";
-
-/** Max rows a single browse page may request; keeps every page inside the runner's inline cap. */
-export const MAX_TABLE_ROWS_PAGE_SIZE = 50;
-
-export interface DatabaseTableEntry {
-  name: string;
-  rowCount: number;
-}
-
-export interface TableRowsResult {
-  columns: string[];
-  rows: Record<string, unknown>[];
-  hasMore: boolean;
-}
 
 /**
  * Quote an identifier for interpolation into SQL. SQLite quotes identifiers with double quotes

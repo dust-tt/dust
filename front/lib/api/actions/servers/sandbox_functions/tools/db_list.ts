@@ -4,8 +4,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPod } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import { toDbMCPError } from "@app/lib/api/actions/servers/sandbox_functions/tools/db_errors";
-import type { LiveDatabaseEntry } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { listDatabasesOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
+import type { LiveDatabaseEntry } from "@app/types/api/sandbox/pod_databases";
 import { Err, Ok } from "@app/types/shared/result";
 
 export function formatDatabasesList(databases: LiveDatabaseEntry[]): string {
