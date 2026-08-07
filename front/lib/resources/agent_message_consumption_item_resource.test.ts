@@ -15,6 +15,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
 const ATTRIBUTION_VERSION = 1;
@@ -103,6 +104,95 @@ async function listTools(
 }
 
 describe("AgentMessageConsumptionItemResource", () => {
+  it("narrows model and tool items at the resource seam", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const context = await setupMessageWithEvidence(auth, workspace);
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation: context.conversation,
+      agentMessageModelId: context.agentMessageModelId,
+      attributionVersion: ATTRIBUTION_VERSION,
+      records: [
+        {
+          itemType: "system",
+          runUsageModelId: context.runUsageModelId,
+          inputTokensCount: 10,
+          grossAttributedCreditAmountMicro: 100_000,
+        },
+        {
+          itemType: "input",
+          runUsageModelId: context.runUsageModelId,
+          inputTokensCount: 20,
+          grossAttributedCreditAmountMicro: 200_000,
+        },
+        {
+          itemType: "output",
+          runUsageModelId: context.runUsageModelId,
+          outputTokensCount: 30,
+          grossAttributedCreditAmountMicro: 300_000,
+        },
+        {
+          itemType: "reasoning",
+          runUsageModelId: context.runUsageModelId,
+          outputTokensCount: 40,
+          grossAttributedCreditAmountMicro: 400_000,
+        },
+        completedTool(context.action, context.runUsageModelId),
+      ],
+      pendingToolItems: [],
+    });
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [context.agentMessageModelId],
+          maxAttributionVersion: ATTRIBUTION_VERSION,
+        }
+      );
+
+    expect(items).toHaveLength(5);
+    for (const item of items) {
+      if (item.itemType === "tool") {
+        expect(item.isModelItem()).toBe(false);
+        assert(item.isToolItem(), "Tool item was not narrowed");
+        expect(item.agentMCPActionId).toBe(context.action.id);
+      } else {
+        expect(item.isToolItem()).toBe(false);
+        assert(item.isModelItem(), "Model item was not narrowed");
+        expect(item.agentMCPActionId).toBeNull();
+        expect(item.directCreditAmountMicro).toBeNull();
+        expect(item.completedAt).toBeInstanceOf(Date);
+      }
+    }
+  });
+
+  it("rejects a malformed tool shape while narrowing", () => {
+    const item = new AgentMessageConsumptionItemResource(
+      AgentMessageConsumptionItemResource.model,
+      AgentMessageConsumptionItemModel.build({
+        id: -1,
+        workspaceId: -1,
+        conversationId: -1,
+        agentMessageId: -1,
+        runUsageId: -1,
+        agentMCPActionId: null,
+        itemKey: "tool-action:invalid",
+        itemType: "tool",
+        attributionVersion: ATTRIBUTION_VERSION,
+        inputTokensCount: 0,
+        outputTokensCount: 0,
+        grossAttributedCreditAmountMicro: 0,
+        directCreditAmountMicro: 0,
+        completedAt: new Date(),
+      }).get()
+    );
+
+    expect(() => item.isToolItem()).toThrow(
+      "Tool consumption item is missing its action"
+    );
+  });
+
   it("keeps pending state exclusive to incomplete tools", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);

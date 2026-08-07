@@ -629,6 +629,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom,
       withInstructions = true,
       withTools = true,
+      withToolMetadata = false,
       withFileAttachments = true,
       ...otherOptions
     } = options;
@@ -696,7 +697,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           auth,
           removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
           {
-            includeMetadata: false,
+            includeMetadata: withToolMetadata,
             includeHeavyAttributes: [
               "authorization",
               "cachedTools",
@@ -1180,6 +1181,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
       withInstructions,
       withTools,
+      withToolMetadata,
       withFileAttachments,
     }: {
       agentLoopData?: AgentLoopExecutionData;
@@ -1188,6 +1190,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction?: Transaction;
       withInstructions?: boolean;
       withTools?: boolean;
+      withToolMetadata?: boolean;
       withFileAttachments?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
@@ -1204,6 +1207,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
+        withToolMetadata,
         withFileAttachments,
       },
       { agentLoopData, effectiveSpaceIds, transaction }
@@ -3856,7 +3860,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentMessageId(
     auth: Authenticator,
-    agentMessageId: ModelId
+    agentMessageId: ModelId,
+    { withToolMetadata = false }: { withToolMetadata?: boolean } = {}
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -3872,6 +3877,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Include all statuses for historical accuracy.
     return this.fetchBySkillReferences(auth, agentMessageSkills, {
       status: ["active", "archived", "suggested"],
+      withToolMetadata,
     });
   }
 
