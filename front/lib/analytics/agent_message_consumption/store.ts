@@ -1,10 +1,11 @@
 import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
+  ElasticsearchError,
   withEs,
 } from "@app/lib/api/elasticsearch";
-import logger from "@app/logger/logger";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
-import assert from "assert";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 function makeAgentMessageConsumptionAnalyticsDocumentId(
   document: Pick<
@@ -18,13 +19,13 @@ function makeAgentMessageConsumptionAnalyticsDocumentId(
 /** Upserts every consumption unit using its stable identity. */
 export async function upsertAgentMessageConsumptionAnalyticsDocuments(
   documents: AgentMessageConsumptionAnalyticsData[]
-): Promise<void> {
+): Promise<Result<void, ElasticsearchError>> {
   if (documents.length === 0) {
-    return;
+    return new Ok(undefined);
   }
 
-  const result = await withEs(async (client) => {
-    const response = await client.bulk({
+  const result = await withEs((client) =>
+    client.bulk({
       body: documents.flatMap((document) => [
         {
           index: {
@@ -35,26 +36,27 @@ export async function upsertAgentMessageConsumptionAnalyticsDocuments(
         document,
       ]),
       refresh: false,
-    });
-
-    assert(
-      !response.errors,
-      "Elasticsearch bulk response contains failed items"
-    );
-  });
+    })
+  );
 
   if (result.isErr()) {
-    const firstDocument = documents[0];
-    logger.error(
-      {
-        error: result.error,
-        workspaceId: firstDocument?.workspace_id,
-        agentMessageId: firstDocument?.agent_message_id,
-        documentCount: documents.length,
-      },
-      "[ConsumptionAnalytics] Failed to upsert consumption documents in ES"
-    );
+    return result;
   }
 
-  assert(result.isOk(), "Failed to upsert consumption analytics documents");
+  if (!result.value.errors) {
+    return new Ok(undefined);
+  }
+
+  const failedItem = result.value.items.find(
+    (item) => item.index?.error
+  )?.index;
+
+  return new Err(
+    new ElasticsearchError(
+      "query_error",
+      failedItem?.error?.reason ??
+        "Elasticsearch bulk response contains failed items",
+      failedItem?.status
+    )
+  );
 }

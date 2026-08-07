@@ -1,7 +1,10 @@
 import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
+import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 
 /**
@@ -12,12 +15,12 @@ import assert from "assert";
 export async function indexAgentMessageConsumptionAnalytics(
   auth: Authenticator,
   { agentMessageId }: { agentMessageId: string }
-): Promise<void> {
+): Promise<Result<void, ElasticsearchError>> {
   const input = await loadAgentMessageConsumptionAnalyticsInput(auth, {
     agentMessageId,
   });
   if (!input) {
-    return;
+    return new Ok(undefined);
   }
 
   const documents = buildAgentMessageConsumptionAnalyticsDocuments(input);
@@ -26,5 +29,5 @@ export async function indexAgentMessageConsumptionAnalytics(
     "Consumption attribution is incomplete for analytics"
   );
 
-  await upsertAgentMessageConsumptionAnalyticsDocuments(documents);
+  return upsertAgentMessageConsumptionAnalyticsDocuments(documents);
 }
